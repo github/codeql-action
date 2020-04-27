@@ -1,0 +1,92 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "CodeQL command-line toolchain",
+          "organization": "GitHub",
+          "semanticVersion": "2.0.0",
+          "rules": []
+        }
+      },
+      "artifacts": [
+        {
+          "location": {
+            "uri": "testFile1.js",
+            "uriBaseId": "%SRCROOT%",
+            "index": 0
+          }
+        },
+        {
+          "location": {
+            "uri": "testFile2.js",
+            "uriBaseId": "%SRCROOT%",
+            "index": 1
+          }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "js/unused-local-variable",
+          "ruleIndex": 0,
+          "message": {
+            "text": "Unused variable a."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testFile1.js",
+                  "uriBaseId": "%SRCROOT%",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "5e4d5a9cf1294ad9:1"
+          }
+        },
+        {
+          "ruleId": "js/unused-local-variable",
+          "ruleIndex": 0,
+          "message": {
+            "text": "Unused variable bar."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "index": 1
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f7592a95a9381ac0:1"
+          }
+        }
+      ],
+      "newlineSequences": [
+        "\r\n",
+        "\n",
+        " ",
+        " "
+      ],
+      "columnKind": "utf16CodeUnits",
+      "properties": {
+        "semmle.formatSpecifier": "sarif-latest"
+      }
+    }
+  ]
+}

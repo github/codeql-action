@@ -1,0 +1,16 @@
+# Installation
+> `npm install --save @types/jszip`
+
+# Summary
+This package contains type definitions for JSZip ( http://stuk.github.com/jszip/ ).
+
+# Details
+Files were exported from https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/jszip
+
+Additional Details
+ * Last updated: Mon, 20 May 2019 21:14:34 GMT
+ * Dependencies: @types/node
+ * Global values: none
+
+# Credits
+These definitions were written by mzeiher <https://github.com/mzeiher>, forabi <https://github.com/forabi>.

@@ -1,0 +1,141 @@
+{
+    "extends": [
+        "tslint"
+    ],
+    "rules": {
+        "align": [
+            true,
+            "parameters",
+            "arguments",
+            "statements"
+        ],
+        "class-name": true,
+        "comment-format": [
+            true,
+            "check-space"
+        ],
+        "curly": false,
+        "eofline": true,
+        "forin": true,
+        "indent": [
+            true,
+            "spaces"
+        ],
+        "jsdoc-format": true,
+        "label-position": true,
+        "max-line-length": [
+            true,
+            120
+        ],
+        "member-access": true,
+        "member-ordering": [
+            {
+                "name": "static field",
+                "kinds": [
+                    "public-static-field",
+                    "protected-static-field",
+                    "private-static-field"
+                ]
+            },
+            {
+                "name": "instance field",
+                "kinds": [
+                    "public-instance-field",
+                    "protected-instance-field",
+                    "private-instance-field"
+                ]
+            },
+            {
+                "name": "static method",
+                "kinds": [
+                    "public-static-method",
+                    "private-static-method",
+                    "protected-static-method",
+                    "public-static-accessor",
+                    "protected-static-accessor",
+                    "private-static-accessor"
+                ]
+            },
+            {
+                "name": "instance method",
+                "kinds": [
+                    "public-constructor",
+                    "protected-constructor",
+                    "private-constructor",
+                    "public-instance-method",
+                    "protected-instance-method",
+                    "private-instance-method",
+                    "public-instance-accessor",
+                    "protected-instance-accessor",
+                    "private-instance-accessor"
+                ]
+            }
+        ],
+        "no-arg": true,
+        "no-bitwise": true,
+        "no-construct": true,
+        "no-debugger": true,
+        "no-duplicate-variable": true,
+        "no-empty": true,
+        "no-eval": true,
+        "no-floating-promises": true,
+        "no-inferrable-types": true,
+        "no-internal-module": true,
+        "no-require-imports": false,
+        "no-shadowed-variable": false,
+        "no-string-literal": false,
+        "no-switch-case-fall-through": true,
+        "no-trailing-whitespace": true,
+        "no-unused-expression": true,
+        "no-var-keyword": true,
+        "object-literal-sort-keys": false,
+        "one-line": [
+            true,
+            "check-open-brace",
+            "check-catch",
+            "check-else",
+            "check-finally",
+            "check-whitespace"
+        ],
+        "ordered-imports": [
+            true,
+            {
+                "grouped-imports": true
+            }
+        ],
+        "quotemark": [
+            false
+        ],
+        "radix": true,
+        "semicolon": [
+            true,
+            "always"
+        ],
+        "trailing-comma": [
+            true,
+            {
+                "singleline": "never"
+            }
+        ],
+        "triple-equals": true,
+        "typedef-whitespace": [
+            true,
+            {
+                "call-signature": "nospace",
+                "index-signature": "nospace",
+                "parameter": "nospace",
+                "property-declaration": "nospace",
+                "variable-declaration": "nospace"
+            }
+        ],
+        "variable-name": false,
+        "whitespace": [
+            true,
+            "check-branch",
+            "check-decl",
+            "check-operator",
+            "check-separator",
+            "check-type"
+        ]
+    }
+}

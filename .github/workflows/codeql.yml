@@ -1,0 +1,15 @@
+name: "CodeQL action"
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - uses: ./codeql/init
+      with:
+       config-file: ./.github/codeql/codeql-config.yml
+    - uses: ./codeql/finish

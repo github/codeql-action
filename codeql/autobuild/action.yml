@@ -1,0 +1,7 @@
+name: 'CodeQL: Autobuild'
+description: 'Attempt to automatically build code'
+author: 'GitHub'
+
+runs:
+  using: 'node12'
+  main: '../../lib/autobuild.js'

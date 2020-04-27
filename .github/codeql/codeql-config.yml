@@ -1,0 +1,4 @@
+me: "CodeQL config"
+queries: 
+  - name: Run custom queries
+    uses: ./queries

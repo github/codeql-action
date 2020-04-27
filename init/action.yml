@@ -5,7 +5,7 @@ inputs:
   tools:
     description: URL of CodeQL tools
     required: false
-    default: https://github.com/github/codeql-action/releases/download/codeql-bundle-20200427/codeql-bundle.zip
+    default: https://github.com/github/codeql-action-to-be/releases/download/codeql-bundle-20200427/codeql-bundle.zip
   languages:
     description: The languages to be analysed
     required: false

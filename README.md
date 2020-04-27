@@ -32,16 +32,16 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: Anthophila/codeql-action/codeql/init@master
+      uses: github/codeql-action/init@v1
       # Override language selection by uncommenting this and choosing your languages
       # with:
       #   languages: go, javascript, csharp, python, cpp, java
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
-    # If this step fails, then you should remove it and run the build manually (see bellow)
+    # If this step fails, then you should remove it and run the build manually (see below)
     # custom build steps.
     - name: Autobuild
-      uses: Anthophila/codeql-action/codeql/autobuild@master
+      uses: github/codeql-action/autobuild@v1
 
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 https://git.io/JvXDl
@@ -55,14 +55,14 @@ jobs:
     #   make release
 
     - name: Perform CodeQL Analysis
-      uses: Anthophila/codeql-action/codeql/finish@master
+      uses: github/codeql-action/analyze@v1
 ```
 
 If you prefer to integrate this within an existing CI workflow, it should end up looking something like this:
 
 ```yaml
     - name: Initialize CodeQL
-      uses: Anthophila/codeql-action/codeql/init@master
+      uses: github/codeql-action/init@v1
       with:
         languages: go, javascript
 
@@ -72,7 +72,7 @@ If you prefer to integrate this within an existing CI workflow, it should end up
         make release
 
     - name: Perform CodeQL Analysis
-      uses: Anthophila/codeql-action/codeql/finish@master
+      uses: github/codeql-action/analyze@master
 ```
 ### Actions triggers
 The CodeQL action should be run on `push` events, and on a `schedule`. `Push` events allow us to do detailed analysis of the delta in a pull request, while the `schedule` event ensures that GitHub regularly scans the repository for the latest vulnerabilities, even if the repository becomes inactive. This action does not support the `pull_request` event.
@@ -89,7 +89,7 @@ Identifying potential files for extraction:
 Use the config-file parameter of the codeql/init action to enable the configuration file. For example:
 
 ```yaml
-    - uses: Anthophila/codeql-action/codeql/init@master
+    - uses: github/codeql-action/init@master
       with:
         config-file: ./.github/codeql/codeql-config.yml
 ```
@@ -117,8 +117,6 @@ paths-ignore:
  - lib
 ```
 
-Some example QL packs can be found here: https://github.com/Anthophila/python-querypack https://github.com/Anthophila/javascript-querypack
-
 ## Troubleshooting
 
 ### Trouble with Go dependencies
@@ -130,7 +128,7 @@ Try passing
 env:
       GOFLAGS: "-mod=vendor"
 ```
-to `Anthophila/codeql-action/codeql/finish`.
+to `github/codeql-action/analyze`.
 
 ### If you do not use a vendor directory
 
@@ -141,19 +139,18 @@ Dependencies on public repositories should just work. If you have dependencies o
       env:
         TOKEN: ${{ secrets.GITHUB_PAT }}
       run: |
-        git config --global url."https://${TOKEN}@github.com/github/foo".insteadOf "https://github.com/github/foo"
-        git config --global url."https://${TOKEN}@github.com/github/bar".insteadOf "https://github.com/github/bar"
-        git config --global url."https://${TOKEN}@github.com/github/baz".insteadOf "https://github.com/github/baz"
+        git config --global url."https://${TOKEN}@github.com/foo/bar".insteadOf "https://github.com/foo/bar"
+        git config --global url."https://${TOKEN}@github.com/foo/baz".insteadOf "https://github.com/foo/baz"
 ```
 before any codeql actions. A similar thing can also be done with a SSH key or deploy key.
 
 ### C# using dotnet version 2 on linux
 
-This unfortunately doesn't work properly unless `dotnet` is invoked with the `/p:UseSharedCompilation=false` flag. For example:
+This currently requires invoking `dotnet` with the `/p:UseSharedCompilation=false` flag. For example:
 ```
 dotnet build /p:UseSharedCompilation=false
 ```
-Version 3 works fine and does not require the additional flag.
+Version 3 does not require the additional flag.
 
 ## License
 

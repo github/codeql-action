@@ -86,7 +86,7 @@ Identifying potential files for extraction:
 - If it finds a subfolder that's defined as `paths-ignore`, stop traversing.
 - If a file or folder is both in `paths` and `paths-ignore`, the `paths-ignore` is ignored.
 
-Use the config-file parameter of the codeql/init action to enable the configuration file. For example:
+Use the config-file parameter of the init action to enable the configuration file. For example:
 
 ```yaml
     - uses: github/codeql-action/init@master

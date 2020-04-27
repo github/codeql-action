@@ -159,6 +159,6 @@ async function run() {
 }
 
 run().catch(e => {
-  core.setFailed("codeql/finish action failed: " + e);
+  core.setFailed("analyze action failed: " + e);
   console.log(e);
 });

@@ -61,18 +61,18 @@ jobs:
 If you prefer to integrate this within an existing CI workflow, it should end up looking something like this:
 
 ```yaml
-    - name: Initialize CodeQL
-      uses: Anthophila/codeql-action/codeql/init@master
-      with:
-        languages: go, javascript
+- name: Initialize CodeQL
+  uses: Anthophila/codeql-action/codeql/init@master
+  with:
+    languages: go, javascript
 
-    # Here is where you build your code
-    - run: |
-        make bootstrap
-        make release
+# Here is where you build your code
+- run: |
+  make bootstrap
+  make release
 
-    - name: Perform CodeQL Analysis
-      uses: Anthophila/codeql-action/codeql/finish@master
+- name: Perform CodeQL Analysis
+  uses: Anthophila/codeql-action/codeql/finish@master
 ```
 ### Actions triggers
 The CodeQL action should be run on `push` events, and on a `schedule`. `Push` events allow us to do detailed analysis of the delta in a pull request, while the `schedule` event ensures that GitHub regularly scans the repository for the latest vulnerabilities, even if the repository becomes inactive. This action does not support the `pull_request` event.
@@ -89,9 +89,9 @@ Identifying potential files for extraction:
 Use the config-file parameter of the codeql/init action to enable the configuration file. For example:
 
 ```yaml
-    - uses: Anthophila/codeql-action/codeql/init@master
-      with:
-        config-file: ./.github/codeql/codeql-config.yml
+- uses: Anthophila/codeql-action/codeql/init@master
+  with:
+    config-file: ./.github/codeql/codeql-config.yml
 ```
 
 A config file looks like this:
@@ -126,33 +126,39 @@ Some example QL packs can be found here: https://github.com/Anthophila/python-qu
 #### If you use a vendor directory
 
 Try passing
-```
+
+```yaml
 env:
-      GOFLAGS: "-mod=vendor"
+  GOFLAGS: "-mod=vendor"
 ```
+
 to `Anthophila/codeql-action/codeql/finish`.
 
 ### If you do not use a vendor directory
 
 Dependencies on public repositories should just work. If you have dependencies on private repositories, one option is to use `git config` and a [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) to authenticate when downloading dependencies. Add a section like
+
+```yaml
+steps:
+- name: Configure git private repo access
+  env:
+    TOKEN: ${{ secrets.GITHUB_PAT }}
+  run: |
+    git config --global url."https://${TOKEN}@github.com/github/foo".insteadOf "https://github.com/github/foo"
+    git config --global url."https://${TOKEN}@github.com/github/bar".insteadOf "https://github.com/github/bar"
+    git config --global url."https://${TOKEN}@github.com/github/baz".insteadOf "https://github.com/github/baz"
 ```
-    steps:
-    - name: Configure git private repo access
-      env:
-        TOKEN: ${{ secrets.GITHUB_PAT }}
-      run: |
-        git config --global url."https://${TOKEN}@github.com/github/foo".insteadOf "https://github.com/github/foo"
-        git config --global url."https://${TOKEN}@github.com/github/bar".insteadOf "https://github.com/github/bar"
-        git config --global url."https://${TOKEN}@github.com/github/baz".insteadOf "https://github.com/github/baz"
-```
+
 before any codeql actions. A similar thing can also be done with a SSH key or deploy key.
 
 ### C# using dotnet version 2 on linux
 
 This unfortunately doesn't work properly unless `dotnet` is invoked with the `/p:UseSharedCompilation=false` flag. For example:
+
 ```
 dotnet build /p:UseSharedCompilation=false
 ```
+
 Version 3 works fine and does not require the additional flag.
 
 ## License

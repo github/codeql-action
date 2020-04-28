@@ -1,0 +1,12 @@
+name: "npm run-script test"
+
+on: [push]
+
+jobs:
+  npm-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: npm run-script test
+      run: npm run-script test

@@ -1,0 +1,11 @@
+name: 'CodeQL: Autobuild'
+description: 'Attempt to automatically build code'
+author: 'GitHub'
+inputs:
+  token:
+    default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
+runs:
+  using: 'node12'
+  main: '../lib/autobuild.js'

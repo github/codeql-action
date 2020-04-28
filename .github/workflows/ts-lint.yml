@@ -1,0 +1,12 @@
+name: "TSLint"
+
+on: [push]
+
+jobs:
+  tslint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: tslint
+      run: npm run-script lint

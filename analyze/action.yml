@@ -1,0 +1,21 @@
+name: 'CodeQL: Finish'
+description: 'Finalize CodeQL database'
+author: 'GitHub'
+inputs:
+  check_name:
+    description: The name of the check run to add text to.
+  output:
+    description: The path of the directory in which to save the SARIF results
+    required: false
+    default: '../results'
+  upload:
+    description: Upload the SARIF file
+    required: false
+    default: true
+  token:
+    default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
+runs:
+  using: 'node12'
+  main: '../lib/finalize-db.js'

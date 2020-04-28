@@ -37,7 +37,7 @@ export async function setupCodeQL(): Promise<CodeQLSetup> {
         core.debug(`CodeQL found in cache ${codeqlFolder}`);
     } else {
         const codeqlPath = await toolcache.downloadTool(codeqlURL);
-        const codeqlExtracted = await toolcache.extractZip(codeqlPath);
+        const codeqlExtracted = await toolcache.extractTar(codeqlPath);
         codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', version);
     }
     return new CodeQLSetup(path.join(codeqlFolder, 'codeql'));

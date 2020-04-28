@@ -20,6 +20,6 @@ async function run() {
 }
 
 run().catch(e => {
-    core.setFailed("codeql/upload-sarif action failed: " + e);
+    core.setFailed("upload-sarif action failed: " + e);
     console.log(e);
 });

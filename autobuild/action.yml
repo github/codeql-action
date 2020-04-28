@@ -4,4 +4,4 @@ author: 'GitHub'
 
 runs:
   using: 'node12'
-  main: '../../lib/autobuild.js'
+  main: '../lib/autobuild.js'

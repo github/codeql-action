@@ -2,20 +2,6 @@ name: "Integration Testing"
 
 on: [push]
 
-# Adding new repositories to be integration tested
-# 0) Repo needs to be set up with the codeql action working (e.g. have a CODEQL_SSH_KEY as a secret)
-#    https://github.com/github/dsp-code-scanning/issues/312#issuecomment-577631601
-# 1) Add the `codeql-testuser` to the repository with WRITE permissions (Important!)
-# 2) Put a copy of the workflow as `.github/workflows/integration-test.yml` in the target repo. You can find a copy of the workflow here: https://raw.githubusercontent.com/Anthophila/amazon-cognito-js-copy/master/.github/workflows/integration-test.ym
-# 3) Copy and paste the block below filling in the repo owner/name
-# curl -X POST \
-#           -H "Authorization: Bearer ${{ secrets.CODEQL_TESTING_TOKEN }}" \
-#           -H "Accept: application/vnd.github.everest-preview+json" \
-#           https://api.github.com/repos/OWNER/NAME/dispatches \
-#           -d '{"event_type":"codeql-integration","client_payload": {"sha": "${{ github.sha }}"}}'
-
-# add another job that creates a new check suite using the API, send check suite id in our payload
-
 jobs:
   dispatch-events:
     if: github.event.repository.full_name == 'github/codeql-action'

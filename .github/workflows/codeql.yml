@@ -4,12 +4,14 @@ on: [push]
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest,windows-latest,macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v1
-    - uses: ./codeql/init
+    - uses: ./init
       with:
        config-file: ./.github/codeql/codeql-config.yml
-    - uses: ./codeql/finish
+    - uses: ./analyze

@@ -53,6 +53,6 @@ async function run() {
 }
 
 run().catch(e => {
-  core.setFailed("codeql/autobuild action failed: " + e);
+  core.setFailed("autobuild action failed: " + e);
   console.log(e);
 });

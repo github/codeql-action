@@ -1,4 +1,5 @@
 me: "CodeQL config"
+ignore-default-queries: false
 queries: 
   - name: Run custom queries
     uses: ./queries

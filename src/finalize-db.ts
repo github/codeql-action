@@ -102,7 +102,12 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
   for (let database of fs.readdirSync(databaseFolder)) {
     core.startGroup('Analyzing ' + database);
 
-    const additionalQueries = queriesPerLanguage[database] || [];
+    const queries: string[] = [];
+    if (!config.ignoreDefaultQueries) {
+      queries.push(database + '-code-scanning.qls');
+    }
+    queries.push(...queriesPerLanguage[database]);
+
     const sarifFile = path.join(sarifFolder, database + '.sarif');
 
     await exec.exec(codeqlCmd, [
@@ -112,8 +117,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
       '--format=sarif-latest',
       '--output=' + sarifFile,
       '--no-sarif-add-snippets',
-      database + '-code-scanning.qls',
-      ...additionalQueries,
+      ...queries
     ]);
 
     core.debug('SARIF results for database ' + database + ' created at "' + sarifFile + '"');

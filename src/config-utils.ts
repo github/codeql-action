@@ -17,6 +17,7 @@ export class ExternalQuery {
 
 export class Config {
     public name = "";
+    public ignoreDefaultQueries = false;
     public additionalQueries: string[] = [];
     public externalQueries: ExternalQuery[] = [];
     public pathsIgnore: string[] = [];
@@ -79,6 +80,10 @@ function initConfig(): Config {
 
         if (parsedYAML.name && typeof parsedYAML.name === "string") {
             config.name = parsedYAML.name;
+        }
+
+        if (parsedYAML['ignore-default-queries'] && typeof parsedYAML['ignore-default-queries'] === "boolean") {
+            config.ignoreDefaultQueries = parsedYAML['ignore-default-queries'];
         }
 
         const queries = parsedYAML.queries;

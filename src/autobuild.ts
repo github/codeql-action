@@ -49,7 +49,7 @@ async function run() {
     core.endGroup();
 
   } catch (error) {
-    core.setFailed(error.message);
+    core.setFailed("We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps.  " + error.message);
     await util.reportActionFailed('autobuild', error.message, error.stack);
     return;
   }
@@ -58,6 +58,6 @@ async function run() {
 }
 
 run().catch(e => {
-  core.setFailed("We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps. codeql/autobuild action failed.  " + e);
+  core.setFailed("autobuild action failed.  " + e);
   console.log(e);
 });

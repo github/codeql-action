@@ -82,13 +82,13 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
     const noDeclaredLanguage = resolveQueriesOutputObject.noDeclaredLanguage;
     const noDeclaredLanguageQueries = Object.keys(noDeclaredLanguage);
     if (noDeclaredLanguageQueries.length !== 0) {
-      core.warning('Some queries do not declare a language:\n' + noDeclaredLanguageQueries.join('\n'));
+      throw new Error('Some queries do not declare a language, their qlpack.yml file is missing or is invalid');
     }
 
     const multipleDeclaredLanguages = resolveQueriesOutputObject.multipleDeclaredLanguages;
     const multipleDeclaredLanguagesQueries = Object.keys(multipleDeclaredLanguages);
     if (multipleDeclaredLanguagesQueries.length !== 0) {
-      core.warning('Some queries declare multiple languages:\n' + multipleDeclaredLanguagesQueries.join('\n'));
+      throw new Error('Some queries declare multiple languages, their qlpack.yml file is missing or is invalid');
     }
   }
 

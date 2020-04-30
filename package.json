@@ -12,7 +12,7 @@
   "dependencies": {
     "@actions/core": "^1.0.0",
     "@actions/exec": "^1.0.1",
-    "@actions/http-client": "^1.0.4",
+    "@actions/http-client": "^1.0.8",
     "@actions/io": "^1.0.1",
     "@actions/tool-cache": "^1.1.2",
     "@octokit/rest": "^17.1.0",

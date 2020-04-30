@@ -79,7 +79,7 @@ The CodeQL action should be run on `push` events, and on a `schedule`. `Push` ev
 ### Configuration 
 You may optionally specify additional queries for CodeQL to execute by using a config file. The queries must belong to a [QL pack](https://help.semmle.com/codeql/codeql-cli/reference/qlpack-overview.html) and can be in your repository or any public repository. You can choose a single .ql file, a folder containing multiple .ql files, a .qls [query suite](https://help.semmle.com/codeql/codeql-cli/procedures/query-suites.html) file, or any combination of the above. To use queries from other repositories use the same syntax as when [using an action](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsuses).
 
-You can disable the default queries using `ignore-default-queries: true`.
+You can disable the default queries using `disable-default-queries: true`.
 
 You can choose to ignore some files or folders from the analysis, or include additional files/folders for analysis. This *only* works for Javascript and Python analysis.
 Identifying potential files for extraction:

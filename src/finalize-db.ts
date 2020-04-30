@@ -103,7 +103,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
     core.startGroup('Analyzing ' + database);
 
     const queries: string[] = [];
-    if (!config.ignoreDefaultQueries) {
+    if (!config.disableDefaultQueries) {
       queries.push(database + '-code-scanning.qls');
     }
     queries.push(...queriesPerLanguage[database]);

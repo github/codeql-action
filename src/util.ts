@@ -150,6 +150,54 @@ export async function getLanguages(): Promise<string[]> {
     return languages;
 }
 
+/**
+ * Get the path of the currently executing workflow.
+ */
+async function getWorkflowPath(): Promise<string> {
+    const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
+    const owner = repo_nwo[0];
+    const repo = repo_nwo[1];
+    const run_id = getRequiredEnvParam('GITHUB_RUN_ID');
+
+    const ok = new octokit.Octokit({
+        auth: core.getInput('token'),
+        userAgent: "CodeQL Action",
+        log: consoleLogLevel({ level: 'debug' })
+    });
+
+    const runsResponse = await ok.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
+        owner,
+        repo,
+        run_id
+    });
+    const workflowUrl = runsResponse.data.workflow_url;
+
+    const workflowResponse = await ok.request('GET ' + workflowUrl);
+
+    return workflowResponse.data.path;
+}
+
+/**
+ * Get the analysis key paramter for the current job.
+ *
+ * This will combine the workflow path and current job name.
+ * Computing this the first time requires making requests to
+ * the github API, but after that the result will be cached.
+ */
+export async function getAnalysisKey(): Promise<string> {
+    let analysisKey = process.env[sharedEnv.CODEQL_ACTION_ANALYSIS_KEY];
+    if (analysisKey !== undefined) {
+        return analysisKey;
+    }
+
+    const workflowPath = await getWorkflowPath();
+    const jobName = getRequiredEnvParam('GITHUB_JOB');
+
+    analysisKey = workflowPath + ' - ' + jobName;
+    core.exportVariable(sharedEnv.CODEQL_ACTION_ANALYSIS_KEY, analysisKey);
+    return analysisKey;
+}
+
 interface StatusReport {
     "workflow_run_id": number;
     "workflow_name": string;

@@ -1,0 +1,32 @@
+name: 'CodeQL'
+description: 'CodeQL analysis'
+author: 'GitHub'
+inputs:
+  tools:
+    description: URL of CodeQL tools
+    required: false
+    default: https://github.com/github/codeql-action/releases/download/codeql-bundle-20200427/codeql-bundle.tar.gz
+  languages:
+    description: The languages to be analysed
+    required: false
+  token:
+    default: ${{ github.token }}
+  config-file:
+    description: Path of the config file to use
+    required: false
+  check_name:
+    description: The name of the check run to add text to.
+  output:
+    description: The path of the directory in which to save the SARIF results
+    required: false
+    default: '../results'
+  upload:
+    description: Upload the SARIF file
+    required: false
+    default: true
+  matrix:
+    default: ${{ toJson(matrix) }}
+runs:
+  using: 'node12'
+  pre: './lib/setup-tracer.js'
+  main: './lib/finalize-db.js'

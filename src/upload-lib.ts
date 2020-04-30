@@ -49,20 +49,23 @@ export function combineSarifFiles(sarifFiles: string[]): string {
 
 // Uploads a single sarif file or a directory of sarif files
 // depending on what the path happens to refer to.
-export async function upload(input: string) {
+// Returns true iff the upload occurred and succeeded
+export async function upload(input: string): Promise<boolean> {
     if (fs.lstatSync(input).isDirectory()) {
         const sarifFiles = fs.readdirSync(input)
             .filter(f => f.endsWith(".sarif"))
             .map(f => path.resolve(input, f));
-        await uploadFiles(sarifFiles);
+        return await uploadFiles(sarifFiles);
     } else {
-        await uploadFiles([input]);
+        return await uploadFiles([input]);
     }
 }
 
 // Uploads the given set of sarif files.
-async function uploadFiles(sarifFiles: string[]) {
+// Returns true iff the upload occurred and succeeded
+async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
     core.startGroup("Uploading results");
+    let succeeded = false;
     try {
         // Check if an upload has happened before. If so then abort.
         // This is intended to catch when the finish and upload-sarif actions
@@ -70,7 +73,7 @@ async function uploadFiles(sarifFiles: string[]) {
         const sentinelFile = await getSentinelFilePath();
         if (fs.existsSync(sentinelFile)) {
             core.info("Aborting as an upload has already happened from this job");
-            return;
+            return false;
         }
 
         const commitOid = util.getRequiredEnvParam('GITHUB_SHA');
@@ -90,7 +93,7 @@ async function uploadFiles(sarifFiles: string[]) {
 
         if (Number.isNaN(workflowRunID)) {
             core.setFailed('GITHUB_RUN_ID must define a non NaN workflow run ID');
-            return;
+            return false;
         }
 
         let matrix: string | undefined = core.getInput('matrix');
@@ -130,6 +133,7 @@ async function uploadFiles(sarifFiles: string[]) {
             core.setFailed('Upload failed (' + requestID + '): ' + await res.readBody());
         } else {
             core.info("Successfully uploaded results");
+            succeeded = true;
         }
 
         // Mark that we have made an upload
@@ -139,4 +143,6 @@ async function uploadFiles(sarifFiles: string[]) {
         core.setFailed(error.message);
     }
     core.endGroup();
+
+    return succeeded;
 }

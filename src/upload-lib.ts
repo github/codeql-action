@@ -98,6 +98,8 @@ async function uploadFiles(sarifFiles: string[]) {
             matrix = undefined;
         }
 
+        const toolNames = util.getToolNames(sarifPayload);
+
         const payload = JSON.stringify({
             "commit_oid": commitOid,
             "ref": ref,
@@ -106,7 +108,8 @@ async function uploadFiles(sarifFiles: string[]) {
             "workflow_run_id": workflowRunID,
             "checkout_uri": checkoutURI,
             "environment": matrix,
-            "started_at": startedAt
+            "started_at": startedAt,
+            "tool_names": toolNames,
         });
 
         core.info('Uploading results');

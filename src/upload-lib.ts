@@ -76,6 +76,7 @@ async function uploadFiles(sarifFiles: string[]) {
         const commitOid = util.getRequiredEnvParam('GITHUB_SHA');
         const workflowRunIDStr = util.getRequiredEnvParam('GITHUB_RUN_ID');
         const ref = util.getRequiredEnvParam('GITHUB_REF'); // it's in the form "refs/heads/master"
+        const analysisKey = await util.getAnalysisKey();
         const analysisName = util.getRequiredEnvParam('GITHUB_WORKFLOW');
         const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT];
 
@@ -103,6 +104,7 @@ async function uploadFiles(sarifFiles: string[]) {
         const payload = JSON.stringify({
             "commit_oid": commitOid,
             "ref": ref,
+            "analysis_key": analysisKey,
             "analysis_name": analysisName,
             "sarif": zipped_sarif,
             "workflow_run_id": workflowRunID,

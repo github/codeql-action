@@ -193,7 +193,7 @@ export async function getAnalysisKey(): Promise<string> {
     const workflowPath = await getWorkflowPath();
     const jobName = getRequiredEnvParam('GITHUB_JOB');
 
-    analysisKey = workflowPath + ' - ' + jobName;
+    analysisKey = encodeURI(workflowPath) + ':' + encodeURI(jobName);
     core.exportVariable(sharedEnv.CODEQL_ACTION_ANALYSIS_KEY, analysisKey);
     return analysisKey;
 }

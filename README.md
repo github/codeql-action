@@ -100,7 +100,7 @@ A config file looks like this:
 ```yaml
 name: "My CodeQL config"
 
-ignore-default-queries: true
+disable-default-queries: true
 
 queries:
   - name: In-repo queries (Runs the queries located in the my-queries folder of the repo)

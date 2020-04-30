@@ -106,7 +106,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
     if (!config.disableDefaultQueries) {
       queries.push(database + '-code-scanning.qls');
     }
-    queries.push(...queriesPerLanguage[database]);
+    queries.push(...(queriesPerLanguage[database] || []));
 
     const sarifFile = path.join(sarifFolder, database + '.sarif');
 

@@ -94,7 +94,7 @@ async function uploadPayload(payload) {
 
         } else {
             // If the upload fails with 5xx then we assume it is a temporary problem
-            // with turbo-scan and not an error that the user has caused or can fix.
+            // and not an error that the user has caused or can fix.
             // We avoid marking the job as failed to avoid breaking CI workflows.
             core.error('Upload failed (' + requestID + '): (' + statusCode + ') ' + await res.readBody());
             return;

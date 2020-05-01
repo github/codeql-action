@@ -49,7 +49,7 @@ export function combineSarifFiles(sarifFiles: string[]): string {
 
 // Upload the given payload.
 // If the request fails then this will retry a small number of times.
-async function uploadPayload(payload) {
+async function uploadPayload(payload): Promise<boolean> {
     core.info('Uploading results');
 
     const githubToken = core.getInput('token');
@@ -71,7 +71,7 @@ async function uploadPayload(payload) {
         const statusCode = res.message.statusCode;
         if (statusCode === 202) {
             core.info("Successfully uploaded results");
-            return;
+            return true;
         }
 
         const requestID = res.message.headers["x-github-request-id"];
@@ -79,7 +79,7 @@ async function uploadPayload(payload) {
         // On any other status code that's not 5xx mark the upload as failed
         if (!statusCode || statusCode < 500 || statusCode >= 600) {
             core.setFailed('Upload failed (' + requestID + '): (' + statusCode + ') ' + await res.readBody());
-            return;
+            return false;
         }
 
         // On a 5xx status code we may retry the request
@@ -97,27 +97,36 @@ async function uploadPayload(payload) {
             // and not an error that the user has caused or can fix.
             // We avoid marking the job as failed to avoid breaking CI workflows.
             core.error('Upload failed (' + requestID + '): (' + statusCode + ') ' + await res.readBody());
-            return;
+            return false;
         }
     }
+
+    return false;
 }
 
 // Uploads a single sarif file or a directory of sarif files
 // depending on what the path happens to refer to.
-export async function upload(input: string) {
+// Returns true iff the upload occurred and succeeded
+export async function upload(input: string): Promise<boolean> {
     if (fs.lstatSync(input).isDirectory()) {
         const sarifFiles = fs.readdirSync(input)
             .filter(f => f.endsWith(".sarif"))
             .map(f => path.resolve(input, f));
-        await uploadFiles(sarifFiles);
+        if (sarifFiles.length === 0) {
+            core.setFailed("No SARIF files found to upload in \"" + input + "\".");
+            return false;
+        }
+        return await uploadFiles(sarifFiles);
     } else {
-        await uploadFiles([input]);
+        return await uploadFiles([input]);
     }
 }
 
 // Uploads the given set of sarif files.
-async function uploadFiles(sarifFiles: string[]) {
+// Returns true iff the upload occurred and succeeded
+async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
     core.startGroup("Uploading results");
+    let succeeded = false;
     try {
         // Check if an upload has happened before. If so then abort.
         // This is intended to catch when the finish and upload-sarif actions
@@ -125,7 +134,7 @@ async function uploadFiles(sarifFiles: string[]) {
         const sentinelFile = await getSentinelFilePath();
         if (fs.existsSync(sentinelFile)) {
             core.info("Aborting as an upload has already happened from this job");
-            return;
+            return false;
         }
 
         const commitOid = util.getRequiredEnvParam('GITHUB_SHA');
@@ -134,7 +143,7 @@ async function uploadFiles(sarifFiles: string[]) {
         const analysisName = util.getRequiredEnvParam('GITHUB_WORKFLOW');
         const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT];
 
-        core.debug("Uploading sarif files: " + JSON.stringify(sarifFiles));
+        core.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
         let sarifPayload = combineSarifFiles(sarifFiles);
         sarifPayload = fingerprints.addFingerprints(sarifPayload);
 
@@ -145,7 +154,7 @@ async function uploadFiles(sarifFiles: string[]) {
 
         if (Number.isNaN(workflowRunID)) {
             core.setFailed('GITHUB_RUN_ID must define a non NaN workflow run ID');
-            return;
+            return false;
         }
 
         let matrix: string | undefined = core.getInput('matrix');
@@ -168,7 +177,7 @@ async function uploadFiles(sarifFiles: string[]) {
         });
 
         // Make the upload
-        await uploadPayload(payload);
+        succeeded = await uploadPayload(payload);
 
         // Mark that we have made an upload
         fs.writeFileSync(sentinelFile, '');
@@ -177,4 +186,6 @@ async function uploadFiles(sarifFiles: string[]) {
         core.setFailed(error.message);
     }
     core.endGroup();
+
+    return succeeded;
 }

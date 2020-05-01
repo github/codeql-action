@@ -79,7 +79,7 @@ async function uploadFiles(sarifFiles: string[]) {
         const analysisName = util.getRequiredEnvParam('GITHUB_WORKFLOW');
         const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT];
 
-        core.debug("Uploading sarif files: " + JSON.stringify(sarifFiles));
+        core.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
         let sarifPayload = combineSarifFiles(sarifFiles);
         sarifPayload = fingerprints.addFingerprints(sarifPayload);
 

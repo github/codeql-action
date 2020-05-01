@@ -293,3 +293,23 @@ export async function reportActionFailed(action: string, cause?: string, excepti
 export async function reportActionSucceeded(action: string) {
     await sendStatusReport(await createStatusReport(action, 'success'));
 }
+
+/**
+ * Get the array of all the tool names contained in the given sarif contents.
+ *
+ * Returns an array of unique string tool names.
+ */
+export function getToolNames(sarifContents: string): string[] {
+    const sarif = JSON.parse(sarifContents);
+    const toolNames = {};
+
+    for (const run of sarif.runs || []) {
+        const tool = run.tool || {};
+        const driver = tool.driver || {};
+        if (typeof driver.name === "string" && driver.name.length > 0) {
+            toolNames[driver.name] = true;
+        }
+    }
+
+    return Object.keys(toolNames);
+}

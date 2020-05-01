@@ -54,6 +54,9 @@ export async function upload(input: string) {
         const sarifFiles = fs.readdirSync(input)
             .filter(f => f.endsWith(".sarif"))
             .map(f => path.resolve(input, f));
+        if (sarifFiles.length === 0) {
+            core.setFailed("No SARIF files found to upload in \"" + input + "\".");
+        }
         await uploadFiles(sarifFiles);
     } else {
         await uploadFiles([input]);

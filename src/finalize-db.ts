@@ -82,13 +82,13 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
     const noDeclaredLanguage = resolveQueriesOutputObject.noDeclaredLanguage;
     const noDeclaredLanguageQueries = Object.keys(noDeclaredLanguage);
     if (noDeclaredLanguageQueries.length !== 0) {
-      core.warning('Some queries do not declare a language:\n' + noDeclaredLanguageQueries.join('\n'));
+      throw new Error('Some queries do not declare a language, their qlpack.yml file is missing or is invalid');
     }
 
     const multipleDeclaredLanguages = resolveQueriesOutputObject.multipleDeclaredLanguages;
     const multipleDeclaredLanguagesQueries = Object.keys(multipleDeclaredLanguages);
     if (multipleDeclaredLanguagesQueries.length !== 0) {
-      core.warning('Some queries declare multiple languages:\n' + multipleDeclaredLanguagesQueries.join('\n'));
+      throw new Error('Some queries declare multiple languages, their qlpack.yml file is missing or is invalid');
     }
   }
 
@@ -102,7 +102,12 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
   for (let database of fs.readdirSync(databaseFolder)) {
     core.startGroup('Analyzing ' + database);
 
-    const additionalQueries = queriesPerLanguage[database] || [];
+    const queries: string[] = [];
+    if (!config.disableDefaultQueries) {
+      queries.push(database + '-code-scanning.qls');
+    }
+    queries.push(...(queriesPerLanguage[database] || []));
+
     const sarifFile = path.join(sarifFolder, database + '.sarif');
 
     await exec.exec(codeqlCmd, [
@@ -112,8 +117,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
       '--format=sarif-latest',
       '--output=' + sarifFile,
       '--no-sarif-add-snippets',
-      database + '-code-scanning.qls',
-      ...additionalQueries,
+      ...queries
     ]);
 
     core.debug('SARIF results for database ' + database + ' created at "' + sarifFile + '"');

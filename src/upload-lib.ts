@@ -48,7 +48,7 @@ export function combineSarifFiles(sarifFiles: string[]): string {
 }
 
 // Upload the given payload.
-// If the request fails then this will be retry a small number of times.
+// If the request fails then this will retry a small number of times.
 async function uploadPayload(payload) {
     core.info('Uploading results');
 

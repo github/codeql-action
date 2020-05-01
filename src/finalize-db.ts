@@ -150,7 +150,10 @@ async function run() {
     await runQueries(codeqlCmd, databaseFolder, sarifFolder, config);
 
     if ('true' === core.getInput('upload')) {
-      await upload_lib.upload(sarifFolder);
+      if (!await upload_lib.upload(sarifFolder)) {
+        await util.reportActionFailed('failed', 'upload');
+        return;
+      }
     }
 
   } catch (error) {

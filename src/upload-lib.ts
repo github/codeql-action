@@ -56,6 +56,7 @@ export async function upload(input: string) {
             .map(f => path.resolve(input, f));
         if (sarifFiles.length === 0) {
             core.setFailed("No SARIF files found to upload in \"" + input + "\".");
+            return;
         }
         await uploadFiles(sarifFiles);
     } else {

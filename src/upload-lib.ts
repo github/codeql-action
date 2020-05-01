@@ -112,6 +112,10 @@ export async function upload(input: string): Promise<boolean> {
         const sarifFiles = fs.readdirSync(input)
             .filter(f => f.endsWith(".sarif"))
             .map(f => path.resolve(input, f));
+        if (sarifFiles.length === 0) {
+            core.setFailed("No SARIF files found to upload in \"" + input + "\".");
+            return false;
+        }
         return await uploadFiles(sarifFiles);
     } else {
         return await uploadFiles([input]);
@@ -139,7 +143,7 @@ async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
         const analysisName = util.getRequiredEnvParam('GITHUB_WORKFLOW');
         const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT];
 
-        core.debug("Uploading sarif files: " + JSON.stringify(sarifFiles));
+        core.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
         let sarifPayload = combineSarifFiles(sarifFiles);
         sarifPayload = fingerprints.addFingerprints(sarifPayload);
 

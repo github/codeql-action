@@ -5,9 +5,16 @@
   "description": "CodeQL action",
   "scripts": {
     "build": "tsc",
-    "test": "jest",
+    "test": "ava src/**",
     "lint": "tslint -p . -c tslint.json 'src/**/*.ts'",
     "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"
+  },
+  "ava": {
+    "typescript": {
+      "rewritePaths": {
+        "src/": "lib/"
+      }
+    }
   },
   "license": "MIT",
   "dependencies": {

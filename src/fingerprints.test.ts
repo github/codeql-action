@@ -1,24 +1,28 @@
+import test from 'ava';
+import * as ava from "ava";
 import * as fs from 'fs';
+import * as path from 'path';
 
 import * as fingerprints from './fingerprints';
 
-function testHash(input: string, expectedHashes: string[]) {
+function testHash(t: ava.Assertions, input: string, expectedHashes: string[]) {
     let index = 0;
     let callback = function (lineNumber: number, hash: string) {
-        expect(lineNumber).toBe(index + 1);
-        expect(hash).toBe(expectedHashes[index]);
+        t.is(lineNumber, index + 1);
+        t.is(hash, expectedHashes[index]);
         index++;
     };
     fingerprints.hash(callback, input);
-    expect(index).toBe(input.split(/\r\n|\r|\n/).length);
+    t.is(index, input.split(/\r\n|\r|\n/).length);
 }
 
-test('hash', () => {
+test('hash', (t: ava.Assertions) => {
     // Try empty file
-    testHash("", ["c129715d7a2bc9a3:1"]);
+    testHash(t, "", ["c129715d7a2bc9a3:1"]);
 
     // Try various combinations of newline characters
     testHash(
+        t,
         " a\nb\n  \t\tc\n d",
         [
             "271789c17abda88f:1",
@@ -27,6 +31,7 @@ test('hash', () => {
             "a23a3dc5e078b07b:1"
         ]);
     testHash(
+        t,
         " hello; \t\nworld!!!\n\n\n  \t\tGreetings\n End",
         [
             "8b7cf3e952e7aeb2:1",
@@ -37,6 +42,7 @@ test('hash', () => {
             "e6ceba753e1a442:1",
         ]);
     testHash(
+        t,
         " hello; \t\nworld!!!\n\n\n  \t\tGreetings\n End\n",
         [
             "e9496ae3ebfced30:1",
@@ -48,6 +54,7 @@ test('hash', () => {
             "c129715d7a2bc9a3:1",
         ]);
     testHash(
+        t,
         " hello; \t\nworld!!!\r\r\r  \t\tGreetings\r End\r",
         [
             "e9496ae3ebfced30:1",
@@ -59,6 +66,7 @@ test('hash', () => {
             "c129715d7a2bc9a3:1",
         ]);
     testHash(
+        t,
         " hello; \t\r\nworld!!!\r\n\r\n\r\n  \t\tGreetings\r\n End\r\n",
         [
             "e9496ae3ebfced30:1",
@@ -70,6 +78,7 @@ test('hash', () => {
             "c129715d7a2bc9a3:1",
         ]);
     testHash(
+        t,
         " hello; \t\nworld!!!\r\n\n\r  \t\tGreetings\r End\r\n",
         [
             "e9496ae3ebfced30:1",
@@ -83,6 +92,7 @@ test('hash', () => {
 
     // Try repeating line that will generate identical hashes
     testHash(
+        t,
         "Lorem ipsum dolor sit amet.\n".repeat(10),
         [
             "a7f2ff13bc495cf2:1",
@@ -105,76 +115,76 @@ function testResolveUriToFile(uri: any, index: any, artifactsURIs: any[]) {
     return fingerprints.resolveUriToFile(location, artifacts);
 }
 
-test('resolveUriToFile', () => {
+test('resolveUriToFile', t => {
     // The resolveUriToFile method checks that the file exists and is in the right directory
     // so we need to give it real files to look at. We will use this file as an example.
     // For this to work we require the current working directory to be a parent, but this
     // should generally always be the case so this is fine.
     const cwd = process.cwd();
     const filepath = __filename;
-    expect(filepath.startsWith(cwd + '/')).toBeTruthy();
+    t.true(filepath.startsWith(cwd + '/'));
     const relativeFilepaht = filepath.substring(cwd.length + 1);
 
     process.env['GITHUB_WORKSPACE'] = cwd;
 
     // Absolute paths are unmodified
-    expect(testResolveUriToFile(filepath, undefined, [])).toBe(filepath);
-    expect(testResolveUriToFile('file://' + filepath, undefined, [])).toBe(filepath);
+    t.is(testResolveUriToFile(filepath, undefined, []), filepath);
+    t.is(testResolveUriToFile('file://' + filepath, undefined, []), filepath);
 
     // Relative paths are made absolute
-    expect(testResolveUriToFile(relativeFilepaht, undefined, [])).toBe(filepath);
-    expect(testResolveUriToFile('file://' + relativeFilepaht, undefined, [])).toBe(filepath);
+    t.is(testResolveUriToFile(relativeFilepaht, undefined, []), filepath);
+    t.is(testResolveUriToFile('file://' + relativeFilepaht, undefined, []), filepath);
 
     // Absolute paths outside the src root are discarded
-    expect(testResolveUriToFile('/src/foo/bar.js', undefined, [])).toBe(undefined);
-    expect(testResolveUriToFile('file:///src/foo/bar.js', undefined, [])).toBe(undefined);
+    t.is(testResolveUriToFile('/src/foo/bar.js', undefined, []), undefined);
+    t.is(testResolveUriToFile('file:///src/foo/bar.js', undefined, []), undefined);
 
     // Other schemes are discarded
-    expect(testResolveUriToFile('https://' + filepath, undefined, [])).toBe(undefined);
-    expect(testResolveUriToFile('ftp://' + filepath, undefined, [])).toBe(undefined);
+    t.is(testResolveUriToFile('https://' + filepath, undefined, []), undefined);
+    t.is(testResolveUriToFile('ftp://' + filepath, undefined, []), undefined);
 
     // Invalid URIs are discarded
-    expect(testResolveUriToFile(1, undefined, [])).toBe(undefined);
-    expect(testResolveUriToFile(undefined, undefined, [])).toBe(undefined);
+    t.is(testResolveUriToFile(1, undefined, []), undefined);
+    t.is(testResolveUriToFile(undefined, undefined, []), undefined);
 
     // Non-existant files are discarded
-    expect(testResolveUriToFile(filepath + '2', undefined, [])).toBe(undefined);
+    t.is(testResolveUriToFile(filepath + '2', undefined, []), undefined);
 
     // Index is resolved
-    expect(testResolveUriToFile(undefined, 0, [filepath])).toBe(filepath);
-    expect(testResolveUriToFile(undefined, 1, ['foo', filepath])).toBe(filepath);
+    t.is(testResolveUriToFile(undefined, 0, [filepath]), filepath);
+    t.is(testResolveUriToFile(undefined, 1, ['foo', filepath]), filepath);
 
     // Invalid indexes are discarded
-    expect(testResolveUriToFile(undefined, 1, [filepath])).toBe(undefined);
-    expect(testResolveUriToFile(undefined, '0', [filepath])).toBe(undefined);
+    t.is(testResolveUriToFile(undefined, 1, [filepath]), undefined);
+    t.is(testResolveUriToFile(undefined, '0', [filepath]), undefined);
 });
 
-test('addFingerprints', () => {
+test('addFingerprints', t => {
     // Run an end-to-end test on a test file
-    let input = fs.readFileSync(__dirname + '/testdata/fingerprinting.input.sarif').toString();
-    let expected = fs.readFileSync(__dirname + '/testdata/fingerprinting.expected.sarif').toString();
+    let input = fs.readFileSync(__dirname + '/../src/testdata/fingerprinting.input.sarif').toString();
+    let expected = fs.readFileSync(__dirname + '/../src/testdata/fingerprinting.expected.sarif').toString();
 
     // The test files are stored prettified, but addFingerprints outputs condensed JSON
     input = JSON.stringify(JSON.parse(input));
     expected = JSON.stringify(JSON.parse(expected));
 
     // The URIs in the SARIF files resolve to files in the testdata directory
-    process.env['GITHUB_WORKSPACE'] = __dirname + '/testdata';
+    process.env['GITHUB_WORKSPACE'] = path.normalize(__dirname + '/../src/testdata');
 
-    expect(fingerprints.addFingerprints(input)).toBe(expected);
+    t.deepEqual(fingerprints.addFingerprints(input), expected);
 });
 
-test('missingRegions', () => {
+test('missingRegions', t => {
     // Run an end-to-end test on a test file
-    let input = fs.readFileSync(__dirname + '/testdata/fingerprinting2.input.sarif').toString();
-    let expected = fs.readFileSync(__dirname + '/testdata/fingerprinting2.expected.sarif').toString();
+    let input = fs.readFileSync(__dirname + '/../src/testdata/fingerprinting2.input.sarif').toString();
+    let expected = fs.readFileSync(__dirname + '/../src/testdata/fingerprinting2.expected.sarif').toString();
 
     // The test files are stored prettified, but addFingerprints outputs condensed JSON
     input = JSON.stringify(JSON.parse(input));
     expected = JSON.stringify(JSON.parse(expected));
 
     // The URIs in the SARIF files resolve to files in the testdata directory
-    process.env['GITHUB_WORKSPACE'] = __dirname + '/testdata';
+    process.env['GITHUB_WORKSPACE'] = path.normalize(__dirname + '/../src/testdata');
 
-    expect(fingerprints.addFingerprints(input)).toBe(expected);
+    t.deepEqual(fingerprints.addFingerprints(input), expected);
 });

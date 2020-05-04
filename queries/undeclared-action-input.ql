@@ -36,7 +36,7 @@ class ActionDeclaration extends File {
 }
 
 Expr getAFunctionChildExpr(Function f) {
-  result = f.getBody().getAChildStmt*().getAChildExpr*()
+  result.getContainer() = f
 }
 
 /*
@@ -44,6 +44,8 @@ Expr getAFunctionChildExpr(Function f) {
  */
 Function calledBy(Function f) {
   result = getAFunctionChildExpr(f).(InvokeExpr).getResolvedCallee()
+  or
+  result.getEnclosingContainer() = f // assume outer function causes inner function to be called
 }
 
 class GetInputMethodCallExpr extends MethodCallExpr {

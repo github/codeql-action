@@ -377,8 +377,9 @@ export function getToolNames(sarifContents: string): string[] {
 
 // Creates a random temporary directory, runs the given body, and then deletes the directory.
 // Mostly intended for use within tests.
-export async function withTmpDir(body: (tmpDir: string) => Promise<void>) {
+export async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promise<T> {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codeql-action-'));
-    await body(tmpDir);
+    const result = await body(tmpDir);
     fs.rmdirSync(tmpDir, { recursive: true });
+    return result;
 }

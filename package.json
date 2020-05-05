@@ -5,7 +5,7 @@
   "description": "CodeQL action",
   "scripts": {
     "build": "tsc",
-    "test": "ava src/**",
+    "test": "ava src/** --serial",
     "lint": "tslint -p . -c tslint.json 'src/**/*.ts'",
     "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"
   },

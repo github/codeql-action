@@ -151,7 +151,7 @@ async function run() {
 
     if ('true' === core.getInput('upload')) {
       if (!await upload_lib.upload(sarifFolder)) {
-        await util.reportActionFailed('failed', 'upload');
+        await util.reportActionFailed('finish', 'upload');
         return;
       }
     }

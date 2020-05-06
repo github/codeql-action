@@ -127,64 +127,61 @@ export async function upload(input: string): Promise<boolean> {
 async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
     core.startGroup("Uploading results");
     let succeeded = false;
-    try {
-        // Check if an upload has happened before. If so then abort.
-        // This is intended to catch when the finish and upload-sarif actions
-        // are used together, and then the upload-sarif action is invoked twice.
-        const sentinelFile = await getSentinelFilePath();
-        if (fs.existsSync(sentinelFile)) {
-            core.info("Aborting as an upload has already happened from this job");
-            return false;
-        }
 
-        const commitOid = util.getRequiredEnvParam('GITHUB_SHA');
-        const workflowRunIDStr = util.getRequiredEnvParam('GITHUB_RUN_ID');
-        const ref = util.getRequiredEnvParam('GITHUB_REF'); // it's in the form "refs/heads/master"
-        const analysisName = util.getRequiredEnvParam('GITHUB_WORKFLOW');
-        const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT];
-
-        core.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
-        let sarifPayload = combineSarifFiles(sarifFiles);
-        sarifPayload = fingerprints.addFingerprints(sarifPayload);
-
-        const zipped_sarif = zlib.gzipSync(sarifPayload).toString('base64');
-        let checkoutPath = core.getInput('checkout_path');
-        let checkoutURI = fileUrl(checkoutPath);
-        const workflowRunID = parseInt(workflowRunIDStr, 10);
-
-        if (Number.isNaN(workflowRunID)) {
-            core.setFailed('GITHUB_RUN_ID must define a non NaN workflow run ID');
-            return false;
-        }
-
-        let matrix: string | undefined = core.getInput('matrix');
-        if (matrix === "null" || matrix === "") {
-            matrix = undefined;
-        }
-
-        const toolNames = util.getToolNames(sarifPayload);
-
-        const payload = JSON.stringify({
-            "commit_oid": commitOid,
-            "ref": ref,
-            "analysis_name": analysisName,
-            "sarif": zipped_sarif,
-            "workflow_run_id": workflowRunID,
-            "checkout_uri": checkoutURI,
-            "environment": matrix,
-            "started_at": startedAt,
-            "tool_names": toolNames,
-        });
-
-        // Make the upload
-        succeeded = await uploadPayload(payload);
-
-        // Mark that we have made an upload
-        fs.writeFileSync(sentinelFile, '');
-
-    } catch (error) {
-        core.setFailed(error.message);
+    // Check if an upload has happened before. If so then abort.
+    // This is intended to catch when the finish and upload-sarif actions
+    // are used together, and then the upload-sarif action is invoked twice.
+    const sentinelFile = await getSentinelFilePath();
+    if (fs.existsSync(sentinelFile)) {
+        core.info("Aborting as an upload has already happened from this job");
+        return false;
     }
+
+    const commitOid = util.getRequiredEnvParam('GITHUB_SHA');
+    const workflowRunIDStr = util.getRequiredEnvParam('GITHUB_RUN_ID');
+    const ref = util.getRequiredEnvParam('GITHUB_REF'); // it's in the form "refs/heads/master"
+    const analysisName = util.getRequiredEnvParam('GITHUB_WORKFLOW');
+    const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT];
+
+    core.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
+    let sarifPayload = combineSarifFiles(sarifFiles);
+    sarifPayload = fingerprints.addFingerprints(sarifPayload);
+
+    const zipped_sarif = zlib.gzipSync(sarifPayload).toString('base64');
+    let checkoutPath = core.getInput('checkout_path');
+    let checkoutURI = fileUrl(checkoutPath);
+    const workflowRunID = parseInt(workflowRunIDStr, 10);
+
+    if (Number.isNaN(workflowRunID)) {
+        core.setFailed('GITHUB_RUN_ID must define a non NaN workflow run ID');
+        return false;
+    }
+
+    let matrix: string | undefined = core.getInput('matrix');
+    if (matrix === "null" || matrix === "") {
+        matrix = undefined;
+    }
+
+    const toolNames = util.getToolNames(sarifPayload);
+
+    const payload = JSON.stringify({
+        "commit_oid": commitOid,
+        "ref": ref,
+        "analysis_name": analysisName,
+        "sarif": zipped_sarif,
+        "workflow_run_id": workflowRunID,
+        "checkout_uri": checkoutURI,
+        "environment": matrix,
+        "started_at": startedAt,
+        "tool_names": toolNames,
+    });
+
+    // Make the upload
+    succeeded = await uploadPayload(payload);
+
+    // Mark that we have made an upload
+    fs.writeFileSync(sentinelFile, '');
+
     core.endGroup();
 
     return succeeded;

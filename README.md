@@ -165,7 +165,7 @@ Version 3 does not require the additional flag.
 
 ### Analysing Go together with other languages on `macos-latest`
 
-This is currently not possible for Java, C/C++, or C#.
+When running on macos it is currently not possible to analyze Go in conjunction with any of Java, C/C++, or C#. Each language can still be analyzed separately.
 
 ## License
 

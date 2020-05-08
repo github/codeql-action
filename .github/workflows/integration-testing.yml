@@ -3,7 +3,7 @@ name: "Integration Testing"
 on: [push]
 
 jobs:
-  multi-language-repo/test-autodetect-languages:
+  multi-language-repo_test-autodetect-languages:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -25,7 +25,7 @@ jobs:
       env:
         TEST_MODE: true
 
-  multi-language-repo/test-custom-queries:
+  multi-language-repo_test-custom-queries:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -47,5 +47,18 @@ jobs:
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
+      env:
+        TEST_MODE: true
+
+
+  multi-language-repo_rubocop:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: arthurnn/code-scanning-rubocop/rubocop-action@master
+    - uses: ./../action/upload-sarif
+      with:
+        sarif_file: rubocop.sarif
       env:
         TEST_MODE: true

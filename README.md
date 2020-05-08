@@ -143,7 +143,7 @@ env:
 
 to `github/codeql-action/analyze`.
 
-### If you do not use a vendor directory
+#### If you do not use a vendor directory
 
 Dependencies on public repositories should just work. If you have dependencies on private repositories, one option is to use `git config` and a [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) to authenticate when downloading dependencies. Add a section like
 
@@ -168,3 +168,7 @@ dotnet build /p:UseSharedCompilation=false
 ```
 
 Version 3 does not require the additional flag.
+
+### Analysing Go together with other languages on `macos-latest`
+
+When running on macos it is currently not possible to analyze Go in conjunction with any of Java, C/C++, or C#. Each language can still be analyzed separately.

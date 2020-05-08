@@ -10,6 +10,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+    - uses: actions/setup-go@v2
+      if: ${{ matrix.os ==  'macos-latest' }}
+      with:
+        go-version: '^1.13.1'
     - uses: actions/checkout@v2
     - name: Move codeql-action
       shell: bash
@@ -33,6 +37,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+    - uses: actions/setup-go@v2
+      if: ${{ matrix.os ==  'macos-latest' }}
+      with:
+        go-version: '^1.13.1'
     - uses: actions/checkout@v2
     - name: Move codeql-action
       shell: bash

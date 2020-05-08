@@ -1,0 +1,29 @@
+name: Use custom queries
+
+disable-default-queries: true
+
+queries: 
+# Query suites
+  - name: Select a query suite 
+    uses: ./codeql-qlpacks/complex-python-qlpack/rootAndBar.qls
+# QL pack subset
+  - name: Select a ql file 
+    uses: ./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql
+  - name: Select a subfolder
+    uses: ./codeql-qlpacks/complex-javascript-qlpack/foo
+  - name: Select a folder with two subfolders 
+    uses: ./codeql-qlpacks/complex-javascript-qlpack/foo2
+# Inrepo QL pack
+  - name: Select an inrepo ql pack
+    uses: ./codeql-qlpacks/csharp-qlpack
+  - name: Java queries 
+    uses: ./codeql-qlpacks/java-qlpack
+# External QL packs
+  - name: Go queries 
+    uses: Anthophila/go-querypack@master
+  - name: Cpp queries 
+    uses: Anthophila/cpp-querypack@second-branch
+  - name: Javascript queries 
+    uses: Anthophila/javascript-querypack/show_ifs2.ql@master
+  - name: Python queries 
+    uses: Anthophila/python-querypack/show_ifs2.ql@second-branch 

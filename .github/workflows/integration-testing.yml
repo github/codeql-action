@@ -3,20 +3,46 @@ name: "Integration Testing"
 on: [push]
 
 jobs:
-  dispatch-events:
-    if: github.event.repository.full_name == 'github/codeql-action'
-    runs-on: ubuntu-latest
-    steps:
-    - name: Send repository dispatch events
-      run: |
-        curl -X POST \
-          -H "Authorization: Bearer ${{ secrets.CODEQL_TESTING_TOKEN }}" \
-          -H "Accept: application/vnd.github.everest-preview+json" \
-          https://api.github.com/repos/Anthophila/amazon-cognito-js-copy/dispatches \
-          -d '{"event_type":"codeql-integration","client_payload": {"sha": "${{ github.sha }}"}}'
+  multi-language-repo/test-autodetect-languages:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
-        curl -X POST \
-          -H "Authorization: Bearer ${{ secrets.CODEQL_TESTING_TOKEN }}" \
-          -H "Accept: application/vnd.github.everest-preview+json" \
-          https://api.github.com/repos/Anthophila/electron-test-action/dispatches \
-          -d '{"event_type":"codeql-integration","client_payload": {"sha": "${{ github.sha }}"}}'
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * ../action/
+        mv ../action/tests/multi-language-repo/* .
+    - uses: ./../action/init
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+
+
+  multi-language-repo/test-custom-queries:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * ../action/
+        mv ../action/tests/multi-language-repo/* .
+    - uses: ./../action/init
+      with:
+        languages: cpp,csharp,go,java,javascript,python
+        config-file: ./.github/codeql/custom-queries.yml
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze

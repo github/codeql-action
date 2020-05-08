@@ -10,10 +10,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/setup-go@v2
-      if: ${{ matrix.os ==  'macos-latest' }}
-      with:
-        go-version: '^1.13.1'
     - uses: actions/checkout@v2
     - name: Move codeql-action
       shell: bash
@@ -33,7 +29,34 @@ jobs:
   multi-language-repo_test-custom-queries:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        shopt -s dotglob
+        mv * ../action/
+        mv ../action/tests/multi-language-repo/* .
+    - uses: ./../action/init
+      with:
+        languages: cpp,csharp,java,javascript,python
+        config-file: ./.github/codeql/custom-queries.yml
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      env:
+        TEST_MODE: true
+
+  # Currently is not possible to analyze Go in conjunction with other languages in macos
+  multi-language-repo_test-go-custom-queries:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -51,7 +74,7 @@ jobs:
         mv ../action/tests/multi-language-repo/* .
     - uses: ./../action/init
       with:
-        languages: cpp,csharp,go,java,javascript,python
+        languages: go
         config-file: ./.github/codeql/custom-queries.yml
     - name: Build code
       shell: bash

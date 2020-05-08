@@ -22,7 +22,8 @@ jobs:
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
-
+      env:
+        TEST_MODE: true
 
   multi-language-repo/test-custom-queries:
     strategy:
@@ -46,3 +47,5 @@ jobs:
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
+      env:
+        TEST_MODE: true

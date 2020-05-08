@@ -114,9 +114,9 @@ queries:
   - name: In-repo queries (Runs the queries located in the my-queries folder of the repo)
     uses: ./my-queries
   - name: External Javascript QL pack (Runs a QL pack located in an external repo)
-    uses: /Semmle/ql/javascript/ql/src/Electron@master
+    uses: /github/codeql/javascript/ql/src/Electron@master
   - name: External query (Runs a single query located in an external QL pack)
-    uses: Semmle/ql/javascript/ql/src/AngularJS/DeadAngularJSEventListener.ql@master
+    uses: github/codeql/javascript/ql/src/AngularJS/DeadAngularJSEventListener.ql@master
   - name: Select query suite (Runs a query suites)
     uses: ./codeql-querypacks/complex-python-querypack/rootAndBar.qls
 

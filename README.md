@@ -2,6 +2,12 @@
 
 This action runs GitHub's industry-leading static analysis engine, CodeQL, against a repository's source code to find security vulnerabilities. It then automatically uploads the results to GitHub so they can be displayed in the repository's security tab. CodeQL runs an extensible set of [queries](https://github.com/semmle/ql), which have been developed by the community and the [GitHub Security Lab](https://securitylab.github.com/) to find common vulnerabilities in your code.
 
+## License
+
+This project is released under the [MIT License](LICENSE).
+
+The underlying CodeQL CLI, used in this action, is licensed under the [GitHub CodeQL Terms and Conditions](https://securitylab.github.com/tools/codeql/license). As such, this action may be used on open source projects hosted on GitHub, and on  private repositories that are owned by an organisation with GitHub Advanced Security enabled.
+
 ## Usage
 
 To get code scanning results from CodeQL analysis on your repo you can use the following workflow as a template:
@@ -137,7 +143,7 @@ env:
 
 to `github/codeql-action/analyze`.
 
-### If you do not use a vendor directory
+#### If you do not use a vendor directory
 
 Dependencies on public repositories should just work. If you have dependencies on private repositories, one option is to use `git config` and a [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) to authenticate when downloading dependencies. Add a section like
 
@@ -163,6 +169,6 @@ dotnet build /p:UseSharedCompilation=false
 
 Version 3 does not require the additional flag.
 
-## License
+### Analysing Go together with other languages on `macos-latest`
 
-This project is released under the [MIT License](LICENSE).
+When running on macos it is currently not possible to analyze Go in conjunction with any of Java, C/C++, or C#. Each language can still be analyzed separately.

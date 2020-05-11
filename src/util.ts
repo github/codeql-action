@@ -3,6 +3,8 @@ import * as http from '@actions/http-client';
 import * as auth from '@actions/http-client/auth';
 import * as octokit from '@octokit/rest';
 import consoleLogLevel from 'console-log-level';
+import * as fs from "fs";
+import * as os from 'os';
 import * as path from 'path';
 
 import * as sharedEnv from './shared-environment';
@@ -360,4 +362,12 @@ export function getToolNames(sarifContents: string): string[] {
     }
 
     return Object.keys(toolNames);
+}
+
+// Creates a random temporary directory, runs the given body, and then deletes the directory.
+// Mostly intended for use within tests.
+export async function withTmpDir(body: (tmpDir: string) => Promise<void>) {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codeql-action-'));
+    await body(tmpDir);
+    fs.rmdirSync(tmpDir, { recursive: true });
 }

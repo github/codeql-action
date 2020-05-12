@@ -1,0 +1,3 @@
+name: inrepo-java-querypack
+version: 0.0.1
+libraryPathDependencies: codeql-java

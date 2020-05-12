@@ -1,8 +1,16 @@
-name: "Check generated JavaScript"
+name: "Lint, Build & Test"
 
-on: [pull_request]
+on: [push, pull_request]
 
 jobs:
+  tslint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: tslint
+      run: npm run-script lint
+
   check-js:
     runs-on: ubuntu-latest
 
@@ -25,3 +33,11 @@ jobs:
           exit 1
         fi
         echo "Success: JavaScript files are up to date"
+
+  npm-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: npm run-script test
+      run: npm run-script test

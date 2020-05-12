@@ -32,13 +32,19 @@ export async function setupCodeQL(): Promise<CodeQLSetup> {
     const version = '1.0.0';
     const codeqlURL = core.getInput('tools', { required: true });
 
-    let codeqlFolder = toolcache.find('CodeQL', version);
-    if (codeqlFolder) {
-        core.debug(`CodeQL found in cache ${codeqlFolder}`);
-    } else {
-        const codeqlPath = await toolcache.downloadTool(codeqlURL);
-        const codeqlExtracted = await toolcache.extractTar(codeqlPath);
-        codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', version);
+    try {
+        let codeqlFolder = toolcache.find('CodeQL', version);
+        if (codeqlFolder) {
+            core.debug(`CodeQL found in cache ${codeqlFolder}`);
+        } else {
+            const codeqlPath = await toolcache.downloadTool(codeqlURL);
+            const codeqlExtracted = await toolcache.extractTar(codeqlPath);
+            codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', version);
+        }
+        return new CodeQLSetup(path.join(codeqlFolder, 'codeql'));
+
+    } catch (e) {
+        core.error(e);
+        throw new Error("Unable to download and extract CodeQL CLI");
     }
-    return new CodeQLSetup(path.join(codeqlFolder, 'codeql'));
 }

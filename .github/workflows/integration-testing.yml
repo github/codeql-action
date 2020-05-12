@@ -1,6 +1,6 @@
 name: "Integration Testing"
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   multi-language-repo_test-autodetect-languages:

@@ -5,6 +5,7 @@ on: [push, pull_request]
 jobs:
   multi-language-repo_test-autodetect-languages:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -28,6 +29,7 @@ jobs:
 
   multi-language-repo_test-custom-queries:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -55,6 +57,7 @@ jobs:
   # Currently is not possible to analyze Go in conjunction with other languages in macos
   multi-language-repo_test-go-custom-queries:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}

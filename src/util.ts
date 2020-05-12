@@ -3,6 +3,8 @@ import * as http from '@actions/http-client';
 import * as auth from '@actions/http-client/auth';
 import * as octokit from '@octokit/rest';
 import consoleLogLevel from 'console-log-level';
+import * as fs from "fs";
+import * as os from 'os';
 import * as path from 'path';
 
 import * as sharedEnv from './shared-environment';
@@ -148,6 +150,54 @@ export async function getLanguages(): Promise<string[]> {
     core.exportVariable(sharedEnv.CODEQL_ACTION_LANGUAGES, languages.join(','));
 
     return languages;
+}
+
+/**
+ * Get the path of the currently executing workflow.
+ */
+async function getWorkflowPath(): Promise<string> {
+    const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
+    const owner = repo_nwo[0];
+    const repo = repo_nwo[1];
+    const run_id = getRequiredEnvParam('GITHUB_RUN_ID');
+
+    const ok = new octokit.Octokit({
+        auth: core.getInput('token'),
+        userAgent: "CodeQL Action",
+        log: consoleLogLevel({ level: 'debug' })
+    });
+
+    const runsResponse = await ok.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
+        owner,
+        repo,
+        run_id
+    });
+    const workflowUrl = runsResponse.data.workflow_url;
+
+    const workflowResponse = await ok.request('GET ' + workflowUrl);
+
+    return workflowResponse.data.path;
+}
+
+/**
+ * Get the analysis key paramter for the current job.
+ *
+ * This will combine the workflow path and current job name.
+ * Computing this the first time requires making requests to
+ * the github API, but after that the result will be cached.
+ */
+export async function getAnalysisKey(): Promise<string> {
+    let analysisKey = process.env[sharedEnv.CODEQL_ACTION_ANALYSIS_KEY];
+    if (analysisKey !== undefined) {
+        return analysisKey;
+    }
+
+    const workflowPath = await getWorkflowPath();
+    const jobName = getRequiredEnvParam('GITHUB_JOB');
+
+    analysisKey = workflowPath + ':' + jobName;
+    core.exportVariable(sharedEnv.CODEQL_ACTION_ANALYSIS_KEY, analysisKey);
+    return analysisKey;
 }
 
 interface StatusReport {
@@ -312,4 +362,12 @@ export function getToolNames(sarifContents: string): string[] {
     }
 
     return Object.keys(toolNames);
+}
+
+// Creates a random temporary directory, runs the given body, and then deletes the directory.
+// Mostly intended for use within tests.
+export async function withTmpDir(body: (tmpDir: string) => Promise<void>) {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codeql-action-'));
+    await body(tmpDir);
+    fs.rmdirSync(tmpDir, { recursive: true });
 }

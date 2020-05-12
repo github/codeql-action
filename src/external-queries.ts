@@ -4,9 +4,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as configUtils from './config-utils';
+import * as util from './util';
 
 export async function checkoutExternalQueries(config: configUtils.Config) {
-  const folder = process.env['RUNNER_WORKSPACE'] || '/tmp/codeql-action';
+  const folder = util.getRequiredEnvParam('RUNNER_WORKSPACE');
 
   for (const externalQuery of config.externalQueries) {
     core.info('Checking out ' + externalQuery.repository);

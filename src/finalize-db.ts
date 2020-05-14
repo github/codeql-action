@@ -2,6 +2,7 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as io from '@actions/io';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import * as configUtils from './config-utils';
@@ -9,6 +10,23 @@ import * as externalQueries from "./external-queries";
 import * as sharedEnv from './shared-environment';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
+
+function getMemoryFlag(): string {
+  let memoryToUseMegaBytes: number;
+  const memoryToUseString = core.getInput("ram");
+  if (memoryToUseString) {
+    memoryToUseMegaBytes = Number(memoryToUseString);
+    if (Number.isNaN(memoryToUseMegaBytes)) {
+      throw new Error("Invalid RAM setting \"" + memoryToUseString + "\", specified.");
+    }
+  } else {
+    const totalMemoryBytes = os.totalmem();
+    const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
+    const systemReservedMemoryMegaBytes = 256;
+    memoryToUseMegaBytes = totalMemoryMegaBytes - systemReservedMemoryMegaBytes;
+  }
+  return "--ram=" + Math.floor(memoryToUseMegaBytes);
+}
 
 async function createdDBForScannedLanguages(codeqlCmd: string, databaseFolder: string) {
   const scannedLanguages = process.env[sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES];
@@ -113,6 +131,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
     await exec.exec(codeqlCmd, [
       'database',
       'analyze',
+      getMemoryFlag(),
       path.join(databaseFolder, database),
       '--format=sarif-latest',
       '--output=' + sarifFile,

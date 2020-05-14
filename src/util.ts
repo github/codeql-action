@@ -200,6 +200,14 @@ export async function getAnalysisKey(): Promise<string> {
     return analysisKey;
 }
 
+/**
+ * Get the ref currently being analyzed.
+ */
+export function getRef(): string {
+    // it's in the form "refs/heads/master"
+    return getRequiredEnvParam('GITHUB_REF');
+}
+
 interface StatusReport {
     "workflow_run_id": number;
     "workflow_name": string;
@@ -207,6 +215,7 @@ interface StatusReport {
     "matrix_vars"?: string;
     "languages": string;
     "commit_oid": string;
+    "ref": string;
     "action_name": string;
     "action_oid": string;
     "started_at": string;
@@ -232,6 +241,7 @@ async function createStatusReport(
     Promise<StatusReport> {
 
     const commitOid = process.env['GITHUB_SHA'] || '';
+    const ref = getRef();
     const workflowRunIDStr = process.env['GITHUB_RUN_ID'];
     let workflowRunID = -1;
     if (workflowRunIDStr) {
@@ -249,6 +259,7 @@ async function createStatusReport(
         job_name: jobName,
         languages: languages,
         commit_oid: commitOid,
+        ref: ref,
         action_name: actionName,
         action_oid: "unknown", // TODO decide if it's possible to fill this in
         started_at: startedAt,

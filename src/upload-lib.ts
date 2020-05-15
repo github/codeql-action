@@ -1,7 +1,6 @@
 import * as core from '@actions/core';
 import * as http from '@actions/http-client';
 import * as auth from '@actions/http-client/auth';
-import * as io from '@actions/io';
 import fileUrl from 'file-url';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -10,19 +9,6 @@ import zlib from 'zlib';
 import * as fingerprints from './fingerprints';
 import * as sharedEnv from './shared-environment';
 import * as util from './util';
-
-// Construct the location of the sentinel file for detecting multiple uploads.
-// The returned location should be writable.
-async function getSentinelFilePath(): Promise<string> {
-    // Use the temp dir instead of placing next to the sarif file because of
-    // issues with docker actions. The directory containing the sarif file
-    // may not be writable by us.
-    const uploadsTmpDir = path.join(process.env['RUNNER_TEMP'] || '/tmp/codeql-action', 'uploads');
-    await io.mkdirP(uploadsTmpDir);
-    // Hash the absolute path so we'll behave correctly in the unlikely
-    // scenario a file is referenced twice with different paths.
-    return path.join(uploadsTmpDir, 'codeql-action-upload-sentinel');
-}
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
@@ -134,14 +120,12 @@ async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
     core.startGroup("Uploading results");
     let succeeded = false;
     try {
-        // Check if an upload has happened before. If so then abort.
-        // This is intended to catch when the finish and upload-sarif actions
-        // are used together, and then the upload-sarif action is invoked twice.
-        const sentinelFile = await getSentinelFilePath();
-        if (fs.existsSync(sentinelFile)) {
-            core.info("Aborting as an upload has already happened from this job");
+        const sentinelEnvVar = "CODEQL_UPLOAD_SARIF";
+        if (process.env[sentinelEnvVar]) {
+            core.error("Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job");
             return false;
         }
+        core.exportVariable(sentinelEnvVar, sentinelEnvVar);
 
         const commitOid = util.getRequiredEnvParam('GITHUB_SHA');
         const workflowRunIDStr = util.getRequiredEnvParam('GITHUB_RUN_ID');
@@ -186,9 +170,6 @@ async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
 
         // Make the upload
         succeeded = await uploadPayload(payload);
-
-        // Mark that we have made an upload
-        fs.writeFileSync(sentinelFile, '');
 
     } catch (error) {
         core.setFailed(error.message);

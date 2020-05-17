@@ -1,0 +1,4 @@
+name: extended-csharp-queryset
+queries:
+  - name: Additional C# queries
+    uses: github/codeql/csharp/ql/src/codeql-suites/csharp-lgtm.qls@master

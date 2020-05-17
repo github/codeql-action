@@ -1,0 +1,4 @@
+name: extended-java-queryset
+queries:
+  - name: Additional Java queries
+    uses: github/codeql/java/ql/src/codeql-suites/java-lgtm.qls@master

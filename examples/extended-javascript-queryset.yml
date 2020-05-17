@@ -1,0 +1,4 @@
+name: extended-javascript-queryset
+queries:
+  - name: Additional Javascript queries
+    uses: github/codeql/javascript/ql/src/codeql-suites/javascript-lgtm.qls@master

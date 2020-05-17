@@ -1,0 +1,4 @@
+name: extended-go-queryset
+queries:
+  - name: Additional Go queries
+    uses: github/codeql-go/ql/src/codeql-suites/go-lgtm.qls@master

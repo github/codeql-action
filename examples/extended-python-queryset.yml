@@ -1,0 +1,4 @@
+name: extended-python-queryset
+queries:
+  - name: Additional Python queries
+    uses: github/codeql/python/ql/src/codeql-suites/python-lgtm.qls@master

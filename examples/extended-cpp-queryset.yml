@@ -1,0 +1,4 @@
+name: extended-cpp-queryset
+queries:
+  - name: Additional C++ queries
+    uses: github/codeql/cpp/ql/src/codeql-suites/cpp-lgtm.qls@master

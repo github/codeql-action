@@ -128,6 +128,8 @@ paths-ignore:
   - lib
 ```
 
+There are some ready to use configuration files in the examples folder that will add more queries to the analysis.
+
 ## Troubleshooting
 
 ### Trouble with Go dependencies

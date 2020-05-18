@@ -128,6 +128,15 @@ export async function upload(input: string): Promise<boolean> {
     }
 }
 
+// Counts the number of results in the given SARIF file
+export function countResultsInSarif(sarif: string): number {
+    let numResults = 0;
+    for (const run of JSON.parse(sarif).runs) {
+        numResults += run.results.length;
+    }
+    return numResults;
+}
+
 // Uploads the given set of sarif files.
 // Returns true iff the upload occurred and succeeded
 async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
@@ -183,6 +192,11 @@ async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
             "started_at": startedAt,
             "tool_names": toolNames,
         });
+
+        // Log some useful debug info about the info
+        core.debug("Raw upload size: " + sarifPayload.length + " bytes");
+        core.debug("Base64 zipped upload size: " + zipped_sarif.length + " bytes");
+        core.debug("Number of results in upload: " + countResultsInSarif(sarifPayload));
 
         // Make the upload
         succeeded = await uploadPayload(payload);

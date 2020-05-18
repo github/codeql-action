@@ -16,7 +16,7 @@ function getMemoryFlag(): string {
   const memoryToUseString = core.getInput("ram");
   if (memoryToUseString) {
     memoryToUseMegaBytes = Number(memoryToUseString);
-    if (Number.isNaN(memoryToUseMegaBytes)) {
+    if (Number.isNaN(memoryToUseMegaBytes) || memoryToUseMegaBytes <= 0) {
       throw new Error("Invalid RAM setting \"" + memoryToUseString + "\", specified.");
     }
   } else {

@@ -10,4 +10,6 @@ test('validateSarifFileSchema - valid', t => {
 test('validateSarifFileSchema - invalid', t => {
   const inputFile = __dirname + '/../src/testdata/invalid-sarif.sarif';
   t.false(uploadLib.validateSarifFileSchema(inputFile));
+  // validateSarifFileSchema calls core.setFailed which sets the exit code on error
+  process.exitCode = 0;
 });

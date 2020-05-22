@@ -1,0 +1,32 @@
+{
+  "name": "equal-length",
+  "version": "1.0.1",
+  "description": "Extend lines to equal length",
+  "license": "MIT",
+  "repository": "vadimdemedes/equal-length",
+  "author": {
+    "name": "vdemedes",
+    "email": "vdemedes@gmail.com",
+    "url": "github.com/vadimdemedes"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "scripts": {
+    "test": "xo && ava"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "equal",
+    "line"
+  ],
+  "devDependencies": {
+    "ava": "^0.17.0",
+    "xo": "^0.17.1"
+  },
+  "xo": {
+    "esnext": true
+  }
+}

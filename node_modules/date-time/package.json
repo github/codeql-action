@@ -1,0 +1,39 @@
+{
+  "name": "date-time",
+  "version": "2.1.0",
+  "description": "Pretty datetime: `2014-01-09 06:46:01`",
+  "license": "MIT",
+  "repository": "sindresorhus/date-time",
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "scripts": {
+    "test": "xo && ava"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "datetime",
+    "date-time",
+    "date",
+    "time",
+    "utc",
+    "iso",
+    "timezone",
+    "zone",
+    "timestamp"
+  ],
+  "dependencies": {
+    "time-zone": "^1.0.0"
+  },
+  "devDependencies": {
+    "ava": "*",
+    "xo": "*"
+  }
+}

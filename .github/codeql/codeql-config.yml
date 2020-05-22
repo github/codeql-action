@@ -1,4 +1,6 @@
-me: "CodeQL config"
+name: "CodeQL config"
 queries: 
   - name: Run custom queries
     uses: ./queries
+paths-ignore:
+  - tests

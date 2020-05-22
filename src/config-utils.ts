@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 
+import * as util from './util';
+
 export class ExternalQuery {
     public repository: string;
     public ref: string;
@@ -26,11 +28,12 @@ export class Config {
     public addQuery(queryUses: string) {
         // The logic for parsing the string is based on what actions does for
         // parsing the 'uses' actions in the workflow file
-
+        queryUses = queryUses.trim();
         if (queryUses === "") {
-            throw '"uses" value for queries cannot be blank';
+            throw new Error(getQueryUsesBlank());
         }
 
+        // Check for the local path case before we start trying to parse the repository name
         if (queryUses.startsWith("./")) {
             this.additionalQueries.push(queryUses.slice(2));
             return;
@@ -38,7 +41,7 @@ export class Config {
 
         let tok = queryUses.split('@');
         if (tok.length !== 2) {
-            throw '"uses" value for queries must be a path, or owner/repo@ref \n Found: ' + queryUses;
+            throw new Error(getQueryUsesIncorrect(queryUses));
         }
 
         const ref = tok[1];
@@ -46,12 +49,16 @@ export class Config {
         // The first token is the owner
         // The second token is the repo
         // The rest is a path, if there is more than one token combine them to form the full path
+        if (tok.length < 2) {
+            throw new Error(getQueryUsesIncorrect(queryUses));
+        }
         if (tok.length > 3) {
             tok = [tok[0], tok[1], tok.slice(2).join('/')];
         }
 
-        if (tok.length < 2) {
-            throw '"uses" value for queries must be a path, or owner/repo@ref \n Found: ' + queryUses;
+        // Check none of the parts of the repository name are empty
+        if (tok[0].trim() === '' || tok[1].trim() === '') {
+            throw new Error(getQueryUsesIncorrect(queryUses));
         }
 
         let external = new ExternalQuery(tok[0] + '/' + tok[1], ref);
@@ -62,10 +69,24 @@ export class Config {
     }
 }
 
-const configFolder = process.env['RUNNER_WORKSPACE'] || '/tmp/codeql-action';
+export function getQueryUsesBlank(): string {
+    return '"uses" value for queries cannot be blank';
+}
+
+export function getQueryUsesIncorrect(queryUses: string): string {
+    return '"uses" value for queries must be a path, or owner/repo@ref \n Found: ' + queryUses;
+}
+
+export function getConfigFileOutsideWorkspaceErrorMessage(configFile: string): string {
+    return 'The configuration file "' + configFile + '" is outside of the workspace';
+}
+
+export function getConfigFileDoesNotExistErrorMessage(configFile: string): string {
+    return 'The configuration file "' + configFile + '" does not exist';
+}
 
 function initConfig(): Config {
-    const configFile = core.getInput('config-file');
+    let configFile = core.getInput('config-file');
 
     const config = new Config();
 
@@ -75,60 +96,78 @@ function initConfig(): Config {
         return config;
     }
 
-    try {
-        const parsedYAML = yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
+    // Treat the config file as relative to the workspace
+    const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
+    configFile = path.resolve(workspacePath, configFile);
 
-        if (parsedYAML.name && typeof parsedYAML.name === "string") {
-            config.name = parsedYAML.name;
-        }
+    // Error if the config file is now outside of the workspace
+    if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
+        throw new Error(getConfigFileOutsideWorkspaceErrorMessage(configFile));
+    }
 
-        if (parsedYAML['disable-default-queries'] && typeof parsedYAML['disable-default-queries'] === "boolean") {
-            config.disableDefaultQueries = parsedYAML['disable-default-queries'];
-        }
+    // Error if the file does not exist
+    if (!fs.existsSync(configFile)) {
+        throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
+    }
 
-        const queries = parsedYAML.queries;
-        if (queries && queries instanceof Array) {
-            queries.forEach(query => {
-                if (query.uses && typeof query.uses === "string") {
-                    config.addQuery(query.uses);
-                }
-            });
-        }
+    const parsedYAML = yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
 
-        const pathsIgnore = parsedYAML['paths-ignore'];
-        if (pathsIgnore && pathsIgnore instanceof Array) {
-            pathsIgnore.forEach(path => {
-                if (typeof path === "string") {
-                    config.pathsIgnore.push(path);
-                }
-            });
-        }
+    if (parsedYAML.name && typeof parsedYAML.name === "string") {
+        config.name = parsedYAML.name;
+    }
 
-        const paths = parsedYAML.paths;
-        if (paths && paths instanceof Array) {
-            paths.forEach(path => {
-                if (typeof path === "string") {
-                    config.paths.push(path);
-                }
-            });
-        }
-    } catch (err) {
-        core.setFailed(err);
+    if (parsedYAML['disable-default-queries'] && typeof parsedYAML['disable-default-queries'] === "boolean") {
+        config.disableDefaultQueries = parsedYAML['disable-default-queries'];
+    }
+
+    const queries = parsedYAML.queries;
+    if (queries && queries instanceof Array) {
+        queries.forEach(query => {
+            if (typeof query.uses === "string") {
+                config.addQuery(query.uses);
+            }
+        });
+    }
+
+    const pathsIgnore = parsedYAML['paths-ignore'];
+    if (pathsIgnore && pathsIgnore instanceof Array) {
+        pathsIgnore.forEach(path => {
+            if (typeof path === "string") {
+                config.pathsIgnore.push(path);
+            }
+        });
+    }
+
+    const paths = parsedYAML.paths;
+    if (paths && paths instanceof Array) {
+        paths.forEach(path => {
+            if (typeof path === "string") {
+                config.paths.push(path);
+            }
+        });
     }
 
     return config;
 }
 
+function getConfigFolder(): string {
+    return util.getRequiredEnvParam('RUNNER_WORKSPACE');
+}
+
+export function getConfigFile(): string {
+    return path.join(getConfigFolder(), 'config');
+}
+
 async function saveConfig(config: Config) {
     const configString = JSON.stringify(config);
-    await io.mkdirP(configFolder);
-    fs.writeFileSync(path.join(configFolder, 'config'), configString, 'utf8');
+    await io.mkdirP(getConfigFolder());
+    fs.writeFileSync(getConfigFile(), configString, 'utf8');
     core.debug('Saved config:');
     core.debug(configString);
 }
 
 export async function loadConfig(): Promise<Config> {
-    const configFile = path.join(configFolder, 'config');
+    const configFile = getConfigFile();
     if (fs.existsSync(configFile)) {
         const configString = fs.readFileSync(configFile, 'utf8');
         core.debug('Loaded config:');

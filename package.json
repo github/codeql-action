@@ -5,8 +5,16 @@
   "description": "CodeQL action",
   "scripts": {
     "build": "tsc",
-    "test": "jest",
-    "lint": "tslint -p . -c tslint.json 'src/**/*.ts'"
+    "test": "ava src/** --serial",
+    "lint": "tslint -p . -c tslint.json 'src/**/*.ts'",
+    "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"
+  },
+  "ava": {
+    "typescript": {
+      "rewritePaths": {
+        "src/": "lib/"
+      }
+    }
   },
   "license": "MIT",
   "dependencies": {
@@ -25,15 +33,18 @@
     "path": "^0.12.7",
     "zlib": "^1.0.5"
   },
+  "//": [
+    "micromatch is an unspecified dependency of ava"
+  ],
   "devDependencies": {
-    "@types/jest": "^24.0.13",
+    "@ava/typescript": "1.1.1",
     "@types/jszip": "^3.1.6",
     "@types/long": "4.0.0",
     "@types/node": "^12.0.4",
-    "jest": "^25.2.4",
-    "jest-circus": "^25.2.4",
-    "ts-jest": "^25.3.0",
+    "ava": "3.8.1",
+    "micromatch": "4.0.2",
     "tslint": "^6.1.0",
-    "typescript": "^3.7.5"
+    "typescript": "^3.7.5",
+    "removeNPMAbsolutePaths": "2.0.0"
   }
 }

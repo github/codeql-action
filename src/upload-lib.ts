@@ -127,15 +127,27 @@ export function countResultsInSarif(sarif: string): number {
 // Validates that the given file path refers to a valid SARIF file.
 // Returns a non-empty list of error message if the file is invalid,
 // otherwise returns the empty list if the file is valid.
-export function validateSarifFileSchema(sarifFilePath: string): string[] {
+export function validateSarifFileSchema(sarifFilePath: string): boolean {
     const sarif = JSON.parse(fs.readFileSync(sarifFilePath, 'utf8'));
     const schema = JSON.parse(fs.readFileSync(__dirname + '/../src/sarif_v2.1.0_schema.json', 'utf8'));
 
     const result = new jsonschema.Validator().validate(sarif, schema);
     if (result.valid) {
-        return [];
+        return true;
     } else {
-        return result.errors.map(e => e.message);
+        // Set the failure message to the stacks of all the errors.
+        // This should be of a manageable size and may even give enough to fix the error.
+        const errorMessages = result.errors.map(e => "- " + e.stack);
+        core.setFailed("Unable to upload \"" + sarifFilePath + "\" as it is not valid SARIF:\n" + errorMessages.join("\n"));
+
+        // Also output the more verbose error messages in groups as these may be very large.
+        for (const error of result.errors) {
+            core.startGroup("Error details: " + error.stack);
+            core.info(JSON.stringify(error, null, 2));
+            core.endGroup();
+        }
+
+        return false;
     }
 }
 
@@ -156,9 +168,7 @@ async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
 
         // Validate that the files we were asked to upload are all valid SARIF files
         for (const file of sarifFiles) {
-            const errors = validateSarifFileSchema(file);
-            if (errors.length > 0) {
-                core.setFailed("Unable to upload \"" + file + "\" as it is not valid SARIF:\n" + errors.join("\n"));
+            if (!validateSarifFileSchema(file)) {
                 return false;
             }
         }

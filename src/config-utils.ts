@@ -17,11 +17,17 @@ export class ExternalQuery {
     }
 }
 
+// The set of acceptable values for built-in suites from the codeql bundle
+const builtinSuites = ['security-experimental', 'security-and-quality'] as const;
+// Derive the union type from the array values
+type BuiltInSuite = typeof builtinSuites[number];
+
 export class Config {
     public name = "";
     public disableDefaultQueries = false;
     public additionalQueries: string[] = [];
     public externalQueries: ExternalQuery[] = [];
+    public additionalSuites: BuiltInSuite[] = [];
     public pathsIgnore: string[] = [];
     public paths: string[] = [];
 
@@ -35,8 +41,33 @@ export class Config {
 
         // Check for the local path case before we start trying to parse the repository name
         if (queryUses.startsWith("./")) {
-            this.additionalQueries.push(queryUses.slice(2));
+            const localQueryPath = queryUses.slice(2);
+            // Resolve the local path against the workspace so that when this is
+            // passed to codeql it resolves to exactly the path we expect it to resolve to.
+            const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
+            const absoluteQueryPath = path.join(workspacePath, localQueryPath);
+
+            // Check the file exists
+            if (!fs.existsSync(absoluteQueryPath)) {
+                throw new Error(getLocalPathDoesNotExist(localQueryPath));
+            }
+
+            // Check the local path doesn't jump outside the repo using '..' or symlinks
+            if (!(fs.realpathSync(absoluteQueryPath) + path.sep).startsWith(workspacePath + path.sep)) {
+                throw new Error(getLocalPathOutsideOfRepository(localQueryPath));
+            }
+
+            this.additionalQueries.push(absoluteQueryPath);
             return;
+        }
+
+        // Check for one of the builtin suites
+        if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
+            if (queryUses in builtinSuites) {
+                this.additionalSuites.push(queryUses as BuiltInSuite);
+            } else {
+                throw new Error(getQueryUsesIncorrect(queryUses));
+            }
         }
 
         let tok = queryUses.split('@');
@@ -74,7 +105,19 @@ export function getQueryUsesBlank(): string {
 }
 
 export function getQueryUsesIncorrect(queryUses: string): string {
-    return '"uses" value for queries must be a path, or owner/repo@ref \n Found: ' + queryUses;
+    return '"uses" value for queries must be a built-in suite (' + builtinSuites.join('or') +
+        '), a relative path, or of the form owner/repo@ref\n' +
+        'Found: ' + queryUses;
+}
+
+export function getLocalPathOutsideOfRepository(localPath: string): string {
+    return 'Unable to use queries from local path "' + localPath +
+        '" as it is outside of the repository';
+}
+
+export function getLocalPathDoesNotExist(localPath: string): string {
+    return 'Unable to use queries from local path "' + localPath +
+        '" as the path does not exist in the repository';
 }
 
 export function getConfigFileOutsideWorkspaceErrorMessage(configFile: string): string {

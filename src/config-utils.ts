@@ -63,7 +63,7 @@ export class Config {
 
         // Check for one of the builtin suites
         if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-            if (queryUses in builtinSuites) {
+            if (builtinSuites.includes(queryUses as any)) {
                 this.additionalSuites.push(queryUses as BuiltInSuite);
             } else {
                 throw new Error(getQueryUsesIncorrect(queryUses));
@@ -105,7 +105,7 @@ export function getQueryUsesBlank(): string {
 }
 
 export function getQueryUsesIncorrect(queryUses: string): string {
-    return '"uses" value for queries must be a built-in suite (' + builtinSuites.join('or') +
+    return '"uses" value for queries must be a built-in suite (' + builtinSuites.join(' or ') +
         '), a relative path, or of the form owner/repo@ref\n' +
         'Found: ' + queryUses;
 }

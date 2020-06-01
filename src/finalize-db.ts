@@ -69,29 +69,62 @@ async function finalizeDatabaseCreation(codeqlCmd: string, databaseFolder: strin
   }
 }
 
+interface ResolveQueriesOutput {
+  byLanguage: {
+    [language: string]: {
+      [queryPath: string]: {}
+    }
+  };
+  noDeclaredLanguage: {
+    [queryPath: string]: {}
+  };
+  multipleDeclaredLanguages: {
+    [queryPath: string]: {}
+  };
+}
+
+async function runResolveQueries(codeqlCmd: string, queries: string[]): Promise<ResolveQueriesOutput> {
+  let output = '';
+  const options = {
+    listeners: {
+      stdout: (data: Buffer) => {
+        output += data.toString();
+      }
+    }
+  };
+
+  await exec.exec(
+    codeqlCmd, [
+      'resolve',
+      'queries',
+      ...queries,
+      '--format=bylanguage'
+    ],
+    options);
+
+  return JSON.parse(output);
+}
+
 async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Config): Promise<Map<string, string[]>> {
   let res = new Map();
 
-  if (config.additionalQueries.length !== 0) {
-    let resolveQueriesOutput = '';
-    const options = {
-      listeners: {
-        stdout: (data: Buffer) => {
-          resolveQueriesOutput += data.toString();
-        }
+  if (config.additionalSuites.length !== 0) {
+    const suites: string[] = [];
+    for (const language of await util.getLanguages()) {
+      for (const additionalSuite of config.additionalSuites) {
+        suites.push(language + '-' + additionalSuite + '.qls');
       }
-    };
+    }
 
-    await exec.exec(
-      codeqlCmd, [
-        'resolve',
-        'queries',
-        ...config.additionalQueries,
-        '--format=bylanguage'
-      ],
-      options);
+    const resolveQueriesOutputObject = await runResolveQueries(codeqlCmd, suites);
 
-    const resolveQueriesOutputObject = JSON.parse(resolveQueriesOutput);
+    for (const [language, queries] of Object.entries(resolveQueriesOutputObject.byLanguage)) {
+      res[language] = Object.keys(<any>queries);
+    }
+  }
+
+  if (config.additionalQueries.length !== 0) {
+    const resolveQueriesOutputObject = await runResolveQueries(codeqlCmd, config.additionalQueries);
 
     for (const [language, queries] of Object.entries(resolveQueriesOutputObject.byLanguage)) {
       res[language] = Object.keys(<any>queries);

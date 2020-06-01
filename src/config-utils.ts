@@ -65,6 +65,7 @@ export class Config {
         if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
             if (builtinSuites.includes(queryUses as any)) {
                 this.additionalSuites.push(queryUses as BuiltInSuite);
+                return;
             } else {
                 throw new Error(getQueryUsesIncorrect(queryUses));
             }

@@ -63,8 +63,9 @@ export class Config {
 
         // Check for one of the builtin suites
         if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-            if (builtinSuites.includes(queryUses as any)) {
-                this.additionalSuites.push(queryUses as BuiltInSuite);
+            const suite = builtinSuites.find((suite) => suite === queryUses);
+            if (suite) {
+                this.additionalSuites.push(suite);
                 return;
             } else {
                 throw new Error(getQueryUsesIncorrect(queryUses));

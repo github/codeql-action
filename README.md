@@ -18,6 +18,7 @@ name: "Code Scanning - Action"
 
 on:
   push:
+  pull_request:
   schedule:
     - cron: '0 0 * * 0'
 
@@ -33,6 +34,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        with:
+          # Must fetch at least the immediate parents so that if this is
+          # a pull request then we can checkout the head of the pull request.
+          # Only include this option if you are running this workflow on pull requests.
+          fetch-depth: 2
+
+      # If this run was triggered by a pull request event then checkout
+      # the head of the pull request instead of the merge commit.
+      # Only include this step if you are running this workflow on pull requests.
+      - run: git checkout HEAD^2
+        if: ${{ github.event_name == 'pull_request' }}
 
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
@@ -84,7 +96,7 @@ The CodeQL action should be run on `push` events, and on a `schedule`. `Push` ev
 
 ### Configuration
 
-You may optionally specify additional queries for CodeQL to execute by using a config file. The queries must belong to a [QL pack](https://help.semmle.com/codeql/codeql-cli/reference/qlpack-overview.html) and can be in your repository or any public repository. You can choose a single .ql file, a folder containing multiple .ql files, a .qls [query suite](https://help.semmle.com/codeql/codeql-cli/procedures/query-suites.html) file, or any combination of the above. To use queries from other repositories use the same syntax as when [using an action](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsuses).
+You may optionally specify additional queries for CodeQL to execute by using a config file. The queries must belong to a [QL pack](https://help.semmle.com/codeql/codeql-cli/reference/qlpack-overview.html) and can be in your repository or any public repository. You can choose a single .ql file, a folder containing multiple .ql files, a .qls [query suite](https://help.semmle.com/codeql/codeql-cli/procedures/query-suites.html) file, or any combination of the above. To use queries stored in your repository or from other repositories use the same syntax as when [using an action](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsuses). Note that when using local queries starting with `./`, the path is relative to the root of the repository and not to the location of the config file.
 
 You can disable the default queries using `disable-default-queries: true`.
 

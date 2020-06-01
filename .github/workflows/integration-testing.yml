@@ -4,11 +4,7 @@ on: [push, pull_request]
 
 jobs:
   multi-language-repo_test-autodetect-languages:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -25,6 +21,18 @@ jobs:
     - uses: ./../action/analyze
       env:
         TEST_MODE: true
+    - run: |
+        cd "$CODEQL_ACTION_DATABASE_DIR"
+        if [ "$(ls | wc -l)" != 6 ] || \
+           [[ ! -d cpp ]] || \
+           [[ ! -d csharp ]] || \
+           [[ ! -d go ]] || \
+           [[ ! -d java ]] || \
+           [[ ! -d javascript ]] || \
+           [[ ! -d python ]]; then
+          echo "Did not find expected number of databases. Database dir contains: $(ls)"
+          exit 1
+        fi
 
   multi-language-repo_test-custom-queries:
     strategy:

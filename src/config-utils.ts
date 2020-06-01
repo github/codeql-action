@@ -18,7 +18,7 @@ export class ExternalQuery {
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
-const builtinSuites = ['security-experimental', 'security-and-quality'] as const;
+const builtinSuites = ['security-extended', 'security-and-quality'] as const;
 // Derive the union type from the array values
 type BuiltInSuite = typeof builtinSuites[number];
 

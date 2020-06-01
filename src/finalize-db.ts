@@ -108,6 +108,11 @@ async function runResolveQueries(codeqlCmd: string, queries: string[]): Promise<
 async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Config): Promise<Map<string, string[]>> {
   let res = new Map();
 
+  const languages = await util.getLanguages();
+  for (const language of languages) {
+    res[language] = [];
+  }
+
   if (config.additionalSuites.length !== 0) {
     const suites: string[] = [];
     for (const language of await util.getLanguages()) {
@@ -119,7 +124,7 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
     const resolveQueriesOutputObject = await runResolveQueries(codeqlCmd, suites);
 
     for (const [language, queries] of Object.entries(resolveQueriesOutputObject.byLanguage)) {
-      res[language] = Object.keys(<any>queries);
+      res[language].push(...Object.keys(<any>queries));
     }
   }
 
@@ -127,7 +132,7 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
     const resolveQueriesOutputObject = await runResolveQueries(codeqlCmd, config.additionalQueries);
 
     for (const [language, queries] of Object.entries(resolveQueriesOutputObject.byLanguage)) {
-      res[language] = Object.keys(<any>queries);
+      res[language].push(...Object.keys(<any>queries));
     }
 
     const noDeclaredLanguage = resolveQueriesOutputObject.noDeclaredLanguage;

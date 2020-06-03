@@ -69,32 +69,74 @@ async function finalizeDatabaseCreation(codeqlCmd: string, databaseFolder: strin
   }
 }
 
+interface ResolveQueriesOutput {
+  byLanguage: {
+    [language: string]: {
+      [queryPath: string]: {}
+    }
+  };
+  noDeclaredLanguage: {
+    [queryPath: string]: {}
+  };
+  multipleDeclaredLanguages: {
+    [queryPath: string]: {}
+  };
+}
+
+async function runResolveQueries(codeqlCmd: string, queries: string[]): Promise<ResolveQueriesOutput> {
+  let output = '';
+  const options = {
+    listeners: {
+      stdout: (data: Buffer) => {
+        output += data.toString();
+      }
+    }
+  };
+
+  await exec.exec(
+    codeqlCmd, [
+      'resolve',
+      'queries',
+      ...queries,
+      '--format=bylanguage'
+    ],
+    options);
+
+  return JSON.parse(output);
+}
+
 async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Config): Promise<Map<string, string[]>> {
   let res = new Map();
 
-  if (config.additionalQueries.length !== 0) {
-    let resolveQueriesOutput = '';
-    const options = {
-      listeners: {
-        stdout: (data: Buffer) => {
-          resolveQueriesOutput += data.toString();
-        }
+  if (!config.disableDefaultQueries || config.additionalSuites.length !== 0) {
+    const suites: string[] = [];
+    for (const language of await util.getLanguages()) {
+      if (!config.disableDefaultQueries) {
+        suites.push(language + '-code-scanning.qls');
       }
-    };
+      for (const additionalSuite of config.additionalSuites) {
+        suites.push(language + '-' + additionalSuite + '.qls');
+      }
+    }
 
-    await exec.exec(
-      codeqlCmd, [
-        'resolve',
-        'queries',
-        ...config.additionalQueries,
-        '--format=bylanguage'
-      ],
-      options);
-
-    const resolveQueriesOutputObject = JSON.parse(resolveQueriesOutput);
+    const resolveQueriesOutputObject = await runResolveQueries(codeqlCmd, suites);
 
     for (const [language, queries] of Object.entries(resolveQueriesOutputObject.byLanguage)) {
-      res[language] = Object.keys(<any>queries);
+      if (res[language] === undefined) {
+        res[language] = [];
+      }
+      res[language].push(...Object.keys(<any>queries));
+    }
+  }
+
+  if (config.additionalQueries.length !== 0) {
+    const resolveQueriesOutputObject = await runResolveQueries(codeqlCmd, config.additionalQueries);
+
+    for (const [language, queries] of Object.entries(resolveQueriesOutputObject.byLanguage)) {
+      if (res[language] === undefined) {
+        res[language] = [];
+      }
+      res[language].push(...Object.keys(<any>queries));
     }
 
     const noDeclaredLanguage = resolveQueriesOutputObject.noDeclaredLanguage;
@@ -120,11 +162,17 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
   for (let database of fs.readdirSync(databaseFolder)) {
     core.startGroup('Analyzing ' + database);
 
-    const queries: string[] = [];
-    if (!config.disableDefaultQueries) {
-      queries.push(database + '-code-scanning.qls');
+    const queries = queriesPerLanguage[database] || [];
+    if (queries.length === 0) {
+      throw new Error('Unable to analyse ' + database + ' as no queries were selected for this language');
     }
-    queries.push(...(queriesPerLanguage[database] || []));
+
+    // Pass the queries to codeql using a file instead of using the command
+    // line to avoid command line length restrictions, particularly on windows.
+    const querySuite = path.join(databaseFolder, database + '-queries.qls');
+    const querySuiteContents = queries.map(q => '- query: ' + q).join('\n');
+    fs.writeFileSync(querySuite, querySuiteContents);
+    core.debug('Query suite file for ' + database + '...\n' + querySuiteContents);
 
     const sarifFile = path.join(sarifFolder, database + '.sarif');
 
@@ -136,7 +184,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
       '--format=sarif-latest',
       '--output=' + sarifFile,
       '--no-sarif-add-snippets',
-      ...queries
+      querySuite
     ]);
 
     core.debug('SARIF results for database ' + database + ' created at "' + sarifFile + '"');

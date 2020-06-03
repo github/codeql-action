@@ -23,7 +23,9 @@ jobs:
         TEST_MODE: true
     - run: |
         cd "$CODEQL_ACTION_DATABASE_DIR"
-        if [ "$(ls | wc -l)" != 6 ] || \
+        # List all directories as there will be precisely one directory per database
+        # but there may be other files in this directory such as query suites.
+        if [ "$(ls -d */ | wc -l)" != 6 ] || \
            [[ ! -d cpp ]] || \
            [[ ! -d csharp ]] || \
            [[ ! -d go ]] || \

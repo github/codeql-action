@@ -7,7 +7,7 @@ import * as configUtils from './config-utils';
 import * as util from './util';
 
 export async function checkoutExternalQueries(config: configUtils.Config) {
-  const folder = util.getRequiredEnvParam('RUNNER_WORKSPACE');
+  const folder = util.getRequiredEnvParam('RUNNER_TEMP');
 
   for (const externalQuery of config.externalQueries) {
     core.info('Checking out ' + externalQuery.repository);

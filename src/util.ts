@@ -1,4 +1,5 @@
 import * as core from '@actions/core';
+import * as exec from '@actions/exec';
 import * as http from '@actions/http-client';
 import * as auth from '@actions/http-client/auth';
 import * as octokit from '@octokit/rest';
@@ -22,13 +23,6 @@ export function should_abort(actionName: string, requireInitActionHasRun: boolea
     const ref = process.env['GITHUB_REF'];
     if (ref === undefined) {
         core.setFailed('GITHUB_REF must be set.');
-        return true;
-    }
-
-    // Should abort if called on a merge commit for a pull request.
-    if (ref.startsWith('refs/pull/')) {
-        core.warning('The CodeQL ' + actionName + ' action is intended for workflows triggered on `push` events, '
-            + 'but the current workflow is running on a pull request. Aborting.');
         return true;
     }
 
@@ -153,6 +147,21 @@ export async function getLanguages(): Promise<string[]> {
 }
 
 /**
+ * Gets the SHA of the commit that is currently checked out.
+ */
+export async function getCommitOid(): Promise<string> {
+    let commitOid = '';
+    await exec.exec('git', ['rev-parse', 'HEAD'], {
+        silent: true,
+        listeners: {
+            stdout: (data) => { commitOid += data.toString(); },
+            stderr: (data) => { process.stderr.write(data); }
+        }
+    });
+    return commitOid.trim();
+}
+
+/**
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
@@ -204,8 +213,20 @@ export async function getAnalysisKey(): Promise<string> {
  * Get the ref currently being analyzed.
  */
 export function getRef(): string {
-    // it's in the form "refs/heads/master"
-    return getRequiredEnvParam('GITHUB_REF');
+    // Will be in the form "refs/heads/master" on a push event
+    // or in the form "refs/pull/N/merge" on a pull_request event
+    const ref = getRequiredEnvParam('GITHUB_REF');
+
+    // For pull request refs we want to convert from the 'merge' ref
+    // to the 'head' ref, as that is what we want to analyse.
+    // There should have been some code earlier in the workflow to do
+    // the checkout, but we have no way of verifying that here.
+    const pull_ref_regex = /refs\/pull\/(\d+)\/merge/;
+    if (pull_ref_regex.test(ref)) {
+        return ref.replace(pull_ref_regex, 'refs/pull/$1/head');
+    } else {
+        return ref;
+    }
 }
 
 interface StatusReport {

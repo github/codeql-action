@@ -135,7 +135,7 @@ async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
     }
     core.exportVariable(sentinelEnvVar, sentinelEnvVar);
 
-    const commitOid = util.getRequiredEnvParam('GITHUB_SHA');
+    const commitOid = await util.getCommitOid();
     const workflowRunIDStr = util.getRequiredEnvParam('GITHUB_RUN_ID');
     const ref = util.getRef();
     const analysisKey = await util.getAnalysisKey();

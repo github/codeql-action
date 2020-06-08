@@ -91,6 +91,7 @@ test("load non-empty input", async t => {
       name: my config
       disable-default-queries: true
       queries:
+        - uses: ./
         - uses: ./foo
         - uses: foo/bar@dev
       paths-ignore:
@@ -103,13 +104,16 @@ test("load non-empty input", async t => {
     const expectedConfig = new configUtils.Config();
     expectedConfig.name = 'my config';
     expectedConfig.disableDefaultQueries = true;
-    expectedConfig.additionalQueries.push('foo');
+    expectedConfig.additionalQueries.push(tmpDir);
+    expectedConfig.additionalQueries.push(path.join(tmpDir, 'foo'));
     expectedConfig.externalQueries = [new configUtils.ExternalQuery('foo/bar', 'dev')];
     expectedConfig.pathsIgnore = ['a', 'b'];
     expectedConfig.paths = ['c/d'];
 
     fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
 
     const actualConfig = await configUtils.loadConfig();
 
@@ -222,7 +226,9 @@ const testInputs = {
   "foo/bar": configUtils.getQueryUsesIncorrect("foo/bar"),
   "foo/bar@v1@v2": configUtils.getQueryUsesIncorrect("foo/bar@v1@v2"),
   "foo@master": configUtils.getQueryUsesIncorrect("foo@master"),
-  "https://github.com/foo/bar@master": configUtils.getQueryUsesIncorrect("https://github.com/foo/bar@master")
+  "https://github.com/foo/bar@master": configUtils.getQueryUsesIncorrect("https://github.com/foo/bar@master"),
+  "./foo": configUtils.getLocalPathDoesNotExist("foo"),
+  "./..": configUtils.getLocalPathOutsideOfRepository(".."),
 };
 
 for (const [input, result] of Object.entries(testInputs)) {

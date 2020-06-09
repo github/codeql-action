@@ -122,138 +122,102 @@ test("load non-empty input", async t => {
   });
 });
 
-test("load partially invalid input", async t => {
-  return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
+function doInvalidInputTest(
+  testName: string,
+  inputFileContents: string,
+  expectedErrorMessageGenerator: (configFile: string) => string) {
 
-    // The valid parts of this config should be parsed correctly.
-    // The invalid parts should be ignored and left as the default values.
-    const inputFileContents = `
-      name:
-        - foo: bar
-      disable-default-queries: 42
-      queries:
-        - name: foo/bar
-          uses: foo/bar@dev
-      paths-ignore:
-        - a
-        - b
-      paths:
-        - c/d`;
-
-    // And the config we expect it to parse to
-    const expectedConfig = new configUtils.Config();
-    expectedConfig.externalQueries = [new configUtils.ExternalQuery('foo/bar', 'dev')];
-    expectedConfig.pathsIgnore = ['a', 'b'];
-    expectedConfig.paths = ['c/d'];
-
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
-
-    const actualConfig = await configUtils.loadConfig();
-
-    // Should exactly equal the object we constructed earlier
-    t.deepEqual(actualConfig, expectedConfig);
-  });
-});
-
-test("load invalid input - top level entries", async t => {
-  return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    // Replace the arrays with strings or numbers.
-    // The invalid parts should be ignored and left as the default values.
-    const inputFileContents = `
-      name: my config
-      disable-default-queries: true
-      queries: foo
-      paths-ignore: bar
-      paths: 123`;
-
-    // And the config we expect it to parse to
-    const expectedConfig = new configUtils.Config();
-    expectedConfig.name = 'my config';
-    expectedConfig.disableDefaultQueries = true;
-
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
-
-    const actualConfig = await configUtils.loadConfig();
-
-    // Should exactly equal the object we constructed earlier
-    t.deepEqual(actualConfig, expectedConfig);
-  });
-});
-
-test("load invalid input - queries field type", async t => {
-  return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    // Invalid contents of the "queries" array.
-    // The invalid parts should be ignored and left as the default values.
-    const inputFileContents = `
-      name: my config
-      disable-default-queries: true
-      queries:
-        - name: foo
-          uses:
-            - hello: world
-        - name: bar
-          uses: github/bar@master`;
-
-    // And the config we expect it to parse to
-    const expectedConfig = new configUtils.Config();
-    expectedConfig.name = 'my config';
-    expectedConfig.disableDefaultQueries = true;
-    expectedConfig.externalQueries.push(new configUtils.ExternalQuery("github/bar", "master"));
-
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
-
-    const actualConfig = await configUtils.loadConfig();
-
-    // Should exactly equal the object we constructed earlier
-    t.deepEqual(actualConfig, expectedConfig);
-  });
-});
-
-// Various "uses" fields, and the errors they should produce
-const testInputs = {
-  "''": configUtils.getQueryUsesBlank(),
-  "foo/bar": configUtils.getQueryUsesIncorrect("foo/bar"),
-  "foo/bar@v1@v2": configUtils.getQueryUsesIncorrect("foo/bar@v1@v2"),
-  "foo@master": configUtils.getQueryUsesIncorrect("foo@master"),
-  "https://github.com/foo/bar@master": configUtils.getQueryUsesIncorrect("https://github.com/foo/bar@master"),
-  "./foo": configUtils.getLocalPathDoesNotExist("foo"),
-  "./..": configUtils.getLocalPathOutsideOfRepository(".."),
-};
-
-for (const [input, result] of Object.entries(testInputs)) {
-  test("load invalid input - queries uses \"" + input + "\"", async t => {
+  test("load invalid input - " + testName, async t => {
     return await util.withTmpDir(async tmpDir => {
       process.env['RUNNER_TEMP'] = tmpDir;
       process.env['GITHUB_WORKSPACE'] = tmpDir;
 
-      // Invalid contents of a "queries.uses" field.
-      // Should fail with the expected error message
-      const inputFileContents = `
-        name: my config
-        queries:
-          - name: foo
-            uses: ` + input;
-
-      fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+      const inputFile = path.join(tmpDir, 'input');
+      fs.writeFileSync(inputFile, inputFileContents, 'utf8');
       setInput('config-file', 'input');
 
       try {
         await configUtils.loadConfig();
         throw new Error('loadConfig did not throw error');
       } catch (err) {
-        t.deepEqual(err, new Error(result));
+        t.deepEqual(err, new Error(expectedErrorMessageGenerator(inputFile)));
       }
     });
   });
 }
+
+doInvalidInputTest(
+  'name invalid type',
+  `
+  name:
+    - foo: bar`,
+  configUtils.getNameInvalid);
+
+doInvalidInputTest(
+  'disable-default-queries invalid type',
+  `disable-default-queries: 42`,
+  configUtils.getDisableDefaultQueriesInvalid);
+
+doInvalidInputTest(
+  'queries invalid type',
+  `queries: foo`,
+  configUtils.getQueriesInvalid);
+
+doInvalidInputTest(
+  'paths-ignore invalid type',
+  `paths-ignore: bar`,
+  configUtils.getPathsIgnoreInvalid);
+
+doInvalidInputTest(
+  'paths invalid type',
+  `paths: 17`,
+  configUtils.getPathsInvalid);
+
+doInvalidInputTest(
+  'queries uses invalid type',
+  `
+  queries:
+  - uses:
+      - hello: world`,
+  configUtils.getQueryUsesInvalid);
+
+function doInvalidQueryUsesTest(
+  input: string,
+  expectedErrorMessageGenerator: (configFile: string) => string) {
+
+  // Invalid contents of a "queries.uses" field.
+  // Should fail with the expected error message
+  const inputFileContents = `
+    name: my config
+    queries:
+      - name: foo
+        uses: ` + input;
+
+  doInvalidInputTest(
+    "queries uses \"" + input + "\"",
+    inputFileContents,
+    expectedErrorMessageGenerator);
+}
+
+// Various "uses" fields, and the errors they should produce
+doInvalidQueryUsesTest(
+  "''",
+  c => configUtils.getQueryUsesInvalid(c, undefined));
+doInvalidQueryUsesTest(
+  "foo/bar",
+  c => configUtils.getQueryUsesInvalid(c, "foo/bar"));
+doInvalidQueryUsesTest(
+  "foo/bar@v1@v2",
+  c => configUtils.getQueryUsesInvalid(c, "foo/bar@v1@v2"));
+doInvalidQueryUsesTest(
+  "foo@master",
+  c => configUtils.getQueryUsesInvalid(c, "foo@master"));
+doInvalidQueryUsesTest(
+  "https://github.com/foo/bar@master",
+  c => configUtils.getQueryUsesInvalid(c, "https://github.com/foo/bar@master"));
+doInvalidQueryUsesTest(
+  "./foo",
+  c => configUtils.getLocalPathDoesNotExist(c, "foo"));
+doInvalidQueryUsesTest(
+  "./..",
+  c => configUtils.getLocalPathOutsideOfRepository(c, ".."));

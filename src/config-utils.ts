@@ -248,7 +248,7 @@ function initConfig(): Config {
 }
 
 function getConfigFolder(): string {
-    return util.getRequiredEnvParam('RUNNER_WORKSPACE');
+    return util.getRequiredEnvParam('RUNNER_TEMP');
 }
 
 export function getConfigFile(): string {

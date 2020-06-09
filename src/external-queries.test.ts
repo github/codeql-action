@@ -13,7 +13,7 @@ test("checkoutExternalQueries", async t => {
     ];
 
     await util.withTmpDir(async tmpDir => {
-        process.env["RUNNER_WORKSPACE"] = tmpDir;
+        process.env["RUNNER_TEMP"] = tmpDir;
         await externalQueries.checkoutExternalQueries(config);
 
         // COPYRIGHT file existed in df4c6869212341b601005567381944ed90906b6b but not in master

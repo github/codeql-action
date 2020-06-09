@@ -6,6 +6,13 @@ import * as path from 'path';
 
 import * as util from './util';
 
+const NAME_PROPERTY = 'name';
+const DISPLAY_DEFAULT_QUERIES_PROPERTY = 'disable-default-queries';
+const QUERIES_PROPERTY = 'queries';
+const QUERIES_USES_PROPERTY = 'uses';
+const PATHS_IGNORE_PROPERTY = 'paths-ignore';
+const PATHS_PROPERTY = 'paths';
+
 export class ExternalQuery {
     public repository: string;
     public ref: string;
@@ -31,12 +38,12 @@ export class Config {
     public pathsIgnore: string[] = [];
     public paths: string[] = [];
 
-    public addQuery(queryUses: string) {
+    public addQuery(configFile: string, queryUses: string) {
         // The logic for parsing the string is based on what actions does for
         // parsing the 'uses' actions in the workflow file
         queryUses = queryUses.trim();
         if (queryUses === "") {
-            throw new Error(getQueryUsesBlank());
+            throw new Error(getQueryUsesInvalid(configFile));
         }
 
         // Check for the local path case before we start trying to parse the repository name
@@ -49,12 +56,12 @@ export class Config {
 
             // Check the file exists
             if (!fs.existsSync(absoluteQueryPath)) {
-                throw new Error(getLocalPathDoesNotExist(localQueryPath));
+                throw new Error(getLocalPathDoesNotExist(configFile, localQueryPath));
             }
 
             // Check the local path doesn't jump outside the repo using '..' or symlinks
             if (!(fs.realpathSync(absoluteQueryPath) + path.sep).startsWith(workspacePath + path.sep)) {
-                throw new Error(getLocalPathOutsideOfRepository(localQueryPath));
+                throw new Error(getLocalPathOutsideOfRepository(configFile, localQueryPath));
             }
 
             this.additionalQueries.push(absoluteQueryPath);
@@ -68,13 +75,13 @@ export class Config {
                 this.additionalSuites.push(suite);
                 return;
             } else {
-                throw new Error(getQueryUsesIncorrect(queryUses));
+                throw new Error(getQueryUsesInvalid(configFile, queryUses));
             }
         }
 
         let tok = queryUses.split('@');
         if (tok.length !== 2) {
-            throw new Error(getQueryUsesIncorrect(queryUses));
+            throw new Error(getQueryUsesInvalid(configFile, queryUses));
         }
 
         const ref = tok[1];
@@ -83,7 +90,7 @@ export class Config {
         // The second token is the repo
         // The rest is a path, if there is more than one token combine them to form the full path
         if (tok.length < 2) {
-            throw new Error(getQueryUsesIncorrect(queryUses));
+            throw new Error(getQueryUsesInvalid(configFile, queryUses));
         }
         if (tok.length > 3) {
             tok = [tok[0], tok[1], tok.slice(2).join('/')];
@@ -91,7 +98,7 @@ export class Config {
 
         // Check none of the parts of the repository name are empty
         if (tok[0].trim() === '' || tok[1].trim() === '') {
-            throw new Error(getQueryUsesIncorrect(queryUses));
+            throw new Error(getQueryUsesInvalid(configFile, queryUses));
         }
 
         let external = new ExternalQuery(tok[0] + '/' + tok[1], ref);
@@ -102,24 +109,47 @@ export class Config {
     }
 }
 
-export function getQueryUsesBlank(): string {
-    return '"uses" value for queries cannot be blank';
+export function getNameInvalid(configFile: string): string {
+    return getConfigFilePropertyError(configFile, NAME_PROPERTY, 'must be a non-empty string');
 }
 
-export function getQueryUsesIncorrect(queryUses: string): string {
-    return '"uses" value for queries must be a built-in suite (' + builtinSuites.join(' or ') +
-        '), a relative path, or of the form owner/repo@ref\n' +
-        'Found: ' + queryUses;
+export function getDisableDefaultQueriesInvalid(configFile: string): string {
+    return getConfigFilePropertyError(configFile, DISPLAY_DEFAULT_QUERIES_PROPERTY, 'must be a boolean');
 }
 
-export function getLocalPathOutsideOfRepository(localPath: string): string {
-    return 'Unable to use queries from local path "' + localPath +
-        '" as it is outside of the repository';
+export function getQueriesInvalid(configFile: string): string {
+    return getConfigFilePropertyError(configFile, QUERIES_PROPERTY, 'must be an array');
 }
 
-export function getLocalPathDoesNotExist(localPath: string): string {
-    return 'Unable to use queries from local path "' + localPath +
-        '" as the path does not exist in the repository';
+export function getQueryUsesInvalid(configFile: string, queryUses?: string): string {
+    return getConfigFilePropertyError(
+        configFile,
+        QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
+        'must be a built-in suite (' + builtinSuites.join(' or ') +
+            '), a relative path, or be of the form "owner/repo[/path]@ref"' +
+            (queryUses !== undefined ? '\n Found: ' + queryUses : ''));
+}
+
+export function getPathsIgnoreInvalid(configFile: string): string {
+    return getConfigFilePropertyError(configFile, PATHS_IGNORE_PROPERTY, 'must be an array of non-empty strings');
+}
+
+export function getPathsInvalid(configFile: string): string {
+    return getConfigFilePropertyError(configFile, PATHS_PROPERTY, 'must be an array of non-empty strings');
+}
+
+export function getLocalPathOutsideOfRepository(configFile: string, localPath: string): string {
+    return getConfigFilePropertyError(
+        configFile,
+        QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
+        'is invalid as the local path "' + localPath + '" is outside of the repository');
+}
+
+export function getLocalPathDoesNotExist(configFile: string, localPath: string): string {
+    return getConfigFilePropertyError(
+        configFile,
+        QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
+        'is invalid as the local path "' + localPath + '" does not exist in the repository');
 }
 
 export function getConfigFileOutsideWorkspaceErrorMessage(configFile: string): string {
@@ -128,6 +158,10 @@ export function getConfigFileOutsideWorkspaceErrorMessage(configFile: string): s
 
 export function getConfigFileDoesNotExistErrorMessage(configFile: string): string {
     return 'The configuration file "' + configFile + '" does not exist';
+}
+
+function getConfigFilePropertyError(configFile: string, property: string, error: string): string {
+    return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
 }
 
 function initConfig(): Config {
@@ -157,38 +191,56 @@ function initConfig(): Config {
 
     const parsedYAML = yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
 
-    if (parsedYAML.name && typeof parsedYAML.name === "string") {
-        config.name = parsedYAML.name;
+    if (NAME_PROPERTY in parsedYAML) {
+        if (typeof parsedYAML[NAME_PROPERTY] !== "string") {
+            throw new Error(getNameInvalid(configFile));
+        }
+        if (parsedYAML[NAME_PROPERTY].length === 0) {
+            throw new Error(getNameInvalid(configFile));
+        }
+        config.name = parsedYAML[NAME_PROPERTY];
     }
 
-    if (parsedYAML['disable-default-queries'] && typeof parsedYAML['disable-default-queries'] === "boolean") {
-        config.disableDefaultQueries = parsedYAML['disable-default-queries'];
+    if (DISPLAY_DEFAULT_QUERIES_PROPERTY in parsedYAML) {
+        if (typeof parsedYAML[DISPLAY_DEFAULT_QUERIES_PROPERTY] !== "boolean") {
+            throw new Error(getDisableDefaultQueriesInvalid(configFile));
+        }
+        config.disableDefaultQueries = parsedYAML[DISPLAY_DEFAULT_QUERIES_PROPERTY];
     }
 
-    const queries = parsedYAML.queries;
-    if (queries && queries instanceof Array) {
-        queries.forEach(query => {
-            if (typeof query.uses === "string") {
-                config.addQuery(query.uses);
+    if (QUERIES_PROPERTY in parsedYAML) {
+        if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
+            throw new Error(getQueriesInvalid(configFile));
+        }
+        parsedYAML[QUERIES_PROPERTY].forEach(query => {
+            if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
+                throw new Error(getQueryUsesInvalid(configFile));
             }
+            config.addQuery(configFile, query[QUERIES_USES_PROPERTY]);
         });
     }
 
-    const pathsIgnore = parsedYAML['paths-ignore'];
-    if (pathsIgnore && pathsIgnore instanceof Array) {
-        pathsIgnore.forEach(path => {
-            if (typeof path === "string") {
-                config.pathsIgnore.push(path);
+    if (PATHS_IGNORE_PROPERTY in parsedYAML) {
+        if (!(parsedYAML[PATHS_IGNORE_PROPERTY] instanceof Array)) {
+            throw new Error(getPathsIgnoreInvalid(configFile));
+        }
+        parsedYAML[PATHS_IGNORE_PROPERTY].forEach(path => {
+            if (typeof path !== "string" || path === '') {
+                throw new Error(getPathsIgnoreInvalid(configFile));
             }
+            config.pathsIgnore.push(path);
         });
     }
 
-    const paths = parsedYAML.paths;
-    if (paths && paths instanceof Array) {
-        paths.forEach(path => {
-            if (typeof path === "string") {
-                config.paths.push(path);
+    if (PATHS_PROPERTY in parsedYAML) {
+        if (!(parsedYAML[PATHS_PROPERTY] instanceof Array)) {
+            throw new Error(getPathsInvalid(configFile));
+        }
+        parsedYAML[PATHS_PROPERTY].forEach(path => {
+            if (typeof path !== "string" || path === '') {
+                throw new Error(getPathsInvalid(configFile));
             }
+            config.paths.push(path);
         });
     }
 

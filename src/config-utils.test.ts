@@ -18,7 +18,7 @@ function setInput(name: string, value: string | undefined) {
 
 test("load empty config", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_WORKSPACE'] = tmpDir;
+    process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     setInput('config-file', undefined);
@@ -31,7 +31,7 @@ test("load empty config", async t => {
 
 test("loading config saves config", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_WORKSPACE'] = tmpDir;
+    process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     const configFile = configUtils.getConfigFile();
@@ -50,7 +50,7 @@ test("loading config saves config", async t => {
 
 test("load input outside of workspace", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_WORKSPACE'] = tmpDir;
+    process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     setInput('config-file', '../input');
@@ -66,7 +66,7 @@ test("load input outside of workspace", async t => {
 
 test("load non-existent input", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_WORKSPACE'] = tmpDir;
+    process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     t.false(fs.existsSync(path.join(tmpDir, 'input')));
@@ -83,7 +83,7 @@ test("load non-existent input", async t => {
 
 test("load non-empty input", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_WORKSPACE'] = tmpDir;
+    process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     // Just create a generic config object with non-default values for all fields
@@ -129,7 +129,7 @@ function doInvalidInputTest(
 
   test("load invalid input - " + testName, async t => {
     return await util.withTmpDir(async tmpDir => {
-      process.env['RUNNER_WORKSPACE'] = tmpDir;
+      process.env['RUNNER_TEMP'] = tmpDir;
       process.env['GITHUB_WORKSPACE'] = tmpDir;
 
       const inputFile = path.join(tmpDir, 'input');

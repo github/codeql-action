@@ -131,18 +131,18 @@ export function getQueryUsesInvalid(configFile: string, queryUses?: string): str
 }
 
 export function getPathsIgnoreInvalid(configFile: string): string {
-    return getConfigFilePropertyError(configFile, PATHS_IGNORE_PROPERTY, 'must be an array of non-empty string');
+    return getConfigFilePropertyError(configFile, PATHS_IGNORE_PROPERTY, 'must be an array of non-empty strings');
 }
 
 export function getPathsInvalid(configFile: string): string {
-    return getConfigFilePropertyError(configFile, PATHS_PROPERTY, 'must be an array of non-empty string');
+    return getConfigFilePropertyError(configFile, PATHS_PROPERTY, 'must be an array of non-empty strings');
 }
 
 export function getLocalPathOutsideOfRepository(configFile: string, localPath: string): string {
     return getConfigFilePropertyError(
         configFile,
         QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
-        'is invalid as the local path "' + localPath + '" is output of the repository');
+        'is invalid as the local path "' + localPath + '" is outside of the repository');
 }
 
 export function getLocalPathDoesNotExist(configFile: string, localPath: string): string {

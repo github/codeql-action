@@ -1,0 +1,28 @@
+name: Update release branch
+on:
+  schedule:
+    - cron: 0 9 * * 1
+  repository_dispatch:
+    types: [update-release-branch]
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        # Need full history so we calculate diffs
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.5
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyGithub==1.51 requests
+
+    - name: Update release branch
+      run: python .github/update-release-branch.py ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }}

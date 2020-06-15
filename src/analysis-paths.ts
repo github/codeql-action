@@ -12,7 +12,7 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config, langu
     }
 
     function isInterpretedLanguage(language): boolean {
-        return language === 'javascript' && language === 'python';
+        return language === 'javascript' || language === 'python';
     }
 
     // Index include/exclude only work in javascript and python

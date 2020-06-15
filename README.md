@@ -1,6 +1,6 @@
 # CodeQL Action
 
-This action runs GitHub's industry-leading static analysis engine, CodeQL, against a repository's source code to find security vulnerabilities. It then automatically uploads the results to GitHub so they can be displayed in the repository's security tab. CodeQL runs an extensible set of [queries](https://github.com/semmle/ql), which have been developed by the community and the [GitHub Security Lab](https://securitylab.github.com/) to find common vulnerabilities in your code.
+This action runs GitHub's industry-leading static analysis engine, CodeQL, against a repository's source code to find security vulnerabilities. It then automatically uploads the results to GitHub so they can be displayed in the repository's security tab. CodeQL runs an extensible set of [queries](https://github.com/github/codeql), which have been developed by the community and the [GitHub Security Lab](https://securitylab.github.com/) to find common vulnerabilities in your code.
 
 ## License
 
@@ -9,6 +9,8 @@ This project is released under the [MIT License](LICENSE).
 The underlying CodeQL CLI, used in this action, is licensed under the [GitHub CodeQL Terms and Conditions](https://securitylab.github.com/tools/codeql/license). As such, this action may be used on open source projects hosted on GitHub, and on  private repositories that are owned by an organisation with GitHub Advanced Security enabled.
 
 ## Usage
+
+This is a short walkthrough, but for more information read [configuring code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning).
 
 To get code scanning results from CodeQL analysis on your repo you can use the following workflow as a template:
 
@@ -90,24 +92,9 @@ If you prefer to integrate this within an existing CI workflow, it should end up
   uses: github/codeql-action/analyze@v1
 ```
 
-### Actions triggers
+### Configuration file
 
-The CodeQL action should be run on `push` events, and on a `schedule`. `Push` events allow us to do a detailed analysis of the delta in a pull request, while the `schedule` event ensures that GitHub regularly scans the repository for the latest vulnerabilities, even if the repository becomes inactive. This action does not support the `pull_request` event.
-
-### Configuration
-
-You may optionally specify additional queries for CodeQL to execute by using a config file. The queries must belong to a [QL pack](https://help.semmle.com/codeql/codeql-cli/reference/qlpack-overview.html) and can be in your repository or any public repository. You can choose a single .ql file, a folder containing multiple .ql files, a .qls [query suite](https://help.semmle.com/codeql/codeql-cli/procedures/query-suites.html) file, or any combination of the above. To use queries stored in your repository or from other repositories use the same syntax as when [using an action](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsuses). Note that when using local queries starting with `./`, the path is relative to the root of the repository and not to the location of the config file.
-
-You can disable the default queries using `disable-default-queries: true`.
-
-You can choose to ignore some files or folders from the analysis, or include additional files/folders for analysis. This *only* works for Javascript and Python analysis.
-Identifying potential files for extraction:
-
-- Scans each folder that's defined as `paths` in turn, traversing subfolders, and looking for relevant files.
-- If it finds a subfolder that's defined as `paths-ignore`, stop traversing.
-- If a file or folder is both in `paths` and `paths-ignore`, the `paths-ignore` is ignored.
-
-Use the `config-file` parameter of the init action to enable the configuration file. For example:
+Use the `config-file` parameter of the `init` action to enable the configuration file. The value of `config-file` is the path to the configuration file you want to use. This example loads the configuration file `./.github/codeql/codeql-config.yml`.
 
 ```yaml
 - uses: github/codeql-action/init@v1
@@ -115,72 +102,8 @@ Use the `config-file` parameter of the init action to enable the configuration f
     config-file: ./.github/codeql/codeql-config.yml
 ```
 
-A config file looks like this:
-
-```yaml
-name: "My CodeQL config"
-
-disable-default-queries: true
-
-queries:
-  - name: In-repo queries (Runs the queries located in the my-queries folder of the repo)
-    uses: ./my-queries
-  - name: External Javascript QL pack (Runs a QL pack located in an external repo)
-    uses: /Semmle/ql/javascript/ql/src/Electron@master
-  - name: External query (Runs a single query located in an external QL pack)
-    uses: Semmle/ql/javascript/ql/src/AngularJS/DeadAngularJSEventListener.ql@master
-  - name: Select query suite (Runs a query suites)
-    uses: ./codeql-querypacks/complex-python-querypack/rootAndBar.qls
-
-paths:
-  - src/util.ts
-
-paths-ignore:
-  - src
-  - lib
-```
+The configuration file must be located within the local repository. For information on how to write a configuration file, see "[Using a custom configuration](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration)."
 
 ## Troubleshooting
 
-### Trouble with Go dependencies
-
-#### If you use a vendor directory
-
-Try passing
-
-```yaml
-env:
-  GOFLAGS: "-mod=vendor"
-```
-
-to `github/codeql-action/analyze`.
-
-#### If you do not use a vendor directory
-
-Dependencies on public repositories should just work. If you have dependencies on private repositories, one option is to use `git config` and a [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) to authenticate when downloading dependencies. Add a section like
-
-```yaml
-steps:
-  - name: Configure git private repo access
-    env:
-      TOKEN: ${{ secrets.GITHUB_PAT }}
-    run: |
-      git config --global url."https://${TOKEN}@github.com/foo/bar".insteadOf "https://github.com/foo/bar"
-      git config --global url."https://${TOKEN}@github.com/foo/baz".insteadOf "https://github.com/foo/baz"
-```
-
-before any codeql actions. A similar thing can also be done with an SSH key or deploy key.
-
-### C# using dotnet version 2 on linux
-
-This currently requires invoking `dotnet` with the `/p:UseSharedCompilation=false` flag. For example:
-
-```shell
-dotnet build /p:UseSharedCompilation=false
-```
-
-Version 3 does not require the additional flag.
-
-### Analysing Go together with other languages on `macos-latest`
-
-When running on macos it is currently not possible to analyze Go in conjunction with any of Java, C/C++, or C#. Each language can still be analyzed separately.
+Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).

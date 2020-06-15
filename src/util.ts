@@ -36,17 +36,6 @@ export function should_abort(actionName: string, requireInitActionHasRun: boolea
 }
 
 /**
- * Resolve the path to the workspace folder.
- */
-export function workspaceFolder(): string {
-    let workspaceFolder = process.env['RUNNER_WORKSPACE'];
-    if (!workspaceFolder)
-        workspaceFolder = path.resolve('..');
-
-    return workspaceFolder;
-}
-
-/**
  * Get an environment parameter, but throw an error if it is not set.
  */
 export function getRequiredEnvParam(paramName: string): string {

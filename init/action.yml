@@ -11,6 +11,8 @@ inputs:
     required: false
   token:
     default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
   config-file:
     description: Path of the config file to use
     required: false

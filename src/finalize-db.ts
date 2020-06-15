@@ -11,6 +11,27 @@ import * as sharedEnv from './shared-environment';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
 
+/**
+ * A list of queries from https://github.com/github/codeql that
+ * we don't want to run. Disabling them here is a quicker alternative to
+ * disabling them in the code scanning query suites. Queries should also
+ * be disabled in the suites, and removed from this list here once the
+ * bundle is updated to make those suite changes live.
+ *
+ * Format is a map from language to an array of path suffixes of .ql files.
+ */
+const DISABLED_BUILTIN_QUERIES: {[language: string]: string[]} = {
+  'csharp': [
+    'ql/src/Security Features/CWE-937/VulnerablePackage.ql',
+    'ql/src/Security Features/CWE-451/MissingXFrameOptions.ql',
+  ]
+};
+
+function queryIsDisabled(language, query): boolean {
+  return (DISABLED_BUILTIN_QUERIES[language] || [])
+    .some(disabledQuery => query.endsWith(disabledQuery));
+}
+
 function getMemoryFlag(): string {
   let memoryToUseMegaBytes: number;
   const memoryToUseString = core.getInput("ram");
@@ -125,7 +146,7 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
       if (res[language] === undefined) {
         res[language] = [];
       }
-      res[language].push(...Object.keys(<any>queries));
+      res[language].push(...Object.keys(queries).filter(q => !queryIsDisabled(language, q)));
     }
   }
 
@@ -136,7 +157,7 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
       if (res[language] === undefined) {
         res[language] = [];
       }
-      res[language].push(...Object.keys(<any>queries));
+      res[language].push(...Object.keys(queries));
     }
 
     const noDeclaredLanguage = resolveQueriesOutputObject.noDeclaredLanguage;

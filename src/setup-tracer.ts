@@ -108,13 +108,14 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
         totalLines.push(...lines.slice(2));
     }
 
-    const newLogFilePath = path.resolve(util.workspaceFolder(), 'compound-build-tracer.log');
-    const spec = path.resolve(util.workspaceFolder(), 'compound-spec');
-    const tempFolder = path.resolve(util.workspaceFolder(), 'compound-temp');
+    const tempFolder = util.getRequiredEnvParam('RUNNER_TEMP');
+    const newLogFilePath = path.resolve(tempFolder, 'compound-build-tracer.log');
+    const spec = path.resolve(tempFolder, 'compound-spec');
+    const compoundTempFolder = path.resolve(tempFolder, 'compound-temp');
     const newSpecContent = [newLogFilePath, totalCount.toString(10), ...totalLines];
 
     if (copyExecutables) {
-        env['SEMMLE_COPY_EXECUTABLES_ROOT'] = tempFolder;
+        env['SEMMLE_COPY_EXECUTABLES_ROOT'] = compoundTempFolder;
         envSize += 1;
     }
 
@@ -181,7 +182,7 @@ async function run() {
         const codeqlRam = process.env['CODEQL_RAM'] || '6500';
         core.exportVariable('CODEQL_RAM', codeqlRam);
 
-        const databaseFolder = path.resolve(util.workspaceFolder(), 'codeql_databases');
+        const databaseFolder = path.resolve(util.getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
         await io.mkdirP(databaseFolder);
 
         let tracedLanguages: { [key: string]: TracerConfig } = {};
@@ -238,8 +239,8 @@ async function run() {
         await util.reportActionFailed('init', error.message, error.stack);
         return;
     }
-    core.exportVariable(sharedEnv.CODEQL_ACTION_INIT_COMPLETED, 'true');
     await util.reportActionSucceeded('init');
+    core.exportVariable(sharedEnv.CODEQL_ACTION_INIT_COMPLETED, 'true');
 }
 
 run().catch(e => {

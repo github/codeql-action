@@ -60,7 +60,7 @@ export class Config {
             }
 
             // Check the local path doesn't jump outside the repo using '..' or symlinks
-            if (!(fs.realpathSync(absoluteQueryPath) + path.sep).startsWith(workspacePath + path.sep)) {
+            if (!(fs.realpathSync(absoluteQueryPath) + path.sep).startsWith(fs.realpathSync(workspacePath) + path.sep)) {
                 throw new Error(getLocalPathOutsideOfRepository(configFile, localQueryPath));
             }
 

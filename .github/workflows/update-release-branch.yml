@@ -3,6 +3,9 @@ on:
   schedule:
     - cron: 0 9 * * 1
   repository_dispatch:
+    # Example of how to trigger this:
+    # curl -H "Authorization: Bearer <token>" -X POST https://api.github.com/repos/github/codeql-action/dispatches -d '{"event_type":"update-release-branch"}'
+    # Replace <token> with a personal access token from this page: https://github.com/settings/tokens
     types: [update-release-branch]
 
 jobs:

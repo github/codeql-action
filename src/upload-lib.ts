@@ -3,6 +3,7 @@ import * as http from '@actions/http-client';
 import * as auth from '@actions/http-client/auth';
 import fileUrl from 'file-url';
 import * as fs from 'fs';
+import * as jsonschema from 'jsonschema';
 import * as path from 'path';
 import zlib from 'zlib';
 
@@ -123,10 +124,38 @@ export function countResultsInSarif(sarif: string): number {
     return numResults;
 }
 
+// Validates that the given file path refers to a valid SARIF file.
+// Returns a non-empty list of error message if the file is invalid,
+// otherwise returns the empty list if the file is valid.
+export function validateSarifFileSchema(sarifFilePath: string): boolean {
+    const sarif = JSON.parse(fs.readFileSync(sarifFilePath, 'utf8'));
+    const schema = JSON.parse(fs.readFileSync(__dirname + '/../src/sarif_v2.1.0_schema.json', 'utf8'));
+
+    const result = new jsonschema.Validator().validate(sarif, schema);
+    if (result.valid) {
+        return true;
+    } else {
+        // Set the failure message to the stacks of all the errors.
+        // This should be of a manageable size and may even give enough to fix the error.
+        const errorMessages = result.errors.map(e => "- " + e.stack);
+        core.setFailed("Unable to upload \"" + sarifFilePath + "\" as it is not valid SARIF:\n" + errorMessages.join("\n"));
+
+        // Also output the more verbose error messages in groups as these may be very large.
+        for (const error of result.errors) {
+            core.startGroup("Error details: " + error.stack);
+            core.info(JSON.stringify(error, null, 2));
+            core.endGroup();
+        }
+
+        return false;
+    }
+}
+
 // Uploads the given set of sarif files.
 // Returns true iff the upload occurred and succeeded
 async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
     core.startGroup("Uploading results");
+    core.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
 
     const sentinelEnvVar = "CODEQL_UPLOAD_SARIF";
     if (process.env[sentinelEnvVar]) {
@@ -135,6 +164,13 @@ async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
     }
     core.exportVariable(sentinelEnvVar, sentinelEnvVar);
 
+    // Validate that the files we were asked to upload are all valid SARIF files
+    for (const file of sarifFiles) {
+        if (!validateSarifFileSchema(file)) {
+            return false;
+        }
+    }
+
     const commitOid = await util.getCommitOid();
     const workflowRunIDStr = util.getRequiredEnvParam('GITHUB_RUN_ID');
     const ref = util.getRef();
@@ -142,7 +178,6 @@ async function uploadFiles(sarifFiles: string[]): Promise<boolean> {
     const analysisName = util.getRequiredEnvParam('GITHUB_WORKFLOW');
     const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT];
 
-    core.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
     let sarifPayload = combineSarifFiles(sarifFiles);
     sarifPayload = fingerprints.addFingerprints(sarifPayload);
 

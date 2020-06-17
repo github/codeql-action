@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as toolcache from '@actions/tool-cache';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
 export class CodeQLSetup {
     public dist: string;
@@ -29,17 +30,18 @@ export class CodeQLSetup {
 }
 
 export async function setupCodeQL(): Promise<CodeQLSetup> {
-    const version = '1.0.0';
+    const hash = crypto.createHash('sha256');
     const codeqlURL = core.getInput('tools', { required: true });
+    const codeqlURLHash = hash.update(codeqlURL).digest('hex');
 
     try {
-        let codeqlFolder = toolcache.find('CodeQL', version);
+        let codeqlFolder = toolcache.find('CodeQL', codeqlURLHash);
         if (codeqlFolder) {
             core.debug(`CodeQL found in cache ${codeqlFolder}`);
         } else {
             const codeqlPath = await toolcache.downloadTool(codeqlURL);
             const codeqlExtracted = await toolcache.extractTar(codeqlPath);
-            codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', version);
+            codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', codeqlURLHash);
         }
         return new CodeQLSetup(path.join(codeqlFolder, 'codeql'));
 

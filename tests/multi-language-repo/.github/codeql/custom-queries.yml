@@ -27,3 +27,7 @@ queries:
     uses: Anthophila/javascript-querypack/show_ifs2.ql@master
   - name: Python queries 
     uses: Anthophila/python-querypack/show_ifs2.ql@second-branch 
+
+
+paths-ignore:
+  - tests

@@ -1,0 +1,10 @@
+{
+  "files.exclude": {
+    // include the defaults from VS Code
+    "**/.git": true,
+    "**/.DS_Store": true,
+
+    // transpiled JavaScript
+    "lib": true,
+  }
+}

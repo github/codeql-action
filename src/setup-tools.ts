@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
 import * as toolcache from '@actions/tool-cache';
-import * as semver from 'semver';
 import * as path from 'path';
+import * as semver from 'semver';
 
 export class CodeQLSetup {
     public dist: string;
@@ -32,7 +32,7 @@ export class CodeQLSetup {
 export async function setupCodeQL(): Promise<CodeQLSetup> {
     try {
         const codeqlURL = core.getInput('tools', { required: true });
-        const codeqlURLVersion = getCodeQLURLVersion(codeqlURL);  
+        const codeqlURLVersion = getCodeQLURLVersion(codeqlURL);
 
         let codeqlFolder = toolcache.find('CodeQL', codeqlURLVersion);
         if (codeqlFolder) {
@@ -51,7 +51,7 @@ export async function setupCodeQL(): Promise<CodeQLSetup> {
 }
 
 export function getCodeQLURLVersion(url: string): string {
-    
+
     const match = url.match(/codeql-bundle-([\d+(\.\d+)]+)/);
     if (match === null || match.length < 2) {
         throw new Error(`Malformed tools url: ${url}. Version could not be inferred`);
@@ -61,9 +61,9 @@ export function getCodeQLURLVersion(url: string): string {
 
     if (!semver.valid(version)) {
         core.debug(`Bundle version ${version} is not in SemVer format. Will treat it as pre-release 0.0.0-${version}.`);
-        version = '0.0.0-' + version; 
+        version = '0.0.0-' + version;
     }
-    
+
     const s = semver.clean(version);
     if (!s) {
         throw new Error(`Malformed tools url ${url}. Version should be in SemVer format but have ${version} instead`);

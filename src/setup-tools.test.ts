@@ -1,10 +1,10 @@
-import test from 'ava';
-import * as path from 'path';
 import * as toolcache from '@actions/tool-cache';
-import * as util from './util';
+import test from 'ava';
 import nock from 'nock';
+import * as path from 'path';
 
 import * as setupTools from './setup-tools';
+import * as util from './util';
 
 test('download codeql bundle cache', async t => {
 
@@ -36,7 +36,7 @@ test('download codeql bundle cache', async t => {
 
         t.is(cachedVersions.length, 2);
     });
-})
+});
 
 test('parse codeql bundle url version', t => {
 
@@ -50,15 +50,17 @@ test('parse codeql bundle url version', t => {
     };
 
     for (const version in tests) {
+        if (tests.hasOwnProperty(version)) {
 
-        const expectedVersion = tests[version];
-        const url = `https://github.com/.../codeql-bundle-${version}/...`;
+            const expectedVersion = tests[version];
+            const url = `https://github.com/.../codeql-bundle-${version}/...`;
 
-        try {
-            const parsedVersion = setupTools.getCodeQLURLVersion(url);
-            t.assert(parsedVersion, expectedVersion);
-        } catch (e) {
-            t.fail(e.message);
+            try {
+                const parsedVersion = setupTools.getCodeQLURLVersion(url);
+                t.assert(parsedVersion, expectedVersion);
+            } catch (e) {
+                t.fail(e.message);
+            }
         }
     }
 });

@@ -51,16 +51,19 @@ export class Config {
             const localQueryPath = queryUses.slice(2);
             // Resolve the local path against the workspace so that when this is
             // passed to codeql it resolves to exactly the path we expect it to resolve to.
-            const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
-            const absoluteQueryPath = path.join(workspacePath, localQueryPath);
+            const workspacePath = fs.realpathSync(util.getRequiredEnvParam('GITHUB_WORKSPACE'));
+            let absoluteQueryPath = path.join(workspacePath, localQueryPath);
 
             // Check the file exists
             if (!fs.existsSync(absoluteQueryPath)) {
                 throw new Error(getLocalPathDoesNotExist(configFile, localQueryPath));
             }
 
+            // Call this after checking file exists, because it'll fail if file doesn't exist
+            absoluteQueryPath = fs.realpathSync(absoluteQueryPath);
+
             // Check the local path doesn't jump outside the repo using '..' or symlinks
-            if (!(fs.realpathSync(absoluteQueryPath) + path.sep).startsWith(workspacePath + path.sep)) {
+            if (!(absoluteQueryPath + path.sep).startsWith(workspacePath + path.sep)) {
                 throw new Error(getLocalPathOutsideOfRepository(configFile, localQueryPath));
             }
 

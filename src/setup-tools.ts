@@ -52,7 +52,7 @@ export async function setupCodeQL(): Promise<CodeQLSetup> {
 
 export function getCodeQLURLVersion(url: string): string {
 
-    const match = url.match(/codeql-bundle-([\d+(\.\d+)]+)/);
+    const match = url.match(/\/codeql-bundle-(.*)\//);
     if (match === null || match.length < 2) {
         throw new Error(`Malformed tools url: ${url}. Version could not be inferred`);
     }

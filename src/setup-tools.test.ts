@@ -57,7 +57,7 @@ test('parse codeql bundle url version', t => {
 
             try {
                 const parsedVersion = setupTools.getCodeQLURLVersion(url);
-                t.assert(parsedVersion, expectedVersion);
+                t.deepEqual(parsedVersion, expectedVersion);
             } catch (e) {
                 t.fail(e.message);
             }

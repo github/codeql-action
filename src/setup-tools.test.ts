@@ -49,18 +49,14 @@ test('parse codeql bundle url version', t => {
         '1.2.3-beta.1': '1.2.3-beta.1',
     };
 
-    for (const version in tests) {
-        if (tests.hasOwnProperty(version)) {
+    for (const [version, expectedVersion] of Object.entries(tests)) {
+        const url = `https://github.com/.../codeql-bundle-${version}/...`;
 
-            const expectedVersion = tests[version];
-            const url = `https://github.com/.../codeql-bundle-${version}/...`;
-
-            try {
-                const parsedVersion = setupTools.getCodeQLURLVersion(url);
-                t.deepEqual(parsedVersion, expectedVersion);
-            } catch (e) {
-                t.fail(e.message);
-            }
+        try {
+            const parsedVersion = setupTools.getCodeQLURLVersion(url);
+            t.deepEqual(parsedVersion, expectedVersion);
+        } catch (e) {
+            t.fail(e.message);
         }
     }
 });

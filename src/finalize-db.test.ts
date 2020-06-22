@@ -8,7 +8,7 @@ import {
 
 test('getMemoryFlag() should return the correct --ram flag', t => {
 
-    const totalMem = os.totalmem() / (1024 * 1024);
+    const totalMem = Math.floor(os.totalmem() / (1024 * 1024));
 
     const tests = {
         "": `--ram=${totalMem - 256}`,

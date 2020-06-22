@@ -42,7 +42,8 @@ test('getThreadsFlag() should return the correct --threads flag', t => {
   const tests = {
     "0": "--threads=0",
     "1": "--threads=1",
-    [`${numCpus + 1}`]: `--threads=${numCpus}`
+    [`${numCpus + 1}`]: `--threads=${numCpus}`,
+    [`${-numCpus - 1}`]: `--threads=${-numCpus}`
   };
 
   for (const [input, expectedFlag] of Object.entries(tests)) {
@@ -55,7 +56,7 @@ test('getThreadsFlag() should return the correct --threads flag', t => {
 });
 
 test('getThreadsFlag() throws if the ram input is < 0 or NaN', t => {
-  for (const input of ["-1", "hello!"]) {
+  for (const input of ["hello!"]) {
     process.env['INPUT_THREADS'] = input;
     t.throws(util.getThreadsFlag);
   }

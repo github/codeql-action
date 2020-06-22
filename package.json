@@ -22,15 +22,17 @@
     "@actions/exec": "^1.0.1",
     "@actions/http-client": "^1.0.8",
     "@actions/io": "^1.0.1",
-    "@actions/tool-cache": "^1.1.2",
+    "@actions/tool-cache": "^1.5.5",
     "@octokit/rest": "^17.1.0",
     "console-log-level": "^1.4.1",
     "file-url": "^3.0.0",
     "fs": "0.0.1-security",
     "js-yaml": "^3.13.1",
+    "jsonschema": "1.2.6",
     "long": "^4.0.0",
     "md5": "^2.2.1",
     "path": "^0.12.7",
+    "semver": "^7.3.2",
     "zlib": "^1.0.5"
   },
   "//": [
@@ -40,11 +42,14 @@
     "@ava/typescript": "1.1.1",
     "@types/jszip": "^3.1.6",
     "@types/long": "4.0.0",
+    "@types/nock": "^11.1.0",
     "@types/node": "^12.0.4",
+    "@types/semver": "^7.2.0",
     "ava": "3.8.1",
     "micromatch": "4.0.2",
+    "nock": "^12.0.3",
+    "removeNPMAbsolutePaths": "2.0.0",
     "tslint": "^6.1.0",
-    "typescript": "^3.7.5",
-    "removeNPMAbsolutePaths": "2.0.0"
+    "typescript": "^3.7.5"
   }
 }

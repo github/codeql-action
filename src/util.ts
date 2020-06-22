@@ -393,3 +393,48 @@ export async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promi
     fs.rmdirSync(tmpDir, { recursive: true });
     return result;
 }
+
+/**
+ * Get the value specified for the `ram` input. If no value was specified, the
+ * total available memory will be used minus 256 MB.
+ *
+ * @returns string
+ */
+export function getMemoryFlag(): string {
+    let memoryToUseMegaBytes: number;
+    const memoryToUseString = core.getInput("ram");
+    if (memoryToUseString) {
+      memoryToUseMegaBytes = Number(memoryToUseString);
+      if (Number.isNaN(memoryToUseMegaBytes) || memoryToUseMegaBytes <= 0) {
+        throw new Error("Invalid RAM setting \"" + memoryToUseString + "\", specified.");
+      }
+    } else {
+      const totalMemoryBytes = os.totalmem();
+      const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
+      const systemReservedMemoryMegaBytes = 256;
+      memoryToUseMegaBytes = totalMemoryMegaBytes - systemReservedMemoryMegaBytes;
+    }
+    return "--ram=" + Math.floor(memoryToUseMegaBytes);
+  }
+
+  /**
+   * Get the value specified for the `threads` input. The value defaults to 1.
+   * The value will be capped to the number of available CPUs.
+   *
+   * @returns string
+   */
+export function getThreadsFlag(): string {
+    let numThreads = 1;
+    const numThreadsString = core.getInput("threads");
+    if (numThreadsString) {
+      numThreads = Number(numThreadsString);
+      if (Number.isNaN(numThreads) || numThreads < 0) {
+        throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
+      }
+      const maxThreads = os.cpus().length;
+      if (numThreads > maxThreads) {
+        numThreads = maxThreads;
+      }
+    }
+    return `--threads=${numThreads}`;
+  }

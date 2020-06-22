@@ -20,7 +20,7 @@ import * as util from './util';
  *
  * Format is a map from language to an array of path suffixes of .ql files.
  */
-const DISABLED_BUILTIN_QUERIES: {[language: string]: string[]} = {
+const DISABLED_BUILTIN_QUERIES: { [language: string]: string[]; } = {
   'csharp': [
     'ql/src/Security Features/CWE-937/VulnerablePackage.ql',
     'ql/src/Security Features/CWE-451/MissingXFrameOptions.ql',
@@ -32,7 +32,7 @@ function queryIsDisabled(language, query): boolean {
     .some(disabledQuery => query.endsWith(disabledQuery));
 }
 
-function getMemoryFlag(): string {
+export function getMemoryFlag(): string {
   let memoryToUseMegaBytes: number;
   const memoryToUseString = core.getInput("ram");
   if (memoryToUseString) {
@@ -47,6 +47,22 @@ function getMemoryFlag(): string {
     memoryToUseMegaBytes = totalMemoryMegaBytes - systemReservedMemoryMegaBytes;
   }
   return "--ram=" + Math.floor(memoryToUseMegaBytes);
+}
+
+export function getThreadsFlag(): string {
+  let numThreads = 1;
+  const numThreadsString = core.getInput("threads");
+  if (numThreadsString) {
+    numThreads = Number(numThreadsString);
+    if (Number.isNaN(numThreads) || numThreads < 0) {
+      throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
+    }
+    const maxThreads = os.cpus().length;
+    if (numThreads > maxThreads) {
+      numThreads = maxThreads;
+    }
+  }
+  return `--threads=${numThreads}`;
 }
 
 async function createdDBForScannedLanguages(codeqlCmd: string, databaseFolder: string) {
@@ -93,14 +109,14 @@ async function finalizeDatabaseCreation(codeqlCmd: string, databaseFolder: strin
 interface ResolveQueriesOutput {
   byLanguage: {
     [language: string]: {
-      [queryPath: string]: {}
-    }
+      [queryPath: string]: {};
+    };
   };
   noDeclaredLanguage: {
-    [queryPath: string]: {}
+    [queryPath: string]: {};
   };
   multipleDeclaredLanguages: {
-    [queryPath: string]: {}
+    [queryPath: string]: {};
   };
 }
 
@@ -116,11 +132,11 @@ async function runResolveQueries(codeqlCmd: string, queries: string[]): Promise<
 
   await exec.exec(
     codeqlCmd, [
-      'resolve',
-      'queries',
-      ...queries,
-      '--format=bylanguage'
-    ],
+    'resolve',
+    'queries',
+    ...queries,
+    '--format=bylanguage'
+  ],
     options);
 
   return JSON.parse(output);
@@ -201,6 +217,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
       'database',
       'analyze',
       getMemoryFlag(),
+      getThreadsFlag(),
       path.join(databaseFolder, database),
       '--format=sarif-latest',
       '--output=' + sarifFile,

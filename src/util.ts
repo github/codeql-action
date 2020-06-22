@@ -395,8 +395,8 @@ export async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promi
 }
 
 /**
- * Get the value specified for the `ram` input. If no value was specified, the
- * total available memory will be used minus 256 MB.
+ * Get the codeql `--ram` flag as configured by the `ram` input. If no value was
+ * specified, the total available memory will be used minus 256 MB.
  *
  * @returns string
  */
@@ -418,8 +418,8 @@ export function getMemoryFlag(): string {
 }
 
 /**
- * Get the value specified for the `threads` input. The value defaults to 1.
- * The value will be capped to the number of available CPUs.
+ * Get the codeql `--threads` value specified for the `threads` input. The value
+ * defaults to 1. The value will be capped to the number of available CPUs.
  *
  * @returns string
  */
@@ -428,12 +428,16 @@ export function getThreadsFlag(): string {
     const numThreadsString = core.getInput("threads");
     if (numThreadsString) {
         numThreads = Number(numThreadsString);
-        if (Number.isNaN(numThreads) || numThreads < 0) {
+        if (Number.isNaN(numThreads)) {
             throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
         }
         const maxThreads = os.cpus().length;
         if (numThreads > maxThreads) {
             numThreads = maxThreads;
+        }
+        const minThreads = -maxThreads;
+        if (numThreads < minThreads) {
+            numThreads = minThreads;
         }
     }
     return `--threads=${numThreads}`;

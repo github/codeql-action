@@ -45,8 +45,8 @@ def open_pr(repo, all_commits, short_master_sha, branch_name):
   print('Found ' + str(len(commits_without_pull_requests)) + ' commits not in a pull request')
 
   # Sort PRs and commits by age
-  sorted(pull_requests, key=lambda pr: pr.number)
-  sorted(commits_without_pull_requests, key=lambda c: c.commit.author.date)
+  pull_requests = sorted(pull_requests, key=lambda pr: pr.number)
+  commits_without_pull_requests = sorted(commits_without_pull_requests, key=lambda c: c.commit.author.date)
   
   # Start constructing the body text
   body = 'Merging ' + short_master_sha + ' into ' + LATEST_RELEASE_BRANCH

@@ -7,7 +7,7 @@ import sys
 
 # The branch being merged from.
 # This is the one that contains day-to-day development work.
-MASTER_BRANCH = 'master'
+MAIN_BRANCH = 'main'
 # The branch being merged into.
 # This is the release branch that users reference.
 LATEST_RELEASE_BRANCH = 'v1'
@@ -28,7 +28,7 @@ def branch_exists_on_remote(branch_name):
   return run_git('ls-remote', '--heads', ORIGIN, branch_name).strip() != ''
 
 # Opens a PR from the given branch to the release branch
-def open_pr(repo, all_commits, short_master_sha, branch_name):
+def open_pr(repo, all_commits, short_main_sha, branch_name):
   # Sort the commits into the pull requests that introduced them,
   # and any commits that don't have a pull request
   pull_requests = []
@@ -49,7 +49,7 @@ def open_pr(repo, all_commits, short_master_sha, branch_name):
   sorted(commits_without_pull_requests, key=lambda c: c.commit.author.date)
   
   # Start constructing the body text
-  body = 'Merging ' + short_master_sha + ' into ' + LATEST_RELEASE_BRANCH
+  body = 'Merging ' + short_main_sha + ' into ' + LATEST_RELEASE_BRANCH
 
   conductor = get_conductor(repo, pull_requests, commits_without_pull_requests)
   body += '\n\nConductor for this PR is @' + conductor
@@ -71,7 +71,7 @@ def open_pr(repo, all_commits, short_master_sha, branch_name):
       body += ' - ' + get_truncated_commit_message(commit)
       body += ' (@' + commit.author.login + ')'
 
-  title = 'Merge ' + MASTER_BRANCH + ' into ' + LATEST_RELEASE_BRANCH
+  title = 'Merge ' + MAIN_BRANCH + ' into ' + LATEST_RELEASE_BRANCH
 
   # Create the pull request
   pr = repo.create_pull(title=title, body=body, head=branch_name, base=LATEST_RELEASE_BRANCH)
@@ -90,12 +90,12 @@ def get_conductor(repo, pull_requests, other_commits):
   # Otherwise take the author of the latest commit
   return other_commits[-1].author.login
 
-# Gets a list of the SHAs of all commits that have happened on master
+# Gets a list of the SHAs of all commits that have happened on main
 # since the release branched off.
 # This will not include any commits that exist on the release branch
-# that aren't on master.
+# that aren't on main.
 def get_commit_difference(repo):
-  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + LATEST_RELEASE_BRANCH + '...' + MASTER_BRANCH).strip().split('\n')
+  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + LATEST_RELEASE_BRANCH + '...' + MAIN_BRANCH).strip().split('\n')
 
   # Convert to full-fledged commit objects
   commits = [repo.get_commit(c) for c in commits]
@@ -115,7 +115,7 @@ def get_truncated_commit_message(commit):
   else:
     return message
 
-# Converts a commit into the PR that introduced it to the master branch.
+# Converts a commit into the PR that introduced it to the main branch.
 # Returns the PR object, or None if no PR could be found.
 def get_pr_for_commit(repo, commit):
   prs = commit.get_pulls()
@@ -144,20 +144,20 @@ def main():
   repo = Github(github_token).get_repo(repository_nwo)
 
   # Print what we intend to go
-  print('Considering difference between ' + MASTER_BRANCH + ' and ' + LATEST_RELEASE_BRANCH)
-  short_master_sha = run_git('rev-parse', '--short', MASTER_BRANCH).strip()
-  print('Current head of ' + MASTER_BRANCH + ' is ' + short_master_sha)
+  print('Considering difference between ' + MAIN_BRANCH + ' and ' + LATEST_RELEASE_BRANCH)
+  short_main_sha = run_git('rev-parse', '--short', MAIN_BRANCH).strip()
+  print('Current head of ' + MAIN_BRANCH + ' is ' + short_main_sha)
 
   # See if there are any commits to merge in
   commits = get_commit_difference(repo)
   if len(commits) == 0:
-    print('No commits to merge from ' + MASTER_BRANCH + ' to ' + LATEST_RELEASE_BRANCH)
+    print('No commits to merge from ' + MAIN_BRANCH + ' to ' + LATEST_RELEASE_BRANCH)
     return
 
   # The branch name is based off of the name of branch being merged into
   # and the SHA of the branch being merged from. Thus if the branch already
   # exists we can assume we don't need to recreate it.
-  new_branch_name = 'update-' + LATEST_RELEASE_BRANCH + '-' + short_master_sha
+  new_branch_name = 'update-' + LATEST_RELEASE_BRANCH + '-' + short_main_sha
   print('Branch name is ' + new_branch_name)
 
   # Check if the branch already exists. If so we can abort as this script
@@ -168,11 +168,11 @@ def main():
   
   # Create the new branch and push it to the remote
   print('Creating branch ' + new_branch_name)
-  run_git('checkout', '-b', new_branch_name, MASTER_BRANCH)
+  run_git('checkout', '-b', new_branch_name, MAIN_BRANCH)
   run_git('push', ORIGIN, new_branch_name)
 
   # Open a PR to update the branch
-  open_pr(repo, commits, short_master_sha, new_branch_name)
+  open_pr(repo, commits, short_main_sha, new_branch_name)
 
 if __name__ == '__main__':
   main()

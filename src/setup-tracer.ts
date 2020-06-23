@@ -149,9 +149,9 @@ async function run() {
         }
 
         core.startGroup('Load language configuration');
-        
+
         const config = await configUtils.loadConfig();
-        
+
         languages = await util.getLanguages();
         // If the languages parameter was not given and no languages were
         // detected then fail here as this is a workflow configuration error.
@@ -163,10 +163,10 @@ async function run() {
         analysisPaths.includeAndExcludeAnalysisPaths(config, languages);
 
         core.endGroup();
-    
+
     } catch (e) {
         core.setFailed(e.message);
-        await util.reportActionAborted('init', e.message, );
+        await util.reportActionAborted('init', e.message);
         return;
     }
 

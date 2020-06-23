@@ -193,7 +193,13 @@ async function run() {
       const languageDatabase = path.join(databaseFolder, language);
 
       // Init language database
-      await exec.exec(codeqlSetup.cmd, ['database', 'init', languageDatabase, '--language=' + language, '--source-root=' + sourceRoot]);
+      await exec.exec(codeqlSetup.cmd, [
+        'database',
+        'init',
+        languageDatabase,
+        '--language=' + language,
+        '--source-root=' + sourceRoot,
+      ]);
       // TODO: add better detection of 'traced languages' instead of using a hard coded list
       if (['cpp', 'java', 'csharp'].includes(language)) {
         const config: TracerConfig = await tracerConfig(codeqlSetup, languageDatabase);

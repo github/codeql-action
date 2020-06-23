@@ -139,20 +139,20 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
     return { env, spec };
 }
 
-
-
 async function run() {
+
+    let languages: string[];
+
     try {
         if (util.should_abort('init', false) || !await util.reportActionStarting('init')) {
             return;
         }
 
-        // The config file MUST be parsed in the init action
-        const config = await configUtils.loadConfig();
-
         core.startGroup('Load language configuration');
-
-        const languages = await util.getLanguages();
+        
+        const config = await configUtils.loadConfig();
+        
+        languages = await util.getLanguages();
         // If the languages parameter was not given and no languages were
         // detected then fail here as this is a workflow configuration error.
         if (languages.length === 0) {
@@ -160,9 +160,17 @@ async function run() {
             return;
         }
 
-        core.endGroup();
-
         analysisPaths.includeAndExcludeAnalysisPaths(config, languages);
+
+        core.endGroup();
+    
+    } catch (e) {
+        core.setFailed(e.message);
+        await util.reportActionAborted('init', e.message, );
+        return;
+    }
+
+    try {
 
         const sourceRoot = path.resolve();
 

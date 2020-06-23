@@ -8,7 +8,7 @@ function wrapOutput(context: TestContext) {
       context.testOutput += str;
     }
     return true;
-  }
+  };
 }
 
 export function silenceDebugOutput(test: TestInterface<any>) {

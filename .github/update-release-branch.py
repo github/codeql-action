@@ -7,7 +7,7 @@ import sys
 
 # The branch being merged from.
 # This is the one that contains day-to-day development work.
-MASTER_BRANCH = 'master'
+MASTER_BRANCH = 'main'
 # The branch being merged into.
 # This is the release branch that users reference.
 LATEST_RELEASE_BRANCH = 'v1'

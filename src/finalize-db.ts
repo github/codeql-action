@@ -2,7 +2,6 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as io from '@actions/io';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 
 import * as configUtils from './config-utils';
@@ -30,23 +29,6 @@ const DISABLED_BUILTIN_QUERIES: {[language: string]: string[]} = {
 function queryIsDisabled(language, query): boolean {
   return (DISABLED_BUILTIN_QUERIES[language] || [])
     .some(disabledQuery => query.endsWith(disabledQuery));
-}
-
-function getMemoryFlag(): string {
-  let memoryToUseMegaBytes: number;
-  const memoryToUseString = core.getInput("ram");
-  if (memoryToUseString) {
-    memoryToUseMegaBytes = Number(memoryToUseString);
-    if (Number.isNaN(memoryToUseMegaBytes) || memoryToUseMegaBytes <= 0) {
-      throw new Error("Invalid RAM setting \"" + memoryToUseString + "\", specified.");
-    }
-  } else {
-    const totalMemoryBytes = os.totalmem();
-    const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
-    const systemReservedMemoryMegaBytes = 256;
-    memoryToUseMegaBytes = totalMemoryMegaBytes - systemReservedMemoryMegaBytes;
-  }
-  return "--ram=" + Math.floor(memoryToUseMegaBytes);
 }
 
 async function createdDBForScannedLanguages(codeqlCmd: string, databaseFolder: string) {
@@ -200,7 +182,8 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
     await exec.exec(codeqlCmd, [
       'database',
       'analyze',
-      getMemoryFlag(),
+      util.getMemoryFlag(),
+      util.getThreadsFlag(),
       path.join(databaseFolder, database),
       '--format=sarif-latest',
       '--output=' + sarifFile,

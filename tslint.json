@@ -2,6 +2,9 @@
     "extends": [
         "tslint"
     ],
+    "rulesDirectory": [
+        "./node_modules/tslint-eslint-rules/dist/rules/"
+    ],
     "rules": {
         "align": [
             true,
@@ -17,9 +20,9 @@
         "curly": false,
         "eofline": true,
         "forin": true,
-        "indent": [
+        "ter-indent": [
             true,
-            "spaces"
+            2
         ],
         "jsdoc-format": true,
         "label-position": true,

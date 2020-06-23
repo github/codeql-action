@@ -1,13 +1,10 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import * as http from '@actions/http-client';
-import * as auth from '@actions/http-client/auth';
-import * as octokit from '@octokit/rest';
-import consoleLogLevel from 'console-log-level';
 import * as fs from "fs";
 import * as os from 'os';
 import * as path from 'path';
 
+import * as api from './api-client';
 import * as sharedEnv from './shared-environment';
 
 /**
@@ -68,12 +65,7 @@ async function getLanguagesInRepo(): Promise<string[]> {
     let repo = repo_nwo[1];
 
     core.debug(`GitHub repo ${owner} ${repo}`);
-    let ok = new octokit.Octokit({
-      auth: core.getInput('token'),
-      userAgent: "CodeQL Action",
-      log: consoleLogLevel({ level: "debug" })
-    });
-    const response = await ok.request("GET /repos/:owner/:repo/languages", ({
+    const response = await api.client.request("GET /repos/:owner/:repo/languages", ({
       owner,
       repo
     }));
@@ -157,22 +149,16 @@ async function getWorkflowPath(): Promise<string> {
   const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
-  const run_id = getRequiredEnvParam('GITHUB_RUN_ID');
+  const run_id = Number(getRequiredEnvParam('GITHUB_RUN_ID'));
 
-  const ok = new octokit.Octokit({
-    auth: core.getInput('token'),
-    userAgent: "CodeQL Action",
-    log: consoleLogLevel({ level: 'debug' })
-  });
-
-  const runsResponse = await ok.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
+  const runsResponse = await api.client.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
     owner,
     repo,
     run_id
   });
   const workflowUrl = runsResponse.data.workflow_url;
 
-  const workflowResponse = await ok.request('GET ' + workflowUrl);
+  const workflowResponse = await api.client.request('GET ' + workflowUrl);
 
   return workflowResponse.data.path;
 }
@@ -297,23 +283,21 @@ async function createStatusReport(
 /**
  * Send a status report to the code_scanning/analysis/status endpoint.
  *
- * Returns the status code of the response to the status request, or
- * undefined if the given statusReport is undefined or no response was
- * received.
+ * Returns the status code of the response to the status request.
  */
-async function sendStatusReport(statusReport: StatusReport): Promise<number | undefined> {
+async function sendStatusReport(statusReport: StatusReport): Promise<number> {
   const statusReportJSON = JSON.stringify(statusReport);
 
   core.debug('Sending status report: ' + statusReportJSON);
 
-  const githubToken = core.getInput('token');
-  const ph: auth.BearerCredentialHandler = new auth.BearerCredentialHandler(githubToken);
-  const client = new http.HttpClient('Code Scanning : Status Report', [ph]);
-  const url = 'https://api.github.com/repos/' + process.env['GITHUB_REPOSITORY']
-    + '/code-scanning/analysis/status';
-  const res: http.HttpClientResponse = await client.put(url, statusReportJSON);
-
-  return res.message?.statusCode;
+  const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
+  const [owner, repo] = nwo.split("/");
+  const statusResponse = await api.client.request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
+    owner: owner,
+    repo: repo,
+    data: statusReportJSON,
+  });
+  return statusResponse.status;
 }
 
 /**

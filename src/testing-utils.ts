@@ -34,23 +34,23 @@ export function silenceDebugOutput(test: TestInterface<any>) {
   const typedTest = test as TestInterface<TestContext>;
 
   typedTest.beforeEach(t => {
-      t.context.testOutput = "";
+    t.context.testOutput = "";
 
-      const processStdoutWrite = process.stdout.write.bind(process.stdout);
-      t.context.stdoutWrite = processStdoutWrite;
-      process.stdout.write = wrapOutput(t.context) as any;
+    const processStdoutWrite = process.stdout.write.bind(process.stdout);
+    t.context.stdoutWrite = processStdoutWrite;
+    process.stdout.write = wrapOutput(t.context) as any;
 
-      const processStderrWrite = process.stderr.write.bind(process.stderr);
-      t.context.stderrWrite = processStderrWrite;
-      process.stderr.write = wrapOutput(t.context) as any;
+    const processStderrWrite = process.stderr.write.bind(process.stderr);
+    t.context.stderrWrite = processStderrWrite;
+    process.stderr.write = wrapOutput(t.context) as any;
   });
 
   typedTest.afterEach.always(t => {
-      process.stdout.write = t.context.stdoutWrite;
-      process.stderr.write = t.context.stderrWrite;
+    process.stdout.write = t.context.stdoutWrite;
+    process.stderr.write = t.context.stderrWrite;
 
-      if (!t.passed) {
-        process.stdout.write(t.context.testOutput);
-      }
+    if (!t.passed) {
+      process.stdout.write(t.context.testOutput);
+    }
   });
 }

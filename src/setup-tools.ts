@@ -17,7 +17,7 @@ export class CodeQLSetup {
     if (process.platform === 'win32') {
       this.platform = 'win64';
       if (this.cmd.endsWith('codeql')) {
-        this.cmd += ".cmd";
+        this.cmd += ".exe";
       }
     } else if (process.platform === 'linux') {
       this.platform = 'linux64';

@@ -156,7 +156,7 @@ async function run() {
     // If the languages parameter was not given and no languages were
     // detected then fail here as this is a workflow configuration error.
     if (languages.length === 0) {
-      throw new Error("Did not detect any languages to analyze. Please update input in workflow.")
+      throw new Error("Did not detect any languages to analyze. Please update input in workflow.");
     }
 
     analysisPaths.includeAndExcludeAnalysisPaths(config, languages);

@@ -389,7 +389,11 @@ export function getToolNames(sarifContents: string): string[] {
 // Mostly intended for use within tests.
 export async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codeql-action-'));
-  const result = await body(tmpDir);
+  const realSubdir = path.join(tmpDir, 'real');
+  fs.mkdirSync(realSubdir);
+  const symlinkSubdir = path.join(tmpDir, 'symlink');
+  fs.symlinkSync(realSubdir, symlinkSubdir, 'dir');
+  const result = await body(symlinkSubdir);
   fs.rmdirSync(tmpDir, { recursive: true });
   return result;
 }

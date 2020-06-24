@@ -366,6 +366,16 @@ export async function reportActionSucceeded(action: string) {
 }
 
 /**
+ * Report that an action has been aborted.
+ *
+ * Note that the started_at date is always that of the `init` action, since
+ * this is likely to give a more useful duration when inspecting events.
+ */
+export async function reportActionAborted(action: string, cause?: string) {
+  await sendStatusReport(await createStatusReport(action, 'aborted', cause));
+}
+
+/**
  * Get the array of all the tool names contained in the given sarif contents.
  *
  * Returns an array of unique string tool names.

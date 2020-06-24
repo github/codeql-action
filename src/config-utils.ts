@@ -250,6 +250,15 @@ function initConfig(): Config {
   return config;
 }
 
+export function isLocal(configPath: string): boolean {
+  // If the path starts with ./, look locally
+  if (configPath.indexOf("./") === 0) {
+    return true;
+  }
+
+  return (configPath.indexOf("@") === -1);
+}
+
 function getConfigFolder(): string {
   return util.getRequiredEnvParam('RUNNER_TEMP');
 }

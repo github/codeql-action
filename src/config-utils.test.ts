@@ -152,6 +152,18 @@ test("Octokit not used when reading local config", async t => {
   });
 });
 
+test("Remote and local configuration paths correctly identified", t => {
+  // If the path starts with ./, look locally
+  t.assert(configUtils.isLocal('./file'));
+  t.assert(configUtils.isLocal('./file@name'));
+
+  // Otherwise, if the path contains @ (branch specifier), assume it's a remote repo
+  t.false(configUtils.isLocal('octo-org/codeql-config/config.yaml@main'));
+
+  // Otherwise look locally (this is the fallback)
+  t.assert(configUtils.isLocal('file'));
+});
+
 function doInvalidInputTest(
   testName: string,
   inputFileContents: string,

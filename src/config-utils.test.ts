@@ -3,7 +3,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as configUtils from './config-utils';
+import {silenceDebugOutput} from './testing-utils';
 import * as util from './util';
+
+silenceDebugOutput(test);
 
 function setInput(name: string, value: string | undefined) {
   // Transformation copied from

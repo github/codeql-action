@@ -372,7 +372,7 @@ export async function reportActionSucceeded(action: string) {
  * this is likely to give a more useful duration when inspecting events.
  */
 export async function reportActionAborted(action: string, cause?: string) {
-  await sendStatusReport(await createStatusReport(action, 'abort', cause));
+  await sendStatusReport(await createStatusReport(action, 'aborted', cause));
 }
 
 /**

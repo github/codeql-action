@@ -2,6 +2,9 @@ import test from 'ava';
 
 import * as analysisPaths from './analysis-paths';
 import * as configUtils from './config-utils';
+import {silenceDebugOutput} from './testing-utils';
+
+silenceDebugOutput(test);
 
 test("emptyPaths", async t => {
   let config = new configUtils.Config();

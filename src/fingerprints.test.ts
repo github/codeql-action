@@ -4,6 +4,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as fingerprints from './fingerprints';
+import {silenceDebugOutput} from './testing-utils';
+
+silenceDebugOutput(test);
 
 function testHash(t: ava.Assertions, input: string, expectedHashes: string[]) {
   let index = 0;

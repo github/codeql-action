@@ -71,7 +71,7 @@ async function uploadPayload(payload): Promise<boolean> {
 
     // On any other status code that's not 5xx mark the upload as failed
     if (!statusCode || statusCode < 500 || statusCode >= 600) {
-      core.setFailed('Upload failed (' + requestID + '): (' + statusCode + ') ' + response.data);
+      core.setFailed('Upload failed (' + requestID + '): (' + statusCode + ') ' + JSON.stringify(response.data));
       return false;
     }
 
@@ -80,7 +80,7 @@ async function uploadPayload(payload): Promise<boolean> {
       // Log the failure as a warning but don't mark the action as failed yet
       core.warning('Upload attempt (' + (attempt + 1) + ' of ' + (backoffPeriods.length + 1) +
         ') failed (' + requestID + '). Retrying in ' + backoffPeriods[attempt] +
-        ' seconds: (' + statusCode + ') ' + response.data);
+        ' seconds: (' + statusCode + ') ' + JSON.stringify(response.data));
       // Sleep for the backoff period
       await new Promise(r => setTimeout(r, backoffPeriods[attempt] * 1000));
       continue;
@@ -89,7 +89,7 @@ async function uploadPayload(payload): Promise<boolean> {
       // If the upload fails with 5xx then we assume it is a temporary problem
       // and not an error that the user has caused or can fix.
       // We avoid marking the job as failed to avoid breaking CI workflows.
-      core.error('Upload failed (' + requestID + '): (' + statusCode + ') ' + response.data);
+      core.error('Upload failed (' + requestID + '): (' + statusCode + ') ' + JSON.stringify(response.data));
       return false;
     }
   }

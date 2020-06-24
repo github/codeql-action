@@ -1,6 +1,8 @@
+import * as octokit from '@octokit/rest';
 import test from 'ava';
 import * as fs from 'fs';
 import * as path from 'path';
+import sinon from 'sinon';
 
 import * as configUtils from './config-utils';
 import {silenceDebugOutput} from './testing-utils';
@@ -122,6 +124,31 @@ test("load non-empty input", async t => {
 
     // Should exactly equal the object we constructed earlier
     t.deepEqual(actualConfig, expectedConfig);
+  });
+});
+
+test("Octokit not used when reading local config", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const spyKit = sinon.spy(octokit, "Octokit");
+
+    const inputFileContents = `
+      name: my config
+      disable-default-queries: true
+      queries:
+        - uses: ./
+      paths-ignore:
+        - a
+        - b
+      paths:
+        - c/d`;
+
+    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+    setInput('config-file', 'input');
+    await configUtils.loadConfig();
+    t.false(spyKit.called);
   });
 });
 

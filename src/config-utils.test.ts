@@ -69,6 +69,23 @@ test("load input outside of workspace", async t => {
   });
 });
 
+test("load non-local input with invalid repo syntax", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    // no filename given, just a repo
+    setInput('config-file', 'octo-org/codeql-config@main');
+
+    try {
+      await configUtils.loadConfig();
+      throw new Error('loadConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getConfigFileRepoFormatInvalid('octo-org/codeql-config@main')));
+    }
+  });
+});
+
 test("load non-existent input", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;

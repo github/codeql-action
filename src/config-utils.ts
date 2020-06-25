@@ -163,6 +163,13 @@ export function getConfigFileDoesNotExistErrorMessage(configFile: string): strin
   return 'The configuration file "' + configFile + '" does not exist';
 }
 
+export function getConfigFileRepoFormatInvalid(configFile: string): string {
+  let error = 'The configuration file "' + configFile + '" is not a supported remote file reference.';
+  error += ' Expected format <owner>/<repository>/<file-path>@<ref>';
+
+  return error;
+}
+
 function getConfigFilePropertyError(configFile: string, property: string, error: string): string {
   return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
 }
@@ -178,21 +185,17 @@ function initConfig(): Config {
     return config;
   }
 
-  // Treat the config file as relative to the workspace
-  const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
-  configFile = path.resolve(workspacePath, configFile);
+  let parsedYAML;
 
-  // Error if the config file is now outside of the workspace
-  if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
-    throw new Error(getConfigFileOutsideWorkspaceErrorMessage(configFile));
+  if (isLocal(configFile)) {
+    // Treat the config file as relative to the workspace
+    const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
+    configFile = path.resolve(workspacePath, configFile);
+
+    parsedYAML = getLocalConfig(configFile, workspacePath);
+  } else {
+    parsedYAML = getRemoteConfig(configFile);
   }
-
-  // Error if the file does not exist
-  if (!fs.existsSync(configFile)) {
-    throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
-  }
-
-  const parsedYAML = yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
 
   if (NAME_PROPERTY in parsedYAML) {
     if (typeof parsedYAML[NAME_PROPERTY] !== "string") {
@@ -257,6 +260,30 @@ export function isLocal(configPath: string): boolean {
   }
 
   return (configPath.indexOf("@") === -1);
+}
+
+function getLocalConfig(configFile: string, workspacePath: string): any {
+  // Error if the config file is now outside of the workspace
+  if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
+    throw new Error(getConfigFileOutsideWorkspaceErrorMessage(configFile));
+  }
+
+  // Error if the file does not exist
+  if (!fs.existsSync(configFile)) {
+    throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
+  }
+
+  return yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
+}
+
+function getRemoteConfig(configFile: string): any {
+  // validate the config location
+  const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<filepath>[^@]+)@(<?ref>.*)');
+  const pieces = format.exec(configFile);
+  if (pieces === null || pieces.length < 4) {
+    throw new Error(getConfigFileRepoFormatInvalid(configFile));
+  }
+  return [];  // temp
 }
 
 function getConfigFolder(): string {

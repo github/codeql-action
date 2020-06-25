@@ -1,4 +1,4 @@
-name: "CodeQL config"
+name: 1
 queries: 
   - name: Run custom queries
     uses: ./queries

@@ -183,6 +183,35 @@ test("Remote and local configuration paths correctly identified", t => {
   t.assert(configUtils.isLocal('file'));
 });
 
+test("Octokit used when reading remote config", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      disable-default-queries: true
+      queries:
+        - uses: ./
+      paths-ignore:
+        - a
+        - b
+      paths:
+        - c/d`;
+
+    let ok = new octokit.Octokit({
+      userAgent: "CodeQL Action",
+    });
+    const spyRequest = sinon.stub(ok, "request").resolves(inputFileContents);
+
+    sinon.stub(octokit, "Octokit").resolves(ok);
+
+    setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
+    await configUtils.loadConfig();
+    t.assert(spyRequest.called);
+  });
+});
+
 function doInvalidInputTest(
   testName: string,
   inputFileContents: string,

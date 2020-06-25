@@ -149,7 +149,8 @@ test("Octokit not used when reading local config", async t => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
-    const spyKit = sinon.spy(octokit, "Octokit");
+    const sandbox = sinon.createSandbox();
+    const spyKit = sandbox.spy(octokit, "Octokit");
 
     const inputFileContents = `
       name: my config
@@ -166,6 +167,7 @@ test("Octokit not used when reading local config", async t => {
     setInput('config-file', 'input');
     await configUtils.loadConfig();
     t.false(spyKit.called);
+    sandbox.restore();
   });
 });
 

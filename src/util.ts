@@ -283,7 +283,7 @@ async function createStatusReport(
   if (exception) {
     statusReport.exception = exception;
   }
-  if (status === 'success' || status === 'failure') {
+  if (status === 'success' || status === 'failure' || status === 'aborted') {
     statusReport.completed_at = new Date().toISOString();
   }
   let matrix: string | undefined = core.getInput('matrix');

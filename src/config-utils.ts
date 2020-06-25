@@ -278,7 +278,7 @@ function getLocalConfig(configFile: string, workspacePath: string): any {
 
 function getRemoteConfig(configFile: string): any {
   // validate the config location
-  const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<filepath>[^@]+)@(<?ref>.*)');
+  const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<filepath>[^@]+)@(?<ref>.*)');
   const pieces = format.exec(configFile);
   if (pieces === null || pieces.length < 4) {
     throw new Error(getConfigFileRepoFormatInvalid(configFile));

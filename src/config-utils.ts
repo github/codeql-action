@@ -1,11 +1,10 @@
 import * as core from '@actions/core';
 import * as io from '@actions/io';
-import * as octokit from '@octokit/rest';
-import consoleLogLevel from 'console-log-level';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 
+import * as api from './api-client';
 import * as util from './util';
 
 const NAME_PROPERTY = 'name';
@@ -287,12 +286,7 @@ async function getRemoteConfig(configFile: string): Promise<any> {
     throw new Error(getConfigFileRepoFormatInvalid(configFile));
   }
 
-  let ok = new octokit.Octokit({
-    auth: core.getInput('token'),
-    userAgent: "CodeQL Action",
-    log: consoleLogLevel({ level: "debug" })
-  });
-  const response = await ok.repos.getContents({
+  const response = await api.client.repos.getContents({
     owner: pieces.groups.owner,
     repo: pieces.groups.repo,
     path: pieces.groups.path,

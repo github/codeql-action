@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import sinon from 'sinon';
 
+import * as api from './api-client';
 import * as configUtils from './config-utils';
 import {silenceDebugOutput} from './testing-utils';
 import * as util from './util';
@@ -144,33 +145,6 @@ test("load non-empty input", async t => {
   });
 });
 
-test("Octokit not used when reading local config", async t => {
-  return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    const sandbox = sinon.createSandbox();
-    const spyKit = sandbox.spy(octokit, "Octokit");
-
-    const inputFileContents = `
-      name: my config
-      disable-default-queries: true
-      queries:
-        - uses: ./
-      paths-ignore:
-        - a
-        - b
-      paths:
-        - c/d`;
-
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
-    await configUtils.loadConfig();
-    t.false(spyKit.called);
-    sandbox.restore();
-  });
-});
-
 test("Remote and local configuration paths correctly identified", t => {
   // If the path starts with ./, look locally
   t.assert(configUtils.isLocal('./file'));
@@ -183,7 +157,7 @@ test("Remote and local configuration paths correctly identified", t => {
   t.assert(configUtils.isLocal('file'));
 });
 
-test("Octokit used when reading remote config", async t => {
+test("API client used when reading remote config", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
@@ -198,9 +172,11 @@ test("Octokit used when reading remote config", async t => {
         - b
       paths:
         - c/d`;
-    const dummyResponse = [
-      {data: inputFileContents}
-    ];
+    const dummyResponse = {
+      data: {
+        content: Buffer.from(inputFileContents).toString("base64"),
+      }
+    };
 
     let ok = new octokit.Octokit({
       userAgent: "CodeQL Action",
@@ -208,11 +184,13 @@ test("Octokit used when reading remote config", async t => {
     const repos = ok.repos;
     const spyGetContents = sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
     ok.repos = repos;
-    sinon.stub(octokit, "Octokit").resolves(ok);
+    sinon.stub(api, "client").value(ok);
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     await configUtils.loadConfig();
     t.assert(spyGetContents.called);
+
+    sinon.restore();
   });
 });
 

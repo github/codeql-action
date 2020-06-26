@@ -59,15 +59,11 @@ test('getThreadsFlag() should return the correct --threads flag', t => {
 });
 
 test('getThreadsFlag() throws if the ram input is < 0 or NaN', t => {
-  for (const input of ["hello!"]) {
-    process.env['INPUT_THREADS'] = input;
-    t.throws(util.getThreadsFlag);
-  }
+  process.env['INPUT_THREADS'] = "hello!";
+  t.throws(util.getThreadsFlag);
 });
 
 test('getRef() throws on the empty string', t => {
-  for (const input of [""]) {
-    process.env["GITHUB_REF"] = input;
-    t.throws(util.getRef);
-  }
+  process.env["GITHUB_REF"] = "";
+  t.throws(util.getRef);
 });

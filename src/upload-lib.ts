@@ -1,12 +1,11 @@
 import * as core from '@actions/core';
-import * as http from '@actions/http-client';
-import * as auth from '@actions/http-client/auth';
 import fileUrl from 'file-url';
 import * as fs from 'fs';
 import * as jsonschema from 'jsonschema';
 import * as path from 'path';
 import zlib from 'zlib';
 
+import * as api from './api-client';
 import * as fingerprints from './fingerprints';
 import * as sharedEnv from './shared-environment';
 import * as util from './util';
@@ -45,10 +44,7 @@ async function uploadPayload(payload): Promise<boolean> {
     return true;
   }
 
-  const githubToken = core.getInput('token');
-  const ph: auth.BearerCredentialHandler = new auth.BearerCredentialHandler(githubToken);
-  const client = new http.HttpClient('Code Scanning : Upload SARIF', [ph]);
-  const url = 'https://api.github.com/repos/' + process.env['GITHUB_REPOSITORY'] + '/code-scanning/analysis';
+  const [owner, repo] = util.getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
 
   // Make up to 4 attempts to upload, and sleep for these
   // number of seconds between each attempt.
@@ -57,21 +53,25 @@ async function uploadPayload(payload): Promise<boolean> {
   const backoffPeriods = [1, 5, 15];
 
   for (let attempt = 0; attempt <= backoffPeriods.length; attempt++) {
+    const response = await api.client.request("PUT /repos/:owner/:repo/code-scanning/analysis", ({
+      owner: owner,
+      repo: repo,
+      data: payload,
+    }));
 
-    const res: http.HttpClientResponse = await client.put(url, payload);
-    core.debug('response status: ' + res.message.statusCode);
+    core.debug('response status: ' + response.status);
 
-    const statusCode = res.message.statusCode;
+    const statusCode = response.status;
     if (statusCode === 202) {
       core.info("Successfully uploaded results");
       return true;
     }
 
-    const requestID = res.message.headers["x-github-request-id"];
+    const requestID = response.headers["x-github-request-id"];
 
     // On any other status code that's not 5xx mark the upload as failed
     if (!statusCode || statusCode < 500 || statusCode >= 600) {
-      core.setFailed('Upload failed (' + requestID + '): (' + statusCode + ') ' + await res.readBody());
+      core.setFailed('Upload failed (' + requestID + '): (' + statusCode + ') ' + JSON.stringify(response.data));
       return false;
     }
 
@@ -80,7 +80,7 @@ async function uploadPayload(payload): Promise<boolean> {
       // Log the failure as a warning but don't mark the action as failed yet
       core.warning('Upload attempt (' + (attempt + 1) + ' of ' + (backoffPeriods.length + 1) +
         ') failed (' + requestID + '). Retrying in ' + backoffPeriods[attempt] +
-        ' seconds: (' + statusCode + ') ' + await res.readBody());
+        ' seconds: (' + statusCode + ') ' + JSON.stringify(response.data));
       // Sleep for the backoff period
       await new Promise(r => setTimeout(r, backoffPeriods[attempt] * 1000));
       continue;
@@ -89,7 +89,7 @@ async function uploadPayload(payload): Promise<boolean> {
       // If the upload fails with 5xx then we assume it is a temporary problem
       // and not an error that the user has caused or can fix.
       // We avoid marking the job as failed to avoid breaking CI workflows.
-      core.error('Upload failed (' + requestID + '): (' + statusCode + ') ' + await res.readBody());
+      core.error('Upload failed (' + requestID + '): (' + statusCode + ') ' + JSON.stringify(response.data));
       return false;
     }
   }

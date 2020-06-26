@@ -8,7 +8,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - run: npm install
+    - run: npm ci
     - name: tslint
       run: npm run-script lint
 
@@ -17,7 +17,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - run: npm install
+    - run: npm ci
     - name: Check generated JavaScript
       run: |
         # Sanity check that repo is clean to start with
@@ -42,6 +42,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - run: npm install
+    - run: npm ci
     - name: npm run-script test
       run: npm run-script test

@@ -1,5 +1,7 @@
 import * as core from '@actions/core';
 import * as io from '@actions/io';
+import * as octokit from '@octokit/rest';
+import consoleLogLevel from 'console-log-level';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
@@ -174,7 +176,7 @@ function getConfigFilePropertyError(configFile: string, property: string, error:
   return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
 }
 
-function initConfig(): Config {
+async function initConfig(): Promise<Config> {
   let configFile = core.getInput('config-file');
 
   const config = new Config();
@@ -194,7 +196,7 @@ function initConfig(): Config {
 
     parsedYAML = getLocalConfig(configFile, workspacePath);
   } else {
-    parsedYAML = getRemoteConfig(configFile);
+    parsedYAML = await getRemoteConfig(configFile);
   }
 
   if (NAME_PROPERTY in parsedYAML) {
@@ -276,14 +278,35 @@ function getLocalConfig(configFile: string, workspacePath: string): any {
   return yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
 }
 
-function getRemoteConfig(configFile: string): any {
-  // validate the config location
-  const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<filepath>[^@]+)@(?<ref>.*)');
+async function getRemoteConfig(configFile: string): Promise<any> {
+  // retrieve the various parts of the config location, and ensure they're present
+  const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
   const pieces = format.exec(configFile);
-  if (pieces === null || pieces.length < 4) {
+  // 5 = 4 groups + the whole expression
+  if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
     throw new Error(getConfigFileRepoFormatInvalid(configFile));
   }
-  return [];  // temp
+
+  let ok = new octokit.Octokit({
+    auth: core.getInput('token'),
+    userAgent: "CodeQL Action",
+    log: consoleLogLevel({ level: "debug" })
+  });
+  const response = await ok.repos.getContents({
+    owner: pieces.groups.owner,
+    repo: pieces.groups.repo,
+    path: pieces.groups.path,
+    ref: pieces.groups.ref,
+  });
+
+  // TODO handle errors (file not found etc)
+  // todo handle response.encoding not being base64
+  let fileContents;
+  if ("content" in response.data) {
+    fileContents = response.data.content;
+  } // todo handle else case
+
+  return yaml.safeLoad(Buffer.from(fileContents, 'base64').toString('binary'));
 }
 
 function getConfigFolder(): string {
@@ -311,7 +334,7 @@ export async function loadConfig(): Promise<Config> {
     return JSON.parse(configString);
 
   } else {
-    const config = initConfig();
+    const config = await initConfig();
     core.debug('Initialized config:');
     core.debug(JSON.stringify(config));
     await saveConfig(config);

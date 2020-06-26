@@ -164,7 +164,7 @@ export function getConfigFileDoesNotExistErrorMessage(configFile: string): strin
   return 'The configuration file "' + configFile + '" does not exist';
 }
 
-export function getConfigFileRepoFormatInvalid(configFile: string): string {
+export function getConfigFileRepoFormatInvalidMessage(configFile: string): string {
   let error = 'The configuration file "' + configFile + '" is not a supported remote file reference.';
   error += ' Expected format <owner>/<repository>/<file-path>@<ref>';
 
@@ -283,7 +283,7 @@ async function getRemoteConfig(configFile: string): Promise<any> {
   const pieces = format.exec(configFile);
   // 5 = 4 groups + the whole expression
   if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
-    throw new Error(getConfigFileRepoFormatInvalid(configFile));
+    throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
   const response = await api.client.repos.getContents({

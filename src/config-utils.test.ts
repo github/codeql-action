@@ -82,7 +82,7 @@ test("load non-local input with invalid repo syntax", async t => {
       await configUtils.loadConfig();
       throw new Error('loadConfig did not throw error');
     } catch (err) {
-      t.deepEqual(err, new Error(configUtils.getConfigFileRepoFormatInvalid('octo-org/codeql-config@main')));
+      t.deepEqual(err, new Error(configUtils.getConfigFileRepoFormatInvalidMessage('octo-org/codeql-config@main')));
     }
   });
 });

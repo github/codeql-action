@@ -171,6 +171,14 @@ export function getConfigFileRepoFormatInvalidMessage(configFile: string): strin
   return error;
 }
 
+export function getConfigFileFormatInvalidMessage(configFile: string): string {
+  return 'The configuration file "' + configFile + '" could not be read';
+}
+
+export function getConfigFileDirectoryGivenMessage(configFile: string): string {
+  return 'The configuration file "' + configFile + '" looks like a directory, not a file';
+}
+
 function getConfigFilePropertyError(configFile: string, property: string, error: string): string {
   return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
 }
@@ -293,11 +301,14 @@ async function getRemoteConfig(configFile: string): Promise<any> {
     ref: pieces.groups.ref,
   });
 
-  // todo handle response.encoding not being base64
-  let fileContents;
-  if ("content" in response.data) {
+  let fileContents: string;
+  if ("content" in response.data && response.data.content !== undefined) {
     fileContents = response.data.content;
-  } // todo handle else case
+  } else if (Array.isArray(response.data)) {
+    throw new Error(getConfigFileDirectoryGivenMessage(configFile));
+  } else {
+    throw new Error(getConfigFileFormatInvalidMessage(configFile));
+  }
 
   return yaml.safeLoad(Buffer.from(fileContents, 'base64').toString('binary'));
 }

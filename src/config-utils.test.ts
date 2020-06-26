@@ -182,6 +182,68 @@ test("API client used when reading remote config", async t => {
   });
 });
 
+test("Remote config handles the case where a directory is provided", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const dummyResponse = {
+      data: [], // directories are returned as arrays
+    };
+
+    let ok = new octokit.Octokit({
+      userAgent: "CodeQL Action",
+    });
+    const repos = ok.repos;
+    sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
+    ok.repos = repos;
+    sinon.stub(api, "client").value(ok);
+
+    const repoReference = 'octo-org/codeql-config/config.yaml@main';
+    setInput('config-file', repoReference);
+    try {
+      await configUtils.loadConfig();
+      throw new Error('loadConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference)));
+    }
+
+    sinon.restore();
+  });
+});
+
+test("Invalid format of remote config handled correctly", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const dummyResponse = {
+      data: {
+        // note no "content" property here
+      }
+    };
+
+    let ok = new octokit.Octokit({
+      userAgent: "CodeQL Action",
+    });
+    const repos = ok.repos;
+    sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
+    ok.repos = repos;
+    sinon.stub(api, "client").value(ok);
+
+    const repoReference = 'octo-org/codeql-config/config.yaml@main';
+    setInput('config-file', repoReference);
+    try {
+      await configUtils.loadConfig();
+      throw new Error('loadConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
+    }
+
+    sinon.restore();
+  });
+});
+
 function doInvalidInputTest(
   testName: string,
   inputFileContents: string,

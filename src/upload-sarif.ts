@@ -3,7 +3,7 @@ import * as core from '@actions/core';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
 
-async function run() {
+export async function run() {
   if (util.should_abort('upload-sarif', false) || !await util.reportActionStarting('upload-sarif')) {
     return;
   }
@@ -20,8 +20,3 @@ async function run() {
     return;
   }
 }
-
-run().catch(e => {
-  core.setFailed("codeql/upload-sarif action failed: " + e);
-  console.log(e);
-});

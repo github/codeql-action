@@ -196,7 +196,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
   }
 }
 
-async function run() {
+export async function run() {
   try {
     if (util.should_abort('finish', true) || !await util.reportActionStarting('finish')) {
       return;
@@ -235,8 +235,3 @@ async function run() {
 
   await util.reportActionSucceeded('finish');
 }
-
-run().catch(e => {
-  core.setFailed("analyze action failed: " + e);
-  console.log(e);
-});

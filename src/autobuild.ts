@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as sharedEnv from './shared-environment';
 import * as util from './util';
 
-async function run() {
+export async function run() {
   try {
     if (util.should_abort('autobuild', true) || !await util.reportActionStarting('autobuild')) {
       return;
@@ -56,8 +56,3 @@ async function run() {
 
   await util.reportActionSucceeded('autobuild');
 }
-
-run().catch(e => {
-  core.setFailed("autobuild action failed.  " + e);
-  console.log(e);
-});

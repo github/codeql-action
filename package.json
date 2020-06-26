@@ -4,10 +4,9 @@
   "private": true,
   "description": "CodeQL action",
   "scripts": {
-    "build": "tsc",
-    "test": "ava src/** --serial --verbose",
-    "lint": "tslint -p . -c tslint.json 'src/**/*.ts'",
-    "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"
+    "build": "ncc build src/main.ts -o dist -s --no-source-map-register",
+    "test": "tsc && ava src/** --serial --verbose",
+    "lint": "tslint -p . -c tslint.json 'src/**/*.ts'"
   },
   "ava": {
     "typescript": {
@@ -45,6 +44,7 @@
     "@types/nock": "^11.1.0",
     "@types/node": "^12.0.4",
     "@types/semver": "^7.2.0",
+    "@zeit/ncc": "0.22.3",
     "ava": "3.8.1",
     "micromatch": "4.0.2",
     "nock": "^12.0.3",

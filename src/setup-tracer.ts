@@ -33,7 +33,7 @@ async function tracerConfig(
   let envFile = path.resolve(database, 'working', 'env.tmp');
   await exec.exec(codeql.cmd, ['database', 'trace-command', database,
     ...compilerSpecArg,
-    process.execPath, path.resolve(__dirname, 'tracer-env.js'), envFile]
+    process.execPath, __dirname + '/tracer-env.js', envFile]
   );
 
   const env: { [key: string]: string } = JSON.parse(fs.readFileSync(envFile, 'utf-8'));
@@ -139,7 +139,7 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
   return { env, spec };
 }
 
-async function run() {
+export async function run() {
 
   let languages: string[];
 
@@ -232,7 +232,7 @@ async function run() {
           await exec.exec(
             'powershell',
             [
-              path.resolve(__dirname, '..', 'src', 'inject-tracer.ps1'),
+              __dirname + '/inject-tracer.ps1',
               path.resolve(codeqlSetup.tools, 'win64', 'tracer.exe'),
             ],
             { env: { 'ODASA_TRACER_CONFIGURATION': mainTracerConfig.spec } });
@@ -257,8 +257,3 @@ async function run() {
   await util.reportActionSucceeded('init');
   core.exportVariable(sharedEnv.CODEQL_ACTION_INIT_COMPLETED, 'true');
 }
-
-run().catch(e => {
-  core.setFailed("init action failed: " + e);
-  console.log(e);
-});

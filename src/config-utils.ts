@@ -293,7 +293,6 @@ async function getRemoteConfig(configFile: string): Promise<any> {
     ref: pieces.groups.ref,
   });
 
-  // TODO handle errors (file not found etc)
   // todo handle response.encoding not being base64
   let fileContents;
   if ("content" in response.data) {

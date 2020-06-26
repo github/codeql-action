@@ -131,15 +131,27 @@ export async function getLanguages(): Promise<string[]> {
  * Gets the SHA of the commit that is currently checked out.
  */
 export async function getCommitOid(): Promise<string> {
-  let commitOid = '';
-  await exec.exec('git', ['rev-parse', 'HEAD'], {
-    silent: true,
-    listeners: {
-      stdout: (data) => { commitOid += data.toString(); },
-      stderr: (data) => { process.stderr.write(data); }
-    }
-  });
-  return commitOid.trim();
+  // Try to use git to get the current commit SHA. If that fails then
+  // log but otherwise silently fall back to using the SHA from the environment.
+  // The only time these two values will differ is during analysis of a PR when
+  // the workflow has changed the current commit to the head commit instead of
+  // the merge commit, which must mean that git is available.
+  // Even if this does go wrong, it's not a huge problem for the alerts to
+  // reported on the merge commit.
+  try {
+    let commitOid = '';
+    await exec.exec('git', ['rev-parse', 'HEAD'], {
+      silent: true,
+      listeners: {
+        stdout: (data) => { commitOid += data.toString(); },
+        stderr: (data) => { process.stderr.write(data); }
+      }
+    });
+    return commitOid.trim();
+  } catch (e) {
+    core.info("Failed to call git to get current commit. Continuing with data from environment: " + e);
+    return getRequiredEnvParam('GITHUB_SHA');
+  }
 }
 
 /**
@@ -269,7 +281,7 @@ async function createStatusReport(
   if (exception) {
     statusReport.exception = exception;
   }
-  if (status === 'success' || status === 'failure') {
+  if (status === 'success' || status === 'failure' || status === 'aborted') {
     statusReport.completed_at = new Date().toISOString();
   }
   let matrix: string | undefined = core.getInput('matrix');
@@ -350,6 +362,16 @@ export async function reportActionSucceeded(action: string) {
 }
 
 /**
+ * Report that an action has been aborted.
+ *
+ * Note that the started_at date is always that of the `init` action, since
+ * this is likely to give a more useful duration when inspecting events.
+ */
+export async function reportActionAborted(action: string, cause?: string) {
+  await sendStatusReport(await createStatusReport(action, 'aborted', cause));
+}
+
+/**
  * Get the array of all the tool names contained in the given sarif contents.
  *
  * Returns an array of unique string tool names.
@@ -373,7 +395,11 @@ export function getToolNames(sarifContents: string): string[] {
 // Mostly intended for use within tests.
 export async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codeql-action-'));
-  const result = await body(tmpDir);
+  const realSubdir = path.join(tmpDir, 'real');
+  fs.mkdirSync(realSubdir);
+  const symlinkSubdir = path.join(tmpDir, 'symlink');
+  fs.symlinkSync(realSubdir, symlinkSubdir, 'dir');
+  const result = await body(symlinkSubdir);
   fs.rmdirSync(tmpDir, { recursive: true });
   return result;
 }

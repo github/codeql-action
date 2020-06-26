@@ -37,7 +37,7 @@ export function should_abort(actionName: string, requireInitActionHasRun: boolea
  */
 export function getRequiredEnvParam(paramName: string): string {
   const value = process.env[paramName];
-  if (value === undefined) {
+  if (value === undefined || value.length === 0) {
     throw new Error(paramName + ' environment variable must be set');
   }
   core.debug(paramName + '=' + value);

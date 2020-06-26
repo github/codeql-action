@@ -58,7 +58,7 @@ test('getThreadsFlag() should return the correct --threads flag', t => {
   }
 });
 
-test('getThreadsFlag() throws if the ram input is < 0 or NaN', t => {
+test('getThreadsFlag() throws if the threads input is not an integer', t => {
   process.env['INPUT_THREADS'] = "hello!";
   t.throws(util.getThreadsFlag);
 });

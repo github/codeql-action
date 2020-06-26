@@ -3,7 +3,7 @@ import test from 'ava';
 import nock from 'nock';
 import * as path from 'path';
 
-import * as setupTools from './setup-tools';
+import * as codeql from './codeql';
 import {silenceDebugOutput} from './testing-utils';
 import * as util from './util';
 
@@ -30,7 +30,7 @@ test('download codeql bundle cache', async t => {
 
       process.env['INPUT_TOOLS'] = `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`;
 
-      await setupTools.setupCodeQL();
+      await codeql.setupCodeQL();
 
       t.assert(toolcache.find('CodeQL', `0.0.0-${version}`));
     }
@@ -56,7 +56,7 @@ test('parse codeql bundle url version', t => {
     const url = `https://github.com/.../codeql-bundle-${version}/...`;
 
     try {
-      const parsedVersion = setupTools.getCodeQLURLVersion(url);
+      const parsedVersion = codeql.getCodeQLURLVersion(url);
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
       t.fail(e.message);

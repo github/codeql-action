@@ -64,3 +64,10 @@ test('getThreadsFlag() throws if the ram input is < 0 or NaN', t => {
     t.throws(util.getThreadsFlag);
   }
 });
+
+test('getRef() throws on the empty string', t => {
+  for (const input of [""]) {
+    process.env["GITHUB_REF"] = input;
+    t.throws(util.getRef);
+  }
+});

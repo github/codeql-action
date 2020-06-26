@@ -2,6 +2,7 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as path from 'path';
 
+import { getCodeQL } from './codeql';
 import * as sharedEnv from './shared-environment';
 import * as util from './util';
 
@@ -30,12 +31,9 @@ async function run() {
     }
 
     core.startGroup(`Attempting to automatically build ${language} code`);
-    // TODO: share config accross actions better via env variables
-    const codeqlCmd = util.getRequiredEnvParam(sharedEnv.CODEQL_ACTION_CMD);
-
+    const codeQL = getCodeQL();
     const cmdName = process.platform === 'win32' ? 'autobuild.cmd' : 'autobuild.sh';
-    const autobuildCmd = path.join(path.dirname(codeqlCmd), language, 'tools', cmdName);
-
+    const autobuildCmd = path.join(codeQL.getDir(), language, 'tools', cmdName);
 
     // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
     // This is because of an issue with Azure pipelines timing out connections after 4 minutes

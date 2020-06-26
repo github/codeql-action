@@ -145,18 +145,6 @@ test("load non-empty input", async t => {
   });
 });
 
-test("Remote and local configuration paths correctly identified", t => {
-  // If the path starts with ./, look locally
-  t.assert(configUtils.isLocal('./file'));
-  t.assert(configUtils.isLocal('./file@name'));
-
-  // Otherwise, if the path contains @ (branch specifier), assume it's a remote repo
-  t.false(configUtils.isLocal('octo-org/codeql-config/config.yaml@main'));
-
-  // Otherwise look locally (this is the fallback)
-  t.assert(configUtils.isLocal('file'));
-});
-
 test("API client used when reading remote config", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;

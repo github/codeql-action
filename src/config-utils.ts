@@ -254,7 +254,7 @@ async function initConfig(): Promise<Config> {
   return config;
 }
 
-export function isLocal(configPath: string): boolean {
+function isLocal(configPath: string): boolean {
   // If the path starts with ./, look locally
   if (configPath.indexOf("./") === 0) {
     return true;

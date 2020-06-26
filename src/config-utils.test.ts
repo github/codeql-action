@@ -198,17 +198,21 @@ test("Octokit used when reading remote config", async t => {
         - b
       paths:
         - c/d`;
+    const dummyResponse = [
+      {data: inputFileContents}
+    ];
 
     let ok = new octokit.Octokit({
       userAgent: "CodeQL Action",
     });
-    const spyRequest = sinon.stub(ok, "request").resolves(inputFileContents);
-
+    const repos = ok.repos;
+    const spyGetContents = sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
+    ok.repos = repos;
     sinon.stub(octokit, "Octokit").resolves(ok);
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     await configUtils.loadConfig();
-    t.assert(spyRequest.called);
+    t.assert(spyGetContents.called);
   });
 });
 

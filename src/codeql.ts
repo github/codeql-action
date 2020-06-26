@@ -41,7 +41,7 @@ export interface CodeQL {
   /**
    * Run 'codeql resolve queries'.
    */
-  resolveQueries(queries: string[]): Promise<ResolveQueriesOutput>;
+  resolveQueries(queries: string[], extraSearchPath: string | undefined): Promise<ResolveQueriesOutput>;
   /**
    * Run 'codeql database analyze'.
    */
@@ -61,6 +61,12 @@ export interface ResolveQueriesOutput {
     [queryPath: string]: {}
   };
 }
+
+/**
+ * Stores the CodeQL object, and is populated by `setupCodeQL`.
+ * Can be overridden in tests using `setCodeQL`.
+ */
+let cachedCodeQL: CodeQL | undefined = undefined;
 
 /**
  * Environment variable used to store the location of the CodeQL CLI executable.
@@ -89,8 +95,9 @@ export async function setupCodeQL(): Promise<CodeQL> {
       throw new Error("Unsupported plaform: " + process.platform);
     }
 
+    cachedCodeQL = getCodeQLForCmd(codeqlCmd);
     core.exportVariable(CODEQL_ACTION_CMD, codeqlCmd);
-    return getCodeQLForCmd(codeqlCmd);
+    return cachedCodeQL;
 
   } catch (e) {
     core.error(e);
@@ -121,8 +128,35 @@ export function getCodeQLURLVersion(url: string): string {
 }
 
 export function getCodeQL(): CodeQL {
-  const codeqlCmd = util.getRequiredEnvParam(CODEQL_ACTION_CMD);
-  return getCodeQLForCmd(codeqlCmd);
+  if (cachedCodeQL === undefined) {
+    const codeqlCmd = util.getRequiredEnvParam(CODEQL_ACTION_CMD);
+    cachedCodeQL = getCodeQLForCmd(codeqlCmd);
+  }
+  return cachedCodeQL;
+}
+
+function resolveFunction<T>(partialCodeql: Partial<CodeQL>, methodName: string): T {
+  if (typeof partialCodeql[methodName] !== 'function') {
+    const dummyMethod = () => {
+      throw new Error('CodeQL ' + methodName + ' method not correctly defined');
+    };
+    return dummyMethod as any;
+  }
+  return partialCodeql[methodName];
+}
+
+export function setCodeQL(partialCodeql: Partial<CodeQL>) {
+  cachedCodeQL = {
+    getDir: resolveFunction(partialCodeql, 'getDir'),
+    printVersion: resolveFunction(partialCodeql, 'printVersion'),
+    getTracerEnv: resolveFunction(partialCodeql, 'getTracerEnv'),
+    databaseInit: resolveFunction(partialCodeql, 'databaseInit'),
+    runAutobuild: resolveFunction(partialCodeql, 'runAutobuild'),
+    extractScannedLanguage: resolveFunction(partialCodeql, 'extractScannedLanguage'),
+    finalizeDatabase: resolveFunction(partialCodeql, 'finalizeDatabase'),
+    resolveQueries: resolveFunction(partialCodeql, 'resolveQueries'),
+    databaseAnalyze: resolveFunction(partialCodeql, 'databaseAnalyze')
+  };
 }
 
 function getCodeQLForCmd(cmd: string): CodeQL {
@@ -212,23 +246,24 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         databasePath
       ]);
     },
-    resolveQueries: async function(queries: string[]) {
+    resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+      const codeqlArgs = [
+        'resolve',
+        'queries',
+        ...queries,
+        '--format=bylanguage'
+      ];
+      if (extraSearchPath !== undefined) {
+        codeqlArgs.push('--search-path', extraSearchPath);
+      }
       let output = '';
-      await exec.exec(
-        cmd,
-        [
-          'resolve',
-          'queries',
-          ...queries,
-          '--format=bylanguage'
-        ],
-        {
-          listeners: {
-            stdout: (data: Buffer) => {
-              output += data.toString();
-            }
+      await exec.exec(cmd, codeqlArgs, {
+        listeners: {
+          stdout: (data: Buffer) => {
+            output += data.toString();
           }
-        });
+        }
+      });
 
       return JSON.parse(output);
     },

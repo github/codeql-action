@@ -36,7 +36,7 @@ jobs:
           exit 1
         fi
 
-  multi-language-repo_test-custom-queries:
+  multi-language-repo_test-custom-queries-and-remote config:
     strategy:
       fail-fast: false
       matrix:
@@ -54,7 +54,7 @@ jobs:
     - uses: ./../action/init
       with:
         languages: cpp,csharp,java,javascript,python
-        config-file: ./.github/codeql/custom-queries.yml
+        config-file: github/codeql-action/.github/codeql/custom-queries.yml@main
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -124,24 +124,3 @@ jobs:
         sarif_file: rubocop.sarif
       env:
         TEST_MODE: true
-
-  retrieval-of-remote-config:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        # Must fetch at least the immediate parents so that if this is
-        # a pull request then we can checkout the head of the pull request.
-        fetch-depth: 2
-
-    # If this run was triggered by a pull request event then checkout
-    # the head of the pull request instead of the merge commit.
-    - run: git checkout HEAD^2
-      if: ${{ github.event_name == 'pull_request' }}
-
-    - uses: ./init
-      with:
-        languages: javascript
-        config-file: github/codeql-action/.github/codeql/codeql-config.yml@main
-    - uses: ./analyze

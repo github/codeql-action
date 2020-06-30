@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 
+import * as api from './api-client';
 import * as util from './util';
 
 const NAME_PROPERTY = 'name';
@@ -163,11 +164,26 @@ export function getConfigFileDoesNotExistErrorMessage(configFile: string): strin
   return 'The configuration file "' + configFile + '" does not exist';
 }
 
+export function getConfigFileRepoFormatInvalidMessage(configFile: string): string {
+  let error = 'The configuration file "' + configFile + '" is not a supported remote file reference.';
+  error += ' Expected format <owner>/<repository>/<file-path>@<ref>';
+
+  return error;
+}
+
+export function getConfigFileFormatInvalidMessage(configFile: string): string {
+  return 'The configuration file "' + configFile + '" could not be read';
+}
+
+export function getConfigFileDirectoryGivenMessage(configFile: string): string {
+  return 'The configuration file "' + configFile + '" looks like a directory, not a file';
+}
+
 function getConfigFilePropertyError(configFile: string, property: string, error: string): string {
   return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
 }
 
-function initConfig(): Config {
+async function initConfig(): Promise<Config> {
   let configFile = core.getInput('config-file');
 
   const config = new Config();
@@ -178,21 +194,17 @@ function initConfig(): Config {
     return config;
   }
 
-  // Treat the config file as relative to the workspace
-  const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
-  configFile = path.resolve(workspacePath, configFile);
+  let parsedYAML;
 
-  // Error if the config file is now outside of the workspace
-  if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
-    throw new Error(getConfigFileOutsideWorkspaceErrorMessage(configFile));
+  if (isLocal(configFile)) {
+    // Treat the config file as relative to the workspace
+    const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
+    configFile = path.resolve(workspacePath, configFile);
+
+    parsedYAML = getLocalConfig(configFile, workspacePath);
+  } else {
+    parsedYAML = await getRemoteConfig(configFile);
   }
-
-  // Error if the file does not exist
-  if (!fs.existsSync(configFile)) {
-    throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
-  }
-
-  const parsedYAML = yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
 
   if (NAME_PROPERTY in parsedYAML) {
     if (typeof parsedYAML[NAME_PROPERTY] !== "string") {
@@ -250,6 +262,57 @@ function initConfig(): Config {
   return config;
 }
 
+function isLocal(configPath: string): boolean {
+  // If the path starts with ./, look locally
+  if (configPath.indexOf("./") === 0) {
+    return true;
+  }
+
+  return (configPath.indexOf("@") === -1);
+}
+
+function getLocalConfig(configFile: string, workspacePath: string): any {
+  // Error if the config file is now outside of the workspace
+  if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
+    throw new Error(getConfigFileOutsideWorkspaceErrorMessage(configFile));
+  }
+
+  // Error if the file does not exist
+  if (!fs.existsSync(configFile)) {
+    throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
+  }
+
+  return yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
+}
+
+async function getRemoteConfig(configFile: string): Promise<any> {
+  // retrieve the various parts of the config location, and ensure they're present
+  const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
+  const pieces = format.exec(configFile);
+  // 5 = 4 groups + the whole expression
+  if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
+    throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
+  }
+
+  const response = await api.client.repos.getContents({
+    owner: pieces.groups.owner,
+    repo: pieces.groups.repo,
+    path: pieces.groups.path,
+    ref: pieces.groups.ref,
+  });
+
+  let fileContents: string;
+  if ("content" in response.data && response.data.content !== undefined) {
+    fileContents = response.data.content;
+  } else if (Array.isArray(response.data)) {
+    throw new Error(getConfigFileDirectoryGivenMessage(configFile));
+  } else {
+    throw new Error(getConfigFileFormatInvalidMessage(configFile));
+  }
+
+  return yaml.safeLoad(Buffer.from(fileContents, 'base64').toString('binary'));
+}
+
 function getConfigFolder(): string {
   return util.getRequiredEnvParam('RUNNER_TEMP');
 }
@@ -275,7 +338,7 @@ export async function loadConfig(): Promise<Config> {
     return JSON.parse(configString);
 
   } else {
-    const config = initConfig();
+    const config = await initConfig();
     core.debug('Initialized config:');
     core.debug(JSON.stringify(config));
     await saveConfig(config);

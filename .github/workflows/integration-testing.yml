@@ -36,7 +36,7 @@ jobs:
           exit 1
         fi
 
-  multi-language-repo_test-custom-queries-and-remote config:
+  multi-language-repo_test-custom-queries-and-remote-config:
     strategy:
       fail-fast: false
       matrix:

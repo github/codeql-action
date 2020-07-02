@@ -34,7 +34,8 @@ As well as the unit tests (see _Common tasks_ above), there are integration test
 2. Create a new branch: `git checkout -b my-branch-name`
 3. Make your change, add tests, and make sure the tests still pass
 4. Push to your fork and [submit a pull request][pr]
-5. Pat your self on the back and wait for your pull request to be reviewed and merged.
+5. Pat yourself on the back and wait for your pull request to be reviewed and merged.
+If you're a GitHub staff member, you can merge your own PR once it's approved; for external contributors, GitHub staff will merge your PR once it's approved.
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
 

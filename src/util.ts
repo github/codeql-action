@@ -220,6 +220,7 @@ interface StatusReport {
   "workflow_run_id": number;
   "workflow_name": string;
   "job_name": string;
+  "analysis_key": string;
   "matrix_vars"?: string;
   "languages": string;
   "commit_oid": string;
@@ -257,6 +258,7 @@ async function createStatusReport(
   }
   const workflowName = process.env['GITHUB_WORKFLOW'] || '';
   const jobName = process.env['GITHUB_JOB'] || '';
+  const analysis_key = await getAnalysisKey();
   const languages = (await getLanguages()).sort().join(',');
   const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT] || new Date().toISOString();
   core.exportVariable(sharedEnv.CODEQL_ACTION_STARTED_AT, startedAt);
@@ -265,6 +267,7 @@ async function createStatusReport(
     workflow_run_id: workflowRunID,
     workflow_name: workflowName,
     job_name: jobName,
+    analysis_key: analysis_key,
     languages: languages,
     commit_oid: commitOid,
     ref: ref,

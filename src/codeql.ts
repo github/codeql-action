@@ -20,11 +20,15 @@ export interface CodeQL {
    * Run 'codeql database trace-command' on 'tracer-env.js' and parse
    * the result to get environment variables set by CodeQL.
    */
-  getTracerEnv(database: string, compilerSpec: string | undefined): Promise<{ [key: string]: string }>;
+  getTracerEnv(databasePath: string, compilerSpec: string | undefined): Promise<{ [key: string]: string }>;
   /**
    * Run 'codeql database init'.
    */
-  databaseInit(database: string, language: string, sourceRoot: string): Promise<void>;
+  databaseInit(databasePath: string, language: string, sourceRoot: string): Promise<void>;
+  /**
+   * Runs the autobuilder for the given language.
+   */
+  runAutobuild(language: string): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extracter.
@@ -33,15 +37,15 @@ export interface CodeQL {
   /**
    * Finalize a database using 'codeql database finalize'.
    */
-  finalizeDatabase(database: string, language: string): Promise<void>;
+  finalizeDatabase(databasePath: string): Promise<void>;
   /**
    * Run 'codeql resolve queries'.
    */
-  resolveQueries(queries): Promise<ResolveQueriesOutput>;
+  resolveQueries(queries: string[]): Promise<ResolveQueriesOutput>;
   /**
    * Run 'codeql database analyze'.
    */
-  databaseAnalyze(database: string, sarifFile: string, querySuite: string): Promise<void>;
+  databaseAnalyze(databasePath: string, sarifFile: string, querySuite: string): Promise<void>;
 }
 
 export interface ResolveQueriesOutput {
@@ -132,13 +136,13 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         '--format=json'
       ]);
     },
-    getTracerEnv: async function(database: string, compilerSpec: string | undefined) {
-      let envFile = path.resolve(database, 'working', 'env.tmp');
-      const compilerSpecArg = compilerSpec ? "--compiler-spec=" + compilerSpec : [];
+    getTracerEnv: async function(databasePath: string, compilerSpec: string | undefined) {
+      let envFile = path.resolve(databasePath, 'working', 'env.tmp');
+      const compilerSpecArg = compilerSpec ? ["--compiler-spec=" + compilerSpec] : [];
       await exec.exec(cmd, [
         'database',
         'trace-command',
-        database,
+        databasePath,
         ...compilerSpecArg,
         process.execPath,
         path.resolve(__dirname, 'tracer-env.js'),
@@ -146,16 +150,30 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ]);
       return JSON.parse(fs.readFileSync(envFile, 'utf-8'));
     },
-    databaseInit: async function(database: string, language: string, sourceRoot: string) {
+    databaseInit: async function(databasePath: string, language: string, sourceRoot: string) {
       await exec.exec(cmd, [
         'database',
         'init',
-        database,
+        databasePath,
         '--language=' + language,
         '--source-root=' + sourceRoot,
       ]);
     },
-    extractScannedLanguage: async function(database: string, language: string) {
+    runAutobuild: async function(language: string) {
+      const cmdName = process.platform === 'win32' ? 'autobuild.cmd' : 'autobuild.sh';
+      const autobuildCmd = path.join(path.dirname(cmd), language, 'tools', cmdName);
+
+      // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
+      // This is because of an issue with Azure pipelines timing out connections after 4 minutes
+      // and Maven not properly handling closed connections
+      // Otherwise long build processes will timeout when pulling down Java packages
+      // https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
+      let javaToolOptions = process.env['JAVA_TOOL_OPTIONS'] || "";
+      process.env['JAVA_TOOL_OPTIONS'] = [...javaToolOptions.split(/\s+/), '-Dhttp.keepAlive=false', '-Dmaven.wagon.http.pool=false'].join(' ');
+
+      await exec.exec(autobuildCmd);
+    },
+    extractScannedLanguage: async function(databasePath: string, language: string) {
       // Get extractor location
       let extractorPath = '';
       await exec.exec(
@@ -182,16 +200,16 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       await exec.exec(cmd, [
         'database',
         'trace-command',
-        path.join(database, language),
+        databasePath,
         '--',
         traceCommand
       ]);
     },
-    finalizeDatabase: async function(database: string, language: string) {
+    finalizeDatabase: async function(databasePath: string) {
       await exec.exec(cmd, [
         'database',
         'finalize',
-        path.join(database, language)
+        databasePath
       ]);
     },
     resolveQueries: async function(queries: string[]) {
@@ -214,13 +232,13 @@ function getCodeQLForCmd(cmd: string): CodeQL {
 
       return JSON.parse(output);
     },
-    databaseAnalyze: async function(database: string, sarifFile: string, querySuite: string) {
+    databaseAnalyze: async function(databasePath: string, sarifFile: string, querySuite: string) {
       await exec.exec(cmd, [
         'database',
         'analyze',
         util.getMemoryFlag(),
         util.getThreadsFlag(),
-        database,
+        databasePath,
         '--format=sarif-latest',
         '--output=' + sarifFile,
         '--no-sarif-add-snippets',

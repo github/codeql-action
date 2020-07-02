@@ -12,7 +12,7 @@ Please note that this project is released with a [Contributor Code of Conduct][c
 
 ## Development and Testing
 
-Before you start, you may want to ensure that you have a recent version of node installed. You can see which version of node is installed on the actions runners here: https://help.github.com/en/actions/reference/software-installed-on-github-hosted-runners 
+Before you start, ensure that you have a recent version of node installed. You can see which version of node is used by the action in `init/action.yml`.
 
 ### Common tasks
 

@@ -37,7 +37,7 @@ async function createdDBForScannedLanguages(databaseFolder: string) {
     const codeql = getCodeQL();
     for (const language of scannedLanguages.split(',')) {
       core.startGroup('Extracting ' + language);
-      await codeql.extractScannedLanguage(databaseFolder, language);
+      await codeql.extractScannedLanguage(path.join(databaseFolder, language), language);
       core.endGroup();
     }
   }
@@ -50,7 +50,7 @@ async function finalizeDatabaseCreation(databaseFolder: string) {
   const codeql = getCodeQL();
   for (const language of languages.split(',')) {
     core.startGroup('Finalizing ' + language);
-    await codeql.finalizeDatabase(databaseFolder, language);
+    await codeql.finalizeDatabase(path.join(databaseFolder, language));
     core.endGroup();
   }
 }

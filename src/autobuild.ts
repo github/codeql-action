@@ -1,6 +1,4 @@
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
-import * as path from 'path';
 
 import { getCodeQL } from './codeql';
 import * as sharedEnv from './shared-environment';
@@ -32,18 +30,8 @@ async function run() {
 
     core.startGroup(`Attempting to automatically build ${language} code`);
     const codeQL = getCodeQL();
-    const cmdName = process.platform === 'win32' ? 'autobuild.cmd' : 'autobuild.sh';
-    const autobuildCmd = path.join(codeQL.getDir(), language, 'tools', cmdName);
+    await codeQL.runAutobuild(language);
 
-    // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
-    // This is because of an issue with Azure pipelines timing out connections after 4 minutes
-    // and Maven not properly handling closed connections
-    // Otherwise long build processes will timeout when pulling down Java packages
-    // https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
-    let javaToolOptions = process.env['JAVA_TOOL_OPTIONS'] || "";
-    process.env['JAVA_TOOL_OPTIONS'] = [...javaToolOptions.split(/\s+/), '-Dhttp.keepAlive=false', '-Dmaven.wagon.http.pool=false'].join(' ');
-
-    await exec.exec(autobuildCmd);
     core.endGroup();
 
   } catch (error) {

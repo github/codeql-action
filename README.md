@@ -26,10 +26,6 @@ on:
 
 jobs:
   CodeQL-Build:
-
-    strategy:
-      fail-fast: false
-
     # CodeQL runs on ubuntu-latest, windows-latest, and macos-latest
     runs-on: ubuntu-latest
 

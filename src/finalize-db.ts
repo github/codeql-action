@@ -1,9 +1,9 @@
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
 import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { getCodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import * as externalQueries from "./external-queries";
 import * as sharedEnv from './shared-environment';
@@ -31,85 +31,33 @@ function queryIsDisabled(language, query): boolean {
     .some(disabledQuery => query.endsWith(disabledQuery));
 }
 
-async function createdDBForScannedLanguages(codeqlCmd: string, databaseFolder: string) {
+async function createdDBForScannedLanguages(databaseFolder: string) {
   const scannedLanguages = process.env[sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES];
   if (scannedLanguages) {
+    const codeql = getCodeQL();
     for (const language of scannedLanguages.split(',')) {
       core.startGroup('Extracting ' + language);
-
-      // Get extractor location
-      let extractorPath = '';
-      await exec.exec(codeqlCmd, ['resolve', 'extractor', '--format=json', '--language=' + language], {
-        silent: true,
-        listeners: {
-          stdout: (data) => { extractorPath += data.toString(); },
-          stderr: (data) => { process.stderr.write(data); }
-        }
-      });
-
-      // Set trace command
-      const ext = process.platform === 'win32' ? '.cmd' : '.sh';
-      const traceCommand = path.resolve(JSON.parse(extractorPath), 'tools', 'autobuild' + ext);
-
-      // Run trace command
-      await exec.exec(
-        codeqlCmd,
-        ['database', 'trace-command', path.join(databaseFolder, language), '--', traceCommand]);
-
+      await codeql.extractScannedLanguage(path.join(databaseFolder, language), language);
       core.endGroup();
     }
   }
 }
 
-async function finalizeDatabaseCreation(codeqlCmd: string, databaseFolder: string) {
-  await createdDBForScannedLanguages(codeqlCmd, databaseFolder);
+async function finalizeDatabaseCreation(databaseFolder: string) {
+  await createdDBForScannedLanguages(databaseFolder);
 
   const languages = process.env[sharedEnv.CODEQL_ACTION_LANGUAGES] || '';
+  const codeql = getCodeQL();
   for (const language of languages.split(',')) {
     core.startGroup('Finalizing ' + language);
-    await exec.exec(codeqlCmd, ['database', 'finalize', path.join(databaseFolder, language)]);
+    await codeql.finalizeDatabase(path.join(databaseFolder, language));
     core.endGroup();
   }
 }
 
-interface ResolveQueriesOutput {
-  byLanguage: {
-    [language: string]: {
-      [queryPath: string]: {}
-    }
-  };
-  noDeclaredLanguage: {
-    [queryPath: string]: {}
-  };
-  multipleDeclaredLanguages: {
-    [queryPath: string]: {}
-  };
-}
-
-async function runResolveQueries(codeqlCmd: string, queries: string[]): Promise<ResolveQueriesOutput> {
-  let output = '';
-  const options = {
-    listeners: {
-      stdout: (data: Buffer) => {
-        output += data.toString();
-      }
-    }
-  };
-
-  await exec.exec(
-    codeqlCmd, [
-      'resolve',
-      'queries',
-      ...queries,
-      '--format=bylanguage'
-    ],
-    options);
-
-  return JSON.parse(output);
-}
-
-async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Config): Promise<Map<string, string[]>> {
+async function resolveQueryLanguages(config: configUtils.Config): Promise<Map<string, string[]>> {
   let res = new Map();
+  const codeql = getCodeQL();
 
   if (!config.disableDefaultQueries || config.additionalSuites.length !== 0) {
     const suites: string[] = [];
@@ -122,7 +70,7 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
       }
     }
 
-    const resolveQueriesOutputObject = await runResolveQueries(codeqlCmd, suites);
+    const resolveQueriesOutputObject = await codeql.resolveQueries(suites);
 
     for (const [language, queries] of Object.entries(resolveQueriesOutputObject.byLanguage)) {
       if (res[language] === undefined) {
@@ -133,7 +81,7 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
   }
 
   if (config.additionalQueries.length !== 0) {
-    const resolveQueriesOutputObject = await runResolveQueries(codeqlCmd, config.additionalQueries);
+    const resolveQueriesOutputObject = await codeql.resolveQueries(config.additionalQueries);
 
     for (const [language, queries] of Object.entries(resolveQueriesOutputObject.byLanguage)) {
       if (res[language] === undefined) {
@@ -159,8 +107,9 @@ async function resolveQueryLanguages(codeqlCmd: string, config: configUtils.Conf
 }
 
 // Runs queries and creates sarif files in the given folder
-async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder: string, config: configUtils.Config) {
-  const queriesPerLanguage = await resolveQueryLanguages(codeqlCmd, config);
+async function runQueries(databaseFolder: string, sarifFolder: string, config: configUtils.Config) {
+  const queriesPerLanguage = await resolveQueryLanguages(config);
+  const codeql = getCodeQL();
 
   for (let database of fs.readdirSync(databaseFolder)) {
     core.startGroup('Analyzing ' + database);
@@ -179,17 +128,7 @@ async function runQueries(codeqlCmd: string, databaseFolder: string, sarifFolder
 
     const sarifFile = path.join(sarifFolder, database + '.sarif');
 
-    await exec.exec(codeqlCmd, [
-      'database',
-      'analyze',
-      util.getMemoryFlag(),
-      util.getThreadsFlag(),
-      path.join(databaseFolder, database),
-      '--format=sarif-latest',
-      '--output=' + sarifFile,
-      '--no-sarif-add-snippets',
-      querySuite
-    ]);
+    await codeql.databaseAnalyze(path.join(databaseFolder, database), sarifFile, querySuite);
 
     core.debug('SARIF results for database ' + database + ' created at "' + sarifFile + '"');
     core.endGroup();
@@ -206,19 +145,18 @@ async function run() {
     core.exportVariable(sharedEnv.ODASA_TRACER_CONFIGURATION, '');
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
-    const codeqlCmd = util.getRequiredEnvParam(sharedEnv.CODEQL_ACTION_CMD);
     const databaseFolder = util.getRequiredEnvParam(sharedEnv.CODEQL_ACTION_DATABASE_DIR);
 
     const sarifFolder = core.getInput('output');
     await io.mkdirP(sarifFolder);
 
     core.info('Finalizing database creation');
-    await finalizeDatabaseCreation(codeqlCmd, databaseFolder);
+    await finalizeDatabaseCreation(databaseFolder);
 
     await externalQueries.checkoutExternalQueries(config);
 
     core.info('Analyzing database');
-    await runQueries(codeqlCmd, databaseFolder, sarifFolder, config);
+    await runQueries(databaseFolder, sarifFolder, config);
 
     if ('true' === core.getInput('upload')) {
       if (!await upload_lib.upload(sarifFolder)) {

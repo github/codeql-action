@@ -1,4 +1,4 @@
-import * as octokit from '@octokit/rest';
+import * as github from "@actions/github";
 import test from 'ava';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -6,10 +6,10 @@ import sinon from 'sinon';
 
 import * as api from './api-client';
 import * as configUtils from './config-utils';
-import {silenceDebugOutput} from './testing-utils';
+import {setupTests} from './testing-utils';
 import * as util from './util';
 
-silenceDebugOutput(test);
+setupTests(test);
 
 function setInput(name: string, value: string | undefined) {
   // Transformation copied from
@@ -166,19 +166,13 @@ test("API client used when reading remote config", async t => {
       }
     };
 
-    let ok = new octokit.Octokit({
-      userAgent: "CodeQL Action",
-    });
-    const repos = ok.repos;
-    const spyGetContents = sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    ok.repos = repos;
-    sinon.stub(api, "client").value(ok);
+    let client = new github.GitHub('123');
+    const spyGetContents = sinon.stub(client.repos, "getContents").resolves(Promise.resolve(dummyResponse));
+    sinon.stub(api, "getApiClient").value(() => client);
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     await configUtils.loadConfig();
     t.assert(spyGetContents.called);
-
-    sinon.restore();
   });
 });
 
@@ -191,13 +185,9 @@ test("Remote config handles the case where a directory is provided", async t => 
       data: [], // directories are returned as arrays
     };
 
-    let ok = new octokit.Octokit({
-      userAgent: "CodeQL Action",
-    });
-    const repos = ok.repos;
-    sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    ok.repos = repos;
-    sinon.stub(api, "client").value(ok);
+    let client = new github.GitHub('123');
+    sinon.stub(client.repos, "getContents").resolves(Promise.resolve(dummyResponse));
+    sinon.stub(api, "getApiClient").value(() => client);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
@@ -207,8 +197,6 @@ test("Remote config handles the case where a directory is provided", async t => 
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference)));
     }
-
-    sinon.restore();
   });
 });
 
@@ -223,13 +211,9 @@ test("Invalid format of remote config handled correctly", async t => {
       }
     };
 
-    let ok = new octokit.Octokit({
-      userAgent: "CodeQL Action",
-    });
-    const repos = ok.repos;
-    sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    ok.repos = repos;
-    sinon.stub(api, "client").value(ok);
+    let client = new github.GitHub('123');
+    sinon.stub(client.repos, "getContents").resolves(Promise.resolve(dummyResponse));
+    sinon.stub(api, "getApiClient").value(() => client);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
@@ -239,8 +223,6 @@ test("Invalid format of remote config handled correctly", async t => {
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
     }
-
-    sinon.restore();
   });
 });
 

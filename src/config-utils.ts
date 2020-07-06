@@ -294,7 +294,7 @@ async function getRemoteConfig(configFile: string): Promise<any> {
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.client.repos.getContents({
+  const response = await api.getApiClient().repos.getContents({
     owner: pieces.groups.owner,
     repo: pieces.groups.repo,
     path: pieces.groups.path,

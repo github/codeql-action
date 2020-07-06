@@ -65,7 +65,7 @@ async function getLanguagesInRepo(): Promise<string[]> {
     let repo = repo_nwo[1];
 
     core.debug(`GitHub repo ${owner} ${repo}`);
-    const response = await api.client.request("GET /repos/:owner/:repo/languages", ({
+    const response = await api.getApiClient().request("GET /repos/:owner/:repo/languages", ({
       owner,
       repo
     }));
@@ -163,14 +163,15 @@ async function getWorkflowPath(): Promise<string> {
   const repo = repo_nwo[1];
   const run_id = Number(getRequiredEnvParam('GITHUB_RUN_ID'));
 
-  const runsResponse = await api.client.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
+  const apiClient = api.getApiClient();
+  const runsResponse = await apiClient.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
     owner,
     repo,
     run_id
   });
   const workflowUrl = runsResponse.data.workflow_url;
 
-  const workflowResponse = await api.client.request('GET ' + workflowUrl);
+  const workflowResponse = await apiClient.request('GET ' + workflowUrl);
 
   return workflowResponse.data.path;
 }
@@ -307,7 +308,7 @@ async function sendStatusReport(statusReport: StatusReport): Promise<number> {
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
-  const statusResponse = await api.client.request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
+  const statusResponse = await api.getApiClient().request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
     owner: owner,
     repo: repo,
     data: statusReportJSON,

@@ -22,6 +22,19 @@ function setInput(name: string, value: string | undefined) {
   }
 }
 
+type GetContentsResponse = { content?: string; } | {}[];
+
+function mockGetContents(content: GetContentsResponse): sinon.SinonStub<any, any> {
+  // Passing an auth token is required, so we just use a dummy value
+  let client = new github.GitHub('123');
+  const response = {
+    data: content
+  };
+  const spyGetContents = sinon.stub(client.repos, "getContents").resolves(response as any);
+  sinon.stub(api, "getApiClient").value(() => client);
+  return spyGetContents;
+}
+
 test("load empty config", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
@@ -161,14 +174,9 @@ test("API client used when reading remote config", async t => {
       paths:
         - c/d`;
     const dummyResponse = {
-      data: {
-        content: Buffer.from(inputFileContents).toString("base64"),
-      }
+      content: Buffer.from(inputFileContents).toString("base64"),
     };
-
-    let client = new github.GitHub('123');
-    const spyGetContents = sinon.stub(client.repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    sinon.stub(api, "getApiClient").value(() => client);
+    const spyGetContents = mockGetContents(dummyResponse);
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     await configUtils.loadConfig();
@@ -181,13 +189,8 @@ test("Remote config handles the case where a directory is provided", async t => 
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
-    const dummyResponse = {
-      data: [], // directories are returned as arrays
-    };
-
-    let client = new github.GitHub('123');
-    sinon.stub(client.repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    sinon.stub(api, "getApiClient").value(() => client);
+    const dummyResponse = []; // directories are returned as arrays
+    mockGetContents(dummyResponse);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
@@ -206,14 +209,9 @@ test("Invalid format of remote config handled correctly", async t => {
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     const dummyResponse = {
-      data: {
-        // note no "content" property here
-      }
+      // note no "content" property here
     };
-
-    let client = new github.GitHub('123');
-    sinon.stub(client.repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    sinon.stub(api, "getApiClient").value(() => client);
+    mockGetContents(dummyResponse);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);

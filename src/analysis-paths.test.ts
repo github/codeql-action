@@ -11,6 +11,7 @@ test("emptyPaths", async t => {
   analysisPaths.includeAndExcludeAnalysisPaths(config, []);
   t.is(process.env['LGTM_INDEX_INCLUDE'], undefined);
   t.is(process.env['LGTM_INDEX_EXCLUDE'], undefined);
+  t.is(process.env['LGTM_INDEX_FILTERS'], undefined);
 });
 
 test("nonEmptyPaths", async t => {
@@ -20,4 +21,5 @@ test("nonEmptyPaths", async t => {
   analysisPaths.includeAndExcludeAnalysisPaths(config, []);
   t.is(process.env['LGTM_INDEX_INCLUDE'], 'path1\npath2');
   t.is(process.env['LGTM_INDEX_EXCLUDE'], 'path3\npath4');
+  t.is(process.env['LGTM_INDEX_FILTERS'], 'include:path1\ninclude:path2\nexclude:path3\nexclude:path4');
 });

@@ -113,6 +113,28 @@ export class Config {
   }
 }
 
+// Regex validating stars in paths or paths-ignore entries.
+// The intention is to only allow ** to appear when immediately
+// preceded and followed by a slash.
+const pathStarsRegex = /.*(?:\*\*[^/].*|\*\*$|[^/]\*\*.*)/;
+
+// Checks that a paths of paths-ignore entry is valid, possibly modifying it
+// to make it valid, or if not possible then throws an error.
+export function validateAndSanitisePath(originalPath: string, propertyName: string, configFile: string): string {
+  let path = originalPath;
+  if (path.endsWith('/**')) {
+    path = path.substring(0, path.length - 2);
+  }
+  if (path.match(pathStarsRegex)) {
+    throw new Error(getConfigFilePropertyError(
+      configFile,
+      propertyName,
+      '"' + originalPath + '" contains an invalid "**" wildcard. ' +
+        'They must be immediately preceeded and followed by a slash as in "/**/".'));
+  }
+  return path;
+}
+
 export function getNameInvalid(configFile: string): string {
   return getConfigFilePropertyError(configFile, NAME_PROPERTY, 'must be a non-empty string');
 }
@@ -243,7 +265,7 @@ async function initConfig(): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
-      config.pathsIgnore.push(path);
+      config.pathsIgnore.push(validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile));
     });
   }
 
@@ -255,7 +277,7 @@ async function initConfig(): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsInvalid(configFile));
       }
-      config.paths.push(path);
+      config.paths.push(validateAndSanitisePath(path, PATHS_PROPERTY, configFile));
     });
   }
 

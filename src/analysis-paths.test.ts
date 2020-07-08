@@ -16,10 +16,10 @@ test("emptyPaths", async t => {
 
 test("nonEmptyPaths", async t => {
   let config = new configUtils.Config();
-  config.paths.push('path1', 'path2');
-  config.pathsIgnore.push('path3', 'path4');
+  config.paths.push('path1', 'path2', '**/path3');
+  config.pathsIgnore.push('path4', 'path5', 'path6/**');
   analysisPaths.includeAndExcludeAnalysisPaths(config, []);
   t.is(process.env['LGTM_INDEX_INCLUDE'], 'path1\npath2');
-  t.is(process.env['LGTM_INDEX_EXCLUDE'], 'path3\npath4');
-  t.is(process.env['LGTM_INDEX_FILTERS'], 'include:path1\ninclude:path2\nexclude:path3\nexclude:path4');
+  t.is(process.env['LGTM_INDEX_EXCLUDE'], 'path4\npath5');
+  t.is(process.env['LGTM_INDEX_FILTERS'], 'include:path1\ninclude:path2\ninclude:**/path3\nexclude:path4\nexclude:path5\nexclude:path6/**');
 });

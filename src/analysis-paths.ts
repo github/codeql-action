@@ -6,6 +6,11 @@ function isInterpretedLanguage(language): boolean {
   return language === 'javascript' || language === 'python';
 }
 
+// Builds an environment variable suitable for LGTM_INDEX_INCLUDE or LGTM_INDEX_EXCLUDE
+function buildIncludeExcludeEnvVar(paths: string[]): string {
+  return paths.filter(p => p.indexOf('**') === -1).join('\n');
+}
+
 export function includeAndExcludeAnalysisPaths(config: configUtils.Config, languages: string[]) {
   // The 'LGTM_INDEX_INCLUDE' and 'LGTM_INDEX_EXCLUDE' environment variables
   // control which files/directories are traversed when scanning.
@@ -13,11 +18,12 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config, langu
   // excluding and not traversing entire file subtrees.
   // It does not understand double-globs because that would require it to
   // traverse the entire file tree to determine which files are matched.
+  // Any paths containing "**" are not included in these.
   if (config.paths.length !== 0) {
-    core.exportVariable('LGTM_INDEX_INCLUDE', config.paths.join('\n'));
+    core.exportVariable('LGTM_INDEX_INCLUDE', buildIncludeExcludeEnvVar(config.paths));
   }
   if (config.pathsIgnore.length !== 0) {
-    core.exportVariable('LGTM_INDEX_EXCLUDE', config.pathsIgnore.join('\n'));
+    core.exportVariable('LGTM_INDEX_EXCLUDE', buildIncludeExcludeEnvVar(config.pathsIgnore));
   }
 
   // The 'LGTM_INDEX_FILTERS' environment variable controls which files are

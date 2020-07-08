@@ -343,3 +343,49 @@ doInvalidQueryUsesTest(
 doInvalidQueryUsesTest(
   "./..",
   c => configUtils.getLocalPathOutsideOfRepository(c, ".."));
+
+const validPaths = [
+  'foo',
+  'foo/',
+  'foo/**',
+  'foo/**/',
+  'foo/**/**',
+  'foo/**/bar/**/baz',
+  '**/',
+  '**/foo',
+  '/foo',
+];
+const invalidPaths = [
+  'a/***/b',
+  'a/**b',
+  'a/b**',
+  '**',
+];
+test('path validations', t => {
+  // Dummy values to pass to validateAndSanitisePath
+  const propertyName = 'paths';
+  const configFile = './.github/codeql/config.yml';
+
+  for (const path of validPaths) {
+    t.truthy(configUtils.validateAndSanitisePath(path, propertyName, configFile));
+  }
+  for (const path of invalidPaths) {
+    t.throws(() => configUtils.validateAndSanitisePath(path, propertyName, configFile));
+  }
+});
+
+test('path sanitisation', t => {
+  // Dummy values to pass to validateAndSanitisePath
+  const propertyName = 'paths';
+  const configFile = './.github/codeql/config.yml';
+
+  // Valid paths are not modified
+  t.deepEqual(
+    configUtils.validateAndSanitisePath('foo/bar', propertyName, configFile),
+    'foo/bar');
+
+  // Trailing stars are stripped
+  t.deepEqual(
+    configUtils.validateAndSanitisePath('foo/**', propertyName, configFile),
+    'foo/');
+});

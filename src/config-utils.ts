@@ -121,10 +121,19 @@ const pathStarsRegex = /.*(?:\*\*[^/].*|\*\*$|[^/]\*\*.*)/;
 // Checks that a paths of paths-ignore entry is valid, possibly modifying it
 // to make it valid, or if not possible then throws an error.
 export function validateAndSanitisePath(originalPath: string, propertyName: string, configFile: string): string {
+  // Take a copy so we don't modify the original path, so we can still construct error messages
   let path = originalPath;
+
+  // All paths are relative to the src root, so strip off leading slashes.
+  while (path.charAt(0) === '/') {
+    path = path.substring(1);
+  }
+
+  // Trailing ** are redundant, so strip them off
   if (path.endsWith('/**')) {
     path = path.substring(0, path.length - 2);
   }
+
   if (path.match(pathStarsRegex)) {
     throw new Error(getConfigFilePropertyError(
       configFile,

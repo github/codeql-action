@@ -93,7 +93,6 @@ jobs:
       env:
         TEST_MODE: true
 
-
   multi-language-repo_rubocop:
     runs-on: ubuntu-latest
 
@@ -122,5 +121,52 @@ jobs:
     - uses: ./../action/upload-sarif
       with:
         sarif_file: rubocop.sarif
+      env:
+        TEST_MODE: true
+
+  test-proxy:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:18.04
+      options: --dns 127.0.0.1
+    services:
+      squid-proxy:
+        image: datadog/squid:latest
+        ports:
+          - 3128:3128
+    env:
+      https_proxy: http://squid-proxy:3128
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+    - uses: ./../action/init
+      with:
+        languages: javascript
+    - uses: ./../action/analyze
+      env:
+        TEST_MODE: true
+
+  test-bypass-proxy:
+    runs-on: ubuntu-latest
+    env:
+      https_proxy: http://no-such-proxy:3128
+      no_proxy: api.github.com,github.com,github-production-release-asset-2e65be.s3.amazonaws.com
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+    - uses: ./../action/init
+      with:
+        languages: javascript
+    - uses: ./../action/analyze
       env:
         TEST_MODE: true

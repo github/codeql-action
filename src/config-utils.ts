@@ -122,9 +122,6 @@ const pathStarsRegex = /.*(?:\*\*[^/].*|\*\*$|[^/]\*\*.*)/;
 // See https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 const filterPatternCharactersRegex = /.*[\?\+\[\]!].*/;
 
-// Matches any string containing characters that are illegal to include in paths on windows.
-export const illegalWindowsCharactersRegex = /.*[<>:"\|?*].*/;
-
 // Checks that a paths of paths-ignore entry is valid, possibly modifying it
 // to make it valid, or if not possible then throws an error.
 export function validateAndSanitisePath(
@@ -161,13 +158,7 @@ export function validateAndSanitisePath(
       configFile,
       propertyName,
       '"' + originalPath + '" contains an unsupported character. ' +
-        'The filter pattern characteres ?, +, [, ], ! are not supported and will be matched literally.'));
-  }
-
-  // Check for any characters that are illegal in path names in windows
-  if (process.platform === 'win32' && path.match(illegalWindowsCharactersRegex)) {
-    throw new Error('"' + path + '" contains an invalid character. ' +
-        'The characteres <, >, :, ", !, |, ?, * are forbidden to use in paths on windows.');
+        'The filter pattern characters ?, +, [, ], ! are not supported and will be matched literally.'));
   }
 
   return path;

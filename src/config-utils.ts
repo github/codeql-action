@@ -118,9 +118,21 @@ export class Config {
 // preceded and followed by a slash.
 const pathStarsRegex = /.*(?:\*\*[^/].*|\*\*$|[^/]\*\*.*)/;
 
+// Characters that are supported by filters in workflows, but not by us.
+// See https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+const filterPatternCharactersRegex = /.*[\?\+\[\]!].*/;
+
+// Matches any string containing characters that are illegal to include in paths on windows
+export const illegalWindowsCharactersRegex = /.*[<>:"\|?*].*/;
+
 // Checks that a paths of paths-ignore entry is valid, possibly modifying it
 // to make it valid, or if not possible then throws an error.
-export function validateAndSanitisePath(originalPath: string, propertyName: string, configFile: string): string {
+// May also return undefined to indicate that the path should be ignored.
+export function validateAndSanitisePath(
+  originalPath: string,
+  propertyName: string,
+  configFile: string): string | undefined {
+
   // Take a copy so we don't modify the original path, so we can still construct error messages
   let path = originalPath;
 
@@ -134,6 +146,7 @@ export function validateAndSanitisePath(originalPath: string, propertyName: stri
     path = path.substring(0, path.length - 2);
   }
 
+  // Check for illegal uses of **
   if (path.match(pathStarsRegex)) {
     throw new Error(getConfigFilePropertyError(
       configFile,
@@ -141,6 +154,24 @@ export function validateAndSanitisePath(originalPath: string, propertyName: stri
       '"' + originalPath + '" contains an invalid "**" wildcard. ' +
         'They must be immediately preceeded and followed by a slash as in "/**/", or come at the start or end.'));
   }
+
+  // Check for other regex characters that we don't support.
+  // Output a warning so the user knows, but otherwise continue normally.
+  if (path.match(filterPatternCharactersRegex)) {
+    core.warning(getConfigFilePropertyError(
+      configFile,
+      propertyName,
+      '"' + originalPath + '" contains an unsupported character. ' +
+        'The filter pattern characteres ?, +, [, ], ! are not supported and will be matched literally.'));
+  }
+
+  // Check for any characters that are illegal in path names
+  if (process.platform === 'win32' && path.match(illegalWindowsCharactersRegex)) {
+    core.warning('"' + path + '" contains an invalid character and will be ignored. ' +
+        'The characteres <, >, :, ", !, |, ?, * are forbidden to use in paths on windows.');
+    return undefined;
+  }
+
   return path;
 }
 
@@ -274,7 +305,10 @@ async function initConfig(): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
-      config.pathsIgnore.push(validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile));
+      path = validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile);
+      if (path !== undefined) {
+        config.pathsIgnore.push(path);
+      }
     });
   }
 
@@ -286,7 +320,10 @@ async function initConfig(): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsInvalid(configFile));
       }
-      config.paths.push(validateAndSanitisePath(path, PATHS_PROPERTY, configFile));
+      path = validateAndSanitisePath(path, PATHS_PROPERTY, configFile);
+      if (path !== undefined) {
+        config.paths.push(path);
+      }
     });
   }
 

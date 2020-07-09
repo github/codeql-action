@@ -161,6 +161,17 @@ export function validateAndSanitisePath(
         'The filter pattern characters ?, +, [, ], ! are not supported and will be matched literally.'));
   }
 
+  // Ban any uses of backslash for now.
+  // This may not play nicely with project layouts.
+  // This restriction can be lifted later if we determine they are ok.
+  if (path.indexOf('\\') !== -1) {
+    throw new Error(getConfigFilePropertyError(
+      configFile,
+      propertyName,
+      '"' + originalPath + '" contains an "\\" character. These are not allowed in filters. ' +
+        'If running on windows we recommend using "/" instead for path filters.'));
+  }
+
   return path;
 }
 

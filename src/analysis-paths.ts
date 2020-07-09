@@ -6,9 +6,20 @@ function isInterpretedLanguage(language): boolean {
   return language === 'javascript' || language === 'python';
 }
 
+// Matches a string containing only characters that are legal to include in paths on windows.
+export const legalWindowsPathCharactersRegex = /^[^<>:"\|?]*$/;
+
 // Builds an environment variable suitable for LGTM_INDEX_INCLUDE or LGTM_INDEX_EXCLUDE
 function buildIncludeExcludeEnvVar(paths: string[]): string {
-  return paths.filter(p => p.indexOf('**') === -1).join('\n');
+  // Ignore anything containing a *
+  paths = paths.filter(p => p.indexOf('*') === -1);
+
+  // Some characters are illegal in path names in windows
+  if (process.platform === 'win32') {
+    paths = paths.filter(p => p.match(legalWindowsPathCharactersRegex));
+  }
+
+  return paths.join('\n');
 }
 
 export function includeAndExcludeAnalysisPaths(config: configUtils.Config, languages: string[]) {

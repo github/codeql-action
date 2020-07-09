@@ -122,16 +122,15 @@ const pathStarsRegex = /.*(?:\*\*[^/].*|\*\*$|[^/]\*\*.*)/;
 // See https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 const filterPatternCharactersRegex = /.*[\?\+\[\]!].*/;
 
-// Matches any string containing characters that are illegal to include in paths on windows
+// Matches any string containing characters that are illegal to include in paths on windows.
 export const illegalWindowsCharactersRegex = /.*[<>:"\|?*].*/;
 
 // Checks that a paths of paths-ignore entry is valid, possibly modifying it
 // to make it valid, or if not possible then throws an error.
-// May also return undefined to indicate that the path should be ignored.
 export function validateAndSanitisePath(
   originalPath: string,
   propertyName: string,
-  configFile: string): string | undefined {
+  configFile: string): string {
 
   // Take a copy so we don't modify the original path, so we can still construct error messages
   let path = originalPath;
@@ -165,11 +164,10 @@ export function validateAndSanitisePath(
         'The filter pattern characteres ?, +, [, ], ! are not supported and will be matched literally.'));
   }
 
-  // Check for any characters that are illegal in path names
+  // Check for any characters that are illegal in path names in windows
   if (process.platform === 'win32' && path.match(illegalWindowsCharactersRegex)) {
-    core.warning('"' + path + '" contains an invalid character and will be ignored. ' +
+    throw new Error('"' + path + '" contains an invalid character. ' +
         'The characteres <, >, :, ", !, |, ?, * are forbidden to use in paths on windows.');
-    return undefined;
   }
 
   return path;
@@ -305,10 +303,7 @@ async function initConfig(): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
-      path = validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile);
-      if (path !== undefined) {
-        config.pathsIgnore.push(path);
-      }
+      config.pathsIgnore.push(validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile));
     });
   }
 
@@ -320,10 +315,7 @@ async function initConfig(): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsInvalid(configFile));
       }
-      path = validateAndSanitisePath(path, PATHS_PROPERTY, configFile);
-      if (path !== undefined) {
-        config.paths.push(path);
-      }
+      config.paths.push(validateAndSanitisePath(path, PATHS_PROPERTY, configFile));
     });
   }
 

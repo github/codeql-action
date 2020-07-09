@@ -11,3 +11,4 @@ queries:
   - uses: security-and-quality
 paths-ignore:
   - tests
+  - lib

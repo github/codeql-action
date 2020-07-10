@@ -113,6 +113,77 @@ export class Config {
   }
 }
 
+// Regex validating stars in paths or paths-ignore entries.
+// The intention is to only allow ** to appear when immediately
+// preceded and followed by a slash.
+const pathStarsRegex = /.*(?:\*\*[^/].*|\*\*$|[^/]\*\*.*)/;
+
+// Characters that are supported by filters in workflows, but not by us.
+// See https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+const filterPatternCharactersRegex = /.*[\?\+\[\]!].*/;
+
+// Checks that a paths of paths-ignore entry is valid, possibly modifying it
+// to make it valid, or if not possible then throws an error.
+export function validateAndSanitisePath(
+  originalPath: string,
+  propertyName: string,
+  configFile: string): string {
+
+  // Take a copy so we don't modify the original path, so we can still construct error messages
+  let path = originalPath;
+
+  // All paths are relative to the src root, so strip off leading slashes.
+  while (path.charAt(0) === '/') {
+    path = path.substring(1);
+  }
+
+  // Trailing ** are redundant, so strip them off
+  if (path.endsWith('/**')) {
+    path = path.substring(0, path.length - 2);
+  }
+
+  // An empty path is not allowed as it's meaningless
+  if (path === '') {
+    throw new Error(getConfigFilePropertyError(
+      configFile,
+      propertyName,
+      '"' + originalPath + '" is not an invalid path. ' +
+        'It is not necessary to include it, and it is not allowed to exclude it.'));
+  }
+
+  // Check for illegal uses of **
+  if (path.match(pathStarsRegex)) {
+    throw new Error(getConfigFilePropertyError(
+      configFile,
+      propertyName,
+      '"' + originalPath + '" contains an invalid "**" wildcard. ' +
+        'They must be immediately preceeded and followed by a slash as in "/**/", or come at the start or end.'));
+  }
+
+  // Check for other regex characters that we don't support.
+  // Output a warning so the user knows, but otherwise continue normally.
+  if (path.match(filterPatternCharactersRegex)) {
+    core.warning(getConfigFilePropertyError(
+      configFile,
+      propertyName,
+      '"' + originalPath + '" contains an unsupported character. ' +
+        'The filter pattern characters ?, +, [, ], ! are not supported and will be matched literally.'));
+  }
+
+  // Ban any uses of backslash for now.
+  // This may not play nicely with project layouts.
+  // This restriction can be lifted later if we determine they are ok.
+  if (path.indexOf('\\') !== -1) {
+    throw new Error(getConfigFilePropertyError(
+      configFile,
+      propertyName,
+      '"' + originalPath + '" contains an "\\" character. These are not allowed in filters. ' +
+        'If running on windows we recommend using "/" instead for path filters.'));
+  }
+
+  return path;
+}
+
 export function getNameInvalid(configFile: string): string {
   return getConfigFilePropertyError(configFile, NAME_PROPERTY, 'must be a non-empty string');
 }
@@ -243,7 +314,7 @@ async function initConfig(): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
-      config.pathsIgnore.push(path);
+      config.pathsIgnore.push(validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile));
     });
   }
 
@@ -255,7 +326,7 @@ async function initConfig(): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsInvalid(configFile));
       }
-      config.paths.push(path);
+      config.paths.push(validateAndSanitisePath(path, PATHS_PROPERTY, configFile));
     });
   }
 

@@ -150,23 +150,3 @@ jobs:
     - uses: ./../action/analyze
       env:
         TEST_MODE: true
-
-  test-bypass-proxy:
-    runs-on: ubuntu-latest
-    env:
-      https_proxy: http://no-such-proxy:3128
-      no_proxy: api.github.com,github.com,github-production-release-asset-2e65be.s3.amazonaws.com
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-    - uses: ./../action/init
-      with:
-        languages: javascript
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true

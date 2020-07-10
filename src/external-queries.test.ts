@@ -4,10 +4,10 @@ import * as path from "path";
 
 import * as configUtils from "./config-utils";
 import * as externalQueries from "./external-queries";
-import {silenceDebugOutput} from './testing-utils';
+import {setupTests} from './testing-utils';
 import * as util from "./util";
 
-silenceDebugOutput(test);
+setupTests(test);
 
 test("checkoutExternalQueries", async t => {
   let config = new configUtils.Config();

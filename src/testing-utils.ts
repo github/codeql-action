@@ -1,4 +1,5 @@
 import {TestInterface} from 'ava';
+import sinon from 'sinon';
 
 type TestContext = {stdoutWrite: any, stderrWrite: any, testOutput: string};
 
@@ -30,7 +31,7 @@ function wrapOutput(context: TestContext) {
   };
 }
 
-export function silenceDebugOutput(test: TestInterface<any>) {
+export function setupTests(test: TestInterface<any>) {
   const typedTest = test as TestInterface<TestContext>;
 
   typedTest.beforeEach(t => {
@@ -52,5 +53,9 @@ export function silenceDebugOutput(test: TestInterface<any>) {
     if (!t.passed) {
       process.stdout.write(t.context.testOutput);
     }
+  });
+
+  typedTest.afterEach.always(() => {
+    sinon.restore();
   });
 }

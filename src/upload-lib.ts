@@ -53,7 +53,7 @@ async function uploadPayload(payload): Promise<boolean> {
   const backoffPeriods = [1, 5, 15];
 
   for (let attempt = 0; attempt <= backoffPeriods.length; attempt++) {
-    const response = await api.client.request("PUT /repos/:owner/:repo/code-scanning/analysis", ({
+    const response = await api.getApiClient().request("PUT /repos/:owner/:repo/code-scanning/analysis", ({
       owner: owner,
       repo: repo,
       data: payload,

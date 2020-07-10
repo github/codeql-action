@@ -142,6 +142,15 @@ export function validateAndSanitisePath(
     path = path.substring(0, path.length - 2);
   }
 
+  // An empty path is not allowed as it's meaningless
+  if (path === '') {
+    throw new Error(getConfigFilePropertyError(
+      configFile,
+      propertyName,
+      '"' + originalPath + '" is not an invalid path. ' +
+        'It is not necessary to include it, and it is not allowed to exclude it.'));
+  }
+
   // Check for illegal uses of **
   if (path.match(pathStarsRegex)) {
     throw new Error(getConfigFilePropertyError(

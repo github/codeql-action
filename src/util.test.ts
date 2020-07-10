@@ -2,10 +2,10 @@ import test from 'ava';
 import * as fs from 'fs';
 import * as os from "os";
 
-import {silenceDebugOutput} from './testing-utils';
+import {setupTests} from './testing-utils';
 import * as util from './util';
 
-silenceDebugOutput(test);
+setupTests(test);
 
 test('getToolNames', t => {
   const input = fs.readFileSync(__dirname + '/../src/testdata/tool-names.sarif', 'utf8');

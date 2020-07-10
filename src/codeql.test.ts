@@ -4,10 +4,10 @@ import nock from 'nock';
 import * as path from 'path';
 
 import * as codeql from './codeql';
-import {silenceDebugOutput} from './testing-utils';
+import {setupTests} from './testing-utils';
 import * as util from './util';
 
-silenceDebugOutput(test);
+setupTests(test);
 
 test('download codeql bundle cache', async t => {
 

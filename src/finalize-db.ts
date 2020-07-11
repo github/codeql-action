@@ -175,6 +175,7 @@ async function run() {
     }
 
   } catch (error) {
+    core.debug(error.message);
     core.setFailed(error.message);
     await util.reportActionFailed('finish', error.message, error.stack);
     return;

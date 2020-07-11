@@ -206,6 +206,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ]);
     },
     finalizeDatabase: async function(databasePath: string) {
+      core.debug("Finalizing " + databasePath);
       await exec.exec(cmd, [
         'database',
         'finalize',

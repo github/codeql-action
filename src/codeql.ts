@@ -213,6 +213,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         databasePath
       ],
       {
+        ignoreReturnCode: true, 
         listeners: {
           stdout: (data: Buffer) => {
             core.debug("Debug" + data.toString());

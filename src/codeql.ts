@@ -63,6 +63,8 @@ export interface ResolveQueriesOutput {
 }
 const options =  {
   ignoreReturnCode: true, 
+  failOnStdErr: true,
+  silent:true,
   listeners: {
     stdout: (data: Buffer) => {
       core.debug("Debug" + data.toString());

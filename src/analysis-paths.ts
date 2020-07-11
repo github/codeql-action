@@ -53,6 +53,6 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config, langu
         config.pathsIgnore.length !== 0 ||
         filters.length !== 0) &&
       !languages.every(isInterpretedLanguage)) {
-    core.warning('The "paths"/"paths-ignore" fields of the config only have effect for Javascript and Python');
+    core.warning('The "paths"/"paths-ignore" fields of the configuration only effect Javascript and Python analysis. [Learn more](https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#specifying-directories-to-scan) about modifying the directories to scan. );
   }
 }

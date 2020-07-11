@@ -35,7 +35,7 @@ async function run() {
     core.endGroup();
 
   } catch (error) {
-    core.setFailed("We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps.  " + error.message);
+    core.setFailed(`We were unable to automatically build your ${language} code. Please replace the call to the autobuild action with your custom build steps.  \n` + error.message);
     await util.reportActionFailed('autobuild', error.message, error.stack);
     return;
   }

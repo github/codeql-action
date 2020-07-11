@@ -61,7 +61,17 @@ export interface ResolveQueriesOutput {
     [queryPath: string]: {}
   };
 }
-
+const options =  {
+  ignoreReturnCode: true, 
+  listeners: {
+    stdout: (data: Buffer) => {
+      core.debug("Debug" + data.toString());
+    },
+    stderr: (data: Buffer) => {
+      core.error("Error occured" + data.toString());
+    }
+  }
+};
 /**
  * Environment variable used to store the location of the CodeQL CLI executable.
  * Value is set by setupCodeQL and read by getCodeQL.
@@ -185,10 +195,14 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           '--language=' + language
         ],
         {
-          silent: true,
+          ignoreReturnCode: true, 
           listeners: {
-            stdout: (data) => { extractorPath += data.toString(); },
-            stderr: (data) => { process.stderr.write(data); }
+            stdout: (data: Buffer) => {
+              core.debug("Debug" + data.toString());
+            },
+            stderr: (data: Buffer) => {
+              core.error("Error occured" + data.toString());
+            }
           }
         });
 
@@ -203,7 +217,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         databasePath,
         '--',
         traceCommand
-      ]);
+      ], options);
     },
     finalizeDatabase: async function(databasePath: string) {
       core.debug("Finalizing " + databasePath);
@@ -211,18 +225,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         'database',
         'finalize',
         databasePath
-      ],
-      {
-        ignoreReturnCode: true, 
-        listeners: {
-          stdout: (data: Buffer) => {
-            core.debug("Debug" + data.toString());
-          },
-          stderr: (data: Buffer) => {
-            core.error("Error occured" + data.toString());
-          }
-        }
-      });
+      ], options );
     },
     resolveQueries: async function(queries: string[]) {
       let output = '';
@@ -233,14 +236,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           'queries',
           ...queries,
           '--format=bylanguage'
-        ],
-        {
-          listeners: {
-            stdout: (data: Buffer) => {
-              output += data.toString();
-            }
-          }
-        });
+        ], options);
 
       return JSON.parse(output);
     },
@@ -255,17 +251,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           '--output=' + sarifFile,
           '--no-sarif-add-snippets',
           querySuite
-        ],
-        {
-          listeners: {
-            stdout: (data: Buffer) => {
-              core.debug("Debug" + data.toString());
-            },
-            stderr: (data: Buffer) => {
-              core.error("Error occured" + data.toString());
-            }
-          }
-        });
+        ], options);
     }
   };
 }

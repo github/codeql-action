@@ -233,7 +233,15 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       return JSON.parse(output);
     },
     databaseAnalyze: async function(databasePath: string, sarifFile: string, querySuite: string) {
-      try {
+      const options = {};
+      options.listeners = {
+        stdout: (data: Buffer) => {
+          core.debug(data.toString());
+        },
+        stderr: (data: Buffer) => {
+          core.error(data.toString());
+        }
+      };
         await exec.exec(cmd, [
           'database',
           'analyze',
@@ -244,10 +252,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           '--output=' + sarifFile,
           '--no-sarif-add-snippets',
           querySuite
-        ]);
-      } catch (error) {
-        throw new Error ("Got it!" + error.message)
-      }
+        ], options);
     }
   };
 }

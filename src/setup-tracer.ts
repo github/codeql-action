@@ -148,7 +148,7 @@ async function run() {
     // If the languages parameter was not given and no languages were
     // detected then fail here as this is a workflow configuration error.
     if (languages.length === 0) {
-      throw new Error("Did not detect any languages to analyze. Please update input in workflow.");
+      throw new Error("Did not detect any languages to analyze. Please [update the languages property](https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#overriding-automatic-language-detection) in your workflow definition.");
     }
 
     analysisPaths.includeAndExcludeAnalysisPaths(config, languages);
@@ -243,6 +243,6 @@ async function run() {
 }
 
 run().catch(e => {
-  core.setFailed("init action failed: " + e);
+  core.setFailed("Init action failed: " + e);
   console.log(e);
 });

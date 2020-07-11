@@ -210,7 +210,17 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         'database',
         'finalize',
         databasePath
-      ]);
+      ],
+      {
+        listeners: {
+          stdout: (data: Buffer) => {
+            core.debug("Debug" + data.toString());
+          },
+          stderr: (data: Buffer) => {
+            core.error("Error occured" + data.toString());
+          }
+        }
+      });
     },
     resolveQueries: async function(queries: string[]) {
       let output = '';
@@ -233,15 +243,6 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       return JSON.parse(output);
     },
     databaseAnalyze: async function(databasePath: string, sarifFile: string, querySuite: string) {
-      const options = {};
-      options.listeners = {
-        stdout: (data: Buffer) => {
-          core.debug("Debug" + data.toString());
-        },
-        stderr: (data: Buffer) => {
-          core.error("Error occured" + data.toString());
-        }
-      };
         await exec.exec(cmd, [
           'database',
           'analyze',
@@ -252,7 +253,17 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           '--output=' + sarifFile,
           '--no-sarif-add-snippets',
           querySuite
-        ], options);
+        ],
+        {
+          listeners: {
+            stdout: (data: Buffer) => {
+              core.debug("Debug" + data.toString());
+            },
+            stderr: (data: Buffer) => {
+              core.error("Error occured" + data.toString());
+            }
+          }
+        });
     }
   };
 }

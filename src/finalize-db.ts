@@ -145,7 +145,7 @@ async function runQueries(databaseFolder: string, sarifFolder: string, config: c
 }
 
 async function run() {
-  try {
+  //try {
     if (util.should_abort('finish', true) || !await util.reportActionStarting('finish')) {
       return;
     }
@@ -174,11 +174,11 @@ async function run() {
       }
     }
 
-  } catch (error) {
+  /*} catch (error) {
     core.setFailed(error.message);
     await util.reportActionFailed('finish', error.message, error.stack);
     return;
-  }
+  }*/
 
   await util.reportActionSucceeded('finish');
 }

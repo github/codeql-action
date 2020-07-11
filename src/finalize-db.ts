@@ -131,7 +131,7 @@ async function runQueries(databaseFolder: string, sarifFolder: string, config: c
     try {
       await codeql.databaseAnalyze(path.join(databaseFolder, database), sarifFile, querySuite);
     } catch (analysisError) {
-      if (analysisError.contains("exit code 32")) {
+      if (analysisError.message.contains("exit code 32")) {
         throw new Error('Unable to analyze ' + database + ' because CodeQL was unable to detect any code for that language. \n [Learn more](https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning) about how to troubleshoot this error. ')
       } else {
         throw new Error(analysisError);

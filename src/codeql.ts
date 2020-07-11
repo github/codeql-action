@@ -236,10 +236,10 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       const options = {};
       options.listeners = {
         stdout: (data: Buffer) => {
-          core.debug(data.toString());
+          core.debug("Debug" + data.toString());
         },
         stderr: (data: Buffer) => {
-          core.error(data.toString());
+          core.error("Error occured" + data.toString());
         }
       };
         await exec.exec(cmd, [

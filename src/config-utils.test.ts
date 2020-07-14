@@ -1,4 +1,4 @@
-import * as octokit from '@octokit/rest';
+import * as github from "@actions/github";
 import test from 'ava';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -6,10 +6,10 @@ import sinon from 'sinon';
 
 import * as api from './api-client';
 import * as configUtils from './config-utils';
-import {silenceDebugOutput} from './testing-utils';
+import {setupTests} from './testing-utils';
 import * as util from './util';
 
-silenceDebugOutput(test);
+setupTests(test);
 
 function setInput(name: string, value: string | undefined) {
   // Transformation copied from
@@ -20,6 +20,19 @@ function setInput(name: string, value: string | undefined) {
   } else {
     delete process.env[envVar];
   }
+}
+
+type GetContentsResponse = { content?: string; } | {}[];
+
+function mockGetContents(content: GetContentsResponse): sinon.SinonStub<any, any> {
+  // Passing an auth token is required, so we just use a dummy value
+  let client = new github.GitHub('123');
+  const response = {
+    data: content
+  };
+  const spyGetContents = sinon.stub(client.repos, "getContents").resolves(response as any);
+  sinon.stub(api, "getApiClient").value(() => client);
+  return spyGetContents;
 }
 
 test("load empty config", async t => {
@@ -161,24 +174,13 @@ test("API client used when reading remote config", async t => {
       paths:
         - c/d`;
     const dummyResponse = {
-      data: {
-        content: Buffer.from(inputFileContents).toString("base64"),
-      }
+      content: Buffer.from(inputFileContents).toString("base64"),
     };
-
-    let ok = new octokit.Octokit({
-      userAgent: "CodeQL Action",
-    });
-    const repos = ok.repos;
-    const spyGetContents = sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    ok.repos = repos;
-    sinon.stub(api, "client").value(ok);
+    const spyGetContents = mockGetContents(dummyResponse);
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     await configUtils.loadConfig();
     t.assert(spyGetContents.called);
-
-    sinon.restore();
   });
 });
 
@@ -187,17 +189,8 @@ test("Remote config handles the case where a directory is provided", async t => 
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
-    const dummyResponse = {
-      data: [], // directories are returned as arrays
-    };
-
-    let ok = new octokit.Octokit({
-      userAgent: "CodeQL Action",
-    });
-    const repos = ok.repos;
-    sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    ok.repos = repos;
-    sinon.stub(api, "client").value(ok);
+    const dummyResponse = []; // directories are returned as arrays
+    mockGetContents(dummyResponse);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
@@ -207,8 +200,6 @@ test("Remote config handles the case where a directory is provided", async t => 
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference)));
     }
-
-    sinon.restore();
   });
 });
 
@@ -218,18 +209,9 @@ test("Invalid format of remote config handled correctly", async t => {
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     const dummyResponse = {
-      data: {
-        // note no "content" property here
-      }
+      // note no "content" property here
     };
-
-    let ok = new octokit.Octokit({
-      userAgent: "CodeQL Action",
-    });
-    const repos = ok.repos;
-    sinon.stub(repos, "getContents").resolves(Promise.resolve(dummyResponse));
-    ok.repos = repos;
-    sinon.stub(api, "client").value(ok);
+    mockGetContents(dummyResponse);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
@@ -239,8 +221,6 @@ test("Invalid format of remote config handled correctly", async t => {
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
     }
-
-    sinon.restore();
   });
 });
 
@@ -343,3 +323,49 @@ doInvalidQueryUsesTest(
 doInvalidQueryUsesTest(
   "./..",
   c => configUtils.getLocalPathOutsideOfRepository(c, ".."));
+
+const validPaths = [
+  'foo',
+  'foo/',
+  'foo/**',
+  'foo/**/',
+  'foo/**/**',
+  'foo/**/bar/**/baz',
+  '**/',
+  '**/foo',
+  '/foo',
+];
+const invalidPaths = [
+  'a/***/b',
+  'a/**b',
+  'a/b**',
+  '**',
+];
+test('path validations', t => {
+  // Dummy values to pass to validateAndSanitisePath
+  const propertyName = 'paths';
+  const configFile = './.github/codeql/config.yml';
+
+  for (const path of validPaths) {
+    t.truthy(configUtils.validateAndSanitisePath(path, propertyName, configFile));
+  }
+  for (const path of invalidPaths) {
+    t.throws(() => configUtils.validateAndSanitisePath(path, propertyName, configFile));
+  }
+});
+
+test('path sanitisation', t => {
+  // Dummy values to pass to validateAndSanitisePath
+  const propertyName = 'paths';
+  const configFile = './.github/codeql/config.yml';
+
+  // Valid paths are not modified
+  t.deepEqual(
+    configUtils.validateAndSanitisePath('foo/bar', propertyName, configFile),
+    'foo/bar');
+
+  // Trailing stars are stripped
+  t.deepEqual(
+    configUtils.validateAndSanitisePath('foo/**', propertyName, configFile),
+    'foo/');
+});

@@ -1,9 +1,9 @@
 import test from 'ava';
 
-import {silenceDebugOutput} from './testing-utils';
+import {setupTests} from './testing-utils';
 import * as uploadLib from './upload-lib';
 
-silenceDebugOutput(test);
+setupTests(test);
 
 test('validateSarifFileSchema - valid', t => {
   const inputFile = __dirname + '/../src/testdata/valid-sarif.sarif';

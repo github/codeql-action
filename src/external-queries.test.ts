@@ -13,7 +13,7 @@ test("checkoutExternalQueries", async t => {
     process.env["RUNNER_TEMP"] = tmpDir;
     await externalQueries.checkoutExternalRepository("github/codeql-go", "df4c6869212341b601005567381944ed90906b6b");
 
-    // COPYRIGHT file existed in df4c6869212341b601005567381944ed90906b6b but not in master
+    // COPYRIGHT file existed in df4c6869212341b601005567381944ed90906b6b but not in the default branch
     t.true(fs.existsSync(path.join(tmpDir, "github", "codeql-go", "COPYRIGHT")));
   });
 });

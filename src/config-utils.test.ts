@@ -56,7 +56,7 @@ test("load empty config", async t => {
 
     const config = await configUtils.initConfig();
 
-    t.deepEqual(config, await configUtils.getBlankConfig());
+    t.deepEqual(config, await configUtils.getDefaultConfig());
   });
 });
 
@@ -78,15 +78,19 @@ test("loading config saves config", async t => {
       },
     });
 
+
     // Sanity check the saved config file does not already exist
-    t.false(fs.existsSync(configUtils.getParsedConfigFile()));
+    t.false(fs.existsSync(configUtils.getPathToParsedConfigFile()));
+
+    // Sanity check that getConfig throws before we have called initConfig
+    t.throwsAsync(configUtils.getConfig);
 
     const config1 = await configUtils.initConfig();
 
     // The saved config file should now exist
-    t.true(fs.existsSync(configUtils.getParsedConfigFile()));
+    t.true(fs.existsSync(configUtils.getPathToParsedConfigFile()));
 
-    // And the same config should be returned again
+    // And that same newly-initialised config should now be returned by getConfig
     const config2 = await configUtils.getConfig();
     t.deepEqual(config1, config2);
   });

@@ -5,13 +5,13 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 
 import * as api from './api-client';
-import { getCodeQL } from './codeql';
+import { getCodeQL, ResolveQueriesOutput } from './codeql';
 import * as externalQueries from "./external-queries";
 import * as util from './util';
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = 'name';
-const DISPLAY_DEFAULT_QUERIES_PROPERTY = 'disable-default-queries';
+const DISABLE_DEFAULT_QUERIES_PROPERTY = 'disable-default-queries';
 const QUERIES_PROPERTY = 'queries';
 const QUERIES_USES_PROPERTY = 'uses';
 const PATHS_IGNORE_PROPERTY = 'paths-ignore';
@@ -63,6 +63,28 @@ function queryIsDisabled(language, query): boolean {
 }
 
 /**
+ * Asserts that the noDeclaredLanguage and multipleDeclaredLanguages fields are
+ * both empty and errors if they are not.
+ */
+function validateQueries(resolvedQueries: ResolveQueriesOutput) {
+  const noDeclaredLanguage = resolvedQueries.noDeclaredLanguage;
+  const noDeclaredLanguageQueries = Object.keys(noDeclaredLanguage);
+  if (noDeclaredLanguageQueries.length !== 0) {
+    throw new Error('The following queries do not declare a language. ' +
+      'Their qlpack.yml files are either missing or is invalid.\n' +
+      noDeclaredLanguageQueries.join('\n'));
+  }
+
+  const multipleDeclaredLanguages = resolvedQueries.multipleDeclaredLanguages;
+  const multipleDeclaredLanguagesQueries = Object.keys(multipleDeclaredLanguages);
+  if (multipleDeclaredLanguagesQueries.length !== 0) {
+    throw new Error('The following queries declare multiple languages. ' +
+      'Their qlpack.yml files are either missing or is invalid.\n' +
+      multipleDeclaredLanguagesQueries.join('\n'));
+  }
+}
+
+/**
  * Run 'codeql resolve queries' and add the results to resultMap
  */
 async function runResolveQueries(
@@ -82,17 +104,7 @@ async function runResolveQueries(
   }
 
   if (errorOnInvalidQueries) {
-    const noDeclaredLanguage = resolvedQueries.noDeclaredLanguage;
-    const noDeclaredLanguageQueries = Object.keys(noDeclaredLanguage);
-    if (noDeclaredLanguageQueries.length !== 0) {
-      throw new Error('Some queries do not declare a language, their qlpack.yml file is missing or is invalid');
-    }
-
-    const multipleDeclaredLanguages = resolvedQueries.multipleDeclaredLanguages;
-    const multipleDeclaredLanguagesQueries = Object.keys(multipleDeclaredLanguages);
-    if (multipleDeclaredLanguagesQueries.length !== 0) {
-      throw new Error('Some queries declare multiple languages, their qlpack.yml file is missing or is invalid');
-    }
+    validateQueries(resolvedQueries);
   }
 }
 
@@ -108,9 +120,10 @@ async function addDefaultQueries(languages: string[], resultMap: { [language: st
 const builtinSuites = ['security-extended', 'security-and-quality'] as const;
 
 /**
- * Parse the suitename to a set of queries and update resultMap.
+ * Determine the set of queries associated with suiteName's suites and add them to resultMap.
+ * Throws an error if suiteName is not a valid builtin suite.
  */
-async function parseBuiltinSuite(
+async function addBuiltinSuiteQueries(
   configFile: string,
   languages: string[],
   resultMap: { [language: string]: string[] },
@@ -126,9 +139,9 @@ async function parseBuiltinSuite(
 }
 
 /**
- * Parse the local path to a set of queries and update resultMap.
+ * Retrieve the set of queries at localQueryPath and add them to resultMap.
  */
-async function parseLocalQueryPath(
+async function addLocalQueries(
   configFile: string,
   resultMap: { [language: string]: string[] },
   localQueryPath: string) {
@@ -158,9 +171,9 @@ async function parseLocalQueryPath(
 }
 
 /**
- * Parse the remote repo reference to a set of queries and update resultMap.
+ * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
  */
-async function parseRemoteQuery(configFile: string, resultMap: { [language: string]: string[] }, queryUses: string) {
+async function addRemoteQueries(configFile: string, resultMap: { [language: string]: string[] }, queryUses: string) {
   let tok = queryUses.split('@');
   if (tok.length !== 2) {
     throw new Error(getQueryUsesInvalid(configFile, queryUses));
@@ -193,6 +206,11 @@ async function parseRemoteQuery(configFile: string, resultMap: { [language: stri
 
 /**
  * Parse a query 'uses' field to a discrete set of query files and update resultMap.
+ *
+ * The logic for parsing the string is based on what actions does for
+ * parsing the 'uses' actions in the workflow file. So it can handle
+ * local paths starting with './', or references to remote repos, or
+ * a finite set of hardcoded terms for builtin suites.
  */
 async function parseQueryUses(
   configFile: string,
@@ -200,8 +218,6 @@ async function parseQueryUses(
   resultMap: { [language: string]: string[] },
   queryUses: string) {
 
-  // The logic for parsing the string is based on what actions does for
-  // parsing the 'uses' actions in the workflow file
   queryUses = queryUses.trim();
   if (queryUses === "") {
     throw new Error(getQueryUsesInvalid(configFile));
@@ -209,18 +225,18 @@ async function parseQueryUses(
 
   // Check for the local path case before we start trying to parse the repository name
   if (queryUses.startsWith("./")) {
-    await parseLocalQueryPath(configFile, resultMap, queryUses.slice(2));
+    await addLocalQueries(configFile, resultMap, queryUses.slice(2));
     return;
   }
 
   // Check for one of the builtin suites
   if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-    await parseBuiltinSuite(configFile, languages, resultMap, queryUses);
+    await addBuiltinSuiteQueries(configFile, languages, resultMap, queryUses);
     return;
   }
 
   // Otherwise, must be a reference to another repo
-  await parseRemoteQuery(configFile, resultMap, queryUses);
+  await addRemoteQueries(configFile, resultMap, queryUses);
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -299,7 +315,7 @@ export function getNameInvalid(configFile: string): string {
 }
 
 export function getDisableDefaultQueriesInvalid(configFile: string): string {
-  return getConfigFilePropertyError(configFile, DISPLAY_DEFAULT_QUERIES_PROPERTY, 'must be a boolean');
+  return getConfigFilePropertyError(configFile, DISABLE_DEFAULT_QUERIES_PROPERTY, 'must be a boolean');
 }
 
 export function getQueriesInvalid(configFile: string): string {
@@ -433,7 +449,10 @@ async function getLanguages(): Promise<string[]> {
   return languages;
 }
 
-export async function getBlankConfig(): Promise<Config> {
+/**
+ * Get the default config for when the user has not supplied one.
+ */
+export async function getDefaultConfig(): Promise<Config> {
   const languages = await getLanguages();
   const queries = {};
   await addDefaultQueries(languages, queries);
@@ -483,11 +502,11 @@ async function loadConfig(configFile: string): Promise<Config> {
   const pathsIgnore: string[] = [];
   const paths: string[] = [];
 
-  if (DISPLAY_DEFAULT_QUERIES_PROPERTY in parsedYAML) {
-    if (typeof parsedYAML[DISPLAY_DEFAULT_QUERIES_PROPERTY] !== "boolean") {
+  if (DISABLE_DEFAULT_QUERIES_PROPERTY in parsedYAML) {
+    if (typeof parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY] !== "boolean") {
       throw new Error(getDisableDefaultQueriesInvalid(configFile));
     }
-    if (!parsedYAML[DISPLAY_DEFAULT_QUERIES_PROPERTY]) {
+    if (!parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY]) {
       await addDefaultQueries(languages, queries);
     }
   }
@@ -538,13 +557,13 @@ async function loadConfig(configFile: string): Promise<Config> {
  * a default config. The parsed config is then stored to a known location.
  */
 export async function initConfig(): Promise<Config> {
-  let configFile = core.getInput('config-file');
+  const configFile = core.getInput('config-file');
   let config: Config;
 
   // If no config file was provided create an empty one
   if (configFile === '') {
     core.debug('No configuration file was provided');
-    config = await getBlankConfig();
+    config = await getDefaultConfig();
   } else {
     config = await loadConfig(configFile);
   }
@@ -608,24 +627,24 @@ async function getRemoteConfig(configFile: string): Promise<any> {
 /**
  * Get the directory where the parsed config will be stored.
  */
-function getParsedConfigFolder(): string {
+function getPathToParsedConfigFolder(): string {
   return util.getRequiredEnvParam('RUNNER_TEMP');
 }
 
 /**
  * Get the file path where the parsed config will be stored.
  */
-export function getParsedConfigFile(): string {
-  return path.join(getParsedConfigFolder(), 'config');
+export function getPathToParsedConfigFile(): string {
+  return path.join(getPathToParsedConfigFolder(), 'config');
 }
 
 /**
- * Store the given config to the path returned from getParsedConfigFile.
+ * Store the given config to the path returned from getPathToParsedConfigFile.
  */
 async function saveConfig(config: Config) {
   const configString = JSON.stringify(config);
-  await io.mkdirP(getParsedConfigFolder());
-  fs.writeFileSync(getParsedConfigFile(), configString, 'utf8');
+  await io.mkdirP(getPathToParsedConfigFolder());
+  fs.writeFileSync(getPathToParsedConfigFile(), configString, 'utf8');
   core.debug('Saved config:');
   core.debug(configString);
 }
@@ -639,7 +658,7 @@ async function saveConfig(config: Config) {
  * return the contents of the parsed config from the known location.
  */
 export async function getConfig(): Promise<Config> {
-  const configFile = getParsedConfigFile();
+  const configFile = getPathToParsedConfigFile();
   if (!fs.existsSync(configFile)) {
     throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
   }

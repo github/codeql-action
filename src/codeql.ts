@@ -63,7 +63,7 @@ export interface ResolveQueriesOutput {
 }
 
 /**
- * Stores the CodeQL object, and is populated by `setupCodeQL`.
+ * Stores the CodeQL object, and is populated by `setupCodeQL` or `getCodeQL`.
  * Can be overridden in tests using `setCodeQL`.
  */
 let cachedCodeQL: CodeQL | undefined = undefined;
@@ -145,6 +145,12 @@ function resolveFunction<T>(partialCodeql: Partial<CodeQL>, methodName: string):
   return partialCodeql[methodName];
 }
 
+/**
+ * Set the functionality for CodeQL methods. Only for use in tests.
+ *
+ * Accepts a partial object and any undefined methods will be implemented
+ * to immediately throw an exception indicating which method is missing.
+ */
 export function setCodeQL(partialCodeql: Partial<CodeQL>) {
   cachedCodeQL = {
     getDir: resolveFunction(partialCodeql, 'getDir'),

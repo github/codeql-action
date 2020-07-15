@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as util from './util';
 
 /**
- * Checkout a repository at the given ref, and return the directory of the checkout.
+ * Check out repository at the given ref, and return the directory of the checkout.
  */
 export async function checkoutExternalRepository(repository: string, ref: string): Promise<string> {
   const folder = util.getRequiredEnvParam('RUNNER_TEMP');

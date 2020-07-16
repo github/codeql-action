@@ -83,7 +83,7 @@ test("loading config saves config", async t => {
     t.false(fs.existsSync(configUtils.getPathToParsedConfigFile()));
 
     // Sanity check that getConfig throws before we have called initConfig
-    t.throwsAsync(configUtils.getConfig);
+    await t.throwsAsync(configUtils.getConfig);
 
     const config1 = await configUtils.initConfig();
 

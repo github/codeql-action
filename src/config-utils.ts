@@ -18,6 +18,20 @@ const PATHS_IGNORE_PROPERTY = 'paths-ignore';
 const PATHS_PROPERTY = 'paths';
 
 /**
+ * Format of the config file supplied by the user.
+ */
+export interface UserConfig {
+  name?: string;
+  'disable-default-queries'?: boolean;
+  queries?: {
+    name?: string;
+    uses: string;
+  }[];
+  'paths-ignore'?: string[];
+  paths?: string[];
+}
+
+/**
  * Format of the parsed config file.
  */
 export interface Config {
@@ -39,6 +53,14 @@ export interface Config {
    * List of paths to include in analysis.
    */
   paths: string[];
+  /**
+   * A unaltered copy of the original user input.
+   * Mainly intended to be used for status reporting.
+   * If any field is useful for the actual processing
+   * of the action then consider pulling it out to a
+   * top-level field above.
+   */
+  originalUserInput: UserConfig;
 }
 
 /**
@@ -460,7 +482,8 @@ export async function getDefaultConfig(): Promise<Config> {
     languages: languages,
     queries: queries,
     pathsIgnore: [],
-    paths: []
+    paths: [],
+    originalUserInput: {},
   };
 }
 
@@ -468,7 +491,7 @@ export async function getDefaultConfig(): Promise<Config> {
  * Load the config from the given file.
  */
 async function loadConfig(configFile: string): Promise<Config> {
-  let parsedYAML;
+  let parsedYAML: UserConfig;
 
   if (isLocal(configFile)) {
     // Treat the config file as relative to the workspace
@@ -486,7 +509,7 @@ async function loadConfig(configFile: string): Promise<Config> {
     if (typeof parsedYAML[NAME_PROPERTY] !== "string") {
       throw new Error(getNameInvalid(configFile));
     }
-    if (parsedYAML[NAME_PROPERTY].length === 0) {
+    if (parsedYAML[NAME_PROPERTY]!.length === 0) {
       throw new Error(getNameInvalid(configFile));
     }
   }
@@ -507,7 +530,7 @@ async function loadConfig(configFile: string): Promise<Config> {
     if (typeof parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY] !== "boolean") {
       throw new Error(getDisableDefaultQueriesInvalid(configFile));
     }
-    disableDefaultQueries = parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY];
+    disableDefaultQueries = parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY]!;
   }
   if (!disableDefaultQueries) {
     await addDefaultQueries(languages, queries);
@@ -517,7 +540,7 @@ async function loadConfig(configFile: string): Promise<Config> {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));
     }
-    for (const query of parsedYAML[QUERIES_PROPERTY]) {
+    for (const query of parsedYAML[QUERIES_PROPERTY]!) {
       if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
         throw new Error(getQueryUsesInvalid(configFile));
       }
@@ -529,7 +552,7 @@ async function loadConfig(configFile: string): Promise<Config> {
     if (!(parsedYAML[PATHS_IGNORE_PROPERTY] instanceof Array)) {
       throw new Error(getPathsIgnoreInvalid(configFile));
     }
-    parsedYAML[PATHS_IGNORE_PROPERTY].forEach(path => {
+    parsedYAML[PATHS_IGNORE_PROPERTY]!.forEach(path => {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
@@ -541,7 +564,7 @@ async function loadConfig(configFile: string): Promise<Config> {
     if (!(parsedYAML[PATHS_PROPERTY] instanceof Array)) {
       throw new Error(getPathsInvalid(configFile));
     }
-    parsedYAML[PATHS_PROPERTY].forEach(path => {
+    parsedYAML[PATHS_PROPERTY]!.forEach(path => {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsInvalid(configFile));
       }
@@ -549,7 +572,13 @@ async function loadConfig(configFile: string): Promise<Config> {
     });
   }
 
-  return {languages, queries, pathsIgnore, paths};
+  return {
+    languages,
+    queries,
+    pathsIgnore,
+    paths,
+    originalUserInput: parsedYAML
+  };
 }
 
 /**
@@ -584,7 +613,7 @@ function isLocal(configPath: string): boolean {
   return (configPath.indexOf("@") === -1);
 }
 
-function getLocalConfig(configFile: string, workspacePath: string): any {
+function getLocalConfig(configFile: string, workspacePath: string): UserConfig {
   // Error if the config file is now outside of the workspace
   if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
     throw new Error(getConfigFileOutsideWorkspaceErrorMessage(configFile));
@@ -598,7 +627,7 @@ function getLocalConfig(configFile: string, workspacePath: string): any {
   return yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
 }
 
-async function getRemoteConfig(configFile: string): Promise<any> {
+async function getRemoteConfig(configFile: string): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
   const pieces = format.exec(configFile);

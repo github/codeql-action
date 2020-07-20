@@ -125,6 +125,7 @@ async function run() {
   let queriesStats: QueriesStatusReport | undefined = undefined;
   let uploadStats: upload_lib.UploadStatusReport | undefined = undefined;
   try {
+    util.prepareEnvironment();
     if (util.should_abort('finish', true) ||
       !await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
       return;
@@ -145,7 +146,7 @@ async function run() {
     core.info('Analyzing database');
     queriesStats = await runQueries(databaseFolder, sarifFolder, config);
 
-    if ('true' === core.getInput('upload')) {
+    if ('true' === core.getInput('upload') && !util.isLocalRun()) {
       uploadStats = await upload_lib.upload(sarifFolder);
     }
 

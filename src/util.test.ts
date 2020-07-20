@@ -67,3 +67,60 @@ test('getRef() throws on the empty string', t => {
   process.env["GITHUB_REF"] = "";
   t.throws(util.getRef);
 });
+
+test('isLocalRun() runs correctly', t => {
+  const origLocalRun = process.env.CODEQL_LOCAL_RUN;
+
+  process.env.CODEQL_LOCAL_RUN = '';
+  t.assert(!util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = 'false';
+  t.assert(!util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = '0';
+  t.assert(!util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = 'true';
+  t.assert(util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = 'hucairz';
+  t.assert(util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = origLocalRun;
+});
+
+test('prepareEnvironment() when a local run', t => {
+  const origLocalRun = process.env.CODEQL_LOCAL_RUN;
+
+  process.env.CODEQL_LOCAL_RUN = 'false';
+  process.env.RUNNER_TEMP = 'XXX';
+  process.env.GITHUB_JOB = 'YYY';
+
+  util.prepareEnvironment();
+
+  // unchanged
+  t.deepEqual(process.env.RUNNER_TEMP, 'XXX');
+  t.deepEqual(process.env.GITHUB_JOB, 'YYY');
+
+  process.env.CODEQL_LOCAL_RUN = 'true';
+
+  util.prepareEnvironment();
+
+  // unchanged
+  t.deepEqual(process.env.RUNNER_TEMP, 'XXX');
+  t.deepEqual(process.env.GITHUB_JOB, 'YYY');
+
+  process.env.RUNNER_TEMP = '';
+  process.env.GITHUB_JOB = '';
+
+  util.prepareEnvironment();
+
+  // updated
+  t.assert(
+    process.env.RUNNER_TEMP.includes('codeql-action'),
+    `Should include 'codeql-action' in the temp path, but got ${process.env.RUNNER_TEMP}`
+  );
+  t.deepEqual(process.env.GITHUB_JOB, 'UNKNOWN-JOB');
+
+  process.env.CODEQL_LOCAL_RUN = origLocalRun;
+});

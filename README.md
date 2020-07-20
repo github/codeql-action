@@ -100,6 +100,25 @@ Use the `config-file` parameter of the `init` action to enable the configuration
 
 The configuration file must be located within the local repository. For information on how to write a configuration file, see "[Using a custom configuration](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration)."
 
+## Running this action locally
+
+It is possible to run this action locally via [act](https://github.com/nektos/act) via the following steps:
+
+1. Create a GitHub [Personal Access Token](https://github.com/settings/tokens) (PAT).
+1. Install [`act`](https://github.com/nektos/act).
+1. In the workflow whose action you want to run, add `CODEQL_LOCAL_RUN: true` to an `env` block. It should look like this:
+
+  ```yaml
+  jobs:
+    codeql:
+      env:
+        CODEQL_LOCAL_RUN: true
+  ```
+
+1. Run `act -j codeql -s GITHUB_TOKEN=<PAT>`
+
+Running locally will generate the CodeQL database and run all the queries, but it will avoid uploading and reporting results to GitHub.
+
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).

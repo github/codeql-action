@@ -334,6 +334,16 @@ function doInvalidInputTest(
       process.env['RUNNER_TEMP'] = tmpDir;
       process.env['GITHUB_WORKSPACE'] = tmpDir;
 
+      CodeQL.setCodeQL({
+        resolveQueries: async function() {
+          return {
+            byLanguage: {},
+            noDeclaredLanguage: {},
+            multipleDeclaredLanguages: {},
+          };
+        },
+      });
+
       const inputFile = path.join(tmpDir, 'input');
       fs.writeFileSync(inputFile, inputFileContents, 'utf8');
       setInput('config-file', 'input');

@@ -3,7 +3,7 @@ import sinon from 'sinon';
 
 import * as CodeQL from './codeql';
 
-type TestContext = {stdoutWrite: any, stderrWrite: any, testOutput: string};
+type TestContext = {stdoutWrite: any, stderrWrite: any, testOutput: string, env: NodeJS.ProcessEnv};
 
 function wrapOutput(context: TestContext) {
   // Function signature taken from Socket.write.
@@ -49,6 +49,12 @@ export function setupTests(test: TestInterface<any>) {
     const processStderrWrite = process.stderr.write.bind(process.stderr);
     t.context.stderrWrite = processStderrWrite;
     process.stderr.write = wrapOutput(t.context) as any;
+
+    // Many tests modify environment variables. Take a copy now so that
+    // We reset them after the test to keep tests independent of each other.
+    // process.env only has strings fields, so a shallow copy is fine.
+    t.context.env = {};
+    Object.assign(process.env, t.context.env);
   });
 
   typedTest.afterEach.always(t => {
@@ -62,5 +68,8 @@ export function setupTests(test: TestInterface<any>) {
 
     // Undo any modifications made by sinon
     sinon.restore();
+
+    // Undo any modifications to the env
+    process.env = t.context.env;
   });
 }

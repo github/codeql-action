@@ -191,6 +191,7 @@ test("load non-empty input", async t => {
 
     fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
+    setInput('languages', 'javascript');
 
     const actualConfig = await configUtils.initConfig();
 
@@ -233,6 +234,7 @@ test("default queries are used", async t => {
 
     fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
+    setInput('languages', 'javascript');
 
     await configUtils.initConfig();
 
@@ -279,6 +281,8 @@ test("API client used when reading remote config", async t => {
     fs.mkdirSync(path.join(tmpDir, 'foo/bar'), { recursive: true });
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
+    setInput('languages', 'javascript');
+
     await configUtils.initConfig();
     t.assert(spyGetContents.called);
   });
@@ -347,6 +351,7 @@ function doInvalidInputTest(
       const inputFile = path.join(tmpDir, 'input');
       fs.writeFileSync(inputFile, inputFileContents, 'utf8');
       setInput('config-file', 'input');
+      setInput('languages', 'javascript');
 
       try {
         await configUtils.initConfig();

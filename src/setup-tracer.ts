@@ -133,22 +133,26 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
 
 async function run() {
 
-  let config: configUtils.Config;
-  let codeql: CodeQL;
+  let languages: string[];
 
   try {
     if (util.should_abort('init', false) || !await util.reportActionStarting('init')) {
       return;
     }
 
-    core.startGroup('Setup CodeQL tools');
-    codeql = await setupCodeQL();
-    await codeql.printVersion();
-    core.endGroup();
-
     core.startGroup('Load language configuration');
-    config = await configUtils.initConfig();
-    analysisPaths.includeAndExcludeAnalysisPaths(config);
+
+    const config = await configUtils.loadConfig();
+
+    languages = await util.getLanguages();
+    // If the languages parameter was not given and no languages were
+    // detected then fail here as this is a workflow configuration error.
+    if (languages.length === 0) {
+      throw new Error("Did not detect any languages to analyze. Please update input in workflow.");
+    }
+
+    analysisPaths.includeAndExcludeAnalysisPaths(config, languages);
+
     core.endGroup();
 
   } catch (e) {
@@ -160,6 +164,11 @@ async function run() {
   try {
 
     const sourceRoot = path.resolve();
+
+    core.startGroup('Setup CodeQL tools');
+    const codeql = await setupCodeQL();
+    await codeql.printVersion();
+    core.endGroup();
 
     // Forward Go flags
     const goFlags = process.env['GOFLAGS'];
@@ -178,7 +187,7 @@ async function run() {
     let tracedLanguages: { [key: string]: TracerConfig } = {};
     let scannedLanguages: string[] = [];
     // TODO: replace this code once CodeQL supports multi-language tracing
-    for (let language of config.languages) {
+    for (let language of languages) {
       const languageDatabase = path.join(databaseFolder, language);
 
       // Init language database

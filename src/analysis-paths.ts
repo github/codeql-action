@@ -22,7 +22,7 @@ function buildIncludeExcludeEnvVar(paths: string[]): string {
   return paths.join('\n');
 }
 
-export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
+export function includeAndExcludeAnalysisPaths(config: configUtils.Config, languages: string[]) {
   // The 'LGTM_INDEX_INCLUDE' and 'LGTM_INDEX_EXCLUDE' environment variables
   // control which files/directories are traversed when scanning.
   // This allows including files that otherwise would not be scanned, or
@@ -52,7 +52,7 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   if ((config.paths.length !== 0 ||
         config.pathsIgnore.length !== 0 ||
         filters.length !== 0) &&
-      !config.languages.every(isInterpretedLanguage)) {
+      !languages.every(isInterpretedLanguage)) {
     core.warning('The "paths"/"paths-ignore" fields of the config only have effect for Javascript and Python');
   }
 }

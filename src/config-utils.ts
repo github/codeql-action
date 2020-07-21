@@ -5,238 +5,112 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 
 import * as api from './api-client';
-import { getCodeQL, ResolveQueriesOutput } from './codeql';
-import * as externalQueries from "./external-queries";
 import * as util from './util';
 
-// Property names from the user-supplied config file.
 const NAME_PROPERTY = 'name';
-const DISABLE_DEFAULT_QUERIES_PROPERTY = 'disable-default-queries';
+const DISPLAY_DEFAULT_QUERIES_PROPERTY = 'disable-default-queries';
 const QUERIES_PROPERTY = 'queries';
 const QUERIES_USES_PROPERTY = 'uses';
 const PATHS_IGNORE_PROPERTY = 'paths-ignore';
 const PATHS_PROPERTY = 'paths';
 
-/**
- * Format of the parsed config file.
- */
-export interface Config {
-  /**
-   * Set of languages to run analysis for.
-   */
-  languages: string[];
-  /**
-   * Map from language to query files.
-   * Will only contain .ql files and not other kinds of files,
-   * and all file paths will be absolute.
-   */
-  queries: { [language: string]: string[] };
-  /**
-   * List of paths to ignore from analysis.
-   */
-  pathsIgnore: string[];
-  /**
-   * List of paths to include in analysis.
-   */
-  paths: string[];
-}
+export class ExternalQuery {
+  public repository: string;
+  public ref: string;
+  public path = '';
 
-/**
- * A list of queries from https://github.com/github/codeql that
- * we don't want to run. Disabling them here is a quicker alternative to
- * disabling them in the code scanning query suites. Queries should also
- * be disabled in the suites, and removed from this list here once the
- * bundle is updated to make those suite changes live.
- *
- * Format is a map from language to an array of path suffixes of .ql files.
- */
-const DISABLED_BUILTIN_QUERIES: {[language: string]: string[]} = {
-  'csharp': [
-    'ql/src/Security Features/CWE-937/VulnerablePackage.ql',
-    'ql/src/Security Features/CWE-451/MissingXFrameOptions.ql',
-  ]
-};
-
-function queryIsDisabled(language, query): boolean {
-  return (DISABLED_BUILTIN_QUERIES[language] || [])
-    .some(disabledQuery => query.endsWith(disabledQuery));
-}
-
-/**
- * Asserts that the noDeclaredLanguage and multipleDeclaredLanguages fields are
- * both empty and errors if they are not.
- */
-function validateQueries(resolvedQueries: ResolveQueriesOutput) {
-  const noDeclaredLanguage = resolvedQueries.noDeclaredLanguage;
-  const noDeclaredLanguageQueries = Object.keys(noDeclaredLanguage);
-  if (noDeclaredLanguageQueries.length !== 0) {
-    throw new Error('The following queries do not declare a language. ' +
-      'Their qlpack.yml files are either missing or is invalid.\n' +
-      noDeclaredLanguageQueries.join('\n'));
+  constructor(repository: string, ref: string) {
+    this.repository = repository;
+    this.ref = ref;
   }
-
-  const multipleDeclaredLanguages = resolvedQueries.multipleDeclaredLanguages;
-  const multipleDeclaredLanguagesQueries = Object.keys(multipleDeclaredLanguages);
-  if (multipleDeclaredLanguagesQueries.length !== 0) {
-    throw new Error('The following queries declare multiple languages. ' +
-      'Their qlpack.yml files are either missing or is invalid.\n' +
-      multipleDeclaredLanguagesQueries.join('\n'));
-  }
-}
-
-/**
- * Run 'codeql resolve queries' and add the results to resultMap
- */
-async function runResolveQueries(
-  resultMap: { [language: string]: string[] },
-  toResolve: string[],
-  extraSearchPath: string | undefined,
-  errorOnInvalidQueries: boolean) {
-
-  const codeQl = getCodeQL();
-  const resolvedQueries = await codeQl.resolveQueries(toResolve, extraSearchPath);
-
-  for (const [language, queries] of Object.entries(resolvedQueries.byLanguage)) {
-    if (resultMap[language] === undefined) {
-      resultMap[language] = [];
-    }
-    resultMap[language].push(...Object.keys(queries).filter(q => !queryIsDisabled(language, q)));
-  }
-
-  if (errorOnInvalidQueries) {
-    validateQueries(resolvedQueries);
-  }
-}
-
-/**
- * Get the set of queries included by default.
- */
-async function addDefaultQueries(languages: string[], resultMap: { [language: string]: string[] }) {
-  const suites = languages.map(l => l + '-code-scanning.qls');
-  await runResolveQueries(resultMap, suites, undefined, false);
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
 const builtinSuites = ['security-extended', 'security-and-quality'] as const;
+// Derive the union type from the array values
+type BuiltInSuite = typeof builtinSuites[number];
 
-/**
- * Determine the set of queries associated with suiteName's suites and add them to resultMap.
- * Throws an error if suiteName is not a valid builtin suite.
- */
-async function addBuiltinSuiteQueries(
-  configFile: string,
-  languages: string[],
-  resultMap: { [language: string]: string[] },
-  suiteName: string) {
+export class Config {
+  public name = "";
+  public disableDefaultQueries = false;
+  public additionalQueries: string[] = [];
+  public externalQueries: ExternalQuery[] = [];
+  public additionalSuites: BuiltInSuite[] = [];
+  public pathsIgnore: string[] = [];
+  public paths: string[] = [];
 
-  const suite = builtinSuites.find((suite) => suite === suiteName);
-  if (!suite) {
-    throw new Error(getQueryUsesInvalid(configFile, suiteName));
+  public addQuery(configFile: string, queryUses: string) {
+    // The logic for parsing the string is based on what actions does for
+    // parsing the 'uses' actions in the workflow file
+    queryUses = queryUses.trim();
+    if (queryUses === "") {
+      throw new Error(getQueryUsesInvalid(configFile));
+    }
+
+    // Check for the local path case before we start trying to parse the repository name
+    if (queryUses.startsWith("./")) {
+      const localQueryPath = queryUses.slice(2);
+      // Resolve the local path against the workspace so that when this is
+      // passed to codeql it resolves to exactly the path we expect it to resolve to.
+      const workspacePath = fs.realpathSync(util.getRequiredEnvParam('GITHUB_WORKSPACE'));
+      let absoluteQueryPath = path.join(workspacePath, localQueryPath);
+
+      // Check the file exists
+      if (!fs.existsSync(absoluteQueryPath)) {
+        throw new Error(getLocalPathDoesNotExist(configFile, localQueryPath));
+      }
+
+      // Call this after checking file exists, because it'll fail if file doesn't exist
+      absoluteQueryPath = fs.realpathSync(absoluteQueryPath);
+
+      // Check the local path doesn't jump outside the repo using '..' or symlinks
+      if (!(absoluteQueryPath + path.sep).startsWith(workspacePath + path.sep)) {
+        throw new Error(getLocalPathOutsideOfRepository(configFile, localQueryPath));
+      }
+
+      this.additionalQueries.push(absoluteQueryPath);
+      return;
+    }
+
+    // Check for one of the builtin suites
+    if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
+      const suite = builtinSuites.find((suite) => suite === queryUses);
+      if (suite) {
+        this.additionalSuites.push(suite);
+        return;
+      } else {
+        throw new Error(getQueryUsesInvalid(configFile, queryUses));
+      }
+    }
+
+    let tok = queryUses.split('@');
+    if (tok.length !== 2) {
+      throw new Error(getQueryUsesInvalid(configFile, queryUses));
+    }
+
+    const ref = tok[1];
+    tok = tok[0].split('/');
+    // The first token is the owner
+    // The second token is the repo
+    // The rest is a path, if there is more than one token combine them to form the full path
+    if (tok.length < 2) {
+      throw new Error(getQueryUsesInvalid(configFile, queryUses));
+    }
+    if (tok.length > 3) {
+      tok = [tok[0], tok[1], tok.slice(2).join('/')];
+    }
+
+    // Check none of the parts of the repository name are empty
+    if (tok[0].trim() === '' || tok[1].trim() === '') {
+      throw new Error(getQueryUsesInvalid(configFile, queryUses));
+    }
+
+    let external = new ExternalQuery(tok[0] + '/' + tok[1], ref);
+    if (tok.length === 3) {
+      external.path = tok[2];
+    }
+    this.externalQueries.push(external);
   }
-
-  const suites = languages.map(l => l + '-' + suiteName + '.qls');
-  await runResolveQueries(resultMap, suites, undefined, false);
-}
-
-/**
- * Retrieve the set of queries at localQueryPath and add them to resultMap.
- */
-async function addLocalQueries(
-  configFile: string,
-  resultMap: { [language: string]: string[] },
-  localQueryPath: string) {
-
-  // Resolve the local path against the workspace so that when this is
-  // passed to codeql it resolves to exactly the path we expect it to resolve to.
-  const workspacePath = fs.realpathSync(util.getRequiredEnvParam('GITHUB_WORKSPACE'));
-  let absoluteQueryPath = path.join(workspacePath, localQueryPath);
-
-  // Check the file exists
-  if (!fs.existsSync(absoluteQueryPath)) {
-    throw new Error(getLocalPathDoesNotExist(configFile, localQueryPath));
-  }
-
-  // Call this after checking file exists, because it'll fail if file doesn't exist
-  absoluteQueryPath = fs.realpathSync(absoluteQueryPath);
-
-  // Check the local path doesn't jump outside the repo using '..' or symlinks
-  if (!(absoluteQueryPath + path.sep).startsWith(workspacePath + path.sep)) {
-    throw new Error(getLocalPathOutsideOfRepository(configFile, localQueryPath));
-  }
-
-  // Get the root of the current repo to use when resolving query dependencies
-  const rootOfRepo = util.getRequiredEnvParam('GITHUB_WORKSPACE');
-
-  await runResolveQueries(resultMap, [absoluteQueryPath], rootOfRepo, true);
-}
-
-/**
- * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
- */
-async function addRemoteQueries(configFile: string, resultMap: { [language: string]: string[] }, queryUses: string) {
-  let tok = queryUses.split('@');
-  if (tok.length !== 2) {
-    throw new Error(getQueryUsesInvalid(configFile, queryUses));
-  }
-
-  const ref = tok[1];
-
-  tok = tok[0].split('/');
-  // The first token is the owner
-  // The second token is the repo
-  // The rest is a path, if there is more than one token combine them to form the full path
-  if (tok.length < 2) {
-    throw new Error(getQueryUsesInvalid(configFile, queryUses));
-  }
-  // Check none of the parts of the repository name are empty
-  if (tok[0].trim() === '' || tok[1].trim() === '') {
-    throw new Error(getQueryUsesInvalid(configFile, queryUses));
-  }
-  const nwo = tok[0] + '/' + tok[1];
-
-  // Checkout the external repository
-  const rootOfRepo = await externalQueries.checkoutExternalRepository(nwo, ref);
-
-  const queryPath = tok.length > 2
-    ? path.join(rootOfRepo, tok.slice(2).join('/'))
-    : rootOfRepo;
-
-  await runResolveQueries(resultMap, [queryPath], rootOfRepo, true);
-}
-
-/**
- * Parse a query 'uses' field to a discrete set of query files and update resultMap.
- *
- * The logic for parsing the string is based on what actions does for
- * parsing the 'uses' actions in the workflow file. So it can handle
- * local paths starting with './', or references to remote repos, or
- * a finite set of hardcoded terms for builtin suites.
- */
-async function parseQueryUses(
-  configFile: string,
-  languages: string[],
-  resultMap: { [language: string]: string[] },
-  queryUses: string) {
-
-  queryUses = queryUses.trim();
-  if (queryUses === "") {
-    throw new Error(getQueryUsesInvalid(configFile));
-  }
-
-  // Check for the local path case before we start trying to parse the repository name
-  if (queryUses.startsWith("./")) {
-    await addLocalQueries(configFile, resultMap, queryUses.slice(2));
-    return;
-  }
-
-  // Check for one of the builtin suites
-  if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-    await addBuiltinSuiteQueries(configFile, languages, resultMap, queryUses);
-    return;
-  }
-
-  // Otherwise, must be a reference to another repo
-  await addRemoteQueries(configFile, resultMap, queryUses);
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -315,7 +189,7 @@ export function getNameInvalid(configFile: string): string {
 }
 
 export function getDisableDefaultQueriesInvalid(configFile: string): string {
-  return getConfigFilePropertyError(configFile, DISABLE_DEFAULT_QUERIES_PROPERTY, 'must be a boolean');
+  return getConfigFilePropertyError(configFile, DISPLAY_DEFAULT_QUERIES_PROPERTY, 'must be a boolean');
 }
 
 export function getQueriesInvalid(configFile: string): string {
@@ -380,94 +254,17 @@ function getConfigFilePropertyError(configFile: string, property: string, error:
   return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
 }
 
-/**
- * Gets the set of languages in the current repository
- */
-async function getLanguagesInRepo(): Promise<string[]> {
-  // Translate between GitHub's API names for languages and ours
-  const codeqlLanguages = {
-    'C': 'cpp',
-    'C++': 'cpp',
-    'C#': 'csharp',
-    'Go': 'go',
-    'Java': 'java',
-    'JavaScript': 'javascript',
-    'TypeScript': 'javascript',
-    'Python': 'python',
-  };
-  let repo_nwo = process.env['GITHUB_REPOSITORY']?.split("/");
-  if (repo_nwo) {
-    let owner = repo_nwo[0];
-    let repo = repo_nwo[1];
+async function initConfig(): Promise<Config> {
+  let configFile = core.getInput('config-file');
 
-    core.debug(`GitHub repo ${owner} ${repo}`);
-    const response = await api.getApiClient().request("GET /repos/:owner/:repo/languages", ({
-      owner,
-      repo
-    }));
+  const config = new Config();
 
-    core.debug("Languages API response: " + JSON.stringify(response));
-
-    // The GitHub API is going to return languages in order of popularity,
-    // When we pick a language to autobuild we want to pick the most popular traced language
-    // Since sets in javascript maintain insertion order, using a set here and then splatting it
-    // into an array gives us an array of languages ordered by popularity
-    let languages: Set<string> = new Set();
-    for (let lang in response.data) {
-      if (lang in codeqlLanguages) {
-        languages.add(codeqlLanguages[lang]);
-      }
-    }
-    return [...languages];
-  } else {
-    return [];
-  }
-}
-
-/**
- * Get the languages to analyse.
- *
- * The result is obtained from the action input parameter 'languages' if that
- * has been set, otherwise it is deduced as all languages in the repo that
- * can be analysed.
- */
-async function getLanguages(): Promise<string[]> {
-
-  // Obtain from action input 'languages' if set
-  let languages = core.getInput('languages', { required: false })
-    .split(',')
-    .map(x => x.trim())
-    .filter(x => x.length > 0);
-  core.info("Languages from configuration: " + JSON.stringify(languages));
-
-  if (languages.length === 0) {
-    // Obtain languages as all languages in the repo that can be analysed
-    languages = await getLanguagesInRepo();
-    core.info("Automatically detected languages: " + JSON.stringify(languages));
+  // If no config file was provided create an empty one
+  if (configFile === '') {
+    core.debug('No configuration file was provided');
+    return config;
   }
 
-  return languages;
-}
-
-/**
- * Get the default config for when the user has not supplied one.
- */
-export async function getDefaultConfig(): Promise<Config> {
-  const languages = await getLanguages();
-  const queries = {};
-  await addDefaultQueries(languages, queries);
-  return {
-    languages: languages,
-    queries: queries,
-    pathsIgnore: [],
-    paths: []
-  };
-}
-
-/**
- * Load the config from the given file.
- */
-async function loadConfig(configFile: string): Promise<Config> {
   let parsedYAML;
 
   if (isLocal(configFile)) {
@@ -480,8 +277,6 @@ async function loadConfig(configFile: string): Promise<Config> {
     parsedYAML = await getRemoteConfig(configFile);
   }
 
-  // Validate that the 'name' property is syntactically correct,
-  // even though we don't use the value yet.
   if (NAME_PROPERTY in parsedYAML) {
     if (typeof parsedYAML[NAME_PROPERTY] !== "string") {
       throw new Error(getNameInvalid(configFile));
@@ -489,38 +284,26 @@ async function loadConfig(configFile: string): Promise<Config> {
     if (parsedYAML[NAME_PROPERTY].length === 0) {
       throw new Error(getNameInvalid(configFile));
     }
+    config.name = parsedYAML[NAME_PROPERTY];
   }
 
-  const languages = await getLanguages();
-  // If the languages parameter was not given and no languages were
-  // detected then fail here as this is a workflow configuration error.
-  if (languages.length === 0) {
-    throw new Error("Did not detect any languages to analyze. Please update input in workflow.");
-  }
-
-  const queries = {};
-  const pathsIgnore: string[] = [];
-  const paths: string[] = [];
-
-  if (DISABLE_DEFAULT_QUERIES_PROPERTY in parsedYAML) {
-    if (typeof parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY] !== "boolean") {
+  if (DISPLAY_DEFAULT_QUERIES_PROPERTY in parsedYAML) {
+    if (typeof parsedYAML[DISPLAY_DEFAULT_QUERIES_PROPERTY] !== "boolean") {
       throw new Error(getDisableDefaultQueriesInvalid(configFile));
     }
-    if (!parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY]) {
-      await addDefaultQueries(languages, queries);
-    }
+    config.disableDefaultQueries = parsedYAML[DISPLAY_DEFAULT_QUERIES_PROPERTY];
   }
 
   if (QUERIES_PROPERTY in parsedYAML) {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));
     }
-    for (const query of parsedYAML[QUERIES_PROPERTY]) {
+    parsedYAML[QUERIES_PROPERTY].forEach(query => {
       if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
         throw new Error(getQueryUsesInvalid(configFile));
       }
-      await parseQueryUses(configFile, languages, queries, query[QUERIES_USES_PROPERTY]);
-    }
+      config.addQuery(configFile, query[QUERIES_USES_PROPERTY]);
+    });
   }
 
   if (PATHS_IGNORE_PROPERTY in parsedYAML) {
@@ -531,7 +314,7 @@ async function loadConfig(configFile: string): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
-      pathsIgnore.push(validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile));
+      config.pathsIgnore.push(validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile));
     });
   }
 
@@ -543,33 +326,10 @@ async function loadConfig(configFile: string): Promise<Config> {
       if (typeof path !== "string" || path === '') {
         throw new Error(getPathsInvalid(configFile));
       }
-      paths.push(validateAndSanitisePath(path, PATHS_PROPERTY, configFile));
+      config.paths.push(validateAndSanitisePath(path, PATHS_PROPERTY, configFile));
     });
   }
 
-  return {languages, queries, pathsIgnore, paths};
-}
-
-/**
- * Load and return the config.
- *
- * This will parse the config from the user input if present, or generate
- * a default config. The parsed config is then stored to a known location.
- */
-export async function initConfig(): Promise<Config> {
-  const configFile = core.getInput('config-file');
-  let config: Config;
-
-  // If no config file was provided create an empty one
-  if (configFile === '') {
-    core.debug('No configuration file was provided');
-    config = await getDefaultConfig();
-  } else {
-    config = await loadConfig(configFile);
-  }
-
-  // Save the config so we can easily access it again in the future
-  await saveConfig(config);
   return config;
 }
 
@@ -624,46 +384,35 @@ async function getRemoteConfig(configFile: string): Promise<any> {
   return yaml.safeLoad(Buffer.from(fileContents, 'base64').toString('binary'));
 }
 
-/**
- * Get the directory where the parsed config will be stored.
- */
-function getPathToParsedConfigFolder(): string {
+function getConfigFolder(): string {
   return util.getRequiredEnvParam('RUNNER_TEMP');
 }
 
-/**
- * Get the file path where the parsed config will be stored.
- */
-export function getPathToParsedConfigFile(): string {
-  return path.join(getPathToParsedConfigFolder(), 'config');
+export function getConfigFile(): string {
+  return path.join(getConfigFolder(), 'config');
 }
 
-/**
- * Store the given config to the path returned from getPathToParsedConfigFile.
- */
 async function saveConfig(config: Config) {
   const configString = JSON.stringify(config);
-  await io.mkdirP(getPathToParsedConfigFolder());
-  fs.writeFileSync(getPathToParsedConfigFile(), configString, 'utf8');
+  await io.mkdirP(getConfigFolder());
+  fs.writeFileSync(getConfigFile(), configString, 'utf8');
   core.debug('Saved config:');
   core.debug(configString);
 }
 
-/**
- * Get the config.
- *
- * If this is the first time in a workflow that this is being called then
- * this will parse the config from the user input. The parsed config is then
- * stored to a known location. On the second and further calls, this will
- * return the contents of the parsed config from the known location.
- */
-export async function getConfig(): Promise<Config> {
-  const configFile = getPathToParsedConfigFile();
-  if (!fs.existsSync(configFile)) {
-    throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
+export async function loadConfig(): Promise<Config> {
+  const configFile = getConfigFile();
+  if (fs.existsSync(configFile)) {
+    const configString = fs.readFileSync(configFile, 'utf8');
+    core.debug('Loaded config:');
+    core.debug(configString);
+    return JSON.parse(configString);
+
+  } else {
+    const config = await initConfig();
+    core.debug('Initialized config:');
+    core.debug(JSON.stringify(config));
+    await saveConfig(config);
+    return config;
   }
-  const configString = fs.readFileSync(configFile, 'utf8');
-  core.debug('Loaded config:');
-  core.debug(configString);
-  return JSON.parse(configString);
 }

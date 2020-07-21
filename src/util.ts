@@ -5,7 +5,6 @@ import * as os from 'os';
 import * as path from 'path';
 
 import * as api from './api-client';
-import * as configUtils from './config-utils';
 import * as sharedEnv from './shared-environment';
 
 /**
@@ -43,6 +42,89 @@ export function getRequiredEnvParam(paramName: string): string {
   }
   core.debug(paramName + '=' + value);
   return value;
+}
+
+/**
+ * Gets the set of languages in the current repository
+ */
+async function getLanguagesInRepo(): Promise<string[]> {
+  // Translate between GitHub's API names for languages and ours
+  const codeqlLanguages = {
+    'C': 'cpp',
+    'C++': 'cpp',
+    'C#': 'csharp',
+    'Go': 'go',
+    'Java': 'java',
+    'JavaScript': 'javascript',
+    'TypeScript': 'javascript',
+    'Python': 'python',
+  };
+  let repo_nwo = process.env['GITHUB_REPOSITORY']?.split("/");
+  if (repo_nwo) {
+    let owner = repo_nwo[0];
+    let repo = repo_nwo[1];
+
+    core.debug(`GitHub repo ${owner} ${repo}`);
+    const response = await api.getApiClient().request("GET /repos/:owner/:repo/languages", ({
+      owner,
+      repo
+    }));
+
+    core.debug("Languages API response: " + JSON.stringify(response));
+
+    // The GitHub API is going to return languages in order of popularity,
+    // When we pick a language to autobuild we want to pick the most popular traced language
+    // Since sets in javascript maintain insertion order, using a set here and then splatting it
+    // into an array gives us an array of languages ordered by popularity
+    let languages: Set<string> = new Set();
+    for (let lang in response.data) {
+      if (lang in codeqlLanguages) {
+        languages.add(codeqlLanguages[lang]);
+      }
+    }
+    return [...languages];
+  } else {
+    return [];
+  }
+}
+
+/**
+ * Get the languages to analyse.
+ *
+ * The result is obtained from the environment parameter CODEQL_ACTION_LANGUAGES
+ * if that has been set, otherwise it is obtained from the action input parameter
+ * 'languages' if that has been set, otherwise it is deduced as all languages in the
+ * repo that can be analysed.
+ *
+ * If the languages are obtained from either of the second choices, the
+ * CODEQL_ACTION_LANGUAGES environment variable will be exported with the
+ * deduced list.
+ */
+export async function getLanguages(): Promise<string[]> {
+
+  // Obtain from CODEQL_ACTION_LANGUAGES if set
+  const langsVar = process.env[sharedEnv.CODEQL_ACTION_LANGUAGES];
+  if (langsVar) {
+    return langsVar.split(',')
+      .map(x => x.trim())
+      .filter(x => x.length > 0);
+  }
+  // Obtain from action input 'languages' if set
+  let languages = core.getInput('languages', { required: false })
+    .split(',')
+    .map(x => x.trim())
+    .filter(x => x.length > 0);
+  core.info("Languages from configuration: " + JSON.stringify(languages));
+
+  if (languages.length === 0) {
+    // Obtain languages as all languages in the repo that can be analysed
+    languages = await getLanguagesInRepo();
+    core.info("Automatically detected languages: " + JSON.stringify(languages));
+  }
+
+  core.exportVariable(sharedEnv.CODEQL_ACTION_LANGUAGES, languages.join(','));
+
+  return languages;
 }
 
 /**
@@ -135,9 +217,6 @@ export function getRef(): string {
   }
 }
 
-type ActionName = 'init' | 'autobuild' | 'finish' | 'upload-sarif';
-type ActionStatus = 'starting' | 'aborted' | 'success' | 'failure';
-
 interface StatusReport {
   "workflow_run_id": number;
   "workflow_name": string;
@@ -147,11 +226,11 @@ interface StatusReport {
   "languages": string;
   "commit_oid": string;
   "ref": string;
-  "action_name": ActionName;
+  "action_name": string;
   "action_oid": string;
   "started_at": string;
   "completed_at"?: string;
-  "status": ActionStatus;
+  "status": string;
   "cause"?: string;
   "exception"?: string;
 }
@@ -165,22 +244,11 @@ interface StatusReport {
  * @param exception Exception (only supply if status is 'failure')
  */
 async function createStatusReport(
-  actionName: ActionName,
-  status: ActionStatus,
+  actionName: string,
+  status: string,
   cause?: string,
   exception?: string):
   Promise<StatusReport> {
-
-  // If this is not the init action starting up or aborting then try to load the config.
-  // If it fails then carry because it's important to still send the status report.
-  let config: configUtils.Config | undefined = undefined;
-  if (actionName !== 'init' || (status !== 'starting' && status !== 'aborted')) {
-    try {
-      config = await configUtils.getConfig();
-    } catch (e) {
-      core.error('Unable to load config: ' + e);
-    }
-  }
 
   const commitOid = process.env['GITHUB_SHA'] || '';
   const ref = getRef();
@@ -192,7 +260,7 @@ async function createStatusReport(
   const workflowName = process.env['GITHUB_WORKFLOW'] || '';
   const jobName = process.env['GITHUB_JOB'] || '';
   const analysis_key = await getAnalysisKey();
-  const languages = config?.languages?.join(',') || "";
+  const languages = (await getLanguages()).sort().join(',');
   const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT] || new Date().toISOString();
   core.exportVariable(sharedEnv.CODEQL_ACTION_STARTED_AT, startedAt);
 
@@ -256,7 +324,7 @@ async function sendStatusReport(statusReport: StatusReport): Promise<number> {
  *
  * Returns true unless a problem occurred and the action should abort.
  */
-export async function reportActionStarting(action: ActionName): Promise<boolean> {
+export async function reportActionStarting(action: string): Promise<boolean> {
   const statusCode = await sendStatusReport(await createStatusReport(action, 'starting'));
 
   // If the status report request fails with a 403 or a 404, then this is a deliberate
@@ -283,7 +351,7 @@ export async function reportActionStarting(action: ActionName): Promise<boolean>
  * Note that the started_at date is always that of the `init` action, since
  * this is likely to give a more useful duration when inspecting events.
  */
-export async function reportActionFailed(action: ActionName, cause?: string, exception?: string) {
+export async function reportActionFailed(action: string, cause?: string, exception?: string) {
   await sendStatusReport(await createStatusReport(action, 'failure', cause, exception));
 }
 
@@ -293,7 +361,7 @@ export async function reportActionFailed(action: ActionName, cause?: string, exc
  * Note that the started_at date is always that of the `init` action, since
  * this is likely to give a more useful duration when inspecting events.
  */
-export async function reportActionSucceeded(action: ActionName) {
+export async function reportActionSucceeded(action: string) {
   await sendStatusReport(await createStatusReport(action, 'success'));
 }
 
@@ -303,7 +371,7 @@ export async function reportActionSucceeded(action: ActionName) {
  * Note that the started_at date is always that of the `init` action, since
  * this is likely to give a more useful duration when inspecting events.
  */
-export async function reportActionAborted(action: ActionName, cause?: string) {
+export async function reportActionAborted(action: string, cause?: string) {
   await sendStatusReport(await createStatusReport(action, 'aborted', cause));
 }
 

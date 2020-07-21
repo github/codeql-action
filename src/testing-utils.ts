@@ -1,8 +1,6 @@
 import {TestInterface} from 'ava';
 import sinon from 'sinon';
 
-import * as CodeQL from './codeql';
-
 type TestContext = {stdoutWrite: any, stderrWrite: any, testOutput: string};
 
 function wrapOutput(context: TestContext) {
@@ -37,30 +35,27 @@ export function setupTests(test: TestInterface<any>) {
   const typedTest = test as TestInterface<TestContext>;
 
   typedTest.beforeEach(t => {
-    // Set an empty CodeQL object so that all method calls will fail
-    // unless the test explicitly sets one up.
-    CodeQL.setCodeQL({});
-
-    // Replace stdout and stderr so we can record output during tests
     t.context.testOutput = "";
+
     const processStdoutWrite = process.stdout.write.bind(process.stdout);
     t.context.stdoutWrite = processStdoutWrite;
     process.stdout.write = wrapOutput(t.context) as any;
+
     const processStderrWrite = process.stderr.write.bind(process.stderr);
     t.context.stderrWrite = processStderrWrite;
     process.stderr.write = wrapOutput(t.context) as any;
   });
 
   typedTest.afterEach.always(t => {
-    // Restore stdout and stderr
-    // The captured output is only replayed if the test failed
     process.stdout.write = t.context.stdoutWrite;
     process.stderr.write = t.context.stderrWrite;
+
     if (!t.passed) {
       process.stdout.write(t.context.testOutput);
     }
+  });
 
-    // Undo any modifications made by sinon
+  typedTest.afterEach.always(() => {
     sinon.restore();
   });
 }

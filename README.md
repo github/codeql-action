@@ -105,14 +105,14 @@ The configuration file must be located within the local repository. For informat
 It is possible to run this action locally via [act](https://github.com/nektos/act) via the following steps:
 
 1. Create a GitHub [Personal Access Token](https://github.com/settings/tokens) (PAT).
-1. Install [`act`](https://github.com/nektos/act).
-1. In the workflow whose action you want to run, add `CODEQL_LOCAL_RUN: true` to an `env` block. It should look like this:
+1. Install [act](https://github.com/nektos/act) v0.2.10 or greater.
+1. Add a `.env` file in the root of the project you are running:
 
-  ```yaml
-  jobs:
-    codeql:
-      env:
-        CODEQL_LOCAL_RUN: true
+  ```bash
+  CODEQL_LOCAL_RUN=true
+
+  # Optional, for better logging
+  GITHUB_JOB=<ANY_JOB_NAME>
   ```
 
 1. Run `act -j codeql -s GITHUB_TOKEN=<PAT>`

@@ -191,11 +191,59 @@ test("load non-empty input", async t => {
 
     fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
+    setInput('languages', 'javascript');
 
     const actualConfig = await configUtils.initConfig();
 
     // Should exactly equal the object we constructed earlier
     t.deepEqual(actualConfig, expectedConfig);
+  });
+});
+
+test("default queries are used", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    // Check that the default behaviour is to add the default queries.
+    // In this case if a config file is specified but does not include
+    // the disable-default-queries field.
+    // We determine this by whether CodeQL.resolveQueries is called
+    // with the correct arguments.
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    CodeQL.setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        return {
+          byLanguage: {
+            'javascript': {},
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    // The important point of this config is that it doesn't specify
+    // the disable-default-queries field.
+    // Any other details are hopefully irrelevant for this tetst.
+    const inputFileContents = `
+      paths:
+        - foo`;
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
+
+    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+    setInput('config-file', 'input');
+    setInput('languages', 'javascript');
+
+    await configUtils.initConfig();
+
+    // Check resolve queries was called correctly
+    t.deepEqual(resolveQueriesArgs.length, 1);
+    t.deepEqual(resolveQueriesArgs[0].queries, ['javascript-code-scanning.qls']);
+    t.deepEqual(resolveQueriesArgs[0].extraSearchPath, undefined);
   });
 });
 
@@ -235,6 +283,8 @@ test("API client used when reading remote config", async t => {
     fs.mkdirSync(path.join(tmpDir, 'foo/bar'), { recursive: true });
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
+    setInput('languages', 'javascript');
+
     await configUtils.initConfig();
     t.assert(spyGetContents.called);
   });
@@ -290,9 +340,20 @@ function doInvalidInputTest(
       process.env['RUNNER_TEMP'] = tmpDir;
       process.env['GITHUB_WORKSPACE'] = tmpDir;
 
+      CodeQL.setCodeQL({
+        resolveQueries: async function() {
+          return {
+            byLanguage: {},
+            noDeclaredLanguage: {},
+            multipleDeclaredLanguages: {},
+          };
+        },
+      });
+
       const inputFile = path.join(tmpDir, 'input');
       fs.writeFileSync(inputFile, inputFileContents, 'utf8');
       setInput('config-file', 'input');
+      setInput('languages', 'javascript');
 
       try {
         await configUtils.initConfig();

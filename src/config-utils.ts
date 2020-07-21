@@ -502,13 +502,15 @@ async function loadConfig(configFile: string): Promise<Config> {
   const pathsIgnore: string[] = [];
   const paths: string[] = [];
 
+  let disableDefaultQueries = false;
   if (DISABLE_DEFAULT_QUERIES_PROPERTY in parsedYAML) {
     if (typeof parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY] !== "boolean") {
       throw new Error(getDisableDefaultQueriesInvalid(configFile));
     }
-    if (!parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY]) {
-      await addDefaultQueries(languages, queries);
-    }
+    disableDefaultQueries = parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY];
+  }
+  if (!disableDefaultQueries) {
+    await addDefaultQueries(languages, queries);
   }
 
   if (QUERIES_PROPERTY in parsedYAML) {

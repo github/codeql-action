@@ -206,7 +206,7 @@ test("default queries are used", async t => {
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     // Check that the default behaviour is to add the default queries.
-    // In this case if a config file is specified by does not include
+    // In this case if a config file is specified but does not include
     // the disable-default-queries field.
     // We determine this by whether CodeQL.resolveQueries is called
     // with the correct arguments.
@@ -225,7 +225,9 @@ test("default queries are used", async t => {
       },
     });
 
-    // Just create a generic config object with non-default values for all fields
+    // The important point of this config is that is doesn't specify
+    // the disable-default-queries field.
+    // Any other details are hopefully irrelevant for this tetst.
     const inputFileContents = `
       paths:
         - foo`;

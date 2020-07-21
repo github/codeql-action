@@ -51,10 +51,10 @@ export function setupTests(test: TestInterface<any>) {
     process.stderr.write = wrapOutput(t.context) as any;
 
     // Many tests modify environment variables. Take a copy now so that
-    // We reset them after the test to keep tests independent of each other.
+    // we reset them after the test to keep tests independent of each other.
     // process.env only has strings fields, so a shallow copy is fine.
     t.context.env = {};
-    Object.assign(process.env, t.context.env);
+    Object.assign(t.context.env, process.env);
   });
 
   typedTest.afterEach.always(t => {

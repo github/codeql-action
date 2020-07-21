@@ -79,9 +79,6 @@ export function prepareEnvironment() {
   }
 
   core.debug('Action is running locally.');
-  if (!process.env.RUNNER_TEMP) {
-    core.exportVariable('RUNNER_TEMP', path.join(os.tmpdir(), 'codeql-action', String(Date.now())));
-  }
   if (!process.env.GITHUB_JOB) {
     core.exportVariable('GITHUB_JOB', 'UNKNOWN-JOB');
   }
@@ -305,7 +302,6 @@ export async function sendStatusReport<S extends StatusReportBase>(
   }
 
   const statusReportJSON = JSON.stringify(statusReport);
-
   core.debug('Sending status report: ' + statusReportJSON);
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");

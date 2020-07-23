@@ -143,6 +143,7 @@ async function installPythonDeps(codeql: CodeQL) {
   } catch (e) {
     // The download should not fail, but in case it fails we just abort trying to setup the python deps
     core.warning('Unable to download and extract the scripts needed for installing the python dependecies');
+    core.endGroup();
     return;
   }
 
@@ -153,6 +154,7 @@ async function installPythonDeps(codeql: CodeQL) {
     // This script tries to install some needed tools in the runner. It should not fail, but if it does
     // we just abort the process without failing the action
     core.warning('Unable to download and extract the scripts needed for installing the python dependecies');
+    core.endGroup();
     return;
   }
   // Install dependencies

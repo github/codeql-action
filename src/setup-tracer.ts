@@ -158,8 +158,12 @@ async function installPythonDeps(codeql: CodeQL) {
     return;
   }
   // Install dependencies
-  await exec.exec(path.join(scriptsFolder, 'auto_install_packages.py'), [codeql.getDir()]);
-
+  try {
+    await exec.exec(path.join(scriptsFolder, 'auto_install_packages.py'), [codeql.getDir()]);
+  } catch (e) {
+    core.endGroup();
+    throw new Error('We were unable to install your python dependencies. You can call this action with "setup-python-dependencies: false" to disable this process');
+  }
   core.endGroup();
 }
 

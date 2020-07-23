@@ -1,4 +1,5 @@
 import * as core from '@actions/core';
+import * as exec from '@actions/exec';
 import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -9,12 +10,47 @@ import * as sharedEnv from './shared-environment';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
 
+
+async function setupPythonExtractor() {
+  const codeqlPython = process.env["CODEQL_PYTHON"];
+  if (codeqlPython === undefined || codeqlPython.length === 0) {
+    // If CODEQL_PYTHON is not set, no dependencies were installed, so we don't need to do anything
+    return;
+  }
+
+  let output = '';
+  const options = {
+    listeners: {
+      stdout: (data: Buffer) => {
+        output += data.toString();
+      }
+    }
+  };
+
+  await exec.exec(
+    codeqlPython,
+    ['-c', 'import os; import pip; print(os.path.dirname(os.path.dirname(pip.__file__)))'],
+    options);
+  core.info('Setting LGTM_INDEX_IMPORT_PATH=' + output);
+  process.env['LGTM_INDEX_IMPORT_PATH'] = output;
+
+  output = '';
+  await exec.exec(codeqlPython, ['-c', 'import sys; print(sys.version_info[0])'], options);
+  core.info('Setting LGTM_PYTHON_SETUP_VERSION=' + output);
+  process.env['LGTM_PYTHON_SETUP_VERSION'] = output;
+}
+
 async function createdDBForScannedLanguages(databaseFolder: string) {
   const scannedLanguages = process.env[sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES];
   if (scannedLanguages) {
     const codeql = getCodeQL();
     for (const language of scannedLanguages.split(',')) {
       core.startGroup('Extracting ' + language);
+
+      if (language === 'python') {
+        await setupPythonExtractor();
+      }
+
       await codeql.extractScannedLanguage(path.join(databaseFolder, language), language);
       core.endGroup();
     }

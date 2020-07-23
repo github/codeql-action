@@ -16,6 +16,10 @@ inputs:
   config-file:
     description: Path of the config file to use
     required: false
+  setup-python-dependencies:
+    description: Try to auto-install your python dependencies
+    required: true
+    default: 'true'
 runs:
   using: 'node12'
   main: '../lib/setup-tracer.js'

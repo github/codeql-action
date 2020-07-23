@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as io from '@actions/io';
+import * as toolcache from '@actions/tool-cache';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -131,6 +132,35 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
   return { env, spec };
 }
 
+async function installPythonDeps(codeql: CodeQL) {
+  core.startGroup('Setup Python dependencies');
+
+  let scriptsFolder = '';
+  try {
+    const repoPath = await toolcache.downloadTool('https://github.com/github/codeql-python-autobuild-playground/archive/master.zip');
+    const extracted = await toolcache.extractZip(repoPath);
+    scriptsFolder = path.join(extracted, 'codeql-python-autobuild-playground-master');
+  } catch (e) {
+    // The download should not fail, but in case it fails we just abort trying to setup the python deps
+    core.warning('Unable to download and extract the scripts needed for installing the python dependecies');
+    return;
+  }
+
+  // Setup tools
+  try {
+    await exec.exec(path.join(scriptsFolder, 'install_tools.sh'));
+  } catch (e) {
+    // This script tries to install some needed tools in the runner. It should not fail, but if it does
+    // we just abort the process without failing the action
+    core.warning('Unable to download and extract the scripts needed for installing the python dependecies');
+    return;
+  }
+  // Install dependencies
+  await exec.exec(path.join(scriptsFolder, 'auto_install_packages.py'), [codeql.getDir()]);
+
+  core.endGroup();
+}
+
 async function run() {
 
   let config: configUtils.Config;
@@ -166,6 +196,11 @@ async function run() {
     if (goFlags) {
       core.exportVariable('GOFLAGS', goFlags);
       core.warning("Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.");
+    }
+
+    const setupPythonDependencies = core.getInput('setup-python-dependencies', { required: true });
+    if (config.languages.includes('python') && setupPythonDependencies === 'true') {
+      await installPythonDeps(codeql);
     }
 
     // Setup CODEQL_RAM flag (todo improve this https://github.com/github/dsp-code-scanning/issues/935)

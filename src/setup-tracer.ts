@@ -137,9 +137,9 @@ async function installPythonDeps(codeql: CodeQL) {
 
   let scriptsFolder = '';
   try {
-    const repoPath = await toolcache.downloadTool('https://github.com/github/codeql-python-autobuild-playground/archive/master.zip');
+    const repoPath = await toolcache.downloadTool('https://github.com/Daverlo/codeql-python-autobuild/archive/master.zip');
     const extracted = await toolcache.extractZip(repoPath);
-    scriptsFolder = path.join(extracted, 'codeql-python-autobuild-playground-master');
+    scriptsFolder = path.join(extracted, 'codeql-python-autobuild-master');
   } catch (e) {
     // The download should not fail, but in case it fails we just abort trying to setup the python deps
     core.warning('Unable to download and extract the scripts needed for installing the python dependecies');

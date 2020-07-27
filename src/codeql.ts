@@ -118,7 +118,7 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
     let [apiURL, repository] = downloadSource;
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
     if (apiURL === GITHUB_DOTCOM_API_URL && repository === CODEQL_DEFAULT_ACTION_REPOSITORY) {
-      return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_DEFAULT_BUNDLE_VERSION}/${CODEQL_DEFAULT_BUNDLE_NAME}`;
+      break;
     }
     let [repositoryOwner, repositoryName] = repository.split("/");
     try {
@@ -137,7 +137,7 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
       core.info(`Looked for CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} but got error ${e}.`);
     }
   }
-  throw new Error("Could not find an accessible CodeQL bundle.");
+  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_DEFAULT_BUNDLE_VERSION}/${CODEQL_DEFAULT_BUNDLE_NAME}`;
 }
 
 export async function setupCodeQL(): Promise<CodeQL> {

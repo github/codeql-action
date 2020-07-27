@@ -84,8 +84,11 @@ const CODEQL_ACTION_CMD = "CODEQL_ACTION_CMD";
 const CODEQL_DEFAULT_BUNDLE_VERSION = "codeql-bundle-20200630";
 const CODEQL_DEFAULT_BUNDLE_NAME = "codeql-bundle.tar.gz";
 const GITHUB_DOTCOM_API_URL = "https://api.github.com";
-const INSTANCE_API_URL = process.env["GITHUB_API_URL"] || GITHUB_DOTCOM_API_URL;
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+
+function getInstanceAPIURL(): string {
+  return process.env["GITHUB_API_URL"] || GITHUB_DOTCOM_API_URL;
+}
 
 function getCodeQLActionRepository(): string {
   // Actions do not know their own repository name,
@@ -105,9 +108,9 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository();
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.
-    [INSTANCE_API_URL, codeQLActionRepository],
+    [getInstanceAPIURL(), codeQLActionRepository],
     // This GitHub instance, and the canonical Action.
-    [INSTANCE_API_URL, CODEQL_DEFAULT_ACTION_REPOSITORY],
+    [getInstanceAPIURL(), CODEQL_DEFAULT_ACTION_REPOSITORY],
     // GitHub.com, and the canonical Action.
     [GITHUB_DOTCOM_API_URL, CODEQL_DEFAULT_ACTION_REPOSITORY],
   ];
@@ -161,7 +164,7 @@ export async function setupCodeQL(): Promise<CodeQL> {
       // We only want to provide an authorization header if we are downloading
       // from the same GitHub instance the Action is running on.
       // This avoids leaking Enterprise tokens to dotcom.
-      if (codeqlURL.startsWith(INSTANCE_API_URL + "/")) {
+      if (codeqlURL.startsWith(getInstanceAPIURL() + "/")) {
         core.debug('Downloading CodeQL bundle with token.');
         let token = core.getInput('token', { required: true });
         headers.authorization = `token ${token}`;

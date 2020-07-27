@@ -599,6 +599,13 @@ export async function initConfig(): Promise<Config> {
     config = await loadConfig(configFile);
   }
 
+  // If queries were provided as using `with` in the action configuration,
+  // they should take precedence over the queries in the config file
+  const queryUses = core.getInput('queries');
+  if (queryUses) {
+    config = await updateConfigWithQueries(config, queryUses, configFile);
+  }
+
   // Save the config so we can easily access it again in the future
   await saveConfig(config);
   return config;
@@ -611,6 +618,21 @@ function isLocal(configPath: string): boolean {
   }
 
   return (configPath.indexOf("@") === -1);
+}
+
+async function updateConfigWithQueries(config: Config, queryUses: string, configPath: string): Promise<Config> {
+  if (isLocal(configPath)) {
+    // Treat the config file as relative to the workspace
+    const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
+    configPath = path.resolve(workspacePath, configPath);
+  }
+
+  const languages = await getLanguages();
+  const queries = {};
+  await parseQueryUses(configPath, languages, queries, queryUses);
+  config.queries = queries;
+
+  return config;
 }
 
 function getLocalConfig(configFile: string, workspacePath: string): UserConfig {

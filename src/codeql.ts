@@ -147,7 +147,7 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
 
 // We have to download CodeQL manually because the toolcache doesn't support Accept headers.
 // This can be removed once https://github.com/actions/toolkit/pull/530 is merged and released.
-async function toolcacheDownloadTool(url:string, headers?: IHeaders): Promise<string> {
+async function toolcacheDownloadTool(url: string, headers?: IHeaders): Promise<string> {
   const client = new http.HttpClient('CodeQL Action');
   const dest = path.join(util.getRequiredEnvParam('RUNNER_TEMP'), uuidV4());
   const response: http.HttpClientResponse = await client.get(url, headers);

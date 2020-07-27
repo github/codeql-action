@@ -145,6 +145,25 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_DEFAULT_BUNDLE_VERSION}/${CODEQL_DEFAULT_BUNDLE_NAME}`;
 }
 
+// We have to download CodeQL manually because the toolcache doesn't support Accept headers.
+// This can be removed once https://github.com/actions/toolkit/pull/530 is merged and released.
+async function toolcacheDownloadTool(url:string, headers?: IHeaders): Promise<string> {
+  const client = new http.HttpClient('CodeQL Action');
+  const dest = path.join(util.getRequiredEnvParam('RUNNER_TEMP'), uuidV4());
+  const response: http.HttpClientResponse = await client.get(url, headers);
+  if (response.message.statusCode !== 200) {
+    const err = new toolcache.HTTPError(response.message.statusCode);
+    core.info(
+      `Failed to download from "${url}". Code(${response.message.statusCode}) Message(${response.message.statusMessage})`
+    );
+    throw err;
+  }
+  const pipeline = globalutil.promisify(stream.pipeline);
+  await io.mkdirP(path.dirname(dest));
+  await pipeline(response.message, fs.createWriteStream(dest));
+  return dest;
+}
+
 export async function setupCodeQL(): Promise<CodeQL> {
   try {
     let codeqlURL = core.getInput('tools');
@@ -158,10 +177,6 @@ export async function setupCodeQL(): Promise<CodeQL> {
         codeqlURL = await getCodeQLBundleDownloadURL();
       }
 
-      // We have to download CodeQL manually because the toolcache doesn't support Accept headers.
-      // This can be changed to a one-liner once https://github.com/actions/toolkit/pull/530 is merged and released.
-      const client = new http.HttpClient('CodeQL Action');
-      const codeqlPath = path.join(util.getRequiredEnvParam('RUNNER_TEMP'), uuidV4());
       const headers: IHeaders = {accept: 'application/octet-stream'};
       // We only want to provide an authorization header if we are downloading
       // from the same GitHub instance the Action is running on.
@@ -173,17 +188,7 @@ export async function setupCodeQL(): Promise<CodeQL> {
       } else {
         core.debug('Downloading CodeQL bundle without token.');
       }
-      const response: http.HttpClientResponse = await client.get(codeqlURL, headers);
-      if (response.message.statusCode !== 200) {
-        const err = new toolcache.HTTPError(response.message.statusCode);
-        core.info(
-          `Failed to download from "${codeqlURL}". Code(${response.message.statusCode}) Message(${response.message.statusMessage})`
-        );
-        throw err;
-      }
-      const pipeline = globalutil.promisify(stream.pipeline);
-      await io.mkdirP(path.dirname(codeqlPath));
-      await pipeline(response.message, fs.createWriteStream(codeqlPath));
+      let codeqlPath = await toolcacheDownloadTool(codeqlURL, headers);
       core.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 
       const codeqlExtracted = await toolcache.extractTar(codeqlPath);

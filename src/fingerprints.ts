@@ -148,10 +148,10 @@ function locationUpdateCallback(result: any, location: any): hashCallback {
     if (!existingFingerprint) {
       result.partialFingerprints.primaryLocationLineHash = hash;
     } else if (existingFingerprint !== hash) {
-      core.warning("Calculated fingerprint of " + hash +
-        " for file " + location.physicalLocation.artifactLocation.uri +
-        " line " + lineNumber +
-        ", but found existing inconsistent fingerprint value " + existingFingerprint);
+      core.warning('Calculated fingerprint of ' + hash +
+        ' for file ' + location.physicalLocation.artifactLocation.uri +
+        ' line ' + lineNumber +
+        ', but found existing inconsistent fingerprint value ' + existingFingerprint);
     }
   };
 }
@@ -167,7 +167,7 @@ export function resolveUriToFile(location: any, artifacts: any[]): string | unde
       location.index < 0 ||
       location.index >= artifacts.length ||
       typeof artifacts[location.index].location !== 'object') {
-      core.debug('Ignoring location as index "' + location.index + '" is invalid');
+      core.debug(`Ignoring location as URI "${location.index}" is invalid`);
       return undefined;
     }
     location = artifacts[location.index].location;
@@ -175,7 +175,7 @@ export function resolveUriToFile(location: any, artifacts: any[]): string | unde
 
   // Get the URI and decode
   if (typeof location.uri !== 'string') {
-    core.debug('Ignoring location as uri "' + location.uri + '" is invalid');
+    core.debug(`Ignoring location as index "${location.uri}" is invalid`);
     return undefined;
   }
   let uri = decodeURIComponent(location.uri);
@@ -186,14 +186,14 @@ export function resolveUriToFile(location: any, artifacts: any[]): string | unde
     uri = uri.substring(fileUriPrefix.length);
   }
   if (uri.indexOf('://') !== -1) {
-    core.debug('Ignoring location URI "' + uri + "' as the scheme is not recognised");
+    core.debug(`Ignoring location URI "${uri}" as the scheme is not recognised`);
     return undefined;
   }
 
   // Discard any absolute paths that aren't in the src root
   const srcRootPrefix = process.env['GITHUB_WORKSPACE'] + '/';
   if (uri.startsWith('/') && !uri.startsWith(srcRootPrefix)) {
-    core.debug('Ignoring location URI "' + uri + "' as it is outside of the src root");
+    core.debug(`Ignoring location URI "${uri}" as it is outside of the src root`);
     return undefined;
   }
 
@@ -206,7 +206,7 @@ export function resolveUriToFile(location: any, artifacts: any[]): string | unde
 
   // Check the file exists
   if (!fs.existsSync(uri)) {
-    core.debug("Unable to compute fingerprint for non-existent file: " + uri);
+    core.debug(`Unable to compute fingerprint for non-existent file: ${uri}`);
     return undefined;
   }
 
@@ -228,10 +228,8 @@ export function addFingerprints(sarifContents: string): string {
     for (const result of run.results || []) {
       // Check the primary location is defined correctly and is in the src root
       const primaryLocation = (result.locations || [])[0];
-      if (!primaryLocation ||
-        !primaryLocation.physicalLocation ||
-        !primaryLocation.physicalLocation.artifactLocation) {
-        core.debug("Unable to compute fingerprint for invalid location: " + JSON.stringify(primaryLocation));
+      if (!primaryLocation?.physicalLocation?.artifactLocation) {
+        core.debug(`Unable to compute fingerprint for invalid location: ${JSON.stringify(primaryLocation)}`);
         continue;
       }
 

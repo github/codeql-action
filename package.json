@@ -24,7 +24,6 @@
     "@actions/http-client": "^1.0.8",
     "@actions/io": "^1.0.1",
     "@actions/tool-cache": "^1.5.5",
-    "@octokit/rest": "^18.0.2",
     "console-log-level": "^1.4.1",
     "file-url": "^3.0.0",
     "fs": "0.0.1-security",

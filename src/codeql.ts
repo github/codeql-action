@@ -81,8 +81,8 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  */
 const CODEQL_ACTION_CMD = "CODEQL_ACTION_CMD";
 
-const CODEQL_DEFAULT_BUNDLE_VERSION = "codeql-bundle-20200630";
-const CODEQL_DEFAULT_BUNDLE_NAME = "codeql-bundle.tar.gz";
+const CODEQL_BUNDLE_VERSION = "codeql-bundle-20200630";
+const CODEQL_BUNDLE_NAME = "codeql-bundle.tar.gz";
 const GITHUB_DOTCOM_API_URL = "https://api.github.com";
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
@@ -130,10 +130,10 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
       const release = await api.getApiClient().repos.getReleaseByTag({
         owner: repositoryOwner,
         repo: repositoryName,
-        tag: CODEQL_DEFAULT_BUNDLE_VERSION
+        tag: CODEQL_BUNDLE_VERSION
       });
       for (let asset of release.data.assets) {
-        if (asset.name === CODEQL_DEFAULT_BUNDLE_NAME) {
+        if (asset.name === CODEQL_BUNDLE_NAME) {
           core.info(`Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`);
           return asset.url;
         }
@@ -142,7 +142,7 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
       core.info(`Looked for CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} but got error ${e}.`);
     }
   }
-  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_DEFAULT_BUNDLE_VERSION}/${CODEQL_DEFAULT_BUNDLE_NAME}`;
+  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${CODEQL_BUNDLE_NAME}`;
 }
 
 // We have to download CodeQL manually because the toolcache doesn't support Accept headers.
@@ -167,7 +167,7 @@ async function toolcacheDownloadTool(url:string, headers?: IHeaders): Promise<st
 export async function setupCodeQL(): Promise<CodeQL> {
   try {
     let codeqlURL = core.getInput('tools');
-    const codeqlURLVersion = getCodeQLURLVersion(codeqlURL || `/${CODEQL_DEFAULT_BUNDLE_VERSION}/`);
+    const codeqlURLVersion = getCodeQLURLVersion(codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`);
 
     let codeqlFolder = toolcache.find('CodeQL', codeqlURLVersion);
     if (codeqlFolder) {

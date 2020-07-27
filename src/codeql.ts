@@ -4,7 +4,6 @@ import * as http from '@actions/http-client';
 import { IHeaders } from '@actions/http-client/interfaces';
 import * as io from '@actions/io';
 import * as toolcache from '@actions/tool-cache';
-import { Octokit } from '@octokit/rest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as semver from 'semver';
@@ -122,9 +121,8 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
       return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_DEFAULT_BUNDLE_VERSION}/${CODEQL_DEFAULT_BUNDLE_NAME}`;
     }
     let [repositoryOwner, repositoryName] = repository.split("/");
-    let client = apiURL === INSTANCE_API_URL ? api.getApiClient() : new Octokit();
     try {
-      const release = await client.repos.getReleaseByTag({
+      const release = await api.getApiClient().repos.getReleaseByTag({
         owner: repositoryOwner,
         repo: repositoryName,
         tag: CODEQL_DEFAULT_BUNDLE_VERSION

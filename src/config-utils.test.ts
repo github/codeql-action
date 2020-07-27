@@ -308,6 +308,56 @@ test("Queries can be overridden in action file", async t => {
   });
 });
 
+test("Multiple overriding queries can be specified in action file", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    fs.mkdirSync(path.join(tmpDir, 'override1'));
+    fs.mkdirSync(path.join(tmpDir, 'override2'));
+
+    // This config item should take precedence.
+    setInput('queries', './override1,./override2');
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    CodeQL.setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test overriding by seeing which returned items are in
+        // the final configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    setInput('languages', 'javascript');
+
+    const config = await configUtils.initConfig();
+
+    // Check resolveQueries was called correctly:
+    // It'll be called once for the default queries,
+    // and then once for each of the two overrides
+    t.deepEqual(resolveQueriesArgs.length, 3);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/override1$/);
+    t.regex(resolveQueriesArgs[2].queries[0], /.*\/override2$/);
+
+    // Now check that the end result contains only the override queries, not the defaults
+    t.deepEqual(config.queries['javascript'].length, 2);
+    t.regex(config.queries['javascript'][0], /.*\/override1$/);
+    t.regex(config.queries['javascript'][1], /.*\/override2$/);
+  });
+});
+
 test("API client used when reading remote config", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;

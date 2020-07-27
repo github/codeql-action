@@ -629,7 +629,9 @@ async function updateConfigWithQueries(config: Config, queryUses: string, config
 
   const languages = await getLanguages();
   const queries = {};
-  await parseQueryUses(configPath, languages, queries, queryUses);
+  queryUses.split(',').forEach(async q => {
+    await parseQueryUses(configPath, languages, queries, q);
+  });
   config.queries = queries;
 
   return config;

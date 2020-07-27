@@ -1,7 +1,9 @@
 import {TestInterface} from 'ava';
 import sinon from 'sinon';
 
-type TestContext = {stdoutWrite: any, stderrWrite: any, testOutput: string};
+import * as CodeQL from './codeql';
+
+type TestContext = {stdoutWrite: any, stderrWrite: any, testOutput: string, env: NodeJS.ProcessEnv};
 
 function wrapOutput(context: TestContext) {
   // Function signature taken from Socket.write.
@@ -35,27 +37,39 @@ export function setupTests(test: TestInterface<any>) {
   const typedTest = test as TestInterface<TestContext>;
 
   typedTest.beforeEach(t => {
-    t.context.testOutput = "";
+    // Set an empty CodeQL object so that all method calls will fail
+    // unless the test explicitly sets one up.
+    CodeQL.setCodeQL({});
 
+    // Replace stdout and stderr so we can record output during tests
+    t.context.testOutput = "";
     const processStdoutWrite = process.stdout.write.bind(process.stdout);
     t.context.stdoutWrite = processStdoutWrite;
     process.stdout.write = wrapOutput(t.context) as any;
-
     const processStderrWrite = process.stderr.write.bind(process.stderr);
     t.context.stderrWrite = processStderrWrite;
     process.stderr.write = wrapOutput(t.context) as any;
+
+    // Many tests modify environment variables. Take a copy now so that
+    // we reset them after the test to keep tests independent of each other.
+    // process.env only has strings fields, so a shallow copy is fine.
+    t.context.env = {};
+    Object.assign(t.context.env, process.env);
   });
 
   typedTest.afterEach.always(t => {
+    // Restore stdout and stderr
+    // The captured output is only replayed if the test failed
     process.stdout.write = t.context.stdoutWrite;
     process.stderr.write = t.context.stderrWrite;
-
     if (!t.passed) {
       process.stdout.write(t.context.testOutput);
     }
-  });
 
-  typedTest.afterEach.always(() => {
+    // Undo any modifications made by sinon
     sinon.restore();
+
+    // Undo any modifications to the env
+    process.env = t.context.env;
   });
 }

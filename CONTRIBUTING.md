@@ -1,4 +1,4 @@
-## Contributing
+# Contributing
 
 [fork]: https://github.com/github/codeql-action/fork
 [pr]: https://github.com/github/codeql-action/compare
@@ -20,6 +20,8 @@ Before you start, ensure that you have a recent version of node installed. You c
 * Run tests: `npm run test`.  You’ll need to ensure that the JavaScript files are up-to-date first by running the command above.
 * Run the linter: `npm run lint`.
 
+This project also includes configuration to run tests from VSCode (with support for breakpoints) - open the test file you wish to run and choose "Debug AVA test file" from the Run menu in the Run panel.
+
 ### Running the action
 
 To see the effect of your changes and to test them, push your changes in a branch and then look at the [Actions output](https://github.com/github/codeql-action/actions) for that branch.  You can also exercise the code locally by running the automated tests.
@@ -35,6 +37,7 @@ As well as the unit tests (see _Common tasks_ above), there are integration test
 3. Make your change, add tests, and make sure the tests still pass
 4. Push to your fork and [submit a pull request][pr]
 5. Pat yourself on the back and wait for your pull request to be reviewed and merged.
+
 If you're a GitHub staff member, you can merge your own PR once it's approved; for external contributors, GitHub staff will merge your PR once it's approved.
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:

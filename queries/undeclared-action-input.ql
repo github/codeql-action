@@ -9,11 +9,17 @@
 
 import javascript
 
+/**
+ * A declaration of a github action, including its inputs and entrypoint.
+ */
 class ActionDeclaration extends File {
   ActionDeclaration() {
     getRelativePath().matches("%/action.yml")
   }
 
+  /**
+   * The name of the action.
+   */
   string getName() {
     result = getRelativePath().regexpCapture("(.*)/action.yml", 1)
   }
@@ -22,10 +28,16 @@ class ActionDeclaration extends File {
     result.getFile() = this
   }
 
+  /**
+   * The name of any input to this action.
+   */
   string getAnInput() {
     result = getRootNode().(YAMLMapping).lookup("inputs").(YAMLMapping).getKey(_).(YAMLString).getValue()
   }
 
+  /**
+   * The function that is the entrypoint to this action.
+   */
   FunctionDeclStmt getEntrypoint() {
     result.getFile().getRelativePath() = getRootNode().
       (YAMLMapping).lookup("runs").
@@ -35,6 +47,21 @@ class ActionDeclaration extends File {
   }
 }
 
+/**
+ * A function declared on CodeQL interface from codeql.ts
+ */
+class CodeQLFunction extends Function {
+  CodeQLFunction() {
+    exists(Function getCodeQLForCmd, ObjectExpr obj |
+      getCodeQLForCmd.getName() = "getCodeQLForCmd" and
+      obj = getCodeQLForCmd.getAStmt().(ReturnStmt).getExpr() and
+      obj.getAProperty().getInit() = this)
+  }
+}
+
+/**
+ * Any expr that is a transitive child of the given function.
+ */
 Expr getAFunctionChildExpr(Function f) {
   result.getContainer() = f
 }
@@ -45,14 +72,25 @@ Expr getAFunctionChildExpr(Function f) {
 Function calledBy(Function f) {
   result = getAFunctionChildExpr(f).(InvokeExpr).getResolvedCallee()
   or
-  result.getEnclosingContainer() = f // assume outer function causes inner function to be called
+  // Assume outer function causes inner function to be called,
+  // except for the special case of the CodeQL functions.
+  (result.getEnclosingContainer() = f and not result instanceof CodeQLFunction)
+  or
+  // Handle calls to CodeQL functions by name
+  getAFunctionChildExpr(f).(InvokeExpr).getCalleeName() = result.(CodeQLFunction).getName()
 }
 
+/**
+ * A call to the core.getInput method.
+ */
 class GetInputMethodCallExpr extends MethodCallExpr {
   GetInputMethodCallExpr() {
     getMethodName() = "getInput"
   }
 
+  /**
+   * The name of the input being accessed.
+   */
   string getInputName() {
     result = getArgument(0).(StringLiteral).getValue()
   }

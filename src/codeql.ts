@@ -192,7 +192,7 @@ export async function setupCodeQL(): Promise<CodeQL> {
     if (process.platform === 'win32') {
       codeqlCmd += ".exe";
     } else if (process.platform !== 'linux' && process.platform !== 'darwin') {
-      throw new Error("Unsupported plaform: " + process.platform);
+      throw new Error("Unsupported platform: " + process.platform);
     }
 
     cachedCodeQL = getCodeQLForCmd(codeqlCmd);

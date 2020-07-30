@@ -5,7 +5,6 @@ import * as os from 'os';
 import * as path from 'path';
 
 import * as api from './api-client';
-import * as configUtils from './config-utils';
 import * as sharedEnv from './shared-environment';
 
 /**
@@ -138,21 +137,36 @@ export function getRef(): string {
 type ActionName = 'init' | 'autobuild' | 'finish' | 'upload-sarif';
 type ActionStatus = 'starting' | 'aborted' | 'success' | 'failure';
 
-interface StatusReport {
+export interface StatusReportBase {
+  // ID of the workflow run containing the action run
   "workflow_run_id": number;
+  // Workflow name. Converted to analysis_name further down the pipeline.
   "workflow_name": string;
+  // Job name from the workflow
   "job_name": string;
+  // Analysis key, normally composed from the workflow path and job name
   "analysis_key": string;
+  // Value of the matrix for this instantiation of the job
   "matrix_vars"?: string;
-  "languages": string;
+  // Commit oid that the workflow was triggered on
   "commit_oid": string;
+  // Ref that the workflow was triggered on
   "ref": string;
+  // Name of the action being executed
   "action_name": ActionName;
+  // Version if the action being executed, as a commit oid
   "action_oid": string;
+  // Time the first action started. Normally the init action
   "started_at": string;
+  // Time this action started
+  "action_started_at": string;
+  // Time this action completed, or undefined if not yet completed
   "completed_at"?: string;
+  // State this action is currently in
   "status": ActionStatus;
+  // Cause of the failure (or undefined if status is not failure)
   "cause"?: string;
+  // Stack trace of the failure (or undefined if status is not failure)
   "exception"?: string;
 }
 
@@ -161,26 +175,17 @@ interface StatusReport {
  *
  * @param actionName The name of the action, e.g. 'init', 'finish', 'upload-sarif'
  * @param status The status. Must be 'success', 'failure', or 'starting'
+ * @param startedAt The time this action started executing.
  * @param cause  Cause of failure (only supply if status is 'failure')
  * @param exception Exception (only supply if status is 'failure')
  */
-async function createStatusReport(
+export async function createStatusReportBase(
   actionName: ActionName,
   status: ActionStatus,
+  actionStartedAt: Date,
   cause?: string,
   exception?: string):
-  Promise<StatusReport> {
-
-  // If this is not the init action starting up or aborting then try to load the config.
-  // If it fails then carry because it's important to still send the status report.
-  let config: configUtils.Config | undefined = undefined;
-  if (actionName !== 'init' || (status !== 'starting' && status !== 'aborted')) {
-    try {
-      config = await configUtils.getConfig();
-    } catch (e) {
-      core.error('Unable to load config: ' + e);
-    }
-  }
+  Promise<StatusReportBase> {
 
   const commitOid = process.env['GITHUB_SHA'] || '';
   const ref = getRef();
@@ -192,21 +197,23 @@ async function createStatusReport(
   const workflowName = process.env['GITHUB_WORKFLOW'] || '';
   const jobName = process.env['GITHUB_JOB'] || '';
   const analysis_key = await getAnalysisKey();
-  const languages = config?.languages?.join(',') || "";
-  const startedAt = process.env[sharedEnv.CODEQL_ACTION_STARTED_AT] || new Date().toISOString();
-  core.exportVariable(sharedEnv.CODEQL_ACTION_STARTED_AT, startedAt);
+  let workflowStartedAt = process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT];
+  if (workflowStartedAt === undefined) {
+    workflowStartedAt = actionStartedAt.toISOString();
+    core.exportVariable(sharedEnv.CODEQL_WORKFLOW_STARTED_AT, workflowStartedAt);
+  }
 
-  let statusReport: StatusReport = {
+  let statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
     workflow_name: workflowName,
     job_name: jobName,
     analysis_key: analysis_key,
-    languages: languages,
     commit_oid: commitOid,
     ref: ref,
     action_name: actionName,
     action_oid: "unknown", // TODO decide if it's possible to fill this in
-    started_at: startedAt,
+    started_at: workflowStartedAt,
+    action_started_at: actionStartedAt.toISOString(),
     status: status
   };
 
@@ -231,9 +238,16 @@ async function createStatusReport(
 /**
  * Send a status report to the code_scanning/analysis/status endpoint.
  *
- * Returns the status code of the response to the status request.
+ * Optionally checks the response from the API endpoint and sets the action
+ * as failed if the status report failed. This is only expected to be used
+ * when sending a 'starting' report.
+ *
+ * Returns whether sending the status report was successful of not.
  */
-async function sendStatusReport(statusReport: StatusReport): Promise<number> {
+export async function sendStatusReport<S extends StatusReportBase>(
+  statusReport: S,
+  ignoreFailures?: boolean): Promise<boolean> {
+
   const statusReportJSON = JSON.stringify(statusReport);
 
   core.debug('Sending status report: ' + statusReportJSON);
@@ -245,66 +259,25 @@ async function sendStatusReport(statusReport: StatusReport): Promise<number> {
     repo: repo,
     data: statusReportJSON,
   });
-  return statusResponse.status;
-}
 
-/**
- * Send a status report that an action is starting.
- *
- * If the action is `init` then this also records the start time in the environment,
- * and ensures that the analysed languages are also recorded in the envirenment.
- *
- * Returns true unless a problem occurred and the action should abort.
- */
-export async function reportActionStarting(action: ActionName): Promise<boolean> {
-  const statusCode = await sendStatusReport(await createStatusReport(action, 'starting'));
-
-  // If the status report request fails with a 403 or a 404, then this is a deliberate
-  // message from the endpoint that the SARIF upload can be expected to fail too,
-  // so the action should fail to avoid wasting actions minutes.
-  //
-  // Other failure responses (or lack thereof) could be transitory and should not
-  // cause the action to fail.
-  if (statusCode === 403) {
-    core.setFailed('The repo on which this action is running is not opted-in to CodeQL code scanning.');
-    return false;
-  }
-  if (statusCode === 404) {
-    core.setFailed('Not authorized to used the CodeQL code scanning feature on this repo.');
-    return false;
+  if (!ignoreFailures) {
+    // If the status report request fails with a 403 or a 404, then this is a deliberate
+    // message from the endpoint that the SARIF upload can be expected to fail too,
+    // so the action should fail to avoid wasting actions minutes.
+    //
+    // Other failure responses (or lack thereof) could be transitory and should not
+    // cause the action to fail.
+    if (statusResponse.status === 403) {
+      core.setFailed('The repo on which this action is running is not opted-in to CodeQL code scanning.');
+      return false;
+    }
+    if (statusResponse.status === 404) {
+      core.setFailed('Not authorized to used the CodeQL code scanning feature on this repo.');
+      return false;
+    }
   }
 
   return true;
-}
-
-/**
- * Report that an action has failed.
- *
- * Note that the started_at date is always that of the `init` action, since
- * this is likely to give a more useful duration when inspecting events.
- */
-export async function reportActionFailed(action: ActionName, cause?: string, exception?: string) {
-  await sendStatusReport(await createStatusReport(action, 'failure', cause, exception));
-}
-
-/**
- * Report that an action has succeeded.
- *
- * Note that the started_at date is always that of the `init` action, since
- * this is likely to give a more useful duration when inspecting events.
- */
-export async function reportActionSucceeded(action: ActionName) {
-  await sendStatusReport(await createStatusReport(action, 'success'));
-}
-
-/**
- * Report that an action has been aborted.
- *
- * Note that the started_at date is always that of the `init` action, since
- * this is likely to give a more useful duration when inspecting events.
- */
-export async function reportActionAborted(action: ActionName, cause?: string) {
-  await sendStatusReport(await createStatusReport(action, 'aborted', cause));
 }
 
 /**

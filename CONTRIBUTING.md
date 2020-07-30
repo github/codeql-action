@@ -43,7 +43,7 @@ It is possible to run this action locally via [act](https://github.com/nektos/ac
 
 1. Run `act -j codeql -s GITHUB_TOKEN=<PAT>`
 
-Running locally will generate the CodeQL database and run all the queries, but it will avoid uploading and reporting results to GitHub. Note that this must be done a repository that _consumes_ this action, not this repository. The use case is to debug failures of this action on specific repositories.
+Running locally will generate the CodeQL database and run all the queries, but it will avoid uploading and reporting results to GitHub. Note that this must be done on a repository that _consumes_ this action, not this repository. The use case is to debug failures of this action on specific repositories.
 
 ### Integration tests
 

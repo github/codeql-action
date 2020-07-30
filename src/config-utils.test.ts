@@ -254,7 +254,7 @@ test("default queries are used", async t => {
   });
 });
 
-test("Queries can be overridden in action file", async t => {
+test("Default queries and those from config file can be overridden in action file", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;

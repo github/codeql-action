@@ -8,6 +8,26 @@ import * as api from './api-client';
 import * as sharedEnv from './shared-environment';
 
 /**
+ * The API URL for github.com.
+ */
+export const GITHUB_DOTCOM_API_URL = "https://api.github.com";
+
+/**
+ * Get the API URL for the GitHub instance we are connected to.
+ * May be for github.com or for an enterprise instance.
+ */
+export function getInstanceAPIURL(): string {
+  return process.env["GITHUB_API_URL"] || GITHUB_DOTCOM_API_URL;
+}
+
+/**
+ * Are we running against a GitHub Enterpise instance, as opposed to github.com.
+ */
+export function isEnterprise(): boolean {
+  return getInstanceAPIURL() !== GITHUB_DOTCOM_API_URL;
+}
+
+/**
  * Should the current action be aborted?
  *
  * This method should be called at the start of all CodeQL actions and they
@@ -247,6 +267,11 @@ export async function createStatusReportBase(
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
   ignoreFailures?: boolean): Promise<boolean> {
+
+  if (isEnterprise()) {
+    core.debug("Not sending status report to GitHub Enterprise");
+    return true;
+  }
 
   const statusReportJSON = JSON.stringify(statusReport);
 

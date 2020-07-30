@@ -131,13 +131,54 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
   return { env, spec };
 }
 
+interface InitSuccessStatusReport extends util.StatusReportBase {
+  // Comma-separated list of languages that analysis was run for
+  // This may be from the workflow file or may be calculated from repository contents
+  languages: string;
+  // Comma-separated list of languages specified explicitly in the workflow file
+  workflow_languages: string;
+  // Comma-separated list of paths, from the 'paths' config field
+  paths: string;
+  // Comma-separated list of paths, from the 'paths-ignore' config field
+  paths_ignore: string;
+  // Commas-separated list of languages where the default queries are disabled
+  disable_default_queries: string;
+  // Comma-separated list of queries sources, from the 'queries' config field
+  queries: string;
+}
+
+async function sendSuccessStatusReport(startedAt: Date, config: configUtils.Config) {
+  const statusReportBase = await util.createStatusReportBase('init', 'success', startedAt);
+
+  const languages = config.languages.join(',');
+  const workflowLanguages = core.getInput('languages', { required: false });
+  const paths = (config.originalUserInput.paths || []).join(',');
+  const pathsIgnore = (config.originalUserInput['paths-ignore'] || []).join(',');
+  const disableDefaultQueries = config.originalUserInput['disable-default-queries'] ? languages : '';
+  const queries = (config.originalUserInput.queries || []).map(q => q.uses).join(',');
+
+  const statusReport: InitSuccessStatusReport = {
+    ...statusReportBase,
+    languages: languages,
+    workflow_languages: workflowLanguages,
+    paths: paths,
+    paths_ignore: pathsIgnore,
+    disable_default_queries: disableDefaultQueries,
+    queries: queries,
+  };
+
+  await util.sendStatusReport(statusReport);
+}
+
 async function run() {
 
+  const startedAt = new Date();
   let config: configUtils.Config;
   let codeql: CodeQL;
 
   try {
-    if (util.should_abort('init', false) || !await util.reportActionStarting('init')) {
+    if (util.should_abort('init', false) ||
+        !await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
       return;
     }
 
@@ -153,7 +194,7 @@ async function run() {
 
   } catch (e) {
     core.setFailed(e.message);
-    await util.reportActionAborted('init', e.message);
+    await util.sendStatusReport(await util.createStatusReportBase('init', 'aborted', startedAt, e.message));
     return;
   }
 
@@ -226,10 +267,15 @@ async function run() {
 
   } catch (error) {
     core.setFailed(error.message);
-    await util.reportActionFailed('init', error.message, error.stack);
+    await util.sendStatusReport(await util.createStatusReportBase(
+      'init',
+      'failure',
+      startedAt,
+      error.message,
+      error.stack));
     return;
   }
-  await util.reportActionSucceeded('init');
+  await sendSuccessStatusReport(startedAt, config);
   core.exportVariable(sharedEnv.CODEQL_ACTION_INIT_COMPLETED, 'true');
 }
 

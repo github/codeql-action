@@ -187,6 +187,13 @@ test("load non-empty input", async t => {
       queries: {'javascript': ['/foo/a.ql', '/bar/b.ql']},
       pathsIgnore: ['a', 'b'],
       paths: ['c/d'],
+      originalUserInput: {
+        name: 'my config',
+        'disable-default-queries': true,
+        queries: [{ uses: './foo' }],
+        'paths-ignore': ['a', 'b'],
+        paths: ['c/d'],
+      },
     };
 
     fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');

@@ -95,21 +95,21 @@ test('prepareEnvironment() when a local run', t => {
   process.env.CODEQL_LOCAL_RUN = 'false';
   process.env.GITHUB_JOB = 'YYY';
 
-  util.prepareEnvironment();
+  util.prepareLocalRunEnvironment();
 
   // unchanged
   t.deepEqual(process.env.GITHUB_JOB, 'YYY');
 
   process.env.CODEQL_LOCAL_RUN = 'true';
 
-  util.prepareEnvironment();
+  util.prepareLocalRunEnvironment();
 
   // unchanged
   t.deepEqual(process.env.GITHUB_JOB, 'YYY');
 
   process.env.GITHUB_JOB = '';
 
-  util.prepareEnvironment();
+  util.prepareLocalRunEnvironment();
 
   // updated
   t.deepEqual(process.env.GITHUB_JOB, 'UNKNOWN-JOB');

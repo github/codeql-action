@@ -177,7 +177,7 @@ async function run() {
   let codeql: CodeQL;
 
   try {
-    util.prepareEnvironment();
+    util.prepareLocalRunEnvironment();
     if (util.should_abort('init', false) ||
         !await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
       return;

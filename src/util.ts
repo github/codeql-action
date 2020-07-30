@@ -73,7 +73,7 @@ export function isLocalRun(): boolean {
 /**
  * Ensures all required environment variables are set in the context of a local run.
  */
-export function prepareEnvironment() {
+export function prepareLocalRunEnvironment() {
   if (!isLocalRun()) {
     return;
   }

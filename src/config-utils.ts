@@ -599,7 +599,7 @@ export async function initConfig(): Promise<Config> {
     config = await loadConfig(configFile);
   }
 
-  // If queries were provided as using `with` in the action configuration,
+  // If queries were provided using `with` in the action configuration,
   // they should take precedence over the queries in the config file
   const queryUses = core.getInput('queries');
   if (queryUses) {

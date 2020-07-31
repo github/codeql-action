@@ -264,7 +264,10 @@ test("Default queries and those from config file can be overridden in action fil
       queries:
         - uses: ./foo`;
 
-    // This config item should take precedence.
+    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+    setInput('config-file', 'input');
+
+    // This config item should take precedence over the config file and the default queries.
     setInput('queries', './override');
 
     fs.mkdirSync(path.join(tmpDir, 'foo'));
@@ -289,8 +292,6 @@ test("Default queries and those from config file can be overridden in action fil
       },
     });
 
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
     const config = await configUtils.initConfig();

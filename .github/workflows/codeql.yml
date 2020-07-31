@@ -21,8 +21,7 @@ jobs:
     - run: git checkout HEAD^2
       if: ${{ github.event_name == 'pull_request' }}
 
-    - uses: ./init
+    - uses: github/codeql-action/full@pre-hook
       with:
         languages: javascript
         config-file: ./.github/codeql/codeql-config.yml
-    - uses: ./analyze

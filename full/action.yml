@@ -1,0 +1,45 @@
+name: 'CodeQL'
+description: 'Setup the CodeQL tracer'
+author: 'GitHub'
+inputs:
+  tools:
+    description: URL of CodeQL tools
+    required: false
+    # If not specified the Action will check in several places until it finds the CodeQL tools.
+  languages:
+    description: The languages to be analysed
+    required: false
+  token:
+    default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
+  config-file:
+    description: Path of the config file to use
+    required: false
+
+  check_name:
+    description: The name of the check run to add text to.
+    required: false
+  output:
+    description: The path of the directory in which to save the SARIF results
+    required: false
+    default: '../results'
+  upload:
+    description: Upload the SARIF file
+    required: false
+    default: "true"
+  ram:
+    description: Override the amount of memory in MB to be used by CodeQL. By default, almost all the memory of the machine is used.
+    required: false
+  threads:
+    description: The number of threads to be used by CodeQL.
+    required: false
+    default: "1"
+  checkout_path:
+    description: "The path at which the analyzed repository was checked out. Used to relativeize any absolute paths in the uploaded SARIF file."
+    required: false
+    default: ${{ github.workspace }}
+runs:
+  using: 'node12'
+  pre: '../lib/setup-tracer.js'
+  main: '../lib/finalize-db.js'

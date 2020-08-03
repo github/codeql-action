@@ -3,20 +3,36 @@ import * as core from '@actions/core';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
 
+interface UploadSarifStatusReport extends util.StatusReportBase, upload_lib.UploadStatusReport {}
+
+async function sendSuccessStatusReport(startedAt: Date, uploadStats: upload_lib.UploadStatusReport) {
+  const statusReportBase = await util.createStatusReportBase('upload-sarif', 'success', startedAt);
+  const statusReport: UploadSarifStatusReport = {
+    ...statusReportBase,
+    ... uploadStats,
+  };
+  await util.sendStatusReport(statusReport);
+}
+
 async function run() {
-  if (util.should_abort('upload-sarif', false) || !await util.reportActionStarting('upload-sarif')) {
+  const startedAt = new Date();
+  if (util.should_abort('upload-sarif', false) ||
+      !await util.sendStatusReport(await util.createStatusReportBase('upload-sarif', 'starting', startedAt), true)) {
     return;
   }
 
   try {
-    if (await upload_lib.upload(core.getInput('sarif_file'))) {
-      await util.reportActionSucceeded('upload-sarif');
-    } else {
-      await util.reportActionFailed('upload-sarif', 'upload');
-    }
+    const uploadStats = await upload_lib.upload(core.getInput('sarif_file'));
+    await sendSuccessStatusReport(startedAt, uploadStats);
+
   } catch (error) {
     core.setFailed(error.message);
-    await util.reportActionFailed('upload-sarif', error.message, error.stack);
+    await util.sendStatusReport(await util.createStatusReportBase(
+      'upload-sarif',
+      'failure',
+      startedAt,
+      error.message,
+      error.stack));
     return;
   }
 }

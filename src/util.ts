@@ -166,6 +166,8 @@ export interface StatusReportBase {
   "job_name": string;
   // Analysis key, normally composed from the workflow path and job name
   "analysis_key": string;
+  // Value of the matrix for this instantiation of the job
+  "matrix_vars"?: string;
   // Commit oid that the workflow was triggered on
   "commit_oid": string;
   // Ref that the workflow was triggered on
@@ -247,7 +249,7 @@ export async function createStatusReportBase(
   }
   let matrix: string | undefined = core.getInput('matrix');
   if (matrix) {
-    // Temporarily do nothing.
+    statusReport.matrix_vars = matrix;
   }
 
   return statusReport;

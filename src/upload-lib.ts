@@ -218,9 +218,12 @@ async function uploadFiles(sarifFiles: string[]): Promise<UploadStatusReport> {
   const numResultInSarif = countResultsInSarif(sarifPayload);
   core.debug("Number of results in upload: " + numResultInSarif);
 
-  // Make the upload
-  await uploadPayload(payload);
-
+  if (!util.isLocalRun()) {
+    // Make the upload
+    await uploadPayload(payload);
+  } else {
+    core.debug("Not uploading because this is a local run.");
+  }
   core.endGroup();
 
   return {

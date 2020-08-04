@@ -577,6 +577,15 @@ async function loadConfig(configFile: string): Promise<Config> {
     });
   }
 
+  // The list of queries should not be empty for any language. If it is then
+  // it is a user configuration error.
+  for (const language of languages) {
+    if (queries[language].length === 0) {
+      throw new Error(`Did not detect any queries to analyze for ${language}. ` +
+          "Please make sure that the default queries are enabled, or you are specifying queries to run.");
+    }
+  }
+
   return {
     languages,
     queries,

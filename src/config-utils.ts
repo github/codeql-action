@@ -452,6 +452,9 @@ async function getLanguagesInRepo(): Promise<string[]> {
  * The result is obtained from the action input parameter 'languages' if that
  * has been set, otherwise it is deduced as all languages in the repo that
  * can be analysed.
+ *
+ * If no languages could be detected from either the workflow or the repository
+ * then throw an error.
  */
 async function getLanguages(): Promise<string[]> {
 
@@ -466,6 +469,13 @@ async function getLanguages(): Promise<string[]> {
     // Obtain languages as all languages in the repo that can be analysed
     languages = await getLanguagesInRepo();
     core.info("Automatically detected languages: " + JSON.stringify(languages));
+  }
+
+  // If the languages parameter was not given and no languages were
+  // detected then fail here as this is a workflow configuration error.
+  if (languages.length === 0) {
+    throw new Error("Did not detect any languages to analyze. " +
+        "Please update input in workflow or check that GitHub detects the correct languages in your repository.");
   }
 
   return languages;
@@ -515,11 +525,6 @@ async function loadConfig(configFile: string): Promise<Config> {
   }
 
   const languages = await getLanguages();
-  // If the languages parameter was not given and no languages were
-  // detected then fail here as this is a workflow configuration error.
-  if (languages.length === 0) {
-    throw new Error("Did not detect any languages to analyze. Please update input in workflow.");
-  }
 
   const queries = {};
   const pathsIgnore: string[] = [];

@@ -64,6 +64,26 @@ export function getRequiredEnvParam(paramName: string): string {
   return value;
 }
 
+export function isLocalRun(): boolean {
+  return !!process.env.CODEQL_LOCAL_RUN
+    && process.env.CODEQL_LOCAL_RUN !== 'false'
+    && process.env.CODEQL_LOCAL_RUN !== '0';
+}
+
+/**
+ * Ensures all required environment variables are set in the context of a local run.
+ */
+export function prepareLocalRunEnvironment() {
+  if (!isLocalRun()) {
+    return;
+  }
+
+  core.debug('Action is running locally.');
+  if (!process.env.GITHUB_JOB) {
+    core.exportVariable('GITHUB_JOB', 'UNKNOWN-JOB');
+  }
+}
+
 /**
  * Gets the SHA of the commit that is currently checked out.
  */
@@ -95,6 +115,9 @@ export async function getCommitOid(): Promise<string> {
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
+  if (isLocalRun()) {
+    return 'LOCAL';
+  }
   const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
@@ -273,8 +296,12 @@ export async function sendStatusReport<S extends StatusReportBase>(
     return true;
   }
 
-  const statusReportJSON = JSON.stringify(statusReport);
+  if (isLocalRun()) {
+    core.debug("Not sending status report because this is a local run");
+    return true;
+  }
 
+  const statusReportJSON = JSON.stringify(statusReport);
   core.debug('Sending status report: ' + statusReportJSON);
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");

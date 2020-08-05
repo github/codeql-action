@@ -195,6 +195,7 @@ async function run() {
 
   } catch (e) {
     core.setFailed(e.message);
+    console.log(e);
     await util.sendStatusReport(await util.createStatusReportBase('init', 'aborted', startedAt, e.message));
     return;
   }
@@ -268,6 +269,7 @@ async function run() {
 
   } catch (error) {
     core.setFailed(error.message);
+    console.log(error);
     await util.sendStatusReport(await util.createStatusReportBase(
       'init',
       'failure',

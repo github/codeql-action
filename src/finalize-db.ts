@@ -125,6 +125,7 @@ async function run() {
   let queriesStats: QueriesStatusReport | undefined = undefined;
   let uploadStats: upload_lib.UploadStatusReport | undefined = undefined;
   try {
+    util.prepareLocalRunEnvironment();
     if (util.should_abort('finish', true) ||
       !await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
       return;

@@ -581,7 +581,7 @@ async function loadConfig(configFile: string): Promise<Config> {
   // it is a user configuration error.
   for (const language of languages) {
     if (queries[language].length === 0) {
-      throw new Error(`Did not detect any queries to analyze for ${language}. ` +
+      throw new Error(`Did not detect any queries to run for ${language}. ` +
           "Please make sure that the default queries are enabled, or you are specifying queries to run.");
     }
   }

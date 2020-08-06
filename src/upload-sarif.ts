@@ -27,6 +27,7 @@ async function run() {
 
   } catch (error) {
     core.setFailed(error.message);
+    console.log(error);
     await util.sendStatusReport(await util.createStatusReportBase(
       'upload-sarif',
       'failure',

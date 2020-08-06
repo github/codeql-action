@@ -412,6 +412,15 @@ function getConfigFilePropertyError(configFile: string, property: string, error:
   return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
 }
 
+export function getNoLanguagesError(): string {
+  return "Did not detect any languages to analyze. " +
+  "Please update input in workflow or check that GitHub detects the correct languages in your repository.";
+}
+
+export function getUnknownLanguagesError(languages: string[]): string {
+  return "Did not recognise the following languages: " + languages.join(', ');
+}
+
 /**
  * Gets the set of languages in the current repository
  */
@@ -484,8 +493,7 @@ async function getLanguages(): Promise<Language[]> {
   // If the languages parameter was not given and no languages were
   // detected then fail here as this is a workflow configuration error.
   if (languages.length === 0) {
-    throw new Error("Did not detect any languages to analyze. " +
-        "Please update input in workflow or check that GitHub detects the correct languages in your repository.");
+    throw new Error(getNoLanguagesError());
   }
 
   // Make sure they are supported
@@ -507,7 +515,7 @@ async function getLanguages(): Promise<Language[]> {
     }
   }
   if (unknownLanguages.length > 0) {
-    throw new Error("Did not recognise the following languages: " + unknownLanguages.join(', '));
+    throw new Error(getUnknownLanguagesError(unknownLanguages));
   }
 
   return checkedLanguages;

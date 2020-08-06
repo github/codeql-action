@@ -343,6 +343,36 @@ test("Invalid format of remote config handled correctly", async t => {
   });
 });
 
+test("No detected languages", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    try {
+      await configUtils.initConfig();
+      throw new Error('initConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getNoLanguagesError()));
+    }
+  });
+});
+
+test("Unknown languages", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    setInput('languages', 'ruby,english');
+
+    try {
+      await configUtils.initConfig();
+      throw new Error('initConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getUnknownLanguagesError(['ruby', 'english'])));
+    }
+  });
+});
+
 function doInvalidInputTest(
   testName: string,
   inputFileContents: string,

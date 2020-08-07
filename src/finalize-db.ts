@@ -125,8 +125,7 @@ async function run() {
   let uploadStats: upload_lib.UploadStatusReport | undefined = undefined;
   try {
     util.prepareLocalRunEnvironment();
-    if (util.should_abort('finish', true) ||
-      !await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
+    if (!await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
       return;
     }
     const config = await configUtils.getConfig();

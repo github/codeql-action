@@ -16,8 +16,7 @@ async function sendSuccessStatusReport(startedAt: Date, uploadStats: upload_lib.
 
 async function run() {
   const startedAt = new Date();
-  if (util.should_abort('upload-sarif', false) ||
-      !await util.sendStatusReport(await util.createStatusReportBase('upload-sarif', 'starting', startedAt), true)) {
+  if (!await util.sendStatusReport(await util.createStatusReportBase('upload-sarif', 'starting', startedAt), true)) {
     return;
   }
 

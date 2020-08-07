@@ -1,6 +1,5 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -216,7 +215,7 @@ async function run() {
     core.exportVariable('CODEQL_RAM', codeqlRam);
 
     const databaseFolder = path.resolve(util.getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
-    await io.mkdirP(databaseFolder);
+    fs.mkdirSync(databaseFolder, { recursive: true });
 
     let tracedLanguages: { [key: string]: TracerConfig } = {};
     let scannedLanguages: string[] = [];

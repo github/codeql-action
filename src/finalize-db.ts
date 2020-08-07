@@ -1,5 +1,4 @@
 import * as core from '@actions/core';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -138,7 +137,7 @@ async function run() {
     const databaseFolder = util.getRequiredEnvParam(sharedEnv.CODEQL_ACTION_DATABASE_DIR);
 
     const sarifFolder = core.getInput('output');
-    await io.mkdirP(sarifFolder);
+    fs.mkdirSync(sarifFolder, { recursive: true });
 
     core.info('Finalizing database creation');
     await finalizeDatabaseCreation(databaseFolder, config);

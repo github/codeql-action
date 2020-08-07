@@ -7,7 +7,6 @@ import * as path from 'path';
 import * as analysisPaths from './analysis-paths';
 import { CodeQL, isTracedLanguage, setupCodeQL } from './codeql';
 import * as configUtils from './config-utils';
-import * as sharedEnv from './shared-environment';
 import * as util from './util';
 
 type TracerConfig = {
@@ -178,8 +177,7 @@ async function run() {
 
   try {
     util.prepareLocalRunEnvironment();
-    if (util.should_abort('init', false) ||
-        !await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
+    if (!await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
       return;
     }
 
@@ -268,7 +266,6 @@ async function run() {
     return;
   }
   await sendSuccessStatusReport(startedAt, config);
-  core.exportVariable(sharedEnv.CODEQL_ACTION_INIT_COMPLETED, 'true');
 }
 
 run().catch(e => {

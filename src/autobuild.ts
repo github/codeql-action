@@ -37,8 +37,7 @@ async function run() {
   let language;
   try {
     util.prepareLocalRunEnvironment();
-    if (util.should_abort('autobuild', true) ||
-        !await util.sendStatusReport(await util.createStatusReportBase('autobuild', 'starting', startedAt), true)) {
+    if (!await util.sendStatusReport(await util.createStatusReportBase('autobuild', 'starting', startedAt), true)) {
       return;
     }
 

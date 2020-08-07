@@ -5,5 +5,3 @@ export const ODASA_TRACER_CONFIGURATION = 'ODASA_TRACER_CONFIGURATION';
 // then this variable will be assigned the start time of the action invoked
 // rather that the init action.
 export const CODEQL_WORKFLOW_STARTED_AT = 'CODEQL_WORKFLOW_STARTED_AT';
-// Populated when the init action completes successfully
-export const CODEQL_ACTION_INIT_COMPLETED = 'CODEQL_ACTION_INIT_COMPLETED';

@@ -144,7 +144,9 @@ async function getWorkflowPath(): Promise<string> {
  * the github API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  let analysisKey = process.env[sharedEnv.CODEQL_ACTION_ANALYSIS_KEY];
+  const analysisKeyEnvVar = 'CODEQL_ACTION_ANALYSIS_KEY';
+
+  let analysisKey = process.env[analysisKeyEnvVar];
   if (analysisKey !== undefined) {
     return analysisKey;
   }
@@ -153,7 +155,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam('GITHUB_JOB');
 
   analysisKey = workflowPath + ':' + jobName;
-  core.exportVariable(sharedEnv.CODEQL_ACTION_ANALYSIS_KEY, analysisKey);
+  core.exportVariable(analysisKeyEnvVar, analysisKey);
   return analysisKey;
 }
 

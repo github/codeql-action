@@ -135,7 +135,7 @@ async function run() {
     core.exportVariable(sharedEnv.ODASA_TRACER_CONFIGURATION, '');
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
-    const databaseFolder = util.getRequiredEnvParam(sharedEnv.CODEQL_ACTION_DATABASE_DIR);
+    const databaseFolder = util.getCodeQLDatabasesDir();
 
     const sarifFolder = core.getInput('output');
     await io.mkdirP(sarifFolder);

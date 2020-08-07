@@ -215,7 +215,7 @@ async function run() {
     const codeqlRam = process.env['CODEQL_RAM'] || '6500';
     core.exportVariable('CODEQL_RAM', codeqlRam);
 
-    const databaseFolder = path.resolve(util.getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
+    const databaseFolder = util.getCodeQLDatabasesDir();
     await io.mkdirP(databaseFolder);
 
     let tracedLanguages: { [key: string]: TracerConfig } = {};
@@ -263,9 +263,6 @@ async function run() {
 
     core.exportVariable(sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES, scannedLanguages.join(','));
     core.exportVariable(sharedEnv.CODEQL_ACTION_TRACED_LANGUAGES, tracedLanguageKeys.join(','));
-
-    // TODO: make this a "private" environment variable of the action
-    core.exportVariable(sharedEnv.CODEQL_ACTION_DATABASE_DIR, databaseFolder);
 
   } catch (error) {
     core.setFailed(error.message);

@@ -442,10 +442,10 @@ async function getLanguagesInRepo(): Promise<Language[]> {
     let repo = repo_nwo[1];
 
     core.debug(`GitHub repo ${owner} ${repo}`);
-    const response = await api.getApiClient(true).request("GET /repos/:owner/:repo/languages", ({
+    const response = await api.getApiClient(true).repos.listLanguages({
       owner,
       repo
-    }));
+    });
 
     core.debug("Languages API response: " + JSON.stringify(response));
 

@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as analysisPaths from './analysis-paths';
-import { CodeQL, setupCodeQL } from './codeql';
+import { CodeQL, isTracedLanguage, setupCodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import * as sharedEnv from './shared-environment';
 import * as util from './util';
@@ -54,7 +54,7 @@ async function tracerConfig(
   return info;
 }
 
-function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerConfig {
+function concatTracerConfigs(configs: TracerConfig[]): TracerConfig {
   // A tracer config is a map containing additional environment variables and a tracer 'spec' file.
   // A tracer 'spec' file has the following format [log_file, number_of_blocks, blocks_text]
 
@@ -62,7 +62,7 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
   const env: { [key: string]: string; } = {};
   let copyExecutables = false;
   let envSize = 0;
-  for (let v of Object.values(configs)) {
+  for (const v of configs) {
     for (let e of Object.entries(v.env)) {
       const name = e[0];
       const value = e[1];
@@ -218,8 +218,7 @@ async function run() {
     const databaseFolder = util.getCodeQLDatabasesDir();
     await io.mkdirP(databaseFolder);
 
-    let tracedLanguages: { [key: string]: TracerConfig } = {};
-    let scannedLanguages: string[] = [];
+    let tracedLanguageConfigs: TracerConfig[] = [];
     // TODO: replace this code once CodeQL supports multi-language tracing
     for (let language of config.languages) {
       const languageDatabase = path.join(databaseFolder, language);
@@ -227,16 +226,13 @@ async function run() {
       // Init language database
       await codeql.databaseInit(languageDatabase, language, sourceRoot);
       // TODO: add better detection of 'traced languages' instead of using a hard coded list
-      if (['cpp', 'java', 'csharp'].includes(language)) {
+      if (isTracedLanguage(language)) {
         const config: TracerConfig = await tracerConfig(codeql, languageDatabase);
-        tracedLanguages[language] = config;
-      } else {
-        scannedLanguages.push(language);
+        tracedLanguageConfigs.push(config);
       }
     }
-    const tracedLanguageKeys = Object.keys(tracedLanguages);
-    if (tracedLanguageKeys.length > 0) {
-      const mainTracerConfig = concatTracerConfigs(tracedLanguages);
+    if (tracedLanguageConfigs.length > 0) {
+      const mainTracerConfig = concatTracerConfigs(tracedLanguageConfigs);
       if (mainTracerConfig.spec) {
         for (let entry of Object.entries(mainTracerConfig.env)) {
           core.exportVariable(entry[0], entry[1]);
@@ -260,10 +256,6 @@ async function run() {
         }
       }
     }
-
-    core.exportVariable(sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES, scannedLanguages.join(','));
-    core.exportVariable(sharedEnv.CODEQL_ACTION_TRACED_LANGUAGES, tracedLanguageKeys.join(','));
-
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);

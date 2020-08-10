@@ -14,6 +14,27 @@ import * as api from './api-client';
 import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
 import * as util from './util';
 
+type Options = (string|number|boolean)[];
+
+/**
+ * Extra command line options for the codeql commands.
+ */
+interface ExtraOptions {
+  '*'?: Options;
+  database?: {
+    '*'?: Options,
+    init?: Options,
+    'trace-command'?: Options,
+    analyze?: Options,
+    finalize?: Options
+  };
+  resolve?: {
+    '*'?: Options,
+    extractor?: Options,
+    queries?: Options
+  };
+}
+
 export interface CodeQL {
   /**
    * Get the directory where the CodeQL executable is located.

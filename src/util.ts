@@ -8,6 +8,26 @@ import * as api from './api-client';
 import * as sharedEnv from './shared-environment';
 
 /**
+ * The API URL for github.com.
+ */
+export const GITHUB_DOTCOM_API_URL = "https://api.github.com";
+
+/**
+ * Get the API URL for the GitHub instance we are connected to.
+ * May be for github.com or for an enterprise instance.
+ */
+export function getInstanceAPIURL(): string {
+  return process.env["GITHUB_API_URL"] || GITHUB_DOTCOM_API_URL;
+}
+
+/**
+ * Are we running against a GitHub Enterpise instance, as opposed to github.com.
+ */
+export function isEnterprise(): boolean {
+  return getInstanceAPIURL() !== GITHUB_DOTCOM_API_URL;
+}
+
+/**
  * Should the current action be aborted?
  *
  * This method should be called at the start of all CodeQL actions and they
@@ -44,6 +64,26 @@ export function getRequiredEnvParam(paramName: string): string {
   return value;
 }
 
+export function isLocalRun(): boolean {
+  return !!process.env.CODEQL_LOCAL_RUN
+    && process.env.CODEQL_LOCAL_RUN !== 'false'
+    && process.env.CODEQL_LOCAL_RUN !== '0';
+}
+
+/**
+ * Ensures all required environment variables are set in the context of a local run.
+ */
+export function prepareLocalRunEnvironment() {
+  if (!isLocalRun()) {
+    return;
+  }
+
+  core.debug('Action is running locally.');
+  if (!process.env.GITHUB_JOB) {
+    core.exportVariable('GITHUB_JOB', 'UNKNOWN-JOB');
+  }
+}
+
 /**
  * Gets the SHA of the commit that is currently checked out.
  */
@@ -75,6 +115,9 @@ export async function getCommitOid(): Promise<string> {
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
+  if (isLocalRun()) {
+    return 'LOCAL';
+  }
   const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
@@ -146,6 +189,8 @@ export interface StatusReportBase {
   "job_name": string;
   // Analysis key, normally composed from the workflow path and job name
   "analysis_key": string;
+  // Value of the matrix for this instantiation of the job
+  "matrix_vars"?: string;
   // Commit oid that the workflow was triggered on
   "commit_oid": string;
   // Ref that the workflow was triggered on
@@ -227,7 +272,7 @@ export async function createStatusReportBase(
   }
   let matrix: string | undefined = core.getInput('matrix');
   if (matrix) {
-    // Temporarily do nothing.
+    statusReport.matrix_vars = matrix;
   }
 
   return statusReport;
@@ -246,8 +291,17 @@ export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
   ignoreFailures?: boolean): Promise<boolean> {
 
-  const statusReportJSON = JSON.stringify(statusReport);
+  if (isEnterprise()) {
+    core.debug("Not sending status report to GitHub Enterprise");
+    return true;
+  }
 
+  if (isLocalRun()) {
+    core.debug("Not sending status report because this is a local run");
+    return true;
+  }
+
+  const statusReportJSON = JSON.stringify(statusReport);
   core.debug('Sending status report: ' + statusReportJSON);
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");

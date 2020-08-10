@@ -224,7 +224,9 @@ test("default queries are used", async t => {
         resolveQueriesArgs.push({queries, extraSearchPath});
         return {
           byLanguage: {
-            'javascript': {},
+            'javascript': {
+              'foo.ql': {},
+            },
           },
           noDeclaredLanguage: {},
           multipleDeclaredLanguages: {},
@@ -262,7 +264,11 @@ test("API client used when reading remote config", async t => {
     CodeQL.setCodeQL({
       resolveQueries: async function() {
         return {
-          byLanguage: {},
+          byLanguage: {
+            'javascript': {
+              'foo.ql': {},
+            },
+          },
           noDeclaredLanguage: {},
           multipleDeclaredLanguages: {},
         };

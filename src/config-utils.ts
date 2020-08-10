@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as api from './api-client';
 import { getCodeQL, ResolveQueriesOutput } from './codeql';
 import * as externalQueries from "./external-queries";
+import { Language, parseLanguage } from "./languages";
 import * as util from './util';
 
 // Property names from the user-supplied config file.
@@ -16,16 +17,6 @@ const QUERIES_PROPERTY = 'queries';
 const QUERIES_USES_PROPERTY = 'uses';
 const PATHS_IGNORE_PROPERTY = 'paths-ignore';
 const PATHS_PROPERTY = 'paths';
-
-// All the languages supported by CodeQL
-const ALL_LANGUAGES = ['csharp', 'cpp', 'go', 'java', 'javascript', 'python'] as const;
-type Language = (typeof ALL_LANGUAGES)[number];
-
-// Some alternate names for languages
-const LANGUAGE_ALIASES: {[name: string]: Language} = {
-  'c': 'cpp',
-  'typescript': 'javascript',
-};
 
 /**
  * Format of the config file supplied by the user.
@@ -425,17 +416,6 @@ export function getUnknownLanguagesError(languages: string[]): string {
  * Gets the set of languages in the current repository
  */
 async function getLanguagesInRepo(): Promise<Language[]> {
-  // Translate between GitHub's API names for languages and ours
-  const codeqlLanguages: {[lang: string]: Language} = {
-    'C': 'cpp',
-    'C++': 'cpp',
-    'C#': 'csharp',
-    'Go': 'go',
-    'Java': 'java',
-    'JavaScript': 'javascript',
-    'TypeScript': 'javascript',
-    'Python': 'python',
-  };
   let repo_nwo = process.env['GITHUB_REPOSITORY']?.split("/");
   if (repo_nwo) {
     let owner = repo_nwo[0];
@@ -454,9 +434,10 @@ async function getLanguagesInRepo(): Promise<Language[]> {
     // Since sets in javascript maintain insertion order, using a set here and then splatting it
     // into an array gives us an array of languages ordered by popularity
     let languages: Set<Language> = new Set();
-    for (let lang in response.data) {
-      if (lang in codeqlLanguages) {
-        languages.add(codeqlLanguages[lang]);
+    for (let lang of Object.keys(response.data)) {
+      let parsedLang = parseLanguage(lang);
+      if (parsedLang !== undefined) {
+        languages.add(parsedLang);
       }
     }
     return [...languages];
@@ -497,28 +478,21 @@ async function getLanguages(): Promise<Language[]> {
   }
 
   // Make sure they are supported
-  const checkedLanguages: Language[] = [];
+  const parsedLanguages: Language[] = [];
   const unknownLanguages: string[] = [];
   for (let language of languages) {
-    // Normalise to lower case
-    language = language.toLowerCase();
-    // Resolve any known aliases
-    if (language in LANGUAGE_ALIASES) {
-      language = LANGUAGE_ALIASES[language];
-    }
-
-    const checkedLanguage = ALL_LANGUAGES.find(l => l === language);
-    if (checkedLanguage === undefined) {
+    const parsedLanguage = parseLanguage(language);
+    if (parsedLanguage === undefined) {
       unknownLanguages.push(language);
-    } else if (checkedLanguages.indexOf(checkedLanguage) === -1) {
-      checkedLanguages.push(checkedLanguage);
+    } else if (parsedLanguages.indexOf(parsedLanguage) === -1) {
+      parsedLanguages.push(parsedLanguage);
     }
   }
   if (unknownLanguages.length > 0) {
     throw new Error(getUnknownLanguagesError(unknownLanguages));
   }
 
-  return checkedLanguages;
+  return parsedLanguages;
 }
 
 /**

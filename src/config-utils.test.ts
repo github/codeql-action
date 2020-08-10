@@ -36,6 +36,19 @@ function mockGetContents(content: GetContentsResponse): sinon.SinonStub<any, any
   return spyGetContents;
 }
 
+function mockListLanguages(languages: string[]) {
+  // Passing an auth token is required, so we just use a dummy value
+  let client = new github.GitHub('123');
+  const response = {
+    data: {},
+  };
+  for (const language of languages) {
+    response.data[language] = 123;
+  }
+  sinon.stub(client.repos, "listLanguages").resolves(response as any);
+  sinon.stub(api, "getApiClient").value(() => client);
+}
+
 test("load empty config", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
@@ -339,6 +352,38 @@ test("Invalid format of remote config handled correctly", async t => {
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
+    }
+  });
+});
+
+test("No detected languages", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    mockListLanguages([]);
+
+    try {
+      await configUtils.initConfig();
+      throw new Error('initConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getNoLanguagesError()));
+    }
+  });
+});
+
+test("Unknown languages", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    setInput('languages', 'ruby,english');
+
+    try {
+      await configUtils.initConfig();
+      throw new Error('initConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getUnknownLanguagesError(['ruby', 'english'])));
     }
   });
 });

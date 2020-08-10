@@ -2,7 +2,6 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as http from '@actions/http-client';
 import { IHeaders } from '@actions/http-client/interfaces';
-import * as io from '@actions/io';
 import * as toolcache from '@actions/tool-cache';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -154,7 +153,7 @@ async function toolcacheDownloadTool(url: string, headers?: IHeaders): Promise<s
     throw err;
   }
   const pipeline = globalutil.promisify(stream.pipeline);
-  await io.mkdirP(path.dirname(dest));
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
   await pipeline(response.message, fs.createWriteStream(dest));
   return dest;
 }

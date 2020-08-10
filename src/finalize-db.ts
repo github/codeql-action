@@ -3,7 +3,7 @@ import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { getCodeQL } from './codeql';
+import { getCodeQL, isScannedLanguage } from './codeql';
 import * as configUtils from './config-utils';
 import * as sharedEnv from './shared-environment';
 import * as upload_lib from './upload-lib';
@@ -56,11 +56,10 @@ async function sendStatusReport(
   await util.sendStatusReport(statusReport);
 }
 
-async function createdDBForScannedLanguages(databaseFolder: string) {
-  const scannedLanguages = process.env[sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES];
-  if (scannedLanguages) {
-    const codeql = getCodeQL();
-    for (const language of scannedLanguages.split(',')) {
+async function createdDBForScannedLanguages(databaseFolder: string, config: configUtils.Config) {
+  const codeql = getCodeQL();
+  for (const language of config.languages) {
+    if (isScannedLanguage(language)) {
       core.startGroup('Extracting ' + language);
       await codeql.extractScannedLanguage(path.join(databaseFolder, language), language);
       core.endGroup();
@@ -69,7 +68,7 @@ async function createdDBForScannedLanguages(databaseFolder: string) {
 }
 
 async function finalizeDatabaseCreation(databaseFolder: string, config: configUtils.Config) {
-  await createdDBForScannedLanguages(databaseFolder);
+  await createdDBForScannedLanguages(databaseFolder, config);
 
   const codeql = getCodeQL();
   for (const language of config.languages) {
@@ -126,8 +125,7 @@ async function run() {
   let uploadStats: upload_lib.UploadStatusReport | undefined = undefined;
   try {
     util.prepareLocalRunEnvironment();
-    if (util.should_abort('finish', true) ||
-      !await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
+    if (!await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
       return;
     }
     const config = await configUtils.getConfig();
@@ -135,7 +133,7 @@ async function run() {
     core.exportVariable(sharedEnv.ODASA_TRACER_CONFIGURATION, '');
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
-    const databaseFolder = util.getRequiredEnvParam(sharedEnv.CODEQL_ACTION_DATABASE_DIR);
+    const databaseFolder = util.getCodeQLDatabasesDir();
 
     const sarifFolder = core.getInput('output');
     await io.mkdirP(sarifFolder);

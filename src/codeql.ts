@@ -390,3 +390,11 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     }
   };
 }
+
+export function isTracedLanguage(language: string): boolean {
+  return ['cpp', 'java', 'csharp'].includes(language);
+}
+
+export function isScannedLanguage(language: string): boolean {
+  return !isTracedLanguage(language);
+}

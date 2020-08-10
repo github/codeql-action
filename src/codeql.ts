@@ -456,22 +456,14 @@ export /* exported for testing */ function getExtraOptions(
     }
     if (!Array.isArray(options)) {
       const msg =
-        'The extra options for `' +
-        pathInfo.join('.') +
-        '` (`' +
-        JSON.stringify(options) +
-        '`) are not in an array.';
+        `The extra options for '${pathInfo.join('.')}' ('${JSON.stringify(options)}') are not in an array.`;
       throw new Error(msg);
     }
     return options.map(o => {
       const t = typeof o;
       if (t !== 'string' && t !== 'number' && t !== 'boolean') {
         const msg =
-          'The extra option for `' +
-          pathInfo.join('.') +
-          '` (`' +
-          JSON.stringify(o) +
-          '`) is not a primitive value.';
+          `The extra option for '${pathInfo.join('.')}' ('${JSON.stringify(o)}') is not a primitive value.`;
         throw new Error(msg);
       }
       return o + '';

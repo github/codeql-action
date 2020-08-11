@@ -4,6 +4,8 @@ import * as path from 'path';
 
 import { getCodeQL, isScannedLanguage } from './codeql';
 import * as configUtils from './config-utils';
+import { getActionsLogger } from './logging';
+import { parseRepositoryNwo } from './repository';
 import * as sharedEnv from './shared-environment';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
@@ -144,7 +146,20 @@ async function run() {
     queriesStats = await runQueries(databaseFolder, sarifFolder, config);
 
     if ('true' === core.getInput('upload')) {
-      uploadStats = await upload_lib.upload(sarifFolder);
+      uploadStats = await upload_lib.upload(
+        sarifFolder,
+        parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
+        await util.getCommitOid(),
+        util.getRef(),
+        await util.getAnalysisKey(),
+        util.getRequiredEnvParam('GITHUB_WORKFLOW'),
+        util.getWorkflowRunID(),
+        core.getInput('checkout_path'),
+        core.getInput('matrix'),
+        core.getInput('token'),
+        util.getRequiredEnvParam('GITHUB_API_URL'),
+        'actions',
+        getActionsLogger());
     }
 
   } catch (error) {

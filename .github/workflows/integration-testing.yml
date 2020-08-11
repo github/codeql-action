@@ -22,7 +22,7 @@ jobs:
       env:
         TEST_MODE: true
     - run: |
-        cd "$CODEQL_ACTION_DATABASE_DIR"
+        cd "$RUNNER_TEMP/codeql_databases"
         # List all directories as there will be precisely one directory per database
         # but there may be other files in this directory such as query suites.
         if [ "$(ls -d */ | wc -l)" != 6 ] || \

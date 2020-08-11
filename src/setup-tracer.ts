@@ -1,13 +1,11 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
 import * as analysisPaths from './analysis-paths';
-import { CodeQL, setupCodeQL } from './codeql';
+import { CodeQL, isTracedLanguage, setupCodeQL } from './codeql';
 import * as configUtils from './config-utils';
-import * as sharedEnv from './shared-environment';
 import * as util from './util';
 
 type TracerConfig = {
@@ -54,7 +52,7 @@ async function tracerConfig(
   return info;
 }
 
-function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerConfig {
+function concatTracerConfigs(configs: TracerConfig[]): TracerConfig {
   // A tracer config is a map containing additional environment variables and a tracer 'spec' file.
   // A tracer 'spec' file has the following format [log_file, number_of_blocks, blocks_text]
 
@@ -62,7 +60,7 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
   const env: { [key: string]: string; } = {};
   let copyExecutables = false;
   let envSize = 0;
-  for (let v of Object.values(configs)) {
+  for (const v of configs) {
     for (let e of Object.entries(v.env)) {
       const name = e[0];
       const value = e[1];
@@ -178,8 +176,7 @@ async function run() {
 
   try {
     util.prepareLocalRunEnvironment();
-    if (util.should_abort('init', false) ||
-        !await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
+    if (!await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
       return;
     }
 
@@ -215,11 +212,10 @@ async function run() {
     const codeqlRam = process.env['CODEQL_RAM'] || '6500';
     core.exportVariable('CODEQL_RAM', codeqlRam);
 
-    const databaseFolder = path.resolve(util.getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
-    await io.mkdirP(databaseFolder);
+    const databaseFolder = util.getCodeQLDatabasesDir();
+    fs.mkdirSync(databaseFolder, { recursive: true });
 
-    let tracedLanguages: { [key: string]: TracerConfig } = {};
-    let scannedLanguages: string[] = [];
+    let tracedLanguageConfigs: TracerConfig[] = [];
     // TODO: replace this code once CodeQL supports multi-language tracing
     for (let language of config.languages) {
       const languageDatabase = path.join(databaseFolder, language);
@@ -227,16 +223,13 @@ async function run() {
       // Init language database
       await codeql.databaseInit(languageDatabase, language, sourceRoot);
       // TODO: add better detection of 'traced languages' instead of using a hard coded list
-      if (['cpp', 'java', 'csharp'].includes(language)) {
+      if (isTracedLanguage(language)) {
         const config: TracerConfig = await tracerConfig(codeql, languageDatabase);
-        tracedLanguages[language] = config;
-      } else {
-        scannedLanguages.push(language);
+        tracedLanguageConfigs.push(config);
       }
     }
-    const tracedLanguageKeys = Object.keys(tracedLanguages);
-    if (tracedLanguageKeys.length > 0) {
-      const mainTracerConfig = concatTracerConfigs(tracedLanguages);
+    if (tracedLanguageConfigs.length > 0) {
+      const mainTracerConfig = concatTracerConfigs(tracedLanguageConfigs);
       if (mainTracerConfig.spec) {
         for (let entry of Object.entries(mainTracerConfig.env)) {
           core.exportVariable(entry[0], entry[1]);
@@ -260,13 +253,6 @@ async function run() {
         }
       }
     }
-
-    core.exportVariable(sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES, scannedLanguages.join(','));
-    core.exportVariable(sharedEnv.CODEQL_ACTION_TRACED_LANGUAGES, tracedLanguageKeys.join(','));
-
-    // TODO: make this a "private" environment variable of the action
-    core.exportVariable(sharedEnv.CODEQL_ACTION_DATABASE_DIR, databaseFolder);
-
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);
@@ -279,7 +265,6 @@ async function run() {
     return;
   }
   await sendSuccessStatusReport(startedAt, config);
-  core.exportVariable(sharedEnv.CODEQL_ACTION_INIT_COMPLETED, 'true');
 }
 
 run().catch(e => {

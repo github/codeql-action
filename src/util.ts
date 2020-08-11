@@ -28,31 +28,6 @@ export function isEnterprise(): boolean {
 }
 
 /**
- * Should the current action be aborted?
- *
- * This method should be called at the start of all CodeQL actions and they
- * should abort cleanly if this returns true without failing the action.
- * This method will call `core.setFailed` if necessary.
- */
-export function should_abort(actionName: string, requireInitActionHasRun: boolean): boolean {
-
-  // Check that required aspects of the environment are present
-  const ref = process.env['GITHUB_REF'];
-  if (ref === undefined) {
-    core.setFailed('GITHUB_REF must be set.');
-    return true;
-  }
-
-  // If the init action is required, then check the it completed successfully.
-  if (requireInitActionHasRun && process.env[sharedEnv.CODEQL_ACTION_INIT_COMPLETED] === undefined) {
-    core.setFailed('The CodeQL ' + actionName + ' action cannot be used unless the CodeQL init action is run first. Aborting.');
-    return true;
-  }
-
-  return false;
-}
-
-/**
  * Get an environment parameter, but throw an error if it is not set.
  */
 export function getRequiredEnvParam(paramName: string): string {
@@ -144,7 +119,9 @@ async function getWorkflowPath(): Promise<string> {
  * the github API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  let analysisKey = process.env[sharedEnv.CODEQL_ACTION_ANALYSIS_KEY];
+  const analysisKeyEnvVar = 'CODEQL_ACTION_ANALYSIS_KEY';
+
+  let analysisKey = process.env[analysisKeyEnvVar];
   if (analysisKey !== undefined) {
     return analysisKey;
   }
@@ -153,7 +130,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam('GITHUB_JOB');
 
   analysisKey = workflowPath + ':' + jobName;
-  core.exportVariable(sharedEnv.CODEQL_ACTION_ANALYSIS_KEY, analysisKey);
+  core.exportVariable(analysisKeyEnvVar, analysisKey);
   return analysisKey;
 }
 
@@ -412,4 +389,11 @@ export function getThreadsFlag(): string {
     }
   }
   return `--threads=${numThreads}`;
+}
+
+/**
+ * Get the directory where CodeQL databases should be placed.
+ */
+export function getCodeQLDatabasesDir() {
+  return path.resolve(getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
 }

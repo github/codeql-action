@@ -24,11 +24,6 @@ function parseAuth(auth: string): string {
   const c = auth.indexOf(':');
   if (c !== -1) {
     return 'basic ' + Buffer.from(auth).toString('base64');
-    // return {
-    //   username: auth.substring(0, c),
-    //   password: auth.substring(c + 1),
-    //   on2fa: async () => { throw new Error(''); }
-    // };
   }
 
   // Otherwise use the token as it is

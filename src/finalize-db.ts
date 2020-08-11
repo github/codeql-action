@@ -148,7 +148,7 @@ async function run() {
     }
 
   } catch (error) {
-    core.setFailed(error.message);
+    // core.setFailed(error.message);
     console.log(error);
     await sendStatusReport(startedAt, queriesStats, uploadStats, error);
     return;

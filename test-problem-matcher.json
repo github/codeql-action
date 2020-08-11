@@ -1,0 +1,13 @@
+{
+    "problemMatcher": [
+        {
+            "owner": "test-problem-matcher",
+            "pattern": [
+                {
+                    "regexp": "(No source code was seen during the build\\.|No JavaScript or TypeScript code found\\.)",
+                    "message": 1
+                }
+            ]
+        }
+    ]
+}

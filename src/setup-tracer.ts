@@ -174,6 +174,7 @@ async function run() {
   let config: configUtils.Config;
   let codeql: CodeQL;
 
+  core.warning('Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam mattis sit amet neque vitae ullamcorper. Et esse qui ipsa dignissimos ut voluptatibus sed nesciunt. Aliquam exercitationem sit commodi est. Dolores at in autem laudantium exercitationem ut aliquam quis.\nDignissimos et dolore dolorem cumque quis. Et porro velit sit temporibus. Similique tempora sed illo. Alias iure nihil laudantium.');
   try {
     util.prepareLocalRunEnvironment();
     if (!await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {

@@ -3,176 +3,177 @@ name: "Integration Testing"
 on: [push, pull_request]
 
 jobs:
-  multi-language-repo_test-autodetect-languages:
-    runs-on: ubuntu-latest
+  # multi-language-repo_test-autodetect-languages:
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-    - uses: ./../action/init
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
-    - run: |
-        cd "$RUNNER_TEMP/codeql_databases"
-        # List all directories as there will be precisely one directory per database
-        # but there may be other files in this directory such as query suites.
-        if [ "$(ls -d */ | wc -l)" != 6 ] || \
-           [[ ! -d cpp ]] || \
-           [[ ! -d csharp ]] || \
-           [[ ! -d go ]] || \
-           [[ ! -d java ]] || \
-           [[ ! -d javascript ]] || \
-           [[ ! -d python ]]; then
-          echo "Did not find expected number of databases. Database dir contains: $(ls)"
-          exit 1
-        fi
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Move codeql-action
+  #     shell: bash
+  #     run: |
+  #       mkdir ../action
+  #       mv * .github ../action/
+  #       mv ../action/tests/multi-language-repo/{*,.github} .
+  #   - uses: ./../action/init
+  #   - name: Build code
+  #     shell: bash
+  #     run: ./build.sh
+  #   - uses: ./../action/analyze
+  #     env:
+  #       TEST_MODE: true
+  #   - run: |
+  #       cd "$RUNNER_TEMP/codeql_databases"
+  #       # List all directories as there will be precisely one directory per database
+  #       # but there may be other files in this directory such as query suites.
+  #       if [ "$(ls -d */ | wc -l)" != 6 ] || \
+  #          [[ ! -d cpp ]] || \
+  #          [[ ! -d csharp ]] || \
+  #          [[ ! -d go ]] || \
+  #          [[ ! -d java ]] || \
+  #          [[ ! -d javascript ]] || \
+  #          [[ ! -d python ]]; then
+  #         echo "Did not find expected number of databases. Database dir contains: $(ls)"
+  #         exit 1
+  #       fi
 
-  multi-language-repo_test-custom-queries-and-remote-config:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  # multi-language-repo_test-custom-queries-and-remote-config:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [ubuntu-latest, windows-latest, macos-latest]
+  #   runs-on: ${{ matrix.os }}
 
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-    - uses: ./../action/init
-      with:
-        languages: cpp,csharp,java,javascript,python
-        config-file: github/codeql-action/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Move codeql-action
+  #     shell: bash
+  #     run: |
+  #       mkdir ../action
+  #       mv * .github ../action/
+  #       mv ../action/tests/multi-language-repo/{*,.github} .
+  #   - uses: ./../action/init
+  #     with:
+  #       languages: cpp,csharp,java,javascript,python
+  #       config-file: github/codeql-action/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
+  #   - name: Build code
+  #     shell: bash
+  #     run: ./build.sh
+  #   - uses: ./../action/analyze
+  #     env:
+  #       TEST_MODE: true
 
-  # Currently is not possible to analyze Go in conjunction with other languages in macos
-  multi-language-repo_test-go-custom-queries:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  # # Currently is not possible to analyze Go in conjunction with other languages in macos
+  # multi-language-repo_test-go-custom-queries:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [ubuntu-latest, windows-latest, macos-latest]
+  #   runs-on: ${{ matrix.os }}
 
-    steps:
-    - uses: actions/setup-go@v2
-      if: ${{ matrix.os ==  'macos-latest' }}
-      with:
-        go-version: '^1.13.1'
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-    - uses: ./../action/init
-      with:
-        languages: go
-        config-file: ./.github/codeql/custom-queries.yml
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
+  #   steps:
+  #   - uses: actions/setup-go@v2
+  #     if: ${{ matrix.os ==  'macos-latest' }}
+  #     with:
+  #       go-version: '^1.13.1'
+  #   - uses: actions/checkout@v2
+  #   - name: Move codeql-action
+  #     shell: bash
+  #     run: |
+  #       mkdir ../action
+  #       mv * .github ../action/
+  #       mv ../action/tests/multi-language-repo/{*,.github} .
+  #   - uses: ./../action/init
+  #     with:
+  #       languages: go
+  #       config-file: ./.github/codeql/custom-queries.yml
+  #   - name: Build code
+  #     shell: bash
+  #     run: ./build.sh
+  #   - uses: ./../action/analyze
+  #     env:
+  #       TEST_MODE: true
 
-  multi-language-repo_rubocop:
-    runs-on: ubuntu-latest
+  # multi-language-repo_rubocop:
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.6
-    - name: Install Code Scanning integration
-      run: bundle add code-scanning-rubocop --version 0.3.0 --skip-install
-    - name: Install dependencies
-      run: bundle install
-    - name: Rubocop run
-      run: |
-        bash -c "
-          bundle exec rubocop --require code_scanning --format CodeScanning::SarifFormatter -o rubocop.sarif
-          [[ $? -ne 2 ]]
-        "
-    - uses: ./../action/upload-sarif
-      with:
-        sarif_file: rubocop.sarif
-      env:
-        TEST_MODE: true
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Move codeql-action
+  #     shell: bash
+  #     run: |
+  #       mkdir ../action
+  #       mv * .github ../action/
+  #       mv ../action/tests/multi-language-repo/{*,.github} .
+  #   - name: Set up Ruby
+  #     uses: ruby/setup-ruby@v1
+  #     with:
+  #       ruby-version: 2.6
+  #   - name: Install Code Scanning integration
+  #     run: bundle add code-scanning-rubocop --version 0.3.0 --skip-install
+  #   - name: Install dependencies
+  #     run: bundle install
+  #   - name: Rubocop run
+  #     run: |
+  #       bash -c "
+  #         bundle exec rubocop --require code_scanning --format CodeScanning::SarifFormatter -o rubocop.sarif
+  #         [[ $? -ne 2 ]]
+  #       "
+  #   - uses: ./../action/upload-sarif
+  #     with:
+  #       sarif_file: rubocop.sarif
+  #     env:
+  #       TEST_MODE: true
 
-  test-proxy:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:18.04
-      options: --dns 127.0.0.1
-    services:
-      squid-proxy:
-        image: datadog/squid:latest
-        ports:
-          - 3128:3128
-    env:
-      https_proxy: http://squid-proxy:3128
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-    - uses: ./../action/init
-      with:
-        languages: javascript
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
+  # test-proxy:
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ubuntu:18.04
+  #     options: --dns 127.0.0.1
+  #   services:
+  #     squid-proxy:
+  #       image: datadog/squid:latest
+  #       ports:
+  #         - 3128:3128
+  #   env:
+  #     https_proxy: http://squid-proxy:3128
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Move codeql-action
+  #     shell: bash
+  #     run: |
+  #       mkdir ../action
+  #       mv * .github ../action/
+  #       mv ../action/tests/multi-language-repo/{*,.github} .
+  #   - uses: ./../action/init
+  #     with:
+  #       languages: javascript
+  #   - uses: ./../action/analyze
+  #     env:
+  #       TEST_MODE: true
 
   # Test the behaviour when asked to scan a compiled language but no code is compiled
-  multi-language-repo_test-no-language-seen-during-build-java:
-    runs-on: ubuntu-latest
+  # java:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v2
-      - name: Move codeql-action
-        shell: bash
-        run: |
-          mkdir ../action
-          shopt -s dotglob
-          mv * ../action/
-          # Do not copy anything back, so there's nothing left to scan
-      - uses: ./../action/init
-        with:
-          languages: java
-      - uses: ./../action/analyze
-        env:
-          TEST_MODE: true
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Move codeql-action
+  #       shell: bash
+  #       run: |
+  #         mkdir ../action
+  #         shopt -s dotglob
+  #         mv * ../action/
+  #         # Do not copy anything back, so there's nothing left to scan
+  #     - run: echo "::add-matcher::./../action/test-problem-matcher.json"
+  #     - uses: ./../action/init
+  #       with:
+  #         languages: java
+  #     - uses: ./../action/analyze
+  #       env:
+  #         TEST_MODE: true
 
   # Test the behaviour when asked to scan a non-compiled language but there is no code to scan
-  multi-language-repo_test-no-language-seen-during-build-javascript:
+  javascript:
     runs-on: ubuntu-latest
 
     steps:
@@ -184,6 +185,7 @@ jobs:
           shopt -s dotglob
           mv * ../action/
           # Do not copy anything back, so there's nothing left to scan
+      - run: echo "::add-matcher::./../action/test-problem-matcher.json"
       - uses: ./../action/init
         with:
           languages: javascript

@@ -139,6 +139,9 @@ export async function upload(
   logger: Logger): Promise<UploadStatusReport> {
 
   const sarifFiles: string[] = [];
+  if (!fs.existsSync(sarifPath)) {
+    throw new Error(`Path does not exist: ${sarifPath}`);
+  }
   if (fs.lstatSync(sarifPath).isDirectory()) {
     fs.readdirSync(sarifPath)
       .filter(f => f.endsWith(".sarif"))

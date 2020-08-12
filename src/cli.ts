@@ -40,6 +40,8 @@ function parseGithubApiUrl(inputUrl: string): string {
   }
 }
 
+const logger = getCLILogger();
+
 program
   .command('upload')
   .description('Uploads a SARIF file, or all SARIF files from a directory, to code scanning')
@@ -51,7 +53,6 @@ program
   .requiredOption('--github-auth <auth>', 'GitHub Apps token, or of the form "username:token" if using a personal access token')
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
   .action(async (cmd: UploadArgs) => {
-    const logger = getCLILogger();
     try {
       await upload_lib.upload(
         cmd.sarifFile,
@@ -68,8 +69,9 @@ program
         'cli',
         logger);
     } catch (e) {
-      logger.error("Upload failed");
+      logger.error('Upload failed');
       logger.error(e);
+      process.exitCode = 1;
     }
   });
 

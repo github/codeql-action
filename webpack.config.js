@@ -16,11 +16,10 @@ module.exports = {
     extensions: [ '.ts', '.js' ],
   },
   output: {
-    filename: 'cli.js',
+    filename: 'code-scanning-cli.js',
     path: path.resolve(__dirname, 'cli'),
   },
   optimization: {
-		// We no not want to minimize our code.
 		minimize: false
 	},
 };

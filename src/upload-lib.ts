@@ -1,3 +1,4 @@
+import * as core from '@actions/core';
 import fileUrl from 'file-url';
 import * as fs from 'fs';
 import * as jsonschema from 'jsonschema';
@@ -8,6 +9,7 @@ import * as api from './api-client';
 import * as fingerprints from './fingerprints';
 import { Logger } from './logging';
 import { RepositoryNwo } from './repository';
+import * as sharedEnv from './shared-environment';
 import * as util from './util';
 
 type UploadMode = 'actions' | 'cli';
@@ -122,7 +124,7 @@ export interface UploadStatusReport {
 // depending on what the path happens to refer to.
 // Returns true iff the upload occurred and succeeded
 export async function upload(
-  sarifFile: string,
+  sarifPath: string,
   repositoryNwo: RepositoryNwo,
   commitOid: string,
   ref: string,
@@ -137,16 +139,16 @@ export async function upload(
   logger: Logger): Promise<UploadStatusReport> {
 
   const sarifFiles: string[] = [];
-  if (fs.lstatSync(sarifFile).isDirectory()) {
-    fs.readdirSync(sarifFile)
+  if (fs.lstatSync(sarifPath).isDirectory()) {
+    fs.readdirSync(sarifPath)
       .filter(f => f.endsWith(".sarif"))
-      .map(f => path.resolve(sarifFile, f))
+      .map(f => path.resolve(sarifPath, f))
       .forEach(f => sarifFiles.push(f));
     if (sarifFiles.length === 0) {
-      throw new Error("No SARIF files found to upload in \"" + sarifFile + "\".");
+      throw new Error("No SARIF files found to upload in \"" + sarifPath + "\".");
     }
   } else {
-    sarifFiles.push(sarifFile);
+    sarifFiles.push(sarifPath);
   }
 
   return await uploadFiles(
@@ -215,6 +217,15 @@ async function uploadFiles(
 
   logger.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
 
+  if (mode === 'actions') {
+    // This check only works on actions as env vars don't persist between calls to the CLI
+    const sentinelEnvVar = "CODEQL_UPLOAD_SARIF";
+    if (process.env[sentinelEnvVar]) {
+      throw new Error("Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job");
+    }
+    core.exportVariable(sentinelEnvVar, sentinelEnvVar);
+  }
+
   // Validate that the files we were asked to upload are all valid SARIF files
   for (const file of sarifFiles) {
     validateSarifFileSchema(file, logger);
@@ -239,6 +250,7 @@ async function uploadFiles(
       "workflow_run_id": workflowRunID,
       "checkout_uri": checkoutURI,
       "environment": environment,
+      "started_at": process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
       "tool_names": toolNames,
     });
   } else {
@@ -253,11 +265,11 @@ async function uploadFiles(
 
   // Log some useful debug info about the info
   const rawUploadSizeBytes = sarifPayload.length;
-  console.debug("Raw upload size: " + rawUploadSizeBytes + " bytes");
+  logger.debug("Raw upload size: " + rawUploadSizeBytes + " bytes");
   const zippedUploadSizeBytes = zipped_sarif.length;
-  console.debug("Base64 zipped upload size: " + zippedUploadSizeBytes + " bytes");
+  logger.debug("Base64 zipped upload size: " + zippedUploadSizeBytes + " bytes");
   const numResultInSarif = countResultsInSarif(sarifPayload);
-  console.debug("Number of results in upload: " + numResultInSarif);
+  logger.debug("Number of results in upload: " + numResultInSarif);
 
   // Make the upload
   await uploadPayload(payload, repositoryNwo, githubAuth, githubApiUrl, mode, logger);

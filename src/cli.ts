@@ -43,7 +43,7 @@ function parseGithubApiUrl(inputUrl: string): string {
 program
   .command('upload')
   .description('Uploads a SARIF file, or all SARIF files from a directory, to code scanning')
-  .requiredOption('--sarif-file <file>', 'SARIF file to upload')
+  .requiredOption('--sarif-file <file>', 'SARIF file to upload; can also be a directory for uploading multiple')
   .requiredOption('--repository <repository>', 'Repository name')
   .requiredOption('--commit <commit>', 'SHA of commit that was analyzed')
   .requiredOption('--ref <ref>', 'Name of ref that was analyzed')

@@ -85,7 +85,7 @@ jobs:
     - uses: ./../action/init
       with:
         languages: go
-        config-file: ./.github/codeql/custom-queries.yml
+        config-file: ./tests/multi-language-repo/.github/codeql/custom-queries.yml
     - name: Build code
       shell: bash
       run: ./build.sh

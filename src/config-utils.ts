@@ -384,14 +384,6 @@ export function getLocalPathDoesNotExist(configFile: string, localPath: string):
     'is invalid as the local path "' + localPath + '" does not exist in the repository');
 }
 
-export function getConfigFileOutsideWorkspaceErrorMessage(configFile: string): string {
-  return 'The configuration file "' + configFile + '" is outside of the workspace';
-}
-
-export function getConfigFileDoesNotExistErrorMessage(configFile: string): string {
-  return 'The configuration file "' + configFile + '" does not exist';
-}
-
 export function getConfigFileRepoFormatInvalidMessage(configFile: string): string {
   let error = 'The configuration file "' + configFile + '" is not a supported remote file reference.';
   error += ' Expected format <owner>/<repository>/<file-path>@<ref>';
@@ -543,11 +535,13 @@ async function loadConfig(configFile: string): Promise<Config> {
   let parsedYAML: UserConfig;
 
   if (isLocal(configFile)) {
-    // Treat the config file as relative to the workspace
-    const workspacePath = util.getRequiredEnvParam('GITHUB_WORKSPACE');
-    configFile = path.resolve(workspacePath, configFile);
+    // Even if its local we want to retrieve the config using the api.
 
-    parsedYAML = getLocalConfig(configFile, workspacePath);
+    // For using the api we have to remove the starting "./"
+    const configFilePath = configFile.substr(2);
+    const remote = util.getRequiredEnvParam("GITHUB_REPOSITORY") + "/" + configFilePath
+    + "@" + util.getRef();
+    parsedYAML = await getRemoteConfig(remote);
   } else {
     parsedYAML = await getRemoteConfig(configFile);
   }
@@ -664,20 +658,6 @@ function isLocal(configPath: string): boolean {
   }
 
   return (configPath.indexOf("@") === -1);
-}
-
-function getLocalConfig(configFile: string, workspacePath: string): UserConfig {
-  // Error if the config file is now outside of the workspace
-  if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
-    throw new Error(getConfigFileOutsideWorkspaceErrorMessage(configFile));
-  }
-
-  // Error if the file does not exist
-  if (!fs.existsSync(configFile)) {
-    throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
-  }
-
-  return yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
 }
 
 async function getRemoteConfig(configFile: string): Promise<UserConfig> {

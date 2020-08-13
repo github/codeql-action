@@ -109,22 +109,6 @@ test("loading config saves config", async t => {
   });
 });
 
-test("load input outside of workspace", async t => {
-  return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    setInput('config-file', '../input');
-
-    try {
-      await configUtils.initConfig();
-      throw new Error('initConfig did not throw error');
-    } catch (err) {
-      t.deepEqual(err, new Error(configUtils.getConfigFileOutsideWorkspaceErrorMessage(path.join(tmpDir, '../input'))));
-    }
-  });
-});
-
 test("load non-local input with invalid repo syntax", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
@@ -142,28 +126,12 @@ test("load non-local input with invalid repo syntax", async t => {
   });
 });
 
-test("load non-existent input", async t => {
-  return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    t.false(fs.existsSync(path.join(tmpDir, 'input')));
-    setInput('config-file', 'input');
-    setInput('languages', 'javascript');
-
-    try {
-      await configUtils.initConfig();
-      throw new Error('initConfig did not throw error');
-    } catch (err) {
-      t.deepEqual(err, new Error(configUtils.getConfigFileDoesNotExistErrorMessage(path.join(tmpDir, 'input'))));
-    }
-  });
-});
-
 test("load non-empty input", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
+    process.env['GITHUB_REPOSITORY'] = "octo-org/codeql-config";
+    process.env["GITHUB_REF"] = "refs/heads/main";
 
     CodeQL.setCodeQL({
       resolveQueries: async function() {
@@ -192,6 +160,11 @@ test("load non-empty input", async t => {
       paths:
         - c/d`;
 
+    const dummyResponse = {
+      content: Buffer.from(inputFileContents).toString("base64"),
+    };
+    const spyGetContents = mockGetContents(dummyResponse);
+
     fs.mkdirSync(path.join(tmpDir, 'foo'));
 
     // And the config we expect it to parse to
@@ -209,7 +182,6 @@ test("load non-empty input", async t => {
       },
     };
 
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
@@ -217,6 +189,7 @@ test("load non-empty input", async t => {
 
     // Should exactly equal the object we constructed earlier
     t.deepEqual(actualConfig, expectedConfig);
+    t.assert(spyGetContents.called);
   });
 });
 
@@ -224,6 +197,8 @@ test("default queries are used", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
+    process.env['GITHUB_REPOSITORY'] = "octo-org/codeql-config";
+    process.env["GITHUB_REF"] = "refs/heads/main";
 
     // Check that the default behaviour is to add the default queries.
     // In this case if a config file is specified but does not include
@@ -253,10 +228,13 @@ test("default queries are used", async t => {
     const inputFileContents = `
       paths:
         - foo`;
+    const dummyResponse = {
+      content: Buffer.from(inputFileContents).toString("base64"),
+    };
+    const spyGetContents = mockGetContents(dummyResponse);
 
     fs.mkdirSync(path.join(tmpDir, 'foo'));
 
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
@@ -266,6 +244,7 @@ test("default queries are used", async t => {
     t.deepEqual(resolveQueriesArgs.length, 1);
     t.deepEqual(resolveQueriesArgs[0].queries, ['javascript-code-scanning.qls']);
     t.deepEqual(resolveQueriesArgs[0].extraSearchPath, undefined);
+    t.assert(spyGetContents.called);
   });
 });
 
@@ -397,6 +376,8 @@ function doInvalidInputTest(
     return await util.withTmpDir(async tmpDir => {
       process.env['RUNNER_TEMP'] = tmpDir;
       process.env['GITHUB_WORKSPACE'] = tmpDir;
+      process.env['GITHUB_REPOSITORY'] = "octo-org/codeql-config";
+      process.env["GITHUB_REF"] = "refs/heads/main";
 
       CodeQL.setCodeQL({
         resolveQueries: async function() {
@@ -408,8 +389,11 @@ function doInvalidInputTest(
         },
       });
 
-      const inputFile = path.join(tmpDir, 'input');
-      fs.writeFileSync(inputFile, inputFileContents, 'utf8');
+      const dummyResponse = {
+        content: Buffer.from(inputFileContents).toString("base64"),
+      };
+      const spyGetContents = mockGetContents(dummyResponse);
+
       setInput('config-file', 'input');
       setInput('languages', 'javascript');
 
@@ -417,7 +401,8 @@ function doInvalidInputTest(
         await configUtils.initConfig();
         throw new Error('initConfig did not throw error');
       } catch (err) {
-        t.deepEqual(err, new Error(expectedErrorMessageGenerator(inputFile)));
+        t.deepEqual(err, new Error(expectedErrorMessageGenerator("input")));
+        t.assert(spyGetContents.called);
       }
     });
   });

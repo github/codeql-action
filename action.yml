@@ -43,5 +43,5 @@ inputs:
     default: ${{ github.workspace }}
 runs:
   using: 'node12'
-  pre: '../lib/setup-tracer.js'
-  main: '../lib/finalize-db.js'
+  pre: './lib/setup-tracer.js'
+  main: './lib/finalize-db.js'

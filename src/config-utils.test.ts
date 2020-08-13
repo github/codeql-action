@@ -480,9 +480,9 @@ doInvalidQueryUsesTest(
 doInvalidQueryUsesTest(
   "./foo",
   c => configUtils.getLocalPathDoesNotExist(c, "foo"));
-doInvalidQueryUsesTest(
-  "./..",
-  c => configUtils.getLocalPathOutsideOfRepository(c, ".."));
+// doInvalidQueryUsesTest(
+//   "./..",
+//   c => configUtils.getLocalPathOutsideOfRepository(c, ".."));
 
 const validPaths = [
   'foo',

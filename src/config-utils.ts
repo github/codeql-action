@@ -170,38 +170,6 @@ async function addBuiltinSuiteQueries(
 }
 
 /**
- * Retrieve the set of queries at localQueryPath and add them to resultMap.
- */
-async function addLocalQueries(
-  configFile: string,
-  resultMap: { [language: string]: string[] },
-  localQueryPath: string) {
-
-  // Resolve the local path against the workspace so that when this is
-  // passed to codeql it resolves to exactly the path we expect it to resolve to.
-  const workspacePath = fs.realpathSync(util.getRequiredEnvParam('GITHUB_WORKSPACE'));
-  let absoluteQueryPath = path.join(workspacePath, localQueryPath);
-
-  // Check the file exists
-  if (!fs.existsSync(absoluteQueryPath)) {
-    throw new Error(getLocalPathDoesNotExist(configFile, localQueryPath));
-  }
-
-  // Call this after checking file exists, because it'll fail if file doesn't exist
-  absoluteQueryPath = fs.realpathSync(absoluteQueryPath);
-
-  // Check the local path doesn't jump outside the repo using '..' or symlinks
-  if (!(absoluteQueryPath + path.sep).startsWith(workspacePath + path.sep)) {
-    throw new Error(getLocalPathOutsideOfRepository(configFile, localQueryPath));
-  }
-
-  // Get the root of the current repo to use when resolving query dependencies
-  const rootOfRepo = util.getRequiredEnvParam('GITHUB_WORKSPACE');
-
-  await runResolveQueries(resultMap, [absoluteQueryPath], rootOfRepo, true);
-}
-
-/**
  * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
  */
 async function addRemoteQueries(configFile: string, resultMap: { [language: string]: string[] }, queryUses: string) {
@@ -256,7 +224,12 @@ async function parseQueryUses(
 
   // Check for the local path case before we start trying to parse the repository name
   if (queryUses.startsWith("./")) {
-    await addLocalQueries(configFile, resultMap, queryUses.slice(2));
+
+    // now we're using the pre-hook we have to retrieve even 'local' queries using the API
+    const remoteQueryUses = util.getRequiredEnvParam("GITHUB_REPOSITORY") + "/"
+                                  + queryUses.substr(2) + "@" + util.getRef();
+
+    await addRemoteQueries(configFile, resultMap, remoteQueryUses);
     return;
   }
 

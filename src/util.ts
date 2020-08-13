@@ -375,13 +375,15 @@ export function getMemoryFlag(): string {
 }
 
 /**
- * Get the codeql `--threads` value specified for the `threads` input. The value
- * defaults to 1. The value will be capped to the number of available CPUs.
+ * Get the codeql `--threads` value specified for the `threads` input.
+ * If not value was specified, all available threads will be used.
+ *
+ * The value will be capped to the number of available CPUs.
  *
  * @returns string
  */
 export function getThreadsFlag(): string {
-  let numThreads = 1;
+  let numThreads: number;
   const numThreadsString = core.getInput("threads");
   if (numThreadsString) {
     numThreads = Number(numThreadsString);
@@ -390,12 +392,17 @@ export function getThreadsFlag(): string {
     }
     const maxThreads = os.cpus().length;
     if (numThreads > maxThreads) {
+      core.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
       numThreads = maxThreads;
     }
     const minThreads = -maxThreads;
     if (numThreads < minThreads) {
+      core.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
       numThreads = minThreads;
     }
+  } else {
+    // Default to using all threads
+    numThreads = os.cpus().length;
   }
   return `--threads=${numThreads}`;
 }

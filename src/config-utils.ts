@@ -441,7 +441,7 @@ async function getLanguagesInRepo(): Promise<Language[]> {
     let repo = repo_nwo[1];
 
     core.debug(`GitHub repo ${owner} ${repo}`);
-    const response = await api.getApiClient(true).repos.listLanguages({
+    const response = await api.getActionsApiClient(true).repos.listLanguages({
       owner,
       repo
     });
@@ -689,7 +689,7 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.getApiClient(true).repos.getContents({
+  const response = await api.getActionsApiClient(true).repos.getContents({
     owner: pieces.groups.owner,
     repo: pieces.groups.repo,
     path: pieces.groups.path,

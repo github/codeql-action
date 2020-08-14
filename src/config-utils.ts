@@ -169,42 +169,8 @@ async function addBuiltinSuiteQueries(
   await runResolveQueries(resultMap, suites, undefined, false);
 }
 
-/**
- * Retrieve the set of queries at localQueryPath and add them to resultMap.
- */
-async function addLocalQueries(
-  configFile: string,
-  resultMap: { [language: string]: string[] },
-  localQueryPath: string) {
+function parseRemoteQueryUses(configFile: string, queryUses: string) {
 
-  // Resolve the local path against the workspace so that when this is
-  // passed to codeql it resolves to exactly the path we expect it to resolve to.
-  const workspacePath = fs.realpathSync(util.getRequiredEnvParam('GITHUB_WORKSPACE'));
-  let absoluteQueryPath = path.join(workspacePath, localQueryPath);
-
-  // Check the file exists
-  if (!fs.existsSync(absoluteQueryPath)) {
-    throw new Error(getLocalPathDoesNotExist(configFile, localQueryPath));
-  }
-
-  // Call this after checking file exists, because it'll fail if file doesn't exist
-  absoluteQueryPath = fs.realpathSync(absoluteQueryPath);
-
-  // Check the local path doesn't jump outside the repo using '..' or symlinks
-  if (!(absoluteQueryPath + path.sep).startsWith(workspacePath + path.sep)) {
-    throw new Error(getLocalPathOutsideOfRepository(configFile, localQueryPath));
-  }
-
-  // Get the root of the current repo to use when resolving query dependencies
-  const rootOfRepo = util.getRequiredEnvParam('GITHUB_WORKSPACE');
-
-  await runResolveQueries(resultMap, [absoluteQueryPath], rootOfRepo, true);
-}
-
-/**
- * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
- */
-async function addRemoteQueries(configFile: string, resultMap: { [language: string]: string[] }, queryUses: string) {
   let tok = queryUses.split('@');
   if (tok.length !== 2) {
     throw new Error(getQueryUsesInvalid(configFile, queryUses));
@@ -225,14 +191,23 @@ async function addRemoteQueries(configFile: string, resultMap: { [language: stri
   }
   const nwo = tok[0] + '/' + tok[1];
 
+  const queryPath = tok.length > 2
+    ? tok.slice(2).join('/')
+    : '';
+
+  return [nwo, queryPath, ref];
+}
+
+/**
+ * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
+ */
+async function addRemoteQueries(resultMap: { [language: string]: string[] },
+                                nwo: string, queryPath: string, ref: string) {
+
   // Checkout the external repository
   const rootOfRepo = await externalQueries.checkoutExternalRepository(nwo, ref);
 
-  const queryPath = tok.length > 2
-    ? path.join(rootOfRepo, tok.slice(2).join('/'))
-    : rootOfRepo;
-
-  await runResolveQueries(resultMap, [queryPath], rootOfRepo, true);
+  await runResolveQueries(resultMap, [path.join(rootOfRepo, queryPath)], rootOfRepo, true);
 }
 
 /**
@@ -256,7 +231,9 @@ async function parseQueryUses(
 
   // Check for the local path case before we start trying to parse the repository name
   if (queryUses.startsWith("./")) {
-    await addLocalQueries(configFile, resultMap, queryUses.slice(2));
+    // now we're using the pre-hook we have to retrieve even 'local' queries using the API
+    await addRemoteQueries(resultMap, util.getRequiredEnvParam("GITHUB_REPOSITORY"),
+                           queryUses.substr(2), util.getRef());
     return;
   }
 
@@ -267,7 +244,8 @@ async function parseQueryUses(
   }
 
   // Otherwise, must be a reference to another repo
-  await addRemoteQueries(configFile, resultMap, queryUses);
+  const [nwo, queryPath, ref] = parseRemoteQueryUses(configFile, queryUses);
+  await addRemoteQueries(resultMap, nwo, queryPath, ref);
 }
 
 // Regex validating stars in paths or paths-ignore entries.

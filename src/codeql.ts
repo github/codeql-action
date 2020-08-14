@@ -11,6 +11,7 @@ import * as globalutil from 'util';
 import uuidV4 from 'uuid/v4';
 
 import * as api from './api-client';
+import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
 import * as util from './util';
 
 export interface CodeQL {
@@ -80,7 +81,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  */
 const CODEQL_ACTION_CMD = "CODEQL_ACTION_CMD";
 
-const CODEQL_BUNDLE_VERSION = "codeql-bundle-20200630";
+const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
 const CODEQL_BUNDLE_NAME = "codeql-bundle.tar.gz";
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 

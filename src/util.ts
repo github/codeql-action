@@ -90,15 +90,12 @@ export async function getCommitOid(): Promise<string> {
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
-  if (isLocalRun()) {
-    return 'LOCAL';
-  }
   const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
   const run_id = Number(getRequiredEnvParam('GITHUB_RUN_ID'));
 
-  const apiClient = api.getApiClient();
+  const apiClient = api.getActionsApiClient();
   const runsResponse = await apiClient.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
     owner,
     repo,
@@ -109,6 +106,17 @@ async function getWorkflowPath(): Promise<string> {
   const workflowResponse = await apiClient.request('GET ' + workflowUrl);
 
   return workflowResponse.data.path;
+}
+
+/**
+ * Get the workflow run ID.
+ */
+export function getWorkflowRunID(): number {
+  const workflowRunID = parseInt(getRequiredEnvParam('GITHUB_RUN_ID'), 10);
+  if (Number.isNaN(workflowRunID)) {
+    throw new Error('GITHUB_RUN_ID must define a non NaN workflow run ID');
+  }
+  return workflowRunID;
 }
 
 /**
@@ -283,7 +291,8 @@ export async function sendStatusReport<S extends StatusReportBase>(
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
-  const statusResponse = await api.getApiClient().request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
+  const client = api.getActionsApiClient();
+  const statusResponse = await client.request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
     owner: owner,
     repo: repo,
     data: statusReportJSON,

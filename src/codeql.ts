@@ -122,7 +122,7 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
     }
     let [repositoryOwner, repositoryName] = repository.split("/");
     try {
-      const release = await api.getApiClient().repos.getReleaseByTag({
+      const release = await api.getActionsApiClient().repos.getReleaseByTag({
         owner: repositoryOwner,
         repo: repositoryName,
         tag: CODEQL_BUNDLE_VERSION

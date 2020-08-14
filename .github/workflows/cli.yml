@@ -1,0 +1,18 @@
+name: "CodeScanning CLI"
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Build the CLI
+    - name: Build CLI
+      run: npm run build-cli
+
+    # Upload an empty SARIF file
+    - name: Upload with CLI
+      run: node cli/code-scanning-cli.js upload --sarif-file src/testdata/empty-sarif.sarif --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_API_URL --github-auth ${{ github.token }}

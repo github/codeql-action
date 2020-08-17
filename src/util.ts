@@ -385,12 +385,12 @@ export function getMemoryFlag(): string {
 export function getThreadsFlag(): string {
   let numThreads: number;
   const numThreadsString = core.getInput("threads");
+  const maxThreads = os.cpus().length;
   if (numThreadsString) {
     numThreads = Number(numThreadsString);
     if (Number.isNaN(numThreads)) {
       throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
     }
-    const maxThreads = os.cpus().length;
     if (numThreads > maxThreads) {
       core.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
       numThreads = maxThreads;
@@ -402,7 +402,7 @@ export function getThreadsFlag(): string {
     }
   } else {
     // Default to using all threads
-    numThreads = os.cpus().length;
+    numThreads = maxThreads;
   }
   return `--threads=${numThreads}`;
 }

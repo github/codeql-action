@@ -1,10 +1,11 @@
 import * as core from '@actions/core';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { getCodeQL } from './codeql';
+import { getCodeQL, isScannedLanguage } from './codeql';
 import * as configUtils from './config-utils';
+import { getActionsLogger } from './logging';
+import { parseRepositoryNwo } from './repository';
 import * as sharedEnv from './shared-environment';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
@@ -56,11 +57,10 @@ async function sendStatusReport(
   await util.sendStatusReport(statusReport);
 }
 
-async function createdDBForScannedLanguages(databaseFolder: string) {
-  const scannedLanguages = process.env[sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES];
-  if (scannedLanguages) {
-    const codeql = getCodeQL();
-    for (const language of scannedLanguages.split(',')) {
+async function createdDBForScannedLanguages(databaseFolder: string, config: configUtils.Config) {
+  const codeql = getCodeQL();
+  for (const language of config.languages) {
+    if (isScannedLanguage(language)) {
       core.startGroup('Extracting ' + language);
       await codeql.extractScannedLanguage(path.join(databaseFolder, language), language);
       core.endGroup();
@@ -69,7 +69,7 @@ async function createdDBForScannedLanguages(databaseFolder: string) {
 }
 
 async function finalizeDatabaseCreation(databaseFolder: string, config: configUtils.Config) {
-  await createdDBForScannedLanguages(databaseFolder);
+  await createdDBForScannedLanguages(databaseFolder, config);
 
   const codeql = getCodeQL();
   for (const language of config.languages) {
@@ -126,8 +126,7 @@ async function run() {
   let uploadStats: upload_lib.UploadStatusReport | undefined = undefined;
   try {
     util.prepareLocalRunEnvironment();
-    if (util.should_abort('finish', true) ||
-      !await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
+    if (!await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
       return;
     }
     const config = await configUtils.getConfig();
@@ -135,10 +134,10 @@ async function run() {
     core.exportVariable(sharedEnv.ODASA_TRACER_CONFIGURATION, '');
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
-    const databaseFolder = util.getRequiredEnvParam(sharedEnv.CODEQL_ACTION_DATABASE_DIR);
+    const databaseFolder = util.getCodeQLDatabasesDir();
 
     const sarifFolder = core.getInput('output');
-    await io.mkdirP(sarifFolder);
+    fs.mkdirSync(sarifFolder, { recursive: true });
 
     core.info('Finalizing database creation');
     await finalizeDatabaseCreation(databaseFolder, config);
@@ -147,7 +146,20 @@ async function run() {
     queriesStats = await runQueries(databaseFolder, sarifFolder, config);
 
     if ('true' === core.getInput('upload')) {
-      uploadStats = await upload_lib.upload(sarifFolder);
+      uploadStats = await upload_lib.upload(
+        sarifFolder,
+        parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
+        await util.getCommitOid(),
+        util.getRef(),
+        await util.getAnalysisKey(),
+        util.getRequiredEnvParam('GITHUB_WORKFLOW'),
+        util.getWorkflowRunID(),
+        core.getInput('checkout_path'),
+        core.getInput('matrix'),
+        core.getInput('token'),
+        util.getRequiredEnvParam('GITHUB_API_URL'),
+        'actions',
+        getActionsLogger());
     }
 
   } catch (error) {

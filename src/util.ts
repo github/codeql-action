@@ -28,31 +28,6 @@ export function isEnterprise(): boolean {
 }
 
 /**
- * Should the current action be aborted?
- *
- * This method should be called at the start of all CodeQL actions and they
- * should abort cleanly if this returns true without failing the action.
- * This method will call `core.setFailed` if necessary.
- */
-export function should_abort(actionName: string, requireInitActionHasRun: boolean): boolean {
-
-  // Check that required aspects of the environment are present
-  const ref = process.env['GITHUB_REF'];
-  if (ref === undefined) {
-    core.setFailed('GITHUB_REF must be set.');
-    return true;
-  }
-
-  // If the init action is required, then check the it completed successfully.
-  if (requireInitActionHasRun && process.env[sharedEnv.CODEQL_ACTION_INIT_COMPLETED] === undefined) {
-    core.setFailed('The CodeQL ' + actionName + ' action cannot be used unless the CodeQL init action is run first. Aborting.');
-    return true;
-  }
-
-  return false;
-}
-
-/**
  * Get an environment parameter, but throw an error if it is not set.
  */
 export function getRequiredEnvParam(paramName: string): string {
@@ -115,15 +90,12 @@ export async function getCommitOid(): Promise<string> {
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
-  if (isLocalRun()) {
-    return 'LOCAL';
-  }
   const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
   const run_id = Number(getRequiredEnvParam('GITHUB_RUN_ID'));
 
-  const apiClient = api.getApiClient();
+  const apiClient = api.getActionsApiClient();
   const runsResponse = await apiClient.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
     owner,
     repo,
@@ -137,6 +109,17 @@ async function getWorkflowPath(): Promise<string> {
 }
 
 /**
+ * Get the workflow run ID.
+ */
+export function getWorkflowRunID(): number {
+  const workflowRunID = parseInt(getRequiredEnvParam('GITHUB_RUN_ID'), 10);
+  if (Number.isNaN(workflowRunID)) {
+    throw new Error('GITHUB_RUN_ID must define a non NaN workflow run ID');
+  }
+  return workflowRunID;
+}
+
+/**
  * Get the analysis key paramter for the current job.
  *
  * This will combine the workflow path and current job name.
@@ -144,7 +127,9 @@ async function getWorkflowPath(): Promise<string> {
  * the github API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  let analysisKey = process.env[sharedEnv.CODEQL_ACTION_ANALYSIS_KEY];
+  const analysisKeyEnvVar = 'CODEQL_ACTION_ANALYSIS_KEY';
+
+  let analysisKey = process.env[analysisKeyEnvVar];
   if (analysisKey !== undefined) {
     return analysisKey;
   }
@@ -153,7 +138,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam('GITHUB_JOB');
 
   analysisKey = workflowPath + ':' + jobName;
-  core.exportVariable(sharedEnv.CODEQL_ACTION_ANALYSIS_KEY, analysisKey);
+  core.exportVariable(analysisKeyEnvVar, analysisKey);
   return analysisKey;
 }
 
@@ -306,7 +291,8 @@ export async function sendStatusReport<S extends StatusReportBase>(
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
-  const statusResponse = await api.getApiClient().request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
+  const client = api.getActionsApiClient();
+  const statusResponse = await client.request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
     owner: owner,
     repo: repo,
     data: statusReportJSON,
@@ -412,4 +398,11 @@ export function getThreadsFlag(): string {
     }
   }
   return `--threads=${numThreads}`;
+}
+
+/**
+ * Get the directory where CodeQL databases should be placed.
+ */
+export function getCodeQLDatabasesDir() {
+  return path.resolve(getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
 }

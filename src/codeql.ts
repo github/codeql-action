@@ -2,7 +2,6 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as http from '@actions/http-client';
 import { IHeaders } from '@actions/http-client/interfaces';
-import * as io from '@actions/io';
 import * as toolcache from '@actions/tool-cache';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -12,6 +11,7 @@ import * as globalutil from 'util';
 import uuidV4 from 'uuid/v4';
 
 import * as api from './api-client';
+import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
 import { Language } from './languages';
 import * as util from './util';
 
@@ -82,7 +82,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  */
 const CODEQL_ACTION_CMD = "CODEQL_ACTION_CMD";
 
-const CODEQL_BUNDLE_VERSION = "codeql-bundle-20200630";
+const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
 const CODEQL_BUNDLE_NAME = "codeql-bundle.tar.gz";
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
@@ -123,7 +123,7 @@ async function getCodeQLBundleDownloadURL(): Promise<string> {
     }
     let [repositoryOwner, repositoryName] = repository.split("/");
     try {
-      const release = await api.getApiClient().repos.getReleaseByTag({
+      const release = await api.getActionsApiClient().repos.getReleaseByTag({
         owner: repositoryOwner,
         repo: repositoryName,
         tag: CODEQL_BUNDLE_VERSION
@@ -155,7 +155,7 @@ async function toolcacheDownloadTool(url: string, headers?: IHeaders): Promise<s
     throw err;
   }
   const pipeline = globalutil.promisify(stream.pipeline);
-  await io.mkdirP(path.dirname(dest));
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
   await pipeline(response.message, fs.createWriteStream(dest));
   return dest;
 }

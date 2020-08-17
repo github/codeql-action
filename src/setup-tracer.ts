@@ -1,6 +1,5 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -215,7 +214,7 @@ async function run() {
     core.exportVariable('CODEQL_RAM', codeqlRam);
 
     const databaseFolder = util.getCodeQLDatabasesDir();
-    await io.mkdirP(databaseFolder);
+    fs.mkdirSync(databaseFolder, { recursive: true });
 
     let tracedLanguageConfigs: TracerConfig[] = [];
     // TODO: replace this code once CodeQL supports multi-language tracing

@@ -1,5 +1,7 @@
 import * as core from '@actions/core';
 
+import { getActionsLogger } from './logging';
+import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
 
@@ -21,7 +23,20 @@ async function run() {
   }
 
   try {
-    const uploadStats = await upload_lib.upload(core.getInput('sarif_file'));
+    const uploadStats = await upload_lib.upload(
+      core.getInput('sarif_file'),
+      parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
+      await util.getCommitOid(),
+      util.getRef(),
+      await util.getAnalysisKey(),
+      util.getRequiredEnvParam('GITHUB_WORKFLOW'),
+      util.getWorkflowRunID(),
+      core.getInput('checkout_path'),
+      core.getInput('matrix'),
+      core.getInput('token'),
+      util.getRequiredEnvParam('GITHUB_API_URL'),
+      'actions',
+      getActionsLogger());
     await sendSuccessStatusReport(startedAt, uploadStats);
 
   } catch (error) {

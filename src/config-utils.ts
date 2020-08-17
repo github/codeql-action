@@ -1,5 +1,4 @@
 import * as core from '@actions/core';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
@@ -422,7 +421,7 @@ async function getLanguagesInRepo(): Promise<Language[]> {
     let repo = repo_nwo[1];
 
     core.debug(`GitHub repo ${owner} ${repo}`);
-    const response = await api.getApiClient(true).repos.listLanguages({
+    const response = await api.getActionsApiClient(true).repos.listLanguages({
       owner,
       repo
     });
@@ -664,7 +663,7 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.getApiClient(true).repos.getContents({
+  const response = await api.getActionsApiClient(true).repos.getContents({
     owner: pieces.groups.owner,
     repo: pieces.groups.repo,
     path: pieces.groups.path,
@@ -684,17 +683,10 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
 }
 
 /**
- * Get the directory where the parsed config will be stored.
- */
-function getPathToParsedConfigFolder(): string {
-  return util.getRequiredEnvParam('RUNNER_TEMP');
-}
-
-/**
  * Get the file path where the parsed config will be stored.
  */
 export function getPathToParsedConfigFile(): string {
-  return path.join(getPathToParsedConfigFolder(), 'config');
+  return path.join(util.getRequiredEnvParam('RUNNER_TEMP'), 'config');
 }
 
 /**
@@ -702,8 +694,9 @@ export function getPathToParsedConfigFile(): string {
  */
 async function saveConfig(config: Config) {
   const configString = JSON.stringify(config);
-  await io.mkdirP(getPathToParsedConfigFolder());
-  fs.writeFileSync(getPathToParsedConfigFile(), configString, 'utf8');
+  const configFile = getPathToParsedConfigFile();
+  fs.mkdirSync(path.dirname(configFile), { recursive: true });
+  fs.writeFileSync(configFile, configString, 'utf8');
   core.debug('Saved config:');
   core.debug(configString);
 }

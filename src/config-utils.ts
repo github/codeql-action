@@ -1,5 +1,4 @@
 import * as core from '@actions/core';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
@@ -16,6 +15,16 @@ const QUERIES_PROPERTY = 'queries';
 const QUERIES_USES_PROPERTY = 'uses';
 const PATHS_IGNORE_PROPERTY = 'paths-ignore';
 const PATHS_PROPERTY = 'paths';
+
+// All the languages supported by CodeQL
+const ALL_LANGUAGES = ['csharp', 'cpp', 'go', 'java', 'javascript', 'python'] as const;
+type Language = (typeof ALL_LANGUAGES)[number];
+
+// Some alternate names for languages
+const LANGUAGE_ALIASES: {[name: string]: Language} = {
+  'c': 'cpp',
+  'typescript': 'javascript',
+};
 
 /**
  * Format of the config file supplied by the user.
@@ -38,7 +47,7 @@ export interface Config {
   /**
    * Set of languages to run analysis for.
    */
-  languages: string[];
+  languages: Language[];
   /**
    * Map from language to query files.
    * Will only contain .ql files and not other kinds of files,
@@ -402,12 +411,21 @@ function getConfigFilePropertyError(configFile: string, property: string, error:
   return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
 }
 
+export function getNoLanguagesError(): string {
+  return "Did not detect any languages to analyze. " +
+  "Please update input in workflow or check that GitHub detects the correct languages in your repository.";
+}
+
+export function getUnknownLanguagesError(languages: string[]): string {
+  return "Did not recognise the following languages: " + languages.join(', ');
+}
+
 /**
  * Gets the set of languages in the current repository
  */
-async function getLanguagesInRepo(): Promise<string[]> {
+async function getLanguagesInRepo(): Promise<Language[]> {
   // Translate between GitHub's API names for languages and ours
-  const codeqlLanguages = {
+  const codeqlLanguages: {[lang: string]: Language} = {
     'C': 'cpp',
     'C++': 'cpp',
     'C#': 'csharp',
@@ -423,10 +441,10 @@ async function getLanguagesInRepo(): Promise<string[]> {
     let repo = repo_nwo[1];
 
     core.debug(`GitHub repo ${owner} ${repo}`);
-    const response = await api.getApiClient(true).request("GET /repos/:owner/:repo/languages", ({
+    const response = await api.getActionsApiClient(true).repos.listLanguages({
       owner,
       repo
-    }));
+    });
 
     core.debug("Languages API response: " + JSON.stringify(response));
 
@@ -434,7 +452,7 @@ async function getLanguagesInRepo(): Promise<string[]> {
     // When we pick a language to autobuild we want to pick the most popular traced language
     // Since sets in javascript maintain insertion order, using a set here and then splatting it
     // into an array gives us an array of languages ordered by popularity
-    let languages: Set<string> = new Set();
+    let languages: Set<Language> = new Set();
     for (let lang in response.data) {
       if (lang in codeqlLanguages) {
         languages.add(codeqlLanguages[lang]);
@@ -456,7 +474,7 @@ async function getLanguagesInRepo(): Promise<string[]> {
  * If no languages could be detected from either the workflow or the repository
  * then throw an error.
  */
-async function getLanguages(): Promise<string[]> {
+async function getLanguages(): Promise<Language[]> {
 
   // Obtain from action input 'languages' if set
   let languages = core.getInput('languages', { required: false })
@@ -474,11 +492,32 @@ async function getLanguages(): Promise<string[]> {
   // If the languages parameter was not given and no languages were
   // detected then fail here as this is a workflow configuration error.
   if (languages.length === 0) {
-    throw new Error("Did not detect any languages to analyze. " +
-        "Please update input in workflow or check that GitHub detects the correct languages in your repository.");
+    throw new Error(getNoLanguagesError());
   }
 
-  return languages;
+  // Make sure they are supported
+  const checkedLanguages: Language[] = [];
+  const unknownLanguages: string[] = [];
+  for (let language of languages) {
+    // Normalise to lower case
+    language = language.toLowerCase();
+    // Resolve any known aliases
+    if (language in LANGUAGE_ALIASES) {
+      language = LANGUAGE_ALIASES[language];
+    }
+
+    const checkedLanguage = ALL_LANGUAGES.find(l => l === language);
+    if (checkedLanguage === undefined) {
+      unknownLanguages.push(language);
+    } else if (checkedLanguages.indexOf(checkedLanguage) === -1) {
+      checkedLanguages.push(checkedLanguage);
+    }
+  }
+  if (unknownLanguages.length > 0) {
+    throw new Error(getUnknownLanguagesError(unknownLanguages));
+  }
+
+  return checkedLanguages;
 }
 
 /**
@@ -650,7 +689,7 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.getApiClient(true).repos.getContents({
+  const response = await api.getActionsApiClient(true).repos.getContents({
     owner: pieces.groups.owner,
     repo: pieces.groups.repo,
     path: pieces.groups.path,
@@ -670,17 +709,10 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
 }
 
 /**
- * Get the directory where the parsed config will be stored.
- */
-function getPathToParsedConfigFolder(): string {
-  return util.getRequiredEnvParam('RUNNER_TEMP');
-}
-
-/**
  * Get the file path where the parsed config will be stored.
  */
 export function getPathToParsedConfigFile(): string {
-  return path.join(getPathToParsedConfigFolder(), 'config');
+  return path.join(util.getRequiredEnvParam('RUNNER_TEMP'), 'config');
 }
 
 /**
@@ -688,8 +720,9 @@ export function getPathToParsedConfigFile(): string {
  */
 async function saveConfig(config: Config) {
   const configString = JSON.stringify(config);
-  await io.mkdirP(getPathToParsedConfigFolder());
-  fs.writeFileSync(getPathToParsedConfigFile(), configString, 'utf8');
+  const configFile = getPathToParsedConfigFile();
+  fs.mkdirSync(path.dirname(configFile), { recursive: true });
+  fs.writeFileSync(configFile, configString, 'utf8');
   core.debug('Saved config:');
   core.debug(configString);
 }

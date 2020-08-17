@@ -1,11 +1,12 @@
 import * as core from '@actions/core';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
 import { getCodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import { isScannedLanguage } from './languages';
+import { getActionsLogger } from './logging';
+import { parseRepositoryNwo } from './repository';
 import * as sharedEnv from './shared-environment';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
@@ -137,7 +138,7 @@ async function run() {
     const databaseFolder = util.getCodeQLDatabasesDir();
 
     const sarifFolder = core.getInput('output');
-    await io.mkdirP(sarifFolder);
+    fs.mkdirSync(sarifFolder, { recursive: true });
 
     core.info('Finalizing database creation');
     await finalizeDatabaseCreation(databaseFolder, config);
@@ -146,7 +147,20 @@ async function run() {
     queriesStats = await runQueries(databaseFolder, sarifFolder, config);
 
     if ('true' === core.getInput('upload')) {
-      uploadStats = await upload_lib.upload(sarifFolder);
+      uploadStats = await upload_lib.upload(
+        sarifFolder,
+        parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
+        await util.getCommitOid(),
+        util.getRef(),
+        await util.getAnalysisKey(),
+        util.getRequiredEnvParam('GITHUB_WORKFLOW'),
+        util.getWorkflowRunID(),
+        core.getInput('checkout_path'),
+        core.getInput('matrix'),
+        core.getInput('token'),
+        util.getRequiredEnvParam('GITHUB_API_URL'),
+        'actions',
+        getActionsLogger());
     }
 
   } catch (error) {

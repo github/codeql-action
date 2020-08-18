@@ -165,7 +165,8 @@ test("load non-empty input", async t => {
     };
     const spyGetContents = mockGetContents(dummyResponse);
 
-    fs.mkdirSync(path.join(tmpDir, 'foo'));
+    // Create checkout directory for remote queries repository
+    fs.mkdirSync(path.join(tmpDir, 'octo-org/codeql-config'), { recursive: true });
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
@@ -252,6 +253,8 @@ test("API client used when reading remote config", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
+    process.env['GITHUB_REPOSITORY'] = 'foo/bar';
+    process.env['GITHUB_REF'] = 'master';
 
     CodeQL.setCodeQL({
       resolveQueries: async function() {
@@ -377,7 +380,7 @@ function doInvalidInputTest(
       process.env['RUNNER_TEMP'] = tmpDir;
       process.env['GITHUB_WORKSPACE'] = tmpDir;
       process.env['GITHUB_REPOSITORY'] = "octo-org/codeql-config";
-      process.env["GITHUB_REF"] = "refs/heads/main";
+      process.env["GITHUB_REF"] = "master";
 
       CodeQL.setCodeQL({
         resolveQueries: async function() {
@@ -393,6 +396,9 @@ function doInvalidInputTest(
         content: Buffer.from(inputFileContents).toString("base64"),
       };
       const spyGetContents = mockGetContents(dummyResponse);
+
+      // Create checkout directory for remote queries repository
+      fs.mkdirSync(path.join(tmpDir, 'octo-org/codeql-config'), { recursive: true });
 
       setInput('config-file', 'input');
       setInput('languages', 'javascript');

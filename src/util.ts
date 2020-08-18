@@ -39,6 +39,26 @@ export function getRequiredEnvParam(paramName: string): string {
   return value;
 }
 
+/**
+ * Get the extra options for the codeql commands.
+ */
+export function getExtraOptionsEnvParam(): object {
+  const varName = 'CODEQL_ACTION_EXTRA_OPTIONS';
+  const raw = process.env[varName];
+  if (raw === undefined || raw.length === 0) {
+    return {};
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error(
+      varName +
+        ' environment variable is set, but does not contain valid JSON: ' +
+        e.message
+    );
+  }
+}
+
 export function isLocalRun(): boolean {
   return !!process.env.CODEQL_LOCAL_RUN
     && process.env.CODEQL_LOCAL_RUN !== 'false'
@@ -90,15 +110,12 @@ export async function getCommitOid(): Promise<string> {
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
-  if (isLocalRun()) {
-    return 'LOCAL';
-  }
   const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
   const run_id = Number(getRequiredEnvParam('GITHUB_RUN_ID'));
 
-  const apiClient = api.getApiClient();
+  const apiClient = api.getActionsApiClient();
   const runsResponse = await apiClient.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
     owner,
     repo,
@@ -109,6 +126,17 @@ async function getWorkflowPath(): Promise<string> {
   const workflowResponse = await apiClient.request('GET ' + workflowUrl);
 
   return workflowResponse.data.path;
+}
+
+/**
+ * Get the workflow run ID.
+ */
+export function getWorkflowRunID(): number {
+  const workflowRunID = parseInt(getRequiredEnvParam('GITHUB_RUN_ID'), 10);
+  if (Number.isNaN(workflowRunID)) {
+    throw new Error('GITHUB_RUN_ID must define a non NaN workflow run ID');
+  }
+  return workflowRunID;
 }
 
 /**
@@ -283,7 +311,8 @@ export async function sendStatusReport<S extends StatusReportBase>(
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
-  const statusResponse = await api.getApiClient().request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
+  const client = api.getActionsApiClient();
+  const statusResponse = await client.request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
     owner: owner,
     repo: repo,
     data: statusReportJSON,
@@ -366,27 +395,34 @@ export function getMemoryFlag(): string {
 }
 
 /**
- * Get the codeql `--threads` value specified for the `threads` input. The value
- * defaults to 1. The value will be capped to the number of available CPUs.
+ * Get the codeql `--threads` value specified for the `threads` input.
+ * If not value was specified, all available threads will be used.
+ *
+ * The value will be capped to the number of available CPUs.
  *
  * @returns string
  */
 export function getThreadsFlag(): string {
-  let numThreads = 1;
+  let numThreads: number;
   const numThreadsString = core.getInput("threads");
+  const maxThreads = os.cpus().length;
   if (numThreadsString) {
     numThreads = Number(numThreadsString);
     if (Number.isNaN(numThreads)) {
       throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
     }
-    const maxThreads = os.cpus().length;
     if (numThreads > maxThreads) {
+      core.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
       numThreads = maxThreads;
     }
     const minThreads = -maxThreads;
     if (numThreads < minThreads) {
+      core.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
       numThreads = minThreads;
     }
+  } else {
+    // Default to using all threads
+    numThreads = maxThreads;
   }
   return `--threads=${numThreads}`;
 }

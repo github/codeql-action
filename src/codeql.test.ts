@@ -63,3 +63,35 @@ test('parse codeql bundle url version', t => {
     }
   }
 });
+
+test('getExtraOptions works for explicit paths', t => {
+  t.deepEqual(codeql.getExtraOptions({}, ['foo'], []), []);
+
+  t.deepEqual(codeql.getExtraOptions({foo: [42]}, ['foo'], []), ['42']);
+
+  t.deepEqual(codeql.getExtraOptions({foo: {bar: [42]}}, ['foo', 'bar'], []), ['42']);
+});
+
+test('getExtraOptions works for wildcards', t => {
+  t.deepEqual(codeql.getExtraOptions({'*': [42]}, ['foo'], []), ['42']);
+});
+
+test('getExtraOptions works for wildcards and explicit paths', t => {
+  let o1 = {'*': [42], foo: [87]};
+  t.deepEqual(codeql.getExtraOptions(o1, ['foo'], []), ['42', '87']);
+
+  let o2 = {'*': [42], foo: [87]};
+  t.deepEqual(codeql.getExtraOptions(o2, ['foo', 'bar'], []), ['42']);
+
+  let o3 = {'*': [42], foo: { '*': [87], bar: [99]}};
+  let p = ['foo', 'bar'];
+  t.deepEqual(codeql.getExtraOptions(o3, p, []), ['42', '87', '99']);
+});
+
+test('getExtraOptions throws for bad content', t => {
+  t.throws(() => codeql.getExtraOptions({'*': 42}, ['foo'], []));
+
+  t.throws(() => codeql.getExtraOptions({foo: 87}, ['foo'], []));
+
+  t.throws(() => codeql.getExtraOptions({'*': [42], foo: { '*': 87, bar: [99]}}, ['foo', 'bar'], []));
+});

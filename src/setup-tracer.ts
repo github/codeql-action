@@ -187,7 +187,8 @@ async function run() {
     core.startGroup('Load language configuration');
     config = await configUtils.initConfig(
       util.getRequiredEnvParam('RUNNER_TEMP'),
-      util.getRequiredEnvParam('RUNNER_TOOL_CACHE'));
+      util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
+      codeql);
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     core.endGroup();
 
@@ -237,20 +238,21 @@ async function run() {
         }
 
         core.exportVariable('ODASA_TRACER_CONFIGURATION', mainTracerConfig.spec);
+        const codeQLDir = path.dirname(codeql.getPath());
         if (process.platform === 'darwin') {
           core.exportVariable(
             'DYLD_INSERT_LIBRARIES',
-            path.join(codeql.getDir(), 'tools', 'osx64', 'libtrace.dylib'));
+            path.join(codeQLDir, 'tools', 'osx64', 'libtrace.dylib'));
         } else if (process.platform === 'win32') {
           await exec.exec(
             'powershell',
             [
               path.resolve(__dirname, '..', 'src', 'inject-tracer.ps1'),
-              path.resolve(codeql.getDir(), 'tools', 'win64', 'tracer.exe'),
+              path.resolve(codeQLDir, 'tools', 'win64', 'tracer.exe'),
             ],
             { env: { 'ODASA_TRACER_CONFIGURATION': mainTracerConfig.spec } });
         } else {
-          core.exportVariable('LD_PRELOAD', path.join(codeql.getDir(), 'tools', 'linux64', '${LIB}trace.so'));
+          core.exportVariable('LD_PRELOAD', path.join(codeQLDir, 'tools', 'linux64', '${LIB}trace.so'));
         }
       }
     }

@@ -4,7 +4,7 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 
 import * as api from './api-client';
-import { getCodeQL, ResolveQueriesOutput } from './codeql';
+import { CodeQL, ResolveQueriesOutput } from './codeql';
 import * as externalQueries from "./external-queries";
 import * as util from './util';
 
@@ -80,6 +80,10 @@ export interface Config {
    * This may be persisted between jobs but this is not guaranteed.
    */
   toolCacheDir: string;
+  /**
+   * Path of the CodeQL executable.
+   */
+  codeQLCmd: string;
 }
 
 /**
@@ -129,13 +133,13 @@ function validateQueries(resolvedQueries: ResolveQueriesOutput) {
  * Run 'codeql resolve queries' and add the results to resultMap
  */
 async function runResolveQueries(
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   toResolve: string[],
   extraSearchPath: string | undefined,
   errorOnInvalidQueries: boolean) {
 
-  const codeQl = getCodeQL();
-  const resolvedQueries = await codeQl.resolveQueries(toResolve, extraSearchPath);
+  const resolvedQueries = await codeQL.resolveQueries(toResolve, extraSearchPath);
 
   for (const [language, queries] of Object.entries(resolvedQueries.byLanguage)) {
     if (resultMap[language] === undefined) {
@@ -152,9 +156,9 @@ async function runResolveQueries(
 /**
  * Get the set of queries included by default.
  */
-async function addDefaultQueries(languages: string[], resultMap: { [language: string]: string[] }) {
+async function addDefaultQueries(codeQL: CodeQL, languages: string[], resultMap: { [language: string]: string[] }) {
   const suites = languages.map(l => l + '-code-scanning.qls');
-  await runResolveQueries(resultMap, suites, undefined, false);
+  await runResolveQueries(codeQL, resultMap, suites, undefined, false);
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
@@ -167,6 +171,7 @@ const builtinSuites = ['security-extended', 'security-and-quality'] as const;
 async function addBuiltinSuiteQueries(
   configFile: string,
   languages: string[],
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   suiteName: string) {
 
@@ -176,7 +181,7 @@ async function addBuiltinSuiteQueries(
   }
 
   const suites = languages.map(l => l + '-' + suiteName + '.qls');
-  await runResolveQueries(resultMap, suites, undefined, false);
+  await runResolveQueries(codeQL, resultMap, suites, undefined, false);
 }
 
 /**
@@ -184,6 +189,7 @@ async function addBuiltinSuiteQueries(
  */
 async function addLocalQueries(
   configFile: string,
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   localQueryPath: string) {
 
@@ -208,7 +214,7 @@ async function addLocalQueries(
   // Get the root of the current repo to use when resolving query dependencies
   const rootOfRepo = util.getRequiredEnvParam('GITHUB_WORKSPACE');
 
-  await runResolveQueries(resultMap, [absoluteQueryPath], rootOfRepo, true);
+  await runResolveQueries(codeQL, resultMap, [absoluteQueryPath], rootOfRepo, true);
 }
 
 /**
@@ -216,6 +222,7 @@ async function addLocalQueries(
  */
 async function addRemoteQueries(
   configFile: string,
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   queryUses: string,
   tempDir: string) {
@@ -247,7 +254,7 @@ async function addRemoteQueries(
     ? path.join(rootOfRepo, tok.slice(2).join('/'))
     : rootOfRepo;
 
-  await runResolveQueries(resultMap, [queryPath], rootOfRepo, true);
+  await runResolveQueries(codeQL, resultMap, [queryPath], rootOfRepo, true);
 }
 
 /**
@@ -261,6 +268,7 @@ async function addRemoteQueries(
 async function parseQueryUses(
   configFile: string,
   languages: string[],
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   queryUses: string,
   tempDir: string) {
@@ -272,18 +280,18 @@ async function parseQueryUses(
 
   // Check for the local path case before we start trying to parse the repository name
   if (queryUses.startsWith("./")) {
-    await addLocalQueries(configFile, resultMap, queryUses.slice(2));
+    await addLocalQueries(configFile, codeQL, resultMap, queryUses.slice(2));
     return;
   }
 
   // Check for one of the builtin suites
   if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-    await addBuiltinSuiteQueries(configFile, languages, resultMap, queryUses);
+    await addBuiltinSuiteQueries(configFile, languages, codeQL, resultMap, queryUses);
     return;
   }
 
   // Otherwise, must be a reference to another repo
-  await addRemoteQueries(configFile, resultMap, queryUses, tempDir);
+  await addRemoteQueries(configFile, codeQL, resultMap, queryUses, tempDir);
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -539,10 +547,10 @@ async function getLanguages(): Promise<Language[]> {
 /**
  * Get the default config for when the user has not supplied one.
  */
-export async function getDefaultConfig(tempDir: string, toolCacheDir: string): Promise<Config> {
+export async function getDefaultConfig(tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   const languages = await getLanguages();
   const queries = {};
-  await addDefaultQueries(languages, queries);
+  await addDefaultQueries(codeQL, languages, queries);
   return {
     languages: languages,
     queries: queries,
@@ -551,13 +559,14 @@ export async function getDefaultConfig(tempDir: string, toolCacheDir: string): P
     originalUserInput: {},
     tempDir,
     toolCacheDir,
+    codeQLCmd: codeQL.getPath(),
   };
 }
 
 /**
  * Load the config from the given file.
  */
-async function loadConfig(configFile: string, tempDir: string, toolCacheDir: string): Promise<Config> {
+async function loadConfig(configFile: string, tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   let parsedYAML: UserConfig;
 
   if (isLocal(configFile)) {
@@ -595,7 +604,7 @@ async function loadConfig(configFile: string, tempDir: string, toolCacheDir: str
     disableDefaultQueries = parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY]!;
   }
   if (!disableDefaultQueries) {
-    await addDefaultQueries(languages, queries);
+    await addDefaultQueries(codeQL, languages, queries);
   }
 
   if (QUERIES_PROPERTY in parsedYAML) {
@@ -606,7 +615,7 @@ async function loadConfig(configFile: string, tempDir: string, toolCacheDir: str
       if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
         throw new Error(getQueryUsesInvalid(configFile));
       }
-      await parseQueryUses(configFile, languages, queries, query[QUERIES_USES_PROPERTY], tempDir);
+      await parseQueryUses(configFile, languages, codeQL, queries, query[QUERIES_USES_PROPERTY], tempDir);
     }
   }
 
@@ -651,6 +660,7 @@ async function loadConfig(configFile: string, tempDir: string, toolCacheDir: str
     originalUserInput: parsedYAML,
     tempDir,
     toolCacheDir,
+    codeQLCmd: codeQL.getPath(),
   };
 }
 
@@ -660,16 +670,16 @@ async function loadConfig(configFile: string, tempDir: string, toolCacheDir: str
  * This will parse the config from the user input if present, or generate
  * a default config. The parsed config is then stored to a known location.
  */
-export async function initConfig(tempDir: string, toolCacheDir: string): Promise<Config> {
+export async function initConfig(tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   const configFile = core.getInput('config-file');
   let config: Config;
 
   // If no config file was provided create an empty one
   if (configFile === '') {
     core.debug('No configuration file was provided');
-    config = await getDefaultConfig(tempDir, toolCacheDir);
+    config = await getDefaultConfig(tempDir, toolCacheDir, codeQL);
   } else {
-    config = await loadConfig(configFile, tempDir, toolCacheDir);
+    config = await loadConfig(configFile, tempDir, toolCacheDir, codeQL);
   }
 
   // Save the config so we can easily access it again in the future

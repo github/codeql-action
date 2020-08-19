@@ -62,7 +62,7 @@ async function run() {
     }
 
     core.startGroup(`Attempting to automatically build ${language} code`);
-    const codeQL = getCodeQL();
+    const codeQL = getCodeQL(config.codeQLCmd);
     await codeQL.runAutobuild(language);
 
     core.endGroup();

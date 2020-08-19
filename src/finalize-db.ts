@@ -129,7 +129,7 @@ async function run() {
     if (!await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
       return;
     }
-    const config = await configUtils.getConfig();
+    const config = await configUtils.getConfig(util.getRequiredEnvParam('RUNNER_TEMP'));
 
     core.exportVariable(sharedEnv.ODASA_TRACER_CONFIGURATION, '');
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];

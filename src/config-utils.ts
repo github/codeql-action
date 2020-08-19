@@ -70,6 +70,16 @@ export interface Config {
    * top-level field above.
    */
   originalUserInput: UserConfig;
+  /**
+   * Directory to use for temporary files that should be
+   * deleted at the end of the job.
+   */
+  tempDir: string;
+  /**
+   * Directory to use for the tool cache.
+   * This may be persisted between jobs but this is not guaranteed.
+   */
+  toolCacheDir: string;
 }
 
 /**
@@ -523,7 +533,7 @@ async function getLanguages(): Promise<Language[]> {
 /**
  * Get the default config for when the user has not supplied one.
  */
-export async function getDefaultConfig(): Promise<Config> {
+export async function getDefaultConfig(tempDir: string, toolCacheDir: string): Promise<Config> {
   const languages = await getLanguages();
   const queries = {};
   await addDefaultQueries(languages, queries);
@@ -533,13 +543,15 @@ export async function getDefaultConfig(): Promise<Config> {
     pathsIgnore: [],
     paths: [],
     originalUserInput: {},
+    tempDir,
+    toolCacheDir,
   };
 }
 
 /**
  * Load the config from the given file.
  */
-async function loadConfig(configFile: string): Promise<Config> {
+async function loadConfig(configFile: string, tempDir: string, toolCacheDir: string): Promise<Config> {
   let parsedYAML: UserConfig;
 
   if (isLocal(configFile)) {
@@ -630,7 +642,9 @@ async function loadConfig(configFile: string): Promise<Config> {
     queries,
     pathsIgnore,
     paths,
-    originalUserInput: parsedYAML
+    originalUserInput: parsedYAML,
+    tempDir,
+    toolCacheDir,
   };
 }
 
@@ -640,16 +654,16 @@ async function loadConfig(configFile: string): Promise<Config> {
  * This will parse the config from the user input if present, or generate
  * a default config. The parsed config is then stored to a known location.
  */
-export async function initConfig(): Promise<Config> {
+export async function initConfig(tempDir: string, toolCacheDir: string): Promise<Config> {
   const configFile = core.getInput('config-file');
   let config: Config;
 
   // If no config file was provided create an empty one
   if (configFile === '') {
     core.debug('No configuration file was provided');
-    config = await getDefaultConfig();
+    config = await getDefaultConfig(tempDir, toolCacheDir);
   } else {
-    config = await loadConfig(configFile);
+    config = await loadConfig(configFile, tempDir, toolCacheDir);
   }
 
   // Save the config so we can easily access it again in the future
@@ -711,8 +725,8 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
 /**
  * Get the file path where the parsed config will be stored.
  */
-export function getPathToParsedConfigFile(): string {
-  return path.join(util.getRequiredEnvParam('RUNNER_TEMP'), 'config');
+export function getPathToParsedConfigFile(tempDir: string): string {
+  return path.join(tempDir, 'config');
 }
 
 /**
@@ -720,7 +734,7 @@ export function getPathToParsedConfigFile(): string {
  */
 async function saveConfig(config: Config) {
   const configString = JSON.stringify(config);
-  const configFile = getPathToParsedConfigFile();
+  const configFile = getPathToParsedConfigFile(config.tempDir);
   fs.mkdirSync(path.dirname(configFile), { recursive: true });
   fs.writeFileSync(configFile, configString, 'utf8');
   core.debug('Saved config:');
@@ -735,8 +749,8 @@ async function saveConfig(config: Config) {
  * stored to a known location. On the second and further calls, this will
  * return the contents of the parsed config from the known location.
  */
-export async function getConfig(): Promise<Config> {
-  const configFile = getPathToParsedConfigFile();
+export async function getConfig(tempDir: string): Promise<Config> {
+  const configFile = getPathToParsedConfigFile(tempDir);
   if (!fs.existsSync(configFile)) {
     throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
   }

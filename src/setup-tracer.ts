@@ -186,7 +186,9 @@ async function run() {
     core.endGroup();
 
     core.startGroup('Load language configuration');
-    config = await configUtils.initConfig();
+    config = await configUtils.initConfig(
+      util.getRequiredEnvParam('RUNNER_TEMP'),
+      util.getRequiredEnvParam('RUNNER_TOOL_CACHE'));
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     core.endGroup();
 

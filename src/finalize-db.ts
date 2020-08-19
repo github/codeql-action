@@ -58,7 +58,7 @@ async function sendStatusReport(
 }
 
 async function createdDBForScannedLanguages(databaseFolder: string, config: configUtils.Config) {
-  const codeql = getCodeQL();
+  const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (isScannedLanguage(language)) {
       core.startGroup('Extracting ' + language);
@@ -71,7 +71,7 @@ async function createdDBForScannedLanguages(databaseFolder: string, config: conf
 async function finalizeDatabaseCreation(databaseFolder: string, config: configUtils.Config) {
   await createdDBForScannedLanguages(databaseFolder, config);
 
-  const codeql = getCodeQL();
+  const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     core.startGroup('Finalizing ' + language);
     await codeql.finalizeDatabase(path.join(databaseFolder, language));
@@ -85,7 +85,7 @@ async function runQueries(
   sarifFolder: string,
   config: configUtils.Config): Promise<QueriesStatusReport> {
 
-  const codeql = getCodeQL();
+  const codeql = getCodeQL(config.codeQLCmd);
   for (let language of fs.readdirSync(databaseFolder)) {
     core.startGroup('Analyzing ' + language);
 

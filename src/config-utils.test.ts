@@ -5,7 +5,7 @@ import * as path from 'path';
 import sinon from 'sinon';
 
 import * as api from './api-client';
-import * as CodeQL from './codeql';
+import { getCachedCodeQL, setCodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import {setupTests} from './testing-utils';
 import * as util from './util';
@@ -57,7 +57,7 @@ test("load empty config", async t => {
     setInput('config-file', undefined);
     setInput('languages', 'javascript,python');
 
-    CodeQL.setCodeQL({
+    const codeQL = setCodeQL({
       resolveQueries: async function() {
         return {
           byLanguage: {},
@@ -67,9 +67,9 @@ test("load empty config", async t => {
       },
     });
 
-    const config = await configUtils.initConfig(tmpDir, tmpDir);
+    const config = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
 
-    t.deepEqual(config, await configUtils.getDefaultConfig(tmpDir, tmpDir));
+    t.deepEqual(config, await configUtils.getDefaultConfig(tmpDir, tmpDir, codeQL));
   });
 });
 
@@ -81,7 +81,7 @@ test("loading config saves config", async t => {
     setInput('config-file', undefined);
     setInput('languages', 'javascript,python');
 
-    CodeQL.setCodeQL({
+    const codeQL = setCodeQL({
       resolveQueries: async function() {
         return {
           byLanguage: {},
@@ -98,7 +98,7 @@ test("loading config saves config", async t => {
     // Sanity check that getConfig throws before we have called initConfig
     await t.throwsAsync(() => configUtils.getConfig(tmpDir));
 
-    const config1 = await configUtils.initConfig(tmpDir, tmpDir);
+    const config1 = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
 
     // The saved config file should now exist
     t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tmpDir)));
@@ -117,7 +117,7 @@ test("load input outside of workspace", async t => {
     setInput('config-file', '../input');
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir);
+      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileOutsideWorkspaceErrorMessage(path.join(tmpDir, '../input'))));
@@ -134,7 +134,7 @@ test("load non-local input with invalid repo syntax", async t => {
     setInput('config-file', 'octo-org/codeql-config@main');
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir);
+      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileRepoFormatInvalidMessage('octo-org/codeql-config@main')));
@@ -152,7 +152,7 @@ test("load non-existent input", async t => {
     setInput('languages', 'javascript');
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir);
+      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDoesNotExistErrorMessage(path.join(tmpDir, 'input'))));
@@ -165,7 +165,7 @@ test("load non-empty input", async t => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
-    CodeQL.setCodeQL({
+    const codeQL = setCodeQL({
       resolveQueries: async function() {
         return {
           byLanguage: {
@@ -209,13 +209,14 @@ test("load non-empty input", async t => {
       },
       tempDir: tmpDir,
       toolCacheDir: tmpDir,
+      codeQLCmd: codeQL.getPath(),
     };
 
     fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
-    const actualConfig = await configUtils.initConfig(tmpDir, tmpDir);
+    const actualConfig = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
 
     // Should exactly equal the object we constructed earlier
     t.deepEqual(actualConfig, expectedConfig);
@@ -234,7 +235,7 @@ test("default queries are used", async t => {
     // with the correct arguments.
 
     const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
-    CodeQL.setCodeQL({
+    const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
         return {
@@ -262,7 +263,7 @@ test("default queries are used", async t => {
     setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
-    await configUtils.initConfig(tmpDir, tmpDir);
+    await configUtils.initConfig(tmpDir, tmpDir, codeQL);
 
     // Check resolve queries was called correctly
     t.deepEqual(resolveQueriesArgs.length, 1);
@@ -276,7 +277,7 @@ test("API client used when reading remote config", async t => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
-    CodeQL.setCodeQL({
+    const codeQL = setCodeQL({
       resolveQueries: async function() {
         return {
           byLanguage: {
@@ -313,7 +314,7 @@ test("API client used when reading remote config", async t => {
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     setInput('languages', 'javascript');
 
-    await configUtils.initConfig(tmpDir, tmpDir);
+    await configUtils.initConfig(tmpDir, tmpDir, codeQL);
     t.assert(spyGetContents.called);
   });
 });
@@ -329,7 +330,7 @@ test("Remote config handles the case where a directory is provided", async t => 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
     try {
-      await configUtils.initConfig(tmpDir, tmpDir);
+      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference)));
@@ -350,7 +351,7 @@ test("Invalid format of remote config handled correctly", async t => {
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
     try {
-      await configUtils.initConfig(tmpDir, tmpDir);
+      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
@@ -366,7 +367,7 @@ test("No detected languages", async t => {
     mockListLanguages([]);
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir);
+      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getNoLanguagesError()));
@@ -382,7 +383,7 @@ test("Unknown languages", async t => {
     setInput('languages', 'ruby,english');
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir);
+      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getUnknownLanguagesError(['ruby', 'english'])));
@@ -400,7 +401,7 @@ function doInvalidInputTest(
       process.env['RUNNER_TEMP'] = tmpDir;
       process.env['GITHUB_WORKSPACE'] = tmpDir;
 
-      CodeQL.setCodeQL({
+      const codeQL = setCodeQL({
         resolveQueries: async function() {
           return {
             byLanguage: {},
@@ -416,7 +417,7 @@ function doInvalidInputTest(
       setInput('languages', 'javascript');
 
       try {
-        await configUtils.initConfig(tmpDir, tmpDir);
+        await configUtils.initConfig(tmpDir, tmpDir, codeQL);
         throw new Error('initConfig did not throw error');
       } catch (err) {
         t.deepEqual(err, new Error(expectedErrorMessageGenerator(inputFile)));

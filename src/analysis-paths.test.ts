@@ -16,6 +16,7 @@ test("emptyPaths", async t => {
       originalUserInput: {},
       tempDir: tmpDir,
       toolCacheDir: tmpDir,
+      codeQLCmd: '',
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env['LGTM_INDEX_INCLUDE'], undefined);
@@ -34,6 +35,7 @@ test("nonEmptyPaths", async t => {
       originalUserInput: {},
       tempDir: tmpDir,
       toolCacheDir: tmpDir,
+      codeQLCmd: '',
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env['LGTM_INDEX_INCLUDE'], 'path1\npath2');

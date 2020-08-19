@@ -37,9 +37,9 @@ interface ExtraOptions {
 
 export interface CodeQL {
   /**
-   * Get the directory where the CodeQL executable is located.
+   * Get the path of the CodeQL executable.
    */
-  getDir(): string;
+  getPath(): string;
   /**
    * Print version information about CodeQL.
    */
@@ -95,12 +95,6 @@ export interface ResolveQueriesOutput {
  * Can be overridden in tests using `setCodeQL`.
  */
 let cachedCodeQL: CodeQL | undefined = undefined;
-
-/**
- * Environment variable used to store the location of the CodeQL CLI executable.
- * Value is set by setupCodeQL and read by getCodeQL.
- */
-const CODEQL_ACTION_CMD = "CODEQL_ACTION_CMD";
 
 const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
 const CODEQL_BUNDLE_NAME = "codeql-bundle.tar.gz";
@@ -219,7 +213,6 @@ export async function setupCodeQL(): Promise<CodeQL> {
     }
 
     cachedCodeQL = getCodeQLForCmd(codeqlCmd);
-    core.exportVariable(CODEQL_ACTION_CMD, codeqlCmd);
     return cachedCodeQL;
 
   } catch (e) {
@@ -250,16 +243,24 @@ export function getCodeQLURLVersion(url: string): string {
   return s;
 }
 
-export function getCodeQL(): CodeQL {
+/**
+ * Use the CodeQL executable located at the given path.
+ */
+export function getCodeQL(cmd: string): CodeQL {
   if (cachedCodeQL === undefined) {
-    const codeqlCmd = util.getRequiredEnvParam(CODEQL_ACTION_CMD);
-    cachedCodeQL = getCodeQLForCmd(codeqlCmd);
+    cachedCodeQL = getCodeQLForCmd(cmd);
   }
   return cachedCodeQL;
 }
 
-function resolveFunction<T>(partialCodeql: Partial<CodeQL>, methodName: string): T {
+function resolveFunction<T>(
+  partialCodeql: Partial<CodeQL>,
+  methodName: string,
+  defaultImplementation?: T): T {
   if (typeof partialCodeql[methodName] !== 'function') {
+    if (defaultImplementation !== undefined) {
+      return defaultImplementation;
+    }
     const dummyMethod = () => {
       throw new Error('CodeQL ' + methodName + ' method not correctly defined');
     };
@@ -274,9 +275,9 @@ function resolveFunction<T>(partialCodeql: Partial<CodeQL>, methodName: string):
  * Accepts a partial object and any undefined methods will be implemented
  * to immediately throw an exception indicating which method is missing.
  */
-export function setCodeQL(partialCodeql: Partial<CodeQL>) {
+export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
   cachedCodeQL = {
-    getDir: resolveFunction(partialCodeql, 'getDir'),
+    getPath: resolveFunction(partialCodeql, 'getPath', () => '/tmp/dummy-path'),
     printVersion: resolveFunction(partialCodeql, 'printVersion'),
     getTracerEnv: resolveFunction(partialCodeql, 'getTracerEnv'),
     databaseInit: resolveFunction(partialCodeql, 'databaseInit'),
@@ -286,12 +287,27 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>) {
     resolveQueries: resolveFunction(partialCodeql, 'resolveQueries'),
     databaseAnalyze: resolveFunction(partialCodeql, 'databaseAnalyze')
   };
+  return cachedCodeQL;
+}
+
+/**
+ * Get the cached CodeQL object. Should only be used from tests.
+ *
+ * TODO: Work out a good way for tests to get this from the test context
+ * instead of having to have this method.
+ */
+export function getCachedCodeQL(): CodeQL {
+  if (cachedCodeQL === undefined) {
+    // Should never happen as setCodeQL is called by testing-utils.setupTests
+    throw new Error('cachedCodeQL undefined');
+  }
+  return cachedCodeQL;
 }
 
 function getCodeQLForCmd(cmd: string): CodeQL {
   return {
-    getDir: function() {
-      return path.dirname(cmd);
+    getPath: function() {
+      return cmd;
     },
     printVersion: async function() {
       await exec.exec(cmd, [

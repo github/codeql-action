@@ -116,3 +116,37 @@ test('prepareEnvironment() when a local run', t => {
 
   process.env.CODEQL_LOCAL_RUN = origLocalRun;
 });
+
+test('getExtraOptionsEnvParam() succeeds on valid JSON with invalid options (for now)', t => {
+  const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
+
+  const options = {foo: 42};
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = JSON.stringify(options);
+
+  t.deepEqual(util.getExtraOptionsEnvParam(), <any>options);
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+});
+
+
+test('getExtraOptionsEnvParam() succeeds on valid options', t => {
+  const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
+
+  const options = { database: { init: ["--debug"] } };
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS =
+    JSON.stringify(options);
+
+  t.deepEqual(util.getExtraOptionsEnvParam(), options);
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+});
+
+test('getExtraOptionsEnvParam() fails on invalid JSON', t => {
+  const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = "{{invalid-json}}";
+  t.throws(util.getExtraOptionsEnvParam);
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+});

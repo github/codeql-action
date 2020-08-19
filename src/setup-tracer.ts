@@ -200,6 +200,10 @@ async function run() {
   try {
 
     const sourceRoot = path.resolve();
+    
+    const blah = 10;
+    for (let i = 0; i <= blah; i++)
+      console.log(i)
 
     // Forward Go flags
     const goFlags = process.env['GOFLAGS'];

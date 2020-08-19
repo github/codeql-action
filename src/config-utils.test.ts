@@ -67,9 +67,9 @@ test("load empty config", async t => {
       },
     });
 
-    const config = await configUtils.initConfig();
+    const config = await configUtils.initConfig(tmpDir, tmpDir);
 
-    t.deepEqual(config, await configUtils.getDefaultConfig());
+    t.deepEqual(config, await configUtils.getDefaultConfig(tmpDir, tmpDir));
   });
 });
 
@@ -93,18 +93,18 @@ test("loading config saves config", async t => {
 
 
     // Sanity check the saved config file does not already exist
-    t.false(fs.existsSync(configUtils.getPathToParsedConfigFile()));
+    t.false(fs.existsSync(configUtils.getPathToParsedConfigFile(tmpDir)));
 
     // Sanity check that getConfig throws before we have called initConfig
-    await t.throwsAsync(configUtils.getConfig);
+    await t.throwsAsync(() => configUtils.getConfig(tmpDir));
 
-    const config1 = await configUtils.initConfig();
+    const config1 = await configUtils.initConfig(tmpDir, tmpDir);
 
     // The saved config file should now exist
-    t.true(fs.existsSync(configUtils.getPathToParsedConfigFile()));
+    t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tmpDir)));
 
     // And that same newly-initialised config should now be returned by getConfig
-    const config2 = await configUtils.getConfig();
+    const config2 = await configUtils.getConfig(tmpDir);
     t.deepEqual(config1, config2);
   });
 });
@@ -117,7 +117,7 @@ test("load input outside of workspace", async t => {
     setInput('config-file', '../input');
 
     try {
-      await configUtils.initConfig();
+      await configUtils.initConfig(tmpDir, tmpDir);
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileOutsideWorkspaceErrorMessage(path.join(tmpDir, '../input'))));
@@ -134,7 +134,7 @@ test("load non-local input with invalid repo syntax", async t => {
     setInput('config-file', 'octo-org/codeql-config@main');
 
     try {
-      await configUtils.initConfig();
+      await configUtils.initConfig(tmpDir, tmpDir);
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileRepoFormatInvalidMessage('octo-org/codeql-config@main')));
@@ -152,7 +152,7 @@ test("load non-existent input", async t => {
     setInput('languages', 'javascript');
 
     try {
-      await configUtils.initConfig();
+      await configUtils.initConfig(tmpDir, tmpDir);
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDoesNotExistErrorMessage(path.join(tmpDir, 'input'))));
@@ -207,13 +207,15 @@ test("load non-empty input", async t => {
         'paths-ignore': ['a', 'b'],
         paths: ['c/d'],
       },
+      tempDir: tmpDir,
+      toolCacheDir: tmpDir,
     };
 
     fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
-    const actualConfig = await configUtils.initConfig();
+    const actualConfig = await configUtils.initConfig(tmpDir, tmpDir);
 
     // Should exactly equal the object we constructed earlier
     t.deepEqual(actualConfig, expectedConfig);
@@ -260,7 +262,7 @@ test("default queries are used", async t => {
     setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
-    await configUtils.initConfig();
+    await configUtils.initConfig(tmpDir, tmpDir);
 
     // Check resolve queries was called correctly
     t.deepEqual(resolveQueriesArgs.length, 1);
@@ -311,7 +313,7 @@ test("API client used when reading remote config", async t => {
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     setInput('languages', 'javascript');
 
-    await configUtils.initConfig();
+    await configUtils.initConfig(tmpDir, tmpDir);
     t.assert(spyGetContents.called);
   });
 });
@@ -327,7 +329,7 @@ test("Remote config handles the case where a directory is provided", async t => 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
     try {
-      await configUtils.initConfig();
+      await configUtils.initConfig(tmpDir, tmpDir);
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference)));
@@ -348,7 +350,7 @@ test("Invalid format of remote config handled correctly", async t => {
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
     try {
-      await configUtils.initConfig();
+      await configUtils.initConfig(tmpDir, tmpDir);
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
@@ -364,7 +366,7 @@ test("No detected languages", async t => {
     mockListLanguages([]);
 
     try {
-      await configUtils.initConfig();
+      await configUtils.initConfig(tmpDir, tmpDir);
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getNoLanguagesError()));
@@ -380,7 +382,7 @@ test("Unknown languages", async t => {
     setInput('languages', 'ruby,english');
 
     try {
-      await configUtils.initConfig();
+      await configUtils.initConfig(tmpDir, tmpDir);
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getUnknownLanguagesError(['ruby', 'english'])));
@@ -414,7 +416,7 @@ function doInvalidInputTest(
       setInput('languages', 'javascript');
 
       try {
-        await configUtils.initConfig();
+        await configUtils.initConfig(tmpDir, tmpDir);
         throw new Error('initConfig did not throw error');
       } catch (err) {
         t.deepEqual(err, new Error(expectedErrorMessageGenerator(inputFile)));

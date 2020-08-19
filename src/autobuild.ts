@@ -41,7 +41,7 @@ async function run() {
       return;
     }
 
-    const config = await config_utils.getConfig();
+    const config = await config_utils.getConfig(util.getRequiredEnvParam('RUNNER_TEMP'));
 
     // Attempt to find a language to autobuild
     // We want pick the dominant language in the repo from the ones we're able to build

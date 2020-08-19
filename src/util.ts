@@ -39,6 +39,26 @@ export function getRequiredEnvParam(paramName: string): string {
   return value;
 }
 
+/**
+ * Get the extra options for the codeql commands.
+ */
+export function getExtraOptionsEnvParam(): object {
+  const varName = 'CODEQL_ACTION_EXTRA_OPTIONS';
+  const raw = process.env[varName];
+  if (raw === undefined || raw.length === 0) {
+    return {};
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error(
+      varName +
+        ' environment variable is set, but does not contain valid JSON: ' +
+        e.message
+    );
+  }
+}
+
 export function isLocalRun(): boolean {
   return !!process.env.CODEQL_LOCAL_RUN
     && process.env.CODEQL_LOCAL_RUN !== 'false'

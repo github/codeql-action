@@ -15,6 +15,27 @@ import * as defaults from './defaults.json'; // Referenced from codeql-action-sy
 import { Language } from './languages';
 import * as util from './util';
 
+type Options = (string|number|boolean)[];
+
+/**
+ * Extra command line options for the codeql commands.
+ */
+interface ExtraOptions {
+  '*'?: Options;
+  database?: {
+    '*'?: Options,
+    init?: Options,
+    'trace-command'?: Options,
+    analyze?: Options,
+    finalize?: Options
+  };
+  resolve?: {
+    '*'?: Options,
+    extractor?: Options,
+    queries?: Options
+  };
+}
+
 export interface CodeQL {
   /**
    * Get the directory where the CodeQL executable is located.
@@ -287,6 +308,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         'trace-command',
         databasePath,
         ...compilerSpecArg,
+        ...getExtraOptionsFromEnv(['database', 'trace-command']),
         process.execPath,
         path.resolve(__dirname, 'tracer-env.js'),
         envFile
@@ -300,6 +322,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         databasePath,
         '--language=' + language,
         '--source-root=' + sourceRoot,
+        ...getExtraOptionsFromEnv(['database', 'init']),
       ]);
     },
     runAutobuild: async function(language: Language) {
@@ -325,7 +348,8 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           'resolve',
           'extractor',
           '--format=json',
-          '--language=' + language
+          '--language=' + language,
+          ...getExtraOptionsFromEnv(['resolve', 'extractor']),
         ],
         {
           silent: true,
@@ -343,6 +367,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       await exec.exec(cmd, [
         'database',
         'trace-command',
+        ...getExtraOptionsFromEnv(['database', 'trace-command']),
         databasePath,
         '--',
         traceCommand
@@ -352,6 +377,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       await exec.exec(cmd, [
         'database',
         'finalize',
+        ...getExtraOptionsFromEnv(['database', 'finalize']),
         databasePath
       ]);
     },
@@ -360,7 +386,8 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         'resolve',
         'queries',
         ...queries,
-        '--format=bylanguage'
+        '--format=bylanguage',
+        ...getExtraOptionsFromEnv(['resolve', 'queries'])
       ];
       if (extraSearchPath !== undefined) {
         codeqlArgs.push('--search-path', extraSearchPath);
@@ -386,8 +413,58 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         '--format=sarif-latest',
         '--output=' + sarifFile,
         '--no-sarif-add-snippets',
+        ...getExtraOptionsFromEnv(['database', 'analyze']),
         querySuite
       ]);
     }
   };
+}
+
+/**
+ * Gets the options for `path` of `options` as an array of extra option strings.
+ */
+function getExtraOptionsFromEnv(path: string[]) {
+  let options: ExtraOptions = util.getExtraOptionsEnvParam();
+  return getExtraOptions(options, path, []);
+}
+
+/**
+ * Gets the options for `path` of `options` as an array of extra option strings.
+ *
+ * - the special terminal step name '*' in `options` matches all path steps
+ * - throws an exception if this conversion is impossible.
+ */
+export /* exported for testing */ function getExtraOptions(
+  options: any,
+  path: string[],
+  pathInfo: string[]): string[] {
+  /**
+   * Gets `options` as an array of extra option strings.
+   *
+   * - throws an exception mentioning `pathInfo` if this conversion is impossible.
+   */
+  function asExtraOptions(options: any, pathInfo: string[]): string[] {
+    if (options === undefined) {
+      return [];
+    }
+    if (!Array.isArray(options)) {
+      const msg =
+        `The extra options for '${pathInfo.join('.')}' ('${JSON.stringify(options)}') are not in an array.`;
+      throw new Error(msg);
+    }
+    return options.map(o => {
+      const t = typeof o;
+      if (t !== 'string' && t !== 'number' && t !== 'boolean') {
+        const msg =
+          `The extra option for '${pathInfo.join('.')}' ('${JSON.stringify(o)}') is not a primitive value.`;
+        throw new Error(msg);
+      }
+      return o + '';
+    });
+  }
+  let all = asExtraOptions(options?.['*'], pathInfo.concat('*'));
+  let specific = path.length === 0 ?
+    asExtraOptions(options, pathInfo) :
+    getExtraOptions(options?.[path[0]], path?.slice(1), pathInfo.concat(path[0]));
+  return all.concat(specific);
 }

@@ -134,7 +134,7 @@ async function run() {
     core.exportVariable(sharedEnv.ODASA_TRACER_CONFIGURATION, '');
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
-    const databaseFolder = util.getCodeQLDatabasesDir();
+    const databaseFolder = util.getCodeQLDatabasesDir(config.tempDir);
 
     const sarifFolder = core.getInput('output');
     fs.mkdirSync(sarifFolder, { recursive: true });

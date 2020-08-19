@@ -214,7 +214,12 @@ async function addLocalQueries(
 /**
  * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
  */
-async function addRemoteQueries(configFile: string, resultMap: { [language: string]: string[] }, queryUses: string) {
+async function addRemoteQueries(
+  configFile: string,
+  resultMap: { [language: string]: string[] },
+  queryUses: string,
+  tempDir: string) {
+
   let tok = queryUses.split('@');
   if (tok.length !== 2) {
     throw new Error(getQueryUsesInvalid(configFile, queryUses));
@@ -236,7 +241,7 @@ async function addRemoteQueries(configFile: string, resultMap: { [language: stri
   const nwo = tok[0] + '/' + tok[1];
 
   // Checkout the external repository
-  const rootOfRepo = await externalQueries.checkoutExternalRepository(nwo, ref);
+  const rootOfRepo = await externalQueries.checkoutExternalRepository(nwo, ref, tempDir);
 
   const queryPath = tok.length > 2
     ? path.join(rootOfRepo, tok.slice(2).join('/'))
@@ -257,7 +262,8 @@ async function parseQueryUses(
   configFile: string,
   languages: string[],
   resultMap: { [language: string]: string[] },
-  queryUses: string) {
+  queryUses: string,
+  tempDir: string) {
 
   queryUses = queryUses.trim();
   if (queryUses === "") {
@@ -277,7 +283,7 @@ async function parseQueryUses(
   }
 
   // Otherwise, must be a reference to another repo
-  await addRemoteQueries(configFile, resultMap, queryUses);
+  await addRemoteQueries(configFile, resultMap, queryUses, tempDir);
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -600,7 +606,7 @@ async function loadConfig(configFile: string, tempDir: string, toolCacheDir: str
       if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
         throw new Error(getQueryUsesInvalid(configFile));
       }
-      await parseQueryUses(configFile, languages, queries, query[QUERIES_USES_PROPERTY]);
+      await parseQueryUses(configFile, languages, queries, query[QUERIES_USES_PROPERTY], tempDir);
     }
   }
 

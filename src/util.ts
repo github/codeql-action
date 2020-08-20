@@ -433,3 +433,39 @@ export function getThreadsFlag(): string {
 export function getCodeQLDatabasesDir() {
   return path.resolve(getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
 }
+
+export function fileDownloadError(file: string): string {
+  return 'Error while trying to download `' + file + '`';
+}
+
+export function fileIsADirectoryError(file: string): string {
+  return '`' + file + '` is a directory';
+}
+
+export async function getFileContentsUsingAPI(owner: string, repo: string, path: string, ref: string): Promise<string> {
+  const response = await api.getActionsApiClient(true).repos.getContents({
+    owner: owner,
+    repo: repo,
+    path: path,
+    ref: ref,
+  });
+
+  const file = [owner, repo, path].join('/') + '@' + ref;
+
+  if (response.status !== 200) {
+    throw new Error(fileDownloadError(file));
+  }
+
+  if (Array.isArray(response.data)) {
+    throw new Error(fileIsADirectoryError(file));
+  }
+
+  let fileContents: string;
+  if ("content" in response.data && response.data.content !== undefined) {
+    fileContents = response.data.content;
+  } else {
+    throw new Error(fileDownloadError(file));
+  }
+
+  return Buffer.from(fileContents, 'base64').toString('binary');
+}

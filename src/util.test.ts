@@ -1,7 +1,10 @@
+import * as github from "@actions/github";
 import test from 'ava';
 import * as fs from 'fs';
 import * as os from "os";
+import sinon from 'sinon';
 
+import * as api from './api-client';
 import {setupTests} from './testing-utils';
 import * as util from './util';
 
@@ -149,4 +152,56 @@ test('getExtraOptionsEnvParam() fails on invalid JSON', t => {
   t.throws(util.getExtraOptionsEnvParam);
 
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+});
+type GetContentsResponse = { content?: string; } | {}[];
+
+function mockGetContents(content: GetContentsResponse, status: number, isDirectory = false): sinon.SinonStub<any, any> {
+  // Passing an auth token is required, so we just use a dummy value
+  let client = new github.GitHub('123');
+  const response = {
+    data: isDirectory ? [content] : content,
+    status: status
+  };
+
+  const spyGetContents = sinon.stub(client.repos, "getContents").resolves(response as any);
+  sinon.stub(api, "getApiClient").value(() => client);
+  return spyGetContents;
+}
+
+test('getFileContentsUsingAPI() throws if the request does not succeed', async t => {
+  const spyGetContents = mockGetContents({}, 400);
+  try {
+    await util.getFileContentsUsingAPI('github', 'codeql-action', 'non-existing-file', 'main');
+    throw new Error('initConfig did not throw error');
+  } catch (err) {
+    t.assert(spyGetContents.called);
+    t.deepEqual(err, new Error(util.fileDownloadError('github/codeql-action/non-existing-file@main')));
+  }
+});
+
+test('getFileContentsUsingAPI() throws if the requested file is a directory', async t => {
+  const inputFileContents = `content content content`;
+  const dummyResponse = {
+    content: Buffer.from(inputFileContents).toString("base64"),
+  };
+  const spyGetContents = mockGetContents(dummyResponse, 200, true);
+  try {
+    await util.getFileContentsUsingAPI('github', 'codeql-action', 'non-existing-file', 'main');
+    throw new Error('initConfig did not throw error');
+  } catch (err) {
+    t.assert(spyGetContents.called);
+    t.deepEqual(err, new Error(util.fileIsADirectoryError('github/codeql-action/non-existing-file@main')));
+  }
+});
+
+test('getFileContentsUsingAPI() returns the right content', async t => {
+  const inputFileContents = `content content content`;
+  const dummyResponse = {
+    content: Buffer.from(inputFileContents).toString("base64"),
+  };
+  const spyGetContents = mockGetContents(dummyResponse, 200);
+  const content = await util.getFileContentsUsingAPI('github', 'codeql-action', 'non-existing-file', 'main');
+
+  t.deepEqual(content, inputFileContents);
+  t.assert(spyGetContents.called);
 });

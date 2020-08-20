@@ -399,12 +399,8 @@ export function getConfigFileRepoFormatInvalidMessage(configFile: string): strin
   return error;
 }
 
-export function getConfigFileFormatInvalidMessage(configFile: string): string {
-  return 'The configuration file "' + configFile + '" could not be read';
-}
-
-export function getConfigFileDirectoryGivenMessage(configFile: string): string {
-  return 'The configuration file "' + configFile + '" looks like a directory, not a file';
+export function getConfigFileFormatInvalidMessage(configFile: string, reason: string): string {
+  return 'The configuration file "' + configFile + '" could not be read. Reason: ' + reason;
 }
 
 function getConfigFilePropertyError(configFile: string, property: string, error: string): string {
@@ -689,23 +685,18 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.getActionsApiClient(true).repos.getContents({
-    owner: pieces.groups.owner,
-    repo: pieces.groups.repo,
-    path: pieces.groups.path,
-    ref: pieces.groups.ref,
-  });
-
   let fileContents: string;
-  if ("content" in response.data && response.data.content !== undefined) {
-    fileContents = response.data.content;
-  } else if (Array.isArray(response.data)) {
-    throw new Error(getConfigFileDirectoryGivenMessage(configFile));
-  } else {
-    throw new Error(getConfigFileFormatInvalidMessage(configFile));
+  try {
+    fileContents = await util.getFileContentsUsingAPI(
+      pieces.groups.owner,
+      pieces.groups.repo,
+      pieces.groups.path,
+      pieces.groups.ref);
+  } catch (err) {
+    throw new Error(getConfigFileFormatInvalidMessage(configFile, err.message));
   }
 
-  return yaml.safeLoad(Buffer.from(fileContents, 'base64').toString('binary'));
+  return yaml.safeLoad(fileContents);
 }
 
 /**

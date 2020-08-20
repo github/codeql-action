@@ -7,10 +7,10 @@ import sinon from 'sinon';
 import * as api from './api-client';
 import * as CodeQL from './codeql';
 import * as configUtils from './config-utils';
-import {setupTests} from './testing-utils';
+import * as testingUtils from './testing-utils';
 import * as util from './util';
 
-setupTests(test);
+testingUtils.setupTests(test);
 
 function setInput(name: string, value: string | undefined) {
   // Transformation copied from
@@ -21,19 +21,6 @@ function setInput(name: string, value: string | undefined) {
   } else {
     delete process.env[envVar];
   }
-}
-
-type GetContentsResponse = { content?: string; } | {}[];
-
-function mockGetContents(content: GetContentsResponse): sinon.SinonStub<any, any> {
-  // Passing an auth token is required, so we just use a dummy value
-  let client = new github.GitHub('123');
-  const response = {
-    data: content
-  };
-  const spyGetContents = sinon.stub(client.repos, "getContents").resolves(response as any);
-  sinon.stub(api, "getApiClient").value(() => client);
-  return spyGetContents;
 }
 
 function mockListLanguages(languages: string[]) {
@@ -303,7 +290,7 @@ test("API client used when reading remote config", async t => {
     const dummyResponse = {
       content: Buffer.from(inputFileContents).toString("base64"),
     };
-    const spyGetContents = mockGetContents(dummyResponse);
+    const spyGetContents = testingUtils.mockGetContents(dummyResponse, 200);
 
     // Create checkout directory for remote queries repository
     fs.mkdirSync(path.join(tmpDir, 'foo/bar'), { recursive: true });
@@ -322,7 +309,7 @@ test("Remote config handles the case where a directory is provided", async t => 
     process.env['GITHUB_WORKSPACE'] = tmpDir;
 
     const dummyResponse = []; // directories are returned as arrays
-    mockGetContents(dummyResponse);
+    testingUtils.mockGetContents(dummyResponse, 200);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
@@ -330,7 +317,8 @@ test("Remote config handles the case where a directory is provided", async t => 
       await configUtils.initConfig();
       throw new Error('initConfig did not throw error');
     } catch (err) {
-      t.deepEqual(err, new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference)));
+      const reason = util.fileIsADirectoryError(repoReference);
+      t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference, reason)));
     }
   });
 });
@@ -343,7 +331,7 @@ test("Invalid format of remote config handled correctly", async t => {
     const dummyResponse = {
       // note no "content" property here
     };
-    mockGetContents(dummyResponse);
+    testingUtils.mockGetContents(dummyResponse, 400);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
     setInput('config-file', repoReference);
@@ -351,7 +339,8 @@ test("Invalid format of remote config handled correctly", async t => {
       await configUtils.initConfig();
       throw new Error('initConfig did not throw error');
     } catch (err) {
-      t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
+      const reason = util.fileDownloadError(repoReference);
+      t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference, reason)));
     }
   });
 });

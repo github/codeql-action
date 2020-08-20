@@ -1,6 +1,8 @@
+import * as github from "@actions/github";
 import {TestInterface} from 'ava';
 import sinon from 'sinon';
 
+import * as api from './api-client';
 import * as CodeQL from './codeql';
 
 type TestContext = {stdoutWrite: any, stderrWrite: any, testOutput: string, env: NodeJS.ProcessEnv};
@@ -76,4 +78,19 @@ export function setupTests(test: TestInterface<any>) {
     // Undo any modifications to the env
     process.env = t.context.env;
   });
+}
+
+export type GetContentsResponse = { content?: string; } | {}[];
+
+export function mockGetContents(content: GetContentsResponse, status: number): sinon.SinonStub<any, any> {
+  // Passing an auth token is required, so we just use a dummy value
+  let client = new github.GitHub('123');
+  const response = {
+    data: content,
+    status: status
+  };
+
+  const spyGetContents = sinon.stub(client.repos, "getContents").resolves(response as any);
+  sinon.stub(api, "getApiClient").value(() => client);
+  return spyGetContents;
 }

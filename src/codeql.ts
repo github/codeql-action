@@ -12,6 +12,7 @@ import uuidV4 from 'uuid/v4';
 
 import * as api from './api-client';
 import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
+import { exec_wrapper } from './exec_wrapper';
 import { Language } from './languages';
 import * as util from './util';
 
@@ -390,7 +391,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ]);
     },
     finalizeDatabase: async function(databasePath: string) {
-      await exec.exec(cmd, [
+      await exec_wrapper(cmd, [
         'database',
         'finalize',
         ...getExtraOptionsFromEnv(['database', 'finalize']),

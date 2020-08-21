@@ -7,6 +7,7 @@ import sinon from 'sinon';
 import * as api from './api-client';
 import { getCachedCodeQL, setCodeQL } from './codeql';
 import * as configUtils from './config-utils';
+import { Language } from "./languages";
 import {setupTests} from './testing-utils';
 import * as util from './util';
 
@@ -196,7 +197,7 @@ test("load non-empty input", async t => {
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
-      languages: ['javascript'],
+      languages: [Language.javascript],
       queries: {'javascript': ['/foo/a.ql', '/bar/b.ql']},
       pathsIgnore: ['a', 'b'],
       paths: ['c/d'],

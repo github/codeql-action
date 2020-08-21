@@ -1,7 +1,8 @@
 import * as core from '@actions/core';
 
-import { getCodeQL, isTracedLanguage } from './codeql';
+import { getCodeQL } from './codeql';
 import * as config_utils from './config-utils';
+import { isTracedLanguage } from './languages';
 import * as util from './util';
 
 interface AutobuildStatusReport extends util.StatusReportBase {

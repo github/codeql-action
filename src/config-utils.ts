@@ -4,7 +4,7 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 
 import * as api from './api-client';
-import { getCodeQL, ResolveQueriesOutput } from './codeql';
+import { CodeQL, ResolveQueriesOutput } from './codeql';
 import * as externalQueries from "./external-queries";
 import { Language, parseLanguage } from "./languages";
 import * as util from './util';
@@ -61,6 +61,20 @@ export interface Config {
    * top-level field above.
    */
   originalUserInput: UserConfig;
+  /**
+   * Directory to use for temporary files that should be
+   * deleted at the end of the job.
+   */
+  tempDir: string;
+  /**
+   * Directory to use for the tool cache.
+   * This may be persisted between jobs but this is not guaranteed.
+   */
+  toolCacheDir: string;
+  /**
+   * Path of the CodeQL executable.
+   */
+  codeQLCmd: string;
 }
 
 /**
@@ -110,13 +124,13 @@ function validateQueries(resolvedQueries: ResolveQueriesOutput) {
  * Run 'codeql resolve queries' and add the results to resultMap
  */
 async function runResolveQueries(
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   toResolve: string[],
   extraSearchPath: string | undefined,
   errorOnInvalidQueries: boolean) {
 
-  const codeQl = getCodeQL();
-  const resolvedQueries = await codeQl.resolveQueries(toResolve, extraSearchPath);
+  const resolvedQueries = await codeQL.resolveQueries(toResolve, extraSearchPath);
 
   for (const [language, queries] of Object.entries(resolvedQueries.byLanguage)) {
     if (resultMap[language] === undefined) {
@@ -133,9 +147,9 @@ async function runResolveQueries(
 /**
  * Get the set of queries included by default.
  */
-async function addDefaultQueries(languages: string[], resultMap: { [language: string]: string[] }) {
+async function addDefaultQueries(codeQL: CodeQL, languages: string[], resultMap: { [language: string]: string[] }) {
   const suites = languages.map(l => l + '-code-scanning.qls');
-  await runResolveQueries(resultMap, suites, undefined, false);
+  await runResolveQueries(codeQL, resultMap, suites, undefined, false);
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
@@ -148,6 +162,7 @@ const builtinSuites = ['security-extended', 'security-and-quality'] as const;
 async function addBuiltinSuiteQueries(
   configFile: string,
   languages: string[],
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   suiteName: string) {
 
@@ -157,7 +172,7 @@ async function addBuiltinSuiteQueries(
   }
 
   const suites = languages.map(l => l + '-' + suiteName + '.qls');
-  await runResolveQueries(resultMap, suites, undefined, false);
+  await runResolveQueries(codeQL, resultMap, suites, undefined, false);
 }
 
 /**
@@ -165,6 +180,7 @@ async function addBuiltinSuiteQueries(
  */
 async function addLocalQueries(
   configFile: string,
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   localQueryPath: string) {
 
@@ -189,13 +205,19 @@ async function addLocalQueries(
   // Get the root of the current repo to use when resolving query dependencies
   const rootOfRepo = util.getRequiredEnvParam('GITHUB_WORKSPACE');
 
-  await runResolveQueries(resultMap, [absoluteQueryPath], rootOfRepo, true);
+  await runResolveQueries(codeQL, resultMap, [absoluteQueryPath], rootOfRepo, true);
 }
 
 /**
  * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
  */
-async function addRemoteQueries(configFile: string, resultMap: { [language: string]: string[] }, queryUses: string) {
+async function addRemoteQueries(
+  configFile: string,
+  codeQL: CodeQL,
+  resultMap: { [language: string]: string[] },
+  queryUses: string,
+  tempDir: string) {
+
   let tok = queryUses.split('@');
   if (tok.length !== 2) {
     throw new Error(getQueryUsesInvalid(configFile, queryUses));
@@ -217,13 +239,13 @@ async function addRemoteQueries(configFile: string, resultMap: { [language: stri
   const nwo = tok[0] + '/' + tok[1];
 
   // Checkout the external repository
-  const rootOfRepo = await externalQueries.checkoutExternalRepository(nwo, ref);
+  const rootOfRepo = await externalQueries.checkoutExternalRepository(nwo, ref, tempDir);
 
   const queryPath = tok.length > 2
     ? path.join(rootOfRepo, tok.slice(2).join('/'))
     : rootOfRepo;
 
-  await runResolveQueries(resultMap, [queryPath], rootOfRepo, true);
+  await runResolveQueries(codeQL, resultMap, [queryPath], rootOfRepo, true);
 }
 
 /**
@@ -237,8 +259,10 @@ async function addRemoteQueries(configFile: string, resultMap: { [language: stri
 async function parseQueryUses(
   configFile: string,
   languages: string[],
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
-  queryUses: string) {
+  queryUses: string,
+  tempDir: string) {
 
   queryUses = queryUses.trim();
   if (queryUses === "") {
@@ -247,18 +271,18 @@ async function parseQueryUses(
 
   // Check for the local path case before we start trying to parse the repository name
   if (queryUses.startsWith("./")) {
-    await addLocalQueries(configFile, resultMap, queryUses.slice(2));
+    await addLocalQueries(configFile, codeQL, resultMap, queryUses.slice(2));
     return;
   }
 
   // Check for one of the builtin suites
   if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-    await addBuiltinSuiteQueries(configFile, languages, resultMap, queryUses);
+    await addBuiltinSuiteQueries(configFile, languages, codeQL, resultMap, queryUses);
     return;
   }
 
   // Otherwise, must be a reference to another repo
-  await addRemoteQueries(configFile, resultMap, queryUses);
+  await addRemoteQueries(configFile, codeQL, resultMap, queryUses, tempDir);
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -497,23 +521,26 @@ async function getLanguages(): Promise<Language[]> {
 /**
  * Get the default config for when the user has not supplied one.
  */
-export async function getDefaultConfig(): Promise<Config> {
+export async function getDefaultConfig(tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   const languages = await getLanguages();
   const queries = {};
-  await addDefaultQueries(languages, queries);
+  await addDefaultQueries(codeQL, languages, queries);
   return {
     languages: languages,
     queries: queries,
     pathsIgnore: [],
     paths: [],
     originalUserInput: {},
+    tempDir,
+    toolCacheDir,
+    codeQLCmd: codeQL.getPath(),
   };
 }
 
 /**
  * Load the config from the given file.
  */
-async function loadConfig(configFile: string): Promise<Config> {
+async function loadConfig(configFile: string, tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   let parsedYAML: UserConfig;
 
   if (isLocal(configFile)) {
@@ -551,7 +578,7 @@ async function loadConfig(configFile: string): Promise<Config> {
     disableDefaultQueries = parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY]!;
   }
   if (!disableDefaultQueries) {
-    await addDefaultQueries(languages, queries);
+    await addDefaultQueries(codeQL, languages, queries);
   }
 
   if (QUERIES_PROPERTY in parsedYAML) {
@@ -562,7 +589,7 @@ async function loadConfig(configFile: string): Promise<Config> {
       if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
         throw new Error(getQueryUsesInvalid(configFile));
       }
-      await parseQueryUses(configFile, languages, queries, query[QUERIES_USES_PROPERTY]);
+      await parseQueryUses(configFile, languages, codeQL, queries, query[QUERIES_USES_PROPERTY], tempDir);
     }
   }
 
@@ -604,7 +631,10 @@ async function loadConfig(configFile: string): Promise<Config> {
     queries,
     pathsIgnore,
     paths,
-    originalUserInput: parsedYAML
+    originalUserInput: parsedYAML,
+    tempDir,
+    toolCacheDir,
+    codeQLCmd: codeQL.getPath(),
   };
 }
 
@@ -614,16 +644,16 @@ async function loadConfig(configFile: string): Promise<Config> {
  * This will parse the config from the user input if present, or generate
  * a default config. The parsed config is then stored to a known location.
  */
-export async function initConfig(): Promise<Config> {
+export async function initConfig(tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   const configFile = core.getInput('config-file');
   let config: Config;
 
   // If no config file was provided create an empty one
   if (configFile === '') {
     core.debug('No configuration file was provided');
-    config = await getDefaultConfig();
+    config = await getDefaultConfig(tempDir, toolCacheDir, codeQL);
   } else {
-    config = await loadConfig(configFile);
+    config = await loadConfig(configFile, tempDir, toolCacheDir, codeQL);
   }
 
   // Save the config so we can easily access it again in the future
@@ -685,8 +715,8 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
 /**
  * Get the file path where the parsed config will be stored.
  */
-export function getPathToParsedConfigFile(): string {
-  return path.join(util.getRequiredEnvParam('RUNNER_TEMP'), 'config');
+export function getPathToParsedConfigFile(tempDir: string): string {
+  return path.join(tempDir, 'config');
 }
 
 /**
@@ -694,7 +724,7 @@ export function getPathToParsedConfigFile(): string {
  */
 async function saveConfig(config: Config) {
   const configString = JSON.stringify(config);
-  const configFile = getPathToParsedConfigFile();
+  const configFile = getPathToParsedConfigFile(config.tempDir);
   fs.mkdirSync(path.dirname(configFile), { recursive: true });
   fs.writeFileSync(configFile, configString, 'utf8');
   core.debug('Saved config:');
@@ -709,8 +739,8 @@ async function saveConfig(config: Config) {
  * stored to a known location. On the second and further calls, this will
  * return the contents of the parsed config from the known location.
  */
-export async function getConfig(): Promise<Config> {
-  const configFile = getPathToParsedConfigFile();
+export async function getConfig(tempDir: string): Promise<Config> {
+  const configFile = getPathToParsedConfigFile(tempDir);
   if (!fs.existsSync(configFile)) {
     throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
   }

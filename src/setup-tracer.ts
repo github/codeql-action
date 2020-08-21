@@ -4,8 +4,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as analysisPaths from './analysis-paths';
-import { CodeQL, isTracedLanguage, setupCodeQL } from './codeql';
+import { CodeQL, setupCodeQL } from './codeql';
 import * as configUtils from './config-utils';
+import { isTracedLanguage } from './languages';
 import * as util from './util';
 
 type TracerConfig = {

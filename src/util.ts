@@ -430,6 +430,6 @@ export function getThreadsFlag(): string {
 /**
  * Get the directory where CodeQL databases should be placed.
  */
-export function getCodeQLDatabasesDir() {
-  return path.resolve(getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
+export function getCodeQLDatabasesDir(tempDir: string) {
+  return path.resolve(tempDir, 'codeql_databases');
 }

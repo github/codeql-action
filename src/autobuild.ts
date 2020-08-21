@@ -42,7 +42,7 @@ async function run() {
       return;
     }
 
-    const config = await config_utils.getConfig();
+    const config = await config_utils.getConfig(util.getRequiredEnvParam('RUNNER_TEMP'));
 
     // Attempt to find a language to autobuild
     // We want pick the dominant language in the repo from the ones we're able to build
@@ -63,7 +63,7 @@ async function run() {
     }
 
     core.startGroup(`Attempting to automatically build ${language} code`);
-    const codeQL = getCodeQL();
+    const codeQL = getCodeQL(config.codeQLCmd);
     await codeQL.runAutobuild(language);
 
     core.endGroup();

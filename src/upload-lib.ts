@@ -235,7 +235,7 @@ async function uploadFiles(
   }
 
   let sarifPayload = combineSarifFiles(sarifFiles);
-  sarifPayload = fingerprints.addFingerprints(sarifPayload);
+  sarifPayload = fingerprints.addFingerprints(sarifPayload, logger);
 
   const zipped_sarif = zlib.gzipSync(sarifPayload).toString('base64');
   let checkoutURI = fileUrl(checkoutPath);

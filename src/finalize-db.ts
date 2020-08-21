@@ -2,8 +2,9 @@ import * as core from '@actions/core';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { getCodeQL, isScannedLanguage } from './codeql';
+import { getCodeQL } from './codeql';
 import * as configUtils from './config-utils';
+import { isScannedLanguage } from './languages';
 import { getActionsLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as sharedEnv from './shared-environment';

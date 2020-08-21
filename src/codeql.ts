@@ -12,6 +12,7 @@ import uuidV4 from 'uuid/v4';
 
 import * as api from './api-client';
 import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
+import { Language } from './languages';
 import * as util from './util';
 
 type Options = (string|number|boolean)[];
@@ -52,16 +53,16 @@ export interface CodeQL {
   /**
    * Run 'codeql database init'.
    */
-  databaseInit(databasePath: string, language: string, sourceRoot: string): Promise<void>;
+  databaseInit(databasePath: string, language: Language, sourceRoot: string): Promise<void>;
   /**
    * Runs the autobuilder for the given language.
    */
-  runAutobuild(language: string): Promise<void>;
+  runAutobuild(language: Language): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extracter.
    */
-  extractScannedLanguage(database: string, language: string): Promise<void>;
+  extractScannedLanguage(database: string, language: Language): Promise<void>;
   /**
    * Finalize a database using 'codeql database finalize'.
    */
@@ -314,7 +315,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ]);
       return JSON.parse(fs.readFileSync(envFile, 'utf-8'));
     },
-    databaseInit: async function(databasePath: string, language: string, sourceRoot: string) {
+    databaseInit: async function(databasePath: string, language: Language, sourceRoot: string) {
       await exec.exec(cmd, [
         'database',
         'init',
@@ -324,7 +325,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         ...getExtraOptionsFromEnv(['database', 'init']),
       ]);
     },
-    runAutobuild: async function(language: string) {
+    runAutobuild: async function(language: Language) {
       const cmdName = process.platform === 'win32' ? 'autobuild.cmd' : 'autobuild.sh';
       const autobuildCmd = path.join(path.dirname(cmd), language, 'tools', cmdName);
 
@@ -338,7 +339,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
 
       await exec.exec(autobuildCmd);
     },
-    extractScannedLanguage: async function(databasePath: string, language: string) {
+    extractScannedLanguage: async function(databasePath: string, language: Language) {
       // Get extractor location
       let extractorPath = '';
       await exec.exec(
@@ -417,14 +418,6 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ]);
     }
   };
-}
-
-export function isTracedLanguage(language: string): boolean {
-  return ['cpp', 'java', 'csharp'].includes(language);
-}
-
-export function isScannedLanguage(language: string): boolean {
-  return !isTracedLanguage(language);
 }
 
 /**

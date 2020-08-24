@@ -412,6 +412,37 @@ test("Multiple queries can be specified in workflow file, no config file require
   });
 });
 
+test("Invalid queries in workflow file handled correctly", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    setInput('queries', 'foo/bar@v1@v3');
+    setInput('languages', 'javascript');
+
+    // This function just needs to be type-correct; it doesn't need to do anything,
+    // since we're deliberately passing in invalid data
+    CodeQL.setCodeQL({
+      resolveQueries: async function(_queries: string[], _extraSearchPath: string | undefined) {
+        return {
+          byLanguage: {
+            'javascript': {},
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    try {
+      await configUtils.initConfig();
+      t.fail('initConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3")));
+    }
+  });
+});
+
 test("API client used when reading remote config", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;

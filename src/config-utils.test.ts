@@ -254,7 +254,7 @@ test("default queries are used", async t => {
   });
 });
 
-test("Default queries and those from config file can be overridden in action file", async t => {
+test("Queries from config file can be overridden in workflow file", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
@@ -267,7 +267,7 @@ test("Default queries and those from config file can be overridden in action fil
     fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
     setInput('config-file', 'input');
 
-    // This config item should take precedence over the config file and the default queries.
+    // This config item should take precedence over the config file but shouldn't affect the default queries.
     setInput('queries', './override');
 
     fs.mkdirSync(path.join(tmpDir, 'foo'));
@@ -297,19 +297,20 @@ test("Default queries and those from config file can be overridden in action fil
     const config = await configUtils.initConfig();
 
     // Check resolveQueries was called correctly
-    // It'll be called once for the default queries, once for './foo' (from the config file),
-    // and then finally for './override'
-    t.deepEqual(resolveQueriesArgs.length, 3);
-    t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
-    t.regex(resolveQueriesArgs[2].queries[0], /.*\/override$/);
+    // It'll be called once for the default queries and once for `./override`,
+    // but won't be called for './foo' from the config file.
+    t.deepEqual(resolveQueriesArgs.length, 2);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/override$/);
 
-    // Now check that the end result contains only the override query, not the others
-    t.deepEqual(config.queries['javascript'].length, 1);
-    t.regex(config.queries['javascript'][0], /.*\/override$/);
+    // Now check that the end result contains only the default queries and the override query
+    t.deepEqual(config.queries['javascript'].length, 2);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/override$/);
   });
 });
 
-test("Multiple overriding queries can be specified in action file", async t => {
+test("Multiple queries can be specified in workflow file, no config file required", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
     process.env['GITHUB_WORKSPACE'] = tmpDir;
@@ -317,7 +318,6 @@ test("Multiple overriding queries can be specified in action file", async t => {
     fs.mkdirSync(path.join(tmpDir, 'override1'));
     fs.mkdirSync(path.join(tmpDir, 'override2'));
 
-    // This config item should take precedence.
     setInput('queries', './override1,./override2');
 
     const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
@@ -345,17 +345,18 @@ test("Multiple overriding queries can be specified in action file", async t => {
 
     // Check resolveQueries was called correctly:
     // It'll be called once for the default queries,
-    // and then once for each of the two overrides
+    // and then once for each of the two queries from the workflow
     t.deepEqual(resolveQueriesArgs.length, 3);
     t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
     t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
     t.regex(resolveQueriesArgs[1].queries[0], /.*\/override1$/);
     t.regex(resolveQueriesArgs[2].queries[0], /.*\/override2$/);
 
-    // Now check that the end result contains only the override queries, not the defaults
-    t.deepEqual(config.queries['javascript'].length, 2);
-    t.regex(config.queries['javascript'][0], /.*\/override1$/);
-    t.regex(config.queries['javascript'][1], /.*\/override2$/);
+    // Now check that the end result contains both the queries from the workflow, as well as the defaults
+    t.deepEqual(config.queries['javascript'].length, 3);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/override1$/);
+    t.regex(config.queries['javascript'][2], /.*\/override2$/);
   });
 });
 

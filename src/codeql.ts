@@ -49,7 +49,7 @@ export interface CodeQL {
    * Run 'codeql database trace-command' on 'tracer-env.js' and parse
    * the result to get environment variables set by CodeQL.
    */
-  getTracerEnv(databasePath: string, compilerSpec: string | undefined): Promise<{ [key: string]: string }>;
+  getTracerEnv(databasePath: string): Promise<{ [key: string]: string }>;
   /**
    * Run 'codeql database init'.
    */
@@ -316,14 +316,12 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         '--format=json'
       ]);
     },
-    getTracerEnv: async function(databasePath: string, compilerSpec: string | undefined) {
+    getTracerEnv: async function(databasePath: string) {
       let envFile = path.resolve(databasePath, 'working', 'env.tmp');
-      const compilerSpecArg = compilerSpec ? ["--compiler-spec=" + compilerSpec] : [];
       await exec.exec(cmd, [
         'database',
         'trace-command',
         databasePath,
-        ...compilerSpecArg,
         ...getExtraOptionsFromEnv(['database', 'trace-command']),
         process.execPath,
         path.resolve(__dirname, 'tracer-env.js'),

@@ -254,6 +254,58 @@ test("default queries are used", async t => {
   });
 });
 
+test("Queries can be specified in config file", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo`;
+
+    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+    setInput('config-file', 'input');
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    CodeQL.setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test by seeing which returned items are in the final
+        // configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    setInput('languages', 'javascript');
+
+    const config = await configUtils.initConfig();
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries
+    // and once for `./foo` from the config file.
+    t.deepEqual(resolveQueriesArgs.length, 2);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/foo$/);
+
+    // Now check that the end result contains the default queries and the query from config
+    t.deepEqual(config.queries['javascript'].length, 2);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/foo$/);
+  });
+});
+
 test("Queries from config file can be overridden in workflow file", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;

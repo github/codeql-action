@@ -104,6 +104,10 @@ async function uploadPayload(
       // We avoid marking the job as failed to avoid breaking CI workflows.
       throw new Error('Upload failed (' + requestID + '): (' + statusCode + ') ' + JSON.stringify(response.data));
     }
+
+    console.log("X-RateLimit-Limit = " + response.headers["X-RateLimit-Limit"]);
+    console.log("X-RateLimit-Remaining = " + response.headers["X-RateLimit-Remaining"]);
+    throw new Error('Abort here for testing purposes...');
   }
 
   // This case shouldn't ever happen as the final iteration of the loop

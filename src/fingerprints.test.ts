@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as fingerprints from './fingerprints';
+import { getCLILogger } from './logging';
 import {setupTests} from './testing-utils';
 
 setupTests(test);
@@ -115,7 +116,7 @@ test('hash', (t: ava.Assertions) => {
 function testResolveUriToFile(uri: any, index: any, artifactsURIs: any[]) {
   const location = { "uri": uri, "index": index };
   const artifacts = artifactsURIs.map(uri => ({ "location": { "uri": uri } }));
-  return fingerprints.resolveUriToFile(location, artifacts);
+  return fingerprints.resolveUriToFile(location, artifacts, getCLILogger());
 }
 
 test('resolveUriToFile', t => {
@@ -174,7 +175,7 @@ test('addFingerprints', t => {
   // The URIs in the SARIF files resolve to files in the testdata directory
   process.env['GITHUB_WORKSPACE'] = path.normalize(__dirname + '/../src/testdata');
 
-  t.deepEqual(fingerprints.addFingerprints(input), expected);
+  t.deepEqual(fingerprints.addFingerprints(input, getCLILogger()), expected);
 });
 
 test('missingRegions', t => {
@@ -189,5 +190,5 @@ test('missingRegions', t => {
   // The URIs in the SARIF files resolve to files in the testdata directory
   process.env['GITHUB_WORKSPACE'] = path.normalize(__dirname + '/../src/testdata');
 
-  t.deepEqual(fingerprints.addFingerprints(input), expected);
+  t.deepEqual(fingerprints.addFingerprints(input, getCLILogger()), expected);
 });

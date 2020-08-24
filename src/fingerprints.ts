@@ -1,6 +1,7 @@
-import * as core from '@actions/core';
 import * as fs from 'fs';
 import Long from 'long';
+
+import { Logger } from './logging';
 
 const tab = '\t'.charCodeAt(0);
 const space = ' '.charCodeAt(0);
@@ -124,7 +125,7 @@ export function hash(callback: hashCallback, input: string) {
 
 // Generate a hash callback function that updates the given result in-place
 // when it recieves a hash for the correct line number. Ignores hashes for other lines.
-function locationUpdateCallback(result: any, location: any): hashCallback {
+function locationUpdateCallback(result: any, location: any, logger: Logger): hashCallback {
   let locationStartLine = location.physicalLocation?.region?.startLine;
   if (locationStartLine === undefined) {
     // We expect the region section to be present, but it can be absent if the
@@ -148,7 +149,7 @@ function locationUpdateCallback(result: any, location: any): hashCallback {
     if (!existingFingerprint) {
       result.partialFingerprints.primaryLocationLineHash = hash;
     } else if (existingFingerprint !== hash) {
-      core.warning('Calculated fingerprint of ' + hash +
+      logger.warning('Calculated fingerprint of ' + hash +
         ' for file ' + location.physicalLocation.artifactLocation.uri +
         ' line ' + lineNumber +
         ', but found existing inconsistent fingerprint value ' + existingFingerprint);
@@ -160,14 +161,14 @@ function locationUpdateCallback(result: any, location: any): hashCallback {
 // the source file so we can hash it.
 // If possible returns a absolute file path for the source file,
 // or if not possible then returns undefined.
-export function resolveUriToFile(location: any, artifacts: any[]): string | undefined {
+export function resolveUriToFile(location: any, artifacts: any[], logger: Logger): string | undefined {
   // This may be referencing an artifact
   if (!location.uri && location.index !== undefined) {
     if (typeof location.index !== 'number' ||
       location.index < 0 ||
       location.index >= artifacts.length ||
       typeof artifacts[location.index].location !== 'object') {
-      core.debug(`Ignoring location as URI "${location.index}" is invalid`);
+      logger.debug(`Ignoring location as URI "${location.index}" is invalid`);
       return undefined;
     }
     location = artifacts[location.index].location;
@@ -175,7 +176,7 @@ export function resolveUriToFile(location: any, artifacts: any[]): string | unde
 
   // Get the URI and decode
   if (typeof location.uri !== 'string') {
-    core.debug(`Ignoring location as index "${location.uri}" is invalid`);
+    logger.debug(`Ignoring location as index "${location.uri}" is invalid`);
     return undefined;
   }
   let uri = decodeURIComponent(location.uri);
@@ -186,14 +187,14 @@ export function resolveUriToFile(location: any, artifacts: any[]): string | unde
     uri = uri.substring(fileUriPrefix.length);
   }
   if (uri.indexOf('://') !== -1) {
-    core.debug(`Ignoring location URI "${uri}" as the scheme is not recognised`);
+    logger.debug(`Ignoring location URI "${uri}" as the scheme is not recognised`);
     return undefined;
   }
 
   // Discard any absolute paths that aren't in the src root
   const srcRootPrefix = process.env['GITHUB_WORKSPACE'] + '/';
   if (uri.startsWith('/') && !uri.startsWith(srcRootPrefix)) {
-    core.debug(`Ignoring location URI "${uri}" as it is outside of the src root`);
+    logger.debug(`Ignoring location URI "${uri}" as it is outside of the src root`);
     return undefined;
   }
 
@@ -206,7 +207,7 @@ export function resolveUriToFile(location: any, artifacts: any[]): string | unde
 
   // Check the file exists
   if (!fs.existsSync(uri)) {
-    core.debug(`Unable to compute fingerprint for non-existent file: ${uri}`);
+    logger.debug(`Unable to compute fingerprint for non-existent file: ${uri}`);
     return undefined;
   }
 
@@ -215,7 +216,7 @@ export function resolveUriToFile(location: any, artifacts: any[]): string | unde
 
 // Compute fingerprints for results in the given sarif file
 // and return an updated sarif file contents.
-export function addFingerprints(sarifContents: string): string {
+export function addFingerprints(sarifContents: string, logger: Logger): string {
   let sarif = JSON.parse(sarifContents);
 
   // Gather together results for the same file and construct
@@ -229,18 +230,18 @@ export function addFingerprints(sarifContents: string): string {
       // Check the primary location is defined correctly and is in the src root
       const primaryLocation = (result.locations || [])[0];
       if (!primaryLocation?.physicalLocation?.artifactLocation) {
-        core.debug(`Unable to compute fingerprint for invalid location: ${JSON.stringify(primaryLocation)}`);
+        logger.debug(`Unable to compute fingerprint for invalid location: ${JSON.stringify(primaryLocation)}`);
         continue;
       }
 
-      const filepath = resolveUriToFile(primaryLocation.physicalLocation.artifactLocation, artifacts);
+      const filepath = resolveUriToFile(primaryLocation.physicalLocation.artifactLocation, artifacts, logger);
       if (!filepath) {
         continue;
       }
       if (!callbacksByFile[filepath]) {
         callbacksByFile[filepath] = [];
       }
-      callbacksByFile[filepath].push(locationUpdateCallback(result, primaryLocation));
+      callbacksByFile[filepath].push(locationUpdateCallback(result, primaryLocation, logger));
     }
   }
 

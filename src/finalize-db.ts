@@ -2,8 +2,9 @@ import * as core from '@actions/core';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { getCodeQL, isScannedLanguage } from './codeql';
+import { getCodeQL } from './codeql';
 import * as configUtils from './config-utils';
+import { isScannedLanguage } from './languages';
 import { getActionsLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as sharedEnv from './shared-environment';
@@ -58,7 +59,7 @@ async function sendStatusReport(
 }
 
 async function createdDBForScannedLanguages(databaseFolder: string, config: configUtils.Config) {
-  const codeql = getCodeQL();
+  const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (isScannedLanguage(language)) {
       core.startGroup('Extracting ' + language);
@@ -71,7 +72,7 @@ async function createdDBForScannedLanguages(databaseFolder: string, config: conf
 async function finalizeDatabaseCreation(databaseFolder: string, config: configUtils.Config) {
   await createdDBForScannedLanguages(databaseFolder, config);
 
-  const codeql = getCodeQL();
+  const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     core.startGroup('Finalizing ' + language);
     await codeql.finalizeDatabase(path.join(databaseFolder, language));
@@ -85,7 +86,7 @@ async function runQueries(
   sarifFolder: string,
   config: configUtils.Config): Promise<QueriesStatusReport> {
 
-  const codeql = getCodeQL();
+  const codeql = getCodeQL(config.codeQLCmd);
   for (let language of fs.readdirSync(databaseFolder)) {
     core.startGroup('Analyzing ' + language);
 
@@ -129,12 +130,12 @@ async function run() {
     if (!await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
       return;
     }
-    const config = await configUtils.getConfig();
+    const config = await configUtils.getConfig(util.getRequiredEnvParam('RUNNER_TEMP'));
 
     core.exportVariable(sharedEnv.ODASA_TRACER_CONFIGURATION, '');
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
-    const databaseFolder = util.getCodeQLDatabasesDir();
+    const databaseFolder = util.getCodeQLDatabasesDir(config.tempDir);
 
     const sarifFolder = core.getInput('output');
     fs.mkdirSync(sarifFolder, { recursive: true });

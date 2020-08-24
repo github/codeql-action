@@ -1,10 +1,10 @@
 {
-  "name": "codeql-packaging",
+  "name": "codeql-runner",
   "version": "0.0.0",
   "private": true,
-  "description": "CodeQL action - CLI packaging",
+  "description": "CodeQL runner",
   "scripts": {
-    "build-cli": "webpack --mode production && pkg dist/code-scanning-cli.js  --out-path dist"
+    "build-runner": "webpack --mode production && pkg dist/codeql-runner.js  --out-path dist"
   },
   "license": "MIT",
   "dependencies": {},

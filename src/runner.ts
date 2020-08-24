@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as path from 'path';
 
-import { getCLILogger } from './logging';
+import { getRunnerLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
 
@@ -40,7 +40,7 @@ function parseGithubApiUrl(inputUrl: string): string {
   }
 }
 
-const logger = getCLILogger();
+const logger = getRunnerLogger();
 
 program
   .command('upload')
@@ -66,7 +66,7 @@ program
         undefined,
         cmd.githubAuth,
         parseGithubApiUrl(cmd.githubUrl),
-        'cli',
+        'runner',
         logger);
     } catch (e) {
       logger.error('Upload failed');

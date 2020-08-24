@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: './src/cli.ts',
+  entry: '../src/cli.ts',
   module: {
     rules: [
       {
@@ -17,7 +17,7 @@ module.exports = {
   },
   output: {
     filename: 'code-scanning-cli.js',
-    path: path.resolve(__dirname, 'cli'),
+    path: path.resolve(__dirname, 'dist'),
   },
   optimization: {
 		minimize: false

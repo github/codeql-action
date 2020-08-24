@@ -472,18 +472,33 @@ async function getLanguages(): Promise<string[]> {
 }
 
 /**
+ * Returns true if queries were provided in the workflow file
+ * (and thus added), otherwise false
+ */
+function addQueriesFromWorkflowIfRequired(
+  configFile: string,
+  languages: string[],
+  resultMap: { [language: string]: string[] }
+): boolean {
+  const queryUses = core.getInput('queries');
+  if (queryUses) {
+    queryUses.split(',').forEach(async query => {
+      await parseQueryUses(configFile, languages, resultMap, query);
+    });
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Get the default config for when the user has not supplied one.
  */
 export async function getDefaultConfig(): Promise<Config> {
   const languages = await getLanguages();
   const queries = {};
   await addDefaultQueries(languages, queries);
-  const queryUses = core.getInput('queries');
-  if (queryUses) {
-    queryUses.split(',').forEach(async query => {
-      await parseQueryUses('', languages, queries, query);
-    });
-  }
+  addQueriesFromWorkflowIfRequired('', languages, queries);
 
   return {
     languages: languages,
@@ -545,12 +560,8 @@ async function loadConfig(configFile: string): Promise<Config> {
 
   // If queries were provided using `with` in the action configuration,
   // they should take precedence over the queries in the config file
-  const queryUses = core.getInput('queries');
-  if (queryUses) {
-    queryUses.split(',').forEach(async query => {
-      await parseQueryUses(configFile, languages, queries, query);
-    });
-  } else if (QUERIES_PROPERTY in parsedYAML) {
+  const addedQueriesFromAction = addQueriesFromWorkflowIfRequired(configFile, languages, queries);
+  if (!addedQueriesFromAction && QUERIES_PROPERTY in parsedYAML) {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));
     }

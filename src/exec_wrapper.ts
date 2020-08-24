@@ -11,14 +11,22 @@ export async function exec_wrapper(commandLine: string, args?: string[], options
   let listeners = {
     stdout: (data: Buffer) => {
       stdout += data.toString();
-      // NB change behaviour to only write to stdout/err if no listener passed
-      process.stdout.write(data);
-      originalListener?.stdout?.(data);
+      if (originalListener?.stdout !== undefined) {
+        originalListener.stdout(data);
+      } else {
+        // if no stdout listener was originally defined then match behaviour of exec.exec
+        process.stdout.write(data);
+      }
+
     },
     stderr: (data: Buffer) => {
       stderr += data.toString();
-      process.stderr.write(data);
-      originalListener?.stderr?.(data);
+      if (originalListener?.stderr !== undefined) {
+        originalListener.stderr(data);
+      } else {
+        // if no stderr listener was originally defined then match behaviour of exec.exec
+        process.stderr.write(data);
+      }
     }
   };
 

@@ -49,6 +49,10 @@ Running locally will generate the CodeQL database and run all the queries, but i
 
 As well as the unit tests (see _Common tasks_ above), there are integration tests, defined in `.github/workflows/integration-testing.yml`.  These are run by a CI check.  Depending on the change you’re making, you may want to add a test to this file or extend an existing one.
 
+### Building the CLI
+
+Navigate to the `packaging` directory and run `npm install` to install dependencies needed only for compiling the CLI. Run `npm run build-cli` to output files to the `packaging/dist` directory.
+
 ## Submitting a pull request
 
 1. [Fork][fork] and clone the repository

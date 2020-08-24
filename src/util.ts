@@ -39,6 +39,26 @@ export function getRequiredEnvParam(paramName: string): string {
   return value;
 }
 
+/**
+ * Get the extra options for the codeql commands.
+ */
+export function getExtraOptionsEnvParam(): object {
+  const varName = 'CODEQL_ACTION_EXTRA_OPTIONS';
+  const raw = process.env[varName];
+  if (raw === undefined || raw.length === 0) {
+    return {};
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error(
+      varName +
+        ' environment variable is set, but does not contain valid JSON: ' +
+        e.message
+    );
+  }
+}
+
 export function isLocalRun(): boolean {
   return !!process.env.CODEQL_LOCAL_RUN
     && process.env.CODEQL_LOCAL_RUN !== 'false'
@@ -375,27 +395,34 @@ export function getMemoryFlag(): string {
 }
 
 /**
- * Get the codeql `--threads` value specified for the `threads` input. The value
- * defaults to 1. The value will be capped to the number of available CPUs.
+ * Get the codeql `--threads` value specified for the `threads` input.
+ * If not value was specified, all available threads will be used.
+ *
+ * The value will be capped to the number of available CPUs.
  *
  * @returns string
  */
 export function getThreadsFlag(): string {
-  let numThreads = 1;
+  let numThreads: number;
   const numThreadsString = core.getInput("threads");
+  const maxThreads = os.cpus().length;
   if (numThreadsString) {
     numThreads = Number(numThreadsString);
     if (Number.isNaN(numThreads)) {
       throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
     }
-    const maxThreads = os.cpus().length;
     if (numThreads > maxThreads) {
+      core.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
       numThreads = maxThreads;
     }
     const minThreads = -maxThreads;
     if (numThreads < minThreads) {
+      core.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
       numThreads = minThreads;
     }
+  } else {
+    // Default to using all threads
+    numThreads = maxThreads;
   }
   return `--threads=${numThreads}`;
 }
@@ -403,6 +430,6 @@ export function getThreadsFlag(): string {
 /**
  * Get the directory where CodeQL databases should be placed.
  */
-export function getCodeQLDatabasesDir() {
-  return path.resolve(getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
+export function getCodeQLDatabasesDir(tempDir: string) {
+  return path.resolve(tempDir, 'codeql_databases');
 }

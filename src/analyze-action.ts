@@ -58,36 +58,35 @@ async function sendStatusReport(
   await util.sendStatusReport(statusReport);
 }
 
-async function createdDBForScannedLanguages(databaseFolder: string, config: configUtils.Config) {
+async function createdDBForScannedLanguages(config: configUtils.Config) {
   const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (isScannedLanguage(language)) {
       core.startGroup('Extracting ' + language);
-      await codeql.extractScannedLanguage(path.join(databaseFolder, language), language);
+      await codeql.extractScannedLanguage(util.getCodeQLDatabasePath(config.tempDir, language), language);
       core.endGroup();
     }
   }
 }
 
-async function finalizeDatabaseCreation(databaseFolder: string, config: configUtils.Config) {
-  await createdDBForScannedLanguages(databaseFolder, config);
+async function finalizeDatabaseCreation(config: configUtils.Config) {
+  await createdDBForScannedLanguages(config);
 
   const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     core.startGroup('Finalizing ' + language);
-    await codeql.finalizeDatabase(path.join(databaseFolder, language));
+    await codeql.finalizeDatabase(util.getCodeQLDatabasePath(config.tempDir, language));
     core.endGroup();
   }
 }
 
 // Runs queries and creates sarif files in the given folder
 async function runQueries(
-  databaseFolder: string,
   sarifFolder: string,
   config: configUtils.Config): Promise<QueriesStatusReport> {
 
   const codeql = getCodeQL(config.codeQLCmd);
-  for (let language of fs.readdirSync(databaseFolder)) {
+  for (let language of config.languages) {
     core.startGroup('Analyzing ' + language);
 
     const queries = config.queries[language] || [];
@@ -96,16 +95,17 @@ async function runQueries(
     }
 
     try {
+      const databasePath = util.getCodeQLDatabasePath(config.tempDir, language);
       // Pass the queries to codeql using a file instead of using the command
       // line to avoid command line length restrictions, particularly on windows.
-      const querySuite = path.join(databaseFolder, language + '-queries.qls');
+      const querySuite = databasePath + '-queries.qls';
       const querySuiteContents = queries.map(q => '- query: ' + q).join('\n');
       fs.writeFileSync(querySuite, querySuiteContents);
       core.debug('Query suite file for ' + language + '...\n' + querySuiteContents);
 
       const sarifFile = path.join(sarifFolder, language + '.sarif');
 
-      await codeql.databaseAnalyze(path.join(databaseFolder, language), sarifFile, querySuite);
+      await codeql.databaseAnalyze(databasePath, sarifFile, querySuite);
 
       core.debug('SARIF results for database ' + language + ' created at "' + sarifFile + '"');
       core.endGroup();
@@ -135,16 +135,14 @@ async function run() {
     core.exportVariable(sharedEnv.ODASA_TRACER_CONFIGURATION, '');
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
-    const databaseFolder = util.getCodeQLDatabasesDir(config.tempDir);
-
     const sarifFolder = core.getInput('output');
     fs.mkdirSync(sarifFolder, { recursive: true });
 
     core.info('Finalizing database creation');
-    await finalizeDatabaseCreation(databaseFolder, config);
+    await finalizeDatabaseCreation(config);
 
     core.info('Analyzing database');
-    queriesStats = await runQueries(databaseFolder, sarifFolder, config);
+    queriesStats = await runQueries(sarifFolder, config);
 
     if ('true' === core.getInput('upload')) {
       uploadStats = await upload_lib.upload(

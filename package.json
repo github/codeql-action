@@ -5,7 +5,6 @@
   "description": "CodeQL action",
   "scripts": {
     "build": "tsc",
-    "build-cli": "webpack --mode production",
     "test": "ava src/** --serial --verbose",
     "lint": "tslint -p . -c tslint.json 'src/**/*.ts'",
     "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"

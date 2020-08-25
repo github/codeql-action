@@ -9,12 +9,24 @@
 import javascript
 
 /**
+ * Although these libraries are designed for use on actions they
+ * have been deemed safe to use outside of actions as well.
+ */
+class SafeActionLibs extends string {
+  SafeActionLibs() {
+    this = "@actions/http-client" or
+    this = "@actions/exec"
+  }
+}
+
+/**
  * An import from a library that is meant for GitHub Actions and
  * we do not want to be using outside of actions.
  */
 class ActionsLibImport extends ImportDeclaration {
   ActionsLibImport() {
-    getImportedPath().getValue().matches("@actions/%")
+    getImportedPath().getValue().matches("@actions/%") and
+    not getImportedPath().getValue() instanceof SafeActionLibs
   }
 
   string getName() {

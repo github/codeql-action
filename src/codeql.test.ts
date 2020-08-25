@@ -4,6 +4,7 @@ import nock from 'nock';
 import * as path from 'path';
 
 import * as codeql from './codeql';
+import { getRunnerLogger } from './logging';
 import {setupTests} from './testing-utils';
 import * as util from './util';
 
@@ -12,12 +13,6 @@ setupTests(test);
 test('download codeql bundle cache', async t => {
 
   await util.withTmpDir(async tmpDir => {
-
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    process.env['RUNNER_TEMP'] = path.join(tmpDir, 'temp');
-    process.env['RUNNER_TOOL_CACHE'] = path.join(tmpDir, 'cache');
-
     const versions = ['20200601', '20200610'];
 
     for (let i = 0; i < versions.length; i++) {
@@ -27,10 +22,14 @@ test('download codeql bundle cache', async t => {
         .get(`/download/codeql-bundle-${version}/codeql-bundle.tar.gz`)
         .replyWithFile(200, path.join(__dirname, `/../src/testdata/codeql-bundle.tar.gz`));
 
-
-      process.env['INPUT_TOOLS'] = `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`;
-
-      await codeql.setupCodeQL();
+      await codeql.setupCodeQL(
+        `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
+        'token',
+        'https://github.example.com',
+        tmpDir,
+        tmpDir,
+        'runner',
+        getRunnerLogger());
 
       t.assert(toolcache.find('CodeQL', `0.0.0-${version}`));
     }
@@ -56,7 +55,7 @@ test('parse codeql bundle url version', t => {
     const url = `https://github.com/.../codeql-bundle-${version}/...`;
 
     try {
-      const parsedVersion = codeql.getCodeQLURLVersion(url);
+      const parsedVersion = codeql.getCodeQLURLVersion(url, getRunnerLogger());
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
       t.fail(e.message);

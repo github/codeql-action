@@ -1,12 +1,9 @@
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
-import * as fs from 'fs';
-import * as path from 'path';
 
-import * as analysisPaths from './analysis-paths';
-import { CodeQL, setupCodeQL } from './codeql';
+import { CodeQL } from './codeql';
 import * as configUtils from './config-utils';
-import { getCombinedTracerConfig } from './tracer-config';
+import { initCodeQL, initConfig, runInit } from './init';
+import { getActionsLogger } from './logging';
 import * as util from './util';
 
 interface InitSuccessStatusReport extends util.StatusReportBase {
@@ -49,8 +46,8 @@ async function sendSuccessStatusReport(startedAt: Date, config: configUtils.Conf
 }
 
 async function run() {
-
   const startedAt = new Date();
+  const logger = getActionsLogger();
   let config: configUtils.Config;
   let codeql: CodeQL;
 
@@ -60,18 +57,25 @@ async function run() {
       return;
     }
 
-    core.startGroup('Setup CodeQL tools');
-    codeql = await setupCodeQL();
-    await codeql.printVersion();
-    core.endGroup();
-
-    core.startGroup('Load language configuration');
-    config = await configUtils.initConfig(
+    codeql = await initCodeQL(
+      core.getInput('tools'),
+      core.getInput('token'),
+      util.getRequiredEnvParam('GITHUB_API_URL'),
       util.getRequiredEnvParam('RUNNER_TEMP'),
       util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
-      codeql);
-    analysisPaths.includeAndExcludeAnalysisPaths(config);
-    core.endGroup();
+      'actions',
+      logger);
+    config = await initConfig(
+      core.getInput('languages'),
+      core.getInput('queries'),
+      core.getInput('config-file'),
+      util.getRequiredEnvParam('RUNNER_TEMP'),
+      util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
+      codeql,
+      util.getRequiredEnvParam('GITHUB_WORKSPACE'),
+      core.getInput('token'),
+      util.getRequiredEnvParam('GITHUB_API_URL'),
+      logger);
 
   } catch (e) {
     core.setFailed(e.message);
@@ -81,8 +85,6 @@ async function run() {
   }
 
   try {
-
-    const sourceRoot = path.resolve();
 
     // Forward Go flags
     const goFlags = process.env['GOFLAGS'];
@@ -95,27 +97,8 @@ async function run() {
     const codeqlRam = process.env['CODEQL_RAM'] || '6500';
     core.exportVariable('CODEQL_RAM', codeqlRam);
 
-    fs.mkdirSync(util.getCodeQLDatabasesDir(config.tempDir), { recursive: true });
-
-    // TODO: replace this code once CodeQL supports multi-language tracing
-    for (let language of config.languages) {
-      // Init language database
-      await codeql.databaseInit(util.getCodeQLDatabasePath(config.tempDir, language), language, sourceRoot);
-    }
-
-    const tracerConfig = await getCombinedTracerConfig(config, codeql);
+    const tracerConfig = await runInit(codeql, config);
     if (tracerConfig !== undefined) {
-      if (process.platform === 'win32') {
-        await exec.exec(
-          'powershell',
-          [
-            path.resolve(__dirname, '..', 'src', 'inject-tracer.ps1'),
-            path.resolve(path.dirname(codeql.getPath()), 'tools', 'win64', 'tracer.exe'),
-          ],
-          { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } });
-      }
-
-      // NB: in CLI mode these will be output to a file rather than exported with core.exportVariable
       Object.entries(tracerConfig.env).forEach(([key, value]) => core.exportVariable(key, value));
     }
 

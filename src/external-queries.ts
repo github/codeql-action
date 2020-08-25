@@ -6,7 +6,12 @@ import * as path from 'path';
 /**
  * Check out repository at the given ref, and return the directory of the checkout.
  */
-export async function checkoutExternalRepository(repository: string, ref: string, tempDir: string): Promise<string> {
+export async function checkoutExternalRepository(
+  repository: string,
+  ref: string,
+  githubUrl: string,
+  tempDir: string): Promise<string> {
+
   core.info('Checking out ' + repository);
 
   const checkoutLocation = path.join(tempDir, repository, ref);
@@ -17,7 +22,7 @@ export async function checkoutExternalRepository(repository: string, ref: string
   }
 
   if (!fs.existsSync(checkoutLocation)) {
-    const repoURL = 'https://github.com/' + repository + '.git';
+    const repoURL = githubUrl + '/' + repository + '.git';
     await exec.exec('git', ['clone', repoURL, checkoutLocation]);
     await exec.exec('git', [
       '--work-tree=' + checkoutLocation,

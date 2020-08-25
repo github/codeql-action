@@ -14,6 +14,7 @@ test("checkoutExternalQueries", async t => {
     await externalQueries.checkoutExternalRepository(
       "github/codeql-go",
       ref,
+      'https://github.com',
       tmpDir);
 
     // COPYRIGHT file existed in df4c6869212341b601005567381944ed90906b6b but not in the default branch

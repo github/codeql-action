@@ -9,24 +9,19 @@ import { Language } from './languages';
 import * as sharedEnv from './shared-environment';
 
 /**
+ * Are we running on actions, or not.
+ */
+export type Mode = 'actions' | 'runner';
+
+/**
+ * The URL for github.com.
+ */
+export const GITHUB_DOTCOM_URL = "https://github.com";
+
+/**
  * The API URL for github.com.
  */
 export const GITHUB_DOTCOM_API_URL = "https://api.github.com";
-
-/**
- * Get the API URL for the GitHub instance we are connected to.
- * May be for github.com or for an enterprise instance.
- */
-export function getInstanceAPIURL(): string {
-  return process.env["GITHUB_API_URL"] || GITHUB_DOTCOM_API_URL;
-}
-
-/**
- * Are we running against a GitHub Enterpise instance, as opposed to github.com.
- */
-export function isEnterprise(): boolean {
-  return getInstanceAPIURL() !== GITHUB_DOTCOM_API_URL;
-}
 
 /**
  * Get an environment parameter, but throw an error if it is not set.
@@ -297,7 +292,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
   ignoreFailures?: boolean): Promise<boolean> {
 
-  if (isEnterprise()) {
+  if (getRequiredEnvParam("GITHUB_API_URL") !== GITHUB_DOTCOM_API_URL) {
     core.debug("Not sending status report to GitHub Enterprise");
     return true;
   }

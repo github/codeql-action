@@ -1,13 +1,12 @@
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as path from 'path';
 
 import * as analysisPaths from './analysis-paths';
 import { CodeQL, setupCodeQL } from './codeql';
 import * as configUtils from './config-utils';
-import * as sharedEnv from './shared-environment';
+import { isTracedLanguage } from './languages';
 import * as util from './util';
 
 type TracerConfig = {
@@ -54,7 +53,7 @@ async function tracerConfig(
   return info;
 }
 
-function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerConfig {
+function concatTracerConfigs(tracerConfigs: TracerConfig[], config: configUtils.Config): TracerConfig {
   // A tracer config is a map containing additional environment variables and a tracer 'spec' file.
   // A tracer 'spec' file has the following format [log_file, number_of_blocks, blocks_text]
 
@@ -62,7 +61,7 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
   const env: { [key: string]: string; } = {};
   let copyExecutables = false;
   let envSize = 0;
-  for (let v of Object.values(configs)) {
+  for (const v of tracerConfigs) {
     for (let e of Object.entries(v.env)) {
       const name = e[0];
       const value = e[1];
@@ -82,7 +81,7 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
   }
 
   // Concatenate spec files into a new spec file
-  let languages = Object.keys(configs);
+  let languages = Object.keys(tracerConfigs);
   const cppIndex = languages.indexOf('cpp');
   // Make sure cpp is the last language, if it's present since it must be concatenated last
   if (cppIndex !== -1) {
@@ -94,16 +93,15 @@ function concatTracerConfigs(configs: { [lang: string]: TracerConfig }): TracerC
   let totalLines: string[] = [];
   let totalCount = 0;
   for (let lang of languages) {
-    const lines = fs.readFileSync(configs[lang].spec, 'utf8').split(/\r?\n/);
+    const lines = fs.readFileSync(tracerConfigs[lang].spec, 'utf8').split(/\r?\n/);
     const count = parseInt(lines[1], 10);
     totalCount += count;
     totalLines.push(...lines.slice(2));
   }
 
-  const tempFolder = util.getRequiredEnvParam('RUNNER_TEMP');
-  const newLogFilePath = path.resolve(tempFolder, 'compound-build-tracer.log');
-  const spec = path.resolve(tempFolder, 'compound-spec');
-  const compoundTempFolder = path.resolve(tempFolder, 'compound-temp');
+  const newLogFilePath = path.resolve(config.tempDir, 'compound-build-tracer.log');
+  const spec = path.resolve(config.tempDir, 'compound-spec');
+  const compoundTempFolder = path.resolve(config.tempDir, 'compound-temp');
   const newSpecContent = [newLogFilePath, totalCount.toString(10), ...totalLines];
 
   if (copyExecutables) {
@@ -177,8 +175,8 @@ async function run() {
   let codeql: CodeQL;
 
   try {
-    if (util.should_abort('init', false) ||
-        !await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
+    util.prepareLocalRunEnvironment();
+    if (!await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
       return;
     }
 
@@ -188,12 +186,16 @@ async function run() {
     core.endGroup();
 
     core.startGroup('Load language configuration');
-    config = await configUtils.initConfig();
+    config = await configUtils.initConfig(
+      util.getRequiredEnvParam('RUNNER_TEMP'),
+      util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
+      codeql);
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     core.endGroup();
 
   } catch (e) {
     core.setFailed(e.message);
+    console.log(e);
     await util.sendStatusReport(await util.createStatusReportBase('init', 'aborted', startedAt, e.message));
     return;
   }
@@ -213,11 +215,10 @@ async function run() {
     const codeqlRam = process.env['CODEQL_RAM'] || '6500';
     core.exportVariable('CODEQL_RAM', codeqlRam);
 
-    const databaseFolder = path.resolve(util.getRequiredEnvParam('RUNNER_TEMP'), 'codeql_databases');
-    await io.mkdirP(databaseFolder);
+    const databaseFolder = util.getCodeQLDatabasesDir(config.tempDir);
+    fs.mkdirSync(databaseFolder, { recursive: true });
 
-    let tracedLanguages: { [key: string]: TracerConfig } = {};
-    let scannedLanguages: string[] = [];
+    let tracedLanguageConfigs: TracerConfig[] = [];
     // TODO: replace this code once CodeQL supports multi-language tracing
     for (let language of config.languages) {
       const languageDatabase = path.join(databaseFolder, language);
@@ -225,48 +226,40 @@ async function run() {
       // Init language database
       await codeql.databaseInit(languageDatabase, language, sourceRoot);
       // TODO: add better detection of 'traced languages' instead of using a hard coded list
-      if (['cpp', 'java', 'csharp'].includes(language)) {
+      if (isTracedLanguage(language)) {
         const config: TracerConfig = await tracerConfig(codeql, languageDatabase);
-        tracedLanguages[language] = config;
-      } else {
-        scannedLanguages.push(language);
+        tracedLanguageConfigs.push(config);
       }
     }
-    const tracedLanguageKeys = Object.keys(tracedLanguages);
-    if (tracedLanguageKeys.length > 0) {
-      const mainTracerConfig = concatTracerConfigs(tracedLanguages);
+    if (tracedLanguageConfigs.length > 0) {
+      const mainTracerConfig = concatTracerConfigs(tracedLanguageConfigs, config);
       if (mainTracerConfig.spec) {
         for (let entry of Object.entries(mainTracerConfig.env)) {
           core.exportVariable(entry[0], entry[1]);
         }
 
         core.exportVariable('ODASA_TRACER_CONFIGURATION', mainTracerConfig.spec);
+        const codeQLDir = path.dirname(codeql.getPath());
         if (process.platform === 'darwin') {
           core.exportVariable(
             'DYLD_INSERT_LIBRARIES',
-            path.join(codeql.getDir(), 'tools', 'osx64', 'libtrace.dylib'));
+            path.join(codeQLDir, 'tools', 'osx64', 'libtrace.dylib'));
         } else if (process.platform === 'win32') {
           await exec.exec(
             'powershell',
             [
               path.resolve(__dirname, '..', 'src', 'inject-tracer.ps1'),
-              path.resolve(codeql.getDir(), 'tools', 'win64', 'tracer.exe'),
+              path.resolve(codeQLDir, 'tools', 'win64', 'tracer.exe'),
             ],
             { env: { 'ODASA_TRACER_CONFIGURATION': mainTracerConfig.spec } });
         } else {
-          core.exportVariable('LD_PRELOAD', path.join(codeql.getDir(), 'tools', 'linux64', '${LIB}trace.so'));
+          core.exportVariable('LD_PRELOAD', path.join(codeQLDir, 'tools', 'linux64', '${LIB}trace.so'));
         }
       }
     }
-
-    core.exportVariable(sharedEnv.CODEQL_ACTION_SCANNED_LANGUAGES, scannedLanguages.join(','));
-    core.exportVariable(sharedEnv.CODEQL_ACTION_TRACED_LANGUAGES, tracedLanguageKeys.join(','));
-
-    // TODO: make this a "private" environment variable of the action
-    core.exportVariable(sharedEnv.CODEQL_ACTION_DATABASE_DIR, databaseFolder);
-
   } catch (error) {
     core.setFailed(error.message);
+    console.log(error);
     await util.sendStatusReport(await util.createStatusReportBase(
       'init',
       'failure',
@@ -276,7 +269,6 @@ async function run() {
     return;
   }
   await sendSuccessStatusReport(startedAt, config);
-  core.exportVariable(sharedEnv.CODEQL_ACTION_INIT_COMPLETED, 'true');
 }
 
 run().catch(e => {

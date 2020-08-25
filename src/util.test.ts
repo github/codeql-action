@@ -67,3 +67,86 @@ test('getRef() throws on the empty string', t => {
   process.env["GITHUB_REF"] = "";
   t.throws(util.getRef);
 });
+
+test('isLocalRun() runs correctly', t => {
+  const origLocalRun = process.env.CODEQL_LOCAL_RUN;
+
+  process.env.CODEQL_LOCAL_RUN = '';
+  t.assert(!util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = 'false';
+  t.assert(!util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = '0';
+  t.assert(!util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = 'true';
+  t.assert(util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = 'hucairz';
+  t.assert(util.isLocalRun());
+
+  process.env.CODEQL_LOCAL_RUN = origLocalRun;
+});
+
+test('prepareEnvironment() when a local run', t => {
+  const origLocalRun = process.env.CODEQL_LOCAL_RUN;
+
+  process.env.CODEQL_LOCAL_RUN = 'false';
+  process.env.GITHUB_JOB = 'YYY';
+
+  util.prepareLocalRunEnvironment();
+
+  // unchanged
+  t.deepEqual(process.env.GITHUB_JOB, 'YYY');
+
+  process.env.CODEQL_LOCAL_RUN = 'true';
+
+  util.prepareLocalRunEnvironment();
+
+  // unchanged
+  t.deepEqual(process.env.GITHUB_JOB, 'YYY');
+
+  process.env.GITHUB_JOB = '';
+
+  util.prepareLocalRunEnvironment();
+
+  // updated
+  t.deepEqual(process.env.GITHUB_JOB, 'UNKNOWN-JOB');
+
+  process.env.CODEQL_LOCAL_RUN = origLocalRun;
+});
+
+test('getExtraOptionsEnvParam() succeeds on valid JSON with invalid options (for now)', t => {
+  const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
+
+  const options = {foo: 42};
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = JSON.stringify(options);
+
+  t.deepEqual(util.getExtraOptionsEnvParam(), <any>options);
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+});
+
+
+test('getExtraOptionsEnvParam() succeeds on valid options', t => {
+  const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
+
+  const options = { database: { init: ["--debug"] } };
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS =
+    JSON.stringify(options);
+
+  t.deepEqual(util.getExtraOptionsEnvParam(), options);
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+});
+
+test('getExtraOptionsEnvParam() fails on invalid JSON', t => {
+  const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = "{{invalid-json}}";
+  t.throws(util.getExtraOptionsEnvParam);
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+});

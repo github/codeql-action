@@ -1,5 +1,7 @@
 import * as core from '@actions/core';
 
+import { getActionsLogger } from './logging';
+import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
 import * as util from './util';
 
@@ -16,17 +18,30 @@ async function sendSuccessStatusReport(startedAt: Date, uploadStats: upload_lib.
 
 async function run() {
   const startedAt = new Date();
-  if (util.should_abort('upload-sarif', false) ||
-      !await util.sendStatusReport(await util.createStatusReportBase('upload-sarif', 'starting', startedAt), true)) {
+  if (!await util.sendStatusReport(await util.createStatusReportBase('upload-sarif', 'starting', startedAt), true)) {
     return;
   }
 
   try {
-    const uploadStats = await upload_lib.upload(core.getInput('sarif_file'));
+    const uploadStats = await upload_lib.upload(
+      core.getInput('sarif_file'),
+      parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
+      await util.getCommitOid(),
+      util.getRef(),
+      await util.getAnalysisKey(),
+      util.getRequiredEnvParam('GITHUB_WORKFLOW'),
+      util.getWorkflowRunID(),
+      core.getInput('checkout_path'),
+      core.getInput('matrix'),
+      core.getInput('token'),
+      util.getRequiredEnvParam('GITHUB_API_URL'),
+      'actions',
+      getActionsLogger());
     await sendSuccessStatusReport(startedAt, uploadStats);
 
   } catch (error) {
     core.setFailed(error.message);
+    console.log(error);
     await util.sendStatusReport(await util.createStatusReportBase(
       'upload-sarif',
       'failure',

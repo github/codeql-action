@@ -8,28 +8,23 @@ import * as api from './api-client';
 import * as sharedEnv from './shared-environment';
 
 /**
- * Should the current action be aborted?
- *
- * This method should be called at the start of all CodeQL actions and they
- * should abort cleanly if this returns true without failing the action.
- * This method will call `core.setFailed` if necessary.
+ * The API URL for github.com.
  */
-export function should_abort(actionName: string, requireInitActionHasRun: boolean): boolean {
+export const GITHUB_DOTCOM_API_URL = "https://api.github.com";
 
-  // Check that required aspects of the environment are present
-  const ref = process.env['GITHUB_REF'];
-  if (ref === undefined) {
-    core.setFailed('GITHUB_REF must be set.');
-    return true;
-  }
+/**
+ * Get the API URL for the GitHub instance we are connected to.
+ * May be for github.com or for an enterprise instance.
+ */
+export function getInstanceAPIURL(): string {
+  return process.env["GITHUB_API_URL"] || GITHUB_DOTCOM_API_URL;
+}
 
-  // If the init action is required, then check the it completed successfully.
-  if (requireInitActionHasRun && process.env[sharedEnv.CODEQL_ACTION_INIT_COMPLETED] === undefined) {
-    core.setFailed('The CodeQL ' + actionName + ' action cannot be used unless the CodeQL init action is run first. Aborting.');
-    return true;
-  }
-
-  return false;
+/**
+ * Are we running against a GitHub Enterpise instance, as opposed to github.com.
+ */
+export function isEnterprise(): boolean {
+  return getInstanceAPIURL() !== GITHUB_DOTCOM_API_URL;
 }
 
 /**
@@ -42,6 +37,46 @@ export function getRequiredEnvParam(paramName: string): string {
   }
   core.debug(paramName + '=' + value);
   return value;
+}
+
+/**
+ * Get the extra options for the codeql commands.
+ */
+export function getExtraOptionsEnvParam(): object {
+  const varName = 'CODEQL_ACTION_EXTRA_OPTIONS';
+  const raw = process.env[varName];
+  if (raw === undefined || raw.length === 0) {
+    return {};
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error(
+      varName +
+        ' environment variable is set, but does not contain valid JSON: ' +
+        e.message
+    );
+  }
+}
+
+export function isLocalRun(): boolean {
+  return !!process.env.CODEQL_LOCAL_RUN
+    && process.env.CODEQL_LOCAL_RUN !== 'false'
+    && process.env.CODEQL_LOCAL_RUN !== '0';
+}
+
+/**
+ * Ensures all required environment variables are set in the context of a local run.
+ */
+export function prepareLocalRunEnvironment() {
+  if (!isLocalRun()) {
+    return;
+  }
+
+  core.debug('Action is running locally.');
+  if (!process.env.GITHUB_JOB) {
+    core.exportVariable('GITHUB_JOB', 'UNKNOWN-JOB');
+  }
 }
 
 /**
@@ -80,7 +115,7 @@ async function getWorkflowPath(): Promise<string> {
   const repo = repo_nwo[1];
   const run_id = Number(getRequiredEnvParam('GITHUB_RUN_ID'));
 
-  const apiClient = api.getApiClient();
+  const apiClient = api.getActionsApiClient();
   const runsResponse = await apiClient.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
     owner,
     repo,
@@ -94,6 +129,17 @@ async function getWorkflowPath(): Promise<string> {
 }
 
 /**
+ * Get the workflow run ID.
+ */
+export function getWorkflowRunID(): number {
+  const workflowRunID = parseInt(getRequiredEnvParam('GITHUB_RUN_ID'), 10);
+  if (Number.isNaN(workflowRunID)) {
+    throw new Error('GITHUB_RUN_ID must define a non NaN workflow run ID');
+  }
+  return workflowRunID;
+}
+
+/**
  * Get the analysis key paramter for the current job.
  *
  * This will combine the workflow path and current job name.
@@ -101,7 +147,9 @@ async function getWorkflowPath(): Promise<string> {
  * the github API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  let analysisKey = process.env[sharedEnv.CODEQL_ACTION_ANALYSIS_KEY];
+  const analysisKeyEnvVar = 'CODEQL_ACTION_ANALYSIS_KEY';
+
+  let analysisKey = process.env[analysisKeyEnvVar];
   if (analysisKey !== undefined) {
     return analysisKey;
   }
@@ -110,7 +158,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam('GITHUB_JOB');
 
   analysisKey = workflowPath + ':' + jobName;
-  core.exportVariable(sharedEnv.CODEQL_ACTION_ANALYSIS_KEY, analysisKey);
+  core.exportVariable(analysisKeyEnvVar, analysisKey);
   return analysisKey;
 }
 
@@ -248,13 +296,23 @@ export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
   ignoreFailures?: boolean): Promise<boolean> {
 
-  const statusReportJSON = JSON.stringify(statusReport);
+  if (isEnterprise()) {
+    core.debug("Not sending status report to GitHub Enterprise");
+    return true;
+  }
 
+  if (isLocalRun()) {
+    core.debug("Not sending status report because this is a local run");
+    return true;
+  }
+
+  const statusReportJSON = JSON.stringify(statusReport);
   core.debug('Sending status report: ' + statusReportJSON);
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
-  const statusResponse = await api.getApiClient().request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
+  const client = api.getActionsApiClient();
+  const statusResponse = await client.request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
     owner: owner,
     repo: repo,
     data: statusReportJSON,
@@ -337,27 +395,41 @@ export function getMemoryFlag(): string {
 }
 
 /**
- * Get the codeql `--threads` value specified for the `threads` input. The value
- * defaults to 1. The value will be capped to the number of available CPUs.
+ * Get the codeql `--threads` value specified for the `threads` input.
+ * If not value was specified, all available threads will be used.
+ *
+ * The value will be capped to the number of available CPUs.
  *
  * @returns string
  */
 export function getThreadsFlag(): string {
-  let numThreads = 1;
+  let numThreads: number;
   const numThreadsString = core.getInput("threads");
+  const maxThreads = os.cpus().length;
   if (numThreadsString) {
     numThreads = Number(numThreadsString);
     if (Number.isNaN(numThreads)) {
       throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
     }
-    const maxThreads = os.cpus().length;
     if (numThreads > maxThreads) {
+      core.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
       numThreads = maxThreads;
     }
     const minThreads = -maxThreads;
     if (numThreads < minThreads) {
+      core.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
       numThreads = minThreads;
     }
+  } else {
+    // Default to using all threads
+    numThreads = maxThreads;
   }
   return `--threads=${numThreads}`;
+}
+
+/**
+ * Get the directory where CodeQL databases should be placed.
+ */
+export function getCodeQLDatabasesDir(tempDir: string) {
+  return path.resolve(tempDir, 'codeql_databases');
 }

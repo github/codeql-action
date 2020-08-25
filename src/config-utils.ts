@@ -1,12 +1,12 @@
 import * as core from '@actions/core';
-import * as io from '@actions/io';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 
 import * as api from './api-client';
-import { getCodeQL, ResolveQueriesOutput } from './codeql';
+import { CodeQL, ResolveQueriesOutput } from './codeql';
 import * as externalQueries from "./external-queries";
+import { Language, parseLanguage } from "./languages";
 import * as util from './util';
 
 // Property names from the user-supplied config file.
@@ -38,7 +38,7 @@ export interface Config {
   /**
    * Set of languages to run analysis for.
    */
-  languages: string[];
+  languages: Language[];
   /**
    * Map from language to query files.
    * Will only contain .ql files and not other kinds of files,
@@ -61,6 +61,20 @@ export interface Config {
    * top-level field above.
    */
   originalUserInput: UserConfig;
+  /**
+   * Directory to use for temporary files that should be
+   * deleted at the end of the job.
+   */
+  tempDir: string;
+  /**
+   * Directory to use for the tool cache.
+   * This may be persisted between jobs but this is not guaranteed.
+   */
+  toolCacheDir: string;
+  /**
+   * Path of the CodeQL executable.
+   */
+  codeQLCmd: string;
 }
 
 /**
@@ -110,13 +124,13 @@ function validateQueries(resolvedQueries: ResolveQueriesOutput) {
  * Run 'codeql resolve queries' and add the results to resultMap
  */
 async function runResolveQueries(
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   toResolve: string[],
   extraSearchPath: string | undefined,
   errorOnInvalidQueries: boolean) {
 
-  const codeQl = getCodeQL();
-  const resolvedQueries = await codeQl.resolveQueries(toResolve, extraSearchPath);
+  const resolvedQueries = await codeQL.resolveQueries(toResolve, extraSearchPath);
 
   for (const [language, queries] of Object.entries(resolvedQueries.byLanguage)) {
     if (resultMap[language] === undefined) {
@@ -133,9 +147,9 @@ async function runResolveQueries(
 /**
  * Get the set of queries included by default.
  */
-async function addDefaultQueries(languages: string[], resultMap: { [language: string]: string[] }) {
+async function addDefaultQueries(codeQL: CodeQL, languages: string[], resultMap: { [language: string]: string[] }) {
   const suites = languages.map(l => l + '-code-scanning.qls');
-  await runResolveQueries(resultMap, suites, undefined, false);
+  await runResolveQueries(codeQL, resultMap, suites, undefined, false);
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
@@ -147,6 +161,7 @@ const builtinSuites = ['security-extended', 'security-and-quality'] as const;
  */
 async function addBuiltinSuiteQueries(
   languages: string[],
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   suiteName: string,
   configFile?: string) {
@@ -157,13 +172,14 @@ async function addBuiltinSuiteQueries(
   }
 
   const suites = languages.map(l => l + '-' + suiteName + '.qls');
-  await runResolveQueries(resultMap, suites, undefined, false);
+  await runResolveQueries(codeQL, resultMap, suites, undefined, false);
 }
 
 /**
  * Retrieve the set of queries at localQueryPath and add them to resultMap.
  */
 async function addLocalQueries(
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   localQueryPath: string,
   configFile?: string) {
@@ -189,13 +205,19 @@ async function addLocalQueries(
   // Get the root of the current repo to use when resolving query dependencies
   const rootOfRepo = util.getRequiredEnvParam('GITHUB_WORKSPACE');
 
-  await runResolveQueries(resultMap, [absoluteQueryPath], rootOfRepo, true);
+  await runResolveQueries(codeQL, resultMap, [absoluteQueryPath], rootOfRepo, true);
 }
 
 /**
  * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
  */
-async function addRemoteQueries(resultMap: { [language: string]: string[] }, queryUses: string, configFile?: string) {
+async function addRemoteQueries(
+  codeQL: CodeQL,
+  resultMap: { [language: string]: string[] },
+  queryUses: string,
+  tempDir: string,
+  configFile?: string) {
+
   let tok = queryUses.split('@');
   if (tok.length !== 2) {
     throw new Error(getQueryUsesInvalid(configFile, queryUses));
@@ -217,13 +239,13 @@ async function addRemoteQueries(resultMap: { [language: string]: string[] }, que
   const nwo = tok[0] + '/' + tok[1];
 
   // Checkout the external repository
-  const rootOfRepo = await externalQueries.checkoutExternalRepository(nwo, ref);
+  const rootOfRepo = await externalQueries.checkoutExternalRepository(nwo, ref, tempDir);
 
   const queryPath = tok.length > 2
     ? path.join(rootOfRepo, tok.slice(2).join('/'))
     : rootOfRepo;
 
-  await runResolveQueries(resultMap, [queryPath], rootOfRepo, true);
+  await runResolveQueries(codeQL, resultMap, [queryPath], rootOfRepo, true);
 }
 
 /**
@@ -236,8 +258,10 @@ async function addRemoteQueries(resultMap: { [language: string]: string[] }, que
  */
 async function parseQueryUses(
   languages: string[],
+  codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   queryUses: string,
+  tempDir: string,
   configFile?: string) {
 
   queryUses = queryUses.trim();
@@ -247,18 +271,18 @@ async function parseQueryUses(
 
   // Check for the local path case before we start trying to parse the repository name
   if (queryUses.startsWith("./")) {
-    await addLocalQueries(resultMap, queryUses.slice(2), configFile);
+    await addLocalQueries(codeQL, resultMap, queryUses.slice(2), configFile);
     return;
   }
 
   // Check for one of the builtin suites
   if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-    await addBuiltinSuiteQueries(languages, resultMap, queryUses, configFile);
+    await addBuiltinSuiteQueries(languages, codeQL, resultMap, queryUses, configFile);
     return;
   }
 
   // Otherwise, must be a reference to another repo
-  await addRemoteQueries(resultMap, queryUses, configFile);
+  await addRemoteQueries(codeQL, resultMap, queryUses, tempDir, configFile);
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -409,31 +433,29 @@ function getConfigFilePropertyError(configFile: string | undefined, property: st
   }
 }
 
+export function getNoLanguagesError(): string {
+  return "Did not detect any languages to analyze. " +
+  "Please update input in workflow or check that GitHub detects the correct languages in your repository.";
+}
+
+export function getUnknownLanguagesError(languages: string[]): string {
+  return "Did not recognise the following languages: " + languages.join(', ');
+}
+
 /**
  * Gets the set of languages in the current repository
  */
-async function getLanguagesInRepo(): Promise<string[]> {
-  // Translate between GitHub's API names for languages and ours
-  const codeqlLanguages = {
-    'C': 'cpp',
-    'C++': 'cpp',
-    'C#': 'csharp',
-    'Go': 'go',
-    'Java': 'java',
-    'JavaScript': 'javascript',
-    'TypeScript': 'javascript',
-    'Python': 'python',
-  };
+async function getLanguagesInRepo(): Promise<Language[]> {
   let repo_nwo = process.env['GITHUB_REPOSITORY']?.split("/");
   if (repo_nwo) {
     let owner = repo_nwo[0];
     let repo = repo_nwo[1];
 
     core.debug(`GitHub repo ${owner} ${repo}`);
-    const response = await api.getApiClient().request("GET /repos/:owner/:repo/languages", ({
+    const response = await api.getActionsApiClient(true).repos.listLanguages({
       owner,
       repo
-    }));
+    });
 
     core.debug("Languages API response: " + JSON.stringify(response));
 
@@ -441,10 +463,11 @@ async function getLanguagesInRepo(): Promise<string[]> {
     // When we pick a language to autobuild we want to pick the most popular traced language
     // Since sets in javascript maintain insertion order, using a set here and then splatting it
     // into an array gives us an array of languages ordered by popularity
-    let languages: Set<string> = new Set();
-    for (let lang in response.data) {
-      if (lang in codeqlLanguages) {
-        languages.add(codeqlLanguages[lang]);
+    let languages: Set<Language> = new Set();
+    for (let lang of Object.keys(response.data)) {
+      let parsedLang = parseLanguage(lang);
+      if (parsedLang !== undefined) {
+        languages.add(parsedLang);
       }
     }
     return [...languages];
@@ -459,8 +482,11 @@ async function getLanguagesInRepo(): Promise<string[]> {
  * The result is obtained from the action input parameter 'languages' if that
  * has been set, otherwise it is deduced as all languages in the repo that
  * can be analysed.
+ *
+ * If no languages could be detected from either the workflow or the repository
+ * then throw an error.
  */
-async function getLanguages(): Promise<string[]> {
+async function getLanguages(): Promise<Language[]> {
 
   // Obtain from action input 'languages' if set
   let languages = core.getInput('languages', { required: false })
@@ -475,7 +501,28 @@ async function getLanguages(): Promise<string[]> {
     core.info("Automatically detected languages: " + JSON.stringify(languages));
   }
 
-  return languages;
+  // If the languages parameter was not given and no languages were
+  // detected then fail here as this is a workflow configuration error.
+  if (languages.length === 0) {
+    throw new Error(getNoLanguagesError());
+  }
+
+  // Make sure they are supported
+  const parsedLanguages: Language[] = [];
+  const unknownLanguages: string[] = [];
+  for (let language of languages) {
+    const parsedLanguage = parseLanguage(language);
+    if (parsedLanguage === undefined) {
+      unknownLanguages.push(language);
+    } else if (parsedLanguages.indexOf(parsedLanguage) === -1) {
+      parsedLanguages.push(parsedLanguage);
+    }
+  }
+  if (unknownLanguages.length > 0) {
+    throw new Error(getUnknownLanguagesError(unknownLanguages));
+  }
+
+  return parsedLanguages;
 }
 
 /**
@@ -483,14 +530,16 @@ async function getLanguages(): Promise<string[]> {
  * (and thus added), otherwise false
  */
 async function addQueriesFromWorkflowIfRequired(
+  codeQL: CodeQL,
   languages: string[],
   resultMap: { [language: string]: string[] },
+  tempDir: string,
   configFile?: string
 ): Promise<boolean> {
   const queryUses = core.getInput('queries');
   if (queryUses) {
     for (const query of queryUses.split(',')) {
-      await parseQueryUses(languages, resultMap, query, configFile);
+      await parseQueryUses(languages, codeQL, resultMap, query, tempDir, configFile);
     }
     return true;
   }
@@ -501,11 +550,11 @@ async function addQueriesFromWorkflowIfRequired(
 /**
  * Get the default config for when the user has not supplied one.
  */
-export async function getDefaultConfig(): Promise<Config> {
+export async function getDefaultConfig(tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   const languages = await getLanguages();
   const queries = {};
-  await addDefaultQueries(languages, queries);
-  await addQueriesFromWorkflowIfRequired(languages, queries);
+  await addDefaultQueries(codeQL, languages, queries);
+  await addQueriesFromWorkflowIfRequired(codeQL, languages, queries, tempDir);
 
   return {
     languages: languages,
@@ -513,13 +562,16 @@ export async function getDefaultConfig(): Promise<Config> {
     pathsIgnore: [],
     paths: [],
     originalUserInput: {},
+    tempDir,
+    toolCacheDir,
+    codeQLCmd: codeQL.getPath(),
   };
 }
 
 /**
  * Load the config from the given file.
  */
-async function loadConfig(configFile: string): Promise<Config> {
+async function loadConfig(configFile: string, tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   let parsedYAML: UserConfig;
 
   if (isLocal(configFile)) {
@@ -544,11 +596,6 @@ async function loadConfig(configFile: string): Promise<Config> {
   }
 
   const languages = await getLanguages();
-  // If the languages parameter was not given and no languages were
-  // detected then fail here as this is a workflow configuration error.
-  if (languages.length === 0) {
-    throw new Error("Did not detect any languages to analyze. Please update input in workflow.");
-  }
 
   const queries = {};
   const pathsIgnore: string[] = [];
@@ -562,12 +609,14 @@ async function loadConfig(configFile: string): Promise<Config> {
     disableDefaultQueries = parsedYAML[DISABLE_DEFAULT_QUERIES_PROPERTY]!;
   }
   if (!disableDefaultQueries) {
-    await addDefaultQueries(languages, queries);
+    await addDefaultQueries(codeQL, languages, queries);
   }
 
   // If queries were provided using `with` in the action configuration,
   // they should take precedence over the queries in the config file
-  const addedQueriesFromAction = await addQueriesFromWorkflowIfRequired(languages, queries, configFile);
+  const addedQueriesFromAction = await addQueriesFromWorkflowIfRequired(
+    codeQL, languages, queries, tempDir, configFile
+  );
   if (!addedQueriesFromAction && QUERIES_PROPERTY in parsedYAML) {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));
@@ -576,7 +625,7 @@ async function loadConfig(configFile: string): Promise<Config> {
       if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
         throw new Error(getQueryUsesInvalid(configFile));
       }
-      await parseQueryUses(languages, queries, query[QUERIES_USES_PROPERTY], configFile);
+      await parseQueryUses(languages, codeQL, queries, query[QUERIES_USES_PROPERTY], tempDir, configFile);
     }
   }
 
@@ -604,12 +653,24 @@ async function loadConfig(configFile: string): Promise<Config> {
     });
   }
 
+  // The list of queries should not be empty for any language. If it is then
+  // it is a user configuration error.
+  for (const language of languages) {
+    if (queries[language] === undefined || queries[language].length === 0) {
+      throw new Error(`Did not detect any queries to run for ${language}. ` +
+          "Please make sure that the default queries are enabled, or you are specifying queries to run.");
+    }
+  }
+
   return {
     languages,
     queries,
     pathsIgnore,
     paths,
-    originalUserInput: parsedYAML
+    originalUserInput: parsedYAML,
+    tempDir,
+    toolCacheDir,
+    codeQLCmd: codeQL.getPath(),
   };
 }
 
@@ -619,16 +680,16 @@ async function loadConfig(configFile: string): Promise<Config> {
  * This will parse the config from the user input if present, or generate
  * a default config. The parsed config is then stored to a known location.
  */
-export async function initConfig(): Promise<Config> {
+export async function initConfig(tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   const configFile = core.getInput('config-file');
   let config: Config;
 
   // If no config file was provided create an empty one
   if (configFile === '') {
     core.debug('No configuration file was provided');
-    config = await getDefaultConfig();
+    config = await getDefaultConfig(tempDir, toolCacheDir, codeQL);
   } else {
-    config = await loadConfig(configFile);
+    config = await loadConfig(configFile, tempDir, toolCacheDir, codeQL);
   }
 
   // Save the config so we can easily access it again in the future
@@ -668,7 +729,7 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.getApiClient().repos.getContents({
+  const response = await api.getActionsApiClient(true).repos.getContents({
     owner: pieces.groups.owner,
     repo: pieces.groups.repo,
     path: pieces.groups.path,
@@ -688,17 +749,10 @@ async function getRemoteConfig(configFile: string): Promise<UserConfig> {
 }
 
 /**
- * Get the directory where the parsed config will be stored.
- */
-function getPathToParsedConfigFolder(): string {
-  return util.getRequiredEnvParam('RUNNER_TEMP');
-}
-
-/**
  * Get the file path where the parsed config will be stored.
  */
-export function getPathToParsedConfigFile(): string {
-  return path.join(getPathToParsedConfigFolder(), 'config');
+export function getPathToParsedConfigFile(tempDir: string): string {
+  return path.join(tempDir, 'config');
 }
 
 /**
@@ -706,8 +760,9 @@ export function getPathToParsedConfigFile(): string {
  */
 async function saveConfig(config: Config) {
   const configString = JSON.stringify(config);
-  await io.mkdirP(getPathToParsedConfigFolder());
-  fs.writeFileSync(getPathToParsedConfigFile(), configString, 'utf8');
+  const configFile = getPathToParsedConfigFile(config.tempDir);
+  fs.mkdirSync(path.dirname(configFile), { recursive: true });
+  fs.writeFileSync(configFile, configString, 'utf8');
   core.debug('Saved config:');
   core.debug(configString);
 }
@@ -720,8 +775,8 @@ async function saveConfig(config: Config) {
  * stored to a known location. On the second and further calls, this will
  * return the contents of the parsed config from the known location.
  */
-export async function getConfig(): Promise<Config> {
-  const configFile = getPathToParsedConfigFile();
+export async function getConfig(tempDir: string): Promise<Config> {
+  const configFile = getPathToParsedConfigFile(tempDir);
   if (!fs.existsSync(configFile)) {
     throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
   }

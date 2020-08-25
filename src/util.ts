@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import * as api from './api-client';
+import { Language } from './languages';
 import * as sharedEnv from './shared-environment';
 
 /**
@@ -432,4 +433,11 @@ export function getThreadsFlag(): string {
  */
 export function getCodeQLDatabasesDir(tempDir: string) {
   return path.resolve(tempDir, 'codeql_databases');
+}
+
+/**
+ * Get the path where the CodeQL database for the given language lives.
+ */
+export function getCodeQLDatabasePath(tempDir: string, language: Language) {
+  return path.resolve(getCodeQLDatabasesDir(tempDir), language);
 }

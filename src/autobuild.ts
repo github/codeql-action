@@ -1,7 +1,8 @@
 import * as core from '@actions/core';
 
 import { getCodeQL } from './codeql';
-import * as sharedEnv from './shared-environment';
+import * as config_utils from './config-utils';
+import { isTracedLanguage } from './languages';
 import * as util from './util';
 
 interface AutobuildStatusReport extends util.StatusReportBase {
@@ -36,16 +37,18 @@ async function run() {
   const startedAt = new Date();
   let language;
   try {
-    if (util.should_abort('autobuild', true) ||
-        !await util.sendStatusReport(await util.createStatusReportBase('autobuild', 'starting', startedAt), true)) {
+    util.prepareLocalRunEnvironment();
+    if (!await util.sendStatusReport(await util.createStatusReportBase('autobuild', 'starting', startedAt), true)) {
       return;
     }
+
+    const config = await config_utils.getConfig(util.getRequiredEnvParam('RUNNER_TEMP'));
 
     // Attempt to find a language to autobuild
     // We want pick the dominant language in the repo from the ones we're able to build
     // The languages are sorted in order specified by user or by lines of code if we got
     // them from the GitHub API, so try to build the first language on the list.
-    const autobuildLanguages = process.env[sharedEnv.CODEQL_ACTION_TRACED_LANGUAGES]?.split(',') || [];
+    const autobuildLanguages = config.languages.filter(isTracedLanguage);
     language = autobuildLanguages[0];
 
     if (!language) {
@@ -60,13 +63,14 @@ async function run() {
     }
 
     core.startGroup(`Attempting to automatically build ${language} code`);
-    const codeQL = getCodeQL();
+    const codeQL = getCodeQL(config.codeQLCmd);
     await codeQL.runAutobuild(language);
 
     core.endGroup();
 
   } catch (error) {
     core.setFailed("We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps.  " + error.message);
+    console.log(error);
     await sendCompletedStatusReport(startedAt, [language], language, error);
     return;
   }

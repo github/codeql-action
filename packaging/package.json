@@ -1,0 +1,17 @@
+{
+  "name": "codeql-packaging",
+  "version": "0.0.0",
+  "private": true,
+  "description": "CodeQL action - CLI packaging",
+  "scripts": {
+    "build-cli": "webpack --mode production && pkg dist/code-scanning-cli.js  --out-path dist"
+  },
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "pkg": "^4.4.9",
+    "ts-loader": "8.0.2",
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12"
+  }
+}

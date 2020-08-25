@@ -533,13 +533,12 @@ async function addQueriesFromWorkflowIfRequired(
   codeQL: CodeQL,
   languages: string[],
   resultMap: { [language: string]: string[] },
-  tempDir: string,
-  configFile?: string
+  tempDir: string
 ): Promise<boolean> {
   const queryUses = core.getInput('queries');
   if (queryUses) {
     for (const query of queryUses.split(',')) {
-      await parseQueryUses(languages, codeQL, resultMap, query, tempDir, configFile);
+      await parseQueryUses(languages, codeQL, resultMap, query, tempDir);
     }
     return true;
   }
@@ -614,9 +613,7 @@ async function loadConfig(configFile: string, tempDir: string, toolCacheDir: str
 
   // If queries were provided using `with` in the action configuration,
   // they should take precedence over the queries in the config file
-  const addedQueriesFromAction = await addQueriesFromWorkflowIfRequired(
-    codeQL, languages, queries, tempDir, configFile
-  );
+  const addedQueriesFromAction = await addQueriesFromWorkflowIfRequired(codeQL, languages, queries, tempDir);
   if (!addedQueriesFromAction && QUERIES_PROPERTY in parsedYAML) {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));

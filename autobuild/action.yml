@@ -8,4 +8,4 @@ inputs:
     default: ${{ toJson(matrix) }}
 runs:
   using: 'node12'
-  main: '../lib/autobuild.js'
+  main: '../lib/autobuild-action.js'

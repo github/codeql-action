@@ -17,7 +17,7 @@ jobs:
 
     - name: Upload with CLI
       run: |
-        node packaging/dist/code-scanning-cli-linux upload \
+        packaging/dist/code-scanning-cli-linux upload \
           --sarif-file src/testdata/empty-sarif.sarif \
           --repository $GITHUB_REPOSITORY \
           --commit $GITHUB_SHA \

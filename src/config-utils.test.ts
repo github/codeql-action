@@ -310,7 +310,7 @@ test("API client used when reading remote config", async t => {
     const spyGetContents = mockGetContents(dummyResponse);
 
     // Create checkout directory for remote queries repository
-    fs.mkdirSync(path.join(tmpDir, 'foo/bar'), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, 'foo/bar/dev'), { recursive: true });
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     setInput('languages', 'javascript');

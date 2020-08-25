@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as analysisPaths from './analysis-paths';
 import { CodeQL, setupCodeQL } from './codeql';
 import * as configUtils from './config-utils';
-import { getTracerConfig } from './tracer-config';
+import { getCombinedTracerConfig } from './tracer-config';
 import * as util from './util';
 
 interface InitSuccessStatusReport extends util.StatusReportBase {
@@ -103,7 +103,7 @@ async function run() {
       await codeql.databaseInit(util.getCodeQLDatabasePath(config.tempDir, language), language, sourceRoot);
     }
 
-    const tracerConfig = await getTracerConfig(config, codeql);
+    const tracerConfig = await getCombinedTracerConfig(config, codeql);
     if (tracerConfig !== undefined) {
       if (process.platform === 'win32') {
         await exec.exec(
@@ -115,7 +115,7 @@ async function run() {
           { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } });
       }
 
-      // NB: in CLI mode these will be outputted to a file instead of exported with core.exportVariable
+      // NB: in CLI mode these will be output to a file rather than exported with core.exportVariable
       Object.entries(tracerConfig.env).forEach(([key, value]) => core.exportVariable(key, value));
     }
 

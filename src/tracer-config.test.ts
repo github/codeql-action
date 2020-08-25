@@ -6,7 +6,7 @@ import { setCodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import { Language } from './languages';
 import { setupTests } from './testing-utils';
-import { concatTracerConfigs, getTracerConfig, tracerConfig } from './tracer-config';
+import { concatTracerConfigs, getCombinedTracerConfig, getTracerConfigForLanguage } from './tracer-config';
 import * as util from './util';
 
 setupTests(test);
@@ -25,7 +25,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
 }
 
 // A very minimal setup
-test('tracerConfig - minimal', async t => {
+test('getTracerConfigForLanguage - minimal setup', async t => {
   await util.withTmpDir(async tmpDir => {
     const config = getTestConfig(tmpDir);
 
@@ -38,16 +38,27 @@ test('tracerConfig - minimal', async t => {
       },
     });
 
-    const result = await tracerConfig(codeQL, config, Language.javascript);
+    const result = await getTracerConfigForLanguage(codeQL, config, Language.javascript);
     t.deepEqual(result, { spec: 'abc', env: {'foo': 'bar'} });
   });
 });
 
 // Existing vars should not be overwritten, unless they are critical or prefixed with CODEQL_
-test('tracerConfig - existing / critical vars', async t => {
+test('getTracerConfigForLanguage - existing / critical vars', async t => {
   await util.withTmpDir(async tmpDir => {
     const config = getTestConfig(tmpDir);
 
+    // Set up some variables in the environment
+    process.env['foo'] = 'abc';
+    process.env['SEMMLE_PRELOAD_libtrace'] = 'abc';
+    process.env['SEMMLE_RUNNER'] = 'abc';
+    process.env['SEMMLE_COPY_EXECUTABLES_ROOT'] = 'abc';
+    process.env['SEMMLE_DEPTRACE_SOCKET'] = 'abc';
+    process.env['SEMMLE_JAVA_TOOL_OPTIONS'] = 'abc';
+    process.env['SEMMLE_DEPTRACE_SOCKET'] = 'abc';
+    process.env['CODEQL_VAR'] = 'abc';
+
+    // Now CodeQL returns all these variables, and one more, with different values
     const codeQL = setCodeQL({
       getTracerEnv: async function() {
         return {
@@ -64,19 +75,12 @@ test('tracerConfig - existing / critical vars', async t => {
       },
     });
 
-    process.env['foo'] = 'abc';
-    process.env['SEMMLE_PRELOAD_libtrace'] = 'abc';
-    process.env['SEMMLE_RUNNER'] = 'abc';
-    process.env['SEMMLE_COPY_EXECUTABLES_ROOT'] = 'abc';
-    process.env['SEMMLE_DEPTRACE_SOCKET'] = 'abc';
-    process.env['SEMMLE_JAVA_TOOL_OPTIONS'] = 'abc';
-    process.env['SEMMLE_DEPTRACE_SOCKET'] = 'abc';
-    process.env['CODEQL_VAR'] = 'abc';
-
-    const result = await tracerConfig(codeQL, config, Language.javascript);
+    const result = await getTracerConfigForLanguage(codeQL, config, Language.javascript);
     t.deepEqual(result, {
       spec: 'abc',
       env: {
+        // Should contain all variables except 'foo', because that already existed in the
+        // environment with a different value, and is not deemed a "critical" variable.
         'baz': 'qux',
         'SEMMLE_PRELOAD_libtrace': 'SEMMLE_PRELOAD_libtrace',
         'SEMMLE_RUNNER': 'SEMMLE_RUNNER',
@@ -89,7 +93,7 @@ test('tracerConfig - existing / critical vars', async t => {
   });
 });
 
-test('concatTracerConfigs - minimal', async t => {
+test('concatTracerConfigs - minimal configs correctly combined', async t => {
   await util.withTmpDir(async tmpDir => {
     const config = getTestConfig(tmpDir);
 
@@ -161,8 +165,7 @@ test('concatTracerConfigs - conflicting env vars', async t => {
   });
 });
 
-// If cpp is present then it's spec lines always come at the end
-test('concatTracerConfigs - cpp comes last', async t => {
+test('concatTracerConfigs - cpp spec lines come last if present', async t => {
   await util.withTmpDir(async tmpDir => {
     const config = getTestConfig(tmpDir);
 
@@ -201,7 +204,7 @@ test('concatTracerConfigs - cpp comes last', async t => {
   });
 });
 
-test('concatTracerConfigs - SEMMLE_COPY_EXECUTABLES_ROOT', async t => {
+test('concatTracerConfigs - SEMMLE_COPY_EXECUTABLES_ROOT is updated to point to compound spec', async t => {
   await util.withTmpDir(async tmpDir => {
     const config = getTestConfig(tmpDir);
 
@@ -223,7 +226,7 @@ test('concatTracerConfigs - SEMMLE_COPY_EXECUTABLES_ROOT', async t => {
   });
 });
 
-test('concatTracerConfigs - compound environment file', async t => {
+test('concatTracerConfigs - compound environment file is created correctly', async t => {
   await util.withTmpDir(async tmpDir => {
     const config = getTestConfig(tmpDir);
 
@@ -250,16 +253,17 @@ test('concatTracerConfigs - compound environment file', async t => {
     t.true(fs.existsSync(envPath));
 
     const buffer: Buffer = fs.readFileSync(envPath);
-    t.deepEqual(28, buffer.length);
-    t.deepEqual(2, buffer.readInt32LE(0));
-    t.deepEqual(4, buffer.readInt32LE(4));
-    t.deepEqual('a=a\0', buffer.toString('utf8', 8, 12));
-    t.deepEqual(12, buffer.readInt32LE(12));
-    t.deepEqual('foo=bar_baz\0', buffer.toString('utf8', 16, 28));
+    // Contents is binary data
+    t.deepEqual(buffer.length, 28);
+    t.deepEqual(buffer.readInt32LE(0), 2); // number of env vars
+    t.deepEqual(buffer.readInt32LE(4), 4); // length of env var definition
+    t.deepEqual(buffer.toString('utf8', 8, 12), 'a=a\0'); // [key]=[value]\0
+    t.deepEqual(buffer.readInt32LE(12), 12);  // length of env var definition
+    t.deepEqual(buffer.toString('utf8', 16, 28), 'foo=bar_baz\0'); // [key]=[value]\0
   });
 });
 
-test('getTracerConfig - no traced languages', async t => {
+test('getCombinedTracerConfig - return undefined when no languages are traced languages', async t => {
   await util.withTmpDir(async tmpDir => {
     const config = getTestConfig(tmpDir);
     // No traced languages
@@ -274,11 +278,11 @@ test('getTracerConfig - no traced languages', async t => {
       },
     });
 
-    t.deepEqual(undefined, await getTracerConfig(config, codeQL));
+    t.deepEqual(await getCombinedTracerConfig(config, codeQL), undefined);
   });
 });
 
-test('getTracerConfig - full', async t => {
+test('getCombinedTracerConfig - valid spec file', async t => {
   await util.withTmpDir(async tmpDir => {
     const config = getTestConfig(tmpDir);
 
@@ -294,7 +298,7 @@ test('getTracerConfig - full', async t => {
       },
     });
 
-    const result = await getTracerConfig(config, codeQL);
+    const result = await getCombinedTracerConfig(config, codeQL);
     t.deepEqual(result, {
       spec: path.join(tmpDir, 'compound-spec'),
       env: {

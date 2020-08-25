@@ -19,7 +19,7 @@ const CRITICAL_TRACER_VARS = new Set(
     , 'SEMMLE_JAVA_TOOL_OPTIONS'
   ]);
 
-export async function tracerConfig(
+export async function getTracerConfigForLanguage(
   codeql: CodeQL,
   config: configUtils.Config,
   language: Language): Promise<TracerConfig> {
@@ -129,7 +129,7 @@ export function concatTracerConfigs(
   return { env, spec };
 }
 
-export async function getTracerConfig(
+export async function getCombinedTracerConfig(
   config: configUtils.Config,
   codeql: CodeQL): Promise<TracerConfig | undefined> {
 
@@ -140,9 +140,9 @@ export async function getTracerConfig(
   }
 
   // Get all the tracer configs and combine them together
-  let tracedLanguageConfigs: { [lang: string]: TracerConfig } = {};
-  for (let language of tracedLanguages) {
-    tracedLanguageConfigs[language] = await tracerConfig(codeql, config, language);
+  const tracedLanguageConfigs: { [lang: string]: TracerConfig } = {};
+  for (const language of tracedLanguages) {
+    tracedLanguageConfigs[language] = await getTracerConfigForLanguage(codeql, config, language);
   }
   const mainTracerConfig = concatTracerConfigs(tracedLanguageConfigs, config);
 

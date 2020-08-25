@@ -160,11 +160,11 @@ const builtinSuites = ['security-extended', 'security-and-quality'] as const;
  * Throws an error if suiteName is not a valid builtin suite.
  */
 async function addBuiltinSuiteQueries(
-  configFile: string,
   languages: string[],
   codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
-  suiteName: string) {
+  suiteName: string,
+  configFile?: string) {
 
   const suite = builtinSuites.find((suite) => suite === suiteName);
   if (!suite) {
@@ -179,10 +179,10 @@ async function addBuiltinSuiteQueries(
  * Retrieve the set of queries at localQueryPath and add them to resultMap.
  */
 async function addLocalQueries(
-  configFile: string,
   codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
-  localQueryPath: string) {
+  localQueryPath: string,
+  configFile?: string) {
 
   // Resolve the local path against the workspace so that when this is
   // passed to codeql it resolves to exactly the path we expect it to resolve to.
@@ -212,11 +212,11 @@ async function addLocalQueries(
  * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
  */
 async function addRemoteQueries(
-  configFile: string,
   codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   queryUses: string,
-  tempDir: string) {
+  tempDir: string,
+  configFile?: string) {
 
   let tok = queryUses.split('@');
   if (tok.length !== 2) {
@@ -257,12 +257,12 @@ async function addRemoteQueries(
  * a finite set of hardcoded terms for builtin suites.
  */
 async function parseQueryUses(
-  configFile: string,
   languages: string[],
   codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   queryUses: string,
-  tempDir: string) {
+  tempDir: string,
+  configFile?: string) {
 
   queryUses = queryUses.trim();
   if (queryUses === "") {
@@ -271,18 +271,18 @@ async function parseQueryUses(
 
   // Check for the local path case before we start trying to parse the repository name
   if (queryUses.startsWith("./")) {
-    await addLocalQueries(configFile, codeQL, resultMap, queryUses.slice(2));
+    await addLocalQueries(codeQL, resultMap, queryUses.slice(2), configFile);
     return;
   }
 
   // Check for one of the builtin suites
   if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-    await addBuiltinSuiteQueries(configFile, languages, codeQL, resultMap, queryUses);
+    await addBuiltinSuiteQueries(languages, codeQL, resultMap, queryUses, configFile);
     return;
   }
 
   // Otherwise, must be a reference to another repo
-  await addRemoteQueries(configFile, codeQL, resultMap, queryUses, tempDir);
+  await addRemoteQueries(codeQL, resultMap, queryUses, tempDir, configFile);
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -356,6 +356,9 @@ export function validateAndSanitisePath(
   return path;
 }
 
+// An undefined configFile in some of these functions indicates that
+// the property was in a workflow file, not a config file
+
 export function getNameInvalid(configFile: string): string {
   return getConfigFilePropertyError(configFile, NAME_PROPERTY, 'must be a non-empty string');
 }
@@ -368,7 +371,7 @@ export function getQueriesInvalid(configFile: string): string {
   return getConfigFilePropertyError(configFile, QUERIES_PROPERTY, 'must be an array');
 }
 
-export function getQueryUsesInvalid(configFile: string, queryUses?: string): string {
+export function getQueryUsesInvalid(configFile: string | undefined, queryUses?: string): string {
   return getConfigFilePropertyError(
     configFile,
     QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
@@ -385,14 +388,14 @@ export function getPathsInvalid(configFile: string): string {
   return getConfigFilePropertyError(configFile, PATHS_PROPERTY, 'must be an array of non-empty strings');
 }
 
-export function getLocalPathOutsideOfRepository(configFile: string, localPath: string): string {
+export function getLocalPathOutsideOfRepository(configFile: string | undefined, localPath: string): string {
   return getConfigFilePropertyError(
     configFile,
     QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
     'is invalid as the local path "' + localPath + '" is outside of the repository');
 }
 
-export function getLocalPathDoesNotExist(configFile: string, localPath: string): string {
+export function getLocalPathDoesNotExist(configFile: string | undefined, localPath: string): string {
   return getConfigFilePropertyError(
     configFile,
     QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
@@ -422,8 +425,12 @@ export function getConfigFileDirectoryGivenMessage(configFile: string): string {
   return 'The configuration file "' + configFile + '" looks like a directory, not a file';
 }
 
-function getConfigFilePropertyError(configFile: string, property: string, error: string): string {
-  return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
+function getConfigFilePropertyError(configFile: string | undefined, property: string, error: string): string {
+  if (configFile === undefined) {
+    return 'The workflow property "' + property + '" is invalid: ' + error;
+  } else {
+    return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
+  }
 }
 
 export function getNoLanguagesError(): string {
@@ -519,12 +526,35 @@ async function getLanguages(): Promise<Language[]> {
 }
 
 /**
+ * Returns true if queries were provided in the workflow file
+ * (and thus added), otherwise false
+ */
+async function addQueriesFromWorkflowIfRequired(
+  codeQL: CodeQL,
+  languages: string[],
+  resultMap: { [language: string]: string[] },
+  tempDir: string
+): Promise<boolean> {
+  const queryUses = core.getInput('queries');
+  if (queryUses) {
+    for (const query of queryUses.split(',')) {
+      await parseQueryUses(languages, codeQL, resultMap, query, tempDir);
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Get the default config for when the user has not supplied one.
  */
 export async function getDefaultConfig(tempDir: string, toolCacheDir: string, codeQL: CodeQL): Promise<Config> {
   const languages = await getLanguages();
   const queries = {};
   await addDefaultQueries(codeQL, languages, queries);
+  await addQueriesFromWorkflowIfRequired(codeQL, languages, queries, tempDir);
+
   return {
     languages: languages,
     queries: queries,
@@ -581,7 +611,10 @@ async function loadConfig(configFile: string, tempDir: string, toolCacheDir: str
     await addDefaultQueries(codeQL, languages, queries);
   }
 
-  if (QUERIES_PROPERTY in parsedYAML) {
+  // If queries were provided using `with` in the action configuration,
+  // they should take precedence over the queries in the config file
+  const addedQueriesFromAction = await addQueriesFromWorkflowIfRequired(codeQL, languages, queries, tempDir);
+  if (!addedQueriesFromAction && QUERIES_PROPERTY in parsedYAML) {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));
     }
@@ -589,7 +622,7 @@ async function loadConfig(configFile: string, tempDir: string, toolCacheDir: str
       if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
         throw new Error(getQueryUsesInvalid(configFile));
       }
-      await parseQueryUses(configFile, languages, codeQL, queries, query[QUERIES_USES_PROPERTY], tempDir);
+      await parseQueryUses(languages, codeQL, queries, query[QUERIES_USES_PROPERTY], tempDir, configFile);
     }
   }
 

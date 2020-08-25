@@ -273,6 +273,195 @@ test("default queries are used", async t => {
   });
 });
 
+test("Queries can be specified in config file", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo`;
+
+    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+    setInput('config-file', 'input');
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test by seeing which returned items are in the final
+        // configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    setInput('languages', 'javascript');
+
+    const config = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries
+    // and once for `./foo` from the config file.
+    t.deepEqual(resolveQueriesArgs.length, 2);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/foo$/);
+
+    // Now check that the end result contains the default queries and the query from config
+    t.deepEqual(config.queries['javascript'].length, 2);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/foo$/);
+  });
+});
+
+test("Queries from config file can be overridden in workflow file", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo`;
+
+    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+    setInput('config-file', 'input');
+
+    // This config item should take precedence over the config file but shouldn't affect the default queries.
+    setInput('queries', './override');
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
+    fs.mkdirSync(path.join(tmpDir, 'override'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test overriding by seeing which returned items are in
+        // the final configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    setInput('languages', 'javascript');
+
+    const config = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries and once for `./override`,
+    // but won't be called for './foo' from the config file.
+    t.deepEqual(resolveQueriesArgs.length, 2);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/override$/);
+
+    // Now check that the end result contains only the default queries and the override query
+    t.deepEqual(config.queries['javascript'].length, 2);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/override$/);
+  });
+});
+
+test("Multiple queries can be specified in workflow file, no config file required", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    fs.mkdirSync(path.join(tmpDir, 'override1'));
+    fs.mkdirSync(path.join(tmpDir, 'override2'));
+
+    setInput('queries', './override1,./override2');
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test overriding by seeing which returned items are in
+        // the final configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    setInput('languages', 'javascript');
+
+    const config = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+
+    // Check resolveQueries was called correctly:
+    // It'll be called once for the default queries,
+    // and then once for each of the two queries from the workflow
+    t.deepEqual(resolveQueriesArgs.length, 3);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/override1$/);
+    t.regex(resolveQueriesArgs[2].queries[0], /.*\/override2$/);
+
+    // Now check that the end result contains both the queries from the workflow, as well as the defaults
+    t.deepEqual(config.queries['javascript'].length, 3);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/override1$/);
+    t.regex(config.queries['javascript'][2], /.*\/override2$/);
+  });
+});
+
+test("Invalid queries in workflow file handled correctly", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    setInput('queries', 'foo/bar@v1@v3');
+    setInput('languages', 'javascript');
+
+    // This function just needs to be type-correct; it doesn't need to do anything,
+    // since we're deliberately passing in invalid data
+    const codeQL = setCodeQL({
+      resolveQueries: async function(_queries: string[], _extraSearchPath: string | undefined) {
+        return {
+          byLanguage: {
+            'javascript': {},
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    try {
+      await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+      t.fail('initConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3")));
+    }
+  });
+});
+
 test("API client used when reading remote config", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
@@ -310,7 +499,7 @@ test("API client used when reading remote config", async t => {
     const spyGetContents = mockGetContents(dummyResponse);
 
     // Create checkout directory for remote queries repository
-    fs.mkdirSync(path.join(tmpDir, 'foo/bar'), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, 'foo/bar/dev'), { recursive: true });
 
     setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
     setInput('languages', 'javascript');

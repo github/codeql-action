@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-  entry: '../src/cli.ts',
+  entry: '../src/runner.ts',
   module: {
     rules: [
       {
@@ -16,7 +16,7 @@ module.exports = {
     extensions: [ '.ts', '.js' ],
   },
   output: {
-    filename: 'code-scanning-cli.js',
+    filename: 'codeql-runner.js',
     path: path.resolve(__dirname, 'dist'),
   },
   optimization: {

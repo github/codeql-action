@@ -1,4 +1,4 @@
-name: "CodeScanning CLI"
+name: "CodeQL runner"
 
 on: [push, pull_request]
 
@@ -9,15 +9,15 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Build CLI
+    - name: Build runner
       run: |
-        cd packaging
+        cd runner
         npm install
-        npm run build-cli
+        npm run build-runner
 
-    - name: Upload with CLI
+    - name: Upload with runner
       run: |
-        packaging/dist/code-scanning-cli-linux upload \
+        runner/dist/codeql-runner-linux upload \
           --sarif-file src/testdata/empty-sarif.sarif \
           --repository $GITHUB_REPOSITORY \
           --commit $GITHUB_SHA \

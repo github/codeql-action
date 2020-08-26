@@ -129,7 +129,7 @@ program
             .join('\n');
           fs.writeFileSync(powershellEnvFile, powershellEnvFileContents);
 
-          logger.info(`CodeQL environment outputted to "${batEnvFileContents}" and "${powershellEnvFile}". ` +
+          logger.info(`\nCodeQL environment outputted to "${batEnvFileContents}" and "${powershellEnvFile}". ` +
             `Please export these variables to future processes so the build can tbe traced. ` +
             `If using cmd/batch run "call ${batEnvFileContents}" ` +
             `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`);
@@ -142,7 +142,7 @@ program
             .join('\n');
           fs.writeFileSync(envFile, envFileContents);
 
-          logger.info(`CodeQL environment outputted to "${envFile}". ` +
+          logger.info(`\nCodeQL environment outputted to "${envFile}". ` +
             `Please export these variables to future processes so the build can tbe traced, ` +
             `for example by running "source ${envFile}".`);
         }

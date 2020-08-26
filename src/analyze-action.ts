@@ -39,7 +39,7 @@ async function run() {
       core.getInput('checkout_path'),
       core.getInput('matrix'),
       core.getInput('token'),
-      util.getRequiredEnvParam('GITHUB_API_URL'),
+      util.getRequiredEnvParam('GITHUB_SERVER_URL'),
       core.getInput('upload') === 'true',
       'actions',
       core.getInput('output'),

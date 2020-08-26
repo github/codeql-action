@@ -18,10 +18,6 @@ export type Mode = 'actions' | 'runner';
  */
 export const GITHUB_DOTCOM_URL = "https://github.com";
 
-/**
- * The API URL for github.com.
- */
-export const GITHUB_DOTCOM_API_URL = "https://api.github.com";
 
 /**
  * Get an environment parameter, but throw an error if it is not set.
@@ -292,7 +288,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
   ignoreFailures?: boolean): Promise<boolean> {
 
-  if (getRequiredEnvParam("GITHUB_API_URL") !== GITHUB_DOTCOM_API_URL) {
+  if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
     core.debug("Not sending status report to GitHub Enterprise");
     return true;
   }

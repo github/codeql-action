@@ -51,6 +51,6 @@ function parseAuth(auth: string): string {
 export function getActionsApiClient(allowLocalRun = false) {
   return getApiClient(
     core.getInput('token'),
-    getRequiredEnvParam('GITHUB_API_URL'),
+    getRequiredEnvParam('GITHUB_SERVER_URL'),
     allowLocalRun);
 }

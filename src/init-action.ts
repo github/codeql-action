@@ -60,7 +60,7 @@ async function run() {
     codeql = await initCodeQL(
       core.getInput('tools'),
       core.getInput('token'),
-      util.getRequiredEnvParam('GITHUB_API_URL'),
+      util.getRequiredEnvParam('GITHUB_SERVER_URL'),
       util.getRequiredEnvParam('RUNNER_TEMP'),
       util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
       'actions',
@@ -74,7 +74,7 @@ async function run() {
       codeql,
       util.getRequiredEnvParam('GITHUB_WORKSPACE'),
       core.getInput('token'),
-      util.getRequiredEnvParam('GITHUB_API_URL'),
+      util.getRequiredEnvParam('GITHUB_SERVER_URL'),
       logger);
 
   } catch (e) {

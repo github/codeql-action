@@ -55,10 +55,6 @@ export function setupTests(test: TestInterface<any>) {
     // process.env only has strings fields, so a shallow copy is fine.
     t.context.env = {};
     Object.assign(t.context.env, process.env);
-
-    // Any test that runs code that expects to only be run on actions
-    // will depend on various environment variables.
-    process.env['GITHUB_API_URL'] = 'https://github.localhost/api/v3';
   });
 
   typedTest.afterEach.always(t => {

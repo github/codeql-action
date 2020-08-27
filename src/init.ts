@@ -79,28 +79,26 @@ export async function runInit(
   }
 
   const tracerConfig = await getCombinedTracerConfig(config, codeql);
-  if (tracerConfig !== undefined) {
-    if (process.platform === 'win32') {
-      const injectTracerPath = path.join(config.tempDir, 'inject-tracer.ps1');
-      fs.writeFileSync(injectTracerPath, `
-        Param(
-            [Parameter(Position=0)]
-            [String]
-            $tracer
-        )
-        Get-Process -Name Runner.Worker
-        $process=Get-Process -Name Runner.Worker
-        $id=$process.Id
-        Invoke-Expression "&$tracer --inject=$id"`);
+  if (tracerConfig !== undefined && process.platform === 'win32') {
+    const injectTracerPath = path.join(config.tempDir, 'inject-tracer.ps1');
+    fs.writeFileSync(injectTracerPath, `
+      Param(
+          [Parameter(Position=0)]
+          [String]
+          $tracer
+      )
+      Get-Process -Name Runner.Worker
+      $process=Get-Process -Name Runner.Worker
+      $id=$process.Id
+      Invoke-Expression "&$tracer --inject=$id"`);
 
-      await exec.exec(
-        'powershell',
-        [
-          injectTracerPath,
-          path.resolve(path.dirname(codeql.getPath()), 'tools', 'win64', 'tracer.exe'),
-        ],
-        { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } });
-    }
+    await exec.exec(
+      'powershell',
+      [
+        injectTracerPath,
+        path.resolve(path.dirname(codeql.getPath()), 'tools', 'win64', 'tracer.exe'),
+      ],
+      { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } });
   }
   return tracerConfig;
 }

@@ -61,7 +61,7 @@ function checkEnvironmentSetup(config: Config) {
   if (config.languages.some(isTracedLanguage) && !('ODASA_TRACER_CONFIGURATION' in process.env)) {
     throw new Error("Could not detect 'ODASA_TRACER_CONFIGURATION' in environment. " +
       "Make sure that environment variables were correctly exported to future processes. " +
-      "See end out output from 'init' command for instructions.");
+      "See end of output from 'init' command for instructions.");
   }
 }
 
@@ -89,7 +89,7 @@ program
   .option('--queries <queries>', 'Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file.')
   .option('--config-file <file>', 'Path to config file')
   .option('--codeql-path <path>', 'Path to a copy of the CodeQL CLI executable to use. Otherwise downloads a copy.')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use a subdirectory of the current working directory.')
   .option('--tools-dir <dir>', 'Directory to use for CodeQL tools and other files to store between runs. By default will use home directory.')
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
   .option('--debug', 'Print more verbose output', false)
@@ -131,38 +131,40 @@ program
         logger);
 
       const tracerConfig = await runInit(codeql, config);
-      if (tracerConfig !== undefined) {
-        if (process.platform === 'win32') {
-          const batEnvFile = path.join(config.tempDir, 'codeql-env.bat');
-          const batEnvFileContents = Object.entries(tracerConfig.env)
-            .map(([key, value]) => `Set ${key}=${value}`)
-            .join('\n');
-          fs.writeFileSync(batEnvFile, batEnvFileContents);
+      if (tracerConfig === undefined) {
+        return;
+      }
 
-          const powershellEnvFile = path.join(config.tempDir, 'codeql-env.sh');
-          const powershellEnvFileContents = Object.entries(tracerConfig.env)
-            .map(([key, value]) => `$env:${key}="${value}"`)
-            .join('\n');
-          fs.writeFileSync(powershellEnvFile, powershellEnvFileContents);
+      if (process.platform === 'win32') {
+        const batEnvFile = path.join(config.tempDir, 'codeql-env.bat');
+        const batEnvFileContents = Object.entries(tracerConfig.env)
+          .map(([key, value]) => `Set ${key}=${value}`)
+          .join('\n');
+        fs.writeFileSync(batEnvFile, batEnvFileContents);
 
-          logger.info(`\nCodeQL environment outputted to "${batEnvFileContents}" and "${powershellEnvFile}". ` +
-            `Please export these variables to future processes so the build can tbe traced. ` +
-            `If using cmd/batch run "call ${batEnvFileContents}" ` +
-            `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`);
+        const powershellEnvFile = path.join(config.tempDir, 'codeql-env.sh');
+        const powershellEnvFileContents = Object.entries(tracerConfig.env)
+          .map(([key, value]) => `$env:${key}="${value}"`)
+          .join('\n');
+        fs.writeFileSync(powershellEnvFile, powershellEnvFileContents);
 
-        } else {
-          // Assume that anything that's not windows is using a unix-style shell
-          const envFile = path.join(config.tempDir, 'codeql-env.sh');
-          const envFileContents = Object.entries(tracerConfig.env)
-            // Some vars contain ${LIB} that we do not want to be expanded when executing this script
-            .map(([key, value]) => `export ${key}="${value.replace('$', '\\$')}"`)
-            .join('\n');
-          fs.writeFileSync(envFile, envFileContents);
+        logger.info(`\nCodeQL environment output to "${batEnvFileContents}" and "${powershellEnvFile}". ` +
+          `Please export these variables to future processes so the build can be traced. ` +
+          `If using cmd/batch run "call ${batEnvFileContents}" ` +
+          `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`);
 
-          logger.info(`\nCodeQL environment outputted to "${envFile}". ` +
-            `Please export these variables to future processes so the build can tbe traced, ` +
-            `for example by running "source ${envFile}".`);
-        }
+      } else {
+        // Assume that anything that's not windows is using a unix-style shell
+        const envFile = path.join(config.tempDir, 'codeql-env.sh');
+        const envFileContents = Object.entries(tracerConfig.env)
+          // Some vars contain ${LIB} that we do not want to be expanded when executing this script
+          .map(([key, value]) => `export ${key}="${value.replace('$', '\\$')}"`)
+          .join('\n');
+        fs.writeFileSync(envFile, envFileContents);
+
+        logger.info(`\nCodeQL environment output to "${envFile}". ` +
+          `Please export these variables to future processes so the build can be traced, ` +
+          `for example by running "source ${envFile}".`);
       }
 
     } catch (e) {
@@ -182,7 +184,7 @@ program
   .command('autobuild')
   .description('Attempts to automatically build code')
   .option('--language <language>', 'The language to build. By default will try to detect the dominant language.')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use a subdirectory of the current working directory.')
   .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: AutobuildArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -233,7 +235,7 @@ program
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
   .option('--no-upload', 'Do not upload results after analysis', false)
   .option('--output-dir <dir>', 'Directory to output SARIF files to. By default will use temp directory.')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use a subdirectory of the current working directory.')
   .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: AnalyzeArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -259,7 +261,7 @@ program
         config,
         logger);
     } catch (e) {
-      logger.error('Upload failed');
+      logger.error('Analyze failed');
       logger.error(e);
       process.exitCode = 1;
     }

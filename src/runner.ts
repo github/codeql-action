@@ -7,9 +7,9 @@ import * as path from 'path';
 import { runAnalyze } from './analyze';
 import { determineAutobuildLanguage, runAutobuild } from './autobuild';
 import { CodeQL, getCodeQL } from './codeql';
-import { getConfig} from './config-utils';
+import { Config, getConfig } from './config-utils';
 import { initCodeQL, initConfig, runInit } from './init';
-import { Language, parseLanguage } from './languages';
+import { isTracedLanguage, Language, parseLanguage } from './languages';
 import { getRunnerLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
@@ -55,6 +55,14 @@ function getToolsDir(userInput: string | undefined): string {
     fs.mkdirSync(toolsDir, { recursive: true });
   }
   return toolsDir;
+}
+
+function checkEnvironmentSetup(config: Config) {
+  if (config.languages.some(isTracedLanguage) && !('ODASA_TRACER_CONFIGURATION' in process.env)) {
+    throw new Error("Could not detect 'ODASA_TRACER_CONFIGURATION' in environment. " +
+      "Make sure that environment variables were correctly exported to future processes. " +
+      "See end out output from 'init' command for instructions.");
+  }
 }
 
 const logger = getRunnerLogger();
@@ -176,6 +184,7 @@ program
   .action(async (cmd: AutobuildArgs) => {
     try {
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
+      checkEnvironmentSetup(config);
       let language: Language | undefined = undefined;
       if (cmd.language !== undefined) {
         language = parseLanguage(cmd.language);
@@ -225,6 +234,7 @@ program
       const tempDir = getTempDir(cmd.tempDir);
       const outputDir = cmd.outputDir || path.join(tempDir, 'codeql-sarif');
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
+      checkEnvironmentSetup(config);
       await runAnalyze(
         parseRepositoryNwo(cmd.repository),
         cmd.commit,

@@ -102,24 +102,23 @@ const CODEQL_BUNDLE_NAME = "codeql-bundle.tar.gz";
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
 function getCodeQLActionRepository(mode: util.Mode): string {
-  if (mode === 'actions') {
-    // Actions do not know their own repository name,
-    // so we currently use this hack to find the name based on where our files are.
-    // This can be removed once the change to the runner in https://github.com/actions/runner/pull/585 is deployed.
-    const runnerTemp = util.getRequiredEnvParam("RUNNER_TEMP");
-    const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
-    const relativeScriptPath = path.relative(actionsDirectory, __filename);
-    // This handles the case where the Action does not come from an Action repository,
-    // e.g. our integration tests which use the Action code from the current checkout.
-    if (relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)) {
-      return CODEQL_DEFAULT_ACTION_REPOSITORY;
-    }
-    const relativeScriptPathParts = relativeScriptPath.split(path.sep);
-    return relativeScriptPathParts[0] + "/" + relativeScriptPathParts[1];
-
-  } else {
+  if (mode !== 'actions') {
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   }
+
+  // Actions do not know their own repository name,
+  // so we currently use this hack to find the name based on where our files are.
+  // This can be removed once the change to the runner in https://github.com/actions/runner/pull/585 is deployed.
+  const runnerTemp = util.getRequiredEnvParam("RUNNER_TEMP");
+  const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
+  const relativeScriptPath = path.relative(actionsDirectory, __filename);
+  // This handles the case where the Action does not come from an Action repository,
+  // e.g. our integration tests which use the Action code from the current checkout.
+  if (relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)) {
+    return CODEQL_DEFAULT_ACTION_REPOSITORY;
+  }
+  const relativeScriptPathParts = relativeScriptPath.split(path.sep);
+  return relativeScriptPathParts[0] + "/" + relativeScriptPathParts[1];
 }
 
 async function getCodeQLBundleDownloadURL(githubUrl: string, mode: util.Mode, logger: Logger): Promise<string> {
@@ -161,6 +160,8 @@ async function getCodeQLBundleDownloadURL(githubUrl: string, mode: util.Mode, lo
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${CODEQL_BUNDLE_NAME}`;
 }
 
+// We have to download CodeQL manually because the toolcache doesn't support Accept headers.
+// This can be removed once https://github.com/actions/toolkit/pull/530 is merged and released.
 async function toolcacheDownloadTool(
   url: string,
   headers: IHeaders | undefined,
@@ -189,8 +190,8 @@ export async function setupCodeQL(
   mode: util.Mode,
   logger: Logger): Promise<CodeQL> {
 
-  // Setting these two env vars makes the toolcache code safe to use,
-  // but this is obviously not a great thing we're doing and it would
+  // Setting these two env vars makes the toolcache code safe to use outside,
+  // of actions but this is obviously not a great thing we're doing and it would
   // be better to write our own implementation to use outside of actions.
   process.env['RUNNER_TEMP'] = tempDir;
   process.env['RUNNER_TOOL_CACHE'] = toolsDir;
@@ -334,8 +335,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ]);
     },
     getTracerEnv: async function(databasePath: string) {
-      // Write tracer-env.js to a temp location. When running in CLI mode we can't rely
-      // on this file existing so we have to create it ourselves.
+      // Write tracer-env.js to a temp location.
       const tracerEnvJs = path.resolve(databasePath, 'working', 'tracer-env.js');
       fs.mkdirSync(path.dirname(tracerEnvJs), {recursive: true});
       fs.writeFileSync(tracerEnvJs, `

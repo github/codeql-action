@@ -100,6 +100,7 @@ program
       const toolsDir = getToolsDir(cmd.toolsDir);
 
       // Wipe the temp dir
+      logger.info(`Cleaning temp directory ${tempDir}`);
       fs.rmdirSync(tempDir, { recursive: true });
       fs.mkdirSync(tempDir, { recursive: true });
 

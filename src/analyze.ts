@@ -130,10 +130,8 @@ export async function runAnalyze(
   doUpload: boolean,
   mode: util.Mode,
   outputDir: string,
-  tempDir: string,
+  config: configUtils.Config,
   logger: Logger): Promise<AnalysisStatusReport> {
-
-  const config = await configUtils.getConfig(tempDir, logger);
 
   // Delete the tracer config env var to avoid tracing ourselves
   delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];

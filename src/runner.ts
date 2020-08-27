@@ -84,7 +84,7 @@ program
   .description('Initializes CodeQL')
   .requiredOption('--repository <repository>', 'Repository name')
   .requiredOption('--github-url <url>', 'URL of GitHub instance')
-  .requiredOption('--github-auth <auth>', 'GitHub Apps token, or of the form "username:token" if using a personal access token')
+  .requiredOption('--github-auth <auth>', 'GitHub Apps token or personal access token')
   .option('--languages <languages>', 'Comma-separated list of languages to analyze. Defaults to trying to detect languages from the repo.')
   .option('--queries <queries>', 'Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file.')
   .option('--config-file <file>', 'Path to config file')

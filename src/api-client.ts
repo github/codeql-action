@@ -11,7 +11,7 @@ export const getApiClient = function(githubAuth: string, githubUrl: string, allo
   }
   return new github.GitHub(
     {
-      auth: parseAuth(githubAuth),
+      auth: githubAuth,
       baseUrl: getApiUrl(githubUrl),
       userAgent: "CodeQL Action",
       log: consoleLogLevel({ level: "debug" })
@@ -30,19 +30,6 @@ function getApiUrl(githubUrl: string): string {
   // Add the /api/v3 API prefix
   url.pathname = path.join(url.pathname, 'api', 'v3');
   return url.toString();
-}
-
-// Parses the user input as either a single token,
-// or a username and password / PAT.
-function parseAuth(auth: string): string {
-  // Check if it's a username:password pair
-  const c = auth.indexOf(':');
-  if (c !== -1) {
-    return 'basic ' + Buffer.from(auth).toString('base64');
-  }
-
-  // Otherwise use the token as it is
-  return auth;
 }
 
 // Temporary function to aid in the transition to running on and off of github actions.

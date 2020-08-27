@@ -42,7 +42,7 @@ function mockListLanguages(languages: string[]) {
 
 test("load empty config", async t => {
   return await util.withTmpDir(async tmpDir => {
-    const logger = getRunnerLogger();
+    const logger = getRunnerLogger(true);
     const languages = 'javascript,python';
 
     const codeQL = setCodeQL({
@@ -84,7 +84,7 @@ test("load empty config", async t => {
 
 test("loading config saves config", async t => {
   return await util.withTmpDir(async tmpDir => {
-    const logger = getRunnerLogger();
+    const logger = getRunnerLogger(true);
 
     const codeQL = setCodeQL({
       resolveQueries: async function() {
@@ -139,7 +139,7 @@ test("load input outside of workspace", async t => {
         tmpDir,
         'token',
         'https://github.example.com',
-        getRunnerLogger());
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileOutsideWorkspaceErrorMessage(path.join(tmpDir, '../input'))));
@@ -164,7 +164,7 @@ test("load non-local input with invalid repo syntax", async t => {
         tmpDir,
         'token',
         'https://github.example.com',
-        getRunnerLogger());
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileRepoFormatInvalidMessage('octo-org/codeql-config@main')));
@@ -190,7 +190,7 @@ test("load non-existent input", async t => {
         tmpDir,
         'token',
         'https://github.example.com',
-        getRunnerLogger());
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDoesNotExistErrorMessage(path.join(tmpDir, 'input'))));
@@ -262,7 +262,7 @@ test("load non-empty input", async t => {
       tmpDir,
       'token',
       'https://github.example.com',
-      getRunnerLogger());
+      getRunnerLogger(true));
 
     // Should exactly equal the object we constructed earlier
     t.deepEqual(actualConfig, expectedConfig);
@@ -317,7 +317,7 @@ test("default queries are used", async t => {
       tmpDir,
       'token',
       'https://github.example.com',
-      getRunnerLogger());
+      getRunnerLogger(true));
 
     // Check resolve queries was called correctly
     t.deepEqual(resolveQueriesArgs.length, 1);
@@ -370,7 +370,7 @@ test("Queries can be specified in config file", async t => {
       tmpDir,
       'token',
       'https://github.example.com',
-      getRunnerLogger());
+      getRunnerLogger(true));
 
     // Check resolveQueries was called correctly
     // It'll be called once for the default queries
@@ -434,7 +434,7 @@ test("Queries from config file can be overridden in workflow file", async t => {
       tmpDir,
       'token',
       'https://github.example.com',
-      getRunnerLogger());
+      getRunnerLogger(true));
 
     // Check resolveQueries was called correctly
     // It'll be called once for the default queries and once for `./override`,
@@ -489,7 +489,7 @@ test("Multiple queries can be specified in workflow file, no config file require
       tmpDir,
       'token',
       'https://github.example.com',
-      getRunnerLogger());
+      getRunnerLogger(true));
 
     // Check resolveQueries was called correctly:
     // It'll be called once for the default queries,
@@ -539,7 +539,7 @@ test("Invalid queries in workflow file handled correctly", async t => {
         tmpDir,
         'token',
         'https://github.example.com',
-        getRunnerLogger());
+        getRunnerLogger(true));
       t.fail('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3")));
@@ -597,7 +597,7 @@ test("API client used when reading remote config", async t => {
       tmpDir,
       'token',
       'https://github.example.com',
-      getRunnerLogger());
+      getRunnerLogger(true));
     t.assert(spyGetContents.called);
   });
 });
@@ -620,7 +620,7 @@ test("Remote config handles the case where a directory is provided", async t => 
         tmpDir,
         'token',
         'https://github.example.com',
-        getRunnerLogger());
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference)));
@@ -648,7 +648,7 @@ test("Invalid format of remote config handled correctly", async t => {
         tmpDir,
         'token',
         'https://github.example.com',
-        getRunnerLogger());
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
@@ -672,7 +672,7 @@ test("No detected languages", async t => {
         tmpDir,
         'token',
         'https://github.example.com',
-        getRunnerLogger());
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getNoLanguagesError()));
@@ -696,7 +696,7 @@ test("Unknown languages", async t => {
         tmpDir,
         'token',
         'https://github.example.com',
-        getRunnerLogger());
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getUnknownLanguagesError(['ruby', 'english'])));
@@ -738,7 +738,7 @@ function doInvalidInputTest(
           tmpDir,
           'token',
           'https://github.example.com',
-          getRunnerLogger());
+          getRunnerLogger(true));
         throw new Error('initConfig did not throw error');
       } catch (err) {
         t.deepEqual(err, new Error(expectedErrorMessageGenerator(inputFile)));
@@ -846,10 +846,10 @@ test('path validations', t => {
   const configFile = './.github/codeql/config.yml';
 
   for (const path of validPaths) {
-    t.truthy(configUtils.validateAndSanitisePath(path, propertyName, configFile, getRunnerLogger()));
+    t.truthy(configUtils.validateAndSanitisePath(path, propertyName, configFile, getRunnerLogger(true)));
   }
   for (const path of invalidPaths) {
-    t.throws(() => configUtils.validateAndSanitisePath(path, propertyName, configFile, getRunnerLogger()));
+    t.throws(() => configUtils.validateAndSanitisePath(path, propertyName, configFile, getRunnerLogger(true)));
   }
 });
 
@@ -860,11 +860,11 @@ test('path sanitisation', t => {
 
   // Valid paths are not modified
   t.deepEqual(
-    configUtils.validateAndSanitisePath('foo/bar', propertyName, configFile, getRunnerLogger()),
+    configUtils.validateAndSanitisePath('foo/bar', propertyName, configFile, getRunnerLogger(true)),
     'foo/bar');
 
   // Trailing stars are stripped
   t.deepEqual(
-    configUtils.validateAndSanitisePath('foo/**', propertyName, configFile, getRunnerLogger()),
+    configUtils.validateAndSanitisePath('foo/**', propertyName, configFile, getRunnerLogger(true)),
     'foo/');
 });

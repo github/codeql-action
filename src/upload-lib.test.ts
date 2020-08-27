@@ -8,10 +8,10 @@ setupTests(test);
 
 test('validateSarifFileSchema - valid', t => {
   const inputFile = __dirname + '/../src/testdata/valid-sarif.sarif';
-  t.notThrows(() => uploadLib.validateSarifFileSchema(inputFile, getRunnerLogger()));
+  t.notThrows(() => uploadLib.validateSarifFileSchema(inputFile, getRunnerLogger(true)));
 });
 
 test('validateSarifFileSchema - invalid', t => {
   const inputFile = __dirname + '/../src/testdata/invalid-sarif.sarif';
-  t.throws(() => uploadLib.validateSarifFileSchema(inputFile, getRunnerLogger()));
+  t.throws(() => uploadLib.validateSarifFileSchema(inputFile, getRunnerLogger(true)));
 });

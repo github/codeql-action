@@ -116,7 +116,7 @@ test('hash', (t: ava.Assertions) => {
 function testResolveUriToFile(uri: any, index: any, artifactsURIs: any[]) {
   const location = { "uri": uri, "index": index };
   const artifacts = artifactsURIs.map(uri => ({ "location": { "uri": uri } }));
-  return fingerprints.resolveUriToFile(location, artifacts, process.cwd(), getRunnerLogger());
+  return fingerprints.resolveUriToFile(location, artifacts, process.cwd(), getRunnerLogger(true));
 }
 
 test('resolveUriToFile', t => {
@@ -173,7 +173,7 @@ test('addFingerprints', t => {
   // The URIs in the SARIF files resolve to files in the testdata directory
   const checkoutPath = path.normalize(__dirname + '/../src/testdata');
 
-  t.deepEqual(fingerprints.addFingerprints(input, checkoutPath, getRunnerLogger()), expected);
+  t.deepEqual(fingerprints.addFingerprints(input, checkoutPath, getRunnerLogger(true)), expected);
 });
 
 test('missingRegions', t => {
@@ -188,5 +188,5 @@ test('missingRegions', t => {
   // The URIs in the SARIF files resolve to files in the testdata directory
   const checkoutPath = path.normalize(__dirname + '/../src/testdata');
 
-  t.deepEqual(fingerprints.addFingerprints(input, checkoutPath, getRunnerLogger()), expected);
+  t.deepEqual(fingerprints.addFingerprints(input, checkoutPath, getRunnerLogger(true)), expected);
 });

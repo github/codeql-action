@@ -65,8 +65,6 @@ function checkEnvironmentSetup(config: Config) {
   }
 }
 
-const logger = getRunnerLogger();
-
 interface InitArgs {
   languages: string | undefined;
   queries: string | undefined;
@@ -78,6 +76,7 @@ interface InitArgs {
   repository: string;
   githubUrl: string;
   githubAuth: string;
+  debug: boolean;
 }
 
 program
@@ -93,7 +92,9 @@ program
   .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
   .option('--tools-dir <dir>', 'Directory to use for CodeQL tools and other files to store between runs. By default will use home directory.')
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
+  .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: InitArgs) => {
+    const logger = getRunnerLogger(cmd.debug);
     try {
       const tempDir = getTempDir(cmd.tempDir);
       const toolsDir = getToolsDir(cmd.toolsDir);
@@ -174,6 +175,7 @@ program
 interface AutobuildArgs {
   language: string;
   tempDir: string | undefined;
+  debug: boolean;
 }
 
 program
@@ -181,7 +183,9 @@ program
   .description('Attempts to automatically build code')
   .option('--language <language>', 'The language to build. By default will try to detect the dominant language.')
   .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
+  .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: AutobuildArgs) => {
+    const logger = getRunnerLogger(cmd.debug);
     try {
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
       checkEnvironmentSetup(config);
@@ -215,6 +219,7 @@ interface AnalyzeArgs {
   upload: boolean;
   outputDir: string | undefined;
   tempDir: string | undefined;
+  debug: boolean;
 }
 
 program
@@ -229,7 +234,9 @@ program
   .option('--no-upload', 'Do not upload results after analysis', false)
   .option('--output-dir <dir>', 'Directory to output SARIF files to. By default will use temp directory.')
   .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
+  .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: AnalyzeArgs) => {
+    const logger = getRunnerLogger(cmd.debug);
     try {
       const tempDir = getTempDir(cmd.tempDir);
       const outputDir = cmd.outputDir || path.join(tempDir, 'codeql-sarif');
@@ -266,6 +273,7 @@ interface UploadArgs {
   githubUrl: string;
   githubAuth: string;
   checkoutPath: string | undefined;
+  debug: boolean;
 }
 
 program
@@ -278,7 +286,9 @@ program
   .requiredOption('--github-url <url>', 'URL of GitHub instance')
   .requiredOption('--github-auth <auth>', 'GitHub Apps token, or of the form "username:token" if using a personal access token')
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
+  .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: UploadArgs) => {
+    const logger = getRunnerLogger(cmd.debug);
     try {
       await upload_lib.upload(
         cmd.sarifFile,

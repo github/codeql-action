@@ -29,7 +29,7 @@ test('download codeql bundle cache', async t => {
         tmpDir,
         tmpDir,
         'runner',
-        getRunnerLogger());
+        getRunnerLogger(true));
 
       t.assert(toolcache.find('CodeQL', `0.0.0-${version}`));
     }
@@ -55,7 +55,7 @@ test('parse codeql bundle url version', t => {
     const url = `https://github.com/.../codeql-bundle-${version}/...`;
 
     try {
-      const parsedVersion = codeql.getCodeQLURLVersion(url, getRunnerLogger());
+      const parsedVersion = codeql.getCodeQLURLVersion(url, getRunnerLogger(true));
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
       t.fail(e.message);

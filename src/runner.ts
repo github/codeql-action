@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
+import md5 from 'md5';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -38,15 +39,17 @@ function parseGithubUrl(inputUrl: string): string {
 }
 
 function getTempDir(userInput: string | undefined): string {
-  const tempDir = path.join(userInput || os.tmpdir(), 'codeql-runner-temp');
+  const cwd = process.cwd();
+  const cwdHash = md5(cwd);
+  const tempDir = path.join(userInput || process.cwd(), 'codeql-runner', cwdHash);
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
   return tempDir;
 }
 
-function getToolsDir(userInput: string | undefined, tmpDir: string): string {
-  const toolsDir = path.join(userInput || path.dirname(tmpDir), 'codeql-runner-tools');
+function getToolsDir(userInput: string | undefined): string {
+  const toolsDir = userInput || path.join(os.homedir(), 'codeql-runner-tools');
   if (!fs.existsSync(toolsDir)) {
     fs.mkdirSync(toolsDir, { recursive: true });
   }
@@ -78,13 +81,13 @@ program
   .option('--queries <queries>', 'Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file.')
   .option('--config-file <file>', 'Path to config file')
   .option('--codeql-path <path>', 'Path to a copy of the CodeQL CLI executable to use. Otherwise downloads a copy.')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. Defaults to OS temp dir.')
-  .option('--tools-dir <dir>', 'Directory to use for CodeQL tools and other files to store between runs. Defaults to same as temp dir.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
+  .option('--tools-dir <dir>', 'Directory to use for CodeQL tools and other files to store between runs. By default will use home directory.')
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
   .action(async (cmd: InitArgs) => {
     try {
       const tempDir = getTempDir(cmd.tempDir);
-      const toolsDir = getToolsDir(cmd.toolsDir, tempDir);
+      const toolsDir = getToolsDir(cmd.toolsDir);
 
       // Wipe the temp dir
       fs.rmdirSync(tempDir, { recursive: true });
@@ -168,7 +171,7 @@ program
   .command('autobuild')
   .description('Attempts to automatically build code')
   .requiredOption('--language <language>', 'The language to build')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. Defaults to OS temp dir.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
   .action(async (cmd: AutobuildArgs) => {
     try {
       const language = parseLanguage(cmd.language);
@@ -209,7 +212,7 @@ program
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
   .option('--no-upload', 'Do not upload results after analysis', false)
   .option('--output-dir <dir>', 'Directory to output SARIF files to. By default will use temp directory.')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. Defaults to OS temp dir.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
   .action(async (cmd: AnalyzeArgs) => {
     try {
       const tempDir = getTempDir(cmd.tempDir);

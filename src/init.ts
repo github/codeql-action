@@ -6,6 +6,7 @@ import * as analysisPaths from './analysis-paths';
 import { CodeQL, setupCodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import { Logger } from './logging';
+import { RepositoryNwo } from './repository';
 import { getCombinedTracerConfig, TracerConfig } from './tracer-config';
 import * as util from './util';
 
@@ -36,6 +37,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string | undefined,
+  repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
@@ -49,6 +51,7 @@ export async function initConfig(
     languagesInput,
     queriesInput,
     configFile,
+    repository,
     tempDir,
     toolCacheDir,
     codeQL,

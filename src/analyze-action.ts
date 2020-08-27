@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 
 import { AnalysisStatusReport, runAnalyze } from './analyze';
+import { getConfig } from './config-utils';
 import { getActionsLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as util from './util';
@@ -29,6 +30,8 @@ async function run() {
     if (!await util.sendStatusReport(await util.createStatusReportBase('finish', 'starting', startedAt), true)) {
       return;
     }
+    const logger = getActionsLogger();
+    const config = await getConfig(util.getRequiredEnvParam('RUNNER_TEMP'), logger);
     stats = await runAnalyze(
       parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
       await util.getCommitOid(),
@@ -43,8 +46,8 @@ async function run() {
       core.getInput('upload') === 'true',
       'actions',
       core.getInput('output'),
-      util.getRequiredEnvParam('RUNNER_TEMP'),
-      getActionsLogger());
+      config,
+      logger);
 
   } catch (error) {
     core.setFailed(error.message);

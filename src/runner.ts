@@ -5,10 +5,11 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { runAnalyze } from './analyze';
-import { runAutobuild } from './autobuild';
+import { determineAutobuildLanguage, runAutobuild } from './autobuild';
 import { CodeQL, getCodeQL } from './codeql';
+import { getConfig} from './config-utils';
 import { initCodeQL, initConfig, runInit } from './init';
-import { parseLanguage } from './languages';
+import { Language, parseLanguage } from './languages';
 import { getRunnerLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
@@ -170,18 +171,24 @@ interface AutobuildArgs {
 program
   .command('autobuild')
   .description('Attempts to automatically build code')
-  .requiredOption('--language <language>', 'The language to build')
+  .option('--language <language>', 'The language to build. By default will try to detect the dominant language.')
   .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use current working directory.')
   .action(async (cmd: AutobuildArgs) => {
     try {
-      const language = parseLanguage(cmd.language);
-      if (language === undefined) {
-        throw new Error(`"${cmd.language}" is not a recognised language`);
+      const config = await getConfig(getTempDir(cmd.tempDir), logger);
+      let language: Language | undefined = undefined;
+      if (cmd.language !== undefined) {
+        language = parseLanguage(cmd.language);
+        if (language === undefined || !config.languages.includes(language)) {
+          throw new Error(`"${cmd.language}" is not a recognised language. ` +
+            `Known languages in this project are ${config.languages.join(', ')}.`);
+        }
+      } else {
+        language = determineAutobuildLanguage(config, logger);
       }
-      await runAutobuild(
-        language,
-        getTempDir(cmd.tempDir),
-        logger);
+      if (language !== undefined) {
+        await runAutobuild(language, config, logger);
+      }
     } catch (e) {
       logger.error('Autobuild failed');
       logger.error(e);
@@ -217,6 +224,7 @@ program
     try {
       const tempDir = getTempDir(cmd.tempDir);
       const outputDir = cmd.outputDir || path.join(tempDir, 'codeql-sarif');
+      const config = await getConfig(getTempDir(cmd.tempDir), logger);
       await runAnalyze(
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
@@ -231,7 +239,7 @@ program
         cmd.upload,
         'runner',
         outputDir,
-        tempDir,
+        config,
         logger);
     } catch (e) {
       logger.error('Upload failed');

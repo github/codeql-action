@@ -63,6 +63,7 @@ interface InitArgs {
   tempDir: string | undefined;
   toolsDir: string | undefined;
   checkoutPath: string | undefined;
+  repository: string;
   githubUrl: string;
   githubAuth: string;
 }
@@ -70,6 +71,7 @@ interface InitArgs {
 program
   .command('init')
   .description('Initializes CodeQL')
+  .requiredOption('--repository <repository>', 'Repository name')
   .requiredOption('--github-url <url>', 'URL of GitHub instance')
   .requiredOption('--github-auth <auth>', 'GitHub Apps token, or of the form "username:token" if using a personal access token')
   .option('--languages <languages>', 'Comma-separated list of languages to analyze. Defaults to trying to detect languages from the repo.')
@@ -106,6 +108,7 @@ program
         cmd.languages,
         cmd.queries,
         cmd.configFile,
+        parseRepositoryNwo(cmd.repository),
         tempDir,
         toolsDir,
         codeql,

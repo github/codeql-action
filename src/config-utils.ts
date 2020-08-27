@@ -7,6 +7,7 @@ import { CodeQL, ResolveQueriesOutput } from './codeql';
 import * as externalQueries from "./external-queries";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from './logging';
+import { RepositoryNwo } from './repository';
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = 'name';
@@ -450,38 +451,31 @@ export function getUnknownLanguagesError(languages: string[]): string {
  * Gets the set of languages in the current repository
  */
 async function getLanguagesInRepo(
+  repository: RepositoryNwo,
   githubAuth: string,
   githubUrl: string,
   logger: Logger): Promise<Language[]> {
 
-  let repo_nwo = process.env['GITHUB_REPOSITORY']?.split("/");
-  if (repo_nwo) {
-    let owner = repo_nwo[0];
-    let repo = repo_nwo[1];
+  logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
+  const response = await api.getApiClient(githubAuth, githubUrl, true).repos.listLanguages({
+    owner: repository.owner,
+    repo: repository.repo
+  });
 
-    logger.debug(`GitHub repo ${owner} ${repo}`);
-    const response = await api.getApiClient(githubAuth, githubUrl, true).repos.listLanguages({
-      owner,
-      repo
-    });
+  logger.debug("Languages API response: " + JSON.stringify(response));
 
-    logger.debug("Languages API response: " + JSON.stringify(response));
-
-    // The GitHub API is going to return languages in order of popularity,
-    // When we pick a language to autobuild we want to pick the most popular traced language
-    // Since sets in javascript maintain insertion order, using a set here and then splatting it
-    // into an array gives us an array of languages ordered by popularity
-    let languages: Set<Language> = new Set();
-    for (let lang of Object.keys(response.data)) {
-      let parsedLang = parseLanguage(lang);
-      if (parsedLang !== undefined) {
-        languages.add(parsedLang);
-      }
+  // The GitHub API is going to return languages in order of popularity,
+  // When we pick a language to autobuild we want to pick the most popular traced language
+  // Since sets in javascript maintain insertion order, using a set here and then splatting it
+  // into an array gives us an array of languages ordered by popularity
+  let languages: Set<Language> = new Set();
+  for (let lang of Object.keys(response.data)) {
+    let parsedLang = parseLanguage(lang);
+    if (parsedLang !== undefined) {
+      languages.add(parsedLang);
     }
-    return [...languages];
-  } else {
-    return [];
   }
+  return [...languages];
 }
 
 /**
@@ -496,6 +490,7 @@ async function getLanguagesInRepo(
  */
 async function getLanguages(
   languagesInput: string | undefined,
+  repository: RepositoryNwo,
   githubAuth: string,
   githubUrl: string,
   logger: Logger): Promise<Language[]> {
@@ -510,6 +505,7 @@ async function getLanguages(
   if (languages.length === 0) {
     // Obtain languages as all languages in the repo that can be analysed
     languages = await getLanguagesInRepo(
+      repository,
       githubAuth,
       githubUrl,
       logger);
@@ -564,6 +560,7 @@ async function addQueriesFromWorkflow(
 export async function getDefaultConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
+  repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
@@ -574,6 +571,7 @@ export async function getDefaultConfig(
 
   const languages = await getLanguages(
     languagesInput,
+    repository,
     githubAuth,
     githubUrl,
     logger);
@@ -602,6 +600,7 @@ async function loadConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string,
+  repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
@@ -636,6 +635,7 @@ async function loadConfig(
 
   const languages = await getLanguages(
     languagesInput,
+    repository,
     githubAuth,
     githubUrl,
     logger);
@@ -734,6 +734,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string | undefined,
+  repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
@@ -750,6 +751,7 @@ export async function initConfig(
     config = await getDefaultConfig(
       languagesInput,
       queriesInput,
+      repository,
       tempDir,
       toolCacheDir,
       codeQL,
@@ -762,6 +764,7 @@ export async function initConfig(
       languagesInput,
       queriesInput,
       configFile,
+      repository,
       tempDir,
       toolCacheDir,
       codeQL,

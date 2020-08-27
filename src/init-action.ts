@@ -4,6 +4,7 @@ import { CodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import { initCodeQL, initConfig, runInit } from './init';
 import { getActionsLogger } from './logging';
+import { parseRepositoryNwo } from './repository';
 import * as util from './util';
 
 interface InitSuccessStatusReport extends util.StatusReportBase {
@@ -69,6 +70,7 @@ async function run() {
       core.getInput('languages'),
       core.getInput('queries'),
       core.getInput('config-file'),
+      parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
       util.getRequiredEnvParam('RUNNER_TEMP'),
       util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
       codeql,

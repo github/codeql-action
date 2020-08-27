@@ -431,6 +431,70 @@ test("Multiple queries can be specified in workflow file, no config file require
   });
 });
 
+test("Queries in workflow file can be added to the set of queries without overriding config file", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo`;
+
+    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+    setInput('config-file', 'input');
+
+    // These queries shouldn't override anything, because the value is prefixed with "+"
+    setInput('queries', '+./additional1,./additional2');
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
+    fs.mkdirSync(path.join(tmpDir, 'additional1'));
+    fs.mkdirSync(path.join(tmpDir, 'additional2'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test by seeing which returned items are in
+        // the final configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    setInput('languages', 'javascript');
+
+    const config = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries,
+    // once for each of additional1 and additional2,
+    // and once for './foo' from the config file
+    t.deepEqual(resolveQueriesArgs.length, 4);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/additional1$/);
+    t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
+    t.regex(resolveQueriesArgs[2].queries[0], /.*\/additional2$/);
+    t.deepEqual(resolveQueriesArgs[3].queries.length, 1);
+    t.regex(resolveQueriesArgs[3].queries[0], /.*\/foo$/);
+
+    // Now check that the end result contains all the queries
+    t.deepEqual(config.queries['javascript'].length, 4);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/additional1$/);
+    t.regex(config.queries['javascript'][2], /.*\/additional2$/);
+    t.regex(config.queries['javascript'][3], /.*\/foo$/);
+  });
+});
+
 test("Invalid queries in workflow file handled correctly", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;

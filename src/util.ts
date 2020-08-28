@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
+import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import * as fs from "fs";
 import * as os from 'os';
 import * as path from 'path';
@@ -84,13 +84,13 @@ export async function getCommitOid(): Promise<string> {
   // reported on the merge commit.
   try {
     let commitOid = '';
-    await exec.exec('git', ['rev-parse', 'HEAD'], {
+    await new toolrunnner.ToolRunner('git', ['rev-parse', 'HEAD'], {
       silent: true,
       listeners: {
         stdout: (data) => { commitOid += data.toString(); },
         stderr: (data) => { process.stderr.write(data); }
       }
-    });
+    }).exec();
     return commitOid.trim();
   } catch (e) {
     core.info("Failed to call git to get current commit. Continuing with data from environment: " + e);

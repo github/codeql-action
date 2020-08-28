@@ -1,4 +1,4 @@
-import * as exec from '@actions/exec';
+import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -92,13 +92,13 @@ export async function runInit(
       $id=$process.Id
       Invoke-Expression "&$tracer --inject=$id"`);
 
-    await exec.exec(
+    await new toolrunnner.ToolRunner(
       'powershell',
       [
         injectTracerPath,
         path.resolve(path.dirname(codeql.getPath()), 'tools', 'win64', 'tracer.exe'),
       ],
-      { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } });
+      { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } }).exec();
   }
   return tracerConfig;
 }

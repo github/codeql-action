@@ -1,4 +1,4 @@
-import * as exec from '@actions/exec';
+import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import * as http from '@actions/http-client';
 import { IHeaders } from '@actions/http-client/interfaces';
 import * as toolcache from '@actions/tool-cache';
@@ -329,10 +329,10 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       return cmd;
     },
     printVersion: async function() {
-      await exec.exec(cmd, [
+      await new toolrunnner.ToolRunner(cmd, [
         'version',
         '--format=json'
-      ]);
+      ]).exec();
     },
     getTracerEnv: async function(databasePath: string) {
       // Write tracer-env.js to a temp location.
@@ -352,7 +352,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         fs.writeFileSync(process.argv[2], JSON.stringify(env), 'utf-8');`);
 
       const envFile = path.resolve(databasePath, 'working', 'env.tmp');
-      await exec.exec(cmd, [
+      await new toolrunnner.ToolRunner(cmd, [
         'database',
         'trace-command',
         databasePath,
@@ -360,18 +360,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         process.execPath,
         tracerEnvJs,
         envFile
-      ]);
+      ]).exec();
       return JSON.parse(fs.readFileSync(envFile, 'utf-8'));
     },
     databaseInit: async function(databasePath: string, language: Language, sourceRoot: string) {
-      await exec.exec(cmd, [
+      await new toolrunnner.ToolRunner(cmd, [
         'database',
         'init',
         databasePath,
         '--language=' + language,
         '--source-root=' + sourceRoot,
         ...getExtraOptionsFromEnv(['database', 'init']),
-      ]);
+      ]).exec();
     },
     runAutobuild: async function(language: Language) {
       const cmdName = process.platform === 'win32' ? 'autobuild.cmd' : 'autobuild.sh';
@@ -385,12 +385,12 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       let javaToolOptions = process.env['JAVA_TOOL_OPTIONS'] || "";
       process.env['JAVA_TOOL_OPTIONS'] = [...javaToolOptions.split(/\s+/), '-Dhttp.keepAlive=false', '-Dmaven.wagon.http.pool=false'].join(' ');
 
-      await exec.exec(autobuildCmd);
+      await new toolrunnner.ToolRunner(autobuildCmd).exec();
     },
     extractScannedLanguage: async function(databasePath: string, language: Language) {
       // Get extractor location
       let extractorPath = '';
-      await exec.exec(
+      await new toolrunnner.ToolRunner(
         cmd,
         [
           'resolve',
@@ -405,29 +405,29 @@ function getCodeQLForCmd(cmd: string): CodeQL {
             stdout: (data) => { extractorPath += data.toString(); },
             stderr: (data) => { process.stderr.write(data); }
           }
-        });
+        }).exec();
 
       // Set trace command
       const ext = process.platform === 'win32' ? '.cmd' : '.sh';
       const traceCommand = path.resolve(JSON.parse(extractorPath), 'tools', 'autobuild' + ext);
 
       // Run trace command
-      await exec.exec(cmd, [
+      await new toolrunnner.ToolRunner(cmd, [
         'database',
         'trace-command',
         ...getExtraOptionsFromEnv(['database', 'trace-command']),
         databasePath,
         '--',
         traceCommand
-      ]);
+      ]).exec();
     },
     finalizeDatabase: async function(databasePath: string) {
-      await exec.exec(cmd, [
+      await new toolrunnner.ToolRunner(cmd, [
         'database',
         'finalize',
         ...getExtraOptionsFromEnv(['database', 'finalize']),
         databasePath
-      ]);
+      ]).exec();
     },
     resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
       const codeqlArgs = [
@@ -441,18 +441,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         codeqlArgs.push('--search-path', extraSearchPath);
       }
       let output = '';
-      await exec.exec(cmd, codeqlArgs, {
+      await new toolrunnner.ToolRunner(cmd, codeqlArgs, {
         listeners: {
           stdout: (data: Buffer) => {
             output += data.toString();
           }
         }
-      });
+      }).exec();
 
       return JSON.parse(output);
     },
     databaseAnalyze: async function(databasePath: string, sarifFile: string, querySuite: string) {
-      await exec.exec(cmd, [
+      await new toolrunnner.ToolRunner(cmd, [
         'database',
         'analyze',
         util.getMemoryFlag(),
@@ -463,7 +463,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         '--no-sarif-add-snippets',
         ...getExtraOptionsFromEnv(['database', 'analyze']),
         querySuite
-      ]);
+      ]).exec();
     }
   };
 }

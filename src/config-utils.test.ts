@@ -100,8 +100,8 @@ test("loading config saves config", async t => {
     // Sanity check the saved config file does not already exist
     t.false(fs.existsSync(configUtils.getPathToParsedConfigFile(tmpDir)));
 
-    // Sanity check that getConfig throws before we have called initConfig
-    await t.throwsAsync(() => configUtils.getConfig(tmpDir, logger));
+    // Sanity check that getConfig returns undefined before we have called initConfig
+    t.deepEqual(await configUtils.getConfig(tmpDir, logger), undefined);
 
     const config1 = await configUtils.initConfig(
       'javascript,python',

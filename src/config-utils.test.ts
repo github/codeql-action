@@ -381,6 +381,58 @@ test("Queries from config file can be overridden in workflow file", async t => {
   });
 });
 
+test("Queries in workflow file can be used in tandem with the 'disable default queries' option", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      disable-default-queries: true`;
+
+    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+    setInput('config-file', 'input');
+
+    setInput('queries', './workflow-query');
+
+    fs.mkdirSync(path.join(tmpDir, 'workflow-query'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test by seeing which returned items are in
+        // the final configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    setInput('languages', 'javascript');
+
+    const config = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for `./workflow-query`,
+    // but won't be called for the default one since that was disabled
+    t.deepEqual(resolveQueriesArgs.length, 1);
+    t.deepEqual(resolveQueriesArgs[0].queries.length, 1);
+    t.regex(resolveQueriesArgs[0].queries[0], /.*\/workflow-query$/);
+
+    // Now check that the end result contains only the workflow query, and not the default one
+    t.deepEqual(config.queries['javascript'].length, 1);
+    t.regex(config.queries['javascript'][0], /.*\/workflow-query$/);
+  });
+});
+
 test("Multiple queries can be specified in workflow file, no config file required", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;

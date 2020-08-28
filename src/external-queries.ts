@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
+import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -23,12 +23,12 @@ export async function checkoutExternalRepository(
 
   if (!fs.existsSync(checkoutLocation)) {
     const repoURL = githubUrl + '/' + repository + '.git';
-    await exec.exec('git', ['clone', repoURL, checkoutLocation]);
-    await exec.exec('git', [
+    await new toolrunnner.ToolRunner('git', ['clone', repoURL, checkoutLocation]).exec();
+    await new toolrunnner.ToolRunner('git', [
       '--work-tree=' + checkoutLocation,
       '--git-dir=' + checkoutLocation + '/.git',
       'checkout', ref,
-    ]);
+    ]).exec();
   }
 
   return checkoutLocation;

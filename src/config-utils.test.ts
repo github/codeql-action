@@ -273,6 +273,23 @@ test("default queries are used", async t => {
   });
 });
 
+/**
+ * Returns the provided queries, just in the right format for a resolved query
+ * This way we can test by seeing which returned items are in the final
+ * configuration.
+ */
+function queriesToResolvedQueryForm(queries: string[]) {
+  const dummyResolvedQueries = {};
+  queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+  return {
+    byLanguage: {
+      'javascript': dummyResolvedQueries,
+    },
+    noDeclaredLanguage: {},
+    multipleDeclaredLanguages: {},
+  };
+}
+
 test("Queries can be specified in config file", async t => {
   return await util.withTmpDir(async tmpDir => {
     process.env['RUNNER_TEMP'] = tmpDir;
@@ -292,18 +309,7 @@ test("Queries can be specified in config file", async t => {
     const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
-        // Return what we're given, just in the right format for a resolved query
-        // This way we can test by seeing which returned items are in the final
-        // configuration.
-        const dummyResolvedQueries = {};
-        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
-        return {
-          byLanguage: {
-            'javascript': dummyResolvedQueries,
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
+        return queriesToResolvedQueryForm(queries);
       },
     });
 
@@ -348,18 +354,7 @@ test("Queries from config file can be overridden in workflow file", async t => {
     const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
-        // Return what we're given, just in the right format for a resolved query
-        // This way we can test overriding by seeing which returned items are in
-        // the final configuration.
-        const dummyResolvedQueries = {};
-        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
-        return {
-          byLanguage: {
-            'javascript': dummyResolvedQueries,
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
+        return queriesToResolvedQueryForm(queries);
       },
     });
 
@@ -394,25 +389,13 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
     setInput('config-file', 'input');
 
     setInput('queries', './workflow-query');
-
     fs.mkdirSync(path.join(tmpDir, 'workflow-query'));
 
     const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
     const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
-        // Return what we're given, just in the right format for a resolved query
-        // This way we can test by seeing which returned items are in
-        // the final configuration.
-        const dummyResolvedQueries = {};
-        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
-        return {
-          byLanguage: {
-            'javascript': dummyResolvedQueries,
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
+        return queriesToResolvedQueryForm(queries);
       },
     });
 
@@ -447,18 +430,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
-        // Return what we're given, just in the right format for a resolved query
-        // This way we can test overriding by seeing which returned items are in
-        // the final configuration.
-        const dummyResolvedQueries = {};
-        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
-        return {
-          byLanguage: {
-            'javascript': dummyResolvedQueries,
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
+        return queriesToResolvedQueryForm(queries);
       },
     });
 
@@ -507,18 +479,7 @@ test("Queries in workflow file can be added to the set of queries without overri
     const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
-        // Return what we're given, just in the right format for a resolved query
-        // This way we can test by seeing which returned items are in
-        // the final configuration.
-        const dummyResolvedQueries = {};
-        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
-        return {
-          byLanguage: {
-            'javascript': dummyResolvedQueries,
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
+        return queriesToResolvedQueryForm(queries);
       },
     });
 

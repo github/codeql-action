@@ -45,6 +45,9 @@ async function run() {
     }
 
     const config = await config_utils.getConfig(util.getRequiredEnvParam('RUNNER_TEMP'), logger);
+    if (config === undefined) {
+      throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
+    }
     language = determineAutobuildLanguage(config, logger);
     if (language !== undefined) {
       await runAutobuild(language, config, logger);

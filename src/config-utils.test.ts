@@ -24,6 +24,11 @@ function setInput(name: string, value: string | undefined) {
   }
 }
 
+function setConfigFile(inputFileContents: string, tmpDir: string) {
+  fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
+  setInput('config-file', 'input');
+}
+
 type GetContentsResponse = { content?: string; } | {}[];
 
 function mockGetContents(content: GetContentsResponse): sinon.SinonStub<any, any> {
@@ -192,6 +197,7 @@ test("load non-empty input", async t => {
         - b
       paths:
         - c/d`;
+    setConfigFile(inputFileContents, tmpDir);
 
     fs.mkdirSync(path.join(tmpDir, 'foo'));
 
@@ -213,8 +219,6 @@ test("load non-empty input", async t => {
       codeQLCmd: codeQL.getPath(),
     };
 
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
     const actualConfig = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
@@ -257,11 +261,10 @@ test("default queries are used", async t => {
     const inputFileContents = `
       paths:
         - foo`;
+    setConfigFile(inputFileContents, tmpDir);
 
     fs.mkdirSync(path.join(tmpDir, 'foo'));
 
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
     setInput('languages', 'javascript');
 
     await configUtils.initConfig(tmpDir, tmpDir, codeQL);
@@ -299,9 +302,7 @@ test("Queries can be specified in config file", async t => {
       name: my config
       queries:
         - uses: ./foo`;
-
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
+    setConfigFile(inputFileContents, tmpDir);
 
     fs.mkdirSync(path.join(tmpDir, 'foo'));
 
@@ -340,9 +341,7 @@ test("Queries from config file can be overridden in workflow file", async t => {
       name: my config
       queries:
         - uses: ./foo`;
-
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
+    setConfigFile(inputFileContents, tmpDir);
 
     // This config item should take precedence over the config file but shouldn't affect the default queries.
     setInput('queries', './override');
@@ -384,9 +383,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
     const inputFileContents = `
       name: my config
       disable-default-queries: true`;
-
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
+    setConfigFile(inputFileContents, tmpDir);
 
     setInput('queries', './workflow-query');
     fs.mkdirSync(path.join(tmpDir, 'workflow-query'));
@@ -464,9 +461,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       name: my config
       queries:
         - uses: ./foo`;
-
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
+    setConfigFile(inputFileContents, tmpDir);
 
     // These queries shouldn't override anything, because the value is prefixed with "+"
     setInput('queries', '+./additional1,./additional2');

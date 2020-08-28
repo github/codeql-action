@@ -854,17 +854,13 @@ async function saveConfig(config: Config, logger: Logger) {
 }
 
 /**
- * Get the config.
- *
- * If this is the first time in a workflow that this is being called then
- * this will parse the config from the user input. The parsed config is then
- * stored to a known location. On the second and further calls, this will
- * return the contents of the parsed config from the known location.
+ * Get the config that has been saved to the given temp dir.
+ * If the config could not be found then returns undefined.
  */
-export async function getConfig(tempDir: string, logger: Logger): Promise<Config> {
+export async function getConfig(tempDir: string, logger: Logger): Promise<Config | undefined> {
   const configFile = getPathToParsedConfigFile(tempDir);
   if (!fs.existsSync(configFile)) {
-    throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
+    return undefined;
   }
   const configString = fs.readFileSync(configFile, 'utf8');
   logger.debug('Loaded config:');

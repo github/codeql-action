@@ -32,6 +32,9 @@ async function run() {
     }
     const logger = getActionsLogger();
     const config = await getConfig(util.getRequiredEnvParam('RUNNER_TEMP'), logger);
+    if (config === undefined) {
+      throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
+    }
     stats = await runAnalyze(
       parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
       await util.getCommitOid(),

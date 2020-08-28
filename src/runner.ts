@@ -188,6 +188,10 @@ program
     const logger = getRunnerLogger(cmd.debug);
     try {
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
+      if (config === undefined) {
+        throw new Error("Config file could not be found at expected location. " +
+          "Was the 'init' command run with the same '--temp-dir' argument as this command.");
+      }
       checkEnvironmentSetup(config);
       let language: Language | undefined = undefined;
       if (cmd.language !== undefined) {
@@ -241,6 +245,10 @@ program
       const tempDir = getTempDir(cmd.tempDir);
       const outputDir = cmd.outputDir || path.join(tempDir, 'codeql-sarif');
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
+      if (config === undefined) {
+        throw new Error("Config file could not be found at expected location. " +
+          "Was the 'init' command run with the same '--temp-dir' argument as this command.");
+      }
       checkEnvironmentSetup(config);
       await runAnalyze(
         parseRepositoryNwo(cmd.repository),

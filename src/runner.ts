@@ -8,7 +8,7 @@ import { determineAutobuildLanguage, runAutobuild } from './autobuild';
 import { CodeQL, getCodeQL } from './codeql';
 import { Config, getConfig } from './config-utils';
 import { initCodeQL, initConfig, runInit } from './init';
-import { isTracedLanguage, Language, parseLanguage } from './languages';
+import { Language, parseLanguage } from './languages';
 import { getRunnerLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
@@ -54,11 +54,14 @@ function getToolsDir(userInput: string | undefined): string {
   return toolsDir;
 }
 
-function checkEnvironmentSetup(config: Config) {
-  if (config.languages.some(isTracedLanguage) && !('ODASA_TRACER_CONFIGURATION' in process.env)) {
-    throw new Error("Could not detect 'ODASA_TRACER_CONFIGURATION' in environment. " +
-      "Make sure that environment variables were correctly exported to future processes. " +
-      "See end of output from 'init' command for instructions.");
+const codeqlEnvJsonFilename = 'codeql-env.json';
+
+// Imports the environment from codeqlEnvJsonFilename if not already present
+function importTracerEnvironment(config: Config) {
+  if (!('ODASA_TRACER_CONFIGURATION' in process.env)) {
+    const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
+    const env = JSON.parse(fs.readFileSync(jsonEnvFile).toString('utf-8'));
+    Object.keys(env).forEach(key => process.env[key] = env[key]);
   }
 }
 
@@ -133,6 +136,10 @@ program
         return;
       }
 
+      // Always output a json file of the env that can be consumed programatically
+      const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
+      fs.writeFileSync(jsonEnvFile, JSON.stringify(tracerConfig.env));
+
       if (process.platform === 'win32') {
         const batEnvFile = path.join(config.tempDir, 'codeql-env.bat');
         const batEnvFileContents = Object.entries(tracerConfig.env)
@@ -146,23 +153,23 @@ program
           .join('\n');
         fs.writeFileSync(powershellEnvFile, powershellEnvFileContents);
 
-        logger.info(`\nCodeQL environment output to "${batEnvFileContents}" and "${powershellEnvFile}". ` +
+        logger.info(`\nCodeQL environment output to "${jsonEnvFile}", "${batEnvFileContents}" and "${powershellEnvFile}". ` +
           `Please export these variables to future processes so the build can be traced. ` +
           `If using cmd/batch run "call ${batEnvFileContents}" ` +
           `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`);
 
       } else {
         // Assume that anything that's not windows is using a unix-style shell
-        const envFile = path.join(config.tempDir, 'codeql-env.sh');
-        const envFileContents = Object.entries(tracerConfig.env)
+        const shEnvFile = path.join(config.tempDir, 'codeql-env.sh');
+        const shEnvFileContents = Object.entries(tracerConfig.env)
           // Some vars contain ${LIB} that we do not want to be expanded when executing this script
           .map(([key, value]) => `export ${key}="${value.replace('$', '\\$')}"`)
           .join('\n');
-        fs.writeFileSync(envFile, envFileContents);
+        fs.writeFileSync(shEnvFile, shEnvFileContents);
 
-        logger.info(`\nCodeQL environment output to "${envFile}". ` +
+        logger.info(`\nCodeQL environment output to "${jsonEnvFile}" and "${shEnvFile}". ` +
           `Please export these variables to future processes so the build can be traced, ` +
-          `for example by running "source ${envFile}".`);
+          `for example by running ". ${shEnvFile}".`);
       }
 
     } catch (e) {
@@ -192,7 +199,7 @@ program
         throw new Error("Config file could not be found at expected location. " +
           "Was the 'init' command run with the same '--temp-dir' argument as this command.");
       }
-      checkEnvironmentSetup(config);
+      importTracerEnvironment(config);
       let language: Language | undefined = undefined;
       if (cmd.language !== undefined) {
         language = parseLanguage(cmd.language);
@@ -249,7 +256,6 @@ program
         throw new Error("Config file could not be found at expected location. " +
           "Was the 'init' command run with the same '--temp-dir' argument as this command.");
       }
-      checkEnvironmentSetup(config);
       await runAnalyze(
         parseRepositoryNwo(cmd.repository),
         cmd.commit,

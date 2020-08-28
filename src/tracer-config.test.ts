@@ -299,13 +299,20 @@ test('getCombinedTracerConfig - valid spec file', async t => {
     });
 
     const result = await getCombinedTracerConfig(config, codeQL);
+
+    const expectedEnv = {
+      'foo': 'bar',
+      'ODASA_TRACER_CONFIGURATION': result!.spec,
+    };
+    if (process.platform === 'darwin') {
+      expectedEnv['DYLD_INSERT_LIBRARIES'] = path.join(path.dirname(codeQL.getPath()), 'tools', 'osx64', 'libtrace.dylib');
+    } else if (process.platform !== 'win32') {
+      expectedEnv['LD_PRELOAD'] = path.join(path.dirname(codeQL.getPath()), 'tools', 'linux64', '${LIB}trace.so');
+    }
+
     t.deepEqual(result, {
       spec: path.join(tmpDir, 'compound-spec'),
-      env: {
-        'foo': 'bar',
-        'ODASA_TRACER_CONFIGURATION': result!.spec,
-        'LD_PRELOAD': path.join(path.dirname(codeQL.getPath()), 'tools', 'linux64', '${LIB}trace.so'),
-      }
+      env: expectedEnv,
     });
   });
 });

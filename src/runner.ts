@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
-import md5 from 'md5';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -40,9 +39,7 @@ function parseGithubUrl(inputUrl: string): string {
 }
 
 function getTempDir(userInput: string | undefined): string {
-  const cwd = process.cwd();
-  const cwdHash = md5(cwd);
-  const tempDir = path.join(userInput || process.cwd(), 'codeql-runner', cwdHash);
+  const tempDir = path.join(userInput || process.cwd(), 'codeql-runner');
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
@@ -89,7 +86,7 @@ program
   .option('--queries <queries>', 'Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file.')
   .option('--config-file <file>', 'Path to config file')
   .option('--codeql-path <path>', 'Path to a copy of the CodeQL CLI executable to use. Otherwise downloads a copy.')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use a subdirectory of the current working directory.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use "./codeql-runner".')
   .option('--tools-dir <dir>', 'Directory to use for CodeQL tools and other files to store between runs. By default will use home directory.')
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
   .option('--debug', 'Print more verbose output', false)
@@ -185,7 +182,7 @@ program
   .command('autobuild')
   .description('Attempts to automatically build code')
   .option('--language <language>', 'The language to build. By default will try to detect the dominant language.')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use a subdirectory of the current working directory.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use "./codeql-runner".')
   .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: AutobuildArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -236,7 +233,7 @@ program
   .option('--checkout-path <path>', 'Checkout path (default: current working directory)')
   .option('--no-upload', 'Do not upload results after analysis', false)
   .option('--output-dir <dir>', 'Directory to output SARIF files to. By default will use temp directory.')
-  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use a subdirectory of the current working directory.')
+  .option('--temp-dir <dir>', 'Directory to use for temporary files. By default will use "./codeql-runner".')
   .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: AnalyzeArgs) => {
     const logger = getRunnerLogger(cmd.debug);

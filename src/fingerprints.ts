@@ -161,7 +161,12 @@ function locationUpdateCallback(result: any, location: any, logger: Logger): has
 // the source file so we can hash it.
 // If possible returns a absolute file path for the source file,
 // or if not possible then returns undefined.
-export function resolveUriToFile(location: any, artifacts: any[], logger: Logger): string | undefined {
+export function resolveUriToFile(
+  location: any,
+  artifacts: any[],
+  checkoutPath: string,
+  logger: Logger): string | undefined {
+
   // This may be referencing an artifact
   if (!location.uri && location.index !== undefined) {
     if (typeof location.index !== 'number' ||
@@ -192,7 +197,7 @@ export function resolveUriToFile(location: any, artifacts: any[], logger: Logger
   }
 
   // Discard any absolute paths that aren't in the src root
-  const srcRootPrefix = process.env['GITHUB_WORKSPACE'] + '/';
+  const srcRootPrefix = checkoutPath + '/';
   if (uri.startsWith('/') && !uri.startsWith(srcRootPrefix)) {
     logger.debug(`Ignoring location URI "${uri}" as it is outside of the src root`);
     return undefined;
@@ -216,7 +221,7 @@ export function resolveUriToFile(location: any, artifacts: any[], logger: Logger
 
 // Compute fingerprints for results in the given sarif file
 // and return an updated sarif file contents.
-export function addFingerprints(sarifContents: string, logger: Logger): string {
+export function addFingerprints(sarifContents: string, checkoutPath: string, logger: Logger): string {
   let sarif = JSON.parse(sarifContents);
 
   // Gather together results for the same file and construct
@@ -234,7 +239,11 @@ export function addFingerprints(sarifContents: string, logger: Logger): string {
         continue;
       }
 
-      const filepath = resolveUriToFile(primaryLocation.physicalLocation.artifactLocation, artifacts, logger);
+      const filepath = resolveUriToFile(
+        primaryLocation.physicalLocation.artifactLocation,
+        artifacts,
+        checkoutPath,
+        logger);
       if (!filepath) {
         continue;
       }

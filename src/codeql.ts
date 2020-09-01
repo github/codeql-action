@@ -359,7 +359,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     extractScannedLanguage: async function(databasePath: string, language: Language) {
       // Get extractor location
       let extractorPath = '';
-      await exec.exec(
+      await exec_wrapper(
         cmd,
         [
           'resolve',
@@ -368,6 +368,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           '--language=' + language,
           ...getExtraOptionsFromEnv(['resolve', 'extractor']),
         ],
+        [[0, new RegExp("(No source code was seen during the build\\.|No JavaScript or TypeScript code found\\.)"), 'foo bar']],
         {
           silent: true,
           listeners: {
@@ -381,14 +382,17 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       const traceCommand = path.resolve(JSON.parse(extractorPath), 'tools', 'autobuild' + ext);
 
       // Run trace command
-      await exec.exec(cmd, [
-        'database',
-        'trace-command',
-        ...getExtraOptionsFromEnv(['database', 'trace-command']),
-        databasePath,
-        '--',
-        traceCommand
-      ]);
+      await exec_wrapper(
+        cmd, [
+          'database',
+          'trace-command',
+          ...getExtraOptionsFromEnv(['database', 'trace-command']),
+          databasePath,
+          '--',
+          traceCommand
+        ],
+        [[0, new RegExp("(No source code was seen during the build\\.|No JavaScript or TypeScript code found\\.)"), 'foo bar']]
+      );
     },
     finalizeDatabase: async function(databasePath: string) {
       await exec_wrapper(

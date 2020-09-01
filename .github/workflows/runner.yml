@@ -22,5 +22,5 @@ jobs:
           --repository $GITHUB_REPOSITORY \
           --commit $GITHUB_SHA \
           --ref $GITHUB_REF \
-          --github-url $GITHUB_API_URL \
+          --github-url $GITHUB_SERVER_URL \
           --github-auth ${{ github.token }}

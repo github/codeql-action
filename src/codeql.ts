@@ -121,7 +121,12 @@ function getCodeQLActionRepository(mode: util.Mode): string {
   return relativeScriptPathParts[0] + "/" + relativeScriptPathParts[1];
 }
 
-async function getCodeQLBundleDownloadURL(githubUrl: string, mode: util.Mode, logger: Logger): Promise<string> {
+async function getCodeQLBundleDownloadURL(
+  githubAuth: string,
+  githubUrl: string,
+  mode: util.Mode,
+  logger: Logger): Promise<string> {
+
   const codeQLActionRepository = getCodeQLActionRepository(mode);
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.
@@ -142,7 +147,7 @@ async function getCodeQLBundleDownloadURL(githubUrl: string, mode: util.Mode, lo
     }
     let [repositoryOwner, repositoryName] = repository.split("/");
     try {
-      const release = await api.getActionsApiClient().repos.getReleaseByTag({
+      const release = await api.getApiClient(githubAuth, githubUrl).repos.getReleaseByTag({
         owner: repositoryOwner,
         repo: repositoryName,
         tag: CODEQL_BUNDLE_VERSION
@@ -204,7 +209,7 @@ export async function setupCodeQL(
       logger.debug(`CodeQL found in cache ${codeqlFolder}`);
     } else {
       if (!codeqlURL) {
-        codeqlURL = await getCodeQLBundleDownloadURL(githubUrl, mode, logger);
+        codeqlURL = await getCodeQLBundleDownloadURL(githubAuth, githubUrl, mode, logger);
       }
 
       const headers: IHeaders = {accept: 'application/octet-stream'};

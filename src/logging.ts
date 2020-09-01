@@ -14,7 +14,7 @@ export function getActionsLogger(): Logger {
   return core;
 }
 
-export function getCLILogger(): Logger {
+export function getRunnerLogger(): Logger {
   return {
     debug: console.debug,
     info: console.info,

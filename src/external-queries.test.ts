@@ -10,12 +10,13 @@ setupTests(test);
 
 test("checkoutExternalQueries", async t => {
   await util.withTmpDir(async tmpDir => {
+    const ref = "df4c6869212341b601005567381944ed90906b6b";
     await externalQueries.checkoutExternalRepository(
       "github/codeql-go",
-      "df4c6869212341b601005567381944ed90906b6b",
+      ref,
       tmpDir);
 
     // COPYRIGHT file existed in df4c6869212341b601005567381944ed90906b6b but not in the default branch
-    t.true(fs.existsSync(path.join(tmpDir, "github", "codeql-go", "COPYRIGHT")));
+    t.true(fs.existsSync(path.join(tmpDir, "github", "codeql-go", ref, "COPYRIGHT")));
   });
 });

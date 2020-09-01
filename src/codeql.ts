@@ -391,12 +391,14 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ]);
     },
     finalizeDatabase: async function(databasePath: string) {
-      await exec_wrapper(cmd, [
-        'database',
-        'finalize',
-        ...getExtraOptionsFromEnv(['database', 'finalize']),
-        databasePath
-      ]);
+      await exec_wrapper(
+        cmd, [
+          'database',
+          'finalize',
+          ...getExtraOptionsFromEnv(['database', 'finalize']),
+          databasePath
+        ],
+        [[0, new RegExp("(No source code was seen during the build\\.|No JavaScript or TypeScript code found\\.)"), 'foo bar']]);
     },
     resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
       const codeqlArgs = [

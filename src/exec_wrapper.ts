@@ -1,13 +1,27 @@
 import * as exec from '@actions/exec';
 import * as im from '@actions/exec/lib/interfaces';
 
-export async function exec_wrapper(commandLine: string, args?: string[], options?: im.ExecOptions): Promise<number> {
 
-  const originalListener = options?.listeners;
+/**
+ * Wrapper for exec.exec which checks for specific return code and/or regex matches in console output.
+ * Output will be streamed to the live console as well as captured for subsequent processing.
+ * Returns promise with return code
+ *
+ * @param     commandLine        command to execute (can include additional args). Must be correctly escaped.
+ * @param     matchers           defines specific codes and/or regexes that should lead to return of a custom error
+ * @param     args               optional arguments for tool. Escaping is handled by the lib.
+ * @param     options            optional exec options.  See ExecOptions
+ * @returns   Promise<number>    exit code
+ */
+export async function exec_wrapper(commandLine: string, args?: string[],
+                                   matchers?: [[number, RegExp, string]],
+                                   options?: im.ExecOptions): Promise<number> {
 
   let stdout = '';
   let stderr = '';
 
+  // custom listeners to store stdout and stderr, while also replicating the behaviour of the passed listeners
+  const originalListener = options?.listeners;
   let listeners = {
     stdout: (data: Buffer) => {
       stdout += data.toString();
@@ -30,9 +44,11 @@ export async function exec_wrapper(commandLine: string, args?: string[], options
     }
   };
 
-  let returnCode: number;
+  // we capture the original return code and error so that (if no match is found) we can duplicate the behaviour
+  let originalReturnCode: number;
+  let originalError: Error|undefined;
   try {
-    returnCode = await exec.exec(
+    originalReturnCode = await exec.exec(
       commandLine,
       args,
       {
@@ -40,22 +56,18 @@ export async function exec_wrapper(commandLine: string, args?: string[], options
         ...options
       });
   } catch (e) {
-    returnCode = 1;
-  }
-  if (returnCode === 0) {
-    throw new Error('The exit code was ' + returnCode + '?!');
+    originalError = e;
+    originalReturnCode = 1; // TODO linter insists, but presumably there's a better way to do _all_ this...
   }
 
-  const regex = new RegExp("(No source code was seen during the build\\.|No JavaScript or TypeScript code found\\.)");
-
-  if (regex.test(stderr) || regex.test(stdout) ) {
-    throw new Error(`No source code was found. This can occur if the specified build commands failed to compile or process any code.
-    - Confirm that there is some source code for the specified language in the project.
-    - For codebases written in Go, JavaScript, TypeScript, and Python, do not specify
-      an explicit --command.
-    - For other languages, the --command must specify a "clean" build which compiles
-    https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning`);
+  if (matchers) {
+    for (const [customCode, regex, message] of matchers) {
+      if (customCode === originalReturnCode || regex.test(stderr) || regex.test(stdout) ) {
+        throw new Error(message);
+      }
+    }
   }
 
-  return returnCode;
+  if (originalError) throw originalError;
+  return originalReturnCode;
 }

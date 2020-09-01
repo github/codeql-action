@@ -16,6 +16,9 @@ inputs:
   config-file:
     description: Path of the config file to use
     required: false
+  queries:
+    description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file
+    required: false
 runs:
   using: 'node12'
-  main: '../lib/setup-tracer.js'
+  main: '../lib/init-action.js'

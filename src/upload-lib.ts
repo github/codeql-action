@@ -12,7 +12,7 @@ import { RepositoryNwo } from './repository';
 import * as sharedEnv from './shared-environment';
 import * as util from './util';
 
-type UploadMode = 'actions' | 'cli';
+type UploadMode = 'actions' | 'runner';
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
@@ -221,7 +221,7 @@ async function uploadFiles(
   logger.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
 
   if (mode === 'actions') {
-    // This check only works on actions as env vars don't persist between calls to the CLI
+    // This check only works on actions as env vars don't persist between calls to the runner
     const sentinelEnvVar = "CODEQL_UPLOAD_SARIF";
     if (process.env[sentinelEnvVar]) {
       throw new Error("Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job");

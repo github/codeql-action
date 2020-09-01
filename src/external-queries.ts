@@ -1,7 +1,8 @@
-import * as core from '@actions/core';
 import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import * as fs from 'fs';
 import * as path from 'path';
+
+import { Logger } from './logging';
 
 /**
  * Check out repository at the given ref, and return the directory of the checkout.
@@ -10,9 +11,10 @@ export async function checkoutExternalRepository(
   repository: string,
   ref: string,
   githubUrl: string,
-  tempDir: string): Promise<string> {
+  tempDir: string,
+  logger: Logger): Promise<string> {
 
-  core.info('Checking out ' + repository);
+  logger.info('Checking out ' + repository);
 
   const checkoutLocation = path.join(tempDir, repository, ref);
 

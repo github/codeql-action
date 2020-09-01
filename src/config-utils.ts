@@ -214,6 +214,7 @@ async function addRemoteQueries(
   queryUses: string,
   tempDir: string,
   githubUrl: string,
+  logger: Logger,
   configFile?: string) {
 
   let tok = queryUses.split('@');
@@ -241,7 +242,8 @@ async function addRemoteQueries(
     nwo,
     ref,
     githubUrl,
-    tempDir);
+    tempDir,
+    logger);
 
   const queryPath = tok.length > 2
     ? path.join(checkoutPath, tok.slice(2).join('/'))
@@ -266,6 +268,7 @@ async function parseQueryUses(
   tempDir: string,
   checkoutPath: string,
   githubUrl: string,
+  logger: Logger,
   configFile?: string) {
 
   queryUses = queryUses.trim();
@@ -286,7 +289,7 @@ async function parseQueryUses(
   }
 
   // Otherwise, must be a reference to another repo
-  await addRemoteQueries(codeQL, resultMap, queryUses, tempDir, githubUrl, configFile);
+  await addRemoteQueries(codeQL, resultMap, queryUses, tempDir, githubUrl, logger, configFile);
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -547,10 +550,19 @@ async function addQueriesFromWorkflow(
   resultMap: { [language: string]: string[] },
   tempDir: string,
   checkoutPath: string,
-  githubUrl: string) {
+  githubUrl: string,
+  logger: Logger) {
 
   for (const query of queriesInput.split(',')) {
-    await parseQueryUses(languages, codeQL, resultMap, query, tempDir, checkoutPath, githubUrl);
+    await parseQueryUses(
+      languages,
+      codeQL,
+      resultMap,
+      query,
+      tempDir,
+      checkoutPath,
+      githubUrl,
+      logger);
   }
 }
 
@@ -578,7 +590,15 @@ export async function getDefaultConfig(
   const queries = {};
   await addDefaultQueries(codeQL, languages, queries);
   if (queriesInput) {
-    await addQueriesFromWorkflow(codeQL, queriesInput, languages, queries, tempDir, checkoutPath, githubUrl);
+    await addQueriesFromWorkflow(
+      codeQL,
+      queriesInput,
+      languages,
+      queries,
+      tempDir,
+      checkoutPath,
+      githubUrl,
+      logger);
   }
 
   return {
@@ -658,7 +678,15 @@ async function loadConfig(
   // If queries were provided using `with` in the action configuration,
   // they should take precedence over the queries in the config file
   if (queriesInput) {
-    await addQueriesFromWorkflow(codeQL, queriesInput, languages, queries, tempDir, checkoutPath, githubUrl);
+    await addQueriesFromWorkflow(
+      codeQL,
+      queriesInput,
+      languages,
+      queries,
+      tempDir,
+      checkoutPath,
+      githubUrl,
+      logger);
   } else if (QUERIES_PROPERTY in parsedYAML) {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));
@@ -675,6 +703,7 @@ async function loadConfig(
         tempDir,
         checkoutPath,
         githubUrl,
+        logger,
         configFile);
     }
   }

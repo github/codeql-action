@@ -12,11 +12,11 @@ import javascript
  * Although these libraries are designed for use on actions they
  * have been deemed safe to use outside of actions as well.
  */
-class SafeActionLibs extends string {
-  SafeActionLibs() {
-    this = "@actions/http-client" or
-    this = "@actions/exec"
-  }
+bindingset[lib]
+predicate isSafeActionLib(string lib) {
+  lib = "@actions/http-client" or
+  lib = "@actions/exec" or
+  lib.matches("@actions/exec/%")
 }
 
 /**
@@ -26,7 +26,7 @@ class SafeActionLibs extends string {
 class ActionsLibImport extends ImportDeclaration {
   ActionsLibImport() {
     getImportedPath().getValue().matches("@actions/%") and
-    not getImportedPath().getValue() instanceof SafeActionLibs
+    not isSafeActionLib(getImportedPath().getValue())
   }
 
   string getName() {

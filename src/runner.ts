@@ -12,6 +12,7 @@ import { Language, parseLanguage } from './languages';
 import { getRunnerLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
+import { getMemoryFlag, getThreadsFlag } from './util';
 
 const program = new Command();
 program.version('0.0.1');
@@ -229,6 +230,8 @@ interface AnalyzeArgs {
   checkoutPath: string | undefined;
   upload: boolean;
   outputDir: string | undefined;
+  ram: string | undefined;
+  threads: string | undefined;
   tempDir: string | undefined;
   debug: boolean;
 }
@@ -244,6 +247,9 @@ program
   .option('--checkout-path <path>', 'Checkout path. Default is the current working directory.')
   .option('--no-upload', 'Do not upload results after analysis.', false)
   .option('--output-dir <dir>', 'Directory to output SARIF files to. Default is in the temp directory.')
+  .option('--ram <ram>', 'Amount of memory to use when running queries. Default is to use all available memory.')
+  .option('--threads <threads>', 'Number of threads to use when running queries. ' +
+    'Default is to use all available cores.')
   .option('--temp-dir <dir>', 'Directory to use for temporary files. Default is "./codeql-runner".')
   .option('--debug', 'Print more verbose output', false)
   .action(async (cmd: AnalyzeArgs) => {
@@ -270,6 +276,8 @@ program
         cmd.upload,
         'runner',
         outputDir,
+        getMemoryFlag(cmd.ram),
+        getThreadsFlag(cmd.threads, logger),
         config,
         logger);
     } catch (e) {

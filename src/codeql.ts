@@ -74,7 +74,12 @@ export interface CodeQL {
   /**
    * Run 'codeql database analyze'.
    */
-  databaseAnalyze(databasePath: string, sarifFile: string, querySuite: string): Promise<void>;
+  databaseAnalyze(
+    databasePath: string,
+    sarifFile: string,
+    querySuite: string,
+    memoryFlag: string,
+    threadsFlag: string): Promise<void>;
 }
 
 export interface ResolveQueriesOutput {
@@ -456,12 +461,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
 
       return JSON.parse(output);
     },
-    databaseAnalyze: async function(databasePath: string, sarifFile: string, querySuite: string) {
+    databaseAnalyze: async function(
+      databasePath: string,
+      sarifFile: string,
+      querySuite: string,
+      memoryFlag: string,
+      threadsFlag: string) {
+
       await new toolrunnner.ToolRunner(cmd, [
         'database',
         'analyze',
-        util.getMemoryFlag(),
-        util.getThreadsFlag(),
+        memoryFlag,
+        threadsFlag,
         databasePath,
         '--format=sarif-latest',
         '--output=' + sarifFile,

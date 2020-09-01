@@ -49,6 +49,8 @@ async function run() {
       core.getInput('upload') === 'true',
       'actions',
       core.getInput('output'),
+      util.getMemoryFlag(core.getInput('ram')),
+      util.getThreadsFlag(core.getInput('threads'), logger),
       config,
       logger);
 

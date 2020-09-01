@@ -2,6 +2,7 @@ import test from 'ava';
 import * as fs from 'fs';
 import * as os from "os";
 
+import { getRunnerLogger } from './logging';
 import {setupTests} from './testing-utils';
 import * as util from './util';
 
@@ -23,18 +24,14 @@ test('getMemoryFlag() should return the correct --ram flag', t => {
   };
 
   for (const [input, expectedFlag] of Object.entries(tests)) {
-
-    process.env['INPUT_RAM'] = input;
-
-    const flag = util.getMemoryFlag();
+    const flag = util.getMemoryFlag(input);
     t.deepEqual(flag, expectedFlag);
   }
 });
 
 test('getMemoryFlag() throws if the ram input is < 0 or NaN', t => {
   for (const input of ["-1", "hello!"]) {
-    process.env['INPUT_RAM'] = input;
-    t.throws(util.getMemoryFlag);
+    t.throws(() => util.getMemoryFlag(input));
   }
 });
 
@@ -50,17 +47,13 @@ test('getThreadsFlag() should return the correct --threads flag', t => {
   };
 
   for (const [input, expectedFlag] of Object.entries(tests)) {
-
-    process.env['INPUT_THREADS'] = input;
-
-    const flag = util.getThreadsFlag();
+    const flag = util.getThreadsFlag(input, getRunnerLogger(true));
     t.deepEqual(flag, expectedFlag);
   }
 });
 
 test('getThreadsFlag() throws if the threads input is not an integer', t => {
-  process.env['INPUT_THREADS'] = "hello!";
-  t.throws(util.getThreadsFlag);
+  t.throws(() => util.getThreadsFlag("hello!", getRunnerLogger(true)));
 });
 
 test('getRef() throws on the empty string', t => {

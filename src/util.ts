@@ -6,6 +6,7 @@ import * as path from 'path';
 
 import * as api from './api-client';
 import { Language } from './languages';
+import { Logger } from './logging';
 import * as sharedEnv from './shared-environment';
 
 /**
@@ -369,13 +370,12 @@ export async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promi
  *
  * @returns string
  */
-export function getMemoryFlag(): string {
+export function getMemoryFlag(userInput: string | undefined): string {
   let memoryToUseMegaBytes: number;
-  const memoryToUseString = core.getInput("ram");
-  if (memoryToUseString) {
-    memoryToUseMegaBytes = Number(memoryToUseString);
+  if (userInput) {
+    memoryToUseMegaBytes = Number(userInput);
     if (Number.isNaN(memoryToUseMegaBytes) || memoryToUseMegaBytes <= 0) {
-      throw new Error("Invalid RAM setting \"" + memoryToUseString + "\", specified.");
+      throw new Error("Invalid RAM setting \"" + userInput + "\", specified.");
     }
   } else {
     const totalMemoryBytes = os.totalmem();
@@ -394,22 +394,21 @@ export function getMemoryFlag(): string {
  *
  * @returns string
  */
-export function getThreadsFlag(): string {
+export function getThreadsFlag(userInput: string | undefined, logger: Logger): string {
   let numThreads: number;
-  const numThreadsString = core.getInput("threads");
   const maxThreads = os.cpus().length;
-  if (numThreadsString) {
-    numThreads = Number(numThreadsString);
+  if (userInput) {
+    numThreads = Number(userInput);
     if (Number.isNaN(numThreads)) {
-      throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
+      throw new Error(`Invalid threads setting "${userInput}", specified.`);
     }
     if (numThreads > maxThreads) {
-      core.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
+      logger.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
       numThreads = maxThreads;
     }
     const minThreads = -maxThreads;
     if (numThreads < minThreads) {
-      core.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
+      logger.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
       numThreads = minThreads;
     }
   } else {

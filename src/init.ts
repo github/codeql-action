@@ -87,9 +87,24 @@ export async function runInit(
           [String]
           $tracer
       )
-      Get-Process -Name Runner.Worker
-      $process=Get-Process -Name Runner.Worker
-      $id=$process.Id
+
+      # Go up the process tree until finding an ancestor called "Runner.Worker.exe"
+      # A new Runner.Worker is spawned for each job. It is spawned by a process
+      # called Runner.Listener that persists for the life of the worker.
+      $id = $PID
+      while ($true) {
+        $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
+        Write-Host "Found process: $p"
+        if ($p -eq $null) {
+          throw "Could not determine Runner.Worker.exe process"
+        }
+        if ($p[0].Name -eq "Runner.Worker.exe") {
+          Break
+        } else {
+          $id = $p[0].ParentProcessId
+        }
+      }
+
       Invoke-Expression "&$tracer --inject=$id"`);
 
     await new toolrunnner.ToolRunner(

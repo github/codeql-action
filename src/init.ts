@@ -66,7 +66,8 @@ export async function initConfig(
 
 export async function runInit(
   codeql: CodeQL,
-  config: configUtils.Config): Promise<TracerConfig | undefined> {
+  config: configUtils.Config,
+  mode: util.Mode): Promise<TracerConfig | undefined> {
 
   const sourceRoot = path.resolve();
 
@@ -81,31 +82,60 @@ export async function runInit(
   const tracerConfig = await getCombinedTracerConfig(config, codeql);
   if (tracerConfig !== undefined && process.platform === 'win32') {
     const injectTracerPath = path.join(config.tempDir, 'inject-tracer.ps1');
-    fs.writeFileSync(injectTracerPath, `
-      Param(
-          [Parameter(Position=0)]
-          [String]
-          $tracer
-      )
+    if (mode === 'actions') {
+      fs.writeFileSync(injectTracerPath, `
+        Param(
+            [Parameter(Position=0)]
+            [String]
+            $tracer
+        )
 
-      # Go up the process tree until finding an ancestor called "Runner.Worker.exe"
-      # A new Runner.Worker is spawned for each job. It is spawned by a process
-      # called Runner.Listener that persists for the life of the worker.
-      $id = $PID
-      while ($true) {
-        $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
-        Write-Host "Found process: $p"
-        if ($p -eq $null) {
-          throw "Could not determine Runner.Worker.exe process"
+        # Go up the process tree until finding an ancestor called "Runner.Worker.exe"
+        # A new Runner.Worker is spawned for each job. It is spawned by a process
+        # called Runner.Listener that persists for the life of the worker.
+        $id = $PID
+        while ($true) {
+          $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
+          Write-Host "Found process: $p"
+          if ($p -eq $null) {
+            throw "Could not determine Runner.Worker.exe process"
+          }
+          if ($p[0].Name -eq "Runner.Worker.exe") {
+            Break
+          } else {
+            $id = $p[0].ParentProcessId
+          }
         }
-        if ($p[0].Name -eq "Runner.Worker.exe") {
-          Break
-        } else {
-          $id = $p[0].ParentProcessId
-        }
-      }
 
-      Invoke-Expression "&$tracer --inject=$id"`);
+        Invoke-Expression "&$tracer --inject=$id"`);
+    } else {
+      fs.writeFileSync(injectTracerPath, `
+        Param(
+            [Parameter(Position=0)]
+            [String]
+            $tracer
+        )
+
+        # The current process.
+        $id0 = $PID
+        $p0 = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id0"
+        Write-Host "Found process: $p0"
+
+        # The 1st parent process will be the runner proces.
+        $id1 = $p0[0].ParentProcessId
+        $p1 = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id1"
+        Write-Host "Found process: $p1"
+
+        # The 2nd parent process (i.e. the parent of the runner process)
+        $id2 = $p1[0].ParentProcessId
+        $p2 = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id2"
+        Write-Host "Found process: $p2"
+
+        # Assume the second parent will persist and later also spawn the build process.
+        # This is a total guess but is the best we can do in the absence of any
+        # information about what system is invoking us.
+        Invoke-Expression "&$tracer --inject=$id"`);
+    }
 
     await new toolrunnner.ToolRunner(
       'powershell',

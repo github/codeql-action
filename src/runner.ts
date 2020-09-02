@@ -132,7 +132,7 @@ program
         parseGithubUrl(cmd.githubUrl),
         logger);
 
-      const tracerConfig = await runInit(codeql, config);
+      const tracerConfig = await runInit(codeql, config, 'runner');
       if (tracerConfig === undefined) {
         return;
       }

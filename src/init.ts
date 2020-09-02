@@ -110,7 +110,8 @@ export async function runInit(
     await new toolrunnner.ToolRunner(
       'powershell',
       [
-        injectTracerPath,
+        '-ExecutionPolicy', 'Bypass',
+        '-file', injectTracerPath,
         path.resolve(path.dirname(codeql.getPath()), 'tools', 'win64', 'tracer.exe'),
       ],
       { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } }).exec();

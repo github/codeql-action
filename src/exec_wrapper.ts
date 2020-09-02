@@ -45,10 +45,9 @@ export async function exec_wrapper(commandLine: string, args?: string[],
   };
 
   // we capture the original return code and error so that (if no match is found) we can duplicate the behaviour
-  let originalReturnCode: number;
-  let originalError: Error|undefined;
+  let originalReturnValue: Error|number;
   try {
-    originalReturnCode = await exec.exec(
+    originalReturnValue = await exec.exec(
       commandLine,
       args,
       {
@@ -56,18 +55,20 @@ export async function exec_wrapper(commandLine: string, args?: string[],
         ...options
       });
   } catch (e) {
-    originalError = e;
-    originalReturnCode = 1; // TODO linter insists, but presumably there's a better way to do _all_ this...
+    originalReturnValue = e;
   }
 
   if (matchers) {
     for (const [customCode, regex, message] of matchers) {
-      if (customCode === originalReturnCode || regex.test(stderr) || regex.test(stdout) ) {
+      if (customCode === originalReturnValue || regex.test(stderr) || regex.test(stdout) ) {
         throw new Error(message);
       }
     }
   }
 
-  if (originalError) throw originalError;
-  return originalReturnCode;
+  if (typeof originalReturnValue === 'number') {
+    return originalReturnValue;
+  } else {
+    throw originalReturnValue;
+  }
 }

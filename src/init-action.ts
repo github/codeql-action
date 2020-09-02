@@ -99,7 +99,7 @@ async function run() {
     const codeqlRam = process.env['CODEQL_RAM'] || '6500';
     core.exportVariable('CODEQL_RAM', codeqlRam);
 
-    const tracerConfig = await runInit(codeql, config);
+    const tracerConfig = await runInit(codeql, config, 'actions');
     if (tracerConfig !== undefined) {
       Object.entries(tracerConfig.env).forEach(([key, value]) => core.exportVariable(key, value));
     }

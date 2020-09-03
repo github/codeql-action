@@ -359,7 +359,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     extractScannedLanguage: async function(databasePath: string, language: Language) {
       // Get extractor location
       let extractorPath = '';
-      await exec_wrapper(
+      await exec.exec(
         cmd,
         [
           'resolve',
@@ -368,7 +368,6 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           '--language=' + language,
           ...getExtraOptionsFromEnv(['resolve', 'extractor']),
         ],
-        [[0, new RegExp("(No source code was seen during the build\\.|No JavaScript or TypeScript code found\\.)"), 'foo bar']],
         {
           silent: true,
           listeners: {

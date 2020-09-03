@@ -2,6 +2,8 @@ import * as exec from '@actions/exec';
 import * as im from '@actions/exec/lib/interfaces';
 
 
+export type ErrorMatcher = [number, RegExp, string];
+
 /**
  * Wrapper for exec.exec which checks for specific return code and/or regex matches in console output.
  * Output will be streamed to the live console as well as captured for subsequent processing.
@@ -14,7 +16,7 @@ import * as im from '@actions/exec/lib/interfaces';
  * @returns   Promise<number>    exit code
  */
 export async function exec_wrapper(commandLine: string, args?: string[],
-                                   matchers?: [[number, RegExp, string]],
+                                   matchers?: ErrorMatcher[],
                                    options?: im.ExecOptions): Promise<number> {
 
   let stdout = '';
@@ -58,7 +60,7 @@ export async function exec_wrapper(commandLine: string, args?: string[],
     originalReturnValue = e;
   }
 
-  if (matchers) {
+  if (matchers && originalReturnValue !== 0) {
     for (const [customCode, regex, message] of matchers) {
       if (customCode === originalReturnValue || regex.test(stderr) || regex.test(stdout) ) {
         throw new Error(message);

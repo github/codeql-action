@@ -1,4 +1,4 @@
-name: Test Platform-Language bundles
+name: Platform-Language bundles Testing
 on:
   push:
 

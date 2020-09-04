@@ -49,6 +49,7 @@ test('parse codeql bundle url version', t => {
     '1.2.3': '1.2.3',
     '1.2.3-alpha': '1.2.3-alpha',
     '1.2.3-beta.1': '1.2.3-beta.1',
+    '20200601-linux64-python': '0.0.0-20200601-linux64-python',
   };
 
   for (const [version, expectedVersion] of Object.entries(tests)) {

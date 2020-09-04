@@ -1,0 +1,12 @@
+name: Test Platform-Language bundles
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+     - name: Initialize CodeQL
+       uses: github/codeql-action/init@v1
+       with:
+        tools: https://github.com/dsp-testing/codeql-split/releases/download/v1/codeql-bundle-20200826-linux64-cpp.tar.gz

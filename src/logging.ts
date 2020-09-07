@@ -14,9 +14,9 @@ export function getActionsLogger(): Logger {
   return core;
 }
 
-export function getCLILogger(): Logger {
+export function getRunnerLogger(debugMode: boolean): Logger {
   return {
-    debug: console.debug,
+    debug: debugMode ? console.debug : () => undefined,
     info: console.info,
     warning: console.warn,
     error: console.error,

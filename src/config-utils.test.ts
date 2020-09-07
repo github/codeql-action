@@ -8,21 +8,11 @@ import * as api from './api-client';
 import { getCachedCodeQL, setCodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import { Language } from "./languages";
+import { getRunnerLogger } from "./logging";
 import {setupTests} from './testing-utils';
 import * as util from './util';
 
 setupTests(test);
-
-function setInput(name: string, value: string | undefined) {
-  // Transformation copied from
-  // https://github.com/actions/toolkit/blob/05e39f551d33e1688f61b209ab5cdd335198f1b8/packages/core/src/core.ts#L69
-  const envVar = `INPUT_${name.replace(/ /g, '_').toUpperCase()}`;
-  if (value !== undefined) {
-    process.env[envVar] = value;
-  } else {
-    delete process.env[envVar];
-  }
-}
 
 type GetContentsResponse = { content?: string; } | {}[];
 
@@ -52,11 +42,8 @@ function mockListLanguages(languages: string[]) {
 
 test("load empty config", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    setInput('config-file', undefined);
-    setInput('languages', 'javascript,python');
+    const logger = getRunnerLogger(true);
+    const languages = 'javascript,python';
 
     const codeQL = setCodeQL({
       resolveQueries: async function() {
@@ -68,19 +55,36 @@ test("load empty config", async t => {
       },
     });
 
-    const config = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+    const config = await configUtils.initConfig(
+      languages,
+      undefined,
+      undefined,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      logger);
 
-    t.deepEqual(config, await configUtils.getDefaultConfig(tmpDir, tmpDir, codeQL));
+    t.deepEqual(config, await configUtils.getDefaultConfig(
+      languages,
+      undefined,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      logger));
   });
 });
 
 test("loading config saves config", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    setInput('config-file', undefined);
-    setInput('languages', 'javascript,python');
+    const logger = getRunnerLogger(true);
 
     const codeQL = setCodeQL({
       resolveQueries: async function() {
@@ -96,29 +100,46 @@ test("loading config saves config", async t => {
     // Sanity check the saved config file does not already exist
     t.false(fs.existsSync(configUtils.getPathToParsedConfigFile(tmpDir)));
 
-    // Sanity check that getConfig throws before we have called initConfig
-    await t.throwsAsync(() => configUtils.getConfig(tmpDir));
+    // Sanity check that getConfig returns undefined before we have called initConfig
+    t.deepEqual(await configUtils.getConfig(tmpDir, logger), undefined);
 
-    const config1 = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+    const config1 = await configUtils.initConfig(
+      'javascript,python',
+      undefined,
+      undefined,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      logger);
 
     // The saved config file should now exist
     t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tmpDir)));
 
     // And that same newly-initialised config should now be returned by getConfig
-    const config2 = await configUtils.getConfig(tmpDir);
+    const config2 = await configUtils.getConfig(tmpDir, logger);
     t.deepEqual(config1, config2);
   });
 });
 
 test("load input outside of workspace", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    setInput('config-file', '../input');
-
     try {
-      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
+      await configUtils.initConfig(
+        undefined,
+        undefined,
+        '../input',
+        { owner: 'github', repo: 'example '},
+        tmpDir,
+        tmpDir,
+        getCachedCodeQL(),
+        tmpDir,
+        'token',
+        'https://github.example.com',
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileOutsideWorkspaceErrorMessage(path.join(tmpDir, '../input'))));
@@ -128,14 +149,22 @@ test("load input outside of workspace", async t => {
 
 test("load non-local input with invalid repo syntax", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
     // no filename given, just a repo
-    setInput('config-file', 'octo-org/codeql-config@main');
+    const configFile = 'octo-org/codeql-config@main';
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
+      await configUtils.initConfig(
+        undefined,
+        undefined,
+        configFile,
+        { owner: 'github', repo: 'example '},
+        tmpDir,
+        tmpDir,
+        getCachedCodeQL(),
+        tmpDir,
+        'token',
+        'https://github.example.com',
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileRepoFormatInvalidMessage('octo-org/codeql-config@main')));
@@ -145,15 +174,23 @@ test("load non-local input with invalid repo syntax", async t => {
 
 test("load non-existent input", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    t.false(fs.existsSync(path.join(tmpDir, 'input')));
-    setInput('config-file', 'input');
-    setInput('languages', 'javascript');
+    const languages = 'javascript';
+    const configFile = 'input';
+    t.false(fs.existsSync(path.join(tmpDir, configFile)));
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
+      await configUtils.initConfig(
+        languages,
+        undefined,
+        configFile,
+        { owner: 'github', repo: 'example '},
+        tmpDir,
+        tmpDir,
+        getCachedCodeQL(),
+        tmpDir,
+        'token',
+        'https://github.example.com',
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDoesNotExistErrorMessage(path.join(tmpDir, 'input'))));
@@ -163,9 +200,6 @@ test("load non-existent input", async t => {
 
 test("load non-empty input", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
     const codeQL = setCodeQL({
       resolveQueries: async function() {
         return {
@@ -213,11 +247,22 @@ test("load non-empty input", async t => {
       codeQLCmd: codeQL.getPath(),
     };
 
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
-    setInput('languages', 'javascript');
+    const languages = 'javascript';
+    const configFile = 'input';
+    fs.writeFileSync(path.join(tmpDir, configFile), inputFileContents, 'utf8');
 
-    const actualConfig = await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+    const actualConfig = await configUtils.initConfig(
+      languages,
+      undefined,
+      configFile,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      getRunnerLogger(true));
 
     // Should exactly equal the object we constructed earlier
     t.deepEqual(actualConfig, expectedConfig);
@@ -226,9 +271,6 @@ test("load non-empty input", async t => {
 
 test("default queries are used", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
     // Check that the default behaviour is to add the default queries.
     // In this case if a config file is specified but does not include
     // the disable-default-queries field.
@@ -260,11 +302,22 @@ test("default queries are used", async t => {
 
     fs.mkdirSync(path.join(tmpDir, 'foo'));
 
-    fs.writeFileSync(path.join(tmpDir, 'input'), inputFileContents, 'utf8');
-    setInput('config-file', 'input');
-    setInput('languages', 'javascript');
+    const languages = 'javascript';
+    const configFile = 'input';
+    fs.writeFileSync(path.join(tmpDir, configFile), inputFileContents, 'utf8');
 
-    await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+    await configUtils.initConfig(
+      languages,
+      undefined,
+      configFile,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      getRunnerLogger(true));
 
     // Check resolve queries was called correctly
     t.deepEqual(resolveQueriesArgs.length, 1);
@@ -273,11 +326,229 @@ test("default queries are used", async t => {
   });
 });
 
+test("Queries can be specified in config file", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo`;
+
+    const configFile = path.join(tmpDir, 'input');
+    fs.writeFileSync(configFile, inputFileContents, 'utf8');
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test by seeing which returned items are in the final
+        // configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    const languages = 'javascript';
+
+    const config = await configUtils.initConfig(
+      languages,
+      undefined,
+      configFile,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      getRunnerLogger(true));
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries
+    // and once for `./foo` from the config file.
+    t.deepEqual(resolveQueriesArgs.length, 2);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/foo$/);
+
+    // Now check that the end result contains the default queries and the query from config
+    t.deepEqual(config.queries['javascript'].length, 2);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/foo$/);
+  });
+});
+
+test("Queries from config file can be overridden in workflow file", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo`;
+
+    const configFile = path.join(tmpDir, 'input');
+    fs.writeFileSync(configFile, inputFileContents, 'utf8');
+
+    // This config item should take precedence over the config file but shouldn't affect the default queries.
+    const queries = './override';
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
+    fs.mkdirSync(path.join(tmpDir, 'override'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test overriding by seeing which returned items are in
+        // the final configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    const languages = 'javascript';
+
+    const config = await configUtils.initConfig(
+      languages,
+      queries,
+      configFile,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      getRunnerLogger(true));
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries and once for `./override`,
+    // but won't be called for './foo' from the config file.
+    t.deepEqual(resolveQueriesArgs.length, 2);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/override$/);
+
+    // Now check that the end result contains only the default queries and the override query
+    t.deepEqual(config.queries['javascript'].length, 2);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/override$/);
+  });
+});
+
+test("Multiple queries can be specified in workflow file, no config file required", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    fs.mkdirSync(path.join(tmpDir, 'override1'));
+    fs.mkdirSync(path.join(tmpDir, 'override2'));
+
+    const queries = './override1,./override2';
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        // Return what we're given, just in the right format for a resolved query
+        // This way we can test overriding by seeing which returned items are in
+        // the final configuration.
+        const dummyResolvedQueries = {};
+        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+        return {
+          byLanguage: {
+            'javascript': dummyResolvedQueries,
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    const languages = 'javascript';
+
+    const config = await configUtils.initConfig(
+      languages,
+      queries,
+      undefined,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      getRunnerLogger(true));
+
+    // Check resolveQueries was called correctly:
+    // It'll be called once for the default queries,
+    // and then once for each of the two queries from the workflow
+    t.deepEqual(resolveQueriesArgs.length, 3);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/override1$/);
+    t.regex(resolveQueriesArgs[2].queries[0], /.*\/override2$/);
+
+    // Now check that the end result contains both the queries from the workflow, as well as the defaults
+    t.deepEqual(config.queries['javascript'].length, 3);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/override1$/);
+    t.regex(config.queries['javascript'][2], /.*\/override2$/);
+  });
+});
+
+test("Invalid queries in workflow file handled correctly", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    const queries = 'foo/bar@v1@v3';
+    const languages = 'javascript';
+
+    // This function just needs to be type-correct; it doesn't need to do anything,
+    // since we're deliberately passing in invalid data
+    const codeQL = setCodeQL({
+      resolveQueries: async function(_queries: string[], _extraSearchPath: string | undefined) {
+        return {
+          byLanguage: {
+            'javascript': {},
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    try {
+      await configUtils.initConfig(
+        languages,
+        queries,
+        undefined,
+        { owner: 'github', repo: 'example '},
+        tmpDir,
+        tmpDir,
+        codeQL,
+        tmpDir,
+        'token',
+        'https://github.example.com',
+        getRunnerLogger(true));
+      t.fail('initConfig did not throw error');
+    } catch (err) {
+      t.deepEqual(err, new Error(configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3")));
+    }
+  });
+});
+
 test("API client used when reading remote config", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
     const codeQL = setCodeQL({
       resolveQueries: async function() {
         return {
@@ -310,28 +581,46 @@ test("API client used when reading remote config", async t => {
     const spyGetContents = mockGetContents(dummyResponse);
 
     // Create checkout directory for remote queries repository
-    fs.mkdirSync(path.join(tmpDir, 'foo/bar'), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, 'foo/bar/dev'), { recursive: true });
 
-    setInput('config-file', 'octo-org/codeql-config/config.yaml@main');
-    setInput('languages', 'javascript');
+    const configFile = 'octo-org/codeql-config/config.yaml@main';
+    const languages = 'javascript';
 
-    await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+    await configUtils.initConfig(
+      languages,
+      undefined,
+      configFile,
+      { owner: 'github', repo: 'example '},
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      getRunnerLogger(true));
     t.assert(spyGetContents.called);
   });
 });
 
 test("Remote config handles the case where a directory is provided", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
     const dummyResponse = []; // directories are returned as arrays
     mockGetContents(dummyResponse);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
-    setInput('config-file', repoReference);
     try {
-      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
+      await configUtils.initConfig(
+        undefined,
+        undefined,
+        repoReference,
+        { owner: 'github', repo: 'example '},
+        tmpDir,
+        tmpDir,
+        getCachedCodeQL(),
+        tmpDir,
+        'token',
+        'https://github.example.com',
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference)));
@@ -341,18 +630,25 @@ test("Remote config handles the case where a directory is provided", async t => 
 
 test("Invalid format of remote config handled correctly", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
     const dummyResponse = {
       // note no "content" property here
     };
     mockGetContents(dummyResponse);
 
     const repoReference = 'octo-org/codeql-config/config.yaml@main';
-    setInput('config-file', repoReference);
     try {
-      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
+      await configUtils.initConfig(
+        undefined,
+        undefined,
+        repoReference,
+        { owner: 'github', repo: 'example '},
+        tmpDir,
+        tmpDir,
+        getCachedCodeQL(),
+        tmpDir,
+        'token',
+        'https://github.example.com',
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference)));
@@ -362,13 +658,21 @@ test("Invalid format of remote config handled correctly", async t => {
 
 test("No detected languages", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
     mockListLanguages([]);
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
+      await configUtils.initConfig(
+        undefined,
+        undefined,
+        undefined,
+        { owner: 'github', repo: 'example '},
+        tmpDir,
+        tmpDir,
+        getCachedCodeQL(),
+        tmpDir,
+        'token',
+        'https://github.example.com',
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getNoLanguagesError()));
@@ -378,13 +682,21 @@ test("No detected languages", async t => {
 
 test("Unknown languages", async t => {
   return await util.withTmpDir(async tmpDir => {
-    process.env['RUNNER_TEMP'] = tmpDir;
-    process.env['GITHUB_WORKSPACE'] = tmpDir;
-
-    setInput('languages', 'ruby,english');
+    const languages = 'ruby,english';
 
     try {
-      await configUtils.initConfig(tmpDir, tmpDir, getCachedCodeQL());
+      await configUtils.initConfig(
+        languages,
+        undefined,
+        undefined,
+        { owner: 'github', repo: 'example '},
+        tmpDir,
+        tmpDir,
+        getCachedCodeQL(),
+        tmpDir,
+        'token',
+        'https://github.example.com',
+        getRunnerLogger(true));
       throw new Error('initConfig did not throw error');
     } catch (err) {
       t.deepEqual(err, new Error(configUtils.getUnknownLanguagesError(['ruby', 'english'])));
@@ -399,9 +711,6 @@ function doInvalidInputTest(
 
   test("load invalid input - " + testName, async t => {
     return await util.withTmpDir(async tmpDir => {
-      process.env['RUNNER_TEMP'] = tmpDir;
-      process.env['GITHUB_WORKSPACE'] = tmpDir;
-
       const codeQL = setCodeQL({
         resolveQueries: async function() {
           return {
@@ -412,13 +721,24 @@ function doInvalidInputTest(
         },
       });
 
-      const inputFile = path.join(tmpDir, 'input');
+      const languages = 'javascript';
+      const configFile = 'input';
+      const inputFile = path.join(tmpDir, configFile);
       fs.writeFileSync(inputFile, inputFileContents, 'utf8');
-      setInput('config-file', 'input');
-      setInput('languages', 'javascript');
 
       try {
-        await configUtils.initConfig(tmpDir, tmpDir, codeQL);
+        await configUtils.initConfig(
+          languages,
+          undefined,
+          configFile,
+          { owner: 'github', repo: 'example '},
+          tmpDir,
+          tmpDir,
+          codeQL,
+          tmpDir,
+          'token',
+          'https://github.example.com',
+          getRunnerLogger(true));
         throw new Error('initConfig did not throw error');
       } catch (err) {
         t.deepEqual(err, new Error(expectedErrorMessageGenerator(inputFile)));
@@ -526,10 +846,10 @@ test('path validations', t => {
   const configFile = './.github/codeql/config.yml';
 
   for (const path of validPaths) {
-    t.truthy(configUtils.validateAndSanitisePath(path, propertyName, configFile));
+    t.truthy(configUtils.validateAndSanitisePath(path, propertyName, configFile, getRunnerLogger(true)));
   }
   for (const path of invalidPaths) {
-    t.throws(() => configUtils.validateAndSanitisePath(path, propertyName, configFile));
+    t.throws(() => configUtils.validateAndSanitisePath(path, propertyName, configFile, getRunnerLogger(true)));
   }
 });
 
@@ -540,11 +860,11 @@ test('path sanitisation', t => {
 
   // Valid paths are not modified
   t.deepEqual(
-    configUtils.validateAndSanitisePath('foo/bar', propertyName, configFile),
+    configUtils.validateAndSanitisePath('foo/bar', propertyName, configFile, getRunnerLogger(true)),
     'foo/bar');
 
   // Trailing stars are stripped
   t.deepEqual(
-    configUtils.validateAndSanitisePath('foo/**', propertyName, configFile),
+    configUtils.validateAndSanitisePath('foo/**', propertyName, configFile, getRunnerLogger(true)),
     'foo/');
 });

@@ -12,8 +12,6 @@ import { RepositoryNwo } from './repository';
 import * as sharedEnv from './shared-environment';
 import * as util from './util';
 
-type UploadMode = 'actions' | 'cli';
-
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
 export function combineSarifFiles(sarifFiles: string[]): string {
@@ -43,8 +41,8 @@ async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   githubAuth: string,
-  githubApiUrl: string,
-  mode: UploadMode,
+  githubUrl: string,
+  mode: util.Mode,
   logger: Logger) {
 
   logger.info('Uploading results');
@@ -61,7 +59,7 @@ async function uploadPayload(
   // minutes, but just waiting a little bit could maybe help.
   const backoffPeriods = [1, 5, 15];
 
-  const client = api.getApiClient(githubAuth, githubApiUrl);
+  const client = api.getApiClient(githubAuth, githubUrl);
 
   for (let attempt = 0; attempt <= backoffPeriods.length; attempt++) {
     const reqURL = mode === 'actions'
@@ -134,8 +132,8 @@ export async function upload(
   checkoutPath: string,
   environment: string | undefined,
   githubAuth: string,
-  githubApiUrl: string,
-  mode: UploadMode,
+  githubUrl: string,
+  mode: util.Mode,
   logger: Logger): Promise<UploadStatusReport> {
 
   const sarifFiles: string[] = [];
@@ -165,7 +163,7 @@ export async function upload(
     checkoutPath,
     environment,
     githubAuth,
-    githubApiUrl,
+    githubUrl,
     mode,
     logger);
 }
@@ -214,14 +212,14 @@ async function uploadFiles(
   checkoutPath: string,
   environment: string | undefined,
   githubAuth: string,
-  githubApiUrl: string,
-  mode: UploadMode,
+  githubUrl: string,
+  mode: util.Mode,
   logger: Logger): Promise<UploadStatusReport> {
 
   logger.info("Uploading sarif files: " + JSON.stringify(sarifFiles));
 
   if (mode === 'actions') {
-    // This check only works on actions as env vars don't persist between calls to the CLI
+    // This check only works on actions as env vars don't persist between calls to the runner
     const sentinelEnvVar = "CODEQL_UPLOAD_SARIF";
     if (process.env[sentinelEnvVar]) {
       throw new Error("Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job");
@@ -235,7 +233,7 @@ async function uploadFiles(
   }
 
   let sarifPayload = combineSarifFiles(sarifFiles);
-  sarifPayload = fingerprints.addFingerprints(sarifPayload, logger);
+  sarifPayload = fingerprints.addFingerprints(sarifPayload, checkoutPath, logger);
 
   const zipped_sarif = zlib.gzipSync(sarifPayload).toString('base64');
   let checkoutURI = fileUrl(checkoutPath);
@@ -275,7 +273,7 @@ async function uploadFiles(
   logger.debug("Number of results in upload: " + numResultInSarif);
 
   // Make the upload
-  await uploadPayload(payload, repositoryNwo, githubAuth, githubApiUrl, mode, logger);
+  await uploadPayload(payload, repositoryNwo, githubAuth, githubUrl, mode, logger);
 
   return {
     raw_upload_size_bytes: rawUploadSizeBytes,

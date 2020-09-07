@@ -1,5 +1,5 @@
-import * as exec from '@actions/exec';
 import * as im from '@actions/exec/lib/interfaces';
+import * as toolrunnner from '@actions/exec/lib/toolrunner';
 
 import {ErrorMatcher} from './error-matcher';
 
@@ -46,14 +46,15 @@ export async function execErrorCatcher(commandLine: string, args?: string[],
   // we capture the original return code or error so that if no match is found we can duplicate the behavior
   let returnState: Error|number;
   try {
-    returnState = await exec.exec(
+    returnState = await new toolrunnner.ToolRunner(
       commandLine,
       args,
       {
         ...options, // pass original options first in order to override below
         listeners: listeners,
         ignoreReturnCode: true, // so we can check for specific codes using the matchers
-      });
+      }
+      ).exec();
   } catch (e) {
     returnState = e;
   }

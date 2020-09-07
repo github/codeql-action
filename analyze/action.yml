@@ -29,4 +29,4 @@ inputs:
     default: ${{ toJson(matrix) }}
 runs:
   using: 'node12'
-  main: '../lib/finalize-db.js'
+  main: '../lib/analyze-action.js'

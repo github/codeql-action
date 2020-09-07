@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as fingerprints from './fingerprints';
-import { getCLILogger } from './logging';
+import { getRunnerLogger } from './logging';
 import {setupTests} from './testing-utils';
 
 setupTests(test);
@@ -116,7 +116,7 @@ test('hash', (t: ava.Assertions) => {
 function testResolveUriToFile(uri: any, index: any, artifactsURIs: any[]) {
   const location = { "uri": uri, "index": index };
   const artifacts = artifactsURIs.map(uri => ({ "location": { "uri": uri } }));
-  return fingerprints.resolveUriToFile(location, artifacts, getCLILogger());
+  return fingerprints.resolveUriToFile(location, artifacts, process.cwd(), getRunnerLogger(true));
 }
 
 test('resolveUriToFile', t => {
@@ -128,8 +128,6 @@ test('resolveUriToFile', t => {
   const filepath = __filename;
   t.true(filepath.startsWith(cwd + '/'));
   const relativeFilepaht = filepath.substring(cwd.length + 1);
-
-  process.env['GITHUB_WORKSPACE'] = cwd;
 
   // Absolute paths are unmodified
   t.is(testResolveUriToFile(filepath, undefined, []), filepath);
@@ -173,9 +171,9 @@ test('addFingerprints', t => {
   expected = JSON.stringify(JSON.parse(expected));
 
   // The URIs in the SARIF files resolve to files in the testdata directory
-  process.env['GITHUB_WORKSPACE'] = path.normalize(__dirname + '/../src/testdata');
+  const checkoutPath = path.normalize(__dirname + '/../src/testdata');
 
-  t.deepEqual(fingerprints.addFingerprints(input, getCLILogger()), expected);
+  t.deepEqual(fingerprints.addFingerprints(input, checkoutPath, getRunnerLogger(true)), expected);
 });
 
 test('missingRegions', t => {
@@ -188,7 +186,7 @@ test('missingRegions', t => {
   expected = JSON.stringify(JSON.parse(expected));
 
   // The URIs in the SARIF files resolve to files in the testdata directory
-  process.env['GITHUB_WORKSPACE'] = path.normalize(__dirname + '/../src/testdata');
+  const checkoutPath = path.normalize(__dirname + '/../src/testdata');
 
-  t.deepEqual(fingerprints.addFingerprints(input, getCLILogger()), expected);
+  t.deepEqual(fingerprints.addFingerprints(input, checkoutPath, getRunnerLogger(true)), expected);
 });

@@ -1,7 +1,7 @@
 
 import test from 'ava';
 
-import { namedMatchersForTesting } from './error_matcher';
+import { namedMatchersForTesting } from './error-matcher';
 
 /*
 NB We test the regexes for all the matchers against example log output snippets.

@@ -1,18 +1,9 @@
 import * as exec from '@actions/exec';
 import test from 'ava';
 
-import { ErrorMatcher } from './error_matcher';
-import { exec_wrapper } from './exec_wrapper';
+import { ErrorMatcher } from './error-matcher';
+import { execErrorCatcher } from './exec-wrapper';
 import {setupTests} from './testing-utils';
-// import fs from 'fs';
-
-// import { exec_wrapper } from './exec_wrapper';
-
-// const matchers: [[number, RegExp, string]] = [
-//   [-999,
-//     new RegExp("match this string"),
-//     'No source code was found. CUSTOM ERROR MESSAGE HERE'],
-// ];
 
 setupTests(test);
 
@@ -24,7 +15,7 @@ test('matchers are never applied if non-error exit', async t => {
 
   t.deepEqual(await exec.exec(testCommand), 0);
 
-  t.deepEqual(await exec_wrapper(testCommand, [], matchers), 0);
+  t.deepEqual(await execErrorCatcher(testCommand, [], matchers), 0);
 
 });
 
@@ -37,7 +28,7 @@ test('regex matchers are applied to stdout for non-zero exit code', async t => {
   await t.throwsAsync(exec.exec(testCommand), {instanceOf: Error, message: 'The process \'node\' failed with exit code 1'});
 
   await t.throwsAsync(
-    exec_wrapper(testCommand, [], matchers),
+    execErrorCatcher(testCommand, [], matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -52,7 +43,7 @@ test('regex matchers are applied to stderr for non-zero exit code', async t => {
   await t.throwsAsync(exec.exec(testCommand), {instanceOf: Error, message: 'The process \'node\' failed with exit code 1'});
 
   await t.throwsAsync(
-    exec_wrapper(testCommand, [], matchers),
+    execErrorCatcher(testCommand, [], matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -69,7 +60,7 @@ test('matcher returns correct error message when multiple matchers defined', asy
   await t.throwsAsync(exec.exec(testCommand), {instanceOf: Error, message: 'The process \'node\' failed with exit code 1'});
 
   await t.throwsAsync(
-    exec_wrapper(testCommand, [], matchers),
+    execErrorCatcher(testCommand, [], matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -86,7 +77,7 @@ test('matcher returns first match to regex when multiple matches', async t => {
   await t.throwsAsync(exec.exec(testCommand), {instanceOf: Error, message: 'The process \'node\' failed with exit code 1'});
 
   await t.throwsAsync(
-    exec_wrapper(testCommand, [], matchers),
+    execErrorCatcher(testCommand, [], matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -101,22 +92,22 @@ test('exit code matchers are applied', async t => {
   await t.throwsAsync(exec.exec(testCommand), {instanceOf: Error, message: 'The process \'node\' failed with exit code 123'});
 
   await t.throwsAsync(
-    exec_wrapper(testCommand, [], matchers),
+    execErrorCatcher(testCommand, [], matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
 });
 
-test('exec_wrapper respects the ignoreReturnValue option', async t => {
+test('execErrorCatcher respects the ignoreReturnValue option', async t => {
   const testCommand = buildDummyCommand("standard output", 'error output', '', 199);
 
-  await t.throwsAsync(exec_wrapper(testCommand, [], [], {ignoreReturnCode: false}), {instanceOf: Error});
+  await t.throwsAsync(execErrorCatcher(testCommand, [], [], {ignoreReturnCode: false}), {instanceOf: Error});
 
-  t.deepEqual(await exec_wrapper(testCommand, [], [], {ignoreReturnCode: true}), 199);
+  t.deepEqual(await execErrorCatcher(testCommand, [], [], {ignoreReturnCode: true}), 199);
 
 });
 
-test('exec_wrapper preserves behavior of provided listeners', async t => {
+test('execErrorCatcher preserves behavior of provided listeners', async t => {
 
   let stdoutExpected = 'standard output';
   let stderrExpected = 'error output';
@@ -135,7 +126,7 @@ test('exec_wrapper preserves behavior of provided listeners', async t => {
 
   const testCommand = buildDummyCommand(stdoutExpected, stderrExpected, '', 0);
 
-  t.deepEqual(await exec_wrapper(testCommand, [], [], {listeners: listeners}), 0);
+  t.deepEqual(await execErrorCatcher(testCommand, [], [], {listeners: listeners}), 0);
 
   t.deepEqual(stdoutActual, stdoutExpected + "\n");
   t.deepEqual(stderrActual, stderrExpected + "\n");

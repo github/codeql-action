@@ -12,8 +12,8 @@ import uuidV4 from 'uuid/v4';
 
 import * as api from './api-client';
 import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
-import { errorMatchers} from './error_matcher';
-import { exec_wrapper } from './exec_wrapper';
+import { errorMatchers} from './error-matcher';
+import { execErrorCatcher } from './exec-wrapper';
 import { Language } from './languages';
 import * as util from './util';
 
@@ -382,7 +382,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       const traceCommand = path.resolve(JSON.parse(extractorPath), 'tools', 'autobuild' + ext);
 
       // Run trace command
-      await exec_wrapper(
+      await execErrorCatcher(
         cmd, [
           'database',
           'trace-command',
@@ -395,7 +395,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       );
     },
     finalizeDatabase: async function(databasePath: string) {
-      await exec_wrapper(
+      await execErrorCatcher(
         cmd, [
           'database',
           'finalize',

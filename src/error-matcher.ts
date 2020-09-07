@@ -15,5 +15,5 @@ https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in
   ],
 };
 
-// we collapse the matches into an array for use in exec_wrapper
+// we collapse the matches into an array for use in execErrorCatcher
 export const errorMatchers = Object.values(namedMatchersForTesting);

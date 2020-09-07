@@ -1,7 +1,7 @@
 import * as exec from '@actions/exec';
 import * as im from '@actions/exec/lib/interfaces';
 
-import {ErrorMatcher} from './error_matcher';
+import {ErrorMatcher} from './error-matcher';
 
 /**
  * Wrapper for exec.exec which checks for specific return code and/or regex matches in console output.
@@ -14,9 +14,9 @@ import {ErrorMatcher} from './error_matcher';
  * @param     options            optional exec options.  See ExecOptions
  * @returns   Promise<number>    exit code
  */
-export async function exec_wrapper(commandLine: string, args?: string[],
-                                   matchers?: ErrorMatcher[],
-                                   options?: im.ExecOptions): Promise<number> {
+export async function execErrorCatcher(commandLine: string, args?: string[],
+                                       matchers?: ErrorMatcher[],
+                                       options?: im.ExecOptions): Promise<number> {
 
   let stdout = '';
   let stderr = '';

@@ -14,9 +14,9 @@ import {ErrorMatcher} from './error-matcher';
  * @param     options            optional exec options.  See ExecOptions
  * @returns   Promise<number>    exit code
  */
-export async function execErrorCatcher(commandLine: string, args?: string[],
-                                       matchers?: ErrorMatcher[],
-                                       options?: im.ExecOptions): Promise<number> {
+export async function toolrunnerErrorCatcher(commandLine: string, args?: string[],
+                                             matchers?: ErrorMatcher[],
+                                             options?: im.ExecOptions): Promise<number> {
 
   let stdout = '';
   let stderr = '';

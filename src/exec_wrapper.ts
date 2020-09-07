@@ -1,8 +1,7 @@
 import * as exec from '@actions/exec';
 import * as im from '@actions/exec/lib/interfaces';
 
-
-export type ErrorMatcher = [number, RegExp, string];
+import {ErrorMatcher} from './error_matcher';
 
 /**
  * Wrapper for exec.exec which checks for specific return code and/or regex matches in console output.
@@ -64,7 +63,7 @@ export async function exec_wrapper(commandLine: string, args?: string[],
 
   if (matchers) {
     for (const [customCode, regex, message] of matchers) {
-      if (customCode === returnState || regex.test(stderr) || regex.test(stdout) ) {
+      if (customCode === returnState || regex && (regex.test(stderr) || regex.test(stdout)) ) {
         throw new Error(message);
       }
     }

@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 
 import { CodeQL } from './codeql';
 import * as configUtils from './config-utils';
-import { initCodeQL, initConfig, runInit } from './init';
+import { initCodeQL, initConfig, injectWindowsTracer, runInit } from './init';
 import { getActionsLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as util from './util';
@@ -99,9 +99,13 @@ async function run() {
     const codeqlRam = process.env['CODEQL_RAM'] || '6500';
     core.exportVariable('CODEQL_RAM', codeqlRam);
 
-    const tracerConfig = await runInit(codeql, config, 'actions');
+    const tracerConfig = await runInit(codeql, config);
     if (tracerConfig !== undefined) {
       Object.entries(tracerConfig.env).forEach(([key, value]) => core.exportVariable(key, value));
+
+      if (process.platform === 'win32') {
+        await injectWindowsTracer('Runner.Worker.exe', undefined, config, codeql, tracerConfig);
+      }
     }
 
   } catch (error) {

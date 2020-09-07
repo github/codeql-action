@@ -66,8 +66,7 @@ export async function initConfig(
 
 export async function runInit(
   codeql: CodeQL,
-  config: configUtils.Config,
-  mode: util.Mode): Promise<TracerConfig | undefined> {
+  config: configUtils.Config): Promise<TracerConfig | undefined> {
 
   const sourceRoot = path.resolve();
 
@@ -79,72 +78,90 @@ export async function runInit(
     await codeql.databaseInit(util.getCodeQLDatabasePath(config.tempDir, language), language, sourceRoot);
   }
 
-  const tracerConfig = await getCombinedTracerConfig(config, codeql);
-  if (tracerConfig !== undefined && process.platform === 'win32') {
-    const injectTracerPath = path.join(config.tempDir, 'inject-tracer.ps1');
-    if (mode === 'actions') {
-      fs.writeFileSync(injectTracerPath, `
-        Param(
-            [Parameter(Position=0)]
-            [String]
-            $tracer
-        )
+  return await getCombinedTracerConfig(config, codeql);
+}
 
-        # Go up the process tree until finding an ancestor called "Runner.Worker.exe"
-        # A new Runner.Worker is spawned for each job. It is spawned by a process
-        # called Runner.Listener that persists for the life of the worker.
-        $id = $PID
-        while ($true) {
-          $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
-          Write-Host "Found process: $p"
-          if ($p -eq $null) {
-            throw "Could not determine Runner.Worker.exe process"
-          }
-          if ($p[0].Name -eq "Runner.Worker.exe") {
-            Break
-          } else {
-            $id = $p[0].ParentProcessId
-          }
+// Runs a powershell script to inject the tracer into a parent process
+// so it can tracer future processes, hopefully including the build process.
+// If processName is given then injects into the nearest parent process with
+// this name, otherwise uses the processLevel-th parent if defined, otherwise
+// defaults to the 3rd parent as a rough guess.
+export async function injectWindowsTracer(
+  processName: string | undefined,
+  processLevel: number | undefined,
+  config: configUtils.Config,
+  codeql: CodeQL,
+  tracerConfig: TracerConfig) {
+
+  let script: string;
+  if (processName !== undefined) {
+    script = `
+      Param(
+          [Parameter(Position=0)]
+          [String]
+          $tracer
+      )
+
+      $id = $PID
+      while ($true) {
+        $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
+        Write-Host "Found process: $p"
+        if ($p -eq $null) {
+          throw "Could not determine ${processName} process"
         }
+        if ($p[0].Name -eq "${processName}") {
+          Break
+        } else {
+          $id = $p[0].ParentProcessId
+        }
+      }
 
-        Invoke-Expression "&$tracer --inject=$id"`);
-    } else {
-      fs.writeFileSync(injectTracerPath, `
-        Param(
-            [Parameter(Position=0)]
-            [String]
-            $tracer
-        )
+      Invoke-Expression "&$tracer --inject=$id"`;
+  } else {
+    // If the level is not defined then guess at the 3rd parent process.
+    // This won't be correct in every setting but it should be enough in most settings,
+    // and overestimating is likely better in this situation so we definitely trace
+    // what we want, though this does run the risk of interfering with future CI jobs.
+    // Note that the default of 3 doesn't work on github actions, so we include a
+    // special case in the script that checks for Runner.Worker.exe so we can still work
+    // on actions if the runner is invoked there.
+    processLevel = processLevel || 3;
+    script = `
+      Param(
+          [Parameter(Position=0)]
+          [String]
+          $tracer
+      )
 
-        # The current process.
-        $id0 = $PID
-        $p0 = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id0"
-        Write-Host "Found process: $p0"
+      $id = $PID
+      for ($i = 0; $i -lt ${processLevel}; $i++) {
+        $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
+        Write-Host "Found process: $p"
+        if ($p -eq $null) {
+          throw "Process tree ended before reaching required level"
+        }
+        # Special case just in case the runner is used on actions
+        if ($p[0].Name -eq "Runner.Worker.exe") {
+          Write-Host "Found Runner.Worker.exe process which means we are running on GitHub Actions"
+          Write-Host "Aborting search early and using process: $p"
+          Break
+        } else {
+          $id = $p[0].ParentProcessId
+        }
+      }
 
-        # The 1st parent process will be the runner proces.
-        $id1 = $p0[0].ParentProcessId
-        $p1 = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id1"
-        Write-Host "Found process: $p1"
-
-        # The 2nd parent process (i.e. the parent of the runner process)
-        $id2 = $p1[0].ParentProcessId
-        $p2 = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id2"
-        Write-Host "Found process: $p2"
-
-        # Assume the second parent will persist and later also spawn the build process.
-        # This is a total guess but is the best we can do in the absence of any
-        # information about what system is invoking us.
-        Invoke-Expression "&$tracer --inject=$id"`);
-    }
-
-    await new toolrunnner.ToolRunner(
-      'powershell',
-      [
-        '-ExecutionPolicy', 'Bypass',
-        '-file', injectTracerPath,
-        path.resolve(path.dirname(codeql.getPath()), 'tools', 'win64', 'tracer.exe'),
-      ],
-      { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } }).exec();
+      Invoke-Expression "&$tracer --inject=$id"`;
   }
-  return tracerConfig;
+
+  const injectTracerPath = path.join(config.tempDir, 'inject-tracer.ps1');
+  fs.writeFileSync(injectTracerPath, script);
+
+  await new toolrunnner.ToolRunner(
+    'powershell',
+    [
+      '-ExecutionPolicy', 'Bypass',
+      '-file', injectTracerPath,
+      path.resolve(path.dirname(codeql.getPath()), 'tools', 'win64', 'tracer.exe'),
+    ],
+    { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } }).exec();
 }

@@ -22,55 +22,62 @@ export async function exec_wrapper(commandLine: string, args?: string[],
   let stdout = '';
   let stderr = '';
 
-  // custom listeners to store stdout and stderr, while also replicating the behaviour of the passed listeners
-  const originalListener = options?.listeners;
   let listeners = {
     stdout: (data: Buffer) => {
       stdout += data.toString();
-      if (originalListener?.stdout !== undefined) {
-        originalListener.stdout(data);
+      if (options?.listeners?.stdout !== undefined) {
+        options.listeners.stdout(data);
       } else {
-        // if no stdout listener was originally defined then match behaviour of exec.exec
+        // if no stdout listener was originally defined then we match default behavior of exec.exec
         process.stdout.write(data);
       }
 
     },
     stderr: (data: Buffer) => {
       stderr += data.toString();
-      if (originalListener?.stderr !== undefined) {
-        originalListener.stderr(data);
+      if (options?.listeners?.stderr !== undefined) {
+        options.listeners.stderr(data);
       } else {
-        // if no stderr listener was originally defined then match behaviour of exec.exec
+        // if no stderr listener was originally defined then we match default behavior of exec.exec
         process.stderr.write(data);
       }
     }
   };
 
-  // we capture the original return code and error so that (if no match is found) we can duplicate the behaviour
-  let originalReturnValue: Error|number;
+  // we capture the original return code or error so that if no match is found we can duplicate the behavior
+  let returnState: Error|number;
   try {
-    originalReturnValue = await exec.exec(
+    returnState = await exec.exec(
       commandLine,
       args,
       {
+        ...options, // pass original options first in order to override below
         listeners: listeners,
-        ...options
+        ignoreReturnCode: true, // so we can check for specific codes using the matchers
       });
   } catch (e) {
-    originalReturnValue = e;
+    returnState = e;
   }
 
-  if (matchers && originalReturnValue !== 0) {
+  // if there is a zero return code then we do not apply the matchers
+  if (returnState === 0) return returnState;
+
+  if (matchers) {
     for (const [customCode, regex, message] of matchers) {
-      if (customCode === originalReturnValue || regex.test(stderr) || regex.test(stdout) ) {
+      if (customCode === returnState || regex.test(stderr) || regex.test(stdout) ) {
         throw new Error(message);
       }
     }
   }
 
-  if (typeof originalReturnValue === 'number') {
-    return originalReturnValue;
+  if (typeof returnState === 'number') {
+    // only if we were instructed to ignore the return code do we ever return it non-zero
+    if (options?.ignoreReturnCode) {
+      return returnState;
+    } else {
+      throw new Error(`The process \'${commandLine}\' failed with exit code ${returnState}`);
+    }
   } else {
-    throw originalReturnValue;
+    throw returnState;
   }
 }

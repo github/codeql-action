@@ -1,8 +1,9 @@
 import * as core from '@actions/core';
 
-import { getCodeQL } from './codeql';
+import { determineAutobuildLanguage, runAutobuild } from './autobuild';
 import * as config_utils from './config-utils';
-import { isTracedLanguage } from './languages';
+import { Language } from './languages';
+import { getActionsLogger } from './logging';
 import * as util from './util';
 
 interface AutobuildStatusReport extends util.StatusReportBase {
@@ -34,48 +35,32 @@ async function sendCompletedStatusReport(
 }
 
 async function run() {
+  const logger = getActionsLogger();
   const startedAt = new Date();
-  let language;
+  let language: Language | undefined = undefined;
   try {
     util.prepareLocalRunEnvironment();
     if (!await util.sendStatusReport(await util.createStatusReportBase('autobuild', 'starting', startedAt), true)) {
       return;
     }
 
-    const config = await config_utils.getConfig(util.getRequiredEnvParam('RUNNER_TEMP'));
-
-    // Attempt to find a language to autobuild
-    // We want pick the dominant language in the repo from the ones we're able to build
-    // The languages are sorted in order specified by user or by lines of code if we got
-    // them from the GitHub API, so try to build the first language on the list.
-    const autobuildLanguages = config.languages.filter(isTracedLanguage);
-    language = autobuildLanguages[0];
-
-    if (!language) {
-      core.info("None of the languages in this project require extra build steps");
-      return;
+    const config = await config_utils.getConfig(util.getRequiredEnvParam('RUNNER_TEMP'), logger);
+    if (config === undefined) {
+      throw new Error("Config file could not be found at expected location. Has the 'init' action been called?");
     }
-
-    core.debug(`Detected dominant traced language: ${language}`);
-
-    if (autobuildLanguages.length > 1) {
-      core.warning(`We will only automatically build ${language} code. If you wish to scan ${autobuildLanguages.slice(1).join(' and ')}, you must replace this block with custom build steps.`);
+    language = determineAutobuildLanguage(config, logger);
+    if (language !== undefined) {
+      await runAutobuild(language, config, logger);
     }
-
-    core.startGroup(`Attempting to automatically build ${language} code`);
-    const codeQL = getCodeQL(config.codeQLCmd);
-    await codeQL.runAutobuild(language);
-
-    core.endGroup();
 
   } catch (error) {
     core.setFailed("We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps.  " + error.message);
     console.log(error);
-    await sendCompletedStatusReport(startedAt, [language], language, error);
+    await sendCompletedStatusReport(startedAt, language ? [language] : [], language, error);
     return;
   }
 
-  await sendCompletedStatusReport(startedAt, [language]);
+  await sendCompletedStatusReport(startedAt, language ? [language] : []);
 }
 
 run().catch(e => {

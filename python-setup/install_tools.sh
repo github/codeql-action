@@ -28,4 +28,6 @@ sudo apt-get install -y python3-venv
 #       "program uses threads.", RuntimeWarning)
 #     LGTM_PYTHON_SETUP_VERSION=The currently activated Python version 2.7.18 is not supported by the project (^3.5). Trying to find and use a compatible version. Using python3 (3.8.2) 3
 
-python3 -m pip install --user poetry pipenv
+# poetry 1.0.10 has error (https://github.com/python-poetry/poetry/issues/2711)
+python3 -m pip install --user poetry!=1.0.10
+python3 -m pip install --user pipenv

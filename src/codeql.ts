@@ -227,6 +227,7 @@ export async function setupCodeQL(
       } else {
         logger.debug('Downloading CodeQL bundle without token.');
       }
+      logger.info(`Downloading CodeQL tools from ${codeqlURL}. This may take a while.`);
       let codeqlPath = await toolcacheDownloadTool(codeqlURL, headers, tempDir, logger);
       logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 

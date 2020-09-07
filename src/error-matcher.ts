@@ -28,6 +28,7 @@ export const namedMatchersForTesting: { [key: string]: ErrorMatcher } = {
 
   outOfMemory: {
     exitCode: 99,
+    outputRegex: new RegExp("Operation ran out of memory\\."),
     message:
       "The CodeQL CLI ran out of memory. Please see:\n" +
       "https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning#error-out-of-disk-or-out-of-memory",

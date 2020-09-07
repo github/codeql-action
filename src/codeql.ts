@@ -565,7 +565,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       addSnippetsFlag: string,
       threadsFlag: string
     ) {
-      await new toolrunnner.ToolRunner(cmd, [
+      await toolrunnerErrorCatcher(cmd, [
         "database",
         "analyze",
         memoryFlag,
@@ -576,7 +576,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "analyze"]),
         querySuite,
-      ]).exec();
+      ]);
     },
   };
 }

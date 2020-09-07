@@ -1,6 +1,5 @@
-import * as core from '@actions/core';
-
 import * as configUtils from './config-utils';
+import { Logger } from './logging';
 
 function isInterpretedLanguage(language): boolean {
   return language === 'javascript' || language === 'python';
@@ -22,6 +21,17 @@ function buildIncludeExcludeEnvVar(paths: string[]): string {
   return paths.join('\n');
 }
 
+export function printPathFiltersWarning(config: configUtils.Config, logger: Logger) {
+  // Index include/exclude/filters only work in javascript and python.
+  // If any other languages are detected/configured then show a warning.
+  if ((config.paths.length !== 0 ||
+    config.pathsIgnore.length !== 0) &&
+    !config.languages.every(isInterpretedLanguage)) {
+
+    logger.warning('The "paths"/"paths-ignore" fields of the config only have effect for Javascript and Python');
+  }
+}
+
 export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   // The 'LGTM_INDEX_INCLUDE' and 'LGTM_INDEX_EXCLUDE' environment variables
   // control which files/directories are traversed when scanning.
@@ -31,10 +41,10 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   // traverse the entire file tree to determine which files are matched.
   // Any paths containing "*" are not included in these.
   if (config.paths.length !== 0) {
-    core.exportVariable('LGTM_INDEX_INCLUDE', buildIncludeExcludeEnvVar(config.paths));
+    process.env['LGTM_INDEX_INCLUDE'] = buildIncludeExcludeEnvVar(config.paths);
   }
   if (config.pathsIgnore.length !== 0) {
-    core.exportVariable('LGTM_INDEX_EXCLUDE', buildIncludeExcludeEnvVar(config.pathsIgnore));
+    process.env['LGTM_INDEX_EXCLUDE'] = buildIncludeExcludeEnvVar(config.pathsIgnore);
   }
 
   // The 'LGTM_INDEX_FILTERS' environment variable controls which files are
@@ -44,15 +54,6 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   filters.push(...config.paths.map(p => 'include:' + p));
   filters.push(...config.pathsIgnore.map(p => 'exclude:' + p));
   if (filters.length !== 0) {
-    core.exportVariable('LGTM_INDEX_FILTERS', filters.join('\n'));
-  }
-
-  // Index include/exclude/filters only work in javascript and python.
-  // If any other languages are detected/configured then show a warning.
-  if ((config.paths.length !== 0 ||
-        config.pathsIgnore.length !== 0 ||
-        filters.length !== 0) &&
-      !config.languages.every(isInterpretedLanguage)) {
-    core.warning('The "paths"/"paths-ignore" fields of the config only have effect for Javascript and Python');
+    process.env['LGTM_INDEX_FILTERS'] = filters.join('\n');
   }
 }

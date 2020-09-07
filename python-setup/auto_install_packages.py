@@ -50,7 +50,7 @@ def install_packages_with_pipenv():
     return python_executable_path
 
 
-def install_requirements_txt_packages(version: int, requirements_txt_path: str):
+def _create_venv(version: int):
     # create temporary directory ... that just lives "forever"
     venv_path = mkdtemp(prefix='codeql-action-python-autoinstall-')
 
@@ -62,13 +62,41 @@ def install_requirements_txt_packages(version: int, requirements_txt_path: str):
     elif version == 3:
         _check_call(['python3', '-m', 'virtualenv', venv_path])
 
-    venv_pip = os.path.join(venv_path, 'bin', 'pip')
-    try:
-        _check_call([venv_pip, 'install', '-r', requirements_txt_path])
-    except subprocess.CalledProcessError:
-        sys.exit('package installation with pip failed, see error above')
+    return venv_path
 
+
+def install_requirements_txt_packages(version: int):
+    venv_path = _create_venv(version)
+    venv_pip = os.path.join(venv_path, 'bin', 'pip')
     venv_python = os.path.join(venv_path, 'bin', 'python')
+
+    try:
+        _check_call([venv_pip, 'install', '-r', 'requirements.txt'])
+    except subprocess.CalledProcessError:
+        sys.exit('package installation with `pip install -r requirements.txt` failed, see error above')
+
+    return venv_python
+
+
+def install_with_setup_py(version: int):
+    venv_path = _create_venv(version)
+    venv_pip = os.path.join(venv_path, 'bin', 'pip')
+    venv_python = os.path.join(venv_path, 'bin', 'python')
+
+    try:
+        # We have to choose between `python setup.py develop` and `pip install -e .`.
+        # Modern projects use `pip install -e .` and I wasn't able to see any downsides
+        # to doing so. However, `python setup.py develop` has some downsides -- from
+        # https://stackoverflow.com/a/19048754 :
+        # > Note that it is highly recommended to use pip install . (install) and pip
+        # > install -e . (developer install) to install packages, as invoking setup.py
+        # > directly will do the wrong things for many dependencies, such as pull
+        # > prereleases and incompatible package versions, or make the package hard to
+        # > uninstall with pip.
+
+        _check_call([venv_pip, 'install', '-e', '.'])
+    except subprocess.CalledProcessError:
+        sys.exit('package installation with `pip install -e .` failed, see error above')
 
     return venv_python
 
@@ -89,7 +117,11 @@ def install_packages() -> str:
 
     if os.path.exists('requirements.txt'):
         print('Found requirements.txt, will install packages with pip', flush=True)
-        return install_requirements_txt_packages(version, 'requirements.txt')
+        return install_requirements_txt_packages(version)
+
+    if os.path.exists('setup.py'):
+        print('Found setup.py, will install package with pip in editable mode', flush=True)
+        return install_with_setup_py(version)
 
     print("was not able to install packages automatically", flush=True)
 
@@ -107,9 +139,3 @@ if __name__ == "__main__":
     if python_executable_path is not None:
         print("Setting CODEQL_PYTHON={}".format(python_executable_path))
         print("::set-env name=CODEQL_PYTHON::{}".format(python_executable_path))
-
-# TODO:
-# - no packages
-# - poetry without version
-# - pipenv without version
-# - pipenv without lockfile

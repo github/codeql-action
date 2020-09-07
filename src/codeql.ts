@@ -12,6 +12,7 @@ import uuidV4 from 'uuid/v4';
 
 import * as api from './api-client';
 import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
+import { errorMatchers} from './error_matcher';
 import { exec_wrapper } from './exec_wrapper';
 import { Language } from './languages';
 import * as util from './util';
@@ -390,7 +391,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           '--',
           traceCommand
         ],
-        [[0, new RegExp("(No source code was seen during the build\\.|No JavaScript or TypeScript code found\\.)"), 'foo bar']]
+        errorMatchers
       );
     },
     finalizeDatabase: async function(databasePath: string) {
@@ -401,7 +402,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
           ...getExtraOptionsFromEnv(['database', 'finalize']),
           databasePath
         ],
-        [[0, new RegExp("(No source code was seen during the build\\.|No JavaScript or TypeScript code found\\.)"), 'foo bar']]);
+        errorMatchers);
     },
     resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
       const codeqlArgs = [

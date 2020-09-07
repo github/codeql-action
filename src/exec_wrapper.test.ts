@@ -1,7 +1,8 @@
 import * as exec from '@actions/exec';
 import test from 'ava';
 
-import { exec_wrapper, ErrorMatcher } from './exec_wrapper';
+import { ErrorMatcher } from './error_matcher';
+import { exec_wrapper } from './exec_wrapper';
 import {setupTests} from './testing-utils';
 // import fs from 'fs';
 

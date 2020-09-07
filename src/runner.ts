@@ -66,6 +66,16 @@ function importTracerEnvironment(config: Config) {
   }
 }
 
+// Allow the user to specify refs in full refs/heads/branch format
+// or just the short branch name and prepend "refs/heads/" to it.
+function parseRef(userInput: string): string {
+  if (userInput.startsWith('refs/')) {
+    return userInput;
+  } else {
+    return 'refs/heads/' + userInput;
+  }
+}
+
 interface InitArgs {
   languages: string | undefined;
   queries: string | undefined;
@@ -265,7 +275,7 @@ program
       await runAnalyze(
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
-        cmd.ref,
+        parseRef(cmd.ref),
         undefined,
         undefined,
         undefined,
@@ -316,7 +326,7 @@ program
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
-        cmd.ref,
+        parseRef(cmd.ref),
         undefined,
         undefined,
         undefined,

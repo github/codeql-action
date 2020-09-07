@@ -115,6 +115,7 @@ export async function injectWindowsTracer(
           $id = $p[0].ParentProcessId
         }
       }
+      Write-Host "Final process: $p"
 
       Invoke-Expression "&$tracer --inject=$id"`;
   } else {
@@ -134,9 +135,9 @@ export async function injectWindowsTracer(
       )
 
       $id = $PID
-      for ($i = 0; $i -lt ${processLevel}; $i++) {
+      for ($i = 0; $i -le ${processLevel}; $i++) {
         $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
-        Write-Host "Found process: $p"
+        Write-Host "Parent process \${i}: $p"
         if ($p -eq $null) {
           throw "Process tree ended before reaching required level"
         }
@@ -149,6 +150,7 @@ export async function injectWindowsTracer(
           $id = $p[0].ParentProcessId
         }
       }
+      Write-Host "Final process: $p"
 
       Invoke-Expression "&$tracer --inject=$id"`;
   }

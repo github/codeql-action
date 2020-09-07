@@ -12,9 +12,9 @@ import uuidV4 from 'uuid/v4';
 import * as api from './api-client';
 import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
 import { errorMatchers} from './error-matcher';
-import { execErrorCatcher } from './exec-wrapper';
 import { Language } from './languages';
 import { Logger } from './logging';
+import { toolrunnerErrorCatcher } from './toolrunner-error-catcher';
 import * as util from './util';
 
 type Options = (string|number|boolean)[];
@@ -425,7 +425,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       const traceCommand = path.resolve(JSON.parse(extractorPath), 'tools', 'autobuild' + ext);
 
       // Run trace command
-      await execErrorCatcher(
+      await toolrunnerErrorCatcher(
         cmd, [
           'database',
           'trace-command',
@@ -438,7 +438,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       );
     },
     finalizeDatabase: async function(databasePath: string) {
-      await execErrorCatcher(
+      await toolrunnerErrorCatcher(
         cmd, [
           'database',
           'finalize',

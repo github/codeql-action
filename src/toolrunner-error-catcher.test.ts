@@ -3,8 +3,8 @@ import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import test from 'ava';
 
 import { ErrorMatcher } from './error-matcher';
-import { execErrorCatcher } from './exec-wrapper';
 import {setupTests} from './testing-utils';
+import { toolrunnerErrorCatcher } from './toolrunner-error-catcher';
 
 setupTests(test);
 
@@ -16,7 +16,7 @@ test('matchers are never applied if non-error exit', async t => {
 
   t.deepEqual(await exec.exec('node', testArgs), 0);
 
-  t.deepEqual(await execErrorCatcher('node', testArgs, matchers), 0);
+  t.deepEqual(await toolrunnerErrorCatcher('node', testArgs, matchers), 0);
 
 });
 
@@ -29,7 +29,7 @@ test('regex matchers are applied to stdout for non-zero exit code', async t => {
   await t.throwsAsync(exec.exec('node', testArgs), {instanceOf: Error, message: 'The process \'node\' failed with exit code 1'});
 
   await t.throwsAsync(
-    execErrorCatcher('node', testArgs, matchers),
+    toolrunnerErrorCatcher('node', testArgs, matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -44,7 +44,7 @@ test('regex matchers are applied to stderr for non-zero exit code', async t => {
   await t.throwsAsync(exec.exec('node', testArgs), {instanceOf: Error, message: 'The process \'node\' failed with exit code 1'});
 
   await t.throwsAsync(
-    execErrorCatcher('node', testArgs, matchers),
+    toolrunnerErrorCatcher('node', testArgs, matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -61,7 +61,7 @@ test('matcher returns correct error message when multiple matchers defined', asy
   await t.throwsAsync(exec.exec('node', testArgs), {instanceOf: Error, message: 'The process \'node\' failed with exit code 1'});
 
   await t.throwsAsync(
-    execErrorCatcher('node', testArgs, matchers),
+    toolrunnerErrorCatcher('node', testArgs, matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -78,7 +78,7 @@ test('matcher returns first match to regex when multiple matches', async t => {
   await t.throwsAsync(exec.exec('node', testArgs), {instanceOf: Error, message: 'The process \'node\' failed with exit code 1'});
 
   await t.throwsAsync(
-    execErrorCatcher('node', testArgs, matchers),
+    toolrunnerErrorCatcher('node', testArgs, matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -93,7 +93,7 @@ test('exit code matchers are applied', async t => {
   await t.throwsAsync(exec.exec('node', testArgs), {instanceOf: Error, message: 'The process \'node\' failed with exit code 123'});
 
   await t.throwsAsync(
-    execErrorCatcher('node', testArgs, matchers),
+    toolrunnerErrorCatcher('node', testArgs, matchers),
     {instanceOf: Error, message: '🦄'}
     );
 
@@ -102,9 +102,9 @@ test('exit code matchers are applied', async t => {
 test('execErrorCatcher respects the ignoreReturnValue option', async t => {
   const testArgs = buildDummyArgs("standard output", 'error output', '', 199);
 
-  await t.throwsAsync(execErrorCatcher('node', testArgs, [], {ignoreReturnCode: false}), {instanceOf: Error});
+  await t.throwsAsync(toolrunnerErrorCatcher('node', testArgs, [], {ignoreReturnCode: false}), {instanceOf: Error});
 
-  t.deepEqual(await execErrorCatcher('node', testArgs, [], {ignoreReturnCode: true}), 199);
+  t.deepEqual(await toolrunnerErrorCatcher('node', testArgs, [], {ignoreReturnCode: true}), 199);
 
 });
 
@@ -127,7 +127,7 @@ test('execErrorCatcher preserves behavior of provided listeners', async t => {
 
   const testArgs = buildDummyArgs(stdoutExpected, stderrExpected, '', 0);
 
-  t.deepEqual(await execErrorCatcher('node', testArgs, [], {listeners: listeners}), 0);
+  t.deepEqual(await toolrunnerErrorCatcher('node', testArgs, [], {listeners: listeners}), 0);
 
   t.deepEqual(stdoutActual, stdoutExpected + "\n");
   t.deepEqual(stderrActual, stderrExpected + "\n");

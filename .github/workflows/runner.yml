@@ -1,0 +1,26 @@
+name: "CodeQL runner"
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build runner
+      run: |
+        cd runner
+        npm install
+        npm run build-runner
+
+    - name: Upload with runner
+      run: |
+        runner/dist/codeql-runner-linux upload \
+          --sarif-file src/testdata/empty-sarif.sarif \
+          --repository $GITHUB_REPOSITORY \
+          --commit $GITHUB_SHA \
+          --ref $GITHUB_REF \
+          --github-url $GITHUB_SERVER_URL \
+          --github-auth ${{ github.token }}

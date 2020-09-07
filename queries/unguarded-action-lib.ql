@@ -9,12 +9,24 @@
 import javascript
 
 /**
+ * Although these libraries are designed for use on actions they
+ * have been deemed safe to use outside of actions as well.
+ */
+bindingset[lib]
+predicate isSafeActionLib(string lib) {
+  lib = "@actions/http-client" or
+  lib = "@actions/exec" or
+  lib.matches("@actions/exec/%")
+}
+
+/**
  * An import from a library that is meant for GitHub Actions and
  * we do not want to be using outside of actions.
  */
 class ActionsLibImport extends ImportDeclaration {
   ActionsLibImport() {
-    getImportedPath().getValue().matches("@actions/%")
+    getImportedPath().getValue().matches("@actions/%") and
+    not isSafeActionLib(getImportedPath().getValue())
   }
 
   string getName() {
@@ -27,21 +39,21 @@ class ActionsLibImport extends ImportDeclaration {
 }
 
 /**
- * An entrypoint to the CLI.
+ * An entrypoint to the CodeQL runner.
  */
-class ClIEntrypoint extends Function {
-  ClIEntrypoint() {
-    getFile().getAbsolutePath().matches("%/cli.ts")
+class RunnerEntrypoint extends Function {
+  RunnerEntrypoint() {
+    getFile().getAbsolutePath().matches("%/runner.ts")
   }
 }
 
 /**
- * A check of whether we are in actions mode or CLI mode.
+ * A check of whether we are in actions mode or runner mode.
  */
 class ModeGuard extends IfStmt {
   ModeGuard() {
     getCondition().(EqualityTest).getAnOperand().(StringLiteral).getValue() = "actions" or
-    getCondition().(EqualityTest).getAnOperand().(StringLiteral).getValue() = "cli"
+    getCondition().(EqualityTest).getAnOperand().(StringLiteral).getValue() = "runner"
   }
 
   string getOperand() {
@@ -58,11 +70,11 @@ class ModeGuard extends IfStmt {
   Stmt getActionsBlock() {
     (getOperand() = "actions" and isPositive() and result = getThen())
     or
-    (getOperand() = "cli" and not isPositive() and result = getThen())
+    (getOperand() = "runner" and not isPositive() and result = getThen())
     or
     (getOperand() = "actions" and not isPositive() and result = getElse())
     or
-    (getOperand() = "cli" and isPositive() and result = getElse())
+    (getOperand() = "runner" and isPositive() and result = getElse())
   }
 
   /**
@@ -99,10 +111,10 @@ Function calledBy(Function f) {
   not exists(ModeGuard guard | guard.getAnActionsExpr() = result))
 }
 
-from VarAccess v, ActionsLibImport actionsLib, ClIEntrypoint cliEntry 
+from VarAccess v, ActionsLibImport actionsLib, RunnerEntrypoint runnerEntry 
 where actionsLib.getAProvidedVariable() = v.getVariable()
-  and getAFunctionChildExpr(calledBy*(cliEntry)) = v
+  and getAFunctionChildExpr(calledBy*(runnerEntry)) = v
 select v, "$@ is imported from $@ and this code can be called from $@",
   v, v.getName(),
   actionsLib, actionsLib.getName(),
-  cliEntry, "the CLI"
+  runnerEntry, "the runner"

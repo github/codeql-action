@@ -1,33 +1,35 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import consoleLogLevel from "console-log-level";
+import * as path from 'path';
 
 import { getRequiredEnvParam, isLocalRun } from "./util";
 
-export const getApiClient = function(githubAuth: string, githubApiUrl: string, allowLocalRun = false) {
+export const getApiClient = function(githubAuth: string, githubUrl: string, allowLocalRun = false) {
   if (isLocalRun() && !allowLocalRun) {
     throw new Error('Invalid API call in local run');
   }
   return new github.GitHub(
     {
-      auth: parseAuth(githubAuth),
-      baseUrl: githubApiUrl,
+      auth: githubAuth,
+      baseUrl: getApiUrl(githubUrl),
       userAgent: "CodeQL Action",
       log: consoleLogLevel({ level: "debug" })
     });
 };
 
-// Parses the user input as either a single token,
-// or a username and password / PAT.
-function parseAuth(auth: string): string {
-  // Check if it's a username:password pair
-  const c = auth.indexOf(':');
-  if (c !== -1) {
-    return 'basic ' + Buffer.from(auth).toString('base64');
+function getApiUrl(githubUrl: string): string {
+  const url = new URL(githubUrl);
+
+  // If we detect this is trying to be to github.com
+  // then return with a fixed canonical URL.
+  if (url.hostname === 'github.com' || url.hostname === 'api.github.com') {
+    return 'https://api.github.com';
   }
 
-  // Otherwise use the token as it is
-  return auth;
+  // Add the /api/v3 API prefix
+  url.pathname = path.join(url.pathname, 'api', 'v3');
+  return url.toString();
 }
 
 // Temporary function to aid in the transition to running on and off of github actions.
@@ -36,6 +38,6 @@ function parseAuth(auth: string): string {
 export function getActionsApiClient(allowLocalRun = false) {
   return getApiClient(
     core.getInput('token'),
-    getRequiredEnvParam('GITHUB_API_URL'),
+    getRequiredEnvParam('GITHUB_SERVER_URL'),
     allowLocalRun);
 }

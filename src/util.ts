@@ -1,32 +1,24 @@
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
+import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import * as fs from "fs";
 import * as os from 'os';
 import * as path from 'path';
 
 import * as api from './api-client';
 import { Language } from './languages';
+import { Logger } from './logging';
 import * as sharedEnv from './shared-environment';
 
 /**
- * The API URL for github.com.
+ * Are we running on actions, or not.
  */
-export const GITHUB_DOTCOM_API_URL = "https://api.github.com";
+export type Mode = 'actions' | 'runner';
 
 /**
- * Get the API URL for the GitHub instance we are connected to.
- * May be for github.com or for an enterprise instance.
+ * The URL for github.com.
  */
-export function getInstanceAPIURL(): string {
-  return process.env["GITHUB_API_URL"] || GITHUB_DOTCOM_API_URL;
-}
+export const GITHUB_DOTCOM_URL = "https://github.com";
 
-/**
- * Are we running against a GitHub Enterpise instance, as opposed to github.com.
- */
-export function isEnterprise(): boolean {
-  return getInstanceAPIURL() !== GITHUB_DOTCOM_API_URL;
-}
 
 /**
  * Get an environment parameter, but throw an error if it is not set.
@@ -93,13 +85,13 @@ export async function getCommitOid(): Promise<string> {
   // reported on the merge commit.
   try {
     let commitOid = '';
-    await exec.exec('git', ['rev-parse', 'HEAD'], {
+    await new toolrunnner.ToolRunner('git', ['rev-parse', 'HEAD'], {
       silent: true,
       listeners: {
         stdout: (data) => { commitOid += data.toString(); },
         stderr: (data) => { process.stderr.write(data); }
       }
-    });
+    }).exec();
     return commitOid.trim();
   } catch (e) {
     core.info("Failed to call git to get current commit. Continuing with data from environment: " + e);
@@ -297,7 +289,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
   ignoreFailures?: boolean): Promise<boolean> {
 
-  if (isEnterprise()) {
+  if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
     core.debug("Not sending status report to GitHub Enterprise");
     return true;
   }
@@ -378,13 +370,12 @@ export async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promi
  *
  * @returns string
  */
-export function getMemoryFlag(): string {
+export function getMemoryFlag(userInput: string | undefined): string {
   let memoryToUseMegaBytes: number;
-  const memoryToUseString = core.getInput("ram");
-  if (memoryToUseString) {
-    memoryToUseMegaBytes = Number(memoryToUseString);
+  if (userInput) {
+    memoryToUseMegaBytes = Number(userInput);
     if (Number.isNaN(memoryToUseMegaBytes) || memoryToUseMegaBytes <= 0) {
-      throw new Error("Invalid RAM setting \"" + memoryToUseString + "\", specified.");
+      throw new Error("Invalid RAM setting \"" + userInput + "\", specified.");
     }
   } else {
     const totalMemoryBytes = os.totalmem();
@@ -403,22 +394,21 @@ export function getMemoryFlag(): string {
  *
  * @returns string
  */
-export function getThreadsFlag(): string {
+export function getThreadsFlag(userInput: string | undefined, logger: Logger): string {
   let numThreads: number;
-  const numThreadsString = core.getInput("threads");
   const maxThreads = os.cpus().length;
-  if (numThreadsString) {
-    numThreads = Number(numThreadsString);
+  if (userInput) {
+    numThreads = Number(userInput);
     if (Number.isNaN(numThreads)) {
-      throw new Error(`Invalid threads setting "${numThreadsString}", specified.`);
+      throw new Error(`Invalid threads setting "${userInput}", specified.`);
     }
     if (numThreads > maxThreads) {
-      core.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
+      logger.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
       numThreads = maxThreads;
     }
     const minThreads = -maxThreads;
     if (numThreads < minThreads) {
-      core.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
+      logger.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
       numThreads = minThreads;
     }
   } else {

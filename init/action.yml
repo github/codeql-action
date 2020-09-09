@@ -17,7 +17,7 @@ inputs:
     description: Path of the config file to use
     required: false
   queries:
-    description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file
+    description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
     required: false
 runs:
   using: 'node12'

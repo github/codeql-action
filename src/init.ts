@@ -22,6 +22,7 @@ export async function initCodeQL(
   logger.startGroup('Setup CodeQL tools');
   const codeql = await setupCodeQL(
     codeqlURL,
+    undefined, // MG: FIXME
     githubAuth,
     githubUrl,
     tempDir,

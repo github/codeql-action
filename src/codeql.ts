@@ -127,6 +127,7 @@ function getCodeQLActionRepository(mode: util.Mode): string {
 }
 
 async function getCodeQLBundleDownloadURL(
+  bundleName: string,
   githubAuth: string,
   githubUrl: string,
   mode: util.Mode,
@@ -158,7 +159,7 @@ async function getCodeQLBundleDownloadURL(
         tag: CODEQL_BUNDLE_VERSION
       });
       for (let asset of release.data.assets) {
-        if (asset.name === CODEQL_BUNDLE_NAME) {
+        if (asset.name === bundleName) {
           logger.info(`Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`);
           return asset.url;
         }
@@ -193,6 +194,7 @@ async function toolcacheDownloadTool(
 
 export async function setupCodeQL(
   codeqlURL: string | undefined,
+  plVersion: string | undefined,
   githubAuth: string,
   githubUrl: string,
   tempDir: string,
@@ -207,15 +209,44 @@ export async function setupCodeQL(
   process.env['RUNNER_TOOL_CACHE'] = toolsDir;
 
   try {
+    // The URL identifies the release version. E.g., codeql-20200901 .
+    // The plVersion identifies the platform-language combination of the package
+    // within the release. E.g., `linux64-cpp` in `codeql-linux64-cpp.tar.gz`.
+    // We expect the codeqlUrl (when given) to always point to the main bundle
+    // `codeql-bundle.tar.gz`
+
     const codeqlURLVersion = getCodeQLURLVersion(codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`, logger);
 
-    let codeqlFolder = toolcache.find('CodeQL', codeqlURLVersion);
-    if (codeqlFolder) {
-      logger.debug(`CodeQL found in cache ${codeqlFolder}`);
-    } else {
-      if (!codeqlURL) {
-        codeqlURL = await getCodeQLBundleDownloadURL(githubAuth, githubUrl, mode, logger);
+    let codeqlFolder;
+
+    logger.debug(`PL Version ${plVersion}`);
+    if (plVersion) {
+
+      codeqlFolder = toolcache.find('CodeQL', `${codeqlURLVersion}-${plVersion}`);
+      if (codeqlFolder) {
+        logger.debug(`CodeQL found in cache ${codeqlFolder}`);
       }
+    }
+
+    if (!codeqlFolder) {
+      codeqlFolder = toolcache.find('CodeQL', codeqlURLVersion);
+      if (codeqlFolder) {
+        logger.debug(`CodeQL found in cache ${codeqlFolder}`);
+      }
+    }
+
+    if (!codeqlFolder) {
+      const codeqlToolcacheVersion = plVersion ? `${codeqlURLVersion}-${plVersion}`: codeqlURLVersion;
+      logger.debug(`CodeQL not found in cache`);
+      if (!codeqlURL) {
+        let pkgName = plVersion ? CODEQL_BUNDLE_NAME.replace("-bundle", `-${plVersion}`) : CODEQL_BUNDLE_NAME; // TODO : Maybe move template a constant?
+        codeqlURL = await getCodeQLBundleDownloadURL(pkgName, githubAuth, githubUrl, mode, logger);
+      }
+      else if (plVersion) {
+        let pkgName = CODEQL_BUNDLE_NAME.replace("-bundle", `-${plVersion}`)
+        codeqlURL = codeqlURL.replace(CODEQL_BUNDLE_NAME, pkgName)
+      }
+      logger.debug(`Using CodeQL URL: ${codeqlURL}`);
 
       const headers: IHeaders = {accept: 'application/octet-stream'};
       // We only want to provide an authorization header if we are downloading
@@ -232,7 +263,8 @@ export async function setupCodeQL(
       logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 
       const codeqlExtracted = await toolcache.extractTar(codeqlPath);
-      codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', codeqlURLVersion);
+      logger.debug(`Caching ${codeqlToolcacheVersion}`)
+      codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', codeqlToolcacheVersion);
     }
 
     let codeqlCmd = path.join(codeqlFolder, 'codeql', 'codeql');

@@ -126,7 +126,7 @@ function getCodeQLActionRepository(mode: util.Mode): string {
   return relativeScriptPathParts[0] + "/" + relativeScriptPathParts[1];
 }
 
-async function getCodeQLBundleDownloadURL(
+export async function getCodeQLBundleDownloadURL(
   bundleNames: string[],
   githubAuth: string,
   githubUrl: string,
@@ -211,7 +211,20 @@ export async function setupCodeQL(
   process.env['RUNNER_TEMP'] = tempDir;
   process.env['RUNNER_TOOL_CACHE'] = toolsDir;
 
-  // Compute package version
+  // The URL identifies the release version. E.g., codeql-20200901 .
+  // The plVersion identifies the platform-language combination of the package
+  // within the release. E.g., `linux64-cpp` in `codeql-linux64-cpp.tar.gz`.
+  // We expect the codeqlUrl (when given) to always point to the main bundle
+  // `codeql-bundle.tar.gz`
+  //
+  // The logic is as follows:
+  //  - Always use the Toolcache if available.
+  //    - If we would like a platform-language package, but have the
+  //      full bundle in the cache, use that.
+  //  - If codeqlURL is specified, use that.
+  //  - If a single language is being analyzed, try to download the platform-language package.
+  //    - If it is not available in the release assets, fallback to the full bundle
+  //  - If multiple languages are being anlyzed, use the full bundle
   let plVersion: string | undefined = undefined;
   let platform: string;
   if (process.platform === 'win32') {
@@ -228,12 +241,6 @@ export async function setupCodeQL(
   }
 
   try {
-    // The URL identifies the release version. E.g., codeql-20200901 .
-    // The plVersion identifies the platform-language combination of the package
-    // within the release. E.g., `linux64-cpp` in `codeql-linux64-cpp.tar.gz`.
-    // We expect the codeqlUrl (when given) to always point to the main bundle
-    // `codeql-bundle.tar.gz`
-
     const codeqlURLVersion = getCodeQLURLVersion(codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`, logger);
 
     let codeqlFolder;
@@ -257,11 +264,14 @@ export async function setupCodeQL(
       const codeqlToolcacheVersion = plVersion ? `${codeqlURLVersion}-${plVersion}` : codeqlURLVersion;
       logger.debug(`CodeQL not found in cache`);
       if (!codeqlURL) {
-        const bundles = [
-          CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${plVersion}`),
-          CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${platform}`),
-          CODEQL_BUNDLE_NAME,
-        ];
+        // Provide a few options, from smaller to bigger
+        let bundles: string[] = [];
+        if (plVersion) {
+          bundles.push(CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${plVersion}`));
+        }
+        bundles.push(CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${platform}`));
+        bundles.push(CODEQL_BUNDLE_NAME);
+
         codeqlURL = await getCodeQLBundleDownloadURL(bundles, githubAuth, githubUrl, mode, logger);
       }
       logger.debug(`Using CodeQL URL: ${codeqlURL}`);

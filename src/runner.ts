@@ -7,7 +7,7 @@ import { runAnalyze } from './analyze';
 import { determineAutobuildLanguage, runAutobuild } from './autobuild';
 import { CodeQL, getCodeQL } from './codeql';
 import { Config, getConfig } from './config-utils';
-import { initCodeQL, initConfig, runInit } from './init';
+import { initCodeQL, initConfig, injectWindowsTracer, runInit } from './init';
 import { Language, parseLanguage } from './languages';
 import { getRunnerLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
@@ -76,6 +76,27 @@ function parseRef(userInput: string): string {
   }
 }
 
+// Parses the --trace-process-name arg from process.argv, or returns undefined
+function parseTraceProcessName(): string | undefined {
+  for (let i = 0; i < process.argv.length - 1; i++) {
+    if (process.argv[i] === '--trace-process-name') {
+      return process.argv[i + 1];
+    }
+  }
+  return undefined;
+}
+
+// Parses the --trace-process-level arg from process.argv, or returns undefined
+function parseTraceProcessLevel(): number | undefined {
+  for (let i = 0; i < process.argv.length - 1; i++) {
+    if (process.argv[i] === '--trace-process-level') {
+      const v = parseInt(process.argv[i + 1], 10);
+      return isNaN(v) ? undefined : v;
+    }
+  }
+  return undefined;
+}
+
 interface InitArgs {
   languages: string | undefined;
   queries: string | undefined;
@@ -104,6 +125,9 @@ program
   .option('--tools-dir <dir>', 'Directory to use for CodeQL tools and other files to store between runs. Default is a subdirectory of the home directory.')
   .option('--checkout-path <path>', 'Checkout path. Default is the current working directory.')
   .option('--debug', 'Print more verbose output', false)
+  // This prevents a message like: error: unknown option '--trace-process-level'
+  // Remove this if commander.js starts supporting hidden options.
+  .allowUnknownOption()
   .action(async (cmd: InitArgs) => {
     const logger = getRunnerLogger(cmd.debug);
     try {
@@ -145,6 +169,15 @@ program
       const tracerConfig = await runInit(codeql, config);
       if (tracerConfig === undefined) {
         return;
+      }
+
+      if (process.platform === 'win32') {
+        await injectWindowsTracer(
+          parseTraceProcessName(),
+          parseTraceProcessLevel(),
+          config,
+          codeql,
+          tracerConfig);
       }
 
       // Always output a json file of the env that can be consumed programatically

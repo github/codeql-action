@@ -165,6 +165,10 @@ jobs:
 
     - name: Run init
       run: |
+        # Pass --config-file here, but not for other jobs in this workflow.
+        # This means we're testing the config file parsing in the runner
+        # but not slowing down all jobs unnecessarily as it doesn't add much
+        # testing the parsing on different operating systems and languages.
         runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
     - name: Run analyze

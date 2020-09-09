@@ -4,23 +4,32 @@ import nock from 'nock';
 import * as path from 'path';
 
 import * as codeql from './codeql';
+import { Language } from './languages';
 import { getRunnerLogger } from './logging';
 import {setupTests} from './testing-utils';
 import * as util from './util';
 
+
 setupTests(test);
 
 test('download codeql bundle cache', async t => {
-
   await util.withTmpDir(async tmpDir => {
     const versions = ['20200601', '20200610'];
-    const plVersions = ['linux64-cpp', undefined];
+    const languages: Language[][] = [
+      [Language.cpp],
+      [Language.cpp, Language.python] // Multi-language requires the full bundle
+    ];
 
-    for (let i=0; i < versions.length; i++) {
-      for (let j=0; j < plVersions.length; j++) {
+    const platform = process.platform === 'win32' ? 'win64' :
+                     process.platform === 'linux' ? 'linux64' :
+                     process.platform === 'darwin' ? 'osx64' : undefined;
+
+
+    for (let i = 0; i < versions.length; i++) {
+      for (let j = 0; j < languages.length; j++) {
         const version = versions[i];
-        const plVersion = plVersions[j];
-        const pkg = plVersion ? `codeql-${plVersion}.tar.gz` : `codeql-bundle.tar.gz`
+        const plVersion = (languages[j].length === 1) ? `${platform}-${languages[j][0]}` : undefined;
+        const pkg = plVersion ? `codeql-${plVersion}.tar.gz` : `codeql-bundle.tar.gz`;
 
         nock('https://example.com')
         .get(`/download/codeql-bundle-${version}/${pkg}`)
@@ -28,7 +37,7 @@ test('download codeql bundle cache', async t => {
 
         await codeql.setupCodeQL(
           `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
-          plVersion,
+          languages[j],
           'token',
           'https://github.example.com',
           tmpDir,
@@ -37,7 +46,6 @@ test('download codeql bundle cache', async t => {
           getRunnerLogger(true));
 
         const toolcacheVersion = plVersion ? `0.0.0-${version}-${plVersion}` : `0.0.0-${version}`;
-        console.debug(toolcacheVersion)
         t.assert(toolcache.find('CodeQL', toolcacheVersion), `Looking for ${toolcacheVersion} - ${plVersion}`);
       }
     }
@@ -53,7 +61,6 @@ test('use codeql bundle cache if pl version is not available', async t => {
   // If we look for a pl version but find in cache the bundle, we use the bundle
   await util.withTmpDir(async tmpDir => {
     const version = '20200601';
-    const plVersion = 'linux64-cpp';
 
     nock('https://example.com')
       .get(`/download/codeql-bundle-${version}/codeql-bundle.tar.gz`)
@@ -61,7 +68,7 @@ test('use codeql bundle cache if pl version is not available', async t => {
 
     await codeql.setupCodeQL(
       `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
-      undefined,
+      [],
       'token',
       'https://github.example.com',
       tmpDir,
@@ -72,10 +79,10 @@ test('use codeql bundle cache if pl version is not available', async t => {
     t.assert(toolcache.find('CodeQL', `0.0.0-${version}`));
     t.is(toolcache.findAllVersions('CodeQL').length, 1);
 
-    // Now try to request the plVersion, and see that we do not change the cache
+    // Now try to request the cpp version, and see that we do not change the cache
     await codeql.setupCodeQL(
       `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
-      plVersion,
+      [Language.cpp],
       'token',
       'https://github.example.com',
       tmpDir,
@@ -88,6 +95,12 @@ test('use codeql bundle cache if pl version is not available', async t => {
 
   });
 });
+
+// test('use larger bundles if smaller ones are unavailble', async t => {
+//   // TODO: This should check the fallback behavior of getCodeQLBundleDownloadURL
+//    t.fail()
+// });
+
 
 
 test('parse codeql bundle url version', t => {

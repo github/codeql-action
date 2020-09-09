@@ -57,20 +57,29 @@ async function run() {
     if (!await util.sendStatusReport(await util.createStatusReportBase('init', 'starting', startedAt), true)) {
       return;
     }
+    const repositoryNWO = parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY'));
+
+    const languages = await configUtils.getLanguages(
+      core.getInput('languages'),
+      repositoryNWO,
+      core.getInput('token'),
+      util.getRequiredEnvParam('GITHUB_SERVER_URL'),
+      logger);
 
     codeql = await initCodeQL(
       core.getInput('tools'),
+      languages,
       core.getInput('token'),
       util.getRequiredEnvParam('GITHUB_SERVER_URL'),
       util.getRequiredEnvParam('RUNNER_TEMP'),
       util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
       'actions',
       logger);
+
     config = await initConfig(
-      core.getInput('languages'),
+      languages,
       core.getInput('queries'),
       core.getInput('config-file'),
-      parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
       util.getRequiredEnvParam('RUNNER_TEMP'),
       util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
       codeql,

@@ -6,7 +6,7 @@ import * as path from 'path';
 import { runAnalyze } from './analyze';
 import { determineAutobuildLanguage, runAutobuild } from './autobuild';
 import { CodeQL, getCodeQL } from './codeql';
-import { Config, getConfig } from './config-utils';
+import { Config, getConfig, getLanguages } from './config-utils';
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from './init';
 import { Language, parseLanguage } from './languages';
 import { getRunnerLogger } from './logging';
@@ -139,14 +139,25 @@ program
       fs.rmdirSync(tempDir, { recursive: true });
       fs.mkdirSync(tempDir, { recursive: true });
 
+      const githubUrl = parseGithubUrl(cmd.githubUrl);
+      const repositoryNWO = parseRepositoryNwo(cmd.repository);
+
+      const languages = await getLanguages(
+        cmd.languages,
+        repositoryNWO,
+        cmd.githubAuth,
+        githubUrl,
+        logger);
+
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
         codeql = getCodeQL(cmd.codeqlPath);
       } else {
         codeql = await initCodeQL(
           undefined,
+          languages,
           cmd.githubAuth,
-          parseGithubUrl(cmd.githubUrl),
+          githubUrl,
           tempDir,
           toolsDir,
           'runner',
@@ -154,16 +165,15 @@ program
       }
 
       const config = await initConfig(
-        cmd.languages,
+        languages,
         cmd.queries,
         cmd.configFile,
-        parseRepositoryNwo(cmd.repository),
         tempDir,
         toolsDir,
         codeql,
         cmd.checkoutPath || process.cwd(),
         cmd.githubAuth,
-        parseGithubUrl(cmd.githubUrl),
+        githubUrl,
         logger);
 
       const tracerConfig = await runInit(codeql, config);

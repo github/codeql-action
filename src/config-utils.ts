@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as api from './api-client';
 import { CodeQL, ResolveQueriesOutput } from './codeql';
 import * as externalQueries from "./external-queries";
-import { Language, parseLanguage } from "./languages";
+import { Language, parseLanguage } from './languages';
 import { Logger } from './logging';
 import { RepositoryNwo } from './repository';
 
@@ -491,7 +491,8 @@ async function getLanguagesInRepo(
  * If no languages could be detected from either the workflow or the repository
  * then throw an error.
  */
-async function getLanguages(
+export async function getLanguages(
+  // Maybe move to init.ts
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   githubAuth: string,
@@ -570,23 +571,15 @@ async function addQueriesFromWorkflow(
  * Get the default config for when the user has not supplied one.
  */
 export async function getDefaultConfig(
-  languagesInput: string | undefined,
+  languages: Language[],
   queriesInput: string | undefined,
-  repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  githubAuth: string,
   githubUrl: string,
   logger: Logger): Promise<Config> {
 
-  const languages = await getLanguages(
-    languagesInput,
-    repository,
-    githubAuth,
-    githubUrl,
-    logger);
   const queries = {};
   await addDefaultQueries(codeQL, languages, queries);
   if (queriesInput) {
@@ -617,10 +610,9 @@ export async function getDefaultConfig(
  * Load the config from the given file.
  */
 async function loadConfig(
-  languagesInput: string | undefined,
+  languages: Language[],
   queriesInput: string | undefined,
   configFile: string,
-  repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
@@ -652,13 +644,6 @@ async function loadConfig(
       throw new Error(getNameInvalid(configFile));
     }
   }
-
-  const languages = await getLanguages(
-    languagesInput,
-    repository,
-    githubAuth,
-    githubUrl,
-    logger);
 
   const queries = {};
   const pathsIgnore: string[] = [];
@@ -760,10 +745,9 @@ async function loadConfig(
  * a default config. The parsed config is then stored to a known location.
  */
 export async function initConfig(
-  languagesInput: string | undefined,
+  languages: Language[],
   queriesInput: string | undefined,
   configFile: string | undefined,
-  repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
@@ -778,22 +762,19 @@ export async function initConfig(
   if (!configFile) {
     logger.debug('No configuration file was provided');
     config = await getDefaultConfig(
-      languagesInput,
+      languages,
       queriesInput,
-      repository,
       tempDir,
       toolCacheDir,
       codeQL,
       checkoutPath,
-      githubAuth,
       githubUrl,
       logger);
   } else {
     config = await loadConfig(
-      languagesInput,
+      languages,
       queriesInput,
       configFile,
-      repository,
       tempDir,
       toolCacheDir,
       codeQL,
@@ -896,3 +877,4 @@ export async function getConfig(tempDir: string, logger: Logger): Promise<Config
   logger.debug(configString);
   return JSON.parse(configString);
 }
+

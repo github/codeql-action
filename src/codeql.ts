@@ -127,7 +127,7 @@ function getCodeQLActionRepository(mode: util.Mode): string {
 }
 
 async function getCodeQLBundleDownloadURL(
-  bundleName: string,
+  bundleNames: string[],
   githubAuth: string,
   githubUrl: string,
   mode: util.Mode,
@@ -158,10 +158,13 @@ async function getCodeQLBundleDownloadURL(
         repo: repositoryName,
         tag: CODEQL_BUNDLE_VERSION
       });
-      for (let asset of release.data.assets) {
-        if (asset.name === bundleName) {
-          logger.info(`Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`);
-          return asset.url;
+      // See if any of the bundles appears in the assets list
+      for (let bundleName of bundleNames) {
+        for (let asset of release.data.assets) {
+          if (asset.name === bundleName) {
+            logger.info(`Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`);
+            return asset.url;
+          }
         }
       }
     } catch (e) {
@@ -194,7 +197,7 @@ async function toolcacheDownloadTool(
 
 export async function setupCodeQL(
   codeqlURL: string | undefined,
-  plVersion: string | undefined,
+  languages: Language[],
   githubAuth: string,
   githubUrl: string,
   tempDir: string,
@@ -207,6 +210,22 @@ export async function setupCodeQL(
   // be better to write our own implementation to use outside of actions.
   process.env['RUNNER_TEMP'] = tempDir;
   process.env['RUNNER_TOOL_CACHE'] = toolsDir;
+
+  // Compute package version
+  let plVersion: string | undefined = undefined;
+  let platform: string;
+  if (process.platform === 'win32') {
+    platform = "win64";
+  } else if (process.platform === 'linux') {
+    platform = "linux64";
+  } else if (process.platform === 'darwin') {
+    platform = "osx64";
+  } else {
+    throw new Error("Unsupported platform: " + process.platform);
+  }
+  if (languages.length === 1) {
+    plVersion = `${platform}-${languages[0]}`;
+  }
 
   try {
     // The URL identifies the release version. E.g., codeql-20200901 .
@@ -221,7 +240,6 @@ export async function setupCodeQL(
 
     logger.debug(`PL Version ${plVersion}`);
     if (plVersion) {
-
       codeqlFolder = toolcache.find('CodeQL', `${codeqlURLVersion}-${plVersion}`);
       if (codeqlFolder) {
         logger.debug(`CodeQL found in cache ${codeqlFolder}`);
@@ -236,15 +254,15 @@ export async function setupCodeQL(
     }
 
     if (!codeqlFolder) {
-      const codeqlToolcacheVersion = plVersion ? `${codeqlURLVersion}-${plVersion}`: codeqlURLVersion;
+      const codeqlToolcacheVersion = plVersion ? `${codeqlURLVersion}-${plVersion}` : codeqlURLVersion;
       logger.debug(`CodeQL not found in cache`);
       if (!codeqlURL) {
-        let pkgName = plVersion ? CODEQL_BUNDLE_NAME.replace("-bundle", `-${plVersion}`) : CODEQL_BUNDLE_NAME; // TODO : Maybe move template a constant?
-        codeqlURL = await getCodeQLBundleDownloadURL(pkgName, githubAuth, githubUrl, mode, logger);
-      }
-      else if (plVersion) {
-        let pkgName = CODEQL_BUNDLE_NAME.replace("-bundle", `-${plVersion}`)
-        codeqlURL = codeqlURL.replace(CODEQL_BUNDLE_NAME, pkgName)
+        const bundles = [
+          CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${plVersion}`),
+          CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${platform}`),
+          CODEQL_BUNDLE_NAME,
+        ];
+        codeqlURL = await getCodeQLBundleDownloadURL(bundles, githubAuth, githubUrl, mode, logger);
       }
       logger.debug(`Using CodeQL URL: ${codeqlURL}`);
 
@@ -263,7 +281,7 @@ export async function setupCodeQL(
       logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 
       const codeqlExtracted = await toolcache.extractTar(codeqlPath);
-      logger.debug(`Caching ${codeqlToolcacheVersion}`)
+      logger.debug(`Caching ${codeqlToolcacheVersion}`);
       codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', codeqlToolcacheVersion);
     }
 

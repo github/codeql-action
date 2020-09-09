@@ -5,13 +5,15 @@ import * as path from 'path';
 import * as analysisPaths from './analysis-paths';
 import { CodeQL, setupCodeQL } from './codeql';
 import * as configUtils from './config-utils';
+import {Language} from './languages';
 import { Logger } from './logging';
-import { RepositoryNwo } from './repository';
 import { getCombinedTracerConfig, TracerConfig } from './tracer-config';
 import * as util from './util';
 
+
 export async function initCodeQL(
   codeqlURL: string | undefined,
+  languages: Language[],
   githubAuth: string,
   githubUrl: string,
   tempDir: string,
@@ -20,9 +22,10 @@ export async function initCodeQL(
   logger: Logger): Promise<CodeQL> {
 
   logger.startGroup('Setup CodeQL tools');
+
   const codeql = await setupCodeQL(
     codeqlURL,
-    undefined, // MG: FIXME
+    languages,
     githubAuth,
     githubUrl,
     tempDir,
@@ -35,10 +38,9 @@ export async function initCodeQL(
 }
 
 export async function initConfig(
-  languagesInput: string | undefined,
+  languages: Language[],
   queriesInput: string | undefined,
   configFile: string | undefined,
-  repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
@@ -49,10 +51,9 @@ export async function initConfig(
 
   logger.startGroup('Load language configuration');
   const config = await configUtils.initConfig(
-    languagesInput,
+    languages,
     queriesInput,
     configFile,
-    repository,
     tempDir,
     toolCacheDir,
     codeQL,

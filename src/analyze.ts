@@ -78,6 +78,7 @@ async function finalizeDatabaseCreation(
 async function runQueries(
   sarifFolder: string,
   memoryFlag: string,
+  addSnippetsFlag: string,
   threadsFlag: string,
   config: configUtils.Config,
   logger: Logger): Promise<QueriesStatusReport> {
@@ -102,7 +103,7 @@ async function runQueries(
 
       const sarifFile = path.join(sarifFolder, language + '.sarif');
 
-      await codeql.databaseAnalyze(databasePath, sarifFile, querySuite, memoryFlag, threadsFlag);
+      await codeql.databaseAnalyze(databasePath, sarifFile, querySuite, memoryFlag, addSnippetsFlag, threadsFlag);
 
       logger.debug('SARIF results for database ' + language + ' created at "' + sarifFile + '"');
       logger.endGroup();
@@ -133,6 +134,7 @@ export async function runAnalyze(
   mode: util.Mode,
   outputDir: string,
   memoryFlag: string,
+  addSnippetsFlag: string,
   threadsFlag: string,
   config: configUtils.Config,
   logger: Logger): Promise<AnalysisStatusReport> {
@@ -146,7 +148,7 @@ export async function runAnalyze(
   await finalizeDatabaseCreation(config, logger);
 
   logger.info('Analyzing database');
-  const queriesStats = await runQueries(outputDir, memoryFlag, threadsFlag, config, logger);
+  const queriesStats = await runQueries(outputDir, memoryFlag, addSnippetsFlag, threadsFlag, config, logger);
 
   if (!doUpload) {
     logger.info('Not uploading results');

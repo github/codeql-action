@@ -12,7 +12,7 @@ import { Language, parseLanguage } from './languages';
 import { getRunnerLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
-import { getMemoryFlag, getThreadsFlag } from './util';
+import { getAddSnippetsFlag, getMemoryFlag, getThreadsFlag } from './util';
 
 const program = new Command();
 program.version('0.0.1');
@@ -274,6 +274,7 @@ interface AnalyzeArgs {
   upload: boolean;
   outputDir: string | undefined;
   ram: string | undefined;
+  addSnippets: boolean;
   threads: string | undefined;
   tempDir: string | undefined;
   debug: boolean;
@@ -288,9 +289,10 @@ program
   .requiredOption('--github-url <url>', 'URL of GitHub instance. (Required)')
   .requiredOption('--github-auth <auth>', 'GitHub Apps token or personal access token. (Required)')
   .option('--checkout-path <path>', 'Checkout path. Default is the current working directory.')
-  .option('--no-upload', 'Do not upload results after analysis.', false)
+  .option('--no-upload', 'Do not upload results after analysis.')
   .option('--output-dir <dir>', 'Directory to output SARIF files to. Default is in the temp directory.')
   .option('--ram <ram>', 'Amount of memory to use when running queries. Default is to use all available memory.')
+  .option('--no-add-snippets', 'Specify whether to include code snippets in the sarif output.')
   .option('--threads <threads>', 'Number of threads to use when running queries. ' +
     'Default is to use all available cores.')
   .option('--temp-dir <dir>', 'Directory to use for temporary files. Default is "./codeql-runner".')
@@ -320,6 +322,7 @@ program
         'runner',
         outputDir,
         getMemoryFlag(cmd.ram),
+        getAddSnippetsFlag(cmd.addSnippets),
         getThreadsFlag(cmd.threads, logger),
         config,
         logger);

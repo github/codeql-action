@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>multi_language_test</RootNamespace>
+    <DefaultItemExcludes>$(DefaultItemExcludes);codeql-runner/**</DefaultItemExcludes>
   </PropertyGroup>
 
 </Project>

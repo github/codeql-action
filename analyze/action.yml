@@ -16,6 +16,10 @@ inputs:
   ram:
     description: Override the amount of memory in MB to be used by CodeQL. By default, almost all the memory of the machine is used.
     required: false
+  add-snippets:
+    description: Specify whether or not to add code snippets to the output sarif file.
+    required: false
+    default: "true"
   threads:
     description: The number of threads to be used by CodeQL.
     required: false

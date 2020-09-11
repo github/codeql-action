@@ -14,6 +14,13 @@ import * as util from './util';
 
 setupTests(test);
 
+// Returns the filepath of the newly-created file
+function createConfigFile(inputFileContents: string, tmpDir: string): string {
+  const configFilePath = path.join(tmpDir, 'input');
+  fs.writeFileSync(configFilePath, inputFileContents, 'utf8');
+  return configFilePath;
+}
+
 type GetContentsResponse = { content?: string; } | {}[];
 
 function mockGetContents(content: GetContentsResponse): sinon.SinonStub<any, any> {
@@ -241,13 +248,12 @@ test("load non-empty input", async t => {
     };
 
     const languages = [Language.javascript];
-    const configFile = 'input';
-    fs.writeFileSync(path.join(tmpDir, configFile), inputFileContents, 'utf8');
+    const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
     const actualConfig = await configUtils.initConfig(
       languages,
       undefined,
-      configFile,
+      configFilePath,
       tmpDir,
       tmpDir,
       codeQL,
@@ -261,7 +267,7 @@ test("load non-empty input", async t => {
   });
 });
 
-test("default queries are used", async t => {
+test("Default queries are used", async t => {
   return await util.withTmpDir(async tmpDir => {
     // Check that the default behaviour is to add the default queries.
     // In this case if a config file is specified but does not include
@@ -295,13 +301,12 @@ test("default queries are used", async t => {
     fs.mkdirSync(path.join(tmpDir, 'foo'));
 
     const languages = [Language.javascript];
-    const configFile = 'input';
-    fs.writeFileSync(path.join(tmpDir, configFile), inputFileContents, 'utf8');
+    const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
     await configUtils.initConfig(
       languages,
       undefined,
-      configFile,
+      configFilePath,
       tmpDir,
       tmpDir,
       codeQL,
@@ -317,6 +322,23 @@ test("default queries are used", async t => {
   });
 });
 
+/**
+ * Returns the provided queries, just in the right format for a resolved query
+ * This way we can test by seeing which returned items are in the final
+ * configuration.
+ */
+function queriesToResolvedQueryForm(queries: string[]) {
+  const dummyResolvedQueries = {};
+  queries.forEach(q => { dummyResolvedQueries[q] = {}; });
+  return {
+    byLanguage: {
+      'javascript': dummyResolvedQueries,
+    },
+    noDeclaredLanguage: {},
+    multipleDeclaredLanguages: {},
+  };
+}
+
 test("Queries can be specified in config file", async t => {
   return await util.withTmpDir(async tmpDir => {
     const inputFileContents = `
@@ -324,8 +346,7 @@ test("Queries can be specified in config file", async t => {
       queries:
         - uses: ./foo`;
 
-    const configFile = path.join(tmpDir, 'input');
-    fs.writeFileSync(configFile, inputFileContents, 'utf8');
+    const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
     fs.mkdirSync(path.join(tmpDir, 'foo'));
 
@@ -333,18 +354,7 @@ test("Queries can be specified in config file", async t => {
     const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
-        // Return what we're given, just in the right format for a resolved query
-        // This way we can test by seeing which returned items are in the final
-        // configuration.
-        const dummyResolvedQueries = {};
-        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
-        return {
-          byLanguage: {
-            'javascript': dummyResolvedQueries,
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
+        return queriesToResolvedQueryForm(queries);
       },
     });
 
@@ -353,7 +363,7 @@ test("Queries can be specified in config file", async t => {
     const config = await configUtils.initConfig(
       languages,
       undefined,
-      configFile,
+      configFilePath,
       tmpDir,
       tmpDir,
       codeQL,
@@ -383,8 +393,7 @@ test("Queries from config file can be overridden in workflow file", async t => {
       queries:
         - uses: ./foo`;
 
-    const configFile = path.join(tmpDir, 'input');
-    fs.writeFileSync(configFile, inputFileContents, 'utf8');
+    const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
     // This config item should take precedence over the config file but shouldn't affect the default queries.
     const queries = './override';
@@ -396,18 +405,7 @@ test("Queries from config file can be overridden in workflow file", async t => {
     const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
-        // Return what we're given, just in the right format for a resolved query
-        // This way we can test overriding by seeing which returned items are in
-        // the final configuration.
-        const dummyResolvedQueries = {};
-        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
-        return {
-          byLanguage: {
-            'javascript': dummyResolvedQueries,
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
+        return queriesToResolvedQueryForm(queries);
       },
     });
 
@@ -416,7 +414,7 @@ test("Queries from config file can be overridden in workflow file", async t => {
     const config = await configUtils.initConfig(
       languages,
       queries,
-      configFile,
+      configFilePath,
       tmpDir,
       tmpDir,
       codeQL,
@@ -439,6 +437,54 @@ test("Queries from config file can be overridden in workflow file", async t => {
   });
 });
 
+test("Queries in workflow file can be used in tandem with the 'disable default queries' option", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      disable-default-queries: true`;
+    const configFilePath = createConfigFile(inputFileContents, tmpDir);
+
+    const queries = './workflow-query';
+    fs.mkdirSync(path.join(tmpDir, 'workflow-query'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        return queriesToResolvedQueryForm(queries);
+      },
+    });
+
+    const languages = [Language.javascript];
+
+    const config = await configUtils.initConfig(
+      languages,
+      queries,
+      configFilePath,
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      getRunnerLogger(true));
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for `./workflow-query`,
+    // but won't be called for the default one since that was disabled
+    t.deepEqual(resolveQueriesArgs.length, 1);
+    t.deepEqual(resolveQueriesArgs[0].queries.length, 1);
+    t.regex(resolveQueriesArgs[0].queries[0], /.*\/workflow-query$/);
+
+    // Now check that the end result contains only the workflow query, and not the default one
+    t.deepEqual(config.queries['javascript'].length, 1);
+    t.regex(config.queries['javascript'][0], /.*\/workflow-query$/);
+  });
+});
+
 test("Multiple queries can be specified in workflow file, no config file required", async t => {
   return await util.withTmpDir(async tmpDir => {
     fs.mkdirSync(path.join(tmpDir, 'override1'));
@@ -450,18 +496,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const codeQL = setCodeQL({
       resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
         resolveQueriesArgs.push({queries, extraSearchPath});
-        // Return what we're given, just in the right format for a resolved query
-        // This way we can test overriding by seeing which returned items are in
-        // the final configuration.
-        const dummyResolvedQueries = {};
-        queries.forEach(q => { dummyResolvedQueries[q] = {}; });
-        return {
-          byLanguage: {
-            'javascript': dummyResolvedQueries,
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
+        return queriesToResolvedQueryForm(queries);
       },
     });
 
@@ -493,6 +528,67 @@ test("Multiple queries can be specified in workflow file, no config file require
     t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
     t.regex(config.queries['javascript'][1], /.*\/override1$/);
     t.regex(config.queries['javascript'][2], /.*\/override2$/);
+  });
+});
+
+test("Queries in workflow file can be added to the set of queries without overriding config file", async t => {
+  return await util.withTmpDir(async tmpDir => {
+    process.env['RUNNER_TEMP'] = tmpDir;
+    process.env['GITHUB_WORKSPACE'] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo`;
+    const configFilePath = createConfigFile(inputFileContents, tmpDir);
+
+    // These queries shouldn't override anything, because the value is prefixed with "+"
+    const queries = '+./additional1,./additional2';
+
+    fs.mkdirSync(path.join(tmpDir, 'foo'));
+    fs.mkdirSync(path.join(tmpDir, 'additional1'));
+    fs.mkdirSync(path.join(tmpDir, 'additional2'));
+
+    const resolveQueriesArgs: {queries: string[], extraSearchPath: string | undefined}[] = [];
+    const codeQL = setCodeQL({
+      resolveQueries: async function(queries: string[], extraSearchPath: string | undefined) {
+        resolveQueriesArgs.push({queries, extraSearchPath});
+        return queriesToResolvedQueryForm(queries);
+      },
+    });
+
+    const languages = [Language.javascript];
+
+    const config = await configUtils.initConfig(
+      languages,
+      queries,
+      configFilePath,
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      'token',
+      'https://github.example.com',
+      getRunnerLogger(true));
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries,
+    // once for each of additional1 and additional2,
+    // and once for './foo' from the config file
+    t.deepEqual(resolveQueriesArgs.length, 4);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.regex(resolveQueriesArgs[1].queries[0], /.*\/additional1$/);
+    t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
+    t.regex(resolveQueriesArgs[2].queries[0], /.*\/additional2$/);
+    t.deepEqual(resolveQueriesArgs[3].queries.length, 1);
+    t.regex(resolveQueriesArgs[3].queries[0], /.*\/foo$/);
+
+    // Now check that the end result contains all the queries
+    t.deepEqual(config.queries['javascript'].length, 4);
+    t.regex(config.queries['javascript'][0], /javascript-code-scanning.qls$/);
+    t.regex(config.queries['javascript'][1], /.*\/additional1$/);
+    t.regex(config.queries['javascript'][2], /.*\/additional2$/);
+    t.regex(config.queries['javascript'][3], /.*\/foo$/);
   });
 });
 

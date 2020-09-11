@@ -540,10 +540,6 @@ export async function getLanguages(
   return parsedLanguages;
 }
 
-/**
- * Returns true if queries were provided in the workflow file
- * (and thus added), otherwise false
- */
 async function addQueriesFromWorkflow(
   codeQL: CodeQL,
   queriesInput: string,
@@ -553,6 +549,10 @@ async function addQueriesFromWorkflow(
   checkoutPath: string,
   githubUrl: string,
   logger: Logger) {
+
+  queriesInput = queriesInput.trim();
+  // "+" means "don't override config file" - see shouldAddConfigFileQueries
+  queriesInput = queriesInput.replace(/^\+/, '');
 
   for (const query of queriesInput.split(',')) {
     await parseQueryUses(
@@ -565,6 +565,18 @@ async function addQueriesFromWorkflow(
       githubUrl,
       logger);
   }
+}
+
+// Returns true if either no queries were provided in the workflow.
+// or if the queries in the workflow were provided in "additive" mode,
+// indicating that they shouldn't override the config queries but
+// should instead be added in addition
+function shouldAddConfigFileQueries(queriesInput: string | undefined): boolean {
+  if (queriesInput) {
+    return queriesInput.trimStart().substr(0, 1) === '+';
+  }
+
+  return true;
 }
 
 /**
@@ -662,6 +674,8 @@ async function loadConfig(
 
   // If queries were provided using `with` in the action configuration,
   // they should take precedence over the queries in the config file
+  // unless they're prefixed with "+", in which case they supplement those
+  // in the config file.
   if (queriesInput) {
     await addQueriesFromWorkflow(
       codeQL,
@@ -672,7 +686,8 @@ async function loadConfig(
       checkoutPath,
       githubUrl,
       logger);
-  } else if (QUERIES_PROPERTY in parsedYAML) {
+  }
+  if (shouldAddConfigFileQueries(queriesInput) && QUERIES_PROPERTY in parsedYAML) {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));
     }

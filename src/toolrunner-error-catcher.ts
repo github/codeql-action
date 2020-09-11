@@ -63,9 +63,13 @@ export async function toolrunnerErrorCatcher(commandLine: string, args?: string[
   if (returnState === 0) return returnState;
 
   if (matchers) {
-    for (const [customCode, regex, message] of matchers) {
-      if (customCode === returnState || regex && (regex.test(stderr) || regex.test(stdout)) ) {
-        throw new Error(message);
+    for (const matcher of matchers) {
+      if (
+        matcher.exitCode === returnState ||
+        matcher.outputRegex?.test(stderr) ||
+        matcher.outputRegex?.test(stdout)
+        ) {
+        throw new Error(matcher.message);
       }
     }
   }

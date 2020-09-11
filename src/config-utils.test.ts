@@ -7,8 +7,8 @@ import sinon from 'sinon';
 import * as api from './api-client';
 import { getCachedCodeQL, setCodeQL } from './codeql';
 import * as configUtils from './config-utils';
-import { Language } from "./languages";
-import { getRunnerLogger } from "./logging";
+import { getLanguages, getNoLanguagesError, getUnknownLanguagesError, Language } from './languages';
+import { getRunnerLogger } from './logging';
 import {setupTests} from './testing-utils';
 import * as util from './util';
 
@@ -740,7 +740,7 @@ test("No detected languages", async t => {
   mockListLanguages([]);
 
   try {
-    await configUtils.getLanguages(
+    await getLanguages(
       undefined,
       { owner: 'github', repo: 'example ' },
       'token',
@@ -748,7 +748,7 @@ test("No detected languages", async t => {
       getRunnerLogger(true));
     throw new Error('initConfig did not throw error');
   } catch (err) {
-    t.deepEqual(err, new Error(configUtils.getNoLanguagesError()));
+    t.deepEqual(err, new Error(getNoLanguagesError()));
   }
 
 });
@@ -756,7 +756,7 @@ test("No detected languages", async t => {
 test("Unknown languages", async t => {
   const languages = 'ruby,english';
   try {
-    await configUtils.getLanguages(
+    await getLanguages(
       languages,
       { owner: 'github', repo: 'example ' },
       'token',
@@ -764,7 +764,7 @@ test("Unknown languages", async t => {
       getRunnerLogger(true));
     throw new Error('initConfig did not throw error');
   } catch (err) {
-    t.deepEqual(err, new Error(configUtils.getUnknownLanguagesError(['ruby', 'english'])));
+    t.deepEqual(err, new Error(getUnknownLanguagesError(['ruby', 'english'])));
   }
 });
 

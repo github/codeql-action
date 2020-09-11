@@ -3,6 +3,7 @@ import * as core from '@actions/core';
 import { CodeQL } from './codeql';
 import * as configUtils from './config-utils';
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from './init';
+import { getLanguages } from './languages';
 import { getActionsLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as util from './util';
@@ -59,7 +60,7 @@ async function run() {
     }
     const repositoryNWO = parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY'));
 
-    const languages = await configUtils.getLanguages(
+    const languages = await getLanguages(
       core.getInput('languages'),
       repositoryNWO,
       core.getInput('token'),

@@ -24,7 +24,7 @@ export async function checkoutExternalRepository(
   }
 
   if (!fs.existsSync(checkoutLocation)) {
-    const repoURL = githubUrl + '/' + repository + '.git';
+    const repoURL = githubUrl + '/' + repository;
     await new toolrunnner.ToolRunner('git', ['clone', repoURL, checkoutLocation]).exec();
     await new toolrunnner.ToolRunner('git', [
       '--work-tree=' + checkoutLocation,

@@ -81,6 +81,7 @@ export interface CodeQL {
     sarifFile: string,
     querySuite: string,
     memoryFlag: string,
+    addSnippetsFlag: string,
     threadsFlag: string): Promise<void>;
 }
 
@@ -474,6 +475,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       sarifFile: string,
       querySuite: string,
       memoryFlag: string,
+      addSnippetsFlag: string,
       threadsFlag: string) {
 
       await new toolrunnner.ToolRunner(cmd, [
@@ -484,7 +486,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         databasePath,
         '--format=sarif-latest',
         '--output=' + sarifFile,
-        '--no-sarif-add-snippets',
+        addSnippetsFlag,
         ...getExtraOptionsFromEnv(['database', 'analyze']),
         querySuite
       ]).exec();

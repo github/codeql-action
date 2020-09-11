@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 
 import { CodeQL } from './codeql';
 import * as configUtils from './config-utils';
-import { initCodeQL, initConfig, injectWindowsTracer, runInit } from './init';
+import { initCodeQL, initConfig, injectWindowsTracer, installPythonDeps, runInit} from './init';
 import { getActionsLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as util from './util';
@@ -66,6 +66,13 @@ async function run() {
       util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
       'actions',
       logger);
+
+    try {
+      await installPythonDeps(codeql, logger);
+    } catch (err) {
+      logger.warning(err.message + 'You can call this action with "setup-python-dependencies: false" to disable this process');
+    }
+
     config = await initConfig(
       core.getInput('languages'),
       core.getInput('queries'),

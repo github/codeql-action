@@ -4,13 +4,13 @@ import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import {ErrorMatcher} from './error-matcher';
 
 /**
- * Wrapper for exec.exec which checks for specific return code and/or regex matches in console output.
+ * Wrapper for toolrunner.Toolrunner which checks for specific return code and/or regex matches in console output.
  * Output will be streamed to the live console as well as captured for subsequent processing.
  * Returns promise with return code
  *
- * @param     commandLine        command to execute (can include additional args). Must be correctly escaped.
- * @param     matchers           defines specific codes and/or regexes that should lead to return of a custom error
+ * @param     commandLine        command to execute
  * @param     args               optional arguments for tool. Escaping is handled by the lib.
+ * @param     matchers           defines specific codes and/or regexes that should lead to return of a custom error
  * @param     options            optional exec options.  See ExecOptions
  * @returns   Promise<number>    exit code
  */
@@ -27,7 +27,7 @@ export async function toolrunnerErrorCatcher(commandLine: string, args?: string[
       if (options?.listeners?.stdout !== undefined) {
         options.listeners.stdout(data);
       } else {
-        // if no stdout listener was originally defined then we match default behavior of exec.exec
+        // if no stdout listener was originally defined then we match default behavior of Toolrunner
         process.stdout.write(data);
       }
 
@@ -37,7 +37,7 @@ export async function toolrunnerErrorCatcher(commandLine: string, args?: string[
       if (options?.listeners?.stderr !== undefined) {
         options.listeners.stderr(data);
       } else {
-        // if no stderr listener was originally defined then we match default behavior of exec.exec
+        // if no stderr listener was originally defined then we match default behavior of Toolrunner
         process.stderr.write(data);
       }
     }
@@ -50,7 +50,7 @@ export async function toolrunnerErrorCatcher(commandLine: string, args?: string[
       commandLine,
       args,
       {
-        ...options, // pass original options first in order to override below
+        ...options, // we want to override the original options, so include them first
         listeners: listeners,
         ignoreReturnCode: true, // so we can check for specific codes using the matchers
       }

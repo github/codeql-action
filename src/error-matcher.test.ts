@@ -18,16 +18,12 @@ test('noSourceCodeFound matches against example javascript output', async t => {
 
 function testErrorMatcher(matcherName: string, logSample: string): boolean {
 
-  const regex = namedMatchersForTesting[matcherName] ? namedMatchersForTesting[matcherName][1] : null;
-
-  if (regex) {
-    return regex.test(logSample);
-  } else {
-    if (namedMatchersForTesting[matcherName]) {
-      throw new Error(`Cannot test matcher ${matcherName} with null regex`);
-    } else {
-      throw new Error(`Unknown matcher ${matcherName}`);
-    }
+  if (!(matcherName in namedMatchersForTesting)) {
+    throw new Error(`Unknown matcher ${matcherName}`);
   }
-
+  const regex = namedMatchersForTesting[matcherName][1];
+  if (regex === null) {
+    throw new Error(`Cannot test matcher ${matcherName} with null regex`);
+  }
+  return regex.test(logSample);
 }

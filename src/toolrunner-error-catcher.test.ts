@@ -1,5 +1,4 @@
 import * as exec from '@actions/exec';
-import * as toolrunnner from '@actions/exec/lib/toolrunner';
 import test from 'ava';
 
 import { ErrorMatcher } from './error-matcher';
@@ -139,13 +138,13 @@ function buildDummyArgs(stdoutContents: string, stderrContents: string,
 
   let command = '';
 
-  if (stdoutContents) command += 'console.log(\\"' + stdoutContents + '\\");';
-  if (stderrContents) command += 'console.error(\\"' + stderrContents + '\\");';
+  if (stdoutContents) command += 'console.log("' + stdoutContents + '");';
+  if (stderrContents) command += 'console.error("' + stderrContents + '");';
 
   if (command.length === 0) throw new Error("Must provide contents for either stdout or stderr");
 
-  if (desiredErrorMessage) command += 'throw new Error(\\"' + desiredErrorMessage + '\\");';
+  if (desiredErrorMessage) command += 'throw new Error("' + desiredErrorMessage + '");';
   if (desiredExitCode) command += 'process.exitCode = ' + desiredExitCode + ';';
 
-  return toolrunnner.argStringToArray('-e "' + command + '"');
+  return ["-e", command];
 }

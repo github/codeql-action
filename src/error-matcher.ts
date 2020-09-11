@@ -5,13 +5,12 @@ export type ErrorMatcher = [number|null, RegExp|null, string];
 export const namedMatchersForTesting: { [key: string]: ErrorMatcher } = {
   /*
   In due course it may be possible to remove the regex, if/when javascript also exits with code 32.
-   For context see https://github.com/github/semmle-code/pull/36921
   */
   noSourceCodeFound: [
     32,
     new RegExp("No JavaScript or TypeScript code found\\."),
-    `No source code was seen during the build. Please see...
-https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning#no-code-found-during-the-build`
+    "No code found during the build. Please see:\n" +
+    "https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning#no-code-found-during-the-build"
   ],
 };
 

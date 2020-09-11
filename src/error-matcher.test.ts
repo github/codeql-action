@@ -21,8 +21,8 @@ function testErrorMatcher(matcherName: string, logSample: string): boolean {
   if (!(matcherName in namedMatchersForTesting)) {
     throw new Error(`Unknown matcher ${matcherName}`);
   }
-  const regex = namedMatchersForTesting[matcherName][1];
-  if (regex === null) {
+  const regex = namedMatchersForTesting[matcherName].outputRegex;
+  if (regex === undefined) {
     throw new Error(`Cannot test matcher ${matcherName} with null regex`);
   }
   return regex.test(logSample);

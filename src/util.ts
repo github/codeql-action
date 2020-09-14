@@ -1,24 +1,23 @@
-import * as core from '@actions/core';
-import * as toolrunnner from '@actions/exec/lib/toolrunner';
+import * as core from "@actions/core";
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
 import * as fs from "fs";
-import * as os from 'os';
-import * as path from 'path';
+import * as os from "os";
+import * as path from "path";
 
-import * as api from './api-client';
-import { Language } from './languages';
-import { Logger } from './logging';
-import * as sharedEnv from './shared-environment';
+import * as api from "./api-client";
+import { Language } from "./languages";
+import { Logger } from "./logging";
+import * as sharedEnv from "./shared-environment";
 
 /**
  * Are we running on actions, or not.
  */
-export type Mode = 'actions' | 'runner';
+export type Mode = "actions" | "runner";
 
 /**
  * The URL for github.com.
  */
 export const GITHUB_DOTCOM_URL = "https://github.com";
-
 
 /**
  * Get an environment parameter, but throw an error if it is not set.
@@ -26,9 +25,9 @@ export const GITHUB_DOTCOM_URL = "https://github.com";
 export function getRequiredEnvParam(paramName: string): string {
   const value = process.env[paramName];
   if (value === undefined || value.length === 0) {
-    throw new Error(paramName + ' environment variable must be set');
+    throw new Error(`${paramName} environment variable must be set`);
   }
-  core.debug(paramName + '=' + value);
+  core.debug(`${paramName}=${value}`);
   return value;
 }
 
@@ -36,7 +35,7 @@ export function getRequiredEnvParam(paramName: string): string {
  * Get the extra options for the codeql commands.
  */
 export function getExtraOptionsEnvParam(): object {
-  const varName = 'CODEQL_ACTION_EXTRA_OPTIONS';
+  const varName = "CODEQL_ACTION_EXTRA_OPTIONS";
   const raw = process.env[varName];
   if (raw === undefined || raw.length === 0) {
     return {};
@@ -45,17 +44,17 @@ export function getExtraOptionsEnvParam(): object {
     return JSON.parse(raw);
   } catch (e) {
     throw new Error(
-      varName +
-        ' environment variable is set, but does not contain valid JSON: ' +
-        e.message
+      `${varName} environment variable is set, but does not contain valid JSON: ${e.message}`
     );
   }
 }
 
 export function isLocalRun(): boolean {
-  return !!process.env.CODEQL_LOCAL_RUN
-    && process.env.CODEQL_LOCAL_RUN !== 'false'
-    && process.env.CODEQL_LOCAL_RUN !== '0';
+  return (
+    !!process.env.CODEQL_LOCAL_RUN &&
+    process.env.CODEQL_LOCAL_RUN !== "false" &&
+    process.env.CODEQL_LOCAL_RUN !== "0"
+  );
 }
 
 /**
@@ -66,9 +65,9 @@ export function prepareLocalRunEnvironment() {
     return;
   }
 
-  core.debug('Action is running locally.');
+  core.debug("Action is running locally.");
   if (!process.env.GITHUB_JOB) {
-    core.exportVariable('GITHUB_JOB', 'UNKNOWN-JOB');
+    core.exportVariable("GITHUB_JOB", "UNKNOWN-JOB");
   }
 }
 
@@ -84,18 +83,24 @@ export async function getCommitOid(): Promise<string> {
   // Even if this does go wrong, it's not a huge problem for the alerts to
   // reported on the merge commit.
   try {
-    let commitOid = '';
-    await new toolrunnner.ToolRunner('git', ['rev-parse', 'HEAD'], {
+    let commitOid = "";
+    await new toolrunnner.ToolRunner("git", ["rev-parse", "HEAD"], {
       silent: true,
       listeners: {
-        stdout: (data) => { commitOid += data.toString(); },
-        stderr: (data) => { process.stderr.write(data); }
-      }
+        stdout: (data) => {
+          commitOid += data.toString();
+        },
+        stderr: (data) => {
+          process.stderr.write(data);
+        },
+      },
     }).exec();
     return commitOid.trim();
   } catch (e) {
-    core.info("Failed to call git to get current commit. Continuing with data from environment: " + e);
-    return getRequiredEnvParam('GITHUB_SHA');
+    core.info(
+      `Failed to call git to get current commit. Continuing with data from environment: ${e}`
+    );
+    return getRequiredEnvParam("GITHUB_SHA");
   }
 }
 
@@ -103,20 +108,23 @@ export async function getCommitOid(): Promise<string> {
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
-  const repo_nwo = getRequiredEnvParam('GITHUB_REPOSITORY').split("/");
+  const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
-  const run_id = Number(getRequiredEnvParam('GITHUB_RUN_ID'));
+  const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
 
   const apiClient = api.getActionsApiClient();
-  const runsResponse = await apiClient.request('GET /repos/:owner/:repo/actions/runs/:run_id', {
-    owner,
-    repo,
-    run_id
-  });
+  const runsResponse = await apiClient.request(
+    "GET /repos/:owner/:repo/actions/runs/:run_id",
+    {
+      owner,
+      repo,
+      run_id,
+    }
+  );
   const workflowUrl = runsResponse.data.workflow_url;
 
-  const workflowResponse = await apiClient.request('GET ' + workflowUrl);
+  const workflowResponse = await apiClient.request(`GET ${workflowUrl}`);
 
   return workflowResponse.data.path;
 }
@@ -125,9 +133,9 @@ async function getWorkflowPath(): Promise<string> {
  * Get the workflow run ID.
  */
 export function getWorkflowRunID(): number {
-  const workflowRunID = parseInt(getRequiredEnvParam('GITHUB_RUN_ID'), 10);
+  const workflowRunID = parseInt(getRequiredEnvParam("GITHUB_RUN_ID"), 10);
   if (Number.isNaN(workflowRunID)) {
-    throw new Error('GITHUB_RUN_ID must define a non NaN workflow run ID');
+    throw new Error("GITHUB_RUN_ID must define a non NaN workflow run ID");
   }
   return workflowRunID;
 }
@@ -140,7 +148,7 @@ export function getWorkflowRunID(): number {
  * the github API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  const analysisKeyEnvVar = 'CODEQL_ACTION_ANALYSIS_KEY';
+  const analysisKeyEnvVar = "CODEQL_ACTION_ANALYSIS_KEY";
 
   let analysisKey = process.env[analysisKeyEnvVar];
   if (analysisKey !== undefined) {
@@ -148,9 +156,9 @@ export async function getAnalysisKey(): Promise<string> {
   }
 
   const workflowPath = await getWorkflowPath();
-  const jobName = getRequiredEnvParam('GITHUB_JOB');
+  const jobName = getRequiredEnvParam("GITHUB_JOB");
 
-  analysisKey = workflowPath + ':' + jobName;
+  analysisKey = `${workflowPath}:${jobName}`;
   core.exportVariable(analysisKeyEnvVar, analysisKey);
   return analysisKey;
 }
@@ -161,7 +169,7 @@ export async function getAnalysisKey(): Promise<string> {
 export function getRef(): string {
   // Will be in the form "refs/heads/master" on a push event
   // or in the form "refs/pull/N/merge" on a pull_request event
-  const ref = getRequiredEnvParam('GITHUB_REF');
+  const ref = getRequiredEnvParam("GITHUB_REF");
 
   // For pull request refs we want to convert from the 'merge' ref
   // to the 'head' ref, as that is what we want to analyse.
@@ -169,46 +177,46 @@ export function getRef(): string {
   // the checkout, but we have no way of verifying that here.
   const pull_ref_regex = /refs\/pull\/(\d+)\/merge/;
   if (pull_ref_regex.test(ref)) {
-    return ref.replace(pull_ref_regex, 'refs/pull/$1/head');
+    return ref.replace(pull_ref_regex, "refs/pull/$1/head");
   } else {
     return ref;
   }
 }
 
-type ActionName = 'init' | 'autobuild' | 'finish' | 'upload-sarif';
-type ActionStatus = 'starting' | 'aborted' | 'success' | 'failure';
+type ActionName = "init" | "autobuild" | "finish" | "upload-sarif";
+type ActionStatus = "starting" | "aborted" | "success" | "failure";
 
 export interface StatusReportBase {
   // ID of the workflow run containing the action run
-  "workflow_run_id": number;
+  workflow_run_id: number;
   // Workflow name. Converted to analysis_name further down the pipeline.
-  "workflow_name": string;
+  workflow_name: string;
   // Job name from the workflow
-  "job_name": string;
+  job_name: string;
   // Analysis key, normally composed from the workflow path and job name
-  "analysis_key": string;
+  analysis_key: string;
   // Value of the matrix for this instantiation of the job
-  "matrix_vars"?: string;
+  matrix_vars?: string;
   // Commit oid that the workflow was triggered on
-  "commit_oid": string;
+  commit_oid: string;
   // Ref that the workflow was triggered on
-  "ref": string;
+  ref: string;
   // Name of the action being executed
-  "action_name": ActionName;
+  action_name: ActionName;
   // Version if the action being executed, as a commit oid
-  "action_oid": string;
+  action_oid: string;
   // Time the first action started. Normally the init action
-  "started_at": string;
+  started_at: string;
   // Time this action started
-  "action_started_at": string;
+  action_started_at: string;
   // Time this action completed, or undefined if not yet completed
-  "completed_at"?: string;
+  completed_at?: string;
   // State this action is currently in
-  "status": ActionStatus;
+  status: ActionStatus;
   // Cause of the failure (or undefined if status is not failure)
-  "cause"?: string;
+  cause?: string;
   // Stack trace of the failure (or undefined if status is not failure)
-  "exception"?: string;
+  exception?: string;
 }
 
 /**
@@ -225,37 +233,39 @@ export async function createStatusReportBase(
   status: ActionStatus,
   actionStartedAt: Date,
   cause?: string,
-  exception?: string):
-  Promise<StatusReportBase> {
-
-  const commitOid = process.env['GITHUB_SHA'] || '';
+  exception?: string
+): Promise<StatusReportBase> {
+  const commitOid = process.env["GITHUB_SHA"] || "";
   const ref = getRef();
-  const workflowRunIDStr = process.env['GITHUB_RUN_ID'];
+  const workflowRunIDStr = process.env["GITHUB_RUN_ID"];
   let workflowRunID = -1;
   if (workflowRunIDStr) {
     workflowRunID = parseInt(workflowRunIDStr, 10);
   }
-  const workflowName = process.env['GITHUB_WORKFLOW'] || '';
-  const jobName = process.env['GITHUB_JOB'] || '';
+  const workflowName = process.env["GITHUB_WORKFLOW"] || "";
+  const jobName = process.env["GITHUB_JOB"] || "";
   const analysis_key = await getAnalysisKey();
   let workflowStartedAt = process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT];
   if (workflowStartedAt === undefined) {
     workflowStartedAt = actionStartedAt.toISOString();
-    core.exportVariable(sharedEnv.CODEQL_WORKFLOW_STARTED_AT, workflowStartedAt);
+    core.exportVariable(
+      sharedEnv.CODEQL_WORKFLOW_STARTED_AT,
+      workflowStartedAt
+    );
   }
 
-  let statusReport: StatusReportBase = {
+  const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
     workflow_name: workflowName,
     job_name: jobName,
-    analysis_key: analysis_key,
+    analysis_key,
     commit_oid: commitOid,
-    ref: ref,
+    ref,
     action_name: actionName,
     action_oid: "unknown", // TODO decide if it's possible to fill this in
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),
-    status: status
+    status,
   };
 
   // Add optional parameters
@@ -265,10 +275,10 @@ export async function createStatusReportBase(
   if (exception) {
     statusReport.exception = exception;
   }
-  if (status === 'success' || status === 'failure' || status === 'aborted') {
+  if (status === "success" || status === "failure" || status === "aborted") {
     statusReport.completed_at = new Date().toISOString();
   }
-  let matrix: string | undefined = core.getInput('matrix');
+  const matrix: string | undefined = core.getInput("matrix");
   if (matrix) {
     statusReport.matrix_vars = matrix;
   }
@@ -287,8 +297,8 @@ export async function createStatusReportBase(
  */
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
-  ignoreFailures?: boolean): Promise<boolean> {
-
+  ignoreFailures?: boolean
+): Promise<boolean> {
   if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
     core.debug("Not sending status report to GitHub Enterprise");
     return true;
@@ -300,16 +310,19 @@ export async function sendStatusReport<S extends StatusReportBase>(
   }
 
   const statusReportJSON = JSON.stringify(statusReport);
-  core.debug('Sending status report: ' + statusReportJSON);
+  core.debug(`Sending status report: ${statusReportJSON}`);
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
   const client = api.getActionsApiClient();
-  const statusResponse = await client.request('PUT /repos/:owner/:repo/code-scanning/analysis/status', {
-    owner: owner,
-    repo: repo,
-    data: statusReportJSON,
-  });
+  const statusResponse = await client.request(
+    "PUT /repos/:owner/:repo/code-scanning/analysis/status",
+    {
+      owner,
+      repo,
+      data: statusReportJSON,
+    }
+  );
 
   if (!ignoreFailures) {
     // If the status report request fails with a 403 or a 404, then this is a deliberate
@@ -319,11 +332,15 @@ export async function sendStatusReport<S extends StatusReportBase>(
     // Other failure responses (or lack thereof) could be transitory and should not
     // cause the action to fail.
     if (statusResponse.status === 403) {
-      core.setFailed('The repo on which this action is running is not opted-in to CodeQL code scanning.');
+      core.setFailed(
+        "The repo on which this action is running is not opted-in to CodeQL code scanning."
+      );
       return false;
     }
     if (statusResponse.status === 404) {
-      core.setFailed('Not authorized to used the CodeQL code scanning feature on this repo.');
+      core.setFailed(
+        "Not authorized to used the CodeQL code scanning feature on this repo."
+      );
       return false;
     }
   }
@@ -353,12 +370,14 @@ export function getToolNames(sarifContents: string): string[] {
 
 // Creates a random temporary directory, runs the given body, and then deletes the directory.
 // Mostly intended for use within tests.
-export async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promise<T> {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codeql-action-'));
-  const realSubdir = path.join(tmpDir, 'real');
+export async function withTmpDir<T>(
+  body: (tmpDir: string) => Promise<T>
+): Promise<T> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
+  const realSubdir = path.join(tmpDir, "real");
   fs.mkdirSync(realSubdir);
-  const symlinkSubdir = path.join(tmpDir, 'symlink');
-  fs.symlinkSync(realSubdir, symlinkSubdir, 'dir');
+  const symlinkSubdir = path.join(tmpDir, "symlink");
+  fs.symlinkSync(realSubdir, symlinkSubdir, "dir");
   const result = await body(symlinkSubdir);
   fs.rmdirSync(tmpDir, { recursive: true });
   return result;
@@ -375,7 +394,7 @@ export function getMemoryFlag(userInput: string | undefined): string {
   if (userInput) {
     memoryToUseMegaBytes = Number(userInput);
     if (Number.isNaN(memoryToUseMegaBytes) || memoryToUseMegaBytes <= 0) {
-      throw new Error("Invalid RAM setting \"" + userInput + "\", specified.");
+      throw new Error(`Invalid RAM setting "${userInput}", specified.`);
     }
   } else {
     const totalMemoryBytes = os.totalmem();
@@ -383,7 +402,7 @@ export function getMemoryFlag(userInput: string | undefined): string {
     const systemReservedMemoryMegaBytes = 256;
     memoryToUseMegaBytes = totalMemoryMegaBytes - systemReservedMemoryMegaBytes;
   }
-  return "--ram=" + Math.floor(memoryToUseMegaBytes);
+  return `--ram=${Math.floor(memoryToUseMegaBytes)}`;
 }
 
 /**
@@ -391,12 +410,14 @@ export function getMemoryFlag(userInput: string | undefined): string {
  *
  * @returns string
  */
-export function getAddSnippetsFlag(userInput: string | boolean | undefined): string {
+export function getAddSnippetsFlag(
+  userInput: string | boolean | undefined
+): string {
   if (typeof userInput === "string") {
     // have to process specifically because any non-empty string is truthy
     userInput = userInput.toLowerCase() === "true";
   }
-  return userInput ?  "--sarif-add-snippets" : "--no-sarif-add-snippets";
+  return userInput ? "--sarif-add-snippets" : "--no-sarif-add-snippets";
 }
 
 /**
@@ -407,7 +428,10 @@ export function getAddSnippetsFlag(userInput: string | boolean | undefined): str
  *
  * @returns string
  */
-export function getThreadsFlag(userInput: string | undefined, logger: Logger): string {
+export function getThreadsFlag(
+  userInput: string | undefined,
+  logger: Logger
+): string {
   let numThreads: number;
   const maxThreads = os.cpus().length;
   if (userInput) {
@@ -416,12 +440,16 @@ export function getThreadsFlag(userInput: string | undefined, logger: Logger): s
       throw new Error(`Invalid threads setting "${userInput}", specified.`);
     }
     if (numThreads > maxThreads) {
-      logger.info(`Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`);
+      logger.info(
+        `Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`
+      );
       numThreads = maxThreads;
     }
     const minThreads = -maxThreads;
     if (numThreads < minThreads) {
-      logger.info(`Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`);
+      logger.info(
+        `Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`
+      );
       numThreads = minThreads;
     }
   } else {
@@ -435,7 +463,7 @@ export function getThreadsFlag(userInput: string | undefined, logger: Logger): s
  * Get the directory where CodeQL databases should be placed.
  */
 export function getCodeQLDatabasesDir(tempDir: string) {
-  return path.resolve(tempDir, 'codeql_databases');
+  return path.resolve(tempDir, "codeql_databases");
 }
 
 /**

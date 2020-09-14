@@ -1,45 +1,53 @@
-import * as toolrunnner from '@actions/exec/lib/toolrunner';
-import test from 'ava';
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import test from "ava";
 import * as fs from "fs";
 import * as path from "path";
 
 import * as externalQueries from "./external-queries";
-import { getRunnerLogger } from './logging';
-import {setupTests} from './testing-utils';
+import { getRunnerLogger } from "./logging";
+import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
 
-test("checkoutExternalQueries", async t => {
-  await util.withTmpDir(async tmpDir => {
+test("checkoutExternalQueries", async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
     // Create a test repo in a subdir of the temp dir.
     // It should have a default branch with two commits after the initial commit, where
     // - the first commit contains files 'a' and 'b'
     // - the second commit contains only 'a'
     // Place the repo in a subdir because we're going to checkout a copy in tmpDir
-    const testRepoBaseDir = path.join(tmpDir, 'test-repo-dir');
-    const repoName = 'some/repo';
+    const testRepoBaseDir = path.join(tmpDir, "test-repo-dir");
+    const repoName = "some/repo";
     const repoPath = path.join(testRepoBaseDir, repoName);
-    const repoGitDir = path.join(repoPath, '.git');
+    const repoGitDir = path.join(repoPath, ".git");
 
     // Run the given git command, and return the output.
     // Passes --git-dir and --work-tree.
     // Any stderr output is suppressed until the command fails.
-    const runGit = async function(command: string[]): Promise<string> {
-      let stdout = '';
-      let stderr = '';
-      command = [`--git-dir=${repoGitDir}`, `--work-tree=${repoPath}`, ...command];
-      console.log('Running: git ' + command.join(' '));
+    const runGit = async function (command: string[]): Promise<string> {
+      let stdout = "";
+      let stderr = "";
+      command = [
+        `--git-dir=${repoGitDir}`,
+        `--work-tree=${repoPath}`,
+        ...command,
+      ];
+      console.log(`Running: git ${command.join(" ")}`);
       try {
-        await new toolrunnner.ToolRunner('git', command, {
+        await new toolrunnner.ToolRunner("git", command, {
           silent: true,
           listeners: {
-            stdout: (data) => { stdout += data.toString(); },
-            stderr: (data) => { stderr += data.toString(); },
-          }
+            stdout: (data) => {
+              stdout += data.toString();
+            },
+            stderr: (data) => {
+              stderr += data.toString();
+            },
+          },
         }).exec();
       } catch (e) {
-        console.log('Command failed: git ' + command.join(' '));
+        console.log(`Command failed: git ${command.join(" ")}`);
         process.stderr.write(stderr);
         throw e;
       }
@@ -47,25 +55,23 @@ test("checkoutExternalQueries", async t => {
     };
 
     fs.mkdirSync(repoPath, { recursive: true });
-    await runGit(['init', repoPath]);
-    await runGit(['config', 'user.email', 'test@github.com']);
-    await runGit(['config', 'user.name', 'Test Test']);
+    await runGit(["init", repoPath]);
+    await runGit(["config", "user.email", "test@github.com"]);
+    await runGit(["config", "user.name", "Test Test"]);
 
-    fs.writeFileSync(path.join(repoPath, 'a'), 'a content');
-    await runGit(['add', 'a']);
-    await runGit(['commit', '-m', 'commit1']);
+    fs.writeFileSync(path.join(repoPath, "a"), "a content");
+    await runGit(["add", "a"]);
+    await runGit(["commit", "-m", "commit1"]);
 
-    fs.writeFileSync(path.join(repoPath, 'b'), 'b content');
-    await runGit(['add', 'b']);
-    await runGit(['commit', '-m', 'commit1']);
-    const commit1Sha = await runGit(['rev-parse', 'HEAD']);
+    fs.writeFileSync(path.join(repoPath, "b"), "b content");
+    await runGit(["add", "b"]);
+    await runGit(["commit", "-m", "commit1"]);
+    const commit1Sha = await runGit(["rev-parse", "HEAD"]);
 
-    fs.unlinkSync(path.join(repoPath, 'b'));
-    await runGit(['add', 'b']);
-    await runGit(['commit', '-m', 'commit2']);
-    const commit2Sha = await runGit(['rev-parse', 'HEAD']);
-
-
+    fs.unlinkSync(path.join(repoPath, "b"));
+    await runGit(["add", "b"]);
+    await runGit(["commit", "-m", "commit2"]);
+    const commit2Sha = await runGit(["rev-parse", "HEAD"]);
 
     // Checkout the first commit, which should contain 'a' and 'b'
     t.false(fs.existsSync(path.join(tmpDir, repoName)));
@@ -74,13 +80,12 @@ test("checkoutExternalQueries", async t => {
       commit1Sha,
       `file://${testRepoBaseDir}`,
       tmpDir,
-      getRunnerLogger(true));
+      getRunnerLogger(true)
+    );
     t.true(fs.existsSync(path.join(tmpDir, repoName)));
     t.true(fs.existsSync(path.join(tmpDir, repoName, commit1Sha)));
-    t.true(fs.existsSync(path.join(tmpDir, repoName, commit1Sha, 'a')));
-    t.true(fs.existsSync(path.join(tmpDir, repoName, commit1Sha, 'b')));
-
-
+    t.true(fs.existsSync(path.join(tmpDir, repoName, commit1Sha, "a")));
+    t.true(fs.existsSync(path.join(tmpDir, repoName, commit1Sha, "b")));
 
     // Checkout the second commit as well, which should only contain 'a'
     t.false(fs.existsSync(path.join(tmpDir, repoName, commit2Sha)));
@@ -89,9 +94,10 @@ test("checkoutExternalQueries", async t => {
       commit2Sha,
       `file://${testRepoBaseDir}`,
       tmpDir,
-      getRunnerLogger(true));
+      getRunnerLogger(true)
+    );
     t.true(fs.existsSync(path.join(tmpDir, repoName, commit2Sha)));
-    t.true(fs.existsSync(path.join(tmpDir, repoName, commit2Sha, 'a')));
-    t.false(fs.existsSync(path.join(tmpDir, repoName, commit2Sha, 'b')));
+    t.true(fs.existsSync(path.join(tmpDir, repoName, commit2Sha, "a")));
+    t.false(fs.existsSync(path.join(tmpDir, repoName, commit2Sha, "b")));
   });
 });

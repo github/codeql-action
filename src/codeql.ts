@@ -11,8 +11,10 @@ import uuidV4 from "uuid/v4";
 
 import * as api from "./api-client";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
+import { errorMatchers } from "./error-matcher";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
 
 type Options = Array<string | number | boolean>;
@@ -505,22 +507,30 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       );
 
       // Run trace command
-      await new toolrunnner.ToolRunner(cmd, [
-        "database",
-        "trace-command",
-        ...getExtraOptionsFromEnv(["database", "trace-command"]),
-        databasePath,
-        "--",
-        traceCommand,
-      ]).exec();
+      await toolrunnerErrorCatcher(
+        cmd,
+        [
+          "database",
+          "trace-command",
+          ...getExtraOptionsFromEnv(["database", "trace-command"]),
+          databasePath,
+          "--",
+          traceCommand,
+        ],
+        errorMatchers
+      );
     },
     async finalizeDatabase(databasePath: string) {
-      await new toolrunnner.ToolRunner(cmd, [
-        "database",
-        "finalize",
-        ...getExtraOptionsFromEnv(["database", "finalize"]),
-        databasePath,
-      ]).exec();
+      await toolrunnerErrorCatcher(
+        cmd,
+        [
+          "database",
+          "finalize",
+          ...getExtraOptionsFromEnv(["database", "finalize"]),
+          databasePath,
+        ],
+        errorMatchers
+      );
     },
     async resolveQueries(
       queries: string[],

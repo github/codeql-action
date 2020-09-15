@@ -166,7 +166,8 @@ export async function getCodeQLBundleDownloadURL(
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
     if (
       apiURL === util.GITHUB_DOTCOM_URL &&
-      repository === CODEQL_DEFAULT_ACTION_REPOSITORY
+      repository === CODEQL_DEFAULT_ACTION_REPOSITORY &&
+      bundleNames[0] === CODEQL_BUNDLE_NAME
     ) {
       break;
     }
@@ -179,15 +180,17 @@ export async function getCodeQLBundleDownloadURL(
           repo: repositoryName,
           tag: CODEQL_BUNDLE_VERSION,
         });
+
       // See if any of the bundles appears in the assets list
+      const assetMap = new Map(release.data.assets.map((x) => [x.name, x]));
       for (const bundleName of bundleNames) {
-        for (const asset of release.data.assets) {
-          if (asset.name === bundleName) {
-            logger.info(
-              `Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`
-            );
-            return asset.url;
-          }
+        logger.debug(`Looking for ${bundleName}`);
+        const asset = assetMap.get(bundleName);
+        if (asset) {
+          logger.info(
+            `Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`
+          );
+          return asset.url;
         }
       }
     } catch (e) {

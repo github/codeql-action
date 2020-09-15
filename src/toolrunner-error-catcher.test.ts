@@ -24,6 +24,41 @@ test("matchers are never applied if non-error exit", async (t) => {
   t.deepEqual(await toolrunnerErrorCatcher("node", testArgs, matchers), 0);
 });
 
+test("exit code matching is correctly handled", async (t) => {
+  const testArgs = buildDummyArgs(
+    "foo bar\\nblort qux",
+    "foo bar\\nblort qux",
+    "",
+    42
+  );
+
+  const nonMatchers: ErrorMatcher[] = [
+    {
+      exitCode: 123,
+      outputRegex: new RegExp("will not match"),
+      message: "custom message!",
+    },
+  ];
+
+  await t.throwsAsync(toolrunnerErrorCatcher("node", testArgs, nonMatchers), {
+    instanceOf: Error,
+    message: "The process 'node' failed with exit code 42",
+  });
+
+  const matchers: ErrorMatcher[] = [
+    {
+      exitCode: 42,
+      outputRegex: new RegExp("will not match"),
+      message: "custom message!",
+    },
+  ];
+
+  await t.throwsAsync(toolrunnerErrorCatcher("node", testArgs, matchers), {
+    instanceOf: Error,
+    message: "custom message!",
+  });
+});
+
 test("regex matchers are applied to stdout for non-zero exit code", async (t) => {
   const testArgs = buildDummyArgs("foo bar\\nblort qux", "", "", 1);
 

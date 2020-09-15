@@ -34,7 +34,7 @@ async function sendSuccessStatusReport(
   );
 
   const languages = config.languages.join(",");
-  const workflowLanguages = core.getInput("languages", { required: false });
+  const workflowLanguages = actionsUtil.getOptionalInput("languages");
   const paths = (config.originalUserInput.paths || []).join(",");
   const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
     ","
@@ -51,7 +51,7 @@ async function sendSuccessStatusReport(
   const statusReport: InitSuccessStatusReport = {
     ...statusReportBase,
     languages,
-    workflow_languages: workflowLanguages,
+    workflow_languages: workflowLanguages || "",
     paths,
     paths_ignore: pathsIgnore,
     disable_default_queries: disableDefaultQueries,
@@ -79,8 +79,8 @@ async function run() {
     }
 
     codeql = await initCodeQL(
-      core.getInput("tools"),
-      core.getInput("token"),
+      actionsUtil.getOptionalInput("tools"),
+      actionsUtil.getRequiredInput("token"),
       actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
@@ -88,15 +88,15 @@ async function run() {
       logger
     );
     config = await initConfig(
-      core.getInput("languages"),
-      core.getInput("queries"),
-      core.getInput("config-file"),
+      actionsUtil.getOptionalInput("languages"),
+      actionsUtil.getOptionalInput("queries"),
+      actionsUtil.getOptionalInput("config-file"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
-      core.getInput("token"),
+      actionsUtil.getRequiredInput("token"),
       actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
       logger
     );

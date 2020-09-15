@@ -42,16 +42,16 @@ async function run() {
 
   try {
     const uploadStats = await upload_lib.upload(
-      core.getInput("sarif_file"),
+      actionsUtil.getRequiredInput("sarif_file"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       await actionsUtil.getCommitOid(),
       actionsUtil.getRef(),
       await actionsUtil.getAnalysisKey(),
       actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
       actionsUtil.getWorkflowRunID(),
-      core.getInput("checkout_path"),
-      core.getInput("matrix"),
-      core.getInput("token"),
+      actionsUtil.getRequiredInput("checkout_path"),
+      actionsUtil.getRequiredInput("matrix"),
+      actionsUtil.getRequiredInput("token"),
       actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
       "actions",
       getActionsLogger()

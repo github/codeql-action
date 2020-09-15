@@ -18,6 +18,20 @@ export const namedMatchersForTesting: { [key: string]: ErrorMatcher } = {
       "No code found during the build. Please see:\n" +
       "https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning#no-code-found-during-the-build",
   },
+
+  queryTimeout: {
+    exitCode: 33,
+    message:
+      "One or more query evaluations timed out. Please see:\n" +
+      "Not sure if there's a good place to currently send people?", // TODO find where we should send people for this error.
+  },
+
+  outOfMemory: {
+    exitCode: 99,
+    message:
+      "The CodeQL CLI ran out of memory. Please see:\n" +
+      "https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning#error-out-of-disk-or-out-of-memory",
+  },
 };
 
 // we collapse the matches into an array for use in execErrorCatcher

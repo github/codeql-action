@@ -40,7 +40,7 @@ function getApiUrl(githubUrl: string): string {
 // and called only from the action entrypoints.
 export function getActionsApiClient(allowLocalRun = false) {
   return getApiClient(
-    core.getInput("token"),
+    core.getInput("token", { required: true }),
     getRequiredEnvParam("GITHUB_SERVER_URL"),
     allowLocalRun
   );

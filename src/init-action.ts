@@ -79,8 +79,8 @@ async function run() {
     }
 
     codeql = await initCodeQL(
-      core.getInput("tools"),
-      core.getInput("token"),
+      util.getOptionalInput("tools"),
+      util.getRequiredInput("token"),
       util.getRequiredEnvParam("GITHUB_SERVER_URL"),
       util.getRequiredEnvParam("RUNNER_TEMP"),
       util.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
@@ -88,15 +88,15 @@ async function run() {
       logger
     );
     config = await initConfig(
-      core.getInput("languages"),
-      core.getInput("queries"),
-      core.getInput("config-file"),
+      util.getOptionalInput("languages"),
+      util.getOptionalInput("queries"),
+      util.getOptionalInput("config-file"),
       parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
       util.getRequiredEnvParam("RUNNER_TEMP"),
       util.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       util.getRequiredEnvParam("GITHUB_WORKSPACE"),
-      core.getInput("token"),
+      util.getRequiredInput("token"),
       util.getRequiredEnvParam("GITHUB_SERVER_URL"),
       logger
     );

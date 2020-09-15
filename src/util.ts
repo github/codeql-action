@@ -278,7 +278,7 @@ export async function createStatusReportBase(
   if (status === "success" || status === "failure" || status === "aborted") {
     statusReport.completed_at = new Date().toISOString();
   }
-  const matrix: string | undefined = core.getInput("matrix");
+  const matrix: string | undefined = getOptionalInput("matrix");
   if (matrix) {
     statusReport.matrix_vars = matrix;
   }
@@ -471,4 +471,24 @@ export function getCodeQLDatabasesDir(tempDir: string) {
  */
 export function getCodeQLDatabasePath(tempDir: string, language: Language) {
   return path.resolve(getCodeQLDatabasesDir(tempDir), language);
+}
+
+/**
+ *  Wrapper for core.getInput. Returns undefined if the requested
+ *  input is not specified.
+ */
+export function getOptionalInput(name: string): string | undefined {
+  const value = core.getInput(name);
+  if (value === "") {
+    return undefined;
+  }
+  return value;
+}
+
+/**
+ * Wrapper for core.getInput. Returns the requested input or
+ * throws if not defined.
+ */
+export function getRequiredInput(name: string): string {
+  return core.getInput(name, { required: true });
 }

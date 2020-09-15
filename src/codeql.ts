@@ -79,6 +79,7 @@ export interface CodeQL {
     sarifFile: string,
     querySuite: string,
     memoryFlag: string,
+    addSnippetsFlag: string,
     threadsFlag: string): Promise<void>;
 }
 
@@ -227,6 +228,7 @@ export async function setupCodeQL(
       } else {
         logger.debug('Downloading CodeQL bundle without token.');
       }
+      logger.info(`Downloading CodeQL tools from ${codeqlURL}. This may take a while.`);
       let codeqlPath = await toolcacheDownloadTool(codeqlURL, headers, tempDir, logger);
       logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 
@@ -466,6 +468,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       sarifFile: string,
       querySuite: string,
       memoryFlag: string,
+      addSnippetsFlag: string,
       threadsFlag: string) {
 
       await new toolrunnner.ToolRunner(cmd, [
@@ -476,7 +479,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         databasePath,
         '--format=sarif-latest',
         '--output=' + sarifFile,
-        '--no-sarif-add-snippets',
+        addSnippetsFlag,
         ...getExtraOptionsFromEnv(['database', 'analyze']),
         querySuite
       ]).exec();

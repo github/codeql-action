@@ -98,7 +98,23 @@ Use the `config-file` parameter of the `init` action to enable the configuration
     config-file: ./.github/codeql/codeql-config.yml
 ```
 
-The configuration file must be located within the local repository. For information on how to write a configuration file, see "[Using a custom configuration](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration)."
+The configuration file must be located within the local repository. For information on how to write a configuration file, see "[Using a custom configuration file](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration-file)."
+
+If you only want to customise the queries used, you can specify them in your workflow instead of creating a config file, using the `queries` property of the `init` action:
+
+```yaml
+- uses: github/codeql-action/init@v1
+  with:
+    queries: <local-or-remote-query>,<another-query>
+```
+
+By default, this will override any queries specified in a config file. If you wish to use both sets of queries, prefix the list of queries in the workflow with `+`:
+
+```yaml
+- uses: github/codeql-action/init@v1
+  with:
+    queries: +<local-or-remote-query>,<another-query>
+```
 
 ## Troubleshooting
 

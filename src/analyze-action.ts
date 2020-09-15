@@ -50,6 +50,7 @@ async function run() {
       'actions',
       core.getInput('output'),
       util.getMemoryFlag(core.getInput('ram')),
+      util.getAddSnippetsFlag(core.getInput('add-snippets')),
       util.getThreadsFlag(core.getInput('threads'), logger),
       config,
       logger);

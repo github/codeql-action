@@ -7,12 +7,12 @@ import { runAnalyze } from './analyze';
 import { determineAutobuildLanguage, runAutobuild } from './autobuild';
 import { CodeQL, getCodeQL } from './codeql';
 import { Config, getConfig } from './config-utils';
-import { initCodeQL, initConfig, runInit } from './init';
+import { initCodeQL, initConfig, injectWindowsTracer, runInit } from './init';
 import { Language, parseLanguage } from './languages';
 import { getRunnerLogger } from './logging';
 import { parseRepositoryNwo } from './repository';
 import * as upload_lib from './upload-lib';
-import { getMemoryFlag, getThreadsFlag } from './util';
+import { getAddSnippetsFlag, getMemoryFlag, getThreadsFlag } from './util';
 
 const program = new Command();
 program.version('0.0.1');
@@ -66,6 +66,37 @@ function importTracerEnvironment(config: Config) {
   }
 }
 
+// Allow the user to specify refs in full refs/heads/branch format
+// or just the short branch name and prepend "refs/heads/" to it.
+function parseRef(userInput: string): string {
+  if (userInput.startsWith('refs/')) {
+    return userInput;
+  } else {
+    return 'refs/heads/' + userInput;
+  }
+}
+
+// Parses the --trace-process-name arg from process.argv, or returns undefined
+function parseTraceProcessName(): string | undefined {
+  for (let i = 0; i < process.argv.length - 1; i++) {
+    if (process.argv[i] === '--trace-process-name') {
+      return process.argv[i + 1];
+    }
+  }
+  return undefined;
+}
+
+// Parses the --trace-process-level arg from process.argv, or returns undefined
+function parseTraceProcessLevel(): number | undefined {
+  for (let i = 0; i < process.argv.length - 1; i++) {
+    if (process.argv[i] === '--trace-process-level') {
+      const v = parseInt(process.argv[i + 1], 10);
+      return isNaN(v) ? undefined : v;
+    }
+  }
+  return undefined;
+}
+
 interface InitArgs {
   languages: string | undefined;
   queries: string | undefined;
@@ -94,6 +125,9 @@ program
   .option('--tools-dir <dir>', 'Directory to use for CodeQL tools and other files to store between runs. Default is a subdirectory of the home directory.')
   .option('--checkout-path <path>', 'Checkout path. Default is the current working directory.')
   .option('--debug', 'Print more verbose output', false)
+  // This prevents a message like: error: unknown option '--trace-process-level'
+  // Remove this if commander.js starts supporting hidden options.
+  .allowUnknownOption()
   .action(async (cmd: InitArgs) => {
     const logger = getRunnerLogger(cmd.debug);
     try {
@@ -137,6 +171,15 @@ program
         return;
       }
 
+      if (process.platform === 'win32') {
+        await injectWindowsTracer(
+          parseTraceProcessName(),
+          parseTraceProcessLevel(),
+          config,
+          codeql,
+          tracerConfig);
+      }
+
       // Always output a json file of the env that can be consumed programatically
       const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
       fs.writeFileSync(jsonEnvFile, JSON.stringify(tracerConfig.env));
@@ -154,9 +197,9 @@ program
           .join('\n');
         fs.writeFileSync(powershellEnvFile, powershellEnvFileContents);
 
-        logger.info(`\nCodeQL environment output to "${jsonEnvFile}", "${batEnvFileContents}" and "${powershellEnvFile}". ` +
+        logger.info(`\nCodeQL environment output to "${jsonEnvFile}", "${batEnvFile}" and "${powershellEnvFile}". ` +
           `Please export these variables to future processes so the build can be traced. ` +
-          `If using cmd/batch run "call ${batEnvFileContents}" ` +
+          `If using cmd/batch run "call ${batEnvFile}" ` +
           `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`);
 
       } else {
@@ -231,6 +274,7 @@ interface AnalyzeArgs {
   upload: boolean;
   outputDir: string | undefined;
   ram: string | undefined;
+  addSnippets: boolean;
   threads: string | undefined;
   tempDir: string | undefined;
   debug: boolean;
@@ -245,9 +289,10 @@ program
   .requiredOption('--github-url <url>', 'URL of GitHub instance. (Required)')
   .requiredOption('--github-auth <auth>', 'GitHub Apps token or personal access token. (Required)')
   .option('--checkout-path <path>', 'Checkout path. Default is the current working directory.')
-  .option('--no-upload', 'Do not upload results after analysis.', false)
+  .option('--no-upload', 'Do not upload results after analysis.')
   .option('--output-dir <dir>', 'Directory to output SARIF files to. Default is in the temp directory.')
   .option('--ram <ram>', 'Amount of memory to use when running queries. Default is to use all available memory.')
+  .option('--no-add-snippets', 'Specify whether to include code snippets in the sarif output.')
   .option('--threads <threads>', 'Number of threads to use when running queries. ' +
     'Default is to use all available cores.')
   .option('--temp-dir <dir>', 'Directory to use for temporary files. Default is "./codeql-runner".')
@@ -265,7 +310,7 @@ program
       await runAnalyze(
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
-        cmd.ref,
+        parseRef(cmd.ref),
         undefined,
         undefined,
         undefined,
@@ -277,6 +322,7 @@ program
         'runner',
         outputDir,
         getMemoryFlag(cmd.ram),
+        getAddSnippetsFlag(cmd.addSnippets),
         getThreadsFlag(cmd.threads, logger),
         config,
         logger);
@@ -316,7 +362,7 @@ program
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
-        cmd.ref,
+        parseRef(cmd.ref),
         undefined,
         undefined,
         undefined,

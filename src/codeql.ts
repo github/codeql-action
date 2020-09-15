@@ -172,16 +172,20 @@ export async function getCodeQLBundleDownloadURL(
     }
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {
-      const release = await api.getApiClient(githubAuth, githubUrl).repos.getReleaseByTag({
-        owner: repositoryOwner,
-        repo: repositoryName,
-        tag: CODEQL_BUNDLE_VERSION
-      });
+      const release = await api
+        .getApiClient(githubAuth, githubUrl)
+        .repos.getReleaseByTag({
+          owner: repositoryOwner,
+          repo: repositoryName,
+          tag: CODEQL_BUNDLE_VERSION,
+        });
       // See if any of the bundles appears in the assets list
-      for (let bundleName of bundleNames) {
-        for (let asset of release.data.assets) {
+      for (const bundleName of bundleNames) {
+        for (const asset of release.data.assets) {
           if (asset.name === bundleName) {
-            logger.info(`Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`);
+            logger.info(
+              `Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`
+            );
             return asset.url;
           }
         }
@@ -250,14 +254,14 @@ export async function setupCodeQL(
   //  - If multiple languages are being anlyzed, use the full bundle
   let plVersion: string | undefined = undefined;
   let platform: string;
-  if (process.platform === 'win32') {
+  if (process.platform === "win32") {
     platform = "win64";
-  } else if (process.platform === 'linux') {
+  } else if (process.platform === "linux") {
     platform = "linux64";
-  } else if (process.platform === 'darwin') {
+  } else if (process.platform === "darwin") {
     platform = "osx64";
   } else {
-    throw new Error("Unsupported platform: " + process.platform);
+    throw new Error(`Unsupported platform: ${process.platform}`);
   }
   if (languages.length === 1) {
     plVersion = `${platform}-${languages[0]}`;
@@ -273,32 +277,47 @@ export async function setupCodeQL(
 
     logger.debug(`PL Version ${plVersion}`);
     if (plVersion) {
-      codeqlFolder = toolcache.find('CodeQL', `${codeqlURLVersion}-${plVersion}`);
+      codeqlFolder = toolcache.find(
+        "CodeQL",
+        `${codeqlURLVersion}-${plVersion}`
+      );
       if (codeqlFolder) {
         logger.debug(`CodeQL found in cache ${codeqlFolder}`);
       }
     }
 
     if (!codeqlFolder) {
-      codeqlFolder = toolcache.find('CodeQL', codeqlURLVersion);
+      codeqlFolder = toolcache.find("CodeQL", codeqlURLVersion);
       if (codeqlFolder) {
         logger.debug(`CodeQL found in cache ${codeqlFolder}`);
       }
     }
 
     if (!codeqlFolder) {
-      const codeqlToolcacheVersion = plVersion ? `${codeqlURLVersion}-${plVersion}` : codeqlURLVersion;
+      const codeqlToolcacheVersion = plVersion
+        ? `${codeqlURLVersion}-${plVersion}`
+        : codeqlURLVersion;
       logger.debug(`CodeQL not found in cache`);
       if (!codeqlURL) {
         // Provide a few options, from smaller to bigger
-        let bundles: string[] = [];
+        const bundles: string[] = [];
         if (plVersion) {
-          bundles.push(CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${plVersion}`));
+          bundles.push(
+            CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${plVersion}`)
+          );
         }
-        bundles.push(CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${platform}`));
+        bundles.push(
+          CODEQL_BUNDLE_NAME.replace("-bundle", `-bundle-${platform}`)
+        );
         bundles.push(CODEQL_BUNDLE_NAME);
 
-        codeqlURL = await getCodeQLBundleDownloadURL(bundles, githubAuth, githubUrl, mode, logger);
+        codeqlURL = await getCodeQLBundleDownloadURL(
+          bundles,
+          githubAuth,
+          githubUrl,
+          mode,
+          logger
+        );
       }
       logger.debug(`Using CodeQL URL: ${codeqlURL}`);
 
@@ -325,7 +344,11 @@ export async function setupCodeQL(
 
       const codeqlExtracted = await toolcache.extractTar(codeqlPath);
       logger.debug(`Caching ${codeqlToolcacheVersion}`);
-      codeqlFolder = await toolcache.cacheDir(codeqlExtracted, 'CodeQL', codeqlToolcacheVersion);
+      codeqlFolder = await toolcache.cacheDir(
+        codeqlExtracted,
+        "CodeQL",
+        codeqlToolcacheVersion
+      );
     }
 
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");

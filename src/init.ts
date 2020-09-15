@@ -1,15 +1,14 @@
-import * as toolrunnner from '@actions/exec/lib/toolrunner';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as fs from "fs";
+import * as path from "path";
 
-import * as analysisPaths from './analysis-paths';
-import { CodeQL, setupCodeQL } from './codeql';
-import * as configUtils from './config-utils';
-import {Language} from './languages';
-import { Logger } from './logging';
-import { getCombinedTracerConfig, TracerConfig } from './tracer-config';
-import * as util from './util';
-
+import * as analysisPaths from "./analysis-paths";
+import { CodeQL, setupCodeQL } from "./codeql";
+import * as configUtils from "./config-utils";
+import { Language } from "./languages";
+import { Logger } from "./logging";
+import { getCombinedTracerConfig, TracerConfig } from "./tracer-config";
+import * as util from "./util";
 
 export async function initCodeQL(
   codeqlURL: string | undefined,
@@ -19,9 +18,9 @@ export async function initCodeQL(
   tempDir: string,
   toolsDir: string,
   mode: util.Mode,
-  logger: Logger): Promise<CodeQL> {
-
-  logger.startGroup('Setup CodeQL tools');
+  logger: Logger
+): Promise<CodeQL> {
+  logger.startGroup("Setup CodeQL tools");
 
   const codeql = await setupCodeQL(
     codeqlURL,

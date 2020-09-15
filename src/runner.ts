@@ -1,18 +1,18 @@
-import { Command } from 'commander';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import { Command } from "commander";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
-import { runAnalyze } from './analyze';
-import { determineAutobuildLanguage, runAutobuild } from './autobuild';
-import { CodeQL, getCodeQL } from './codeql';
-import { Config, getConfig } from './config-utils';
-import { initCodeQL, initConfig, injectWindowsTracer, runInit } from './init';
-import { getLanguages, Language, parseLanguage } from './languages';
-import { getRunnerLogger } from './logging';
-import { parseRepositoryNwo } from './repository';
-import * as upload_lib from './upload-lib';
-import { getMemoryFlag, getThreadsFlag, getAddSnippetsFlag } from './util';
+import { runAnalyze } from "./analyze";
+import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
+import { CodeQL, getCodeQL } from "./codeql";
+import { Config, getConfig } from "./config-utils";
+import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
+import { getLanguages, Language, parseLanguage } from "./languages";
+import { getRunnerLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
+import * as upload_lib from "./upload-lib";
+import { getMemoryFlag, getThreadsFlag, getAddSnippetsFlag } from "./util";
 
 const program = new Command();
 program.version("0.0.1");
@@ -167,7 +167,8 @@ program
         repositoryNWO,
         cmd.githubAuth,
         githubUrl,
-        logger);
+        logger
+      );
 
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {

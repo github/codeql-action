@@ -1,12 +1,12 @@
 import * as core from "@actions/core";
 
-import { CodeQL } from './codeql';
-import * as configUtils from './config-utils';
-import { initCodeQL, initConfig, injectWindowsTracer, runInit } from './init';
-import { getLanguages } from './languages';
-import { getActionsLogger } from './logging';
-import { parseRepositoryNwo } from './repository';
-import * as util from './util';
+import { CodeQL } from "./codeql";
+import * as configUtils from "./config-utils";
+import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
+import { getLanguages } from "./languages";
+import { getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
+import * as util from "./util";
 
 interface InitSuccessStatusReport extends util.StatusReportBase {
   // Comma-separated list of languages that analysis was run for
@@ -78,31 +78,35 @@ async function run() {
     ) {
       return;
     }
-    const repositoryNWO = parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY'));
+    const repositoryNWO = parseRepositoryNwo(
+      util.getRequiredEnvParam("GITHUB_REPOSITORY")
+    );
 
     const languages = await getLanguages(
-      core.getInput('languages'),
+      core.getInput("languages"),
       repositoryNWO,
-      core.getInput('token'),
-      util.getRequiredEnvParam('GITHUB_SERVER_URL'),
-      logger);
+      core.getInput("token"),
+      util.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      logger
+    );
 
     codeql = await initCodeQL(
-      core.getInput('tools'),
+      core.getInput("tools"),
       languages,
-      core.getInput('token'),
-      util.getRequiredEnvParam('GITHUB_SERVER_URL'),
-      util.getRequiredEnvParam('RUNNER_TEMP'),
-      util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
-      'actions',
-      logger);
+      core.getInput("token"),
+      util.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      util.getRequiredEnvParam("RUNNER_TEMP"),
+      util.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
+      "actions",
+      logger
+    );
 
     config = await initConfig(
       languages,
-      core.getInput('queries'),
-      core.getInput('config-file'),
-      util.getRequiredEnvParam('RUNNER_TEMP'),
-      util.getRequiredEnvParam('RUNNER_TOOL_CACHE'),
+      core.getInput("queries"),
+      core.getInput("config-file"),
+      util.getRequiredEnvParam("RUNNER_TEMP"),
+      util.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       util.getRequiredEnvParam("GITHUB_WORKSPACE"),
       core.getInput("token"),

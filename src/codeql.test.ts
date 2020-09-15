@@ -1,206 +1,242 @@
 import * as github from "@actions/github";
-import * as toolcache from '@actions/tool-cache';
-import test from 'ava';
-import nock from 'nock';
-import * as path from 'path';
-import sinon from 'sinon';
+import * as toolcache from "@actions/tool-cache";
+import test from "ava";
+import nock from "nock";
+import * as path from "path";
+import sinon from "sinon";
 
-
-import * as api from './api-client';
-import * as codeql from './codeql';
-import * as defaults from './defaults.json'; // Referenced from codeql-action-sync-tool!
-import { Language } from './languages';
-import { getRunnerLogger } from './logging';
-import {setupTests} from './testing-utils';
-import * as util from './util';
-
+import * as api from "./api-client";
+import * as codeql from "./codeql";
+import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
+import { Language } from "./languages";
+import { getRunnerLogger } from "./logging";
+import { setupTests } from "./testing-utils";
+import * as util from "./util";
 
 setupTests(test);
 
-test('download and populate codeql bundle cache', async t => {
-
-  await util.withTmpDir(async tmpDir => {
-    const versions = ['20200601', '20200610'];
+test("download and populate codeql bundle cache", async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    const versions = ["20200601", "20200610"];
     const languages: Language[][] = [
       [Language.cpp],
-      [Language.cpp, Language.python] // Multi-language requires the full bundle
+      [Language.cpp, Language.python], // Multi-language requires the full bundle
     ];
 
-    const platform = process.platform === 'win32' ? 'win64' :
-                     process.platform === 'linux' ? 'linux64' :
-                     process.platform === 'darwin' ? 'osx64' : undefined;
+    const platform =
+      process.platform === "win32"
+        ? "win64"
+        : process.platform === "linux"
+        ? "linux64"
+        : process.platform === "darwin"
+        ? "osx64"
+        : undefined;
 
     for (let i = 0; i < versions.length; i++) {
       for (let j = 0; j < languages.length; j++) {
         const version = versions[i];
-        const plVersion = (languages[j].length === 1) ? `${platform}-${languages[j][0]}` : undefined;
+        const plVersion =
+          languages[j].length === 1
+            ? `${platform}-${languages[j][0]}`
+            : undefined;
 
-
-        nock('https://example.com')
+        nock("https://example.com")
           .get(`/download/codeql-bundle-${version}/codeql-bundle.tar.gz`)
-          .replyWithFile(200, path.join(__dirname, `/../src/testdata/codeql-bundle.tar.gz`));
+          .replyWithFile(
+            200,
+            path.join(__dirname, `/../src/testdata/codeql-bundle.tar.gz`)
+          );
 
         await codeql.setupCodeQL(
           `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
           languages[j],
-          'token',
-          'https://github.example.com',
+          "token",
+          "https://github.example.com",
           tmpDir,
           tmpDir,
-          'runner',
-          getRunnerLogger(true));
+          "runner",
+          getRunnerLogger(true)
+        );
 
-        const toolcacheVersion = plVersion ? `0.0.0-${version}-${plVersion}` : `0.0.0-${version}`;
-        t.assert(toolcache.find('CodeQL', toolcacheVersion), `Looking for ${toolcacheVersion}`);
+        const toolcacheVersion = plVersion
+          ? `0.0.0-${version}-${plVersion}`
+          : `0.0.0-${version}`;
+        t.assert(
+          toolcache.find("CodeQL", toolcacheVersion),
+          `Looking for ${toolcacheVersion}`
+        );
       }
     }
 
-    const cachedVersions = toolcache.findAllVersions('CodeQL');
+    const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 4);
   });
 });
 
-
-test('download small codeql bundle if analyzing only one language', async t => {
+test("download small codeql bundle if analyzing only one language", async (t) => {
   // Note: We do not specify a codeqlURL in this test, thus testing that
   //       the logic for constructing the URL takes into account the
   //       language being analyzed
-  await util.withTmpDir(async tmpDir => {
+  await util.withTmpDir(async (tmpDir) => {
     const languages: Language[][] = [
       [Language.cpp],
-      [Language.cpp, Language.python] // Multi-language requires the full bundle
+      [Language.cpp, Language.python], // Multi-language requires the full bundle
     ];
 
-    const platform = process.platform === 'win32' ? 'win64' :
-                     process.platform === 'linux' ? 'linux64' :
-                     process.platform === 'darwin' ? 'osx64' : undefined;
+    const platform =
+      process.platform === "win32"
+        ? "win64"
+        : process.platform === "linux"
+        ? "linux64"
+        : process.platform === "darwin"
+        ? "osx64"
+        : undefined;
 
     for (let i = 0; i < languages.length; i++) {
-      const plVersion = (languages[i].length === 1) ? `${platform}-${languages[i][0]}` : undefined;
-      const pkg = plVersion ? `codeql-bundle-${plVersion}.tar.gz` : 'codeql-bundle.tar.gz';
+      const plVersion =
+        languages[i].length === 1
+          ? `${platform}-${languages[i][0]}`
+          : undefined;
+      const pkg = plVersion
+        ? `codeql-bundle-${plVersion}.tar.gz`
+        : "codeql-bundle.tar.gz";
 
       // Mock the API client
-      let client = new github.GitHub('123');
+      const client = new github.GitHub("123");
       const response = {
         data: {
-          'assets': [
+          assets: [
             {
-              'name': `codeql-bundle-${platform}-cpp.tar.gz`,
-              'url': `https://github.example.com/url/codeql-bundle-${platform}-cpp.tar.gz`
+              name: `codeql-bundle-${platform}-cpp.tar.gz`,
+              url: `https://github.example.com/url/codeql-bundle-${platform}-cpp.tar.gz`,
             },
             {
-              'name': 'codeql-bundle.tar.gz',
-              'url': 'https://github.example.com/url/codeql-bundle.tar.gz'
+              name: "codeql-bundle.tar.gz",
+              url: "https://github.example.com/url/codeql-bundle.tar.gz",
             },
-          ]
+          ],
         },
       };
       sinon.stub(client.repos, "getReleaseByTag").resolves(response as any);
       sinon.stub(api, "getApiClient").value(() => client);
 
-      nock('https://github.example.com')
+      nock("https://github.example.com")
         .get(`/url/${pkg}`)
-        .replyWithFile(200, path.join(__dirname, `/../src/testdata/codeql-bundle.tar.gz`));
+        .replyWithFile(
+          200,
+          path.join(__dirname, `/../src/testdata/codeql-bundle.tar.gz`)
+        );
 
       await codeql.setupCodeQL(
         undefined,
         languages[i],
-        'token',
-        'https://github.example.com',
+        "token",
+        "https://github.example.com",
         tmpDir,
         tmpDir,
         "runner",
         getRunnerLogger(true)
       );
 
-      const parsedVersion = codeql.getCodeQLURLVersion(`/${defaults.bundleVersion}/`, getRunnerLogger(true));
-      const toolcacheVersion = plVersion ? `${parsedVersion}-${plVersion}` : parsedVersion;
-      t.assert(toolcache.find('CodeQL', toolcacheVersion), `Looking for ${toolcacheVersion} - ${plVersion}`);
+      const parsedVersion = codeql.getCodeQLURLVersion(
+        `/${defaults.bundleVersion}/`,
+        getRunnerLogger(true)
+      );
+      const toolcacheVersion = plVersion
+        ? `${parsedVersion}-${plVersion}`
+        : parsedVersion;
+      t.assert(
+        toolcache.find("CodeQL", toolcacheVersion),
+        `Looking for ${toolcacheVersion} - ${plVersion}`
+      );
     }
 
-    const cachedVersions = toolcache.findAllVersions('CodeQL');
+    const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 2);
   });
 });
 
-
-test('use full codeql bundle cache if smaller bundle is not available', async t => {
+test("use full codeql bundle cache if smaller bundle is not available", async (t) => {
   // If we look for a platform-language version but find the full bundle in the cache,
   // we use the full bundle
-  await util.withTmpDir(async tmpDir => {
-    const version = '20200601';
+  await util.withTmpDir(async (tmpDir) => {
+    const version = "20200601";
 
-    nock('https://example.com')
+    nock("https://example.com")
       .get(`/download/codeql-bundle-${version}/codeql-bundle.tar.gz`)
-      .replyWithFile(200, path.join(__dirname, `/../src/testdata/codeql-bundle.tar.gz`));
+      .replyWithFile(
+        200,
+        path.join(__dirname, `/../src/testdata/codeql-bundle.tar.gz`)
+      );
 
     await codeql.setupCodeQL(
       `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
       [],
-      'token',
-      'https://github.example.com',
+      "token",
+      "https://github.example.com",
       tmpDir,
       tmpDir,
-      'runner',
-      getRunnerLogger(true));
+      "runner",
+      getRunnerLogger(true)
+    );
 
-    t.assert(toolcache.find('CodeQL', `0.0.0-${version}`));
-    t.is(toolcache.findAllVersions('CodeQL').length, 1);
+    t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
+    t.is(toolcache.findAllVersions("CodeQL").length, 1);
 
     // Now try to request the cpp version, and see that we do not change the cache
     await codeql.setupCodeQL(
       `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
       [Language.cpp],
-      'token',
-      'https://github.example.com',
+      "token",
+      "https://github.example.com",
       tmpDir,
       tmpDir,
-      'runner',
-      getRunnerLogger(true));
+      "runner",
+      getRunnerLogger(true)
+    );
 
-    t.assert(toolcache.find('CodeQL', `0.0.0-${version}`));
-    t.is(toolcache.findAllVersions('CodeQL').length, 1);
-
+    t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
+    t.is(toolcache.findAllVersions("CodeQL").length, 1);
   });
 });
 
-test('use larger bundles if smaller ones are not released', async t => {
+test("use larger bundles if smaller ones are not released", async (t) => {
   // Mock the API client
-  let client = new github.GitHub('123');
+  const client = new github.GitHub("123");
   const response = {
     data: {
-      'assets': [
-        { 'name': 'full-bundle', 'url': 'url/file.gz' },
-      ]
+      assets: [{ name: "full-bundle", url: "url/file.gz" }],
     },
   };
-  let getReleaseByTagMock = sinon.stub(client.repos, "getReleaseByTag").resolves(response as any);
+  const getReleaseByTagMock = sinon
+    .stub(client.repos, "getReleaseByTag")
+    .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
 
   // Setting this env is required by a dependency of getCodeQLBundleDownloadURL
-  process.env['RUNNER_TEMP'] = "abc";
+  process.env["RUNNER_TEMP"] = "abc";
 
-  let codeqlURL = await codeql.getCodeQLBundleDownloadURL(
-    ['small-bundle', 'full-bundle'],
+  const codeqlURL = await codeql.getCodeQLBundleDownloadURL(
+    ["small-bundle", "full-bundle"],
     "",
     "",
-    'actions',
-    getRunnerLogger(true));
+    "actions",
+    getRunnerLogger(true)
+  );
 
-  t.deepEqual(codeqlURL, 'url/file.gz');
+  t.deepEqual(codeqlURL, "url/file.gz");
   t.assert(getReleaseByTagMock.called);
 });
 
-test('parse codeql bundle url version', t => {
-
+test("parse codeql bundle url version", (t) => {
   const tests = {
-    '20200601': '0.0.0-20200601',
-    '20200601.0': '0.0.0-20200601.0',
-    '20200601.0.0': '20200601.0.0',
-    '1.2.3': '1.2.3',
-    '1.2.3-alpha': '1.2.3-alpha',
-    '1.2.3-beta.1': '1.2.3-beta.1',
-    '20200601-linux64-python': '0.0.0-20200601-linux64-python',
+    "20200601": "0.0.0-20200601",
+    "20200601.0": "0.0.0-20200601.0",
+    "20200601.0.0": "20200601.0.0",
+    "1.2.3": "1.2.3",
+    "1.2.3-alpha": "1.2.3-alpha",
+    "1.2.3-beta.1": "1.2.3-beta.1",
+    "20200601-linux64-python": "0.0.0-20200601-linux64-python",
   };
 
   for (const [version, expectedVersion] of Object.entries(tests)) {

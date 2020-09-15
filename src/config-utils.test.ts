@@ -1,16 +1,21 @@
 import * as github from "@actions/github";
-import test from 'ava';
-import * as fs from 'fs';
-import * as path from 'path';
-import sinon from 'sinon';
+import test from "ava";
+import * as fs from "fs";
+import * as path from "path";
+import sinon from "sinon";
 
-import * as api from './api-client';
-import { getCachedCodeQL, setCodeQL } from './codeql';
-import * as configUtils from './config-utils';
-import { getLanguages, getNoLanguagesError, getUnknownLanguagesError, Language } from './languages';
-import { getRunnerLogger } from './logging';
-import {setupTests} from './testing-utils';
-import * as util from './util';
+import * as api from "./api-client";
+import { getCachedCodeQL, setCodeQL } from "./codeql";
+import * as configUtils from "./config-utils";
+import {
+  getLanguages,
+  getNoLanguagesError,
+  getUnknownLanguagesError,
+  Language,
+} from "./languages";
+import { getRunnerLogger } from "./logging";
+import { setupTests } from "./testing-utils";
+import * as util from "./util";
 
 setupTests(test);
 
@@ -74,19 +79,24 @@ test("load empty config", async (t) => {
       tmpDir,
       codeQL,
       tmpDir,
-      'token',
-      'https://github.example.com',
-      logger);
+      "token",
+      "https://github.example.com",
+      logger
+    );
 
-    t.deepEqual(config, await configUtils.getDefaultConfig(
-      languages,
-      undefined,
-      tmpDir,
-      tmpDir,
-      codeQL,
-      tmpDir,
-      'https://github.example.com',
-      logger));
+    t.deepEqual(
+      config,
+      await configUtils.getDefaultConfig(
+        languages,
+        undefined,
+        tmpDir,
+        tmpDir,
+        codeQL,
+        tmpDir,
+        "https://github.example.com",
+        logger
+      )
+    );
   });
 });
 
@@ -138,7 +148,7 @@ test("load input outside of workspace", async (t) => {
       await configUtils.initConfig(
         [],
         undefined,
-        '../input',
+        "../input",
         tmpDir,
         tmpDir,
         getCachedCodeQL(),
@@ -193,10 +203,10 @@ test("load non-local input with invalid repo syntax", async (t) => {
   });
 });
 
-test("load non-existent input", async t => {
-  return await util.withTmpDir(async tmpDir => {
+test("load non-existent input", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
     const languages = [Language.javascript];
-    const configFile = 'input';
+    const configFile = "input";
     t.false(fs.existsSync(path.join(tmpDir, configFile)));
 
     try {
@@ -667,9 +677,9 @@ test("Queries in workflow file can be added to the set of queries without overri
   });
 });
 
-test("Invalid queries in workflow file handled correctly", async t => {
-  return await util.withTmpDir(async tmpDir => {
-    const queries = 'foo/bar@v1@v3';
+test("Invalid queries in workflow file handled correctly", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const queries = "foo/bar@v1@v3";
     const languages = [Language.javascript];
 
     // This function just needs to be type-correct; it doesn't need to do anything,
@@ -748,7 +758,7 @@ test("API client used when reading remote config", async (t) => {
     // Create checkout directory for remote queries repository
     fs.mkdirSync(path.join(tmpDir, "foo/bar/dev"), { recursive: true });
 
-    const configFile = 'octo-org/codeql-config/config.yaml@main';
+    const configFile = "octo-org/codeql-config/config.yaml@main";
     const languages = [Language.javascript];
 
     await configUtils.initConfig(
@@ -827,35 +837,36 @@ test("Invalid format of remote config handled correctly", async (t) => {
   });
 });
 
-test("No detected languages", async t => {
+test("No detected languages", async (t) => {
   mockListLanguages([]);
 
   try {
     await getLanguages(
       undefined,
-      { owner: 'github', repo: 'example ' },
-      'token',
-      'https://github.example.com',
-      getRunnerLogger(true));
-    throw new Error('initConfig did not throw error');
+      { owner: "github", repo: "example " },
+      "token",
+      "https://github.example.com",
+      getRunnerLogger(true)
+    );
+    throw new Error("initConfig did not throw error");
   } catch (err) {
     t.deepEqual(err, new Error(getNoLanguagesError()));
   }
-
 });
 
-test("Unknown languages", async t => {
-  const languages = 'ruby,english';
+test("Unknown languages", async (t) => {
+  const languages = "ruby,english";
   try {
     await getLanguages(
       languages,
-      { owner: 'github', repo: 'example ' },
-      'token',
-      'https://github.example.com',
-      getRunnerLogger(true));
-    throw new Error('initConfig did not throw error');
+      { owner: "github", repo: "example " },
+      "token",
+      "https://github.example.com",
+      getRunnerLogger(true)
+    );
+    throw new Error("initConfig did not throw error");
   } catch (err) {
-    t.deepEqual(err, new Error(getUnknownLanguagesError(['ruby', 'english'])));
+    t.deepEqual(err, new Error(getUnknownLanguagesError(["ruby", "english"])));
   }
 });
 
@@ -877,7 +888,7 @@ function doInvalidInputTest(
       });
 
       const languages = [Language.javascript];
-      const configFile = 'input';
+      const configFile = "input";
       const inputFile = path.join(tmpDir, configFile);
       fs.writeFileSync(inputFile, inputFileContents, "utf8");
 

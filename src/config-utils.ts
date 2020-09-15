@@ -5,9 +5,8 @@ import * as path from "path";
 import * as api from "./api-client";
 import { CodeQL, ResolveQueriesOutput } from "./codeql";
 import * as externalQueries from "./external-queries";
-import { Language } from './languages';
-import { Logger } from './logging';
-
+import { Language } from "./languages";
+import { Logger } from "./logging";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -602,8 +601,8 @@ export async function getDefaultConfig(
   codeQL: CodeQL,
   checkoutPath: string,
   githubUrl: string,
-  logger: Logger): Promise<Config> {
-
+  logger: Logger
+): Promise<Config> {
   const queries = {};
   await addDefaultQueries(codeQL, languages, queries);
   if (queriesInput) {
@@ -925,4 +924,3 @@ export async function getConfig(
   logger.debug(configString);
   return JSON.parse(configString);
 }
-

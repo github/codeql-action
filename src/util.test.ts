@@ -67,11 +67,6 @@ test("getThreadsFlag() throws if the threads input is not an integer", (t) => {
   t.throws(() => util.getThreadsFlag("hello!", getRunnerLogger(true)));
 });
 
-test("getRef() throws on the empty string", (t) => {
-  process.env["GITHUB_REF"] = "";
-  t.throws(util.getRef);
-});
-
 test("isLocalRun() runs correctly", (t) => {
   const origLocalRun = process.env.CODEQL_LOCAL_RUN;
 
@@ -89,34 +84,6 @@ test("isLocalRun() runs correctly", (t) => {
 
   process.env.CODEQL_LOCAL_RUN = "hucairz";
   t.assert(util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = origLocalRun;
-});
-
-test("prepareEnvironment() when a local run", (t) => {
-  const origLocalRun = process.env.CODEQL_LOCAL_RUN;
-
-  process.env.CODEQL_LOCAL_RUN = "false";
-  process.env.GITHUB_JOB = "YYY";
-
-  util.prepareLocalRunEnvironment();
-
-  // unchanged
-  t.deepEqual(process.env.GITHUB_JOB, "YYY");
-
-  process.env.CODEQL_LOCAL_RUN = "true";
-
-  util.prepareLocalRunEnvironment();
-
-  // unchanged
-  t.deepEqual(process.env.GITHUB_JOB, "YYY");
-
-  process.env.GITHUB_JOB = "";
-
-  util.prepareLocalRunEnvironment();
-
-  // updated
-  t.deepEqual(process.env.GITHUB_JOB, "UNKNOWN-JOB");
 
   process.env.CODEQL_LOCAL_RUN = origLocalRun;
 });

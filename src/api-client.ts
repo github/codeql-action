@@ -3,7 +3,8 @@ import * as github from "@actions/github";
 import consoleLogLevel from "console-log-level";
 import * as path from "path";
 
-import { getRequiredEnvParam, isLocalRun } from "./util";
+import { getRequiredEnvParam } from "./actions-util";
+import { isLocalRun } from "./util";
 
 export const getApiClient = function (
   githubAuth: string,

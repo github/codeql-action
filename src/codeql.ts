@@ -9,6 +9,7 @@ import * as stream from "stream";
 import * as globalutil from "util";
 import uuidV4 from "uuid/v4";
 
+import { getRequiredEnvParam } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
@@ -125,7 +126,7 @@ function getCodeQLActionRepository(mode: util.Mode): string {
   // Actions do not know their own repository name,
   // so we currently use this hack to find the name based on where our files are.
   // This can be removed once the change to the runner in https://github.com/actions/runner/pull/585 is deployed.
-  const runnerTemp = util.getRequiredEnvParam("RUNNER_TEMP");
+  const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   const relativeScriptPath = path.relative(actionsDirectory, __filename);
   // This handles the case where the Action does not come from an Action repository,

@@ -1,33 +1,33 @@
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
-import * as path from 'path';
+import * as fs from "fs";
+import * as yaml from "js-yaml";
+import * as path from "path";
 
-import * as api from './api-client';
-import { CodeQL, ResolveQueriesOutput } from './codeql';
+import * as api from "./api-client";
+import { CodeQL, ResolveQueriesOutput } from "./codeql";
 import * as externalQueries from "./external-queries";
 import { Language } from './languages';
 import { Logger } from './logging';
 
 
 // Property names from the user-supplied config file.
-const NAME_PROPERTY = 'name';
-const DISABLE_DEFAULT_QUERIES_PROPERTY = 'disable-default-queries';
-const QUERIES_PROPERTY = 'queries';
-const QUERIES_USES_PROPERTY = 'uses';
-const PATHS_IGNORE_PROPERTY = 'paths-ignore';
-const PATHS_PROPERTY = 'paths';
+const NAME_PROPERTY = "name";
+const DISABLE_DEFAULT_QUERIES_PROPERTY = "disable-default-queries";
+const QUERIES_PROPERTY = "queries";
+const QUERIES_USES_PROPERTY = "uses";
+const PATHS_IGNORE_PROPERTY = "paths-ignore";
+const PATHS_PROPERTY = "paths";
 
 /**
  * Format of the config file supplied by the user.
  */
 export interface UserConfig {
   name?: string;
-  'disable-default-queries'?: boolean;
-  queries?: {
+  "disable-default-queries"?: boolean;
+  queries?: Array<{
     name?: string;
     uses: string;
-  }[];
-  'paths-ignore'?: string[];
+  }>;
+  "paths-ignore"?: string[];
   paths?: string[];
 }
 
@@ -86,16 +86,17 @@ export interface Config {
  *
  * Format is a map from language to an array of path suffixes of .ql files.
  */
-const DISABLED_BUILTIN_QUERIES: {[language: string]: string[]} = {
-  'csharp': [
-    'ql/src/Security Features/CWE-937/VulnerablePackage.ql',
-    'ql/src/Security Features/CWE-451/MissingXFrameOptions.ql',
-  ]
+const DISABLED_BUILTIN_QUERIES: { [language: string]: string[] } = {
+  csharp: [
+    "ql/src/Security Features/CWE-937/VulnerablePackage.ql",
+    "ql/src/Security Features/CWE-451/MissingXFrameOptions.ql",
+  ],
 };
 
 function queryIsDisabled(language, query): boolean {
-  return (DISABLED_BUILTIN_QUERIES[language] || [])
-    .some(disabledQuery => query.endsWith(disabledQuery));
+  return (DISABLED_BUILTIN_QUERIES[language] || []).some((disabledQuery) =>
+    query.endsWith(disabledQuery)
+  );
 }
 
 /**
@@ -106,17 +107,25 @@ function validateQueries(resolvedQueries: ResolveQueriesOutput) {
   const noDeclaredLanguage = resolvedQueries.noDeclaredLanguage;
   const noDeclaredLanguageQueries = Object.keys(noDeclaredLanguage);
   if (noDeclaredLanguageQueries.length !== 0) {
-    throw new Error('The following queries do not declare a language. ' +
-      'Their qlpack.yml files are either missing or is invalid.\n' +
-      noDeclaredLanguageQueries.join('\n'));
+    throw new Error(
+      `${
+        "The following queries do not declare a language. " +
+        "Their qlpack.yml files are either missing or is invalid.\n"
+      }${noDeclaredLanguageQueries.join("\n")}`
+    );
   }
 
   const multipleDeclaredLanguages = resolvedQueries.multipleDeclaredLanguages;
-  const multipleDeclaredLanguagesQueries = Object.keys(multipleDeclaredLanguages);
+  const multipleDeclaredLanguagesQueries = Object.keys(
+    multipleDeclaredLanguages
+  );
   if (multipleDeclaredLanguagesQueries.length !== 0) {
-    throw new Error('The following queries declare multiple languages. ' +
-      'Their qlpack.yml files are either missing or is invalid.\n' +
-      multipleDeclaredLanguagesQueries.join('\n'));
+    throw new Error(
+      `${
+        "The following queries declare multiple languages. " +
+        "Their qlpack.yml files are either missing or is invalid.\n"
+      }${multipleDeclaredLanguagesQueries.join("\n")}`
+    );
   }
 }
 
@@ -128,15 +137,22 @@ async function runResolveQueries(
   resultMap: { [language: string]: string[] },
   toResolve: string[],
   extraSearchPath: string | undefined,
-  errorOnInvalidQueries: boolean) {
+  errorOnInvalidQueries: boolean
+) {
+  const resolvedQueries = await codeQL.resolveQueries(
+    toResolve,
+    extraSearchPath
+  );
 
-  const resolvedQueries = await codeQL.resolveQueries(toResolve, extraSearchPath);
-
-  for (const [language, queries] of Object.entries(resolvedQueries.byLanguage)) {
+  for (const [language, queries] of Object.entries(
+    resolvedQueries.byLanguage
+  )) {
     if (resultMap[language] === undefined) {
       resultMap[language] = [];
     }
-    resultMap[language].push(...Object.keys(queries).filter(q => !queryIsDisabled(language, q)));
+    resultMap[language].push(
+      ...Object.keys(queries).filter((q) => !queryIsDisabled(language, q))
+    );
   }
 
   if (errorOnInvalidQueries) {
@@ -147,13 +163,17 @@ async function runResolveQueries(
 /**
  * Get the set of queries included by default.
  */
-async function addDefaultQueries(codeQL: CodeQL, languages: string[], resultMap: { [language: string]: string[] }) {
-  const suites = languages.map(l => l + '-code-scanning.qls');
+async function addDefaultQueries(
+  codeQL: CodeQL,
+  languages: string[],
+  resultMap: { [language: string]: string[] }
+) {
+  const suites = languages.map((l) => `${l}-code-scanning.qls`);
   await runResolveQueries(codeQL, resultMap, suites, undefined, false);
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
-const builtinSuites = ['security-extended', 'security-and-quality'] as const;
+const builtinSuites = ["security-extended", "security-and-quality"] as const;
 
 /**
  * Determine the set of queries associated with suiteName's suites and add them to resultMap.
@@ -164,14 +184,14 @@ async function addBuiltinSuiteQueries(
   codeQL: CodeQL,
   resultMap: { [language: string]: string[] },
   suiteName: string,
-  configFile?: string) {
-
+  configFile?: string
+) {
   const suite = builtinSuites.find((suite) => suite === suiteName);
   if (!suite) {
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
   }
 
-  const suites = languages.map(l => l + '-' + suiteName + '.qls');
+  const suites = languages.map((l) => `${l}-${suiteName}.qls`);
   await runResolveQueries(codeQL, resultMap, suites, undefined, false);
 }
 
@@ -183,8 +203,8 @@ async function addLocalQueries(
   resultMap: { [language: string]: string[] },
   localQueryPath: string,
   checkoutPath: string,
-  configFile?: string) {
-
+  configFile?: string
+) {
   // Resolve the local path against the workspace so that when this is
   // passed to codeql it resolves to exactly the path we expect it to resolve to.
   let absoluteQueryPath = path.join(checkoutPath, localQueryPath);
@@ -198,11 +218,23 @@ async function addLocalQueries(
   absoluteQueryPath = fs.realpathSync(absoluteQueryPath);
 
   // Check the local path doesn't jump outside the repo using '..' or symlinks
-  if (!(absoluteQueryPath + path.sep).startsWith(fs.realpathSync(checkoutPath) + path.sep)) {
-    throw new Error(getLocalPathOutsideOfRepository(configFile, localQueryPath));
+  if (
+    !(absoluteQueryPath + path.sep).startsWith(
+      fs.realpathSync(checkoutPath) + path.sep
+    )
+  ) {
+    throw new Error(
+      getLocalPathOutsideOfRepository(configFile, localQueryPath)
+    );
   }
 
-  await runResolveQueries(codeQL, resultMap, [absoluteQueryPath], checkoutPath, true);
+  await runResolveQueries(
+    codeQL,
+    resultMap,
+    [absoluteQueryPath],
+    checkoutPath,
+    true
+  );
 }
 
 /**
@@ -215,16 +247,16 @@ async function addRemoteQueries(
   tempDir: string,
   githubUrl: string,
   logger: Logger,
-  configFile?: string) {
-
-  let tok = queryUses.split('@');
+  configFile?: string
+) {
+  let tok = queryUses.split("@");
   if (tok.length !== 2) {
     throw new Error(getQueryUsesInvalid(configFile, queryUses));
   }
 
   const ref = tok[1];
 
-  tok = tok[0].split('/');
+  tok = tok[0].split("/");
   // The first token is the owner
   // The second token is the repo
   // The rest is a path, if there is more than one token combine them to form the full path
@@ -232,10 +264,10 @@ async function addRemoteQueries(
     throw new Error(getQueryUsesInvalid(configFile, queryUses));
   }
   // Check none of the parts of the repository name are empty
-  if (tok[0].trim() === '' || tok[1].trim() === '') {
+  if (tok[0].trim() === "" || tok[1].trim() === "") {
     throw new Error(getQueryUsesInvalid(configFile, queryUses));
   }
-  const nwo = tok[0] + '/' + tok[1];
+  const nwo = `${tok[0]}/${tok[1]}`;
 
   // Checkout the external repository
   const checkoutPath = await externalQueries.checkoutExternalRepository(
@@ -243,11 +275,13 @@ async function addRemoteQueries(
     ref,
     githubUrl,
     tempDir,
-    logger);
+    logger
+  );
 
-  const queryPath = tok.length > 2
-    ? path.join(checkoutPath, tok.slice(2).join('/'))
-    : checkoutPath;
+  const queryPath =
+    tok.length > 2
+      ? path.join(checkoutPath, tok.slice(2).join("/"))
+      : checkoutPath;
 
   await runResolveQueries(codeQL, resultMap, [queryPath], checkoutPath, true);
 }
@@ -269,8 +303,8 @@ async function parseQueryUses(
   checkoutPath: string,
   githubUrl: string,
   logger: Logger,
-  configFile?: string) {
-
+  configFile?: string
+) {
   queryUses = queryUses.trim();
   if (queryUses === "") {
     throw new Error(getQueryUsesInvalid(configFile));
@@ -278,18 +312,38 @@ async function parseQueryUses(
 
   // Check for the local path case before we start trying to parse the repository name
   if (queryUses.startsWith("./")) {
-    await addLocalQueries(codeQL, resultMap, queryUses.slice(2), checkoutPath, configFile);
+    await addLocalQueries(
+      codeQL,
+      resultMap,
+      queryUses.slice(2),
+      checkoutPath,
+      configFile
+    );
     return;
   }
 
   // Check for one of the builtin suites
-  if (queryUses.indexOf('/') === -1 && queryUses.indexOf('@') === -1) {
-    await addBuiltinSuiteQueries(languages, codeQL, resultMap, queryUses, configFile);
+  if (queryUses.indexOf("/") === -1 && queryUses.indexOf("@") === -1) {
+    await addBuiltinSuiteQueries(
+      languages,
+      codeQL,
+      resultMap,
+      queryUses,
+      configFile
+    );
     return;
   }
 
   // Otherwise, must be a reference to another repo
-  await addRemoteQueries(codeQL, resultMap, queryUses, tempDir, githubUrl, logger, configFile);
+  await addRemoteQueries(
+    codeQL,
+    resultMap,
+    queryUses,
+    tempDir,
+    githubUrl,
+    logger,
+    configFile
+  );
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -307,58 +361,70 @@ export function validateAndSanitisePath(
   originalPath: string,
   propertyName: string,
   configFile: string,
-  logger: Logger): string {
-
+  logger: Logger
+): string {
   // Take a copy so we don't modify the original path, so we can still construct error messages
   let path = originalPath;
 
   // All paths are relative to the src root, so strip off leading slashes.
-  while (path.charAt(0) === '/') {
+  while (path.charAt(0) === "/") {
     path = path.substring(1);
   }
 
   // Trailing ** are redundant, so strip them off
-  if (path.endsWith('/**')) {
+  if (path.endsWith("/**")) {
     path = path.substring(0, path.length - 2);
   }
 
   // An empty path is not allowed as it's meaningless
-  if (path === '') {
-    throw new Error(getConfigFilePropertyError(
-      configFile,
-      propertyName,
-      '"' + originalPath + '" is not an invalid path. ' +
-        'It is not necessary to include it, and it is not allowed to exclude it.'));
+  if (path === "") {
+    throw new Error(
+      getConfigFilePropertyError(
+        configFile,
+        propertyName,
+        `"${originalPath}" is not an invalid path. ` +
+          `It is not necessary to include it, and it is not allowed to exclude it.`
+      )
+    );
   }
 
   // Check for illegal uses of **
   if (path.match(pathStarsRegex)) {
-    throw new Error(getConfigFilePropertyError(
-      configFile,
-      propertyName,
-      '"' + originalPath + '" contains an invalid "**" wildcard. ' +
-        'They must be immediately preceeded and followed by a slash as in "/**/", or come at the start or end.'));
+    throw new Error(
+      getConfigFilePropertyError(
+        configFile,
+        propertyName,
+        `"${originalPath}" contains an invalid "**" wildcard. ` +
+          `They must be immediately preceeded and followed by a slash as in "/**/", or come at the start or end.`
+      )
+    );
   }
 
   // Check for other regex characters that we don't support.
   // Output a warning so the user knows, but otherwise continue normally.
   if (path.match(filterPatternCharactersRegex)) {
-    logger.warning(getConfigFilePropertyError(
-      configFile,
-      propertyName,
-      '"' + originalPath + '" contains an unsupported character. ' +
-        'The filter pattern characters ?, +, [, ], ! are not supported and will be matched literally.'));
+    logger.warning(
+      getConfigFilePropertyError(
+        configFile,
+        propertyName,
+        `"${originalPath}" contains an unsupported character. ` +
+          `The filter pattern characters ?, +, [, ], ! are not supported and will be matched literally.`
+      )
+    );
   }
 
   // Ban any uses of backslash for now.
   // This may not play nicely with project layouts.
   // This restriction can be lifted later if we determine they are ok.
-  if (path.indexOf('\\') !== -1) {
-    throw new Error(getConfigFilePropertyError(
-      configFile,
-      propertyName,
-      '"' + originalPath + '" contains an "\\" character. These are not allowed in filters. ' +
-        'If running on windows we recommend using "/" instead for path filters.'));
+  if (path.indexOf("\\") !== -1) {
+    throw new Error(
+      getConfigFilePropertyError(
+        configFile,
+        propertyName,
+        `"${originalPath}" contains an "\\" character. These are not allowed in filters. ` +
+          `If running on windows we recommend using "/" instead for path filters.`
+      )
+    );
   }
 
   return path;
@@ -368,76 +434,120 @@ export function validateAndSanitisePath(
 // the property was in a workflow file, not a config file
 
 export function getNameInvalid(configFile: string): string {
-  return getConfigFilePropertyError(configFile, NAME_PROPERTY, 'must be a non-empty string');
+  return getConfigFilePropertyError(
+    configFile,
+    NAME_PROPERTY,
+    "must be a non-empty string"
+  );
 }
 
 export function getDisableDefaultQueriesInvalid(configFile: string): string {
-  return getConfigFilePropertyError(configFile, DISABLE_DEFAULT_QUERIES_PROPERTY, 'must be a boolean');
+  return getConfigFilePropertyError(
+    configFile,
+    DISABLE_DEFAULT_QUERIES_PROPERTY,
+    "must be a boolean"
+  );
 }
 
 export function getQueriesInvalid(configFile: string): string {
-  return getConfigFilePropertyError(configFile, QUERIES_PROPERTY, 'must be an array');
-}
-
-export function getQueryUsesInvalid(configFile: string | undefined, queryUses?: string): string {
   return getConfigFilePropertyError(
     configFile,
-    QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
-    'must be a built-in suite (' + builtinSuites.join(' or ') +
-    '), a relative path, or be of the form "owner/repo[/path]@ref"' +
-    (queryUses !== undefined ? '\n Found: ' + queryUses : ''));
+    QUERIES_PROPERTY,
+    "must be an array"
+  );
+}
+
+export function getQueryUsesInvalid(
+  configFile: string | undefined,
+  queryUses?: string
+): string {
+  return getConfigFilePropertyError(
+    configFile,
+    `${QUERIES_PROPERTY}.${QUERIES_USES_PROPERTY}`,
+    `must be a built-in suite (${builtinSuites.join(
+      " or "
+    )}), a relative path, or be of the form "owner/repo[/path]@ref"${
+      queryUses !== undefined ? `\n Found: ${queryUses}` : ""
+    }`
+  );
 }
 
 export function getPathsIgnoreInvalid(configFile: string): string {
-  return getConfigFilePropertyError(configFile, PATHS_IGNORE_PROPERTY, 'must be an array of non-empty strings');
+  return getConfigFilePropertyError(
+    configFile,
+    PATHS_IGNORE_PROPERTY,
+    "must be an array of non-empty strings"
+  );
 }
 
 export function getPathsInvalid(configFile: string): string {
-  return getConfigFilePropertyError(configFile, PATHS_PROPERTY, 'must be an array of non-empty strings');
-}
-
-export function getLocalPathOutsideOfRepository(configFile: string | undefined, localPath: string): string {
   return getConfigFilePropertyError(
     configFile,
-    QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
-    'is invalid as the local path "' + localPath + '" is outside of the repository');
+    PATHS_PROPERTY,
+    "must be an array of non-empty strings"
+  );
 }
 
-export function getLocalPathDoesNotExist(configFile: string | undefined, localPath: string): string {
+export function getLocalPathOutsideOfRepository(
+  configFile: string | undefined,
+  localPath: string
+): string {
   return getConfigFilePropertyError(
     configFile,
-    QUERIES_PROPERTY + '.' + QUERIES_USES_PROPERTY,
-    'is invalid as the local path "' + localPath + '" does not exist in the repository');
+    `${QUERIES_PROPERTY}.${QUERIES_USES_PROPERTY}`,
+    `is invalid as the local path "${localPath}" is outside of the repository`
+  );
 }
 
-export function getConfigFileOutsideWorkspaceErrorMessage(configFile: string): string {
-  return 'The configuration file "' + configFile + '" is outside of the workspace';
+export function getLocalPathDoesNotExist(
+  configFile: string | undefined,
+  localPath: string
+): string {
+  return getConfigFilePropertyError(
+    configFile,
+    `${QUERIES_PROPERTY}.${QUERIES_USES_PROPERTY}`,
+    `is invalid as the local path "${localPath}" does not exist in the repository`
+  );
 }
 
-export function getConfigFileDoesNotExistErrorMessage(configFile: string): string {
-  return 'The configuration file "' + configFile + '" does not exist';
+export function getConfigFileOutsideWorkspaceErrorMessage(
+  configFile: string
+): string {
+  return `The configuration file "${configFile}" is outside of the workspace`;
 }
 
-export function getConfigFileRepoFormatInvalidMessage(configFile: string): string {
-  let error = 'The configuration file "' + configFile + '" is not a supported remote file reference.';
-  error += ' Expected format <owner>/<repository>/<file-path>@<ref>';
+export function getConfigFileDoesNotExistErrorMessage(
+  configFile: string
+): string {
+  return `The configuration file "${configFile}" does not exist`;
+}
+
+export function getConfigFileRepoFormatInvalidMessage(
+  configFile: string
+): string {
+  let error = `The configuration file "${configFile}" is not a supported remote file reference.`;
+  error += " Expected format <owner>/<repository>/<file-path>@<ref>";
 
   return error;
 }
 
 export function getConfigFileFormatInvalidMessage(configFile: string): string {
-  return 'The configuration file "' + configFile + '" could not be read';
+  return `The configuration file "${configFile}" could not be read`;
 }
 
 export function getConfigFileDirectoryGivenMessage(configFile: string): string {
-  return 'The configuration file "' + configFile + '" looks like a directory, not a file';
+  return `The configuration file "${configFile}" looks like a directory, not a file`;
 }
 
-function getConfigFilePropertyError(configFile: string | undefined, property: string, error: string): string {
+function getConfigFilePropertyError(
+  configFile: string | undefined,
+  property: string,
+  error: string
+): string {
   if (configFile === undefined) {
-    return 'The workflow property "' + property + '" is invalid: ' + error;
+    return `The workflow property "${property}" is invalid: ${error}`;
   } else {
-    return 'The configuration file "' + configFile + '" is invalid: property "' + property + '" ' + error;
+    return `The configuration file "${configFile}" is invalid: property "${property}" ${error}`;
   }
 }
 
@@ -449,13 +559,13 @@ async function addQueriesFromWorkflow(
   tempDir: string,
   checkoutPath: string,
   githubUrl: string,
-  logger: Logger) {
-
+  logger: Logger
+) {
   queriesInput = queriesInput.trim();
   // "+" means "don't override config file" - see shouldAddConfigFileQueries
-  queriesInput = queriesInput.replace(/^\+/, '');
+  queriesInput = queriesInput.replace(/^\+/, "");
 
-  for (const query of queriesInput.split(',')) {
+  for (const query of queriesInput.split(",")) {
     await parseQueryUses(
       languages,
       codeQL,
@@ -464,7 +574,8 @@ async function addQueriesFromWorkflow(
       tempDir,
       checkoutPath,
       githubUrl,
-      logger);
+      logger
+    );
   }
 }
 
@@ -474,7 +585,7 @@ async function addQueriesFromWorkflow(
 // should instead be added in addition
 function shouldAddConfigFileQueries(queriesInput: string | undefined): boolean {
   if (queriesInput) {
-    return queriesInput.trimStart().substr(0, 1) === '+';
+    return queriesInput.trimStart().substr(0, 1) === "+";
   }
 
   return true;
@@ -504,12 +615,13 @@ export async function getDefaultConfig(
       tempDir,
       checkoutPath,
       githubUrl,
-      logger);
+      logger
+    );
   }
 
   return {
-    languages: languages,
-    queries: queries,
+    languages,
+    queries,
     pathsIgnore: [],
     paths: [],
     originalUserInput: {},
@@ -532,8 +644,8 @@ async function loadConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
-  logger: Logger): Promise<Config> {
-
+  logger: Logger
+): Promise<Config> {
   let parsedYAML: UserConfig;
 
   if (isLocal(configFile)) {
@@ -541,10 +653,7 @@ async function loadConfig(
     configFile = path.resolve(checkoutPath, configFile);
     parsedYAML = getLocalConfig(configFile, checkoutPath);
   } else {
-    parsedYAML = await getRemoteConfig(
-      configFile,
-      githubAuth,
-      githubUrl);
+    parsedYAML = await getRemoteConfig(configFile, githubAuth, githubUrl);
   }
 
   // Validate that the 'name' property is syntactically correct,
@@ -586,14 +695,21 @@ async function loadConfig(
       tempDir,
       checkoutPath,
       githubUrl,
-      logger);
+      logger
+    );
   }
-  if (shouldAddConfigFileQueries(queriesInput) && QUERIES_PROPERTY in parsedYAML) {
+  if (
+    shouldAddConfigFileQueries(queriesInput) &&
+    QUERIES_PROPERTY in parsedYAML
+  ) {
     if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
       throw new Error(getQueriesInvalid(configFile));
     }
     for (const query of parsedYAML[QUERIES_PROPERTY]!) {
-      if (!(QUERIES_USES_PROPERTY in query) || typeof query[QUERIES_USES_PROPERTY] !== "string") {
+      if (
+        !(QUERIES_USES_PROPERTY in query) ||
+        typeof query[QUERIES_USES_PROPERTY] !== "string"
+      ) {
         throw new Error(getQueryUsesInvalid(configFile));
       }
       await parseQueryUses(
@@ -605,7 +721,8 @@ async function loadConfig(
         checkoutPath,
         githubUrl,
         logger,
-        configFile);
+        configFile
+      );
     }
   }
 
@@ -613,11 +730,13 @@ async function loadConfig(
     if (!(parsedYAML[PATHS_IGNORE_PROPERTY] instanceof Array)) {
       throw new Error(getPathsIgnoreInvalid(configFile));
     }
-    parsedYAML[PATHS_IGNORE_PROPERTY]!.forEach(path => {
-      if (typeof path !== "string" || path === '') {
+    parsedYAML[PATHS_IGNORE_PROPERTY]!.forEach((path) => {
+      if (typeof path !== "string" || path === "") {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
-      pathsIgnore.push(validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile, logger));
+      pathsIgnore.push(
+        validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile, logger)
+      );
     });
   }
 
@@ -625,11 +744,13 @@ async function loadConfig(
     if (!(parsedYAML[PATHS_PROPERTY] instanceof Array)) {
       throw new Error(getPathsInvalid(configFile));
     }
-    parsedYAML[PATHS_PROPERTY]!.forEach(path => {
-      if (typeof path !== "string" || path === '') {
+    parsedYAML[PATHS_PROPERTY]!.forEach((path) => {
+      if (typeof path !== "string" || path === "") {
         throw new Error(getPathsInvalid(configFile));
       }
-      paths.push(validateAndSanitisePath(path, PATHS_PROPERTY, configFile, logger));
+      paths.push(
+        validateAndSanitisePath(path, PATHS_PROPERTY, configFile, logger)
+      );
     });
   }
 
@@ -637,8 +758,10 @@ async function loadConfig(
   // it is a user configuration error.
   for (const language of languages) {
     if (queries[language] === undefined || queries[language].length === 0) {
-      throw new Error(`Did not detect any queries to run for ${language}. ` +
-          "Please make sure that the default queries are enabled, or you are specifying queries to run.");
+      throw new Error(
+        `Did not detect any queries to run for ${language}. ` +
+          "Please make sure that the default queries are enabled, or you are specifying queries to run."
+      );
     }
   }
 
@@ -670,13 +793,13 @@ export async function initConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
-  logger: Logger): Promise<Config> {
-
+  logger: Logger
+): Promise<Config> {
   let config: Config;
 
   // If no config file was provided create an empty one
   if (!configFile) {
-    logger.debug('No configuration file was provided');
+    logger.debug("No configuration file was provided");
     config = await getDefaultConfig(
       languages,
       queriesInput,
@@ -685,7 +808,8 @@ export async function initConfig(
       codeQL,
       checkoutPath,
       githubUrl,
-      logger);
+      logger
+    );
   } else {
     config = await loadConfig(
       languages,
@@ -697,7 +821,8 @@ export async function initConfig(
       checkoutPath,
       githubAuth,
       githubUrl,
-      logger);
+      logger
+    );
   }
 
   // Save the config so we can easily access it again in the future
@@ -711,7 +836,7 @@ function isLocal(configPath: string): boolean {
     return true;
   }
 
-  return (configPath.indexOf("@") === -1);
+  return configPath.indexOf("@") === -1;
 }
 
 function getLocalConfig(configFile: string, checkoutPath: string): UserConfig {
@@ -725,28 +850,32 @@ function getLocalConfig(configFile: string, checkoutPath: string): UserConfig {
     throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
   }
 
-  return yaml.safeLoad(fs.readFileSync(configFile, 'utf8'));
+  return yaml.safeLoad(fs.readFileSync(configFile, "utf8"));
 }
 
 async function getRemoteConfig(
   configFile: string,
   githubAuth: string,
-  githubUrl: string): Promise<UserConfig> {
-
+  githubUrl: string
+): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
-  const format = new RegExp('(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)');
+  const format = new RegExp(
+    "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)"
+  );
   const pieces = format.exec(configFile);
   // 5 = 4 groups + the whole expression
   if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.getApiClient(githubAuth, githubUrl, true).repos.getContents({
-    owner: pieces.groups.owner,
-    repo: pieces.groups.repo,
-    path: pieces.groups.path,
-    ref: pieces.groups.ref,
-  });
+  const response = await api
+    .getApiClient(githubAuth, githubUrl, true)
+    .repos.getContents({
+      owner: pieces.groups.owner,
+      repo: pieces.groups.repo,
+      path: pieces.groups.path,
+      ref: pieces.groups.ref,
+    });
 
   let fileContents: string;
   if ("content" in response.data && response.data.content !== undefined) {
@@ -757,14 +886,14 @@ async function getRemoteConfig(
     throw new Error(getConfigFileFormatInvalidMessage(configFile));
   }
 
-  return yaml.safeLoad(Buffer.from(fileContents, 'base64').toString('binary'));
+  return yaml.safeLoad(Buffer.from(fileContents, "base64").toString("binary"));
 }
 
 /**
  * Get the file path where the parsed config will be stored.
  */
 export function getPathToParsedConfigFile(tempDir: string): string {
-  return path.join(tempDir, 'config');
+  return path.join(tempDir, "config");
 }
 
 /**
@@ -774,8 +903,8 @@ async function saveConfig(config: Config, logger: Logger) {
   const configString = JSON.stringify(config);
   const configFile = getPathToParsedConfigFile(config.tempDir);
   fs.mkdirSync(path.dirname(configFile), { recursive: true });
-  fs.writeFileSync(configFile, configString, 'utf8');
-  logger.debug('Saved config:');
+  fs.writeFileSync(configFile, configString, "utf8");
+  logger.debug("Saved config:");
   logger.debug(configString);
 }
 
@@ -783,13 +912,16 @@ async function saveConfig(config: Config, logger: Logger) {
  * Get the config that has been saved to the given temp dir.
  * If the config could not be found then returns undefined.
  */
-export async function getConfig(tempDir: string, logger: Logger): Promise<Config | undefined> {
+export async function getConfig(
+  tempDir: string,
+  logger: Logger
+): Promise<Config | undefined> {
   const configFile = getPathToParsedConfigFile(tempDir);
   if (!fs.existsSync(configFile)) {
     return undefined;
   }
-  const configString = fs.readFileSync(configFile, 'utf8');
-  logger.debug('Loaded config:');
+  const configString = fs.readFileSync(configFile, "utf8");
+  logger.debug("Loaded config:");
   logger.debug(configString);
   return JSON.parse(configString);
 }

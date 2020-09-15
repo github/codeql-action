@@ -6,20 +6,20 @@ import { RepositoryNwo } from './repository';
 
 // All the languages supported by CodeQL
 export enum Language {
-  csharp = 'csharp',
-  cpp = 'cpp',
-  go = 'go',
-  java = 'java',
-  javascript = 'javascript',
-  python = 'python',
+  csharp = "csharp",
+  cpp = "cpp",
+  go = "go",
+  java = "java",
+  javascript = "javascript",
+  python = "python",
 }
 
 // Additional names for languages
-const LANGUAGE_ALIASES: {[lang: string]: Language} = {
-  'c': Language.cpp,
-  'c++': Language.cpp,
-  'c#': Language.csharp,
-  'typescript': Language.javascript,
+const LANGUAGE_ALIASES: { [lang: string]: Language } = {
+  c: Language.cpp,
+  "c++": Language.cpp,
+  "c#": Language.csharp,
+  typescript: Language.javascript,
 };
 
 // Translate from user input or GitHub's API names for languages to CodeQL's names for languages
@@ -40,9 +40,8 @@ export function parseLanguage(language: string): Language | undefined {
   return undefined;
 }
 
-
 export function isTracedLanguage(language: Language): boolean {
-  return ['cpp', 'java', 'csharp'].includes(language);
+  return ["cpp", "java", "csharp"].includes(language);
 }
 
 export function isScannedLanguage(language: Language): boolean {

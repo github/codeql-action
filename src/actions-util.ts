@@ -6,6 +6,29 @@ import * as sharedEnv from "./shared-environment";
 import { isLocalRun, GITHUB_DOTCOM_URL } from "./util";
 
 /**
+ * Wrapper around core.getInput for inputs that always have a value.
+ * Also see getOptionalInput.
+ *
+ * This allows us to get stronger type checking of required/optional inputs
+ * and make behaviour more consistent between actions and the runner.
+ */
+export function getRequiredInput(name: string): string {
+  return core.getInput(name, { required: true });
+}
+
+/**
+ * Wrapper around core.getInput that converts empty inputs to undefined.
+ * Also see getRequiredInput.
+ *
+ * This allows us to get stronger type checking of required/optional inputs
+ * and make behaviour more consistent between actions and the runner.
+ */
+export function getOptionalInput(name: string): string | undefined {
+  const value = core.getInput(name);
+  return value.length > 0 ? value : undefined;
+}
+
+/**
  * Get an environment parameter, but throw an error if it is not set.
  */
 export function getRequiredEnvParam(paramName: string): string {

@@ -20,12 +20,13 @@ test("getToolNames", (t) => {
 test("getMemoryFlag() should return the correct --ram flag", (t) => {
   const totalMem = Math.floor(os.totalmem() / (1024 * 1024));
 
-  const tests = {
-    "": `--ram=${totalMem - 256}`,
-    "512": "--ram=512",
-  };
+  const tests = [
+    [undefined, `--ram=${totalMem - 256}`],
+    ["", `--ram=${totalMem - 256}`],
+    ["512", "--ram=512"],
+  ];
 
-  for (const [input, expectedFlag] of Object.entries(tests)) {
+  for (const [input, expectedFlag] of tests) {
     const flag = util.getMemoryFlag(input);
     t.deepEqual(flag, expectedFlag);
   }
@@ -50,14 +51,16 @@ test("getAddSnippetsFlag() should return the correct flag", (t) => {
 test("getThreadsFlag() should return the correct --threads flag", (t) => {
   const numCpus = os.cpus().length;
 
-  const tests = {
-    "0": "--threads=0",
-    "1": "--threads=1",
-    [`${numCpus + 1}`]: `--threads=${numCpus}`,
-    [`${-numCpus - 1}`]: `--threads=${-numCpus}`,
-  };
+  const tests = [
+    ["0", "--threads=0"],
+    ["1", "--threads=1"],
+    [undefined, `--threads=${numCpus}`],
+    ["", `--threads=${numCpus}`],
+    [`${numCpus + 1}`, `--threads=${numCpus}`],
+    [`${-numCpus - 1}`, `--threads=${-numCpus}`],
+  ];
 
-  for (const [input, expectedFlag] of Object.entries(tests)) {
+  for (const [input, expectedFlag] of tests) {
     const flag = util.getThreadsFlag(input, getRunnerLogger(true));
     t.deepEqual(flag, expectedFlag);
   }

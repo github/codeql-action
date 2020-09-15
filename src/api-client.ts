@@ -1,9 +1,8 @@
-import * as core from "@actions/core";
 import * as github from "@actions/github";
 import consoleLogLevel from "console-log-level";
 import * as path from "path";
 
-import { getRequiredEnvParam } from "./actions-util";
+import { getRequiredEnvParam, getRequiredInput } from "./actions-util";
 import { isLocalRun } from "./util";
 
 export const getApiClient = function (
@@ -41,7 +40,7 @@ function getApiUrl(githubUrl: string): string {
 // and called only from the action entrypoints.
 export function getActionsApiClient(allowLocalRun = false) {
   return getApiClient(
-    core.getInput("token"),
+    getRequiredInput("token"),
     getRequiredEnvParam("GITHUB_SERVER_URL"),
     allowLocalRun
   );

@@ -261,7 +261,7 @@ export async function createStatusReportBase(
   if (status === "success" || status === "failure" || status === "aborted") {
     statusReport.completed_at = new Date().toISOString();
   }
-  const matrix: string | undefined = core.getInput("matrix");
+  const matrix = getRequiredInput("matrix");
   if (matrix) {
     statusReport.matrix_vars = matrix;
   }

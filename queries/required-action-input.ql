@@ -87,6 +87,10 @@ class CoreGetInputMethodCallExpr extends MethodCallExpr {
 
 from ActionDeclaration action, CoreGetInputMethodCallExpr getInputCall, string inputName, string alternateFunction
 where action.getAnInput() = inputName
+  // We don't want to create an alert for the users core.getInput in the getRequiredInput
+  // and getOptionalInput functions themselves, and this check here does that in a
+  // roundabout way by checking the parameter is a string literal. This should be enough
+  // and hopefully won't discount any real calls to core.getInput, but is worth noting here.
   and getInputCall.getInputName() = inputName
   and ((action.inputAlwaysHasValue(inputName) and alternateFunction = "getRequiredInput")
     or (not action.inputAlwaysHasValue(inputName) and alternateFunction = "geOptionalInput"))

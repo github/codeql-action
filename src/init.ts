@@ -1,14 +1,14 @@
-import * as toolrunnner from '@actions/exec/lib/toolrunner';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as fs from "fs";
+import * as path from "path";
 
-import * as analysisPaths from './analysis-paths';
-import { CodeQL, setupCodeQL } from './codeql';
-import * as configUtils from './config-utils';
-import { Logger } from './logging';
-import { RepositoryNwo } from './repository';
-import { getCombinedTracerConfig, TracerConfig } from './tracer-config';
-import * as util from './util';
+import * as analysisPaths from "./analysis-paths";
+import { CodeQL, setupCodeQL } from "./codeql";
+import * as configUtils from "./config-utils";
+import { Logger } from "./logging";
+import { RepositoryNwo } from "./repository";
+import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
+import * as util from "./util";
 
 export async function initCodeQL(
   codeqlURL: string | undefined,
@@ -17,9 +17,9 @@ export async function initCodeQL(
   tempDir: string,
   toolsDir: string,
   mode: util.Mode,
-  logger: Logger): Promise<CodeQL> {
-
-  logger.startGroup('Setup CodeQL tools');
+  logger: Logger
+): Promise<CodeQL> {
+  logger.startGroup("Setup CodeQL tools");
   const codeql = await setupCodeQL(
     codeqlURL,
     githubAuth,
@@ -27,7 +27,8 @@ export async function initCodeQL(
     tempDir,
     toolsDir,
     mode,
-    logger);
+    logger
+  );
   await codeql.printVersion();
   logger.endGroup();
   return codeql;
@@ -44,9 +45,9 @@ export async function initConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
-  logger: Logger): Promise<configUtils.Config> {
-
-  logger.startGroup('Load language configuration');
+  logger: Logger
+): Promise<configUtils.Config> {
+  logger.startGroup("Load language configuration");
   const config = await configUtils.initConfig(
     languagesInput,
     queriesInput,
@@ -58,7 +59,8 @@ export async function initConfig(
     checkoutPath,
     githubAuth,
     githubUrl,
-    logger);
+    logger
+  );
   analysisPaths.printPathFiltersWarning(config, logger);
   logger.endGroup();
   return config;
@@ -66,16 +68,20 @@ export async function initConfig(
 
 export async function runInit(
   codeql: CodeQL,
-  config: configUtils.Config): Promise<TracerConfig | undefined> {
-
+  config: configUtils.Config
+): Promise<TracerConfig | undefined> {
   const sourceRoot = path.resolve();
 
   fs.mkdirSync(util.getCodeQLDatabasesDir(config.tempDir), { recursive: true });
 
   // TODO: replace this code once CodeQL supports multi-language tracing
-  for (let language of config.languages) {
+  for (const language of config.languages) {
     // Init language database
-    await codeql.databaseInit(util.getCodeQLDatabasePath(config.tempDir, language), language, sourceRoot);
+    await codeql.databaseInit(
+      util.getCodeQLDatabasePath(config.tempDir, language),
+      language,
+      sourceRoot
+    );
   }
 
   return await getCombinedTracerConfig(config, codeql);
@@ -91,8 +97,8 @@ export async function injectWindowsTracer(
   processLevel: number | undefined,
   config: configUtils.Config,
   codeql: CodeQL,
-  tracerConfig: TracerConfig) {
-
+  tracerConfig: TracerConfig
+) {
   let script: string;
   if (processName !== undefined) {
     script = `
@@ -155,15 +161,23 @@ export async function injectWindowsTracer(
       Invoke-Expression "&$tracer --inject=$id"`;
   }
 
-  const injectTracerPath = path.join(config.tempDir, 'inject-tracer.ps1');
+  const injectTracerPath = path.join(config.tempDir, "inject-tracer.ps1");
   fs.writeFileSync(injectTracerPath, script);
 
   await new toolrunnner.ToolRunner(
-    'powershell',
+    "powershell",
     [
-      '-ExecutionPolicy', 'Bypass',
-      '-file', injectTracerPath,
-      path.resolve(path.dirname(codeql.getPath()), 'tools', 'win64', 'tracer.exe'),
+      "-ExecutionPolicy",
+      "Bypass",
+      "-file",
+      injectTracerPath,
+      path.resolve(
+        path.dirname(codeql.getPath()),
+        "tools",
+        "win64",
+        "tracer.exe"
+      ),
     ],
-    { env: { 'ODASA_TRACER_CONFIGURATION': tracerConfig.spec } }).exec();
+    { env: { ODASA_TRACER_CONFIGURATION: tracerConfig.spec } }
+  ).exec();
 }

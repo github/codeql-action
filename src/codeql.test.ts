@@ -69,6 +69,8 @@ test("download and populate codeql bundle cache", async (t) => {
     }
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
+    // We should now have 4 cached versions: e.g.,
+    // 20200601, 20200601-linux64-cpp, 20200610, 20200610-linux64-cpp
     t.is(cachedVersions.length, 4);
   });
 });

@@ -164,13 +164,12 @@ export async function getCodeQLBundleDownloadURL(
   );
   for (const downloadSource of uniqueDownloadSources) {
     const [apiURL, repository] = downloadSource;
-    // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
+    // If we've reached the final case, short-circuit the API check since we know the bundles exist and are public.
     if (
       apiURL === util.GITHUB_DOTCOM_URL &&
-      repository === CODEQL_DEFAULT_ACTION_REPOSITORY &&
-      bundleNames[0] === CODEQL_BUNDLE_NAME
+      repository === CODEQL_DEFAULT_ACTION_REPOSITORY
     ) {
-      break;
+      return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${bundleNames[0]}`;
     }
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {

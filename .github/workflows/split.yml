@@ -1,3 +1,16 @@
+#
+# Split the CodeQL Bundle into language-platform bundles
+#
+# Instructions:
+#  1. Upload the new codeql-bundle (codeql-bundle.tar.gz) as an asset of the
+#     release (codeql-bundle-20200826)
+#  2. Take note of the CLI Release used by the bundle (e.g., v2.2.5)
+#  3. Manually launch this workflow file (via the Actions UI) specifying
+#     - The CLI Release (e.g., v2.2.5)
+#     - The release tag (codeql-bundle-20200826)
+#  4. If everything succeeds you should see 21 new assets.
+#
+
 name: Split Bundle
 
 on:

@@ -125,6 +125,8 @@ jobs:
         TEST_MODE: true
 
   single-language-bundles:
+    # These are 21 jobs, run them only if the earlier multi-language job suceeded
+    needs: multi-language-repo_test-autodetect-languages
     strategy:
       fail-fast: false
       matrix:
@@ -132,14 +134,6 @@ jobs:
         language: ["none", "cpp", "csharp", "go", "java", "javascript", "python"]
     runs-on: ${{ matrix.os }}
     steps:
-      # Translate OS
-      - run: echo "::set-env name=OS::linux64"
-        if: matrix.os == 'ubuntu-latest'
-      - run: echo "::set-env name=OS::win64"
-        if: matrix.os == 'windows-latest'
-      - run: echo "::set-env name=OS::osx64"
-        if: matrix.os == 'macos-latest'
-
       - uses: actions/checkout@v2
       - name: Move codeql-action
         shell: bash
@@ -148,20 +142,29 @@ jobs:
             mv * .github ../action/
             mv ../action/tests/multi-language-repo/{*,.github} .
 
-      - uses: ./../action/init
+      # The next 2 steps are mutually exclusive.
+      # In one case, we setup codeql for a single language.
+      # In the other, we setup codeql for a platform
+      - name: Test language-specific bundle
+        uses: ./../action/init
         if: matrix.language != 'none'
         with:
           languages: ${{ matrix.language }}
-
-      - name: Test platform-specific bundle
+      - name: Test platform-secific bundle
         uses: ./../action/init
         if: matrix.language == 'none'
+
       - name: Build code
         shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         env:
           TEST_MODE: true
+
+      - name: Check ToolCache (language-specific bundle)
+        if: matrix.language != 'none'
+        shell: bash
+        run: test -n "$(find  -maxdepth 1 -name "codeql-bundle-0.0.0-*.${OS}-${{matrix.language}} -print -quit)"
 
   test-proxy:
     runs-on: ubuntu-latest

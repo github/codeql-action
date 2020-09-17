@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 
+import * as actionsUtil from "./actions-util";
 import { AnalysisStatusReport, runAnalyze } from "./analyze";
 import { getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
@@ -7,7 +8,7 @@ import { parseRepositoryNwo } from "./repository";
 import * as util from "./util";
 
 interface FinishStatusReport
-  extends util.StatusReportBase,
+  extends actionsUtil.StatusReportBase,
     AnalysisStatusReport {}
 
 async function sendStatusReport(
@@ -19,7 +20,7 @@ async function sendStatusReport(
     stats?.analyze_failure_language !== undefined || error !== undefined
       ? "failure"
       : "success";
-  const statusReportBase = await util.createStatusReportBase(
+  const statusReportBase = await actionsUtil.createStatusReportBase(
     "finish",
     status,
     startedAt,
@@ -30,17 +31,21 @@ async function sendStatusReport(
     ...statusReportBase,
     ...(stats || {}),
   };
-  await util.sendStatusReport(statusReport);
+  await actionsUtil.sendStatusReport(statusReport);
 }
 
 async function run() {
   const startedAt = new Date();
   let stats: AnalysisStatusReport | undefined = undefined;
   try {
-    util.prepareLocalRunEnvironment();
+    actionsUtil.prepareLocalRunEnvironment();
     if (
-      !(await util.sendStatusReport(
-        await util.createStatusReportBase("finish", "starting", startedAt),
+      !(await actionsUtil.sendStatusReport(
+        await actionsUtil.createStatusReportBase(
+          "finish",
+          "starting",
+          startedAt
+        ),
         true
       ))
     ) {
@@ -48,7 +53,7 @@ async function run() {
     }
     const logger = getActionsLogger();
     const config = await getConfig(
-      util.getRequiredEnvParam("RUNNER_TEMP"),
+      actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       logger
     );
     if (config === undefined) {
@@ -57,22 +62,22 @@ async function run() {
       );
     }
     stats = await runAnalyze(
-      parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-      await util.getCommitOid(),
-      util.getRef(),
-      await util.getAnalysisKey(),
-      util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-      util.getWorkflowRunID(),
-      core.getInput("checkout_path"),
-      core.getInput("matrix"),
-      core.getInput("token"),
-      util.getRequiredEnvParam("GITHUB_SERVER_URL"),
-      core.getInput("upload") === "true",
+      parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
+      await actionsUtil.getCommitOid(),
+      actionsUtil.getRef(),
+      await actionsUtil.getAnalysisKey(),
+      actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
+      actionsUtil.getWorkflowRunID(),
+      actionsUtil.getRequiredInput("checkout_path"),
+      actionsUtil.getRequiredInput("matrix"),
+      actionsUtil.getRequiredInput("token"),
+      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      actionsUtil.getRequiredInput("upload") === "true",
       "actions",
-      core.getInput("output"),
-      util.getMemoryFlag(core.getInput("ram")),
-      util.getAddSnippetsFlag(core.getInput("add-snippets")),
-      util.getThreadsFlag(core.getInput("threads"), logger),
+      actionsUtil.getRequiredInput("output"),
+      util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
+      util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
+      util.getThreadsFlag(actionsUtil.getOptionalInput("threads"), logger),
       config,
       logger
     );

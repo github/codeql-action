@@ -1,12 +1,12 @@
 import * as core from "@actions/core";
 
+import * as actionsUtil from "./actions-util";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import * as config_utils from "./config-utils";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
-import * as util from "./util";
 
-interface AutobuildStatusReport extends util.StatusReportBase {
+interface AutobuildStatusReport extends actionsUtil.StatusReportBase {
   // Comma-separated set of languages being autobuilt
   autobuild_languages: string;
   // Language that failed autobuilding (or undefined if all languages succeeded).
@@ -23,7 +23,7 @@ async function sendCompletedStatusReport(
     failingLanguage !== undefined || cause !== undefined
       ? "failure"
       : "success";
-  const statusReportBase = await util.createStatusReportBase(
+  const statusReportBase = await actionsUtil.createStatusReportBase(
     "autobuild",
     status,
     startedAt,
@@ -35,7 +35,7 @@ async function sendCompletedStatusReport(
     autobuild_languages: allLanguages.join(","),
     autobuild_failure: failingLanguage,
   };
-  await util.sendStatusReport(statusReport);
+  await actionsUtil.sendStatusReport(statusReport);
 }
 
 async function run() {
@@ -43,10 +43,14 @@ async function run() {
   const startedAt = new Date();
   let language: Language | undefined = undefined;
   try {
-    util.prepareLocalRunEnvironment();
+    actionsUtil.prepareLocalRunEnvironment();
     if (
-      !(await util.sendStatusReport(
-        await util.createStatusReportBase("autobuild", "starting", startedAt),
+      !(await actionsUtil.sendStatusReport(
+        await actionsUtil.createStatusReportBase(
+          "autobuild",
+          "starting",
+          startedAt
+        ),
         true
       ))
     ) {
@@ -54,7 +58,7 @@ async function run() {
     }
 
     const config = await config_utils.getConfig(
-      util.getRequiredEnvParam("RUNNER_TEMP"),
+      actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       logger
     );
     if (config === undefined) {

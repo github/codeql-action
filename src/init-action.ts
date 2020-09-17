@@ -1,13 +1,13 @@
 import * as core from "@actions/core";
 
+import * as actionsUtil from "./actions-util";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import * as util from "./util";
 
-interface InitSuccessStatusReport extends util.StatusReportBase {
+interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   // Comma-separated list of languages that analysis was run for
   // This may be from the workflow file or may be calculated from repository contents
   languages: string;
@@ -27,14 +27,14 @@ async function sendSuccessStatusReport(
   startedAt: Date,
   config: configUtils.Config
 ) {
-  const statusReportBase = await util.createStatusReportBase(
+  const statusReportBase = await actionsUtil.createStatusReportBase(
     "init",
     "success",
     startedAt
   );
 
   const languages = config.languages.join(",");
-  const workflowLanguages = core.getInput("languages", { required: false });
+  const workflowLanguages = actionsUtil.getOptionalInput("languages");
   const paths = (config.originalUserInput.paths || []).join(",");
   const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
     ","
@@ -51,14 +51,14 @@ async function sendSuccessStatusReport(
   const statusReport: InitSuccessStatusReport = {
     ...statusReportBase,
     languages,
-    workflow_languages: workflowLanguages,
+    workflow_languages: workflowLanguages || "",
     paths,
     paths_ignore: pathsIgnore,
     disable_default_queries: disableDefaultQueries,
     queries,
   };
 
-  await util.sendStatusReport(statusReport);
+  await actionsUtil.sendStatusReport(statusReport);
 }
 
 async function run() {
@@ -68,10 +68,10 @@ async function run() {
   let codeql: CodeQL;
 
   try {
-    util.prepareLocalRunEnvironment();
+    actionsUtil.prepareLocalRunEnvironment();
     if (
-      !(await util.sendStatusReport(
-        await util.createStatusReportBase("init", "starting", startedAt),
+      !(await actionsUtil.sendStatusReport(
+        await actionsUtil.createStatusReportBase("init", "starting", startedAt),
         true
       ))
     ) {
@@ -79,32 +79,37 @@ async function run() {
     }
 
     codeql = await initCodeQL(
-      core.getInput("tools"),
-      core.getInput("token"),
-      util.getRequiredEnvParam("GITHUB_SERVER_URL"),
-      util.getRequiredEnvParam("RUNNER_TEMP"),
-      util.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
+      actionsUtil.getOptionalInput("tools"),
+      actionsUtil.getRequiredInput("token"),
+      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
+      actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       "actions",
       logger
     );
     config = await initConfig(
-      core.getInput("languages"),
-      core.getInput("queries"),
-      core.getInput("config-file"),
-      parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-      util.getRequiredEnvParam("RUNNER_TEMP"),
-      util.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
+      actionsUtil.getOptionalInput("languages"),
+      actionsUtil.getOptionalInput("queries"),
+      actionsUtil.getOptionalInput("config-file"),
+      parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
+      actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
+      actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
-      util.getRequiredEnvParam("GITHUB_WORKSPACE"),
-      core.getInput("token"),
-      util.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
+      actionsUtil.getRequiredInput("token"),
+      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
       logger
     );
   } catch (e) {
     core.setFailed(e.message);
     console.log(e);
-    await util.sendStatusReport(
-      await util.createStatusReportBase("init", "aborted", startedAt, e.message)
+    await actionsUtil.sendStatusReport(
+      await actionsUtil.createStatusReportBase(
+        "init",
+        "aborted",
+        startedAt,
+        e.message
+      )
     );
     return;
   }
@@ -142,8 +147,8 @@ async function run() {
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);
-    await util.sendStatusReport(
-      await util.createStatusReportBase(
+    await actionsUtil.sendStatusReport(
+      await actionsUtil.createStatusReportBase(
         "init",
         "failure",
         startedAt,

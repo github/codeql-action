@@ -1,26 +1,27 @@
-import test from 'ava';
-import * as fs from 'fs';
+import test from "ava";
+import * as fs from "fs";
 
-import { runQueries } from './analyze';
-import { setCodeQL } from './codeql';
-import { Config } from './config-utils';
-import { Language } from './languages';
-import { getRunnerLogger } from './logging';
-import { setupTests } from './testing-utils';
-import * as util from './util';
+import { runQueries } from "./analyze";
+import { setCodeQL } from "./codeql";
+import { Config } from "./config-utils";
+import { Language } from "./languages";
+import { getRunnerLogger } from "./logging";
+import { setupTests } from "./testing-utils";
+import * as util from "./util";
 
 setupTests(test);
 
 // Checks that the duration fields are populated for the correct language
 // and correct case of builtin or custom.
-test('status report fields', async t => {
-  return await util.withTmpDir(async tmpDir => {
+test("status report fields", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
     setCodeQL({
-      databaseAnalyze: async () => undefined
+      databaseAnalyze: async () => undefined,
     });
 
-    const memoryFlag = '';
-    const threadsFlag = '';
+    const memoryFlag = "";
+    const addSnippetsFlag = "";
+    const threadsFlag = "";
 
     for (const language of Object.values(Language)) {
       const config: Config = {
@@ -31,35 +32,45 @@ test('status report fields', async t => {
         originalUserInput: {},
         tempDir: tmpDir,
         toolCacheDir: tmpDir,
-        codeQLCmd: '',
+        codeQLCmd: "",
       };
-      fs.mkdirSync(util.getCodeQLDatabasePath(config.tempDir, language), { recursive: true });
+      fs.mkdirSync(util.getCodeQLDatabasePath(config.tempDir, language), {
+        recursive: true,
+      });
 
       config.queries[language] = {
-        builtin: ['foo.ql'],
+        builtin: ["foo.ql"],
         custom: [],
       };
       const builtinStatusReport = await runQueries(
         tmpDir,
         memoryFlag,
+        addSnippetsFlag,
         threadsFlag,
         config,
-        getRunnerLogger(true));
+        getRunnerLogger(true)
+      );
       t.deepEqual(Object.keys(builtinStatusReport).length, 1);
-      t.true(`analyze_builtin_queries_${language}_duration_ms` in builtinStatusReport);
+      t.true(
+        `analyze_builtin_queries_${language}_duration_ms` in builtinStatusReport
+      );
 
       config.queries[language] = {
         builtin: [],
-        custom: ['foo.ql'],
+        custom: ["foo.ql"],
       };
       const customStatusReport = await runQueries(
         tmpDir,
         memoryFlag,
+        addSnippetsFlag,
         threadsFlag,
         config,
-        getRunnerLogger(true));
+        getRunnerLogger(true)
+      );
       t.deepEqual(Object.keys(customStatusReport).length, 1);
-      t.true(`analyze_custom_queries_${language}_duration_ms` in customStatusReport);
+      t.true(
+        `analyze_custom_queries_${language}_duration_ms` in customStatusReport
+      );
     }
   });
 });

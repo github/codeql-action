@@ -1,31 +1,40 @@
-import {TestInterface} from 'ava';
-import sinon from 'sinon';
+import { TestInterface } from "ava";
+import sinon from "sinon";
 
-import * as CodeQL from './codeql';
+import * as CodeQL from "./codeql";
 
-type TestContext = {stdoutWrite: any, stderrWrite: any, testOutput: string, env: NodeJS.ProcessEnv};
+type TestContext = {
+  stdoutWrite: any;
+  stderrWrite: any;
+  testOutput: string;
+  env: NodeJS.ProcessEnv;
+};
 
 function wrapOutput(context: TestContext) {
   // Function signature taken from Socket.write.
   // Note there are two overloads:
   // write(buffer: Uint8Array | string, cb?: (err?: Error) => void): boolean;
   // write(str: Uint8Array | string, encoding?: string, cb?: (err?: Error) => void): boolean;
-  return (chunk: Uint8Array | string, encoding?: string, cb?: (err?: Error) => void): boolean => {
+  return (
+    chunk: Uint8Array | string,
+    encoding?: string,
+    cb?: (err?: Error) => void
+  ): boolean => {
     // Work out which method overload we are in
-    if (cb === undefined && typeof encoding === 'function') {
+    if (cb === undefined && typeof encoding === "function") {
       cb = encoding;
       encoding = undefined;
     }
 
     // Record the output
-    if (typeof chunk === 'string') {
+    if (typeof chunk === "string") {
       context.testOutput += chunk;
     } else {
-      context.testOutput += new TextDecoder(encoding || 'utf-8').decode(chunk);
+      context.testOutput += new TextDecoder(encoding || "utf-8").decode(chunk);
     }
 
     // Satisfy contract by calling callback when done
-    if (cb !== undefined && typeof cb === 'function') {
+    if (cb !== undefined && typeof cb === "function") {
       cb();
     }
 
@@ -36,7 +45,7 @@ function wrapOutput(context: TestContext) {
 export function setupTests(test: TestInterface<any>) {
   const typedTest = test as TestInterface<TestContext>;
 
-  typedTest.beforeEach(t => {
+  typedTest.beforeEach((t) => {
     // Set an empty CodeQL object so that all method calls will fail
     // unless the test explicitly sets one up.
     CodeQL.setCodeQL({});
@@ -57,7 +66,7 @@ export function setupTests(test: TestInterface<any>) {
     Object.assign(t.context.env, process.env);
   });
 
-  typedTest.afterEach.always(t => {
+  typedTest.afterEach.always((t) => {
     // Restore stdout and stderr
     // The captured output is only replayed if the test failed
     process.stdout.write = t.context.stdoutWrite;

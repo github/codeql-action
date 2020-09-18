@@ -1,58 +1,79 @@
-import * as core from '@actions/core';
+import * as core from "@actions/core";
 
-import { getActionsLogger } from './logging';
-import { parseRepositoryNwo } from './repository';
-import * as upload_lib from './upload-lib';
-import * as util from './util';
+import * as actionsUtil from "./actions-util";
+import { getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
+import * as upload_lib from "./upload-lib";
 
-interface UploadSarifStatusReport extends util.StatusReportBase, upload_lib.UploadStatusReport {}
+interface UploadSarifStatusReport
+  extends actionsUtil.StatusReportBase,
+    upload_lib.UploadStatusReport {}
 
-async function sendSuccessStatusReport(startedAt: Date, uploadStats: upload_lib.UploadStatusReport) {
-  const statusReportBase = await util.createStatusReportBase('upload-sarif', 'success', startedAt);
+async function sendSuccessStatusReport(
+  startedAt: Date,
+  uploadStats: upload_lib.UploadStatusReport
+) {
+  const statusReportBase = await actionsUtil.createStatusReportBase(
+    "upload-sarif",
+    "success",
+    startedAt
+  );
   const statusReport: UploadSarifStatusReport = {
     ...statusReportBase,
-    ... uploadStats,
+    ...uploadStats,
   };
-  await util.sendStatusReport(statusReport);
+  await actionsUtil.sendStatusReport(statusReport);
 }
 
 async function run() {
   const startedAt = new Date();
-  if (!await util.sendStatusReport(await util.createStatusReportBase('upload-sarif', 'starting', startedAt), true)) {
+  if (
+    !(await actionsUtil.sendStatusReport(
+      await actionsUtil.createStatusReportBase(
+        "upload-sarif",
+        "starting",
+        startedAt
+      ),
+      true
+    ))
+  ) {
     return;
   }
 
   try {
     const uploadStats = await upload_lib.upload(
-      core.getInput('sarif_file'),
-      parseRepositoryNwo(util.getRequiredEnvParam('GITHUB_REPOSITORY')),
-      await util.getCommitOid(),
-      util.getRef(),
-      await util.getAnalysisKey(),
-      util.getRequiredEnvParam('GITHUB_WORKFLOW'),
-      util.getWorkflowRunID(),
-      core.getInput('checkout_path'),
-      core.getInput('matrix'),
-      core.getInput('token'),
-      util.getRequiredEnvParam('GITHUB_SERVER_URL'),
-      'actions',
-      getActionsLogger());
+      actionsUtil.getRequiredInput("sarif_file"),
+      parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
+      await actionsUtil.getCommitOid(),
+      actionsUtil.getRef(),
+      await actionsUtil.getAnalysisKey(),
+      actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
+      actionsUtil.getWorkflowRunID(),
+      actionsUtil.getRequiredInput("checkout_path"),
+      actionsUtil.getRequiredInput("matrix"),
+      actionsUtil.getRequiredInput("token"),
+      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      "actions",
+      getActionsLogger()
+    );
     await sendSuccessStatusReport(startedAt, uploadStats);
-
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);
-    await util.sendStatusReport(await util.createStatusReportBase(
-      'upload-sarif',
-      'failure',
-      startedAt,
-      error.message,
-      error.stack));
+    await actionsUtil.sendStatusReport(
+      await actionsUtil.createStatusReportBase(
+        "upload-sarif",
+        "failure",
+        startedAt,
+        error.message,
+        error.stack
+      )
+    );
     return;
   }
 }
 
-run().catch(e => {
-  core.setFailed("codeql/upload-sarif action failed: " + e);
+run().catch((e) => {
+  core.setFailed(`codeql/upload-sarif action failed: ${e}`);
   console.log(e);
 });

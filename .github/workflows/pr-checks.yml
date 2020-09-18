@@ -1,6 +1,9 @@
 name: "PR checks"
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, v1]
+  pull_request:
 
 jobs:
   lint-js:
@@ -62,7 +65,7 @@ jobs:
           exit 1
         fi
         echo "Success: node_modules are up to date"
-        
+
   npm-test:
     strategy:
       matrix:

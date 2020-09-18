@@ -32,6 +32,24 @@ export interface UserConfig {
 }
 
 /**
+ * Lists of query files for each language.
+ * Will only contain .ql files and not other kinds of files,
+ * and all file paths will be absolute.
+ *
+ * The queries are split between ones from a builtin suite
+ * and custom queries from unknown locations. This allows us to treat
+ * them separately if we want to, for example to measure performance.
+ */
+type Queries = {
+  [language: string]: {
+    /** Queries from one of the builtin suites */
+    builtin: string[];
+    /** Custom queries, from a non-standard location */
+    custom: string[];
+  };
+};
+
+/**
  * Format of the parsed config file.
  */
 export interface Config {
@@ -41,10 +59,8 @@ export interface Config {
   languages: Language[];
   /**
    * Map from language to query files.
-   * Will only contain .ql files and not other kinds of files,
-   * and all file paths will be absolute.
    */
-  queries: { [language: string]: string[] };
+  queries: Queries;
   /**
    * List of paths to ignore from analysis.
    */
@@ -131,32 +147,44 @@ function validateQueries(resolvedQueries: ResolveQueriesOutput) {
 
 /**
  * Run 'codeql resolve queries' and add the results to resultMap
+ *
+ * If a checkout path is given then the queries are assumed to be custom queries
+ * and an error will be thrown if there is anything invalid about the queries.
+ * If a checkout path is not given then the queries are assumed to be builtin
+ * queries, and error checking will be suppressed.
  */
 async function runResolveQueries(
   codeQL: CodeQL,
-  resultMap: { [language: string]: string[] },
+  resultMap: Queries,
   toResolve: string[],
-  extraSearchPath: string | undefined,
-  errorOnInvalidQueries: boolean
+  extraSearchPath: string | undefined
 ) {
   const resolvedQueries = await codeQL.resolveQueries(
     toResolve,
     extraSearchPath
   );
 
-  for (const [language, queries] of Object.entries(
+  if (extraSearchPath !== undefined) {
+    validateQueries(resolvedQueries);
+  }
+
+  for (const [language, queryPaths] of Object.entries(
     resolvedQueries.byLanguage
   )) {
     if (resultMap[language] === undefined) {
-      resultMap[language] = [];
+      resultMap[language] = {
+        builtin: [],
+        custom: [],
+      };
     }
-    resultMap[language].push(
-      ...Object.keys(queries).filter((q) => !queryIsDisabled(language, q))
+    const queries = Object.keys(queryPaths).filter(
+      (q) => !queryIsDisabled(language, q)
     );
-  }
-
-  if (errorOnInvalidQueries) {
-    validateQueries(resolvedQueries);
+    if (extraSearchPath !== undefined) {
+      resultMap[language].custom.push(...queries);
+    } else {
+      resultMap[language].builtin.push(...queries);
+    }
   }
 }
 
@@ -166,10 +194,10 @@ async function runResolveQueries(
 async function addDefaultQueries(
   codeQL: CodeQL,
   languages: string[],
-  resultMap: { [language: string]: string[] }
+  resultMap: Queries
 ) {
   const suites = languages.map((l) => `${l}-code-scanning.qls`);
-  await runResolveQueries(codeQL, resultMap, suites, undefined, false);
+  await runResolveQueries(codeQL, resultMap, suites, undefined);
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
@@ -182,7 +210,7 @@ const builtinSuites = ["security-extended", "security-and-quality"] as const;
 async function addBuiltinSuiteQueries(
   languages: string[],
   codeQL: CodeQL,
-  resultMap: { [language: string]: string[] },
+  resultMap: Queries,
   suiteName: string,
   configFile?: string
 ) {
@@ -192,7 +220,7 @@ async function addBuiltinSuiteQueries(
   }
 
   const suites = languages.map((l) => `${l}-${suiteName}.qls`);
-  await runResolveQueries(codeQL, resultMap, suites, undefined, false);
+  await runResolveQueries(codeQL, resultMap, suites, undefined);
 }
 
 /**
@@ -200,7 +228,7 @@ async function addBuiltinSuiteQueries(
  */
 async function addLocalQueries(
   codeQL: CodeQL,
-  resultMap: { [language: string]: string[] },
+  resultMap: Queries,
   localQueryPath: string,
   checkoutPath: string,
   configFile?: string
@@ -228,13 +256,7 @@ async function addLocalQueries(
     );
   }
 
-  await runResolveQueries(
-    codeQL,
-    resultMap,
-    [absoluteQueryPath],
-    checkoutPath,
-    true
-  );
+  await runResolveQueries(codeQL, resultMap, [absoluteQueryPath], checkoutPath);
 }
 
 /**
@@ -242,7 +264,7 @@ async function addLocalQueries(
  */
 async function addRemoteQueries(
   codeQL: CodeQL,
-  resultMap: { [language: string]: string[] },
+  resultMap: Queries,
   queryUses: string,
   tempDir: string,
   githubUrl: string,
@@ -283,7 +305,7 @@ async function addRemoteQueries(
       ? path.join(checkoutPath, tok.slice(2).join("/"))
       : checkoutPath;
 
-  await runResolveQueries(codeQL, resultMap, [queryPath], checkoutPath, true);
+  await runResolveQueries(codeQL, resultMap, [queryPath], checkoutPath);
 }
 
 /**
@@ -297,7 +319,7 @@ async function addRemoteQueries(
 async function parseQueryUses(
   languages: string[],
   codeQL: CodeQL,
-  resultMap: { [language: string]: string[] },
+  resultMap: Queries,
   queryUses: string,
   tempDir: string,
   checkoutPath: string,
@@ -660,7 +682,7 @@ async function addQueriesFromWorkflow(
   codeQL: CodeQL,
   queriesInput: string,
   languages: string[],
-  resultMap: { [language: string]: string[] },
+  resultMap: Queries,
   tempDir: string,
   checkoutPath: string,
   githubUrl: string,
@@ -718,7 +740,7 @@ export async function getDefaultConfig(
     githubUrl,
     logger
   );
-  const queries = {};
+  const queries: Queries = {};
   await addDefaultQueries(codeQL, languages, queries);
   if (queriesInput) {
     await addQueriesFromWorkflow(
@@ -790,7 +812,7 @@ async function loadConfig(
     logger
   );
 
-  const queries = {};
+  const queries: Queries = {};
   const pathsIgnore: string[] = [];
   const paths: string[] = [];
 
@@ -880,7 +902,11 @@ async function loadConfig(
   // The list of queries should not be empty for any language. If it is then
   // it is a user configuration error.
   for (const language of languages) {
-    if (queries[language] === undefined || queries[language].length === 0) {
+    if (
+      queries[language] === undefined ||
+      (queries[language].builtin.length === 0 &&
+        queries[language].custom.length === 0)
+    ) {
       throw new Error(
         `Did not detect any queries to run for ${language}. ` +
           "Please make sure that the default queries are enabled, or you are specifying queries to run."

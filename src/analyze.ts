@@ -1,15 +1,15 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
-import * as analysisPaths from './analysis-paths';
-import { getCodeQL } from './codeql';
-import * as configUtils from './config-utils';
-import { isScannedLanguage } from './languages';
-import { Logger } from './logging';
-import { RepositoryNwo } from './repository';
-import * as sharedEnv from './shared-environment';
-import * as upload_lib from './upload-lib';
-import * as util from './util';
+import * as analysisPaths from "./analysis-paths";
+import { getCodeQL } from "./codeql";
+import * as configUtils from "./config-utils";
+import { isScannedLanguage } from "./languages";
+import { Logger } from "./logging";
+import { RepositoryNwo } from "./repository";
+import * as sharedEnv from "./shared-environment";
+import * as upload_lib from "./upload-lib";
+import * as util from "./util";
 
 export interface QueriesStatusReport {
   // Time taken in ms to analyze builtin queries for cpp (or undefined if this language was not analyzed)
@@ -40,12 +40,14 @@ export interface QueriesStatusReport {
   analyze_failure_language?: string;
 }
 
-export interface AnalysisStatusReport extends upload_lib.UploadStatusReport, QueriesStatusReport {}
+export interface AnalysisStatusReport
+  extends upload_lib.UploadStatusReport,
+    QueriesStatusReport {}
 
 async function createdDBForScannedLanguages(
   config: configUtils.Config,
-  logger: Logger) {
-
+  logger: Logger
+) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
   analysisPaths.includeAndExcludeAnalysisPaths(config);
@@ -53,8 +55,11 @@ async function createdDBForScannedLanguages(
   const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (isScannedLanguage(language)) {
-      logger.startGroup('Extracting ' + language);
-      await codeql.extractScannedLanguage(util.getCodeQLDatabasePath(config.tempDir, language), language);
+      logger.startGroup(`Extracting ${language}`);
+      await codeql.extractScannedLanguage(
+        util.getCodeQLDatabasePath(config.tempDir, language),
+        language
+      );
       logger.endGroup();
     }
   }
@@ -62,14 +67,16 @@ async function createdDBForScannedLanguages(
 
 async function finalizeDatabaseCreation(
   config: configUtils.Config,
-  logger: Logger) {
-
+  logger: Logger
+) {
   await createdDBForScannedLanguages(config, logger);
 
   const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
-    logger.startGroup('Finalizing ' + language);
-    await codeql.finalizeDatabase(util.getCodeQLDatabasePath(config.tempDir, language));
+    logger.startGroup(`Finalizing ${language}`);
+    await codeql.finalizeDatabase(
+      util.getCodeQLDatabasePath(config.tempDir, language)
+    );
     logger.endGroup();
   }
 }
@@ -78,44 +85,64 @@ async function finalizeDatabaseCreation(
 export async function runQueries(
   sarifFolder: string,
   memoryFlag: string,
+  addSnippetsFlag: string,
   threadsFlag: string,
   config: configUtils.Config,
-  logger: Logger): Promise<QueriesStatusReport> {
-
+  logger: Logger
+): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
-  for (let language of config.languages) {
-    logger.startGroup('Analyzing ' + language);
+  for (const language of config.languages) {
+    logger.startGroup(`Analyzing ${language}`);
 
     const queries = config.queries[language];
     if (queries.builtin.length === 0 && queries.custom.length === 0) {
-      throw new Error('Unable to analyse ' + language + ' as no queries were selected for this language');
+      throw new Error(
+        `Unable to analyse ${language} as no queries were selected for this language`
+      );
     }
 
     try {
-      for (const type of ['builtin', 'custom']) {
+      for (const type of ["builtin", "custom"]) {
         if (queries[type].length > 0) {
           const startTime = new Date().getTime();
 
-          const databasePath = util.getCodeQLDatabasePath(config.tempDir, language);
+          const databasePath = util.getCodeQLDatabasePath(
+            config.tempDir,
+            language
+          );
           // Pass the queries to codeql using a file instead of using the command
           // line to avoid command line length restrictions, particularly on windows.
           const querySuitePath = `${databasePath}-queries-${type}.qls`;
-          const querySuiteContents = queries[type].map((q: string) => '- query: ' + q).join('\n');
+          const querySuiteContents = queries[type]
+            .map((q: string) => `- query: ${q}`)
+            .join("\n");
           fs.writeFileSync(querySuitePath, querySuiteContents);
-          logger.debug('Query suite file for ' + language + '...\n' + querySuiteContents);
+          logger.debug(
+            `Query suite file for ${language}...\n${querySuiteContents}`
+          );
 
           const sarifFile = path.join(sarifFolder, `${language}-${type}.sarif`);
 
           const codeql = getCodeQL(config.codeQLCmd);
-          await codeql.databaseAnalyze(databasePath, sarifFile, querySuitePath, memoryFlag, threadsFlag);
+          await codeql.databaseAnalyze(
+            databasePath,
+            sarifFile,
+            querySuitePath,
+            memoryFlag,
+            addSnippetsFlag,
+            threadsFlag
+          );
 
-          logger.debug('SARIF results for database ' + language + ' created at "' + sarifFile + '"');
+          logger.debug(
+            `SARIF results for database ${language} created at "${sarifFile}"`
+          );
           logger.endGroup();
 
           // Record the performance
           const endTime = new Date().getTime();
-          statusReport[`analyze_${type}_queries_${language}_duration_ms`] = endTime - startTime;
+          statusReport[`analyze_${type}_queries_${language}_duration_ms`] =
+            endTime - startTime;
         }
       }
     } catch (e) {
@@ -144,23 +171,31 @@ export async function runAnalyze(
   mode: util.Mode,
   outputDir: string,
   memoryFlag: string,
+  addSnippetsFlag: string,
   threadsFlag: string,
   config: configUtils.Config,
-  logger: Logger): Promise<AnalysisStatusReport> {
-
+  logger: Logger
+): Promise<AnalysisStatusReport> {
   // Delete the tracer config env var to avoid tracing ourselves
   delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  logger.info('Finalizing database creation');
+  logger.info("Finalizing database creation");
   await finalizeDatabaseCreation(config, logger);
 
-  logger.info('Analyzing database');
-  const queriesStats = await runQueries(outputDir, memoryFlag, threadsFlag, config, logger);
+  logger.info("Analyzing database");
+  const queriesStats = await runQueries(
+    outputDir,
+    memoryFlag,
+    addSnippetsFlag,
+    threadsFlag,
+    config,
+    logger
+  );
 
   if (!doUpload) {
-    logger.info('Not uploading results');
+    logger.info("Not uploading results");
     return { ...queriesStats };
   }
 
@@ -177,7 +212,8 @@ export async function runAnalyze(
     githubAuth,
     githubUrl,
     mode,
-    logger);
+    logger
+  );
 
   return { ...queriesStats, ...uploadStats };
 }

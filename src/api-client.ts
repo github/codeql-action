@@ -1,4 +1,4 @@
-import * as github from "@actions/github";
+import * as github from "@actions/github/lib/utils";
 import consoleLogLevel from "console-log-level";
 import * as path from "path";
 

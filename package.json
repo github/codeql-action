@@ -21,7 +21,7 @@
   "dependencies": {
     "@actions/core": "^1.0.0",
     "@actions/exec": "^1.0.1",
-    "@actions/github": "^2.2.0",
+    "@actions/github": "^4.0.0",
     "@actions/http-client": "^1.0.8",
     "@actions/tool-cache": "^1.5.5",
     "commander": "^6.0.0",

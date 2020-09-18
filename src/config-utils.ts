@@ -1023,7 +1023,7 @@ async function getRemoteConfig(
 
   const response = await api
     .getApiClient(githubAuth, githubUrl, true)
-    .repos.getContents({
+    .repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,
       path: pieces.groups.path,

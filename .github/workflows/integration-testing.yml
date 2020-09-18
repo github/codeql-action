@@ -98,6 +98,37 @@ jobs:
       env:
         TEST_MODE: true
 
+  go-custom-tracing:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
+
+    steps:
+    - uses: actions/setup-go@v2
+      if: ${{ matrix.os ==  'macos-latest' }}
+      with:
+        go-version: '^1.13.1'
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+    - uses: ./../action/init
+      with:
+        languages: go
+    - name: Build code
+      shell: bash
+      run: go tool compile main.go
+    - uses: ./../action/analyze
+      env:
+        TEST_MODE: true
+
   multi-language-repo_rubocop:
     runs-on: ubuntu-latest
 

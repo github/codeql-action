@@ -19,7 +19,7 @@ interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   paths_ignore: string;
   // Commas-separated list of languages where the default queries are disabled
   disable_default_queries: string;
-  // Comma-separated list of queries sources, from the 'queries' config field
+  // Comma-separated list of queries sources, from the 'queries' config field or workflow input
   queries: string;
 }
 
@@ -44,9 +44,20 @@ async function sendSuccessStatusReport(
   ]
     ? languages
     : "";
-  const queries = (config.originalUserInput.queries || [])
-    .map((q) => q.uses)
-    .join(",");
+
+  const queries: string[] = [];
+  let queriesInput = actionsUtil.getOptionalInput("queries")?.trim();
+  if (queriesInput === undefined || queriesInput.startsWith("+")) {
+    queries.push(
+      ...(config.originalUserInput.queries || []).map((q) => q.uses)
+    );
+  }
+  if (queriesInput !== undefined) {
+    queriesInput = queriesInput.startsWith("+")
+      ? queriesInput.substr(1)
+      : queriesInput;
+    queries.push(...queriesInput.split(","));
+  }
 
   const statusReport: InitSuccessStatusReport = {
     ...statusReportBase,
@@ -55,7 +66,7 @@ async function sendSuccessStatusReport(
     paths,
     paths_ignore: pathsIgnore,
     disable_default_queries: disableDefaultQueries,
-    queries,
+    queries: queries.join(","),
   };
 
   await actionsUtil.sendStatusReport(statusReport);

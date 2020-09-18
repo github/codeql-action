@@ -35,7 +35,11 @@ export function parseLanguage(language: string): Language | undefined {
 }
 
 export function isTracedLanguage(language: Language): boolean {
-  return ["cpp", "java", "csharp"].includes(language);
+  return (
+    ["cpp", "java", "csharp"].includes(language) ||
+    (process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "on" &&
+      language === Language.go)
+  );
 }
 
 export function isScannedLanguage(language: Language): boolean {

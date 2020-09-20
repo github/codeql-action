@@ -46,7 +46,6 @@
             "@typescript-eslint/restrict-template-expressions": "off",
             "eslint-comments/no-use": "off",
             "func-style": "off",
-            "github/array-foreach": "off",
             "github/no-then": "off",
             "import/no-extraneous-dependencies": "off",
             "no-shadow": "off",

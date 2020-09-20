@@ -153,10 +153,13 @@ export async function upload(
     throw new Error(`Path does not exist: ${sarifPath}`);
   }
   if (fs.lstatSync(sarifPath).isDirectory()) {
-    fs.readdirSync(sarifPath)
+    const paths = fs
+      .readdirSync(sarifPath)
       .filter((f) => f.endsWith(".sarif"))
-      .map((f) => path.resolve(sarifPath, f))
-      .forEach((f) => sarifFiles.push(f));
+      .map((f) => path.resolve(sarifPath, f));
+    for (const path of paths) {
+      sarifFiles.push(path);
+    }
     if (sarifFiles.length === 0) {
       throw new Error(`No SARIF files found to upload in "${sarifPath}".`);
     }

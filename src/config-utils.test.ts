@@ -386,9 +386,9 @@ test("Default queries are used", async (t) => {
  */
 function queriesToResolvedQueryForm(queries: string[]) {
   const dummyResolvedQueries = {};
-  queries.forEach((q) => {
+  for (const q of queries) {
     dummyResolvedQueries[q] = {};
-  });
+  }
   return {
     byLanguage: {
       javascript: dummyResolvedQueries,

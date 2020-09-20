@@ -141,9 +141,9 @@ async function run() {
 
     const tracerConfig = await runInit(codeql, config);
     if (tracerConfig !== undefined) {
-      Object.entries(tracerConfig.env).forEach(([key, value]) =>
-        core.exportVariable(key, value)
-      );
+      for (const [key, value] of Object.entries(tracerConfig.env)) {
+        core.exportVariable(key, value);
+      }
 
       if (process.platform === "win32") {
         await injectWindowsTracer(

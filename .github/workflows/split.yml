@@ -8,7 +8,7 @@
 #  3. Manually launch this workflow file (via the Actions UI) specifying
 #     - The CLI Release (e.g., v2.2.5)
 #     - The release tag (codeql-bundle-20200826)
-#  4. If everything succeeds you should see 21 new assets.
+#  4. If everything succeeds you should 3 new assets.
 #
 
 name: Split Bundle
@@ -34,7 +34,6 @@ jobs:
       fail-fast: false
       matrix:
         platform: ["linux64", "osx64", "win64"]
-        language: ["cpp", "csharp", "go", "java", "javascript", "python"]
 
     steps:
       - name: Resolve Upload URL for the release
@@ -65,35 +64,10 @@ jobs:
 
       - name: Upload Platform Package
         uses: actions/upload-release-asset@v1
-        if: matrix.language == 'cpp' # Only once per platform, cpp is arbitrary
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.save_url.outputs.upload_url }}
           asset_path: ./codeql-bundle-${{matrix.platform}}.tar.gz
           asset_name: codeql-bundle-${{matrix.platform}}.tar.gz
-          asset_content_type: application/tar+gzip
-
-      - name: Create Platform-Language Package
-        # Replace the codeql-binaries with the platform specific ones
-        run: |
-          gunzip codeql-bundle-${{matrix.platform}}.tar.gz
-          [ "${{matrix.language}}" != "cpp" ] && tar -f codeql-bundle-${{matrix.platform}}.tar --delete codeql/cpp --delete ql/cpp
-          [ "${{matrix.language}}" != "csharp" ] && tar -f codeql-bundle-${{matrix.platform}}.tar --delete codeql/csharp --delete ql/csharp
-          [ "${{matrix.language}}" != "go" ] && tar -f codeql-bundle-${{matrix.platform}}.tar --delete codeql/go --delete codeql-go
-          [ "${{matrix.language}}" != "java" ] && tar -f codeql-bundle-${{matrix.platform}}.tar --delete codeql/java --delete ql/java
-          [ "${{matrix.language}}" != "javascript" ] && tar -f codeql-bundle-${{matrix.platform}}.tar --delete codeql/javascript --delete ql/javascript
-          [ "${{matrix.language}}" != "python" ] && tar -f codeql-bundle-${{matrix.platform}}.tar --delete codeql/python --delete ql/python
-          gzip codeql-bundle-${{matrix.platform}}.tar
-          mv codeql-bundle-${{matrix.platform}}.tar.gz codeql-bundle-${{matrix.platform}}-${{matrix.language}}.tar.gz
-          du -sh codeql-bundle-${{matrix.platform}}-${{matrix.language}}.tar.gz
-
-      - name: Upload Language Package
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.save_url.outputs.upload_url }}
-          asset_path: ./codeql-bundle-${{matrix.platform}}-${{matrix.language}}.tar.gz
-          asset_name: codeql-bundle-${{matrix.platform}}-${{matrix.language}}.tar.gz
           asset_content_type: application/tar+gzip

@@ -625,7 +625,6 @@ export async function getDefaultConfig(
   githubUrl: string,
   logger: Logger
 ): Promise<Config> {
-
   const queries: Queries = {};
   await addDefaultQueries(codeQL, languages, queries);
   if (queriesInput) {

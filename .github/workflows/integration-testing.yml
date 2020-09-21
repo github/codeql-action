@@ -129,7 +129,7 @@ jobs:
 
   single-language-bundles:
     # These are 21 jobs, run them only if the earlier multi-language job suceeded
-    needs: multi-language-repo_test-autodetect-languages
+    # needs: multi-language-repo_test-autodetect-languages
     strategy:
       fail-fast: false
       matrix:

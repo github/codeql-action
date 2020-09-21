@@ -1,6 +1,9 @@
 name: "Integration Testing"
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, v1]
+  pull_request:
 
 jobs:
   multi-language-repo_test-autodetect-languages:
@@ -150,7 +153,7 @@ jobs:
     - uses: ./../action/analyze
       env:
         TEST_MODE: true
-  
+
   runner-analyze-javascript-ubuntu:
     runs-on: ubuntu-latest
 
@@ -176,7 +179,7 @@ jobs:
         runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
       env:
         TEST_MODE: true
-  
+
   runner-analyze-javascript-windows:
     runs-on: windows-latest
 
@@ -198,7 +201,7 @@ jobs:
         runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
       env:
         TEST_MODE: true
-  
+
   runner-analyze-javascript-macos:
     runs-on: macos-latest
 
@@ -220,7 +223,7 @@ jobs:
         runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
       env:
         TEST_MODE: true
-  
+
   runner-analyze-csharp-ubuntu:
     runs-on: ubuntu-latest
 
@@ -254,7 +257,7 @@ jobs:
         ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
       env:
         TEST_MODE: true
-  
+
   runner-analyze-csharp-windows:
     runs-on: windows-latest
 
@@ -325,7 +328,7 @@ jobs:
       env:
         TEST_MODE: true
 
-  
+
   runner-analyze-csharp-autobuild-ubuntu:
     runs-on: ubuntu-latest
 
@@ -358,7 +361,7 @@ jobs:
         ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
       env:
         TEST_MODE: true
-  
+
   runner-analyze-csharp-autobuild-windows:
     runs-on: windows-latest
 

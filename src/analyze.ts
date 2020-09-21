@@ -82,7 +82,7 @@ async function finalizeDatabaseCreation(
 }
 
 // Runs queries and creates sarif files in the given folder
-async function runQueries(
+export async function runQueries(
   sarifFolder: string,
   memoryFlag: string,
   addSnippetsFlag: string,
@@ -90,52 +90,70 @@ async function runQueries(
   config: configUtils.Config,
   logger: Logger
 ): Promise<QueriesStatusReport> {
-  const codeql = getCodeQL(config.codeQLCmd);
+  const statusReport: QueriesStatusReport = {};
+
   for (const language of config.languages) {
     logger.startGroup(`Analyzing ${language}`);
 
-    const queries = config.queries[language] || [];
-    if (queries.length === 0) {
+    const queries = config.queries[language];
+    if (queries.builtin.length === 0 && queries.custom.length === 0) {
       throw new Error(
         `Unable to analyse ${language} as no queries were selected for this language`
       );
     }
 
     try {
-      const databasePath = util.getCodeQLDatabasePath(config.tempDir, language);
-      // Pass the queries to codeql using a file instead of using the command
-      // line to avoid command line length restrictions, particularly on windows.
-      const querySuite = `${databasePath}-queries.qls`;
-      const querySuiteContents = queries.map((q) => `- query: ${q}`).join("\n");
-      fs.writeFileSync(querySuite, querySuiteContents);
-      logger.debug(
-        `Query suite file for ${language}...\n${querySuiteContents}`
-      );
+      for (const type of ["builtin", "custom"]) {
+        if (queries[type].length > 0) {
+          const startTime = new Date().getTime();
 
-      const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+          const databasePath = util.getCodeQLDatabasePath(
+            config.tempDir,
+            language
+          );
+          // Pass the queries to codeql using a file instead of using the command
+          // line to avoid command line length restrictions, particularly on windows.
+          const querySuitePath = `${databasePath}-queries-${type}.qls`;
+          const querySuiteContents = queries[type]
+            .map((q: string) => `- query: ${q}`)
+            .join("\n");
+          fs.writeFileSync(querySuitePath, querySuiteContents);
+          logger.debug(
+            `Query suite file for ${language}...\n${querySuiteContents}`
+          );
 
-      await codeql.databaseAnalyze(
-        databasePath,
-        sarifFile,
-        querySuite,
-        memoryFlag,
-        addSnippetsFlag,
-        threadsFlag
-      );
+          const sarifFile = path.join(sarifFolder, `${language}-${type}.sarif`);
 
-      logger.debug(
-        `SARIF results for database ${language} created at "${sarifFile}"`
-      );
-      logger.endGroup();
+          const codeql = getCodeQL(config.codeQLCmd);
+          await codeql.databaseAnalyze(
+            databasePath,
+            sarifFile,
+            querySuitePath,
+            memoryFlag,
+            addSnippetsFlag,
+            threadsFlag
+          );
+
+          logger.debug(
+            `SARIF results for database ${language} created at "${sarifFile}"`
+          );
+          logger.endGroup();
+
+          // Record the performance
+          const endTime = new Date().getTime();
+          statusReport[`analyze_${type}_queries_${language}_duration_ms`] =
+            endTime - startTime;
+        }
+      }
     } catch (e) {
-      // For now the fields about query performance are not populated
-      return {
-        analyze_failure_language: language,
-      };
+      logger.error(`Error running analysis for ${language}: ${e}`);
+      logger.info(e);
+      statusReport.analyze_failure_language = language;
+      return statusReport;
     }
   }
 
-  return {};
+  return statusReport;
 }
 
 export async function runAnalyze(

@@ -1,4 +1,5 @@
-import * as github from "@actions/github";
+import * as githubUtils from "@actions/github/lib/utils";
+import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 import * as path from "path";
 
@@ -13,11 +14,14 @@ export const getApiClient = function (
   if (isLocalRun() && !allowLocalRun) {
     throw new Error("Invalid API call in local run");
   }
-  return github.getOctokit(githubAuth, {
-    baseUrl: getApiUrl(githubUrl),
-    userAgent: "CodeQL Action",
-    log: consoleLogLevel({ level: "debug" }),
-  });
+  const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+  return new retryingOctokit(
+    githubUtils.getOctokitOptions(githubAuth, {
+      baseUrl: getApiUrl(githubUrl),
+      userAgent: "CodeQL Action",
+      log: consoleLogLevel({ level: "debug" }),
+    })
+  );
 };
 
 function getApiUrl(githubUrl: string): string {

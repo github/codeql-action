@@ -13,8 +13,7 @@ export const getApiClient = function (
   if (isLocalRun() && !allowLocalRun) {
     throw new Error("Invalid API call in local run");
   }
-  return new github.GitHub({
-    auth: githubAuth,
+  return github.getOctokit(githubAuth, {
     baseUrl: getApiUrl(githubUrl),
     userAgent: "CodeQL Action",
     log: consoleLogLevel({ level: "debug" }),

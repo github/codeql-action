@@ -31,6 +31,7 @@ jobs:
       RELEASE_TAG: "${{ github.event.inputs.bundle-tag }}"
 
     strategy:
+      fail-fast: false
       matrix:
         platform: ["linux64", "osx64", "win64"]
         language: ["cpp", "csharp", "go", "java", "javascript", "python"]

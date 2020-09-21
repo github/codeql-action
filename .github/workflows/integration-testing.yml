@@ -167,7 +167,7 @@ jobs:
       - name: Check ToolCache (language-specific bundle)
         if: matrix.language != 'none'
         shell: bash
-        run: test -n "$(find  -maxdepth 1 -name "codeql-bundle-0.0.0-*.${OS}-${{matrix.language}} -print -quit)"
+        run: test -n "$(find  -maxdepth 1 -name "codeql-bundle-0.0.0-*.${OS}-${{matrix.language}}" -print -quit)"
 
   test-proxy:
     runs-on: ubuntu-latest

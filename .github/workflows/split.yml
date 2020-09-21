@@ -1,5 +1,5 @@
 #
-# Split the CodeQL Bundle into language-platform bundles
+# Split the CodeQL Bundle into platform bundles
 #
 # Instructions:
 #  1. Upload the new codeql-bundle (codeql-bundle.tar.gz) as an asset of the

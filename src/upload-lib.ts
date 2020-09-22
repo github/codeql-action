@@ -53,72 +53,20 @@ async function uploadPayload(
     return;
   }
 
-  // Make up to 4 attempts to upload, and sleep for these
-  // number of seconds between each attempt.
-  // We don't want to backoff too much to avoid wasting action
-  // minutes, but just waiting a little bit could maybe help.
-  const backoffPeriods = [1, 5, 15];
-
   const client = api.getApiClient(githubAuth, githubUrl);
 
-  for (let attempt = 0; attempt <= backoffPeriods.length; attempt++) {
-    const reqURL =
-      mode === "actions"
-        ? "PUT /repos/:owner/:repo/code-scanning/analysis"
-        : "POST /repos/:owner/:repo/code-scanning/sarifs";
-    const response = await client.request(reqURL, {
-      owner: repositoryNwo.owner,
-      repo: repositoryNwo.repo,
-      data: payload,
-    });
+  const reqURL =
+    mode === "actions"
+      ? "PUT /repos/:owner/:repo/code-scanning/analysis"
+      : "POST /repos/:owner/:repo/code-scanning/sarifs";
+  const response = await client.request(reqURL, {
+    owner: repositoryNwo.owner,
+    repo: repositoryNwo.repo,
+    data: payload,
+  });
 
-    logger.debug(`response status: ${response.status}`);
-
-    const statusCode = response.status;
-    if (statusCode === 202) {
-      logger.info("Successfully uploaded results");
-      return;
-    }
-
-    const requestID = response.headers["x-github-request-id"];
-
-    // On any other status code that's not 5xx mark the upload as failed
-    if (!statusCode || statusCode < 500 || statusCode >= 600) {
-      throw new Error(
-        `Upload failed (${requestID}): (${statusCode}) ${JSON.stringify(
-          response.data
-        )}`
-      );
-    }
-
-    // On a 5xx status code we may retry the request
-    if (attempt < backoffPeriods.length) {
-      // Log the failure as a warning but don't mark the action as failed yet
-      logger.warning(
-        `Upload attempt (${attempt + 1} of ${
-          backoffPeriods.length + 1
-        }) failed (${requestID}). Retrying in ${
-          backoffPeriods[attempt]
-        } seconds: (${statusCode}) ${JSON.stringify(response.data)}`
-      );
-      // Sleep for the backoff period
-      await new Promise((r) => setTimeout(r, backoffPeriods[attempt] * 1000));
-      continue;
-    } else {
-      // If the upload fails with 5xx then we assume it is a temporary problem
-      // and not an error that the user has caused or can fix.
-      // We avoid marking the job as failed to avoid breaking CI workflows.
-      throw new Error(
-        `Upload failed (${requestID}): (${statusCode}) ${JSON.stringify(
-          response.data
-        )}`
-      );
-    }
-  }
-
-  // This case shouldn't ever happen as the final iteration of the loop
-  // will always throw an error instead of exiting to here.
-  throw new Error("Upload failed");
+  logger.debug(`response status: ${response.status}`);
+  logger.info("Successfully uploaded results");
 }
 
 export interface UploadStatusReport {

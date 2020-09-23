@@ -620,8 +620,10 @@ function getExtraOptionsFromEnv(path: string[]) {
  *
  * - the special terminal step name '*' in `options` matches all path steps
  * - throws an exception if this conversion is impossible.
+ *
+ * Exported for testing.
  */
-export /* exported for testing */ function getExtraOptions(
+export function getExtraOptions(
   options: any,
   path: string[],
   pathInfo: string[]

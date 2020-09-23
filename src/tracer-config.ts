@@ -13,13 +13,9 @@ export type TracerConfig = {
 
 const CRITICAL_TRACER_VARS = new Set([
   "SEMMLE_PRELOAD_libtrace",
-  ,
   "SEMMLE_RUNNER",
-  ,
   "SEMMLE_COPY_EXECUTABLES_ROOT",
-  ,
   "SEMMLE_DEPTRACE_SOCKET",
-  ,
   "SEMMLE_JAVA_TOOL_OPTIONS",
 ]);
 

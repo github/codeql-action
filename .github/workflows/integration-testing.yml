@@ -44,6 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        tools: [~, latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -56,6 +57,7 @@ jobs:
         mv ../action/tests/multi-language-repo/{*,.github} .
     - uses: ./../action/init
       with:
+        tools: ${{ matrix.tools }}
         languages: cpp,csharp,java,javascript,python
         config-file: github/codeql-action/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
     - name: Build code

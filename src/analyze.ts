@@ -65,7 +65,7 @@ async function setupPythonExtractor(logger: Logger) {
     codeqlPython,
     [
       "-c",
-      "import·os;·import·pip;·print(os.path.dirname(os.path.dirname(pip.__file__)))",
+      "import os; import pip; print(os.path.dirname(os.path.dirname(pip.__file__)))",
     ],
     options
   ).exec();

@@ -185,21 +185,32 @@ export async function injectWindowsTracer(
 export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   logger.startGroup("Setup Python dependencies");
 
+  if (process.platform !== "linux") {
+    logger.info(
+      "Currently, auto-installing python dependancies is only supported on linux"
+    );
+    logger.endGroup();
+    return;
+  }
+
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
 
-  // Setup tools
-  try {
-    await new toolrunnner.ToolRunner(
-      path.join(scriptsFolder, "install_tools.sh")
-    ).exec();
-  } catch (e) {
-    // This script tries to install some needed tools in the runner. It should not fail, but if it does
-    // we just abort the process without failing the action
-    logger.endGroup();
-    throw new Error(
-      "Unable to download and extract the scripts needed for installing the python dependecies"
-    );
+  // Setup tools on the Github hosted runners
+  if (process.env["ImageOS"] !== undefined) {
+    try {
+      await new toolrunnner.ToolRunner(
+        path.join(scriptsFolder, "install_tools.sh")
+      ).exec();
+    } catch (e) {
+      // This script tries to install some needed tools in the runner. It should not fail, but if it does
+      // we just abort the process without failing the action
+      logger.endGroup();
+      logger.warning(
+        "Unable to download and extract the tools needed for installing the python dependecies"
+      );
+    }
   }
+
   // Install dependencies
   try {
     await new toolrunnner.ToolRunner(
@@ -208,7 +219,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     ).exec();
   } catch (e) {
     logger.endGroup();
-    throw new Error("We were unable to install your python dependencies.");
+    logger.warning("We were unable to install your python dependencies.");
   }
   logger.endGroup();
 }

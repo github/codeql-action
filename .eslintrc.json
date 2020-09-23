@@ -48,7 +48,6 @@
             "github/no-then": "off",
             "import/no-extraneous-dependencies": "off",
             "no-shadow": "off",
-            "no-sparse-arrays": "off",
             "no-throw-literal": "off",
             "no-useless-escape": "off",
             "sort-imports": "off"

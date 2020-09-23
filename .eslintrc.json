@@ -1,0 +1,58 @@
+
+{
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "project": "./tsconfig.json"
+    },
+    "plugins": ["@typescript-eslint", "filenames", "github", "import", "no-async-foreach"],
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking",
+        "plugin:github/recommended",
+        "plugin:github/typescript"
+    ],
+    "rules": {
+        "filenames/match-regex": ["error", "^[a-z0-9-]+(\\.test)?$"],
+        "import/extensions": "error",
+        "import/no-amd": "error",
+        "import/no-commonjs": "error",
+        "import/no-dynamic-require": "error",
+        "import/no-extraneous-dependencies": ["error", {"devDependencies": false}],
+        "import/no-namespace": "off",
+        "import/no-unresolved": "error",
+        "import/no-webpack-loader-syntax": "error",
+        "no-async-foreach/no-async-foreach": "error",
+        "no-console": "off",
+        "no-sequences": "error",
+        "one-var": ["error", "never"],
+        "sort-imports": ["error", { "allowSeparatedGroups": true }]
+    },
+    "overrides": [{
+        // "temporarily downgraded during transition to eslint
+        "files": "**",
+        "rules": {
+            "@typescript-eslint/ban-types": "off",
+            "@typescript-eslint/explicit-module-boundary-types": "off",
+            "@typescript-eslint/no-explicit-any": "off",
+            "@typescript-eslint/no-unsafe-assignment": "off",
+            "@typescript-eslint/no-unsafe-call": "off",
+            "@typescript-eslint/no-unsafe-member-access": "off",
+            "@typescript-eslint/no-unsafe-return": "off",
+            "@typescript-eslint/no-unused-vars": "off",
+            "@typescript-eslint/no-var-requires": "off",
+            "@typescript-eslint/prefer-regexp-exec": "off",
+            "@typescript-eslint/require-await": "off",
+            "@typescript-eslint/restrict-template-expressions": "off",
+            "eslint-comments/no-use": "off",
+            "func-style": "off",
+            "github/no-then": "off",
+            "import/no-extraneous-dependencies": "off",
+            "no-shadow": "off",
+            "no-sparse-arrays": "off",
+            "no-throw-literal": "off",
+            "no-useless-escape": "off",
+            "sort-imports": "off"
+        }
+    }]
+}

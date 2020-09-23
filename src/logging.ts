@@ -1,4 +1,4 @@
-import * as core from '@actions/core';
+import * as core from "@actions/core";
 
 export interface Logger {
   debug: (message: string) => void;

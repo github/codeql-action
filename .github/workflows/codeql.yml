@@ -10,7 +10,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest,windows-latest,macos-latest]
-        tools: [~, latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -27,7 +26,6 @@ jobs:
 
     - uses: ./init
       with:
-        tools: ${{ matrix.tools }}
         languages: javascript
         config-file: ./.github/codeql/codeql-config.yml
     - uses: ./analyze

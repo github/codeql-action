@@ -7,9 +7,6 @@ on:
 
 jobs:
   multi-language-repo_test-autodetect-languages:
-    strategy:
-      matrix:
-        tools: [~, latest]
     runs-on: ubuntu-latest
 
     steps:
@@ -21,8 +18,6 @@ jobs:
         mv * .github ../action/
         mv ../action/tests/multi-language-repo/{*,.github} .
     - uses: ./../action/init
-      with:
-        tools: ${{ matrix.tools }}
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -78,7 +73,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: [~, latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -95,7 +89,6 @@ jobs:
         mv ../action/tests/multi-language-repo/{*,.github} .
     - uses: ./../action/init
       with:
-        tools: ${{ matrix.tools }}
         languages: go
         config-file: ./.github/codeql/custom-queries.yml
     - name: Build code
@@ -137,9 +130,6 @@ jobs:
         TEST_MODE: true
 
   test-proxy:
-    strategy:
-      matrix:
-        tools: [~, latest]
     runs-on: ubuntu-latest
     container:
       image: ubuntu:18.04
@@ -161,7 +151,6 @@ jobs:
         mv ../action/tests/multi-language-repo/{*,.github} .
     - uses: ./../action/init
       with:
-        tools: ${{ matrix.tools }}
         languages: javascript
     - uses: ./../action/analyze
       env:

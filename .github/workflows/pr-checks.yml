@@ -1,21 +1,24 @@
 name: "PR checks"
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, v1]
+  pull_request:
 
 jobs:
-  tslint:
+  lint-js:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - name: tslint
+    - uses: actions/checkout@v2
+    - name: Run Lint
       run: npm run-script lint
 
   check-js:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Check generated JavaScript
       run: |
         # Sanity check that repo is clean to start with
@@ -41,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Check node modules up to date
       run: |
         # Sanity check that repo is clean to start with
@@ -50,7 +53,6 @@ jobs:
           >&2 echo "Failed: Repo should be clean before testing!"
           exit 1
         fi
-
         # Reinstall modules and then clean to remove absolute paths
         # Use 'npm ci' instead of 'npm install' as this is intended to be reproducible
         npm ci
@@ -71,6 +73,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: npm run-script test
       run: npm run-script test

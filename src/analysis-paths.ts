@@ -1,8 +1,8 @@
-import * as configUtils from './config-utils';
-import { Logger } from './logging';
+import * as configUtils from "./config-utils";
+import { Logger } from "./logging";
 
 function isInterpretedLanguage(language): boolean {
-  return language === 'javascript' || language === 'python';
+  return language === "javascript" || language === "python";
 }
 
 // Matches a string containing only characters that are legal to include in paths on windows.
@@ -11,24 +11,29 @@ export const legalWindowsPathCharactersRegex = /^[^<>:"\|?]*$/;
 // Builds an environment variable suitable for LGTM_INDEX_INCLUDE or LGTM_INDEX_EXCLUDE
 function buildIncludeExcludeEnvVar(paths: string[]): string {
   // Ignore anything containing a *
-  paths = paths.filter(p => p.indexOf('*') === -1);
+  paths = paths.filter((p) => p.indexOf("*") === -1);
 
   // Some characters are illegal in path names in windows
-  if (process.platform === 'win32') {
-    paths = paths.filter(p => p.match(legalWindowsPathCharactersRegex));
+  if (process.platform === "win32") {
+    paths = paths.filter((p) => p.match(legalWindowsPathCharactersRegex));
   }
 
-  return paths.join('\n');
+  return paths.join("\n");
 }
 
-export function printPathFiltersWarning(config: configUtils.Config, logger: Logger) {
+export function printPathFiltersWarning(
+  config: configUtils.Config,
+  logger: Logger
+) {
   // Index include/exclude/filters only work in javascript and python.
   // If any other languages are detected/configured then show a warning.
-  if ((config.paths.length !== 0 ||
-    config.pathsIgnore.length !== 0) &&
-    !config.languages.every(isInterpretedLanguage)) {
-
-    logger.warning('The "paths"/"paths-ignore" fields of the config only have effect for Javascript and Python');
+  if (
+    (config.paths.length !== 0 || config.pathsIgnore.length !== 0) &&
+    !config.languages.every(isInterpretedLanguage)
+  ) {
+    logger.warning(
+      'The "paths"/"paths-ignore" fields of the config only have effect for Javascript and Python'
+    );
   }
 }
 
@@ -41,19 +46,21 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   // traverse the entire file tree to determine which files are matched.
   // Any paths containing "*" are not included in these.
   if (config.paths.length !== 0) {
-    process.env['LGTM_INDEX_INCLUDE'] = buildIncludeExcludeEnvVar(config.paths);
+    process.env["LGTM_INDEX_INCLUDE"] = buildIncludeExcludeEnvVar(config.paths);
   }
   if (config.pathsIgnore.length !== 0) {
-    process.env['LGTM_INDEX_EXCLUDE'] = buildIncludeExcludeEnvVar(config.pathsIgnore);
+    process.env["LGTM_INDEX_EXCLUDE"] = buildIncludeExcludeEnvVar(
+      config.pathsIgnore
+    );
   }
 
   // The 'LGTM_INDEX_FILTERS' environment variable controls which files are
   // extracted or ignored. It does not control which directories are traversed.
   // This does understand the glob and double-glob syntax.
   const filters: string[] = [];
-  filters.push(...config.paths.map(p => 'include:' + p));
-  filters.push(...config.pathsIgnore.map(p => 'exclude:' + p));
+  filters.push(...config.paths.map((p) => `include:${p}`));
+  filters.push(...config.pathsIgnore.map((p) => `exclude:${p}`));
   if (filters.length !== 0) {
-    process.env['LGTM_INDEX_FILTERS'] = filters.join('\n');
+    process.env["LGTM_INDEX_FILTERS"] = filters.join("\n");
   }
 }

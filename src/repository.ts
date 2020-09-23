@@ -5,7 +5,7 @@ export interface RepositoryNwo {
 }
 
 export function parseRepositoryNwo(input: string): RepositoryNwo {
-  const parts = input.split('/');
+  const parts = input.split("/");
   if (parts.length !== 2) {
     throw new Error(`"${input}" is not a valid repository name`);
   }

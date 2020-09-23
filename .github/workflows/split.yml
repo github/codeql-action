@@ -1,0 +1,73 @@
+#
+# Split the CodeQL Bundle into platform bundles
+#
+# Instructions:
+#  1. Upload the new codeql-bundle (codeql-bundle.tar.gz) as an asset of the
+#     release (codeql-bundle-20200826)
+#  2. Take note of the CLI Release used by the bundle (e.g., v2.2.5)
+#  3. Manually launch this workflow file (via the Actions UI) specifying
+#     - The CLI Release (e.g., v2.2.5)
+#     - The release tag (e.g., codeql-bundle-20200826)
+#  4. If everything succeeds you should see 3 new assets.
+#
+
+name: Split Bundle
+
+on:
+ workflow_dispatch:
+    inputs:
+      cli-release:
+        description: 'CodeQL CLI Release (e.g., "v2.2.5")'
+        required: true
+      bundle-tag:
+        description: 'Tag of the bundle release (e.g., "codeql-bundle-20200826")'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CLI_RELEASE: "${{ github.event.inputs.cli-release }}"
+      RELEASE_TAG: "${{ github.event.inputs.bundle-tag }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ["linux64", "osx64", "win64"]
+
+    steps:
+      - name: Resolve Upload URL for the release
+        id: save_url
+        run: |
+          UPLOAD_URL=$(curl -sS \
+               "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+               -H "Accept: application/json" \
+               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" | jq .upload_url | sed s/\"//g)
+          echo ${UPLOAD_URL}
+          echo "::set-output name=upload_url::${UPLOAD_URL}"
+
+      - name: Download CodeQL CLI and Bundle
+        run: |
+          wget --no-verbose "https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/codeql-bundle.tar.gz"
+          wget --no-verbose "https://github.com/github/codeql-cli-binaries/releases/download/${CLI_RELEASE}/codeql-${{matrix.platform}}.zip"
+
+      - name: Create Platform Package
+        # Replace the codeql-binaries with the platform specific ones
+        run: |
+          gunzip codeql-bundle.tar.gz
+          tar -f codeql-bundle.tar --delete codeql
+          unzip -q codeql-${{matrix.platform}}.zip
+          tar -f codeql-bundle.tar --append codeql
+          gzip codeql-bundle.tar
+          mv codeql-bundle.tar.gz codeql-bundle-${{matrix.platform}}.tar.gz
+          du -sh codeql-bundle-${{matrix.platform}}.tar.gz
+
+      - name: Upload Platform Package
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.save_url.outputs.upload_url }}
+          asset_path: ./codeql-bundle-${{matrix.platform}}.tar.gz
+          asset_name: codeql-bundle-${{matrix.platform}}.tar.gz
+          asset_content_type: application/tar+gzip

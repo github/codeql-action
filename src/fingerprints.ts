@@ -1,12 +1,12 @@
-import * as fs from 'fs';
-import Long from 'long';
+import * as fs from "fs";
+import Long from "long";
 
-import { Logger } from './logging';
+import { Logger } from "./logging";
 
-const tab = '\t'.charCodeAt(0);
-const space = ' '.charCodeAt(0);
-const lf = '\n'.charCodeAt(0);
-const cr = '\r'.charCodeAt(0);
+const tab = "\t".charCodeAt(0);
+const space = " ".charCodeAt(0);
+const lf = "\n".charCodeAt(0);
+const cr = "\r".charCodeAt(0);
 const BLOCK_SIZE = 100;
 const MOD = Long.fromInt(37); // L
 
@@ -46,7 +46,7 @@ export function hash(callback: hashCallback, input: string) {
 
   // The current hash value, updated as we read each character
   let hash = Long.ZERO;
-  let firstMod = computeFirstMod();
+  const firstMod = computeFirstMod();
 
   // The current index in the window, will wrap around to zero when we reach BLOCK_SIZE
   let index = 0;
@@ -62,12 +62,12 @@ export function hash(callback: hashCallback, input: string) {
 
   // Output the current hash and line number to the callback function
   const outputHash = function () {
-    let hashValue = hash.toUnsigned().toString(16);
+    const hashValue = hash.toUnsigned().toString(16);
     if (!hashCounts[hashValue]) {
       hashCounts[hashValue] = 0;
     }
     hashCounts[hashValue]++;
-    callback(lineNumbers[index], hashValue + ":" + hashCounts[hashValue]);
+    callback(lineNumbers[index], `${hashValue}:${hashCounts[hashValue]}`);
     lineNumbers[index] = -1;
   };
 
@@ -125,7 +125,11 @@ export function hash(callback: hashCallback, input: string) {
 
 // Generate a hash callback function that updates the given result in-place
 // when it recieves a hash for the correct line number. Ignores hashes for other lines.
-function locationUpdateCallback(result: any, location: any, logger: Logger): hashCallback {
+function locationUpdateCallback(
+  result: any,
+  location: any,
+  logger: Logger
+): hashCallback {
   let locationStartLine = location.physicalLocation?.region?.startLine;
   if (locationStartLine === undefined) {
     // We expect the region section to be present, but it can be absent if the
@@ -142,17 +146,17 @@ function locationUpdateCallback(result: any, location: any, logger: Logger): has
     if (!result.partialFingerprints) {
       result.partialFingerprints = {};
     }
-    const existingFingerprint = result.partialFingerprints.primaryLocationLineHash;
+    const existingFingerprint =
+      result.partialFingerprints.primaryLocationLineHash;
 
     // If the hash doesn't match the existing fingerprint then
     // output a warning and don't overwrite it.
     if (!existingFingerprint) {
       result.partialFingerprints.primaryLocationLineHash = hash;
     } else if (existingFingerprint !== hash) {
-      logger.warning('Calculated fingerprint of ' + hash +
-        ' for file ' + location.physicalLocation.artifactLocation.uri +
-        ' line ' + lineNumber +
-        ', but found existing inconsistent fingerprint value ' + existingFingerprint);
+      logger.warning(
+        `Calculated fingerprint of ${hash} for file ${location.physicalLocation.artifactLocation.uri} line ${lineNumber}, but found existing inconsistent fingerprint value ${existingFingerprint}`
+      );
     }
   };
 }
@@ -165,14 +169,16 @@ export function resolveUriToFile(
   location: any,
   artifacts: any[],
   checkoutPath: string,
-  logger: Logger): string | undefined {
-
+  logger: Logger
+): string | undefined {
   // This may be referencing an artifact
   if (!location.uri && location.index !== undefined) {
-    if (typeof location.index !== 'number' ||
+    if (
+      typeof location.index !== "number" ||
       location.index < 0 ||
       location.index >= artifacts.length ||
-      typeof artifacts[location.index].location !== 'object') {
+      typeof artifacts[location.index].location !== "object"
+    ) {
       logger.debug(`Ignoring location as URI "${location.index}" is invalid`);
       return undefined;
     }
@@ -180,33 +186,37 @@ export function resolveUriToFile(
   }
 
   // Get the URI and decode
-  if (typeof location.uri !== 'string') {
+  if (typeof location.uri !== "string") {
     logger.debug(`Ignoring location as index "${location.uri}" is invalid`);
     return undefined;
   }
   let uri = decodeURIComponent(location.uri);
 
   // Remove a file scheme, and abort if the scheme is anything else
-  const fileUriPrefix = 'file://';
+  const fileUriPrefix = "file://";
   if (uri.startsWith(fileUriPrefix)) {
     uri = uri.substring(fileUriPrefix.length);
   }
-  if (uri.indexOf('://') !== -1) {
-    logger.debug(`Ignoring location URI "${uri}" as the scheme is not recognised`);
+  if (uri.indexOf("://") !== -1) {
+    logger.debug(
+      `Ignoring location URI "${uri}" as the scheme is not recognised`
+    );
     return undefined;
   }
 
   // Discard any absolute paths that aren't in the src root
-  const srcRootPrefix = checkoutPath + '/';
-  if (uri.startsWith('/') && !uri.startsWith(srcRootPrefix)) {
-    logger.debug(`Ignoring location URI "${uri}" as it is outside of the src root`);
+  const srcRootPrefix = `${checkoutPath}/`;
+  if (uri.startsWith("/") && !uri.startsWith(srcRootPrefix)) {
+    logger.debug(
+      `Ignoring location URI "${uri}" as it is outside of the src root`
+    );
     return undefined;
   }
 
   // Just assume a relative path is relative to the src root.
   // This is not necessarily true but should be a good approximation
   // and here we likely want to err on the side of handling more cases.
-  if (!uri.startsWith('/')) {
+  if (!uri.startsWith("/")) {
     uri = srcRootPrefix + uri;
   }
 
@@ -221,21 +231,29 @@ export function resolveUriToFile(
 
 // Compute fingerprints for results in the given sarif file
 // and return an updated sarif file contents.
-export function addFingerprints(sarifContents: string, checkoutPath: string, logger: Logger): string {
-  let sarif = JSON.parse(sarifContents);
+export function addFingerprints(
+  sarifContents: string,
+  checkoutPath: string,
+  logger: Logger
+): string {
+  const sarif = JSON.parse(sarifContents);
 
   // Gather together results for the same file and construct
   // callbacks to accept hashes for that file and update the location
   const callbacksByFile: { [filename: string]: hashCallback[] } = {};
   for (const run of sarif.runs || []) {
     // We may need the list of artifacts to resolve against
-    let artifacts = run.artifacts || [];
+    const artifacts = run.artifacts || [];
 
     for (const result of run.results || []) {
       // Check the primary location is defined correctly and is in the src root
       const primaryLocation = (result.locations || [])[0];
       if (!primaryLocation?.physicalLocation?.artifactLocation) {
-        logger.debug(`Unable to compute fingerprint for invalid location: ${JSON.stringify(primaryLocation)}`);
+        logger.debug(
+          `Unable to compute fingerprint for invalid location: ${JSON.stringify(
+            primaryLocation
+          )}`
+        );
         continue;
       }
 
@@ -243,26 +261,31 @@ export function addFingerprints(sarifContents: string, checkoutPath: string, log
         primaryLocation.physicalLocation.artifactLocation,
         artifacts,
         checkoutPath,
-        logger);
+        logger
+      );
       if (!filepath) {
         continue;
       }
       if (!callbacksByFile[filepath]) {
         callbacksByFile[filepath] = [];
       }
-      callbacksByFile[filepath].push(locationUpdateCallback(result, primaryLocation, logger));
+      callbacksByFile[filepath].push(
+        locationUpdateCallback(result, primaryLocation, logger)
+      );
     }
   }
 
   // Now hash each file that was found
-  Object.entries(callbacksByFile).forEach(([filepath, callbacks]) => {
+  for (const [filepath, callbacks] of Object.entries(callbacksByFile)) {
     // A callback that forwards the hash to all other callbacks for that file
     const teeCallback = function (lineNumber: number, hash: string) {
-      Object.values(callbacks).forEach(c => c(lineNumber, hash));
+      for (const c of Object.values(callbacks)) {
+        c(lineNumber, hash);
+      }
     };
     const fileContents = fs.readFileSync(filepath).toString();
     hash(teeCallback, fileContents);
-  });
+  }
 
   return JSON.stringify(sarif);
 }

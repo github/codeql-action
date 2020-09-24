@@ -30,7 +30,6 @@ def suppress_stdout_stderr():
 
 
 def get_extractor_version(codeql_base_dir: str, quiet: bool = True) -> int:
-
     extractor_dir = os.path.join(codeql_base_dir, 'python', 'tools')
     sys.path = [extractor_dir] + sys.path
 

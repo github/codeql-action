@@ -4,6 +4,7 @@ import sys
 import os
 import subprocess
 from tempfile import mkdtemp
+from typing import Optional
 
 import extractor_version
 
@@ -101,7 +102,7 @@ def install_with_setup_py(version: int):
     return venv_python
 
 
-def install_packages() -> str:
+def install_packages(codeql_base_dir) -> Optional[str]:
     if os.path.exists('poetry.lock'):
         print('Found poetry.lock, will install packages with poetry', flush=True)
         return install_packages_with_poetry()
@@ -113,7 +114,7 @@ def install_packages() -> str:
             print('Found Pipfile, will install packages with Pipenv', flush=True)
         return install_packages_with_pipenv()
 
-    version = extractor_version.get_extractor_version(sys.argv[1], quiet=False)
+    version = extractor_version.get_extractor_version(codeql_base_dir, quiet=False)
 
     if os.path.exists('requirements.txt'):
         print('Found requirements.txt, will install packages with pip', flush=True)
@@ -124,17 +125,20 @@ def install_packages() -> str:
         return install_with_setup_py(version)
 
     print("was not able to install packages automatically", flush=True)
+    return None
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit('Must provide base directory for codeql tool as only argument')
 
+    codeql_base_dir = sys.argv[1]
+
     # The binaries for packages installed with `pip install --user` are not available on
     # PATH by default, so we need to manually add them.
     os.environ['PATH'] = os.path.expanduser('~/.local/bin') + os.pathsep + os.environ['PATH']
 
-    python_executable_path = install_packages()
+    python_executable_path = install_packages(codeql_base_dir)
 
     if python_executable_path is not None:
         print("Setting CODEQL_PYTHON={}".format(python_executable_path))

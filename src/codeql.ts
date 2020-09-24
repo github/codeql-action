@@ -613,6 +613,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         threadsFlag,
         databasePath,
         "--format=sarif-latest",
+        "--sarif-multicause-markdown",
         `--output=${sarifFile}`,
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "analyze"]),

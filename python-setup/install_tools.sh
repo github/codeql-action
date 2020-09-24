@@ -21,7 +21,7 @@ python3 -m pip install --user virtualenv
 # venv is required for installation of poetry or pipenv (I forgot which)
 sudo apt-get install -y python3-venv
 
-# We're install poetry with pip instead of the recommended way, since the recommended way
+# We install poetry with pip instead of the recommended way, since the recommended way
 # caused some problem since `poetry run` gives output like:
 #
 #     /root/.poetry/lib/poetry/_vendor/py2.7/subprocess32.py:149: RuntimeWarning: The _posixsubprocess module is not being used. Child process reliability may suffer if your program uses threads.

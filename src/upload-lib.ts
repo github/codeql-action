@@ -26,7 +26,9 @@ export function combineSarifFiles(sarifFiles: string[]): string {
     if (combinedSarif.version === null) {
       combinedSarif.version = sarifObject.version;
     } else if (combinedSarif.version !== sarifObject.version) {
-      throw `Different SARIF versions encountered: ${combinedSarif.version} and ${sarifObject.version}`;
+      throw new Error(
+        `Different SARIF versions encountered: ${combinedSarif.version} and ${sarifObject.version}`
+      );
     }
 
     combinedSarif.runs.push(...sarifObject.runs);

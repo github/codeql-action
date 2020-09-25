@@ -206,7 +206,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
       // we just abort the process without failing the action
       logger.endGroup();
       logger.warning(
-        "Unable to download and extract the tools needed for installing the python dependecies"
+        "Unable to download and extract the tools needed for installing the python dependecies. You can call this action with 'setup-python-dependencies: false' to disable this process."
       );
     }
   }
@@ -219,7 +219,9 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     ).exec();
   } catch (e) {
     logger.endGroup();
-    logger.warning("We were unable to install your python dependencies.");
+    logger.warning(
+      "We were unable to install your python dependencies. You can call this action with 'setup-python-dependencies: false' to disable this process."
+    );
   }
   logger.endGroup();
 }

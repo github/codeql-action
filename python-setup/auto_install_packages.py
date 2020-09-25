@@ -114,6 +114,7 @@ def install_packages(codeql_base_dir) -> Optional[str]:
             print('Found Pipfile, will install packages with Pipenv', flush=True)
         return install_packages_with_pipenv()
 
+    # get_extractor_version returns the Python version the extractor thinks this repo is using
     version = extractor_version.get_extractor_version(codeql_base_dir, quiet=False)
 
     if os.path.exists('requirements.txt'):

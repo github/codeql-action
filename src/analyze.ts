@@ -50,7 +50,7 @@ async function createdDBForScannedLanguages(
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
-  analysisPaths.includeAndExcludeAnalysisPaths(config);
+  analysisPaths.includeAndExcludeAnalysisPaths(config, logger);
 
   const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {

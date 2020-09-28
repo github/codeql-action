@@ -49,7 +49,6 @@
             "import/no-extraneous-dependencies": "off",
             "no-shadow": "off",
             "no-throw-literal": "off",
-            "no-useless-escape": "off",
             "sort-imports": "off"
         }
     }]

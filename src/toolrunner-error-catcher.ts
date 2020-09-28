@@ -77,7 +77,7 @@ export async function toolrunnerErrorCatcher(
       return returnState;
     } else {
       throw new Error(
-        `The process \'${commandLine}\' failed with exit code ${returnState}`
+        `The process '${commandLine}' failed with exit code ${returnState}`
       );
     }
   } else {

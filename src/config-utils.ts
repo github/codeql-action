@@ -375,7 +375,7 @@ const pathStarsRegex = /.*(?:\*\*[^/].*|\*\*$|[^/]\*\*.*)/;
 
 // Characters that are supported by filters in workflows, but not by us.
 // See https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-const filterPatternCharactersRegex = /.*[\?\+\[\]!].*/;
+const filterPatternCharactersRegex = /.*[?+[\]!].*/;
 
 // Checks that a paths of paths-ignore entry is valid, possibly modifying it
 // to make it valid, or if not possible then throws an error.

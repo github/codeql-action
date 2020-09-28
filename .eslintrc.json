@@ -48,7 +48,6 @@
             "github/no-then": "off",
             "import/no-extraneous-dependencies": "off",
             "no-shadow": "off",
-            "no-throw-literal": "off",
             "sort-imports": "off"
         }
     }]

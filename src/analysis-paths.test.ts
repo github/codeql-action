@@ -1,6 +1,8 @@
 import test from "ava";
+import * as path from "path";
 
 import * as analysisPaths from "./analysis-paths";
+import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -18,7 +20,7 @@ test("emptyPaths", async (t) => {
       toolCacheDir: tmpDir,
       codeQLCmd: "",
     };
-    analysisPaths.includeAndExcludeAnalysisPaths(config);
+    analysisPaths.includeAndExcludeAnalysisPaths(config, getRunnerLogger(true));
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
     t.is(process.env["LGTM_INDEX_EXCLUDE"], undefined);
     t.is(process.env["LGTM_INDEX_FILTERS"], undefined);
@@ -37,12 +39,32 @@ test("nonEmptyPaths", async (t) => {
       toolCacheDir: tmpDir,
       codeQLCmd: "",
     };
-    analysisPaths.includeAndExcludeAnalysisPaths(config);
+    analysisPaths.includeAndExcludeAnalysisPaths(config, getRunnerLogger(true));
     t.is(process.env["LGTM_INDEX_INCLUDE"], "path1\npath2");
     t.is(process.env["LGTM_INDEX_EXCLUDE"], "path4\npath5");
     t.is(
       process.env["LGTM_INDEX_FILTERS"],
       "include:path1\ninclude:path2\ninclude:**/path3\nexclude:path4\nexclude:path5\nexclude:path6/**"
     );
+  });
+});
+
+test("exclude temp dir", async (t) => {
+  return await util.withTmpDir(async (toolCacheDir) => {
+    const tempDir = path.join(process.cwd(), "codeql-runner-temp");
+    const config = {
+      languages: [],
+      queries: {},
+      pathsIgnore: [],
+      paths: [],
+      originalUserInput: {},
+      tempDir,
+      toolCacheDir,
+      codeQLCmd: "",
+    };
+    analysisPaths.includeAndExcludeAnalysisPaths(config, getRunnerLogger(true));
+    t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
+    t.is(process.env["LGTM_INDEX_EXCLUDE"], tempDir);
+    t.is(process.env["LGTM_INDEX_FILTERS"], undefined);
   });
 });

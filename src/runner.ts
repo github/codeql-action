@@ -12,31 +12,15 @@ import { Language, parseLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
-import { getAddSnippetsFlag, getMemoryFlag, getThreadsFlag } from "./util";
+import {
+  getAddSnippetsFlag,
+  getMemoryFlag,
+  getThreadsFlag,
+  parseGithubUrl,
+} from "./util";
 
 const program = new Command();
 program.version("0.0.1");
-
-function parseGithubUrl(inputUrl: string): string {
-  try {
-    const url = new URL(inputUrl);
-
-    // If we detect this is trying to be to github.com
-    // then return with a fixed canonical URL.
-    if (url.hostname === "github.com" || url.hostname === "api.github.com") {
-      return "https://github.com";
-    }
-
-    // Remove the API prefix if it's present
-    if (url.pathname.indexOf("/api/v3") !== -1) {
-      url.pathname = url.pathname.substring(0, url.pathname.indexOf("/api/v3"));
-    }
-
-    return url.toString();
-  } catch (e) {
-    throw new Error(`"${inputUrl}" is not a valid URL`);
-  }
-}
 
 function getTempDir(userInput: string | undefined): string {
   const tempDir = path.join(userInput || process.cwd(), "codeql-runner");

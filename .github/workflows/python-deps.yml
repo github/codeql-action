@@ -2,7 +2,6 @@ name: Test Python Package Installation
 
 on:
   push:
-    branches: [main, v1]
   pull_request:
 
 jobs:
@@ -71,6 +70,7 @@ jobs:
         echo -e '\n\n\n\n\n' && sleep 0.5
         cd $GITHUB_WORKSPACE/${{ matrix.test_dir }}
         $GITHUB_WORKSPACE/python-setup/auto_install_packages.py /opt/hostedtoolcache/CodeQL/0.0.0-20200826/x64/codeql/
+        /bin/true
     - name: Setup for extractor
       run: |
         echo $CODEQL_PYTHON

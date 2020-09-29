@@ -235,12 +235,37 @@ export async function setupCodeQL(
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
 
   try {
+    // We use the special value of 'latest' to prioritize the version in the
+    // defaults over any pinned cached version.
+    const forceLatest = codeqlURL === "latest";
+    if (forceLatest) {
+      codeqlURL = undefined;
+    }
+
     const codeqlURLVersion = getCodeQLURLVersion(
       codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`,
       logger
     );
 
+    // If we find the specified version, we always use that.
     let codeqlFolder = toolcache.find("CodeQL", codeqlURLVersion);
+
+    // If we don't find the requested version, in some cases we may allow a
+    // different version to save download time if the version hasn't been
+    // specified explicitly (in which case we always honor it).
+    if (!codeqlFolder && !codeqlURL && !forceLatest) {
+      const codeqlVersions = toolcache.findAllVersions("CodeQL");
+      if (codeqlVersions.length === 1) {
+        const tmpCodeqlFolder = toolcache.find("CodeQL", codeqlVersions[0]);
+        if (fs.existsSync(path.join(tmpCodeqlFolder, "pinned-version"))) {
+          logger.debug(
+            `CodeQL in cache overriding the default ${CODEQL_BUNDLE_VERSION}`
+          );
+          codeqlFolder = tmpCodeqlFolder;
+        }
+      }
+    }
+
     if (codeqlFolder) {
       logger.debug(`CodeQL found in cache ${codeqlFolder}`);
     } else {
@@ -595,8 +620,10 @@ function getExtraOptionsFromEnv(path: string[]) {
  *
  * - the special terminal step name '*' in `options` matches all path steps
  * - throws an exception if this conversion is impossible.
+ *
+ * Exported for testing.
  */
-export /* exported for testing */ function getExtraOptions(
+export function getExtraOptions(
   options: any,
   path: string[],
   pathInfo: string[]

@@ -875,28 +875,28 @@ async function loadConfig(
     if (!(parsedYAML[PATHS_IGNORE_PROPERTY] instanceof Array)) {
       throw new Error(getPathsIgnoreInvalid(configFile));
     }
-    parsedYAML[PATHS_IGNORE_PROPERTY]!.forEach((path) => {
+    for (const path of parsedYAML[PATHS_IGNORE_PROPERTY]!) {
       if (typeof path !== "string" || path === "") {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
       pathsIgnore.push(
         validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile, logger)
       );
-    });
+    }
   }
 
   if (PATHS_PROPERTY in parsedYAML) {
     if (!(parsedYAML[PATHS_PROPERTY] instanceof Array)) {
       throw new Error(getPathsInvalid(configFile));
     }
-    parsedYAML[PATHS_PROPERTY]!.forEach((path) => {
+    for (const path of parsedYAML[PATHS_PROPERTY]!) {
       if (typeof path !== "string" || path === "") {
         throw new Error(getPathsInvalid(configFile));
       }
       paths.push(
         validateAndSanitisePath(path, PATHS_PROPERTY, configFile, logger)
       );
-    });
+    }
   }
 
   // The list of queries should not be empty for any language. If it is then
@@ -1023,7 +1023,7 @@ async function getRemoteConfig(
 
   const response = await api
     .getApiClient(githubAuth, githubUrl, true)
-    .repos.getContents({
+    .repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,
       path: pieces.groups.path,

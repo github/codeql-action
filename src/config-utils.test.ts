@@ -27,12 +27,12 @@ function mockGetContents(
   content: GetContentsResponse
 ): sinon.SinonStub<any, any> {
   // Passing an auth token is required, so we just use a dummy value
-  const client = new github.GitHub("123");
+  const client = github.getOctokit("123");
   const response = {
     data: content,
   };
   const spyGetContents = sinon
-    .stub(client.repos, "getContents")
+    .stub(client.repos, "getContent")
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   return spyGetContents;
@@ -40,7 +40,7 @@ function mockGetContents(
 
 function mockListLanguages(languages: string[]) {
   // Passing an auth token is required, so we just use a dummy value
-  const client = new github.GitHub("123");
+  const client = github.getOctokit("123");
   const response = {
     data: {},
   };
@@ -386,9 +386,9 @@ test("Default queries are used", async (t) => {
  */
 function queriesToResolvedQueryForm(queries: string[]) {
   const dummyResolvedQueries = {};
-  queries.forEach((q) => {
+  for (const q of queries) {
     dummyResolvedQueries[q] = {};
-  });
+  }
   return {
     byLanguage: {
       javascript: dummyResolvedQueries,

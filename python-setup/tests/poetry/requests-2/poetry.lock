@@ -1,0 +1,16 @@
+[[package]]
+category = "main"
+description = "Python HTTP for Humans."
+name = "requests"
+optional = false
+python-versions = "*"
+version = "1.2.3"
+
+[metadata]
+content-hash = "b8c27a00aece20cb2ff6b3dcd394b1b5ef5e4acc3d7a059cfeb9f9cc11c9eff4"
+python-versions = "^2.7"
+
+[metadata.files]
+requests = [
+    {file = "requests-1.2.3.tar.gz", hash = "sha256:156bf3ec27ba9ec7e0cf8fbe02808718099d218de403eb64a714d73ba1a29ab1"},
+]

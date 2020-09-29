@@ -1,6 +1,6 @@
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
 import * as fs from "fs";
 import * as path from "path";
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
 
 import { Logger } from "./logging";
 

@@ -1,7 +1,9 @@
-import { getCodeQL } from "./codeql";
 import * as config_utils from "./config-utils";
+
 import { Language, isTracedLanguage } from "./languages";
+
 import { Logger } from "./logging";
+import { getCodeQL } from "./codeql";
 
 export function determineAutobuildLanguage(
   config: config_utils.Config,

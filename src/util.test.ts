@@ -1,10 +1,11 @@
-import test from "ava";
 import * as fs from "fs";
 import * as os from "os";
+import * as util from "./util";
+
+import test from "ava";
 
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
-import * as util from "./util";
 
 setupTests(test);
 

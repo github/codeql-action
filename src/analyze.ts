@@ -1,15 +1,15 @@
+import * as analysisPaths from "./analysis-paths";
+import * as configUtils from "./config-utils";
 import * as fs from "fs";
 import * as path from "path";
-
-import * as analysisPaths from "./analysis-paths";
-import { getCodeQL } from "./codeql";
-import * as configUtils from "./config-utils";
-import { isScannedLanguage } from "./languages";
-import { Logger } from "./logging";
-import { RepositoryNwo } from "./repository";
 import * as sharedEnv from "./shared-environment";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
+
+import { Logger } from "./logging";
+import { RepositoryNwo } from "./repository";
+import { getCodeQL } from "./codeql";
+import { isScannedLanguage } from "./languages";
 
 export interface QueriesStatusReport {
   // Time taken in ms to analyze builtin queries for cpp (or undefined if this language was not analyzed)

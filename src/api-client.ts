@@ -1,9 +1,11 @@
 import * as githubUtils from "@actions/github/lib/utils";
-import * as retry from "@octokit/plugin-retry";
-import consoleLogLevel from "console-log-level";
 import * as path from "path";
+import * as retry from "@octokit/plugin-retry";
+
+import consoleLogLevel from "console-log-level";
 
 import { getRequiredEnvParam, getRequiredInput } from "./actions-util";
+
 import { isLocalRun } from "./util";
 
 export const getApiClient = function (

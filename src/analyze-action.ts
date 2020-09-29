@@ -1,11 +1,12 @@
-import * as core from "@actions/core";
-
 import * as actionsUtil from "./actions-util";
-import { AnalysisStatusReport, runAnalyze } from "./analyze";
-import { getConfig } from "./config-utils";
-import { getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import * as core from "@actions/core";
 import * as util from "./util";
+
+import { AnalysisStatusReport, runAnalyze } from "./analyze";
+
+import { getActionsLogger } from "./logging";
+import { getConfig } from "./config-utils";
+import { parseRepositoryNwo } from "./repository";
 
 interface FinishStatusReport
   extends actionsUtil.StatusReportBase,

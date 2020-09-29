@@ -1,4 +1,5 @@
 import * as fs from "fs";
+
 import Long from "long";
 
 import { Logger } from "./logging";

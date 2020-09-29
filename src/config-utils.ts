@@ -1,11 +1,12 @@
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-import * as path from "path";
-
 import * as api from "./api-client";
-import { CodeQL, ResolveQueriesOutput } from "./codeql";
 import * as externalQueries from "./external-queries";
+import * as fs from "fs";
+import * as path from "path";
+import * as yaml from "js-yaml";
+
+import { CodeQL, ResolveQueriesOutput } from "./codeql";
 import { Language, parseLanguage } from "./languages";
+
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 

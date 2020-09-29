@@ -64,7 +64,7 @@ test("exclude temp dir", async (t) => {
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config, getRunnerLogger(true));
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
-    t.is(process.env["LGTM_INDEX_EXCLUDE"], tempDir);
+    t.is(process.env["LGTM_INDEX_EXCLUDE"], "codeql-runner-temp");
     t.is(process.env["LGTM_INDEX_FILTERS"], undefined);
   });
 });

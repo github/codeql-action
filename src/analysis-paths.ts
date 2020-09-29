@@ -59,7 +59,7 @@ export function includeAndExcludeAnalysisPaths(
     logger.warning(
       "Storing the CodeQL Runner in the directory being analyzed is not recommended."
     );
-    pathsIgnore = pathsIgnore.concat(config.tempDir);
+    pathsIgnore = pathsIgnore.concat(tempRelativeToWorking);
   }
   if (pathsIgnore.length !== 0) {
     process.env["LGTM_INDEX_EXCLUDE"] = buildIncludeExcludeEnvVar(pathsIgnore);

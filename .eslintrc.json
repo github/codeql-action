@@ -18,7 +18,7 @@
         "import/no-amd": "error",
         "import/no-commonjs": "error",
         "import/no-dynamic-require": "error",
-        "import/no-extraneous-dependencies": ["error", {"devDependencies": false}],
+        "import/no-extraneous-dependencies": ["error"],
         "import/no-namespace": "off",
         "import/no-unresolved": "error",
         "import/no-webpack-loader-syntax": "error",
@@ -46,7 +46,6 @@
             "@typescript-eslint/restrict-template-expressions": "off",
             "func-style": "off",
             "github/no-then": "off",
-            "import/no-extraneous-dependencies": "off",
             "no-shadow": "off"
         }
     }]

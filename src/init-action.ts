@@ -1,9 +1,10 @@
+import * as actionsUtil from "./actions-util";
+import * as configUtils from "./config-utils";
 import * as core from "@actions/core";
 
-import * as actionsUtil from "./actions-util";
-import { CodeQL } from "./codeql";
-import * as configUtils from "./config-utils";
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
+
+import { CodeQL } from "./codeql";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 

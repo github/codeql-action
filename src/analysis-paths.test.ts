@@ -1,8 +1,9 @@
+import * as analysisPaths from "./analysis-paths";
+import * as util from "./util";
+
 import test from "ava";
 
-import * as analysisPaths from "./analysis-paths";
 import { setupTests } from "./testing-utils";
-import * as util from "./util";
 
 setupTests(test);
 

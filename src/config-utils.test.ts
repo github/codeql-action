@@ -1,16 +1,18 @@
-import * as github from "@actions/github";
-import test from "ava";
-import * as fs from "fs";
-import * as path from "path";
-import sinon from "sinon";
-
 import * as api from "./api-client";
-import { getCachedCodeQL, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import * as fs from "fs";
+import * as github from "@actions/github";
+import * as path from "path";
+import * as util from "./util";
+
+import sinon from "sinon";
+import test from "ava";
+
+import { getCachedCodeQL, setCodeQL } from "./codeql";
+
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
-import * as util from "./util";
 
 setupTests(test);
 

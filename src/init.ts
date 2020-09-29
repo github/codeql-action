@@ -1,14 +1,15 @@
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as analysisPaths from "./analysis-paths";
+import * as configUtils from "./config-utils";
 import * as fs from "fs";
 import * as path from "path";
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as util from "./util";
 
-import * as analysisPaths from "./analysis-paths";
 import { CodeQL, setupCodeQL } from "./codeql";
-import * as configUtils from "./config-utils";
+import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
+
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
-import * as util from "./util";
 
 export async function initCodeQL(
   codeqlURL: string | undefined,

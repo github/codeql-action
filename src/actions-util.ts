@@ -1,9 +1,9 @@
+import * as api from "./api-client";
 import * as core from "@actions/core";
+import * as sharedEnv from "./shared-environment";
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
 
-import * as api from "./api-client";
-import * as sharedEnv from "./shared-environment";
-import { isLocalRun, GITHUB_DOTCOM_URL } from "./util";
+import { GITHUB_DOTCOM_URL, isLocalRun } from "./util";
 
 /**
  * Wrapper around core.getInput for inputs that always have a value.

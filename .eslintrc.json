@@ -47,8 +47,7 @@
             "func-style": "off",
             "github/no-then": "off",
             "import/no-extraneous-dependencies": "off",
-            "no-shadow": "off",
-            "sort-imports": "off"
+            "no-shadow": "off"
         }
     }]
 }

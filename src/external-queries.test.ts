@@ -1,12 +1,13 @@
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
-import test from "ava";
+import * as externalQueries from "./external-queries";
 import * as fs from "fs";
 import * as path from "path";
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as util from "./util";
 
-import * as externalQueries from "./external-queries";
+import test from "ava";
+
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
-import * as util from "./util";
 
 setupTests(test);
 

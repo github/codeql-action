@@ -1,9 +1,10 @@
-import test from "ava";
 import * as ava from "ava";
+import * as fingerprints from "./fingerprints";
 import * as fs from "fs";
 import * as path from "path";
 
-import * as fingerprints from "./fingerprints";
+import test from "ava";
+
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 

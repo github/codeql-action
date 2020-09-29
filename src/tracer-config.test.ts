@@ -1,17 +1,19 @@
-import test from "ava";
+import * as configUtils from "./config-utils";
 import * as fs from "fs";
 import * as path from "path";
+import * as util from "./util";
 
-import { setCodeQL } from "./codeql";
-import * as configUtils from "./config-utils";
-import { Language } from "./languages";
-import { setupTests } from "./testing-utils";
+import test from "ava";
+
 import {
   concatTracerConfigs,
   getCombinedTracerConfig,
   getTracerConfigForLanguage,
 } from "./tracer-config";
-import * as util from "./util";
+
+import { Language } from "./languages";
+import { setCodeQL } from "./codeql";
+import { setupTests } from "./testing-utils";
 
 setupTests(test);
 

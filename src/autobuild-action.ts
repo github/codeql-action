@@ -1,8 +1,9 @@
+import * as actionsUtil from "./actions-util";
+import * as config_utils from "./config-utils";
 import * as core from "@actions/core";
 
-import * as actionsUtil from "./actions-util";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
-import * as config_utils from "./config-utils";
+
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 

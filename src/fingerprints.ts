@@ -276,14 +276,16 @@ export function addFingerprints(
   }
 
   // Now hash each file that was found
-  Object.entries(callbacksByFile).forEach(([filepath, callbacks]) => {
+  for (const [filepath, callbacks] of Object.entries(callbacksByFile)) {
     // A callback that forwards the hash to all other callbacks for that file
     const teeCallback = function (lineNumber: number, hash: string) {
-      Object.values(callbacks).forEach((c) => c(lineNumber, hash));
+      for (const c of Object.values(callbacks)) {
+        c(lineNumber, hash);
+      }
     };
     const fileContents = fs.readFileSync(filepath).toString();
     hash(teeCallback, fileContents);
-  });
+  }
 
   return JSON.stringify(sarif);
 }

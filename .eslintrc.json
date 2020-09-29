@@ -44,15 +44,10 @@
             "@typescript-eslint/prefer-regexp-exec": "off",
             "@typescript-eslint/require-await": "off",
             "@typescript-eslint/restrict-template-expressions": "off",
-            "eslint-comments/no-use": "off",
             "func-style": "off",
-            "github/array-foreach": "off",
             "github/no-then": "off",
             "import/no-extraneous-dependencies": "off",
             "no-shadow": "off",
-            "no-sparse-arrays": "off",
-            "no-throw-literal": "off",
-            "no-useless-escape": "off",
             "sort-imports": "off"
         }
     }]

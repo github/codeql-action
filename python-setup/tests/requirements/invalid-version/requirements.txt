@@ -1,2 +1,0 @@
-# valid package with invalid version
-requests==10000

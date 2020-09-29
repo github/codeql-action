@@ -37,24 +37,6 @@ jobs:
             - test_dir: python-setup/tests/requirements/non-standard-location
               test_script: test -z $LGTM_INDEX_IMPORT_PATH
 
-            # All of these should fail
-            - test_dir: python-setup/tests/pipenv/python-version-not-available
-              test_script: /bin/false
-            - test_dir: python-setup/tests/poetry/python-version-not-available
-              test_script: /bin/false
-            - test_dir: python-setup/tests/requirements/invalid-package
-              test_script: /bin/false
-            - test_dir: python-setup/tests/requirements/invalid-version
-              test_script: /bin/false
-            - test_dir: python-setup/tests/setup_py/invalid-version
-              test_script: /bin/false
-            - test_dir: python-setup/tests/setup_py/invalid-file
-              test_script: /bin/false
-            - test_dir: python-setup/tests/setup_py/extra-require-not-installed
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
-            - test_dir: python-setup/tests/setup_py/wrong-python-version
-              test_script: /bin/false
-
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2

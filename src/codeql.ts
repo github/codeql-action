@@ -10,14 +10,13 @@ import * as toolcache from "@actions/tool-cache";
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
 import * as util from "./util";
 
-import uuidV4 from "uuid/v4";
-
 import { IHeaders } from "@actions/http-client/interfaces";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { errorMatchers } from "./error-matcher";
 import { getRequiredEnvParam } from "./actions-util";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
+import { v4 as uuidV4 } from "uuid";
 
 type Options = Array<string | number | boolean>;
 

@@ -2,7 +2,6 @@ import test from "ava";
 import * as path from "path";
 
 import * as analysisPaths from "./analysis-paths";
-import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -20,7 +19,7 @@ test("emptyPaths", async (t) => {
       toolCacheDir: tmpDir,
       codeQLCmd: "",
     };
-    analysisPaths.includeAndExcludeAnalysisPaths(config, getRunnerLogger(true));
+    analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
     t.is(process.env["LGTM_INDEX_EXCLUDE"], undefined);
     t.is(process.env["LGTM_INDEX_FILTERS"], undefined);
@@ -39,7 +38,7 @@ test("nonEmptyPaths", async (t) => {
       toolCacheDir: tmpDir,
       codeQLCmd: "",
     };
-    analysisPaths.includeAndExcludeAnalysisPaths(config, getRunnerLogger(true));
+    analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], "path1\npath2");
     t.is(process.env["LGTM_INDEX_EXCLUDE"], "path4\npath5");
     t.is(
@@ -62,7 +61,7 @@ test("exclude temp dir", async (t) => {
       toolCacheDir,
       codeQLCmd: "",
     };
-    analysisPaths.includeAndExcludeAnalysisPaths(config, getRunnerLogger(true));
+    analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
     t.is(process.env["LGTM_INDEX_EXCLUDE"], "codeql-runner-temp");
     t.is(process.env["LGTM_INDEX_FILTERS"], undefined);

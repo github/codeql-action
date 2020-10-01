@@ -19,7 +19,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.0.0",
+    "@actions/core": "^1.2.6",
     "@actions/exec": "^1.0.1",
     "@actions/github": "^4.0.0",
     "@actions/http-client": "^1.0.8",

@@ -143,10 +143,16 @@ test("download codeql bundle cache with different version cached (not pinned)", 
     );
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
+    const platform =
+      process.platform === "win32"
+        ? "win64"
+        : process.platform === "linux"
+        ? "linux64"
+        : "osx64";
 
     nock("https://github.com")
       .get(
-        `/github/codeql-action/releases/download/${defaults.bundleVersion}/codeql-bundle.tar.gz`
+        `/github/codeql-action/releases/download/${defaults.bundleVersion}/codeql-bundle-${platform}.tar.gz`
       )
       .replyWithFile(
         200,
@@ -169,7 +175,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
   });
 });
 
-test('download codeql bundle cache with pinned different version cached if "latests" tools specied', async (t) => {
+test('download codeql bundle cache with pinned different version cached if "latests" tools specified', async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
@@ -190,9 +196,16 @@ test('download codeql bundle cache with pinned different version cached if "late
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
 
+    const platform =
+      process.platform === "win32"
+        ? "win64"
+        : process.platform === "linux"
+        ? "linux64"
+        : "osx64";
+
     nock("https://github.com")
       .get(
-        `/github/codeql-action/releases/download/${defaults.bundleVersion}/codeql-bundle.tar.gz`
+        `/github/codeql-action/releases/download/${defaults.bundleVersion}/codeql-bundle-${platform}.tar.gz`
       )
       .replyWithFile(
         200,

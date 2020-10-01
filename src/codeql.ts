@@ -1,12 +1,13 @@
+import * as fs from "fs";
+import * as path from "path";
+import * as stream from "stream";
+import * as globalutil from "util";
+
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
 import * as http from "@actions/http-client";
 import { IHeaders } from "@actions/http-client/interfaces";
 import * as toolcache from "@actions/tool-cache";
-import * as fs from "fs";
-import * as path from "path";
 import * as semver from "semver";
-import * as stream from "stream";
-import * as globalutil from "util";
 import uuidV4 from "uuid/v4";
 
 import { getRequiredEnvParam } from "./actions-util";

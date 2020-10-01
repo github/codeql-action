@@ -1,5 +1,6 @@
 import test from "ava";
 import sinon from "sinon";
+
 import * as actionsutil from "./actions-util";
 import { setupTests } from "./testing-utils";
 

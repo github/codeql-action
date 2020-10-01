@@ -1,5 +1,6 @@
-import test from "ava";
 import * as fs from "fs";
+
+import test from "ava";
 
 import { runQueries } from "./analyze";
 import { setCodeQL } from "./codeql";

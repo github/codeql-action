@@ -1,14 +1,14 @@
 import * as fs from "fs";
-import * as util from "./util";
 
 import test from "ava";
 
+import { runQueries } from "./analyze";
+import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { runQueries } from "./analyze";
-import { setCodeQL } from "./codeql";
 import { setupTests } from "./testing-utils";
+import * as util from "./util";
 
 setupTests(test);
 

@@ -1,9 +1,8 @@
-import * as uploadLib from "./upload-lib";
-
 import test from "ava";
 
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
+import * as uploadLib from "./upload-lib";
 
 setupTests(test);
 

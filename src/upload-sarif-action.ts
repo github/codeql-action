@@ -1,9 +1,9 @@
-import * as actionsUtil from "./actions-util";
 import * as core from "@actions/core";
-import * as upload_lib from "./upload-lib";
 
+import * as actionsUtil from "./actions-util";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import * as upload_lib from "./upload-lib";
 
 interface UploadSarifStatusReport
   extends actionsUtil.StatusReportBase,

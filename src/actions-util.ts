@@ -1,8 +1,8 @@
-import * as api from "./api-client";
 import * as core from "@actions/core";
-import * as sharedEnv from "./shared-environment";
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
 
+import * as api from "./api-client";
+import * as sharedEnv from "./shared-environment";
 import { GITHUB_DOTCOM_URL, isLocalRun } from "./util";
 
 /**

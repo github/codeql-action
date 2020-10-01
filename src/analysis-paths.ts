@@ -38,10 +38,7 @@ export function printPathFiltersWarning(
   }
 }
 
-export function includeAndExcludeAnalysisPaths(
-  config: configUtils.Config,
-  logger: Logger
-) {
+export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   // The 'LGTM_INDEX_INCLUDE' and 'LGTM_INDEX_EXCLUDE' environment variables
   // control which files/directories are traversed when scanning.
   // This allows including files that otherwise would not be scanned, or
@@ -52,14 +49,18 @@ export function includeAndExcludeAnalysisPaths(
   if (config.paths.length !== 0) {
     process.env["LGTM_INDEX_INCLUDE"] = buildIncludeExcludeEnvVar(config.paths);
   }
-  // If the temporary directory is in the working directory ignore that too.
+  // If the temporary or tools directory is in the working directory ignore that too.
   const tempRelativeToWorking = path.relative(process.cwd(), config.tempDir);
+  const toolsRelativeToWorking = path.relative(
+    process.cwd(),
+    config.toolCacheDir
+  );
   let pathsIgnore = config.pathsIgnore;
   if (!tempRelativeToWorking.startsWith("..")) {
-    logger.warning(
-      "Storing the CodeQL Runner in the directory being analyzed is not recommended."
-    );
     pathsIgnore = pathsIgnore.concat(tempRelativeToWorking);
+  }
+  if (!toolsRelativeToWorking.startsWith("..")) {
+    pathsIgnore = pathsIgnore.concat(toolsRelativeToWorking);
   }
   if (pathsIgnore.length !== 0) {
     process.env["LGTM_INDEX_EXCLUDE"] = buildIncludeExcludeEnvVar(pathsIgnore);

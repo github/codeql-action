@@ -1,17 +1,17 @@
-import * as api from "./api-client";
-import * as core from "@actions/core";
-import * as fingerprints from "./fingerprints";
 import * as fs from "fs";
-import * as jsonschema from "jsonschema";
 import * as path from "path";
-import * as sharedEnv from "./shared-environment";
-import * as util from "./util";
-
-import fileUrl from "file-url";
 import zlib from "zlib";
 
+import * as core from "@actions/core";
+import fileUrl from "file-url";
+import * as jsonschema from "jsonschema";
+
+import * as api from "./api-client";
+import * as fingerprints from "./fingerprints";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import * as sharedEnv from "./shared-environment";
+import * as util from "./util";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.

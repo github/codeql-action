@@ -1,22 +1,23 @@
+import * as fs from "fs";
+import * as path from "path";
+import * as stream from "stream";
+import * as globalutil from "util";
+
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as http from "@actions/http-client";
+import { IHeaders } from "@actions/http-client/interfaces";
+import * as toolcache from "@actions/tool-cache";
+import * as semver from "semver";
+import { v4 as uuidV4 } from "uuid";
+
+import { getRequiredEnvParam } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
-import * as fs from "fs";
-import * as globalutil from "util";
-import * as http from "@actions/http-client";
-import * as path from "path";
-import * as semver from "semver";
-import * as stream from "stream";
-import * as toolcache from "@actions/tool-cache";
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
-import * as util from "./util";
-
-import { IHeaders } from "@actions/http-client/interfaces";
+import { errorMatchers } from "./error-matcher";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { errorMatchers } from "./error-matcher";
-import { getRequiredEnvParam } from "./actions-util";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
-import { v4 as uuidV4 } from "uuid";
+import * as util from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -115,8 +116,21 @@ export interface ResolveQueriesOutput {
 let cachedCodeQL: CodeQL | undefined = undefined;
 
 const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
-const CODEQL_BUNDLE_NAME = "codeql-bundle.tar.gz";
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+
+function getCodeQLBundleName(): string {
+  let platform: string;
+  if (process.platform === "win32") {
+    platform = "win64";
+  } else if (process.platform === "linux") {
+    platform = "linux64";
+  } else if (process.platform === "darwin") {
+    platform = "osx64";
+  } else {
+    return "codeql-bundle.tar.gz";
+  }
+  return `codeql-bundle-${platform}.tar.gz`;
+}
 
 function getCodeQLActionRepository(mode: util.Mode): string {
   if (mode !== "actions") {
@@ -161,6 +175,7 @@ async function getCodeQLBundleDownloadURL(
   const uniqueDownloadSources = potentialDownloadSources.filter(
     (url, index, self) => index === self.indexOf(url)
   );
+  const codeQLBundleName = getCodeQLBundleName();
   for (const downloadSource of uniqueDownloadSources) {
     const [apiURL, repository] = downloadSource;
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
@@ -180,7 +195,7 @@ async function getCodeQLBundleDownloadURL(
           tag: CODEQL_BUNDLE_VERSION,
         });
       for (const asset of release.data.assets) {
-        if (asset.name === CODEQL_BUNDLE_NAME) {
+        if (asset.name === codeQLBundleName) {
           logger.info(
             `Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`
           );
@@ -193,7 +208,7 @@ async function getCodeQLBundleDownloadURL(
       );
     }
   }
-  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${CODEQL_BUNDLE_NAME}`;
+  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${codeQLBundleName}`;
 }
 
 // We have to download CodeQL manually because the toolcache doesn't support Accept headers.

@@ -1,5 +1,4 @@
 import * as exec from "@actions/exec";
-
 import test from "ava";
 
 import { ErrorMatcher } from "./error-matcher";

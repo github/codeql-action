@@ -1,11 +1,10 @@
-import * as configUtils from "./config-utils";
 import * as fs from "fs";
 import * as path from "path";
-import * as util from "./util";
-
-import { Language, isTracedLanguage } from "./languages";
 
 import { CodeQL } from "./codeql";
+import * as configUtils from "./config-utils";
+import { Language, isTracedLanguage } from "./languages";
+import * as util from "./util";
 
 export type TracerConfig = {
   spec: string;

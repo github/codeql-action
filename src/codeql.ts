@@ -1,23 +1,23 @@
-import * as api from "./api-client";
-import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import * as fs from "fs";
-import * as globalutil from "util";
-import * as http from "@actions/http-client";
 import * as path from "path";
-import * as semver from "semver";
 import * as stream from "stream";
-import * as toolcache from "@actions/tool-cache";
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
-import * as util from "./util";
+import * as globalutil from "util";
 
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as http from "@actions/http-client";
+import { IHeaders } from "@actions/http-client/interfaces";
+import * as toolcache from "@actions/tool-cache";
+import * as semver from "semver";
 import uuidV4 from "uuid/v4";
 
-import { IHeaders } from "@actions/http-client/interfaces";
+import { getRequiredEnvParam } from "./actions-util";
+import * as api from "./api-client";
+import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
+import { errorMatchers } from "./error-matcher";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { errorMatchers } from "./error-matcher";
-import { getRequiredEnvParam } from "./actions-util";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
+import * as util from "./util";
 
 type Options = Array<string | number | boolean>;
 

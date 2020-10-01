@@ -1,14 +1,14 @@
+import * as path from "path";
+
+import * as toolcache from "@actions/tool-cache";
+import test from "ava";
+import nock from "nock";
+
 import * as codeql from "./codeql";
 import * as defaults from "./defaults.json";
-import * as path from "path";
-import * as toolcache from "@actions/tool-cache";
-import * as util from "./util";
-
-import nock from "nock";
-import test from "ava";
-
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
+import * as util from "./util";
 
 setupTests(test);
 

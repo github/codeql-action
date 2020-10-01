@@ -1,19 +1,19 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import * as upload_lib from "./upload-lib";
-
-import { CodeQL, getCodeQL } from "./codeql";
-import { Config, getConfig } from "./config-utils";
-import { Language, parseLanguage } from "./languages";
-import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
-import { getAddSnippetsFlag, getMemoryFlag, getThreadsFlag } from "./util";
-import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
 
 import { Command } from "commander";
+
+import { runAnalyze } from "./analyze";
+import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
+import { CodeQL, getCodeQL } from "./codeql";
+import { Config, getConfig } from "./config-utils";
+import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
+import { Language, parseLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { runAnalyze } from "./analyze";
+import * as upload_lib from "./upload-lib";
+import { getAddSnippetsFlag, getMemoryFlag, getThreadsFlag } from "./util";
 
 const program = new Command();
 program.version("0.0.1");

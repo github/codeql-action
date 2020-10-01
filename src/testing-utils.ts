@@ -1,8 +1,7 @@
-import * as CodeQL from "./codeql";
-
+import { TestInterface } from "ava";
 import sinon from "sinon";
 
-import { TestInterface } from "ava";
+import * as CodeQL from "./codeql";
 
 type TestContext = {
   stdoutWrite: any;

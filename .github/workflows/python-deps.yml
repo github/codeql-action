@@ -52,7 +52,7 @@ jobs:
         $GITHUB_WORKSPACE/python-setup/install_tools.sh
         echo -e '\n\n\n\n\n' && sleep 0.5
         cd $GITHUB_WORKSPACE/${{ matrix.test_dir }}
-        $GITHUB_WORKSPACE/python-setup/auto_install_packages.py /opt/hostedtoolcache/CodeQL/0.0.0-20200826/x64/codeql/
+        find /opt/hostedtoolcache/CodeQL -path "*x64/codeql" -exec $GITHUB_WORKSPACE/python-setup/auto_install_packages.py {} \;
     - name: Setup for extractor
       run: |
         echo $CODEQL_PYTHON

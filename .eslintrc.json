@@ -22,11 +22,14 @@
         "import/no-namespace": "off",
         "import/no-unresolved": "error",
         "import/no-webpack-loader-syntax": "error",
+        "import/order": ["error", {
+            "alphabetize": {"order": "asc"},
+            "newlines-between": "always"
+        }],
         "no-async-foreach/no-async-foreach": "error",
         "no-console": "off",
         "no-sequences": "error",
-        "one-var": ["error", "never"],
-        "sort-imports": ["error", { "allowSeparatedGroups": true }]
+        "one-var": ["error", "never"]
     },
     "overrides": [{
         // "temporarily downgraded during transition to eslint
@@ -44,15 +47,10 @@
             "@typescript-eslint/prefer-regexp-exec": "off",
             "@typescript-eslint/require-await": "off",
             "@typescript-eslint/restrict-template-expressions": "off",
-            "eslint-comments/no-use": "off",
             "func-style": "off",
             "github/no-then": "off",
             "import/no-extraneous-dependencies": "off",
-            "no-shadow": "off",
-            "no-sparse-arrays": "off",
-            "no-throw-literal": "off",
-            "no-useless-escape": "off",
-            "sort-imports": "off"
+            "no-shadow": "off"
         }
     }]
 }

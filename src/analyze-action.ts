@@ -64,7 +64,7 @@ async function run() {
     stats = await runAnalyze(
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       await actionsUtil.getCommitOid(),
-      actionsUtil.getRef(),
+      await actionsUtil.getRef(),
       await actionsUtil.getAnalysisKey(),
       actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
       actionsUtil.getWorkflowRunID(),

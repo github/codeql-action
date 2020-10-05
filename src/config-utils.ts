@@ -1,6 +1,7 @@
 import * as fs from "fs";
-import * as yaml from "js-yaml";
 import * as path from "path";
+
+import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import { CodeQL, ResolveQueriesOutput } from "./codeql";
@@ -375,7 +376,7 @@ const pathStarsRegex = /.*(?:\*\*[^/].*|\*\*$|[^/]\*\*.*)/;
 
 // Characters that are supported by filters in workflows, but not by us.
 // See https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-const filterPatternCharactersRegex = /.*[\?\+\[\]!].*/;
+const filterPatternCharactersRegex = /.*[?+[\]!].*/;
 
 // Checks that a paths of paths-ignore entry is valid, possibly modifying it
 // to make it valid, or if not possible then throws an error.

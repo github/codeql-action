@@ -1,6 +1,7 @@
-import test from "ava";
 import * as fs from "fs";
 import * as path from "path";
+
+import test from "ava";
 
 import { setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";

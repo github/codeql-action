@@ -189,7 +189,7 @@ export function parseGithubUrl(inputUrl: string): string {
   // If we detect this is trying to be to github.com
   // then return with a fixed canonical URL.
   if (url.hostname === "github.com" || url.hostname === "api.github.com") {
-    return "https://github.com/";
+    return GITHUB_DOTCOM_URL;
   }
 
   // Remove the API prefix if it's present

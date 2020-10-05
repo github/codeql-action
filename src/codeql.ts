@@ -161,6 +161,8 @@ async function getCodeQLBundleDownloadURL(
   mode: util.Mode,
   logger: Logger
 ): Promise<string> {
+  // Strip any trailing slash from the GitHub URL to ensure it gets deduplicated properly.
+  githubUrl = githubUrl.replace(/\/$/, "");
   const codeQLActionRepository = getCodeQLActionRepository(mode);
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.

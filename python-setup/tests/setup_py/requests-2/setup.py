@@ -7,6 +7,6 @@ from setuptools import setup
 
 setup(
     name="example-setup.py",
-    install_requires=["requests==1.2.3"],
+    install_requires=["requests==2.20.0"],
     python_requires=">=2.7, <3",
 )

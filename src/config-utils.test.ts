@@ -1,7 +1,8 @@
-import * as github from "@actions/github";
-import test from "ava";
 import * as fs from "fs";
 import * as path from "path";
+
+import * as github from "@actions/github";
+import test from "ava";
 import sinon from "sinon";
 
 import * as api from "./api-client";

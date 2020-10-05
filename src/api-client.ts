@@ -25,7 +25,7 @@ export const getApiClient = function (
   );
 };
 
-function getApiUrl(githubUrl: string): string {
+export function getApiUrl(githubUrl: string): string {
   const url = new URL(githubUrl);
 
   // If we detect this is trying to be to github.com

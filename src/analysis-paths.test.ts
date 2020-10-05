@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import test from "ava";
 
 import * as analysisPaths from "./analysis-paths";
@@ -44,5 +46,25 @@ test("nonEmptyPaths", async (t) => {
       process.env["LGTM_INDEX_FILTERS"],
       "include:path1\ninclude:path2\ninclude:**/path3\nexclude:path4\nexclude:path5\nexclude:path6/**"
     );
+  });
+});
+
+test("exclude temp dir", async (t) => {
+  return await util.withTmpDir(async (toolCacheDir) => {
+    const tempDir = path.join(process.cwd(), "codeql-runner-temp");
+    const config = {
+      languages: [],
+      queries: {},
+      pathsIgnore: [],
+      paths: [],
+      originalUserInput: {},
+      tempDir,
+      toolCacheDir,
+      codeQLCmd: "",
+    };
+    analysisPaths.includeAndExcludeAnalysisPaths(config);
+    t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
+    t.is(process.env["LGTM_INDEX_EXCLUDE"], "codeql-runner-temp");
+    t.is(process.env["LGTM_INDEX_FILTERS"], undefined);
   });
 });

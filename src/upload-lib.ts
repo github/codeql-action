@@ -1,9 +1,10 @@
-import * as core from "@actions/core";
-import fileUrl from "file-url";
 import * as fs from "fs";
-import * as jsonschema from "jsonschema";
 import * as path from "path";
 import zlib from "zlib";
+
+import * as core from "@actions/core";
+import fileUrl from "file-url";
+import * as jsonschema from "jsonschema";
 
 import * as api from "./api-client";
 import * as fingerprints from "./fingerprints";

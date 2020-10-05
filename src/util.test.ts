@@ -1,6 +1,7 @@
-import test from "ava";
 import * as fs from "fs";
 import * as os from "os";
+
+import test from "ava";
 
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";

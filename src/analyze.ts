@@ -1,10 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
+
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { isScannedLanguage } from "./languages";
+import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as sharedEnv from "./shared-environment";
@@ -44,6 +46,43 @@ export interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
     QueriesStatusReport {}
 
+async function setupPythonExtractor(logger: Logger) {
+  const codeqlPython = process.env["CODEQL_PYTHON"];
+  if (codeqlPython === undefined || codeqlPython.length === 0) {
+    // If CODEQL_PYTHON is not set, no dependencies were installed, so we don't need to do anything
+    return;
+  }
+
+  let output = "";
+  const options = {
+    listeners: {
+      stdout: (data: Buffer) => {
+        output += data.toString();
+      },
+    },
+  };
+
+  await new toolrunnner.ToolRunner(
+    codeqlPython,
+    [
+      "-c",
+      "import os; import pip; print(os.path.dirname(os.path.dirname(pip.__file__)))",
+    ],
+    options
+  ).exec();
+  logger.info(`Setting LGTM_INDEX_IMPORT_PATH=${output}`);
+  process.env["LGTM_INDEX_IMPORT_PATH"] = output;
+
+  output = "";
+  await new toolrunnner.ToolRunner(
+    codeqlPython,
+    ["-c", "import sys; print(sys.version_info[0])"],
+    options
+  ).exec();
+  logger.info(`Setting LGTM_PYTHON_SETUP_VERSION=${output}`);
+  process.env["LGTM_PYTHON_SETUP_VERSION"] = output;
+}
+
 async function createdDBForScannedLanguages(
   config: configUtils.Config,
   logger: Logger
@@ -56,6 +95,11 @@ async function createdDBForScannedLanguages(
   for (const language of config.languages) {
     if (isScannedLanguage(language)) {
       logger.startGroup(`Extracting ${language}`);
+
+      if (language === Language.python) {
+        await setupPythonExtractor(logger);
+      }
+
       await codeql.extractScannedLanguage(
         util.getCodeQLDatabasePath(config.tempDir, language),
         language

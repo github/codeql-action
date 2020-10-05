@@ -1,0 +1,63 @@
+name: Test Python Package Installation
+
+on:
+  push:
+    branches: [main, v1]
+  pull_request:
+
+jobs:
+
+  test-setup-python-scripts:
+    runs-on: ubuntu-latest
+    strategy:
+        fail-fast: false
+        matrix:
+          include:
+            - test_dir: python-setup/tests/pipenv/requests-2
+              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
+            - test_dir: python-setup/tests/pipenv/requests-3
+              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
+
+            - test_dir: python-setup/tests/poetry/requests-2
+              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
+            - test_dir: python-setup/tests/poetry/requests-3
+              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
+
+            - test_dir: python-setup/tests/requirements/requests-2
+              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
+            - test_dir: python-setup/tests/requirements/requests-3
+              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
+
+            - test_dir: python-setup/tests/setup_py/requests-2
+              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
+            - test_dir: python-setup/tests/setup_py/requests-3
+              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
+
+            # This one shouldn't fail, but also won't install packages
+            - test_dir: python-setup/tests/requirements/non-standard-location
+              test_script: test -z $LGTM_INDEX_IMPORT_PATH
+
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: python
+
+    - name: Test Auto Package Installation
+      run: |
+        set -x
+        $GITHUB_WORKSPACE/python-setup/install_tools.sh
+        echo -e '\n\n\n\n\n' && sleep 0.5
+        cd $GITHUB_WORKSPACE/${{ matrix.test_dir }}
+        find /opt/hostedtoolcache/CodeQL -path "*x64/codeql" -exec $GITHUB_WORKSPACE/python-setup/auto_install_packages.py {} \;
+    - name: Setup for extractor
+      run: |
+        echo $CODEQL_PYTHON
+        # only run if $CODEQL_PYTHON is set
+        test ! -z $CODEQL_PYTHON && $GITHUB_WORKSPACE/python-setup/tests/from_python_exe.py $CODEQL_PYTHON || /bin/true
+    - name: Verify packages installed
+      run: |
+        ${{ matrix.test_script }}

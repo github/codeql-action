@@ -186,12 +186,20 @@ export async function injectWindowsTracer(
 export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   logger.startGroup("Setup Python dependencies");
 
-  if (process.platform !== "linux") {
+  if (process.platform === "darwin") {
     logger.info(
-      "Currently, auto-installing python dependancies is only supported on linux"
+      "Currently, auto-installing python dependancies is not supported on MacOS"
     );
     logger.endGroup();
     return;
+  }
+
+  let install_tools_script = "install_tools.sh";
+  let auto_install_packages_script = "auto_install_packages.py";
+
+  if (process.platform === "win32") {
+    install_tools_script = "install_tools.ps1";
+    auto_install_packages_script = "auto_install_packages_windows.py";
   }
 
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
@@ -200,7 +208,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   if (process.env["ImageOS"] !== undefined) {
     try {
       await new toolrunnner.ToolRunner(
-        path.join(scriptsFolder, "install_tools.sh")
+        path.join(scriptsFolder, install_tools_script)
       ).exec();
     } catch (e) {
       // This script tries to install some needed tools in the runner. It should not fail, but if it does
@@ -215,7 +223,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   // Install dependencies
   try {
     await new toolrunnner.ToolRunner(
-      path.join(scriptsFolder, "auto_install_packages.py"),
+      path.join(scriptsFolder, auto_install_packages_script),
       [path.dirname(codeql.getPath())]
     ).exec();
   } catch (e) {

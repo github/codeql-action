@@ -13,24 +13,24 @@ jobs:
         fail-fast: false
         matrix:
           include:
-            - test_dir: examples/pipenv/requests-2
+            - test_dir: python-setup/tests/pipenv/requests-2
               python_version: 2
-            - test_dir: examples/pipenv/requests-3
+            - test_dir: python-setup/tests/pipenv/requests-3
               python_version: 3
 
-            - test_dir: examples/poetry/requests-2
+            - test_dir: python-setup/tests/poetry/requests-2
               python_version: 2
-            - test_dir: examples/poetry/requests-3
+            - test_dir: python-setup/tests/poetry/requests-3
               python_version: 3
 
-            - test_dir: examples/requirements/requests-2
+            - test_dir: python-setup/tests/requirements/requests-2
               python_version: 2
-            - test_dir: examples/requirements/requests-3
+            - test_dir: python-setup/tests/requirements/requests-3
               python_version: 3
 
-            - test_dir: examples/setup_py/requests-2
+            - test_dir: python-setup/tests/setup_py/requests-2
               python_version: 2
-            - test_dir: examples/setup_py/requests-3
+            - test_dir: python-setup/tests/setup_py/requests-3
               python_version: 3
 
     steps:

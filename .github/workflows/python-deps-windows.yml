@@ -3,6 +3,7 @@ name: Test Python Package Installation on Windows
 
 on:
   push:
+    branches: [main, v1]
   pull_request:
 
 jobs:

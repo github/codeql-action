@@ -8,7 +8,7 @@ import * as http from "@actions/http-client";
 import { IHeaders } from "@actions/http-client/interfaces";
 import * as toolcache from "@actions/tool-cache";
 import * as semver from "semver";
-import uuidV4 from "uuid/v4";
+import { v4 as uuidV4 } from "uuid";
 
 import { getRequiredEnvParam } from "./actions-util";
 import * as api from "./api-client";

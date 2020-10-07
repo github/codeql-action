@@ -49,7 +49,7 @@ jobs:
         powershell -File $cmd
 
         cd $Env:GITHUB_WORKSPACE\\${{ matrix.test_dir }}
-        py -3 $Env:GITHUB_WORKSPACE\\python-setup\\auto_install_packages_windows.py C:\\hostedtoolcache\\windows\\CodeQL\\0.0.0-20200826\\x64\\codeql
+        py -3 $Env:GITHUB_WORKSPACE\\python-setup\\auto_install_packages.py C:\\hostedtoolcache\\windows\\CodeQL\\0.0.0-20200826\\x64\\codeql
     - name: Setup for extractor
       run: |
         echo $Env:CODEQL_PYTHON

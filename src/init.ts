@@ -195,11 +195,10 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   }
 
   let install_tools_script = "install_tools.sh";
-  let auto_install_packages_script = "auto_install_packages.py";
+  const auto_install_packages_script = "auto_install_packages.py";
 
   if (process.platform === "win32") {
     install_tools_script = "install_tools.ps1";
-    auto_install_packages_script = "auto_install_packages_windows.py";
   }
 
   const scriptsFolder = path.resolve(__dirname, "../python-setup");

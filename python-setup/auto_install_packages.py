@@ -23,6 +23,8 @@ def _check_output(command):
 
 
 def install_packages_with_poetry():
+    if sys.platform.startswith('win32'):
+        os.environ['POETRY_VIRTUALENVS_PATH'] = os.environ['RUNNER_WORKSPACE'] + '\\virtualenvs'
     try:
         _check_call(['poetry', 'install', '--no-root'])
     except subprocess.CalledProcessError:
@@ -36,10 +38,14 @@ def install_packages_with_poetry():
     poetry_out = _check_output(['poetry', 'run', 'which', 'python'])
     python_executable_path = poetry_out.decode('utf-8').splitlines()[-1]
 
+    if sys.platform.startswith('win32'):
+        python_executable_path = python_executable_path[2:]
     return python_executable_path
 
 
 def install_packages_with_pipenv():
+    if sys.platform.startswith('win32'):
+        os.environ['WORKON_HOME'] = os.environ['RUNNER_WORKSPACE'] + '\\virtualenvs'
     try:
         _check_call(['pipenv', 'install', '--keep-outdated', '--ignore-pipfile'])
     except subprocess.CalledProcessError:
@@ -48,28 +54,42 @@ def install_packages_with_pipenv():
     pipenv_out = _check_output(['pipenv', 'run', 'which', 'python'])
     python_executable_path = pipenv_out.decode('utf-8').splitlines()[-1]
 
+    if sys.platform.startswith('win32'):
+        python_executable_path = python_executable_path[2:]
     return python_executable_path
 
 
 def _create_venv(version: int):
     # create temporary directory ... that just lives "forever"
-    venv_path = mkdtemp(prefix='codeql-action-python-autoinstall-')
+    venv_path = os.environ['RUNNER_WORKSPACE']+'/codeql-action-python-autoinstall'
+    print ("Creating venv in "+venv_path, flush = True)
 
     # virtualenv is a bit nicer for setting up virtual environment, since it will provide
     # up-to-date versions of pip/setuptools/wheel which basic `python3 -m venv venv` won't
 
-    if version == 2:
-        _check_call(['python2', '-m', 'virtualenv', venv_path])
-    elif version == 3:
-        _check_call(['python3', '-m', 'virtualenv', venv_path])
+    if sys.platform.startswith('win32'):
+        if version == 2:
+            _check_call(['py', '-2', '-m', 'virtualenv', venv_path])
+        elif version == 3:
+            _check_call(['py', '-3', '-m', 'virtualenv', venv_path])
+    else:
+        if version == 2:
+            _check_call(['python2', '-m', 'virtualenv', venv_path])
+        elif version == 3:
+            _check_call(['python3', '-m', 'virtualenv', venv_path])
 
     return venv_path
 
 
 def install_requirements_txt_packages(version: int):
     venv_path = _create_venv(version)
+
     venv_pip = os.path.join(venv_path, 'bin', 'pip')
     venv_python = os.path.join(venv_path, 'bin', 'python')
+
+    if sys.platform.startswith('win32'):
+        venv_pip = os.path.join(venv_path, 'Scripts', 'pip')
+        venv_python = os.path.join(venv_path, 'Scripts', 'python')
 
     try:
         _check_call([venv_pip, 'install', '-r', 'requirements.txt'])
@@ -81,8 +101,13 @@ def install_requirements_txt_packages(version: int):
 
 def install_with_setup_py(version: int):
     venv_path = _create_venv(version)
+
     venv_pip = os.path.join(venv_path, 'bin', 'pip')
     venv_python = os.path.join(venv_path, 'bin', 'python')
+
+    if sys.platform.startswith('win32'):
+        venv_pip = os.path.join(venv_path, 'Scripts', 'pip')
+        venv_python = os.path.join(venv_path, 'Scripts', 'python')
 
     try:
         # We have to choose between `python setup.py develop` and `pip install -e .`.
@@ -137,7 +162,10 @@ if __name__ == "__main__":
 
     # The binaries for packages installed with `pip install --user` are not available on
     # PATH by default, so we need to manually add them.
-    os.environ['PATH'] = os.path.expanduser('~/.local/bin') + os.pathsep + os.environ['PATH']
+    if sys.platform.startswith('win32'):
+        os.environ['PATH'] = os.path.expandvars('%APPDATA%\Python\\Python38\\scripts') + os.pathsep + os.environ['PATH']
+    else:
+        os.environ['PATH'] = os.path.expanduser('~/.local/bin') + os.pathsep + os.environ['PATH']
 
     python_executable_path = install_packages(codeql_base_dir)
 

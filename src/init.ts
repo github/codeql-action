@@ -194,21 +194,20 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     return;
   }
 
-  let install_tools_script = "install_tools.sh";
-  const auto_install_packages_script = "auto_install_packages.py";
-
-  if (process.platform === "win32") {
-    install_tools_script = "install_tools.ps1";
-  }
-
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
 
   // Setup tools on the Github hosted runners
   if (process.env["ImageOS"] !== undefined) {
     try {
-      await new toolrunnner.ToolRunner(
-        path.join(scriptsFolder, install_tools_script)
-      ).exec();
+      if (process.platform === "win32") {
+        await new toolrunnner.ToolRunner("powershell", [
+          path.join(scriptsFolder, "install_tools.ps1"),
+        ]).exec();
+      } else {
+        await new toolrunnner.ToolRunner(
+          path.join(scriptsFolder, "install_tools.sh")
+        ).exec();
+      }
     } catch (e) {
       // This script tries to install some needed tools in the runner. It should not fail, but if it does
       // we just abort the process without failing the action
@@ -216,13 +215,14 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
       logger.warning(
         "Unable to download and extract the tools needed for installing the python dependecies. You can call this action with 'setup-python-dependencies: false' to disable this process."
       );
+      return;
     }
   }
 
   // Install dependencies
   try {
     await new toolrunnner.ToolRunner(
-      path.join(scriptsFolder, auto_install_packages_script),
+      path.join(scriptsFolder, "auto_install_packages.py"),
       [path.dirname(codeql.getPath())]
     ).exec();
   } catch (e) {
@@ -230,6 +230,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     logger.warning(
       "We were unable to install your python dependencies. You can call this action with 'setup-python-dependencies: false' to disable this process."
     );
+    return;
   }
   logger.endGroup();
 }

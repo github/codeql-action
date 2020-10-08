@@ -188,7 +188,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
 
   if (process.platform === "darwin") {
     logger.info(
-      "Currently, auto-installing python dependancies is not supported on MacOS"
+      "Currently, auto-installing python dependencies is not supported on MacOS"
     );
     logger.endGroup();
     return;

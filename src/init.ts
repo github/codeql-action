@@ -221,10 +221,18 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
 
   // Install dependencies
   try {
-    await new toolrunnner.ToolRunner(
-      path.join(scriptsFolder, "auto_install_packages.py"),
-      [path.dirname(codeql.getPath())]
-    ).exec();
+    const script = "auto_install_packages.py";
+    if (process.platform === "win32") {
+      await new toolrunnner.ToolRunner("py", [
+        "-3",
+        path.join(scriptsFolder, script),
+        path.dirname(codeql.getPath()),
+      ]).exec();
+    } else {
+      await new toolrunnner.ToolRunner(path.join(scriptsFolder, script), [
+        path.dirname(codeql.getPath()),
+      ]).exec();
+    }
   } catch (e) {
     logger.endGroup();
     logger.warning(

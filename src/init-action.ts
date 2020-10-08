@@ -10,6 +10,7 @@ import {
   installPythonDeps,
   runInit,
 } from "./init";
+import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 
@@ -118,12 +119,14 @@ async function run() {
       logger
     );
 
-    try {
-      await installPythonDeps(codeql, logger);
-    } catch (err) {
-      logger.warning(
-        `${err.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
-      );
+    if (config.languages.includes(Language.python)) {
+      try {
+        await installPythonDeps(codeql, logger);
+      } catch (err) {
+        logger.warning(
+          `${err.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
+        );
+      }
     }
   } catch (e) {
     core.setFailed(e.message);

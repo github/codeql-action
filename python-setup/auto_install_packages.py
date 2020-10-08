@@ -24,7 +24,7 @@ def _check_output(command):
 
 def install_packages_with_poetry():
     if sys.platform.startswith('win32'):
-        os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE', 'virtualenvs')
+        os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
         _check_call(['poetry', 'install', '--no-root'])
     except subprocess.CalledProcessError:

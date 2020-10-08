@@ -24,7 +24,7 @@ def _check_output(command):
 
 def install_packages_with_poetry():
     if sys.platform.startswith('win32'):
-        os.environ['POETRY_VIRTUALENVS_PATH'] = os.environ['RUNNER_WORKSPACE'] + '\\virtualenvs'
+        os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE', 'virtualenvs')
     try:
         _check_call(['poetry', 'install', '--no-root'])
     except subprocess.CalledProcessError:
@@ -45,7 +45,7 @@ def install_packages_with_poetry():
 
 def install_packages_with_pipenv():
     if sys.platform.startswith('win32'):
-        os.environ['WORKON_HOME'] = os.environ['RUNNER_WORKSPACE'] + '\\virtualenvs'
+        os.environ['WORKON_HOME'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
         _check_call(['pipenv', 'install', '--keep-outdated', '--ignore-pipfile'])
     except subprocess.CalledProcessError:
@@ -61,8 +61,8 @@ def install_packages_with_pipenv():
 
 def _create_venv(version: int):
     # create temporary directory ... that just lives "forever"
-    venv_path = os.environ['RUNNER_WORKSPACE']+'/codeql-action-python-autoinstall'
-    print ("Creating venv in "+venv_path, flush = True)
+    venv_path = os.path.join(os.environ['RUNNER_WORKSPACE'], 'codeql-action-python-autoinstall')
+    print ("Creating venv in " + venv_path, flush = True)
 
     # virtualenv is a bit nicer for setting up virtual environment, since it will provide
     # up-to-date versions of pip/setuptools/wheel which basic `python3 -m venv venv` won't

@@ -1,0 +1,11 @@
+name: "CodeQL action"
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+    - run: hostname -f

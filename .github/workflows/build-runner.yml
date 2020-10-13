@@ -1,0 +1,34 @@
+name: Build runner
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+
+jobs:
+  build-runner:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build runner
+      run: |
+        cd runner
+        npm install
+        npm run build-runner
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: codeql-runner-linux
+        path: runner/dist/codeql-runner-linux
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: codeql-runner-macos
+        path: runner/dist/codeql-runner-macos
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: codeql-runner-win.exe
+        path: runner/dist/codeql-runner-win.exe

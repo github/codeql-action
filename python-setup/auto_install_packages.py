@@ -23,10 +23,12 @@ def _check_output(command):
 
 
 def install_packages_with_poetry():
+    command = ['poetry']
     if sys.platform.startswith('win32'):
+        command = ['py', '-3' , '-m', 'poetry']
         os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
-        _check_call(['poetry', 'install', '--no-root'])
+        _check_call(command + ['install', '--no-root'])
     except subprocess.CalledProcessError:
         sys.exit('package installation with poetry failed, see error above')
 
@@ -35,7 +37,7 @@ def install_packages_with_poetry():
     # virtualenv for the package, which was the case for using poetry for Python 2 when
     # default system interpreter was Python 3 :/
 
-    poetry_out = _check_output(['poetry', 'run', 'which', 'python'])
+    poetry_out = _check_output(command + ['run', 'which', 'python'])
     python_executable_path = poetry_out.decode('utf-8').splitlines()[-1]
 
     if sys.platform.startswith('win32'):
@@ -44,14 +46,16 @@ def install_packages_with_poetry():
 
 
 def install_packages_with_pipenv():
+    command = ['pipenv']
     if sys.platform.startswith('win32'):
+        command = ['py', '-3' , '-m', 'pipenv']
         os.environ['WORKON_HOME'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
-        _check_call(['pipenv', 'install', '--keep-outdated', '--ignore-pipfile'])
+        _check_call(command + ['install', '--keep-outdated', '--ignore-pipfile'])
     except subprocess.CalledProcessError:
         sys.exit('package installation with pipenv failed, see error above')
 
-    pipenv_out = _check_output(['pipenv', 'run', 'which', 'python'])
+    pipenv_out = _check_output(command + ['run', 'which', 'python'])
     python_executable_path = pipenv_out.decode('utf-8').splitlines()[-1]
 
     if sys.platform.startswith('win32'):
@@ -162,9 +166,7 @@ if __name__ == "__main__":
 
     # The binaries for packages installed with `pip install --user` are not available on
     # PATH by default, so we need to manually add them.
-    if sys.platform.startswith('win32'):
-        os.environ['PATH'] = os.path.expandvars('%APPDATA%\Python\\Python38\\scripts') + os.pathsep + os.environ['PATH']
-    else:
+    if sys.platform.startswith('linux'):
         os.environ['PATH'] = os.path.expanduser('~/.local/bin') + os.pathsep + os.environ['PATH']
 
     python_executable_path = install_packages(codeql_base_dir)

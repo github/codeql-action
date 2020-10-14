@@ -23,9 +23,8 @@ def _check_output(command):
 
 
 def install_packages_with_poetry():
-    command = ['poetry']
+    command = [sys.executable, '-m', 'poetry']
     if sys.platform.startswith('win32'):
-        command = ['py', '-3' , '-m', 'poetry']
         os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
         _check_call(command + ['install', '--no-root'])
@@ -46,9 +45,8 @@ def install_packages_with_poetry():
 
 
 def install_packages_with_pipenv():
-    command = ['pipenv']
+    command = [sys.executable, '-m', 'pipenv']
     if sys.platform.startswith('win32'):
-        command = ['py', '-3' , '-m', 'pipenv']
         os.environ['WORKON_HOME'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
         _check_call(command + ['install', '--keep-outdated', '--ignore-pipfile'])

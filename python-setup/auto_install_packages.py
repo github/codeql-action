@@ -173,5 +173,8 @@ if __name__ == "__main__":
     python_executable_path = install_packages(codeql_base_dir)
 
     if python_executable_path is not None:
+        # see https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
+        env_file = open(os.environ["GITHUB_ENV"], mode="at")
+
         print("Setting CODEQL_PYTHON={}".format(python_executable_path))
-        print("::set-env name=CODEQL_PYTHON::{}".format(python_executable_path))
+        print("CODEQL_PYTHON={}".format(python_executable_path), file=env_file)

@@ -25,6 +25,8 @@ def _check_output(command):
 def install_packages_with_poetry():
     command = [sys.executable, '-m', 'poetry']
     if sys.platform.startswith('win32'):
+        # In windows the default path were the deps are installed gets wiped out between steps,
+        # so we have to set it up to a folder that will be kept
         os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
         _check_call(command + ['install', '--no-root'])
@@ -40,6 +42,8 @@ def install_packages_with_poetry():
     python_executable_path = poetry_out.decode('utf-8').splitlines()[-1]
 
     if sys.platform.startswith('win32'):
+        # Poetry produces a path that starts by /d instead of D:\ and Windows doesn't like that way of specifying the drive letter.
+        # We completely remove it because it is not needed as everything is in the same drive (We are installing the dependencies in the RUNNER_WORKSPACE)
         python_executable_path = python_executable_path[2:]
     return python_executable_path
 
@@ -47,6 +51,8 @@ def install_packages_with_poetry():
 def install_packages_with_pipenv():
     command = [sys.executable, '-m', 'pipenv']
     if sys.platform.startswith('win32'):
+        # In windows the default path were the deps are installed gets wiped out between steps,
+        # so we have to set it up to a folder that will be kept
         os.environ['WORKON_HOME'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
         _check_call(command + ['install', '--keep-outdated', '--ignore-pipfile'])
@@ -57,6 +63,8 @@ def install_packages_with_pipenv():
     python_executable_path = pipenv_out.decode('utf-8').splitlines()[-1]
 
     if sys.platform.startswith('win32'):
+        # Pipenv produces a path that starts by /d instead of D:\ and Windows doesn't like that way of specifying the drive letter.
+        # We completely remove it because it is not needed as everything is in the same drive (We are installing the dependencies in the RUNNER_WORKSPACE)
         python_executable_path = python_executable_path[2:]
     return python_executable_path
 
@@ -161,11 +169,6 @@ if __name__ == "__main__":
         sys.exit('Must provide base directory for codeql tool as only argument')
 
     codeql_base_dir = sys.argv[1]
-
-    # The binaries for packages installed with `pip install --user` are not available on
-    # PATH by default, so we need to manually add them.
-    if sys.platform.startswith('linux'):
-        os.environ['PATH'] = os.path.expanduser('~/.local/bin') + os.pathsep + os.environ['PATH']
 
     python_executable_path = install_packages(codeql_base_dir)
 

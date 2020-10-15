@@ -31,7 +31,7 @@ on:
     #        │ │ │ │ │
     #        │ │ │ │ │
     #        * * * * *
-    - cron: '0 0 * * 0'
+    - cron: '30 1 * * 0'
 
 jobs:
   CodeQL-Build:

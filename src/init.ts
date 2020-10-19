@@ -186,14 +186,6 @@ export async function injectWindowsTracer(
 export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   logger.startGroup("Setup Python dependencies");
 
-  if (process.platform === "darwin") {
-    logger.info(
-      "Currently, auto-installing python dependencies is not supported on MacOS"
-    );
-    logger.endGroup();
-    return;
-  }
-
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
 
   // Setup tools on the Github hosted runners

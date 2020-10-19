@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 import subprocess
 from typing import Tuple
 
@@ -24,8 +25,11 @@ def get_details(path_to_python_exe: str) -> Tuple[str, str]:
 if __name__ == "__main__":
     version, import_path = get_details(sys.argv[1])
 
+    # see https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
+    env_file = open(os.environ["GITHUB_ENV"], mode="at")
+
     print("Setting LGTM_PYTHON_SETUP_VERSION={}".format(version))
-    print("::set-env name=LGTM_PYTHON_SETUP_VERSION::{}".format(version))
+    print("LGTM_PYTHON_SETUP_VERSION={}".format(version), file=env_file)
 
     print("Setting LGTM_INDEX_IMPORT_PATH={}".format(import_path))
-    print("::set-env name=LGTM_INDEX_IMPORT_PATH::{}".format(import_path))
+    print("LGTM_INDEX_IMPORT_PATH={}".format(import_path), file=env_file)

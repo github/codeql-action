@@ -62,8 +62,13 @@ jobs:
     - name: Setup for extractor
       run: |
         echo $CODEQL_PYTHON
+        unameOut="$(uname -s)"
+        case "${true}" in
+            Linux*)     true="/bin/true";;
+            Darwin*)    true="/usr/bin/true";;
+        esac
         # only run if $CODEQL_PYTHON is set
-        test ! -z $CODEQL_PYTHON && $GITHUB_WORKSPACE/python-setup/tests/from_python_exe.py $CODEQL_PYTHON || /bin/true
+        test ! -z $CODEQL_PYTHON && $GITHUB_WORKSPACE/python-setup/tests/from_python_exe.py $CODEQL_PYTHON || ${true}
     - name: Verify packages installed
       run: |
         ${{ matrix.test_script }}

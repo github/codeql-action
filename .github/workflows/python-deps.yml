@@ -1,4 +1,4 @@
-name: Test Python Package Installation on Linux
+name: Test Python Package Installation on Linux and Mac
 
 on:
   push:
@@ -8,10 +8,11 @@ on:
 jobs:
 
   test-setup-python-scripts:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
         fail-fast: false
         matrix:
+          os: [ubuntu-latest, macos-latest]
           include:
             - test_dir: python-setup/tests/pipenv/requests-2
               test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
@@ -52,7 +53,13 @@ jobs:
         $GITHUB_WORKSPACE/python-setup/install_tools.sh
         echo -e '\n\n\n\n\n' && sleep 0.5
         cd $GITHUB_WORKSPACE/${{ matrix.test_dir }}
-        find /opt/hostedtoolcache/CodeQL -path "*x64/codeql" -exec $GITHUB_WORKSPACE/python-setup/auto_install_packages.py {} \;
+        unameOut="$(uname -s)"
+        case "${unameOut}" in
+            Linux*)     basePath="/opt";;
+            Darwin*)    basePath="/Users/runner";;
+        esac
+        echo ${basePath}
+        find ${basePath}/hostedtoolcache/CodeQL -path "*x64/codeql" -exec $GITHUB_WORKSPACE/python-setup/auto_install_packages.py {} \;
     - name: Setup for extractor
       run: |
         echo $CODEQL_PYTHON

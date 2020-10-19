@@ -2,6 +2,7 @@ name: Test Python Package Installation on Linux and Mac
 
 on:
   push:
+    branches: [main, v1]
   pull_request:
 
 jobs:

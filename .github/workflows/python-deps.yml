@@ -51,25 +51,23 @@ jobs:
       run: |
         set -x
         $GITHUB_WORKSPACE/python-setup/install_tools.sh
-        echo -e '\n\n\n\n\n' && sleep 0.5
+
         cd $GITHUB_WORKSPACE/${{ matrix.test_dir }}
-        unameOut="$(uname -s)"
-        case "${unameOut}" in
-            Linux*)     basePath="/opt";;
-            Darwin*)    basePath="/Users/runner";;
+
+        case ${{ matrix.os }} in
+            ubuntu-latest*)     basePath="/opt";;
+            macos-latest*)    basePath="/Users/runner";;
         esac
         echo ${basePath}
+
         find ${basePath}/hostedtoolcache/CodeQL -path "*x64/codeql" -exec $GITHUB_WORKSPACE/python-setup/auto_install_packages.py {} \;
     - name: Setup for extractor
       run: |
         echo $CODEQL_PYTHON
-        unameOut="$(uname -s)"
-        case "${true}" in
-            Linux*)     true="/bin/true";;
-            Darwin*)    true="/usr/bin/true";;
-        esac
         # only run if $CODEQL_PYTHON is set
-        test ! -z $CODEQL_PYTHON && $GITHUB_WORKSPACE/python-setup/tests/from_python_exe.py $CODEQL_PYTHON || ${true}
+        if [ ! -z $CODEQL_PYTHON ]; then
+            $GITHUB_WORKSPACE/python-setup/tests/from_python_exe.py $CODEQL_PYTHON;
+        fi
     - name: Verify packages installed
       run: |
         ${{ matrix.test_script }}

@@ -1,7 +1,6 @@
 name: Build runner
 
 on:
-  push:
   workflow_dispatch:
     inputs:
       bundle-tag:
@@ -12,7 +11,7 @@ jobs:
   build-runner:
     runs-on: ubuntu-latest
     env:
-      RELEASE_TAG: test-build-runner  # "${{ github.event.inputs.bundle-tag }}"
+      RELEASE_TAG: "${{ github.event.inputs.bundle-tag }}"
 
     strategy:
       matrix:

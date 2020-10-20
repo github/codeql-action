@@ -4,31 +4,45 @@ on:
   push:
   workflow_dispatch:
     inputs:
+      bundle-tag:
+        description: 'Tag of the bundle release (e.g., "codeql-bundle-20200826")'
+        required: true
 
 jobs:
   build-runner:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: test-build-runner  # "${{ github.event.inputs.bundle-tag }}"
+
+    strategy:
+      matrix:
+        extension: ["linux", "macos", "win.exe"]
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Build runner
-      run: |
-        cd runner
-        npm install
-        npm run build-runner
+      - name: Resolve Upload URL for the release
+        id: save_url
+        run: |
+          UPLOAD_URL=$(curl -sS \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+                -H "Accept: application/json" \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" | jq .upload_url | sed s/\"//g)
+          echo ${UPLOAD_URL}
+          echo "::set-output name=upload_url::${UPLOAD_URL}"
 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: codeql-runner-linux
-        path: runner/dist/codeql-runner-linux
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: codeql-runner-macos
-        path: runner/dist/codeql-runner-macos
-
-    - uses: actions/upload-artifact@v2
-      with:
-        name: codeql-runner-win.exe
-        path: runner/dist/codeql-runner-win.exe
+      - name: Upload Platform Package
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.save_url.outputs.upload_url }}
+          asset_path: runner/dist/codeql-runner-${{matrix.extension}}
+          asset_name: codeql-runner-${{matrix.extension}}
+          asset_content_type: application/octet-stream

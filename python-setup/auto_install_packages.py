@@ -23,8 +23,13 @@ def _check_output(command):
 
 
 def install_packages_with_poetry():
+    command = [sys.executable, '-m', 'poetry']
+    if sys.platform.startswith('win32'):
+        # In windows the default path were the deps are installed gets wiped out between steps,
+        # so we have to set it up to a folder that will be kept
+        os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
-        _check_call(['poetry', 'install', '--no-root'])
+        _check_call(command + ['install', '--no-root'])
     except subprocess.CalledProcessError:
         sys.exit('package installation with poetry failed, see error above')
 
@@ -33,43 +38,68 @@ def install_packages_with_poetry():
     # virtualenv for the package, which was the case for using poetry for Python 2 when
     # default system interpreter was Python 3 :/
 
-    poetry_out = _check_output(['poetry', 'run', 'which', 'python'])
+    poetry_out = _check_output(command + ['run', 'which', 'python'])
     python_executable_path = poetry_out.decode('utf-8').splitlines()[-1]
 
+    if sys.platform.startswith('win32'):
+        # Poetry produces a path that starts by /d instead of D:\ and Windows doesn't like that way of specifying the drive letter.
+        # We completely remove it because it is not needed as everything is in the same drive (We are installing the dependencies in the RUNNER_WORKSPACE)
+        python_executable_path = python_executable_path[2:]
     return python_executable_path
 
 
 def install_packages_with_pipenv():
+    command = [sys.executable, '-m', 'pipenv']
+    if sys.platform.startswith('win32'):
+        # In windows the default path were the deps are installed gets wiped out between steps,
+        # so we have to set it up to a folder that will be kept
+        os.environ['WORKON_HOME'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
-        _check_call(['pipenv', 'install', '--keep-outdated', '--ignore-pipfile'])
+        _check_call(command + ['install', '--keep-outdated', '--ignore-pipfile'])
     except subprocess.CalledProcessError:
         sys.exit('package installation with pipenv failed, see error above')
 
-    pipenv_out = _check_output(['pipenv', 'run', 'which', 'python'])
+    pipenv_out = _check_output(command + ['run', 'which', 'python'])
     python_executable_path = pipenv_out.decode('utf-8').splitlines()[-1]
 
+    if sys.platform.startswith('win32'):
+        # Pipenv produces a path that starts by /d instead of D:\ and Windows doesn't like that way of specifying the drive letter.
+        # We completely remove it because it is not needed as everything is in the same drive (We are installing the dependencies in the RUNNER_WORKSPACE)
+        python_executable_path = python_executable_path[2:]
     return python_executable_path
 
 
 def _create_venv(version: int):
     # create temporary directory ... that just lives "forever"
-    venv_path = mkdtemp(prefix='codeql-action-python-autoinstall-')
+    venv_path = os.path.join(os.environ['RUNNER_WORKSPACE'], 'codeql-action-python-autoinstall')
+    print ("Creating venv in " + venv_path, flush = True)
 
     # virtualenv is a bit nicer for setting up virtual environment, since it will provide
     # up-to-date versions of pip/setuptools/wheel which basic `python3 -m venv venv` won't
 
-    if version == 2:
-        _check_call(['python2', '-m', 'virtualenv', venv_path])
-    elif version == 3:
-        _check_call(['python3', '-m', 'virtualenv', venv_path])
+    if sys.platform.startswith('win32'):
+        if version == 2:
+            _check_call(['py', '-2', '-m', 'virtualenv', venv_path])
+        elif version == 3:
+            _check_call(['py', '-3', '-m', 'virtualenv', venv_path])
+    else:
+        if version == 2:
+            _check_call(['python2', '-m', 'virtualenv', venv_path])
+        elif version == 3:
+            _check_call(['python3', '-m', 'virtualenv', venv_path])
 
     return venv_path
 
 
 def install_requirements_txt_packages(version: int):
     venv_path = _create_venv(version)
+
     venv_pip = os.path.join(venv_path, 'bin', 'pip')
     venv_python = os.path.join(venv_path, 'bin', 'python')
+
+    if sys.platform.startswith('win32'):
+        venv_pip = os.path.join(venv_path, 'Scripts', 'pip')
+        venv_python = os.path.join(venv_path, 'Scripts', 'python')
 
     try:
         _check_call([venv_pip, 'install', '-r', 'requirements.txt'])
@@ -81,8 +111,13 @@ def install_requirements_txt_packages(version: int):
 
 def install_with_setup_py(version: int):
     venv_path = _create_venv(version)
+
     venv_pip = os.path.join(venv_path, 'bin', 'pip')
     venv_python = os.path.join(venv_path, 'bin', 'python')
+
+    if sys.platform.startswith('win32'):
+        venv_pip = os.path.join(venv_path, 'Scripts', 'pip')
+        venv_python = os.path.join(venv_path, 'Scripts', 'python')
 
     try:
         # We have to choose between `python setup.py develop` and `pip install -e .`.
@@ -135,12 +170,11 @@ if __name__ == "__main__":
 
     codeql_base_dir = sys.argv[1]
 
-    # The binaries for packages installed with `pip install --user` are not available on
-    # PATH by default, so we need to manually add them.
-    os.environ['PATH'] = os.path.expanduser('~/.local/bin') + os.pathsep + os.environ['PATH']
-
     python_executable_path = install_packages(codeql_base_dir)
 
     if python_executable_path is not None:
+        # see https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
+        env_file = open(os.environ["GITHUB_ENV"], mode="at")
+
         print("Setting CODEQL_PYTHON={}".format(python_executable_path))
-        print("::set-env name=CODEQL_PYTHON::{}".format(python_executable_path))
+        print("CODEQL_PYTHON={}".format(python_executable_path), file=env_file)

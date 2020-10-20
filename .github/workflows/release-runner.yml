@@ -5,7 +5,7 @@ on:
     inputs:
       bundle-tag:
         description: 'Tag of the bundle release (e.g., "codeql-bundle-20200826")'
-        required: true
+        required: false
 
 jobs:
   release-runner:

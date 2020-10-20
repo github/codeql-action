@@ -1,4 +1,4 @@
-name: Build runner
+name: Release runner
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
         required: true
 
 jobs:
-  build-runner:
+  release-runner:
     runs-on: ubuntu-latest
     env:
       RELEASE_TAG: "${{ github.event.inputs.bundle-tag }}"
@@ -20,7 +20,19 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: codeql-runner-${{matrix.extension}}
+          path: runner/dist/codeql-runner-${{matrix.extension}}
+
       - name: Resolve Upload URL for the release
+        if: ${{ github.event.inputs.bundle-tag != null }}
         id: save_url
         run: |
           UPLOAD_URL=$(curl -sS \
@@ -30,13 +42,8 @@ jobs:
           echo ${UPLOAD_URL}
           echo "::set-output name=upload_url::${UPLOAD_URL}"
 
-      - name: Build runner
-        run: |
-          cd runner
-          npm install
-          npm run build-runner
-
       - name: Upload Platform Package
+        if: ${{ github.event.inputs.bundle-tag != null }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

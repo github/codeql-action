@@ -12,6 +12,7 @@ export async function checkoutExternalRepository(
   repository: string,
   ref: string,
   githubUrl: string,
+  externalRepositoryToken: string,
   tempDir: string,
   logger: Logger
 ): Promise<string> {
@@ -27,10 +28,13 @@ export async function checkoutExternalRepository(
   }
 
   if (!fs.existsSync(checkoutLocation)) {
-    const repoURL = `${githubUrl}/${repository}`;
+    const repoCloneURL = new URL(githubUrl);
+    repoCloneURL.username = "x-access-token";
+    repoCloneURL.password = externalRepositoryToken;
+    repoCloneURL.pathname += `/${repository}`;
     await new toolrunnner.ToolRunner("git", [
       "clone",
-      repoURL,
+      repoCloneURL.toString(),
       checkoutLocation,
     ]).exec();
     await new toolrunnner.ToolRunner("git", [

@@ -87,6 +87,7 @@ interface InitArgs {
   languages: string | undefined;
   queries: string | undefined;
   configFile: string | undefined;
+  externalRepositoryToken: string | undefined;
   codeqlPath: string | undefined;
   tempDir: string | undefined;
   toolsDir: string | undefined;
@@ -105,6 +106,10 @@ program
   .requiredOption(
     "--github-auth <auth>",
     "GitHub Apps token or personal access token. (Required)"
+  )
+  .option(
+    "--external-repository-token <token>",
+    "A token for fetching external config files and queries if they reside in a private repository."
   )
   .option(
     "--languages <languages>",
@@ -165,6 +170,7 @@ program
         cmd.languages,
         cmd.queries,
         cmd.configFile,
+        cmd.externalRepositoryToken,
         parseRepositoryNwo(cmd.repository),
         tempDir,
         toolsDir,

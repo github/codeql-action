@@ -109,6 +109,7 @@ async function run() {
       actionsUtil.getOptionalInput("languages"),
       actionsUtil.getOptionalInput("queries"),
       actionsUtil.getOptionalInput("config-file"),
+      actionsUtil.getOptionalInput("external-repository-token"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),

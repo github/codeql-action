@@ -71,6 +71,7 @@ test("load empty config", async (t) => {
       languages,
       undefined,
       undefined,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -93,6 +94,7 @@ test("load empty config", async (t) => {
         tmpDir,
         "token",
         "https://github.example.com",
+        undefined,
         logger
       )
     );
@@ -123,6 +125,7 @@ test("loading config saves config", async (t) => {
       "javascript,python",
       undefined,
       undefined,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -149,6 +152,7 @@ test("load input outside of workspace", async (t) => {
         undefined,
         undefined,
         "../input",
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -182,6 +186,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         undefined,
         undefined,
         configFile,
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -216,6 +221,7 @@ test("load non-existent input", async (t) => {
         languages,
         undefined,
         configFile,
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -300,6 +306,7 @@ test("load non-empty input", async (t) => {
       languages,
       undefined,
       configFilePath,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -361,6 +368,7 @@ test("Default queries are used", async (t) => {
       languages,
       undefined,
       configFilePath,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -430,6 +438,7 @@ test("Queries can be specified in config file", async (t) => {
       languages,
       undefined,
       configFilePath,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -493,6 +502,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       languages,
       queries,
       configFilePath,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -554,6 +564,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       languages,
       queries,
       configFilePath,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -604,6 +615,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const config = await configUtils.initConfig(
       languages,
       queries,
+      undefined,
       undefined,
       { owner: "github", repo: "example " },
       tmpDir,
@@ -674,6 +686,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       languages,
       queries,
       configFilePath,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -736,6 +749,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         languages,
         queries,
         undefined,
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -786,7 +800,6 @@ test("API client used when reading remote config", async (t) => {
     const dummyResponse = {
       content: Buffer.from(inputFileContents).toString("base64"),
     };
-    const spyGetContents = mockGetContents(dummyResponse);
 
     // Create checkout directory for remote queries repository
     fs.mkdirSync(path.join(tmpDir, "foo/bar/dev"), { recursive: true });
@@ -794,20 +807,49 @@ test("API client used when reading remote config", async (t) => {
     const configFile = "octo-org/codeql-config/config.yaml@main";
     const languages = "javascript";
 
+    const token = "token";
+    const externalToken = "Token";
+    const githubURL = "https://github.example.com";
+
+    let spyGetContents = mockGetContents(dummyResponse);
+    let apiSpy = sinon.spy(api, "getApiClient");
     await configUtils.initConfig(
       languages,
       undefined,
       configFile,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      token,
+      githubURL,
       getRunnerLogger(true)
     );
     t.assert(spyGetContents.called);
+    t.assert(apiSpy.alwaysCalledWithExactly(token, githubURL, true));
+
+    // If we pass in an external token, that should be used instead of the normal API token.
+    sinon.restore();
+    spyGetContents = mockGetContents(dummyResponse);
+    apiSpy = sinon.spy(api, "getApiClient");
+    await configUtils.initConfig(
+      languages,
+      undefined,
+      configFile,
+      externalToken,
+      { owner: "github", repo: "example" },
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      token,
+      githubURL,
+      getRunnerLogger(true)
+    );
+    t.assert(spyGetContents.called);
+    t.assert(apiSpy.alwaysCalledWithExactly(externalToken, githubURL, true));
   });
 });
 
@@ -822,6 +864,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
         undefined,
         undefined,
         repoReference,
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -854,6 +897,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
         undefined,
         undefined,
         repoReference,
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -882,6 +926,7 @@ test("No detected languages", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -905,6 +950,7 @@ test("Unknown languages", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         { owner: "github", repo: "example " },
@@ -953,6 +999,7 @@ function doInvalidInputTest(
           languages,
           undefined,
           configFile,
+          undefined,
           { owner: "github", repo: "example " },
           tmpDir,
           tmpDir,

@@ -269,6 +269,7 @@ async function addRemoteQueries(
   queryUses: string,
   tempDir: string,
   githubUrl: string,
+  githubAuth: string,
   logger: Logger,
   configFile?: string
 ) {
@@ -297,6 +298,7 @@ async function addRemoteQueries(
     nwo,
     ref,
     githubUrl,
+    githubAuth,
     tempDir,
     logger
   );
@@ -325,6 +327,7 @@ async function parseQueryUses(
   tempDir: string,
   checkoutPath: string,
   githubUrl: string,
+  githubAuth: string,
   logger: Logger,
   configFile?: string
 ) {
@@ -364,6 +367,7 @@ async function parseQueryUses(
     queryUses,
     tempDir,
     githubUrl,
+    githubAuth,
     logger,
     configFile
   );
@@ -687,6 +691,7 @@ async function addQueriesFromWorkflow(
   tempDir: string,
   checkoutPath: string,
   githubUrl: string,
+  githubAuth: string,
   logger: Logger
 ) {
   queriesInput = queriesInput.trim();
@@ -702,6 +707,7 @@ async function addQueriesFromWorkflow(
       tempDir,
       checkoutPath,
       githubUrl,
+      githubAuth,
       logger
     );
   }
@@ -732,6 +738,7 @@ export async function getDefaultConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
+  externalRepositoryToken: string | undefined,
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
@@ -752,6 +759,7 @@ export async function getDefaultConfig(
       tempDir,
       checkoutPath,
       githubUrl,
+      externalRepositoryToken ?? githubAuth,
       logger
     );
   }
@@ -775,6 +783,7 @@ async function loadConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string,
+  externalRepositoryToken: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -791,7 +800,11 @@ async function loadConfig(
     configFile = path.resolve(checkoutPath, configFile);
     parsedYAML = getLocalConfig(configFile, checkoutPath);
   } else {
-    parsedYAML = await getRemoteConfig(configFile, githubAuth, githubUrl);
+    parsedYAML = await getRemoteConfig(
+      configFile,
+      externalRepositoryToken ?? githubAuth,
+      githubUrl
+    );
   }
 
   // Validate that the 'name' property is syntactically correct,
@@ -841,6 +854,7 @@ async function loadConfig(
       tempDir,
       checkoutPath,
       githubUrl,
+      externalRepositoryToken ?? githubAuth,
       logger
     );
   }
@@ -866,6 +880,7 @@ async function loadConfig(
         tempDir,
         checkoutPath,
         githubUrl,
+        externalRepositoryToken ?? githubAuth,
         logger,
         configFile
       );
@@ -937,6 +952,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string | undefined,
+  externalRepositoryToken: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -961,6 +977,7 @@ export async function initConfig(
       checkoutPath,
       githubAuth,
       githubUrl,
+      externalRepositoryToken,
       logger
     );
   } else {
@@ -968,6 +985,7 @@ export async function initConfig(
       languagesInput,
       queriesInput,
       configFile,
+      externalRepositoryToken,
       repository,
       tempDir,
       toolCacheDir,

@@ -80,6 +80,7 @@ test("checkoutExternalQueries", async (t) => {
       repoName,
       commit1Sha,
       `file://${testRepoBaseDir}`,
+      "",
       tmpDir,
       getRunnerLogger(true)
     );
@@ -94,6 +95,7 @@ test("checkoutExternalQueries", async (t) => {
       repoName,
       commit2Sha,
       `file://${testRepoBaseDir}`,
+      "token",
       tmpDir,
       getRunnerLogger(true)
     );

@@ -13,6 +13,17 @@ import * as sharedEnv from "./shared-environment";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
 
+export class CodeQLAnalysisError extends Error {
+  queriesStatusReport: QueriesStatusReport;
+
+  constructor(queriesStatusReport: QueriesStatusReport, message: string) {
+    super(message);
+
+    this.name = "CodeQLAnalysisError";
+    this.queriesStatusReport = queriesStatusReport;
+  }
+}
+
 export interface QueriesStatusReport {
   // Time taken in ms to analyze builtin queries for cpp (or undefined if this language was not analyzed)
   analyze_builtin_queries_cpp_duration_ms?: number;
@@ -190,10 +201,12 @@ export async function runQueries(
         }
       }
     } catch (e) {
-      logger.error(`Error running analysis for ${language}: ${e}`);
       logger.info(e);
       statusReport.analyze_failure_language = language;
-      return statusReport;
+      throw new CodeQLAnalysisError(
+        statusReport,
+        `Error running analysis for ${language}: ${e}`
+      );
     }
   }
 

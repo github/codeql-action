@@ -1,7 +1,11 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { AnalysisStatusReport, runAnalyze } from "./analyze";
+import {
+  AnalysisStatusReport,
+  runAnalyze,
+  CodeQLAnalysisError,
+} from "./analyze";
 import { getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -84,6 +88,11 @@ async function run() {
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);
+
+    if (error instanceof CodeQLAnalysisError) {
+      stats = { ...error.queriesStatusReport };
+    }
+
     await sendStatusReport(startedAt, stats, error);
     return;
   }

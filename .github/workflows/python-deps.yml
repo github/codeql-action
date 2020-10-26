@@ -105,6 +105,7 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v1
       with:
+        tools: https://github.com/github/codeql-action/releases/download/codeql-bundle-20200826/codeql-bundle.tar.gz
         languages: python
 
     - name: Test Auto Package Installation

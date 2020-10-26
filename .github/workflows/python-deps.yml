@@ -45,6 +45,7 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v1
       with:
+        tools: latest
         languages: python
 
     - name: Test Auto Package Installation
@@ -60,7 +61,8 @@ jobs:
         esac
         echo ${basePath}
 
-        find ${basePath}/hostedtoolcache/CodeQL -path "*x64/codeql" -exec $GITHUB_WORKSPACE/python-setup/auto_install_packages.py {} \;
+        codeql_version="0.0.0-$(cat "$GITHUB_WORKSPACE/src/defaults.json" | jq -r .bundleVersion | rev | cut -d - -f 1 | rev)"
+        $GITHUB_WORKSPACE/python-setup/auto_install_packages.py "${basePath}/hostedtoolcache/CodeQL/$codeql_version/x64/codeql"
     - name: Setup for extractor
       run: |
         echo $CODEQL_PYTHON
@@ -105,7 +107,7 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v1
       with:
-        tools: https://github.com/github/codeql-action/releases/download/codeql-bundle-20200826/codeql-bundle.tar.gz
+        tools: latest
         languages: python
 
     - name: Test Auto Package Installation
@@ -114,12 +116,15 @@ jobs:
         powershell -File $cmd
 
         cd $Env:GITHUB_WORKSPACE\\${{ matrix.test_dir }}
-        py -3 $Env:GITHUB_WORKSPACE\\python-setup\\auto_install_packages.py C:\\hostedtoolcache\\windows\\CodeQL\\0.0.0-20200826\\x64\\codeql
+        $DefaultsPath = Join-Path (Join-Path $Env:GITHUB_WORKSPACE "src") "defaults.json"
+        $CodeQLBundleName = (Get-Content -Raw -Path $DefaultsPath | ConvertFrom-Json).bundleVersion
+        $CodeQLVersion = "0.0.0-" + $CodeQLBundleName.split("-")[-1]
+        py -3 $Env:GITHUB_WORKSPACE\\python-setup\\auto_install_packages.py C:\\hostedtoolcache\\windows\\CodeQL\\$CodeQLVersion\\x64\\codeql
     - name: Setup for extractor
       run: |
         echo $Env:CODEQL_PYTHON
 
-        py -3 $Env:GITHUB_WORKSPACE\\python-setup\\tests\\from_python_exe.py $Env:CODEQL_PYTHON 
+        py -3 $Env:GITHUB_WORKSPACE\\python-setup\\tests\\from_python_exe.py $Env:CODEQL_PYTHON
     - name: Verify packages installed
       run: |
         $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\tests\\check_requests_123.ps1"

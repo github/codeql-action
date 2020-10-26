@@ -9,6 +9,7 @@ import * as externalQueries from "./external-queries";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { Mode } from "./util";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -592,11 +593,12 @@ async function getLanguagesInRepo(
   repository: RepositoryNwo,
   githubAuth: string,
   githubUrl: string,
+  mode: Mode,
   logger: Logger
 ): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
   const response = await api
-    .getApiClient(githubAuth, githubUrl, true)
+    .getApiClient(githubAuth, githubUrl, mode, true)
     .repos.listLanguages({
       owner: repository.owner,
       repo: repository.repo,
@@ -633,6 +635,7 @@ async function getLanguages(
   repository: RepositoryNwo,
   githubAuth: string,
   githubUrl: string,
+  mode: Mode,
   logger: Logger
 ): Promise<Language[]> {
   // Obtain from action input 'languages' if set
@@ -648,6 +651,7 @@ async function getLanguages(
       repository,
       githubAuth,
       githubUrl,
+      mode,
       logger
     );
     logger.info(
@@ -732,6 +736,7 @@ export async function getDefaultConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
+  mode: Mode,
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
@@ -739,6 +744,7 @@ export async function getDefaultConfig(
     repository,
     githubAuth,
     githubUrl,
+    mode,
     logger
   );
   const queries: Queries = {};
@@ -782,6 +788,7 @@ async function loadConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
+  mode: Mode,
   logger: Logger
 ): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -791,7 +798,7 @@ async function loadConfig(
     configFile = path.resolve(checkoutPath, configFile);
     parsedYAML = getLocalConfig(configFile, checkoutPath);
   } else {
-    parsedYAML = await getRemoteConfig(configFile, githubAuth, githubUrl);
+    parsedYAML = await getRemoteConfig(configFile, githubAuth, githubUrl, mode);
   }
 
   // Validate that the 'name' property is syntactically correct,
@@ -810,6 +817,7 @@ async function loadConfig(
     repository,
     githubAuth,
     githubUrl,
+    mode,
     logger
   );
 
@@ -944,6 +952,7 @@ export async function initConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
+  mode: Mode,
   logger: Logger
 ): Promise<Config> {
   let config: Config;
@@ -961,6 +970,7 @@ export async function initConfig(
       checkoutPath,
       githubAuth,
       githubUrl,
+      mode,
       logger
     );
   } else {
@@ -975,6 +985,7 @@ export async function initConfig(
       checkoutPath,
       githubAuth,
       githubUrl,
+      mode,
       logger
     );
   }
@@ -1010,7 +1021,8 @@ function getLocalConfig(configFile: string, checkoutPath: string): UserConfig {
 async function getRemoteConfig(
   configFile: string,
   githubAuth: string,
-  githubUrl: string
+  githubUrl: string,
+  mode: Mode
 ): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
@@ -1023,7 +1035,7 @@ async function getRemoteConfig(
   }
 
   const response = await api
-    .getApiClient(githubAuth, githubUrl, true)
+    .getApiClient(githubAuth, githubUrl, mode, true)
     .repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,

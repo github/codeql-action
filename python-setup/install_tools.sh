@@ -18,9 +18,6 @@ python3 -m pip install --user --upgrade pip setuptools wheel
 python2 -m pip install --user virtualenv
 python3 -m pip install --user virtualenv
 
-# venv is required for installation of poetry or pipenv (I forgot which)
-sudo apt-get install -y python3-venv
-
 # We install poetry with pip instead of the recommended way, since the recommended way
 # caused some problem since `poetry run` gives output like:
 #

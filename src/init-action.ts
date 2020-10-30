@@ -3,7 +3,14 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
+import {
+  initCodeQL,
+  initConfig,
+  injectWindowsTracer,
+  installPythonDeps,
+  runInit,
+} from "./init";
+import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 
@@ -111,6 +118,19 @@ async function run() {
       actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
       logger
     );
+
+    if (
+      config.languages.includes(Language.python) &&
+      actionsUtil.getRequiredInput("setup-python-dependencies") === "true"
+    ) {
+      try {
+        await installPythonDeps(codeql, logger);
+      } catch (err) {
+        logger.warning(
+          `${err.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
+        );
+      }
+    }
   } catch (e) {
     core.setFailed(e.message);
     console.log(e);

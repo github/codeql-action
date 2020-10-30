@@ -1,9 +1,10 @@
-import * as core from "@actions/core";
-import fileUrl from "file-url";
 import * as fs from "fs";
-import * as jsonschema from "jsonschema";
 import * as path from "path";
 import zlib from "zlib";
+
+import * as core from "@actions/core";
+import fileUrl from "file-url";
+import * as jsonschema from "jsonschema";
 
 import * as api from "./api-client";
 import * as fingerprints from "./fingerprints";
@@ -26,7 +27,9 @@ export function combineSarifFiles(sarifFiles: string[]): string {
     if (combinedSarif.version === null) {
       combinedSarif.version = sarifObject.version;
     } else if (combinedSarif.version !== sarifObject.version) {
-      throw `Different SARIF versions encountered: ${combinedSarif.version} and ${sarifObject.version}`;
+      throw new Error(
+        `Different SARIF versions encountered: ${combinedSarif.version} and ${sarifObject.version}`
+      );
     }
 
     combinedSarif.runs.push(...sarifObject.runs);

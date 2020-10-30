@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import * as configUtils from "./config-utils";
 import { Logger } from "./logging";
 
@@ -6,7 +8,7 @@ function isInterpretedLanguage(language): boolean {
 }
 
 // Matches a string containing only characters that are legal to include in paths on windows.
-export const legalWindowsPathCharactersRegex = /^[^<>:"\|?]*$/;
+export const legalWindowsPathCharactersRegex = /^[^<>:"|?]*$/;
 
 // Builds an environment variable suitable for LGTM_INDEX_INCLUDE or LGTM_INDEX_EXCLUDE
 function buildIncludeExcludeEnvVar(paths: string[]): string {
@@ -48,10 +50,21 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   if (config.paths.length !== 0) {
     process.env["LGTM_INDEX_INCLUDE"] = buildIncludeExcludeEnvVar(config.paths);
   }
-  if (config.pathsIgnore.length !== 0) {
-    process.env["LGTM_INDEX_EXCLUDE"] = buildIncludeExcludeEnvVar(
-      config.pathsIgnore
-    );
+  // If the temporary or tools directory is in the working directory ignore that too.
+  const tempRelativeToWorking = path.relative(process.cwd(), config.tempDir);
+  const toolsRelativeToWorking = path.relative(
+    process.cwd(),
+    config.toolCacheDir
+  );
+  let pathsIgnore = config.pathsIgnore;
+  if (!tempRelativeToWorking.startsWith("..")) {
+    pathsIgnore = pathsIgnore.concat(tempRelativeToWorking);
+  }
+  if (!toolsRelativeToWorking.startsWith("..")) {
+    pathsIgnore = pathsIgnore.concat(toolsRelativeToWorking);
+  }
+  if (pathsIgnore.length !== 0) {
+    process.env["LGTM_INDEX_EXCLUDE"] = buildIncludeExcludeEnvVar(pathsIgnore);
   }
 
   // The 'LGTM_INDEX_FILTERS' environment variable controls which files are

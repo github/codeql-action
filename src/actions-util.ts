@@ -3,7 +3,7 @@ import * as toolrunnner from "@actions/exec/lib/toolrunner";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
-import { isLocalRun, GITHUB_DOTCOM_URL } from "./util";
+import { GITHUB_DOTCOM_URL, isLocalRun } from "./util";
 
 /**
  * Wrapper around core.getInput for inputs that always have a value.
@@ -57,7 +57,7 @@ export function prepareLocalRunEnvironment() {
 /**
  * Gets the SHA of the commit that is currently checked out.
  */
-export async function getCommitOid(): Promise<string> {
+export const getCommitOid = async function (): Promise<string> {
   // Try to use git to get the current commit SHA. If that fails then
   // log but otherwise silently fall back to using the SHA from the environment.
   // The only time these two values will differ is during analysis of a PR when
@@ -85,7 +85,7 @@ export async function getCommitOid(): Promise<string> {
     );
     return getRequiredEnvParam("GITHUB_SHA");
   }
-}
+};
 
 /**
  * Get the path of the currently executing workflow.
@@ -149,17 +149,22 @@ export async function getAnalysisKey(): Promise<string> {
 /**
  * Get the ref currently being analyzed.
  */
-export function getRef(): string {
+export async function getRef(): Promise<string> {
   // Will be in the form "refs/heads/master" on a push event
   // or in the form "refs/pull/N/merge" on a pull_request event
   const ref = getRequiredEnvParam("GITHUB_REF");
 
-  // For pull request refs we want to convert from the 'merge' ref
-  // to the 'head' ref, as that is what we want to analyse.
-  // There should have been some code earlier in the workflow to do
-  // the checkout, but we have no way of verifying that here.
+  // For pull request refs we want to detect whether the workflow
+  // has run `git checkout HEAD^2` to analyze the 'head' ref rather
+  // than the 'merge' ref. If so, we want to convert the ref that
+  // we report back.
   const pull_ref_regex = /refs\/pull\/(\d+)\/merge/;
-  if (pull_ref_regex.test(ref)) {
+  const checkoutSha = await getCommitOid();
+
+  if (
+    pull_ref_regex.test(ref) &&
+    checkoutSha !== getRequiredEnvParam("GITHUB_SHA")
+  ) {
     return ref.replace(pull_ref_regex, "refs/pull/$1/head");
   } else {
     return ref;
@@ -219,7 +224,7 @@ export async function createStatusReportBase(
   exception?: string
 ): Promise<StatusReportBase> {
   const commitOid = process.env["GITHUB_SHA"] || "";
-  const ref = getRef();
+  const ref = await getRef();
   const workflowRunIDStr = process.env["GITHUB_RUN_ID"];
   let workflowRunID = -1;
   if (workflowRunIDStr) {

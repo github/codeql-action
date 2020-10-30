@@ -119,7 +119,10 @@ async function run() {
       logger
     );
 
-    if (config.languages.includes(Language.python)) {
+    if (
+      config.languages.includes(Language.python) &&
+      actionsUtil.getRequiredInput("setup-python-dependencies") === "true"
+    ) {
       try {
         await installPythonDeps(codeql, logger);
       } catch (err) {

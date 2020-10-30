@@ -1,6 +1,7 @@
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
 import * as fs from "fs";
 import * as path from "path";
+
+import * as toolrunnner from "@actions/exec/lib/toolrunner";
 
 import * as analysisPaths from "./analysis-paths";
 import { CodeQL, setupCodeQL } from "./codeql";
@@ -180,4 +181,56 @@ export async function injectWindowsTracer(
     ],
     { env: { ODASA_TRACER_CONFIGURATION: tracerConfig.spec } }
   ).exec();
+}
+
+export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
+  logger.startGroup("Setup Python dependencies");
+
+  const scriptsFolder = path.resolve(__dirname, "../python-setup");
+
+  // Setup tools on the Github hosted runners
+  if (process.env["ImageOS"] !== undefined) {
+    try {
+      if (process.platform === "win32") {
+        await new toolrunnner.ToolRunner("powershell", [
+          path.join(scriptsFolder, "install_tools.ps1"),
+        ]).exec();
+      } else {
+        await new toolrunnner.ToolRunner(
+          path.join(scriptsFolder, "install_tools.sh")
+        ).exec();
+      }
+    } catch (e) {
+      // This script tries to install some needed tools in the runner. It should not fail, but if it does
+      // we just abort the process without failing the action
+      logger.endGroup();
+      logger.warning(
+        "Unable to download and extract the tools needed for installing the python dependecies. You can call this action with 'setup-python-dependencies: false' to disable this process."
+      );
+      return;
+    }
+  }
+
+  // Install dependencies
+  try {
+    const script = "auto_install_packages.py";
+    if (process.platform === "win32") {
+      await new toolrunnner.ToolRunner("py", [
+        "-3",
+        path.join(scriptsFolder, script),
+        path.dirname(codeql.getPath()),
+      ]).exec();
+    } else {
+      await new toolrunnner.ToolRunner(path.join(scriptsFolder, script), [
+        path.dirname(codeql.getPath()),
+      ]).exec();
+    }
+  } catch (e) {
+    logger.endGroup();
+    logger.warning(
+      "We were unable to install your python dependencies. You can call this action with 'setup-python-dependencies: false' to disable this process."
+    );
+    return;
+  }
+  logger.endGroup();
 }

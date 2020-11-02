@@ -1,5 +1,6 @@
 import * as path from "path";
 
+import { exportVariable } from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 import { OctokitResponse } from "@octokit/types";
@@ -17,6 +18,8 @@ export enum DisallowedAPIVersionReason {
 }
 
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
+const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
+  "CODEQL_ACTION_WARNED_ABOUT_VERSION";
 let hasBeenWarnedAboutVersion = false;
 
 export const getApiClient = function (
@@ -33,7 +36,8 @@ export const getApiClient = function (
     octokit.hook.after("request", (response: OctokitResponse<any>, _) => {
       if (
         !hasBeenWarnedAboutVersion &&
-        response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] !== undefined
+        response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] !== undefined &&
+        process.env[CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR] !== undefined
       ) {
         const installedVersion = response.headers[
           GITHUB_ENTERPRISE_VERSION_HEADER
@@ -63,6 +67,9 @@ export const getApiClient = function (
           );
         }
         hasBeenWarnedAboutVersion = true;
+        if (mode === "actions") {
+          exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
+        }
       }
     });
   });

@@ -32,10 +32,7 @@ export const getApiClient = function (
     octokit.hook.after("request", (response: OctokitResponse<any>, _) => {
       if (
         !hasBeenWarnedAboutVersion &&
-        Object.prototype.hasOwnProperty.call(
-          response.headers,
-          GITHUB_ENTERPRISE_VERSION_HEADER
-        )
+        response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] !== undefined
       ) {
         const installedVersion = response.headers[
           GITHUB_ENTERPRISE_VERSION_HEADER

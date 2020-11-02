@@ -188,7 +188,7 @@ async function getCodeQLBundleDownloadURL(
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {
       const release = await api
-        .getApiClient(githubAuth, githubUrl, mode)
+        .getApiClient(githubAuth, githubUrl, mode, logger)
         .repos.getReleaseByTag({
           owner: repositoryOwner,
           repo: repositoryName,

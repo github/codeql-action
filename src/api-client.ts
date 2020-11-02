@@ -8,7 +8,7 @@ import * as semver from "semver";
 
 import { getRequiredEnvParam, getRequiredInput } from "./actions-util";
 import * as apiCompatibility from "./api-compatibility.json";
-import * as logging from "./logging";
+import { Logger, getActionsLogger } from "./logging";
 import { isLocalRun, Mode } from "./util";
 
 export enum DisallowedAPIVersionReason {
@@ -23,6 +23,7 @@ export const getApiClient = function (
   githubAuth: string,
   githubUrl: string,
   mode: Mode,
+  logger: Logger,
   allowLocalRun = false
 ) {
   if (isLocalRun() && !allowLocalRun) {
@@ -43,10 +44,6 @@ export const getApiClient = function (
           apiCompatibility.maximumVersion
         );
 
-        const logger =
-          mode === "actions"
-            ? logging.getActionsLogger()
-            : logging.getRunnerLogger(false);
         const toolName = mode === "actions" ? "Action" : "Runner";
 
         if (
@@ -100,6 +97,7 @@ export function getActionsApiClient(allowLocalRun = false) {
     getRequiredInput("token"),
     getRequiredEnvParam("GITHUB_SERVER_URL"),
     "actions",
+    getActionsLogger(),
     allowLocalRun
   );
 }

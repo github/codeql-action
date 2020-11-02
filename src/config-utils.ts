@@ -598,7 +598,7 @@ async function getLanguagesInRepo(
 ): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
   const response = await api
-    .getApiClient(githubAuth, githubUrl, mode, true)
+    .getApiClient(githubAuth, githubUrl, mode, logger, true)
     .repos.listLanguages({
       owner: repository.owner,
       repo: repository.repo,
@@ -798,7 +798,13 @@ async function loadConfig(
     configFile = path.resolve(checkoutPath, configFile);
     parsedYAML = getLocalConfig(configFile, checkoutPath);
   } else {
-    parsedYAML = await getRemoteConfig(configFile, githubAuth, githubUrl, mode);
+    parsedYAML = await getRemoteConfig(
+      configFile,
+      githubAuth,
+      githubUrl,
+      mode,
+      logger
+    );
   }
 
   // Validate that the 'name' property is syntactically correct,
@@ -1022,7 +1028,8 @@ async function getRemoteConfig(
   configFile: string,
   githubAuth: string,
   githubUrl: string,
-  mode: Mode
+  mode: Mode,
+  logger: Logger
 ): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
@@ -1035,7 +1042,7 @@ async function getRemoteConfig(
   }
 
   const response = await api
-    .getApiClient(githubAuth, githubUrl, mode, true)
+    .getApiClient(githubAuth, githubUrl, mode, logger, true)
     .repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,

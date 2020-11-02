@@ -612,6 +612,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         memoryFlag,
         threadsFlag,
         databasePath,
+        "--min-disk-free=1024", // Try to leave at least 1GB free
         "--format=sarif-latest",
         `--output=${sarifFile}`,
         addSnippetsFlag,

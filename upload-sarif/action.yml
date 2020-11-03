@@ -16,4 +16,4 @@ inputs:
     default: ${{ toJson(matrix) }}
 runs:
   using: 'node12'
-  main: '../lib/upload-sarif-action.js'
+  main: '../dist/upload-sarif/index.js'

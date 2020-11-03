@@ -33,4 +33,4 @@ inputs:
     default: ${{ toJson(matrix) }}
 runs:
   using: 'node12'
-  main: '../lib/analyze-action.js'
+  main: '../dist/analyze/index.js'

@@ -25,4 +25,4 @@ inputs:
     default: 'true'
 runs:
   using: 'node12'
-  main: '../lib/init-action.js'
+  main: '../dist/init/index.js'

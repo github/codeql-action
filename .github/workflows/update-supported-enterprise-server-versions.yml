@@ -1,0 +1,43 @@
+name: Update Supported Enterprise Server Versions
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  multi-language-repo_test-autodetect-languages:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.7"
+      - name: Checkout CodeQL Action
+        uses: actions/checkout@v2
+      - name: Checkout Enterprise Releases
+        uses: actions/checkout@v2
+        with:
+          repository: github/enterprise-releases
+          ssh-key: ${{ secrets.ENTERPRISE_RELEASES_SSH_KEY }}
+          path: ${{ github.workspace }}/enterprise-releases/
+      - name: Update Supported Enterprise Server Versions
+        run: |
+          cd ./.github/workflows/update-supported-enterprise-server-versions/
+          python3 -m pip install pipenv
+          pipenv install
+          pipenv run ./update.py
+          rm --recursive "$ENTERPRISE_RELEASES_PATH"
+          npm run build
+        env:
+          ENTERPRISE_RELEASES_PATH: ${{ github.workspace }}/enterprise-releases/
+      - name: Commit Changes
+        uses: peter-evans/create-pull-request@c7f493a8000b8aeb17a1332e326ba76b57cb83eb # v3.4.1
+        with:
+          commit-message: Update supported GitHub Enterprise Server versions.
+          title: Update supported GitHub Enterprise Server versions.
+          body: ""
+          author: GitHub <noreply@github.com>
+          branch: update-supported-enterprise-server-versions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

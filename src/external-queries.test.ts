@@ -59,6 +59,7 @@ test("checkoutExternalQueries", async (t) => {
     await runGit(["init", repoPath]);
     await runGit(["config", "user.email", "test@github.com"]);
     await runGit(["config", "user.name", "Test Test"]);
+    await runGit(["config", "commit.gpgsign", "false"]);
 
     fs.writeFileSync(path.join(repoPath, "a"), "a content");
     await runGit(["add", "a"]);

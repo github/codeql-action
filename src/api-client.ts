@@ -27,49 +27,53 @@ export const getApiClient = function (
   githubUrl: string,
   mode: Mode,
   logger: Logger,
-  allowLocalRun = false
+  allowLocalRun = false,
+  possibleFailureExpected = false
 ) {
   if (isLocalRun() && !allowLocalRun) {
     throw new Error("Invalid API call in local run");
   }
   const customOctokit = githubUtils.GitHub.plugin(retry.retry, (octokit, _) => {
     octokit.hook.after("request", (response: OctokitResponse<any>, _) => {
+      if (response.status < 400 && !possibleFailureExpected) {
+        if (hasBeenWarnedAboutVersion) {
+          return;
+        }
+      }
       if (
-        !hasBeenWarnedAboutVersion &&
-        response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] !== undefined &&
-        process.env[CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR] !== undefined
+        response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined ||
+        process.env[CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR] === undefined
       ) {
-        const installedVersion = response.headers[
-          GITHUB_ENTERPRISE_VERSION_HEADER
-        ] as string;
-        const disallowedAPIVersionReason = apiVersionInRange(
-          installedVersion,
-          apiCompatibility.minimumVersion,
-          apiCompatibility.maximumVersion
+        return;
+      }
+      const installedVersion = response.headers[
+        GITHUB_ENTERPRISE_VERSION_HEADER
+      ] as string;
+      const disallowedAPIVersionReason = apiVersionInRange(
+        installedVersion,
+        apiCompatibility.minimumVersion,
+        apiCompatibility.maximumVersion
+      );
+
+      const toolName = mode === "actions" ? "Action" : "Runner";
+
+      if (
+        disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_OLD
+      ) {
+        logger.warning(
+          `The CodeQL ${toolName} version you are using is too old to be compatible with GitHub Enterprise ${installedVersion}. If you experience issues, please upgrade to a more recent version of the CodeQL ${toolName}.`
         );
-
-        const toolName = mode === "actions" ? "Action" : "Runner";
-
-        if (
-          disallowedAPIVersionReason ===
-          DisallowedAPIVersionReason.ACTION_TOO_OLD
-        ) {
-          logger.warning(
-            `The CodeQL ${toolName} version you are using is too old to be compatible with GitHub Enterprise ${installedVersion}. If you experience issues, please upgrade to a more recent version of the CodeQL ${toolName}.`
-          );
-        }
-        if (
-          disallowedAPIVersionReason ===
-          DisallowedAPIVersionReason.ACTION_TOO_NEW
-        ) {
-          logger.warning(
-            `GitHub Enterprise ${installedVersion} is too old to be compatible with this version of the CodeQL ${toolName}. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL ${toolName}.`
-          );
-        }
-        hasBeenWarnedAboutVersion = true;
-        if (mode === "actions") {
-          exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
-        }
+      }
+      if (
+        disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_NEW
+      ) {
+        logger.warning(
+          `GitHub Enterprise ${installedVersion} is too old to be compatible with this version of the CodeQL ${toolName}. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL ${toolName}.`
+        );
+      }
+      hasBeenWarnedAboutVersion = true;
+      if (mode === "actions") {
+        exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
       }
     });
   });

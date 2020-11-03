@@ -116,6 +116,7 @@ async function run() {
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
       actionsUtil.getRequiredInput("token"),
       actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      "actions",
       logger
     );
 

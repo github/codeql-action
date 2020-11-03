@@ -20,7 +20,7 @@ export const getApiClient = function (
     githubUtils.getOctokitOptions(githubAuth, {
       baseUrl: getApiUrl(githubUrl),
       userAgent: "CodeQL Action",
-      log: consoleLogLevel({ level: "debug" }),
+      log: consoleLogLevel({ level: "info" }),
     })
   );
 };

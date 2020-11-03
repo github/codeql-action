@@ -96,6 +96,10 @@ async function getWorkflowPath(): Promise<string> {
   const repo = repo_nwo[1];
   const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
 
+  if (isLocalRun()) {
+    return 'n/a';
+  }
+
   const apiClient = api.getActionsApiClient();
   const runsResponse = await apiClient.request(
     "GET /repos/:owner/:repo/actions/runs/:run_id",

@@ -125,9 +125,23 @@ By default, this will override any queries specified in a config file. If you wi
     queries: +<local-or-remote-query>,<another-query>
 ```
 
-### CodeQL Path
+### Calling CodeQL Directly
 
 The `init` action makes the path to CodeQL available as the output `codeql-path`.
+
+With this you can access the `codeql` binary:
+
+<!-- this example is run via .github/workflows/codeql.yml -->
+```yaml
+- name: Initialize CodeQL
+  uses: github/codeql-action/init@v1
+  id: init
+  with:
+    languages: javascript
+
+- name: Print CodeQL Version
+  run: ${{steps.init.outputs.codeql-path}} version --format=json
+```
 
 ## Troubleshooting
 

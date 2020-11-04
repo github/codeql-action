@@ -172,6 +172,7 @@ program
         cmd.checkoutPath || process.cwd(),
         cmd.githubAuth,
         parseGithubUrl(cmd.githubUrl),
+        "runner",
         logger
       );
 

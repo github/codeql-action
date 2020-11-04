@@ -15,7 +15,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: ./init
+      id: init
       with:
         languages: javascript
         config-file: ./.github/codeql/codeql-config.yml
+    # example from README.md
+    - name: Print CodeQL Version
+      run: ${{steps.init.outputs.codeql-path}} version --format=json
     - uses: ./analyze

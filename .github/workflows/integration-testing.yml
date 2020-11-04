@@ -18,6 +18,8 @@ jobs:
         mv * .github ../action/
         mv ../action/tests/multi-language-repo/{*,.github} .
     - uses: ./../action/init
+      with:
+        tools: latest
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -44,6 +46,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        # Run with latest and default tools to test both paths.
+        # Only need to do this for a sigle test.
         tools: [~, latest]
     runs-on: ${{ matrix.os }}
 
@@ -91,6 +95,7 @@ jobs:
       with:
         languages: go
         config-file: ./.github/codeql/custom-queries.yml
+        tools: latest
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -152,6 +157,7 @@ jobs:
     - uses: ./../action/init
       with:
         languages: javascript
+        tools: latest
     - uses: ./../action/analyze
       env:
         TEST_MODE: true

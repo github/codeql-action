@@ -18,4 +18,5 @@ jobs:
       with:
         languages: javascript
         config-file: ./.github/codeql/codeql-config.yml
+        tools: latest
     - uses: ./analyze

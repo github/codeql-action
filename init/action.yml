@@ -25,7 +25,7 @@ inputs:
     default: 'true'
 outputs:
   codeql-path:
-      description: The path of the CodeQL binary used for analysis
+    description: The path of the CodeQL binary used for analysis
 runs:
   using: 'node12'
   main: '../lib/init-action.js'

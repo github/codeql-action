@@ -125,6 +125,10 @@ By default, this will override any queries specified in a config file. If you wi
     queries: +<local-or-remote-query>,<another-query>
 ```
 
+### CodeQL Path
+
+The `init` action makes the path to CodeQL available as the output `codeql-path`.
+
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).

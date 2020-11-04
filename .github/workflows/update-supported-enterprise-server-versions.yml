@@ -5,7 +5,7 @@ on:
     - cron: "0 0 * * *"
 
 jobs:
-  multi-language-repo_test-autodetect-languages:
+  update-supported-enterprise-server-versions:
     runs-on: ubuntu-latest
 
     steps:

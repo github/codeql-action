@@ -56,7 +56,7 @@ async function uploadPayload(
     return;
   }
 
-  const client = api.getApiClient(githubAuth, githubUrl);
+  const client = api.getApiClient(githubAuth, githubUrl, mode, logger);
 
   const reqURL =
     mode === "actions"

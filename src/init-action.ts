@@ -176,6 +176,8 @@ async function run() {
         );
       }
     }
+
+    core.setOutput("codeql-path", config.codeQLCmd);
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);
@@ -191,8 +193,6 @@ async function run() {
     return;
   }
   await sendSuccessStatusReport(startedAt, config);
-
-  core.setOutput("codeql-path", config.codeQLCmd);
 }
 
 run().catch((e) => {

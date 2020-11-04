@@ -191,6 +191,8 @@ async function run() {
     return;
   }
   await sendSuccessStatusReport(startedAt, config);
+
+  core.setOutput("codeql-path", config.codeQLCmd);
 }
 
 run().catch((e) => {

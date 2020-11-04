@@ -12,16 +12,18 @@ _RELEASE_FILE_PATH = _ENTERPRISE_RELEASES_PATH / "releases.json"
 _FIRST_SUPPORTED_RELEASE = semver.VersionInfo.parse("2.22.0") # Versions older than this did not include Code Scanning.
 
 def main():
+	api_compatibility_data = json.loads(_API_COMPATIBILITY_PATH.read_text())
+
 	releases = json.loads(_RELEASE_FILE_PATH.read_text())
 	oldest_supported_release = None
-	newest_supported_release = None
+	newest_supported_release = semver.VersionInfo.parse(api_compatibility_data["maximumVersion"] + ".0")
 
 	for release_version_string, release_data in releases.items():
 		release_version = semver.VersionInfo.parse(release_version_string + ".0")
 		if release_version < _FIRST_SUPPORTED_RELEASE:
 			continue
 
-		if newest_supported_release is None or release_version > newest_supported_release:
+		if release_version > newest_supported_release:
 			feature_freeze_date = datetime.date.fromisoformat(release_data["feature_freeze"])
 			if feature_freeze_date < datetime.date.today() + datetime.timedelta(weeks=2):
 				newest_supported_release = release_version

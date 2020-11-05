@@ -176,6 +176,8 @@ async function run() {
         );
       }
     }
+
+    core.setOutput("codeql-path", config.codeQLCmd);
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);

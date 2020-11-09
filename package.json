@@ -25,6 +25,7 @@
     "@actions/http-client": "^1.0.8",
     "@actions/tool-cache": "^1.5.5",
     "@octokit/plugin-retry": "^3.0.3",
+    "@octokit/types": "^5.5.0",
     "commander": "^6.0.0",
     "console-log-level": "^1.4.1",
     "file-url": "^3.0.0",

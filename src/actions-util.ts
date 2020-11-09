@@ -52,6 +52,12 @@ export function prepareLocalRunEnvironment() {
   if (!process.env.GITHUB_JOB) {
     core.exportVariable("GITHUB_JOB", "UNKNOWN-JOB");
   }
+  if (!process.env.CODEQL_ACTION_ANALYSIS_KEY) {
+    core.exportVariable(
+      "CODEQL_ACTION_ANALYSIS_KEY",
+      `LOCAL-RUN:${process.env.GITHUB_JOB}`
+    );
+  }
 }
 
 /**

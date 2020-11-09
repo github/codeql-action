@@ -116,6 +116,7 @@ async function run() {
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
       actionsUtil.getRequiredInput("token"),
       actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      "actions",
       logger
     );
 
@@ -175,6 +176,8 @@ async function run() {
         );
       }
     }
+
+    core.setOutput("codeql-path", config.codeQLCmd);
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);

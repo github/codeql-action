@@ -74,7 +74,7 @@ export interface CodeQL {
   /**
    * Finalize a database using 'codeql database finalize'.
    */
-  finalizeDatabase(databasePath: string): Promise<void>;
+  finalizeDatabase(databasePath: string, threadsFlag: string): Promise<void>;
   /**
    * Run 'codeql resolve queries'.
    */
@@ -188,7 +188,7 @@ async function getCodeQLBundleDownloadURL(
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {
       const release = await api
-        .getApiClient(githubAuth, githubUrl)
+        .getApiClient(githubAuth, githubUrl, mode, logger, false, true)
         .repos.getReleaseByTag({
           owner: repositoryOwner,
           repo: repositoryName,
@@ -561,12 +561,13 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         errorMatchers
       );
     },
-    async finalizeDatabase(databasePath: string) {
+    async finalizeDatabase(databasePath: string, threadsFlag: string) {
       await toolrunnerErrorCatcher(
         cmd,
         [
           "database",
           "finalize",
+          threadsFlag,
           ...getExtraOptionsFromEnv(["database", "finalize"]),
           databasePath,
         ],

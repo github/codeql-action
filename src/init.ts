@@ -46,6 +46,7 @@ export async function initConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
+  mode: util.Mode,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -60,6 +61,7 @@ export async function initConfig(
     checkoutPath,
     githubAuth,
     githubUrl,
+    mode,
     logger
   );
   analysisPaths.printPathFiltersWarning(config, logger);

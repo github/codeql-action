@@ -122,6 +122,7 @@ async function createdDBForScannedLanguages(
 
 async function finalizeDatabaseCreation(
   config: configUtils.Config,
+  threadsFlag: string,
   logger: Logger
 ) {
   await createdDBForScannedLanguages(config, logger);
@@ -130,7 +131,8 @@ async function finalizeDatabaseCreation(
   for (const language of config.languages) {
     logger.startGroup(`Finalizing ${language}`);
     await codeql.finalizeDatabase(
-      util.getCodeQLDatabasePath(config.tempDir, language)
+      util.getCodeQLDatabasePath(config.tempDir, language),
+      threadsFlag
     );
     logger.endGroup();
   }
@@ -239,7 +241,7 @@ export async function runAnalyze(
   fs.mkdirSync(outputDir, { recursive: true });
 
   logger.info("Finalizing database creation");
-  await finalizeDatabaseCreation(config, logger);
+  await finalizeDatabaseCreation(config, threadsFlag, logger);
 
   logger.info("Analyzing database");
   const queriesStats = await runQueries(

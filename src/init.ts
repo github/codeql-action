@@ -155,6 +155,10 @@ export async function injectWindowsTracer(
           Write-Host "Found Runner.Worker.exe process which means we are running on GitHub Actions"
           Write-Host "Aborting search early and using process: $p"
           Break
+        } elseif ($p[0].Name -eq "Agent.Worker.exe") {
+          Write-Host "Found Agent.Worker.exe process which means we are running on Azure Pipelines"
+          Write-Host "Aborting search early and using process: $p"
+          Break
         } else {
           $id = $p[0].ParentProcessId
         }

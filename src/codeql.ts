@@ -132,14 +132,17 @@ function getCodeQLBundleName(): string {
   return `codeql-bundle-${platform}.tar.gz`;
 }
 
-function getCodeQLActionRepository(mode: util.Mode): string {
+function getCodeQLActionRepository(mode: util.Mode, logger: Logger): string {
   if (mode !== "actions") {
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   }
 
-  // Actions do not know their own repository name,
-  // so we currently use this hack to find the name based on where our files are.
-  // This can be removed once the change to the runner in https://github.com/actions/runner/pull/585 is deployed.
+  if (process.env["GITHUB_ACTION_REPOSITORY"] !== undefined) {
+    return process.env["GITHUB_ACTION_REPOSITORY"];
+  }
+
+  // The Actions Runner used with GitHub Enterprise Server 2.22 did not set the GITHUB_ACTION_REPOSITORY variable.
+  // This fallback logic can be removed after the end-of-support for 2.22 on 2021-09-23.
   const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   const relativeScriptPath = path.relative(actionsDirectory, __filename);
@@ -149,8 +152,14 @@ function getCodeQLActionRepository(mode: util.Mode): string {
     relativeScriptPath.startsWith("..") ||
     path.isAbsolute(relativeScriptPath)
   ) {
+    logger.info(
+      "The CodeQL Action is checked out locally. Using the default CodeQL Action repository."
+    );
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   }
+  logger.info(
+    "GITHUB_ACTION_REPOSITORY environment variable was not set. Falling back to legacy method of finding the GitHub Action."
+  );
   const relativeScriptPathParts = relativeScriptPath.split(path.sep);
   return `${relativeScriptPathParts[0]}/${relativeScriptPathParts[1]}`;
 }
@@ -161,7 +170,7 @@ async function getCodeQLBundleDownloadURL(
   mode: util.Mode,
   logger: Logger
 ): Promise<string> {
-  const codeQLActionRepository = getCodeQLActionRepository(mode);
+  const codeQLActionRepository = getCodeQLActionRepository(mode, logger);
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.
     [githubUrl, codeQLActionRepository],

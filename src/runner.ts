@@ -150,15 +150,17 @@ program
       if (cmd.codeqlPath !== undefined) {
         codeql = getCodeQL(cmd.codeqlPath);
       } else {
-        codeql = await initCodeQL(
-          undefined,
-          cmd.githubAuth,
-          parseGithubUrl(cmd.githubUrl),
-          tempDir,
-          toolsDir,
-          "runner",
-          logger
-        );
+        codeql = (
+          await initCodeQL(
+            undefined,
+            cmd.githubAuth,
+            parseGithubUrl(cmd.githubUrl),
+            tempDir,
+            toolsDir,
+            "runner",
+            logger
+          )
+        ).codeql;
       }
 
       const config = await initConfig(

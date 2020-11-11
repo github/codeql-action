@@ -230,6 +230,15 @@ test('download codeql bundle cache with pinned different version cached if "late
 });
 
 test("parse codeql bundle url version", (t) => {
+  t.deepEqual(
+    codeql.getCodeQLURLVersion(
+      "https://github.com/.../codeql-bundle-20200601/..."
+    ),
+    "20200601"
+  );
+});
+
+test("convert to semver", (t) => {
   const tests = {
     "20200601": "0.0.0-20200601",
     "20200601.0": "0.0.0-20200601.0",
@@ -240,11 +249,9 @@ test("parse codeql bundle url version", (t) => {
   };
 
   for (const [version, expectedVersion] of Object.entries(tests)) {
-    const url = `https://github.com/.../codeql-bundle-${version}/...`;
-
     try {
-      const parsedVersion = codeql.getCodeQLURLVersion(
-        url,
+      const parsedVersion = codeql.convertToSemVer(
+        version,
         getRunnerLogger(true)
       );
       t.deepEqual(parsedVersion, expectedVersion);

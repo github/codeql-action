@@ -197,7 +197,9 @@ export interface StatusReportBase {
   ref: string;
   // Name of the action being executed
   action_name: ActionName;
-  // Version if the action being executed, as a commit oid
+  // Version of the action being executed, as a ref
+  action_ref?: string;
+  // Version of the action being executed, as a commit oid
   action_oid: string;
   // Time the first action started. Normally the init action
   started_at: string;
@@ -256,6 +258,7 @@ export async function createStatusReportBase(
     commit_oid: commitOid,
     ref,
     action_name: actionName,
+    action_ref: process.env["GITHUB_ACTION_REF"],
     action_oid: "unknown", // TODO decide if it's possible to fill this in
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),

@@ -19,9 +19,9 @@ export async function initCodeQL(
   toolsDir: string,
   mode: util.Mode,
   logger: Logger
-): Promise<CodeQL> {
+): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
-  const codeql = await setupCodeQL(
+  const { codeql, toolsVersion } = await setupCodeQL(
     codeqlURL,
     githubAuth,
     githubUrl,
@@ -32,7 +32,7 @@ export async function initCodeQL(
   );
   await codeql.printVersion();
   logger.endGroup();
-  return codeql;
+  return { codeql, toolsVersion };
 }
 
 export async function initConfig(

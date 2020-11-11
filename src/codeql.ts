@@ -251,7 +251,7 @@ export async function setupCodeQL(
   toolsDir: string,
   mode: util.Mode,
   logger: Logger
-): Promise<CodeQL> {
+): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   // Setting these two env vars makes the toolcache code safe to use outside,
   // of actions but this is obviously not a great thing we're doing and it would
   // be better to write our own implementation to use outside of actions.
@@ -267,12 +267,12 @@ export async function setupCodeQL(
     }
 
     const codeqlURLVersion = getCodeQLURLVersion(
-      codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`,
-      logger
+      codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`
     );
+    const codeqlURLSemVer = convertToSemVer(codeqlURLVersion, logger);
 
     // If we find the specified version, we always use that.
-    let codeqlFolder = toolcache.find("CodeQL", codeqlURLVersion);
+    let codeqlFolder = toolcache.find("CodeQL", codeqlURLSemVer);
 
     // If we don't find the requested version, in some cases we may allow a
     // different version to save download time if the version hasn't been
@@ -327,7 +327,7 @@ export async function setupCodeQL(
       codeqlFolder = await toolcache.cacheDir(
         codeqlExtracted,
         "CodeQL",
-        codeqlURLVersion
+        codeqlURLSemVer
       );
     }
 
@@ -339,23 +339,24 @@ export async function setupCodeQL(
     }
 
     cachedCodeQL = getCodeQLForCmd(codeqlCmd);
-    return cachedCodeQL;
+    return { codeql: cachedCodeQL, toolsVersion: codeqlURLVersion };
   } catch (e) {
     logger.error(e);
     throw new Error("Unable to download and extract CodeQL CLI");
   }
 }
 
-export function getCodeQLURLVersion(url: string, logger: Logger): string {
+export function getCodeQLURLVersion(url: string): string {
   const match = url.match(/\/codeql-bundle-(.*)\//);
   if (match === null || match.length < 2) {
     throw new Error(
       `Malformed tools url: ${url}. Version could not be inferred`
     );
   }
+  return match[1];
+}
 
-  let version = match[1];
-
+export function convertToSemVer(version: string, logger: Logger): string {
   if (!semver.valid(version)) {
     logger.debug(
       `Bundle version ${version} is not in SemVer format. Will treat it as pre-release 0.0.0-${version}.`
@@ -365,9 +366,7 @@ export function getCodeQLURLVersion(url: string, logger: Logger): string {
 
   const s = semver.clean(version);
   if (!s) {
-    throw new Error(
-      `Malformed tools url ${url}. Version should be in SemVer format but have ${version} instead`
-    );
+    throw new Error(`Bundle version ${version} is not in SemVer format.`);
   }
 
   return s;

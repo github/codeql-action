@@ -10,7 +10,7 @@ import * as toolcache from "@actions/tool-cache";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { getRequiredEnvParam } from "./actions-util";
+import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
@@ -143,15 +143,10 @@ function getCodeQLActionRepository(mode: util.Mode, logger: Logger): string {
 
   // The Actions Runner used with GitHub Enterprise Server 2.22 did not set the GITHUB_ACTION_REPOSITORY variable.
   // This fallback logic can be removed after the end-of-support for 2.22 on 2021-09-23.
-  const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
-  const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
-  const relativeScriptPath = path.relative(actionsDirectory, __filename);
-  // This handles the case where the Action does not come from an Action repository,
-  // e.g. our integration tests which use the Action code from the current checkout.
-  if (
-    relativeScriptPath.startsWith("..") ||
-    path.isAbsolute(relativeScriptPath)
-  ) {
+
+  if (isRunningLocalAction()) {
+    // This handles the case where the Action does not come from an Action repository,
+    // e.g. our integration tests which use the Action code from the current checkout.
     logger.info(
       "The CodeQL Action is checked out locally. Using the default CodeQL Action repository."
     );
@@ -160,7 +155,7 @@ function getCodeQLActionRepository(mode: util.Mode, logger: Logger): string {
   logger.info(
     "GITHUB_ACTION_REPOSITORY environment variable was not set. Falling back to legacy method of finding the GitHub Action."
   );
-  const relativeScriptPathParts = relativeScriptPath.split(path.sep);
+  const relativeScriptPathParts = getRelativeScriptPath().split(path.sep);
   return `${relativeScriptPathParts[0]}/${relativeScriptPathParts[1]}`;
 }
 

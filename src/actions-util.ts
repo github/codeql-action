@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import * as core from "@actions/core";
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
 
@@ -249,6 +251,11 @@ export async function createStatusReportBase(
       workflowStartedAt
     );
   }
+  // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
+  // See https://github.com/actions/runner/issues/803
+  const actionRef = isRunningLocalAction()
+    ? undefined
+    : process.env["GITHUB_ACTION_REF"];
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
@@ -258,7 +265,7 @@ export async function createStatusReportBase(
     commit_oid: commitOid,
     ref,
     action_name: actionName,
-    action_ref: process.env["GITHUB_ACTION_REF"],
+    action_ref: actionRef,
     action_oid: "unknown", // TODO decide if it's possible to fill this in
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),
@@ -343,4 +350,21 @@ export async function sendStatusReport<S extends StatusReportBase>(
   }
 
   return true;
+}
+
+// Is the current action executing a local copy (i.e. we're running a workflow on the codeql-action repo itself)
+// as opposed to running a remote action (i.e. when another repo references us)
+export function isRunningLocalAction(): boolean {
+  const relativeScriptPath = getRelativeScriptPath();
+  return (
+    relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)
+  );
+}
+
+// Get the location where the action is runnning from.
+// This can be used to get the actions name or tell if we're running a local action.
+export function getRelativeScriptPath(): string {
+  const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
+  const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
+  return path.relative(actionsDirectory, __filename);
 }

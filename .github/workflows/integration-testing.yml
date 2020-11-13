@@ -124,7 +124,7 @@ jobs:
         languages: go
     - name: Build code
       shell: bash
-      run: go tool compile main.go
+      run: go build main.go
     - uses: ./../action/analyze
       env:
         TEST_MODE: true

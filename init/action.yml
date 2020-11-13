@@ -1,5 +1,5 @@
 name: 'CodeQL: Init'
-description: 'Setup the CodeQL tracer'
+description: 'Setup CodeQL'
 author: 'GitHub'
 inputs:
   tools:

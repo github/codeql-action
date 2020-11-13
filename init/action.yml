@@ -1,5 +1,5 @@
 name: 'CodeQL: Init'
-description: 'Setup CodeQL'
+description: 'Set up CodeQL'
 author: 'GitHub'
 inputs:
   tools:

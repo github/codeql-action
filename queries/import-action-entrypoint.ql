@@ -1,6 +1,6 @@
 /**
  * @name Import action entrypoint
- * @description Importing the entrpoint file for an action is dangerous
+ * @description Importing the entrypoint file for an action is dangerous
  * because the code from that action will be run when the file is imported.
  * @kind problem
  * @problem.severity error

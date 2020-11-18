@@ -95,6 +95,7 @@ async function run() {
 
   try {
     actionsUtil.prepareLocalRunEnvironment();
+
     if (
       !(await actionsUtil.sendStatusReport(
         await actionsUtil.createStatusReportBase("init", "starting", startedAt),

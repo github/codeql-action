@@ -290,6 +290,15 @@ export async function createStatusReportBase(
   return statusReport;
 }
 
+function getStatus({ status }: { status?: number } = {}) {
+  return status;
+}
+
+function errorMessage(message: string, notFatal: boolean) {
+  (notFatal ? core.warning : core.setFailed)(message);
+  return notFatal;
+}
+
 /**
  * Send a status report to the code_scanning/analysis/status endpoint.
  *
@@ -301,13 +310,8 @@ export async function createStatusReportBase(
  */
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
-  ignoreFailures?: boolean
+  ignoreFailures = false
 ): Promise<boolean> {
-  if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
-    core.debug("Not sending status report to GitHub Enterprise");
-    return true;
-  }
-
   if (isLocalRun()) {
     core.debug("Not sending status report because this is a local run");
     return true;
@@ -319,37 +323,42 @@ export async function sendStatusReport<S extends StatusReportBase>(
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
   const client = api.getActionsApiClient();
-  const statusResponse = await client.request(
-    "PUT /repos/:owner/:repo/code-scanning/analysis/status",
-    {
+
+  const status = await client
+    .request("PUT /repos/:owner/:repo/code-scanning/analysis/status", {
       owner,
       repo,
       data: statusReportJSON,
-    }
-  );
+    })
+    .then(getStatus, getStatus);
 
-  if (!ignoreFailures) {
-    // If the status report request fails with a 403 or a 404, then this is a deliberate
-    // message from the endpoint that the SARIF upload can be expected to fail too,
-    // so the action should fail to avoid wasting actions minutes.
-    //
-    // Other failure responses (or lack thereof) could be transitory and should not
-    // cause the action to fail.
-    if (statusResponse.status === 403) {
+  switch (status) {
+    case 200:
+      return true;
+    case 403:
       core.setFailed(
         "The repo on which this action is running is not opted-in to CodeQL code scanning."
       );
       return false;
-    }
-    if (statusResponse.status === 404) {
+    case 404:
       core.setFailed(
         "Not authorized to used the CodeQL code scanning feature on this repo."
       );
       return false;
-    }
+    case 422:
+      // schema incompatibility when reporting status
+      // on enterprise this may be down to an upgraded action sending new data and we should
+      // not stop the scanning process
+      return errorMessage(
+        "Invalid status report sent to code scanning.",
+        getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL
+      );
+    default:
+      return errorMessage(
+        "Unexpected error when sending code scanning status report.",
+        ignoreFailures
+      );
   }
-
-  return true;
 }
 
 // Is the current action executing a local copy (i.e. we're running a workflow on the codeql-action repo itself)

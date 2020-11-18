@@ -46,6 +46,7 @@ export async function initConfig(
   checkoutPath: string,
   githubAuth: string,
   githubUrl: string,
+  mode: util.Mode,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -60,6 +61,7 @@ export async function initConfig(
     checkoutPath,
     githubAuth,
     githubUrl,
+    mode,
     logger
   );
   analysisPaths.printPathFiltersWarning(config, logger);
@@ -151,6 +153,10 @@ export async function injectWindowsTracer(
         # Special case just in case the runner is used on actions
         if ($p[0].Name -eq "Runner.Worker.exe") {
           Write-Host "Found Runner.Worker.exe process which means we are running on GitHub Actions"
+          Write-Host "Aborting search early and using process: $p"
+          Break
+        } elseif ($p[0].Name -eq "Agent.Worker.exe") {
+          Write-Host "Found Agent.Worker.exe process which means we are running on Azure Pipelines"
           Write-Host "Aborting search early and using process: $p"
           Break
         } else {

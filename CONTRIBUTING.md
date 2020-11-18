@@ -36,6 +36,7 @@ It is possible to run this action locally via [act](https://github.com/nektos/ac
 
   ```bash
   CODEQL_LOCAL_RUN=true
+  GITHUB_SERVER_URL=https://github.com
 
   # Optional, for better logging
   GITHUB_JOB=<ANY_JOB_NAME>

@@ -23,14 +23,14 @@ on:
   pull_request:
   schedule:
     #        ┌───────────── minute (0 - 59)
-    #        │ ┌───────────── hour (0 - 23)
-    #        │ │ ┌───────────── day of the month (1 - 31)
-    #        │ │ │ ┌───────────── month (1 - 12 or JAN-DEC)
-    #        │ │ │ │ ┌───────────── day of the week (0 - 6 or SUN-SAT)
-    #        │ │ │ │ │
-    #        │ │ │ │ │
-    #        │ │ │ │ │
-    #        * * * * *
+    #        │  ┌───────────── hour (0 - 23)
+    #        │  │ ┌───────────── day of the month (1 - 31)
+    #        │  │ │ ┌───────────── month (1 - 12 or JAN-DEC)
+    #        │  │ │ │ ┌───────────── day of the week (0 - 6 or SUN-SAT)
+    #        │  │ │ │ │
+    #        │  │ │ │ │
+    #        │  │ │ │ │
+    #        *  * * * *
     - cron: '30 1 * * 0'
 
 jobs:
@@ -41,17 +41,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-        with:
-          # Must fetch at least the immediate parents so that if this is
-          # a pull request then we can checkout the head of the pull request.
-          # Only include this option if you are running this workflow on pull requests.
-          fetch-depth: 2
-
-      # If this run was triggered by a pull request event then checkout
-      # the head of the pull request instead of the merge commit.
-      # Only include this step if you are running this workflow on pull requests.
-      - run: git checkout HEAD^2
-        if: ${{ github.event_name == 'pull_request' }}
 
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL

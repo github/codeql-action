@@ -618,6 +618,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         databasePath,
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "--format=sarif-latest",
+        "--sarif-multicause-markdown",
         `--output=${sarifFile}`,
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "analyze"]),

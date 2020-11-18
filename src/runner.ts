@@ -212,7 +212,7 @@ program
 
         logger.info(
           `\nCodeQL environment output to "${jsonEnvFile}", "${batEnvFile}" and "${powershellEnvFile}". ` +
-            `Please export these variables to future processes so the build can be traced. ` +
+            `Please export these variables to future processes so that CodeQL can monitor the build. ` +
             `If using cmd/batch run "call ${batEnvFile}" ` +
             `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`
         );
@@ -229,7 +229,7 @@ program
 
         logger.info(
           `\nCodeQL environment output to "${jsonEnvFile}" and "${shEnvFile}". ` +
-            `Please export these variables to future processes so the build can be traced, ` +
+            `Please export these variables to future processes so that CodeQL can monitor the build, ` +
             `for example by running ". ${shEnvFile}".`
         );
       }

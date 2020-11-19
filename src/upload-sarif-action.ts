@@ -33,8 +33,7 @@ async function run() {
         "upload-sarif",
         "starting",
         startedAt
-      ),
-      true
+      )
     ))
   ) {
     return;

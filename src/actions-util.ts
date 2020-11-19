@@ -313,8 +313,7 @@ function isHTTPError(arg: any): arg is HTTPError {
  * Returns whether sending the status report was successful of not.
  */
 export async function sendStatusReport<S extends StatusReportBase>(
-  statusReport: S,
-  ignoreFailures = false
+  statusReport: S
 ): Promise<boolean> {
   if (isLocalRun()) {
     core.debug("Not sending status report because this is a local run");
@@ -355,33 +354,27 @@ export async function sendStatusReport<S extends StatusReportBase>(
         case 422:
           // schema incompatibility when reporting status
           // this means that this action version is no longer compatible with the API
-          // and it is possible that other endpoints have changed too
+          // we still want to continue as it is likely the analysis endpoint will work
           if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
-            core.setFailed(
-              "CodeQL Action version is incompatible with the code scanning endpoint. "
+            core.warning(
+              "CodeQL Action version is incompatible with the code scanning endpoint. Please update to a compatible version of codeql-action."
             );
           } else {
-            core.setFailed(
+            core.warning(
               "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action."
             );
           }
 
-          return false;
+          return true;
       }
     }
 
     // something else has gone wrong and the request/response will be logged by octokit
-    // it's possible this is a transient error and we should continue scanning if we are early in the
-    // process
-    if (ignoreFailures) {
-      core.warning(
-        "An unexpected error occured when sending code scanning status report."
-      );
-      return true;
-    }
-    // if we are late in the process we need to halt the action and report it
-    core.setFailed("Failed to send code scanning status report.");
-    return false;
+    // it's possible this is a transient error and we should continue scanning
+    core.error(
+      "An unexpected error occured when sending code scanning status report."
+    );
+    return true;
   }
 }
 

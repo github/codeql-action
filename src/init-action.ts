@@ -98,8 +98,7 @@ async function run() {
 
     if (
       !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase("init", "starting", startedAt),
-        true
+        await actionsUtil.createStatusReportBase("init", "starting", startedAt)
       ))
     ) {
       return;

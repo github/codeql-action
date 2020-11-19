@@ -28,11 +28,16 @@ interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   disable_default_queries: string;
   // Comma-separated list of queries sources, from the 'queries' config field or workflow input
   queries: string;
+  // Value given by the user as the "tools" input
+  tools_input: string;
+  // Version of the bundle used
+  tools_resolved_version: string;
 }
 
 async function sendSuccessStatusReport(
   startedAt: Date,
-  config: configUtils.Config
+  config: configUtils.Config,
+  toolsVersion: string
 ) {
   const statusReportBase = await actionsUtil.createStatusReportBase(
     "init",
@@ -74,6 +79,8 @@ async function sendSuccessStatusReport(
     paths_ignore: pathsIgnore,
     disable_default_queries: disableDefaultQueries,
     queries: queries.join(","),
+    tools_input: actionsUtil.getOptionalInput("tools") || "",
+    tools_resolved_version: toolsVersion,
   };
 
   await actionsUtil.sendStatusReport(statusReport);
@@ -84,6 +91,7 @@ async function run() {
   const logger = getActionsLogger();
   let config: configUtils.Config;
   let codeql: CodeQL;
+  let toolsVersion: string;
 
   try {
     actionsUtil.prepareLocalRunEnvironment();
@@ -96,7 +104,7 @@ async function run() {
       return;
     }
 
-    codeql = await initCodeQL(
+    const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
       actionsUtil.getRequiredInput("token"),
       actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
@@ -105,6 +113,9 @@ async function run() {
       "actions",
       logger
     );
+    codeql = initCodeQLResult.codeql;
+    toolsVersion = initCodeQLResult.toolsVersion;
+
     config = await initConfig(
       actionsUtil.getOptionalInput("languages"),
       actionsUtil.getOptionalInput("queries"),
@@ -192,7 +203,7 @@ async function run() {
     );
     return;
   }
-  await sendSuccessStatusReport(startedAt, config);
+  await sendSuccessStatusReport(startedAt, config, toolsVersion);
 }
 
 run().catch((e) => {

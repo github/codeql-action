@@ -2,6 +2,7 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as safeWhich from "@chrisgavin/safe-which";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
@@ -75,17 +76,21 @@ export const getCommitOid = async function (): Promise<string> {
   // reported on the merge commit.
   try {
     let commitOid = "";
-    await new toolrunnner.ToolRunner("git", ["rev-parse", "HEAD"], {
-      silent: true,
-      listeners: {
-        stdout: (data) => {
-          commitOid += data.toString();
+    await new toolrunnner.ToolRunner(
+      await safeWhich.safeWhich("git"),
+      ["rev-parse", "HEAD"],
+      {
+        silent: true,
+        listeners: {
+          stdout: (data) => {
+            commitOid += data.toString();
+          },
+          stderr: (data) => {
+            process.stderr.write(data);
+          },
         },
-        stderr: (data) => {
-          process.stderr.write(data);
-        },
-      },
-    }).exec();
+      }
+    ).exec();
     return commitOid.trim();
   } catch (e) {
     core.info(

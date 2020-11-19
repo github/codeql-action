@@ -1,5 +1,8 @@
+import * as path from "path";
+
 import * as core from "@actions/core";
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as safeWhich from "@chrisgavin/safe-which";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
@@ -73,17 +76,21 @@ export const getCommitOid = async function (): Promise<string> {
   // reported on the merge commit.
   try {
     let commitOid = "";
-    await new toolrunnner.ToolRunner("git", ["rev-parse", "HEAD"], {
-      silent: true,
-      listeners: {
-        stdout: (data) => {
-          commitOid += data.toString();
+    await new toolrunnner.ToolRunner(
+      await safeWhich.safeWhich("git"),
+      ["rev-parse", "HEAD"],
+      {
+        silent: true,
+        listeners: {
+          stdout: (data) => {
+            commitOid += data.toString();
+          },
+          stderr: (data) => {
+            process.stderr.write(data);
+          },
         },
-        stderr: (data) => {
-          process.stderr.write(data);
-        },
-      },
-    }).exec();
+      }
+    ).exec();
     return commitOid.trim();
   } catch (e) {
     core.info(
@@ -197,7 +204,9 @@ export interface StatusReportBase {
   ref: string;
   // Name of the action being executed
   action_name: ActionName;
-  // Version if the action being executed, as a commit oid
+  // Version of the action being executed, as a ref
+  action_ref?: string;
+  // Version of the action being executed, as a commit oid
   action_oid: string;
   // Time the first action started. Normally the init action
   started_at: string;
@@ -247,6 +256,11 @@ export async function createStatusReportBase(
       workflowStartedAt
     );
   }
+  // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
+  // See https://github.com/actions/runner/issues/803
+  const actionRef = isRunningLocalAction()
+    ? undefined
+    : process.env["GITHUB_ACTION_REF"];
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
@@ -256,6 +270,7 @@ export async function createStatusReportBase(
     commit_oid: commitOid,
     ref,
     action_name: actionName,
+    action_ref: actionRef,
     action_oid: "unknown", // TODO decide if it's possible to fill this in
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),
@@ -340,4 +355,21 @@ export async function sendStatusReport<S extends StatusReportBase>(
   }
 
   return true;
+}
+
+// Is the current action executing a local copy (i.e. we're running a workflow on the codeql-action repo itself)
+// as opposed to running a remote action (i.e. when another repo references us)
+export function isRunningLocalAction(): boolean {
+  const relativeScriptPath = getRelativeScriptPath();
+  return (
+    relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)
+  );
+}
+
+// Get the location where the action is runnning from.
+// This can be used to get the actions name or tell if we're running a local action.
+export function getRelativeScriptPath(): string {
+  const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
+  const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
+  return path.relative(actionsDirectory, __filename);
 }

@@ -290,11 +290,15 @@ export async function createStatusReportBase(
   return statusReport;
 }
 
-function getStatus({ status }: { status?: number } = {}) {
-  return status;
+interface HTTPError {
+  status: number;
 }
 
-function errorMessage(message: string, notFatal: boolean) {
+function isHTTPError(arg: any): arg is HTTPError {
+  return arg?.status !== undefined && Number.isInteger(arg.status);
+}
+
+function errorMessage(message: string, notFatal: boolean): boolean {
   (notFatal ? core.warning : core.setFailed)(message);
   return notFatal;
 }
@@ -324,40 +328,51 @@ export async function sendStatusReport<S extends StatusReportBase>(
   const [owner, repo] = nwo.split("/");
   const client = api.getActionsApiClient();
 
-  const status = await client
-    .request("PUT /repos/:owner/:repo/code-scanning/analysis/status", {
-      owner,
-      repo,
-      data: statusReportJSON,
-    })
-    .then(getStatus, getStatus);
+  try {
+    await client.request(
+      "PUT /repos/:owner/:repo/code-scanning/analysis/status",
+      {
+        owner,
+        repo,
+        data: statusReportJSON,
+      }
+    );
 
-  switch (status) {
-    case 200:
-      return true;
-    case 403:
-      core.setFailed(
-        "The repo on which this action is running is not opted-in to CodeQL code scanning."
-      );
-      return false;
-    case 404:
-      core.setFailed(
-        "Not authorized to used the CodeQL code scanning feature on this repo."
-      );
-      return false;
-    case 422:
-      // schema incompatibility when reporting status
-      // on enterprise this may be down to an upgraded action sending new data and we should
-      // not stop the scanning process
-      return errorMessage(
-        "Invalid status report sent to code scanning.",
-        getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL
-      );
-    default:
-      return errorMessage(
-        "Unexpected error when sending code scanning status report.",
-        ignoreFailures
-      );
+    return true;
+  } catch (e) {
+    if (isHTTPError(e)) {
+      switch (e.status) {
+        case 403:
+          core.setFailed(
+            "The repo on which this action is running is not opted-in to CodeQL code scanning."
+          );
+          return false;
+        case 404:
+          core.setFailed(
+            "Not authorized to used the CodeQL code scanning feature on this repo."
+          );
+          return false;
+        case 422:
+          // schema incompatibility when reporting status
+          // on enterprise this may be down to an upgraded action sending incompatible data and
+          // we should not stop the scanning process
+          // on dotcom we always want to be notified if something has gone wrong
+          // as this is unlikely to be a transient failure
+          return errorMessage(
+            "Invalid status report sent to code scanning.",
+            getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL
+          );
+      }
+    }
+
+    // something else has gone wrong and the request/response will be logged by octokit
+    // it's possible this is a transient error and we should continue scanning if we are early in the
+    // process
+    // if we are late in the process we need to halt the action and report it
+    return errorMessage(
+      "Unexpected error when sending code scanning status report.",
+      ignoreFailures
+    );
   }
 }
 

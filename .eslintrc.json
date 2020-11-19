@@ -29,6 +29,8 @@
         "no-async-foreach/no-async-foreach": "error",
         "no-console": "off",
         "no-sequences": "error",
+        "no-shadow": "off",
+        "@typescript-eslint/no-shadow": ["error"],
         "one-var": ["error", "never"]
     },
     "overrides": [{
@@ -48,8 +50,7 @@
             "@typescript-eslint/require-await": "off",
             "@typescript-eslint/restrict-template-expressions": "off",
             "func-style": "off",
-            "github/no-then": "off",
-            "no-shadow": "off"
+            "github/no-then": "off"
         }
     }]
 }

@@ -298,11 +298,6 @@ function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }
 
-function errorMessage(message: string, notFatal: boolean): boolean {
-  (notFatal ? core.warning : core.setFailed)(message);
-  return notFatal;
-}
-
 /**
  * Send a status report to the code_scanning/analysis/status endpoint.
  *
@@ -354,25 +349,34 @@ export async function sendStatusReport<S extends StatusReportBase>(
           return false;
         case 422:
           // schema incompatibility when reporting status
-          // on enterprise this may be down to an upgraded action sending incompatible data and
-          // we should not stop the scanning process
-          // on dotcom we always want to be notified if something has gone wrong
-          // as this is unlikely to be a transient failure
-          return errorMessage(
-            "Invalid status report sent to code scanning.",
-            getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL
-          );
+          // this means that this action version is no longer compatible with the API
+          // and it is possible that other endpoints have changed too
+          if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
+            core.setFailed(
+              "CodeQL Action version is incompatible with the code scanning endpoint. "
+            );
+          } else {
+            core.setFailed(
+              "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action."
+            );
+          }
+
+          return false;
       }
     }
 
     // something else has gone wrong and the request/response will be logged by octokit
     // it's possible this is a transient error and we should continue scanning if we are early in the
     // process
+    if (ignoreFailures) {
+      core.warning(
+        "An unexpected error occured when sending code scanning status report."
+      );
+      return true;
+    }
     // if we are late in the process we need to halt the action and report it
-    return errorMessage(
-      "Unexpected error when sending code scanning status report.",
-      ignoreFailures
-    );
+    core.setFailed("Failed to send code scanning status report.");
+    return false;
   }
 }
 

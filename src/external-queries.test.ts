@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as safeWhich from "@chrisgavin/safe-which";
 import test from "ava";
 
 import * as externalQueries from "./external-queries";
@@ -36,17 +37,21 @@ test("checkoutExternalQueries", async (t) => {
       ];
       console.log(`Running: git ${command.join(" ")}`);
       try {
-        await new toolrunnner.ToolRunner("git", command, {
-          silent: true,
-          listeners: {
-            stdout: (data) => {
-              stdout += data.toString();
+        await new toolrunnner.ToolRunner(
+          await safeWhich.safeWhich("git"),
+          command,
+          {
+            silent: true,
+            listeners: {
+              stdout: (data) => {
+                stdout += data.toString();
+              },
+              stderr: (data) => {
+                stderr += data.toString();
+              },
             },
-            stderr: (data) => {
-              stderr += data.toString();
-            },
-          },
-        }).exec();
+          }
+        ).exec();
       } catch (e) {
         console.log(`Command failed: git ${command.join(" ")}`);
         process.stderr.write(stderr);

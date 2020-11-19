@@ -106,7 +106,9 @@ test("hash", (t: ava.Assertions) => {
 
 function testResolveUriToFile(uri: any, index: any, artifactsURIs: any[]) {
   const location = { uri, index };
-  const artifacts = artifactsURIs.map((uri) => ({ location: { uri } }));
+  const artifacts = artifactsURIs.map((artifactURI) => ({
+    location: { uri: artifactURI },
+  }));
   return fingerprints.resolveUriToFile(
     location,
     artifacts,

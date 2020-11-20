@@ -108,8 +108,8 @@ export async function upload(
       .readdirSync(sarifPath)
       .filter((f) => f.endsWith(".sarif"))
       .map((f) => path.resolve(sarifPath, f));
-    for (const path of paths) {
-      sarifFiles.push(path);
+    for (const filepath of paths) {
+      sarifFiles.push(filepath);
     }
     if (sarifFiles.length === 0) {
       throw new Error(`No SARIF files found to upload in "${sarifPath}".`);

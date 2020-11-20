@@ -46,7 +46,7 @@ export function hash(callback: hashCallback, input: string) {
   const lineNumbers = Array(BLOCK_SIZE).fill(-1);
 
   // The current hash value, updated as we read each character
-  let hash = Long.ZERO;
+  let hashRaw = Long.ZERO;
   const firstMod = computeFirstMod();
 
   // The current index in the window, will wrap around to zero when we reach BLOCK_SIZE
@@ -63,7 +63,7 @@ export function hash(callback: hashCallback, input: string) {
 
   // Output the current hash and line number to the callback function
   const outputHash = function () {
-    const hashValue = hash.toUnsigned().toString(16);
+    const hashValue = hashRaw.toUnsigned().toString(16);
     if (!hashCounts[hashValue]) {
       hashCounts[hashValue] = 0;
     }
@@ -76,7 +76,7 @@ export function hash(callback: hashCallback, input: string) {
   const updateHash = function (current: number) {
     const begin = window[index];
     window[index] = current;
-    hash = MOD.multiply(hash)
+    hashRaw = MOD.multiply(hashRaw)
       .add(Long.fromInt(current))
       .subtract(firstMod.multiply(Long.fromInt(begin)));
 
@@ -125,7 +125,7 @@ export function hash(callback: hashCallback, input: string) {
 }
 
 // Generate a hash callback function that updates the given result in-place
-// when it recieves a hash for the correct line number. Ignores hashes for other lines.
+// when it receives a hash for the correct line number. Ignores hashes for other lines.
 function locationUpdateCallback(
   result: any,
   location: any,
@@ -138,7 +138,7 @@ function locationUpdateCallback(
     // using the hash of the first line of the file.
     locationStartLine = 1;
   }
-  return function (lineNumber: number, hash: string) {
+  return function (lineNumber: number, hashValue: string) {
     // Ignore hashes for lines that don't concern us
     if (locationStartLine !== lineNumber) {
       return;
@@ -153,10 +153,10 @@ function locationUpdateCallback(
     // If the hash doesn't match the existing fingerprint then
     // output a warning and don't overwrite it.
     if (!existingFingerprint) {
-      result.partialFingerprints.primaryLocationLineHash = hash;
-    } else if (existingFingerprint !== hash) {
+      result.partialFingerprints.primaryLocationLineHash = hashValue;
+    } else if (existingFingerprint !== hashValue) {
       logger.warning(
-        `Calculated fingerprint of ${hash} for file ${location.physicalLocation.artifactLocation.uri} line ${lineNumber}, but found existing inconsistent fingerprint value ${existingFingerprint}`
+        `Calculated fingerprint of ${hashValue} for file ${location.physicalLocation.artifactLocation.uri} line ${lineNumber}, but found existing inconsistent fingerprint value ${existingFingerprint}`
       );
     }
   };
@@ -279,9 +279,9 @@ export function addFingerprints(
   // Now hash each file that was found
   for (const [filepath, callbacks] of Object.entries(callbacksByFile)) {
     // A callback that forwards the hash to all other callbacks for that file
-    const teeCallback = function (lineNumber: number, hash: string) {
+    const teeCallback = function (lineNumber: number, hashValue: string) {
       for (const c of Object.values(callbacks)) {
-        c(lineNumber, hash);
+        c(lineNumber, hashValue);
       }
     };
     const fileContents = fs.readFileSync(filepath).toString();

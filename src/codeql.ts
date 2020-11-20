@@ -3,7 +3,7 @@ import * as path from "path";
 import * as stream from "stream";
 import * as globalutil from "util";
 
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as http from "@actions/http-client";
 import { IHeaders } from "@actions/http-client/interfaces";
 import * as toolcache from "@actions/tool-cache";
@@ -68,7 +68,7 @@ export interface CodeQL {
   runAutobuild(language: Language): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
-   * and running the language extracter.
+   * and running the language extractor.
    */
   extractScannedLanguage(database: string, language: Language): Promise<void>;
   /**
@@ -438,10 +438,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       return cmd;
     },
     async printVersion() {
-      await new toolrunnner.ToolRunner(cmd, [
-        "version",
-        "--format=json",
-      ]).exec();
+      await new toolrunner.ToolRunner(cmd, ["version", "--format=json"]).exec();
     },
     async getTracerEnv(databasePath: string) {
       // Write tracer-env.js to a temp location.
@@ -468,7 +465,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       );
 
       const envFile = path.resolve(databasePath, "working", "env.tmp");
-      await new toolrunnner.ToolRunner(cmd, [
+      await new toolrunner.ToolRunner(cmd, [
         "database",
         "trace-command",
         databasePath,
@@ -484,7 +481,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       language: Language,
       sourceRoot: string
     ) {
-      await new toolrunnner.ToolRunner(cmd, [
+      await new toolrunner.ToolRunner(cmd, [
         "database",
         "init",
         databasePath,
@@ -515,12 +512,12 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "-Dmaven.wagon.http.pool=false",
       ].join(" ");
 
-      await new toolrunnner.ToolRunner(autobuildCmd).exec();
+      await new toolrunner.ToolRunner(autobuildCmd).exec();
     },
     async extractScannedLanguage(databasePath: string, language: Language) {
       // Get extractor location
       let extractorPath = "";
-      await new toolrunnner.ToolRunner(
+      await new toolrunner.ToolRunner(
         cmd,
         [
           "resolve",
@@ -592,7 +589,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         codeqlArgs.push("--search-path", extraSearchPath);
       }
       let output = "";
-      await new toolrunnner.ToolRunner(cmd, codeqlArgs, {
+      await new toolrunner.ToolRunner(cmd, codeqlArgs, {
         listeners: {
           stdout: (data: Buffer) => {
             output += data.toString();
@@ -610,7 +607,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       addSnippetsFlag: string,
       threadsFlag: string
     ) {
-      await new toolrunnner.ToolRunner(cmd, [
+      await new toolrunner.ToolRunner(cmd, [
         "database",
         "analyze",
         memoryFlag,
@@ -631,9 +628,36 @@ function getCodeQLForCmd(cmd: string): CodeQL {
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
  */
-function getExtraOptionsFromEnv(path: string[]) {
+function getExtraOptionsFromEnv(paths: string[]) {
   const options: ExtraOptions = util.getExtraOptionsEnvParam();
-  return getExtraOptions(options, path, []);
+  return getExtraOptions(options, paths, []);
+}
+
+/**
+ * Gets `options` as an array of extra option strings.
+ *
+ * - throws an exception mentioning `pathInfo` if this conversion is impossible.
+ */
+function asExtraOptions(options: any, pathInfo: string[]): string[] {
+  if (options === undefined) {
+    return [];
+  }
+  if (!Array.isArray(options)) {
+    const msg = `The extra options for '${pathInfo.join(
+      "."
+    )}' ('${JSON.stringify(options)}') are not in an array.`;
+    throw new Error(msg);
+  }
+  return options.map((o) => {
+    const t = typeof o;
+    if (t !== "string" && t !== "number" && t !== "boolean") {
+      const msg = `The extra option for '${pathInfo.join(
+        "."
+      )}' ('${JSON.stringify(o)}') is not a primitive value.`;
+      throw new Error(msg);
+    }
+    return `${o}`;
+  });
 }
 
 /**
@@ -646,43 +670,17 @@ function getExtraOptionsFromEnv(path: string[]) {
  */
 export function getExtraOptions(
   options: any,
-  path: string[],
+  paths: string[],
   pathInfo: string[]
 ): string[] {
-  /**
-   * Gets `options` as an array of extra option strings.
-   *
-   * - throws an exception mentioning `pathInfo` if this conversion is impossible.
-   */
-  function asExtraOptions(options: any, pathInfo: string[]): string[] {
-    if (options === undefined) {
-      return [];
-    }
-    if (!Array.isArray(options)) {
-      const msg = `The extra options for '${pathInfo.join(
-        "."
-      )}' ('${JSON.stringify(options)}') are not in an array.`;
-      throw new Error(msg);
-    }
-    return options.map((o) => {
-      const t = typeof o;
-      if (t !== "string" && t !== "number" && t !== "boolean") {
-        const msg = `The extra option for '${pathInfo.join(
-          "."
-        )}' ('${JSON.stringify(o)}') is not a primitive value.`;
-        throw new Error(msg);
-      }
-      return `${o}`;
-    });
-  }
   const all = asExtraOptions(options?.["*"], pathInfo.concat("*"));
   const specific =
-    path.length === 0
+    paths.length === 0
       ? asExtraOptions(options, pathInfo)
       : getExtraOptions(
-          options?.[path[0]],
-          path?.slice(1),
-          pathInfo.concat(path[0])
+          options?.[paths[0]],
+          paths?.slice(1),
+          pathInfo.concat(paths[0])
         );
   return all.concat(specific);
 }

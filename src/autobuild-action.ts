@@ -50,8 +50,7 @@ async function run() {
           "autobuild",
           "starting",
           startedAt
-        ),
-        true
+        )
       ))
     ) {
       return;

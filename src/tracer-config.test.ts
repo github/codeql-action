@@ -64,7 +64,6 @@ test("getTracerConfigForLanguage - existing / critical vars", async (t) => {
     process.env["SEMMLE_COPY_EXECUTABLES_ROOT"] = "abc";
     process.env["SEMMLE_DEPTRACE_SOCKET"] = "abc";
     process.env["SEMMLE_JAVA_TOOL_OPTIONS"] = "abc";
-    process.env["SEMMLE_DEPTRACE_SOCKET"] = "abc";
     process.env["CODEQL_VAR"] = "abc";
 
     // Now CodeQL returns all these variables, and one more, with different values

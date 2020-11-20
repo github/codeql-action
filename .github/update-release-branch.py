@@ -123,8 +123,8 @@ def get_pr_for_commit(repo, commit):
   if prs.totalCount > 0:
     # In the case that there are multiple PRs, return the earliest one
     prs = list(prs)
-    sorted(prs, key=lambda pr: int(pr.number))
-    return prs[0]
+    sorted_prs = sorted(prs, key=lambda pr: int(pr.number))
+    return sorted_prs[0]
   else:
     return None
 

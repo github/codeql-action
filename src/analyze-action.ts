@@ -49,8 +49,7 @@ async function run() {
           "finish",
           "starting",
           startedAt
-        ),
-        true
+        )
       ))
     ) {
       return;

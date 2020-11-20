@@ -1,7 +1,7 @@
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
 import * as api from "./api-client";
@@ -76,7 +76,7 @@ export const getCommitOid = async function (): Promise<string> {
   // reported on the merge commit.
   try {
     let commitOid = "";
-    await new toolrunnner.ToolRunner(
+    await new toolrunner.ToolRunner(
       await safeWhich.safeWhich("git"),
       ["rev-parse", "HEAD"],
       {
@@ -366,7 +366,7 @@ export function isRunningLocalAction(): boolean {
   );
 }
 
-// Get the location where the action is runnning from.
+// Get the location where the action is running from.
 // This can be used to get the actions name or tell if we're running a local action.
 export function getRelativeScriptPath(): string {
   const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");

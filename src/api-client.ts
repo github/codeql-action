@@ -101,7 +101,7 @@ function getApiUrl(githubUrl: string): string {
 }
 
 // Temporary function to aid in the transition to running on and off of github actions.
-// Once all code has been coverted this function should be removed or made canonical
+// Once all code has been converted this function should be removed or made canonical
 // and called only from the action entrypoints.
 export function getActionsApiClient(allowLocalRun = false) {
   return getApiClient(

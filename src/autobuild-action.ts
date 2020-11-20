@@ -7,7 +7,7 @@ import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 
 interface AutobuildStatusReport extends actionsUtil.StatusReportBase {
-  // Comma-separated set of languages being autobuilt
+  // Comma-separated set of languages being autobuild
   autobuild_languages: string;
   // Language that failed autobuilding (or undefined if all languages succeeded).
   autobuild_failure?: string;

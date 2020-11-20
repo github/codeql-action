@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 import test from "ava";
 
@@ -37,7 +37,7 @@ test("checkoutExternalQueries", async (t) => {
       ];
       console.log(`Running: git ${command.join(" ")}`);
       try {
-        await new toolrunnner.ToolRunner(
+        await new toolrunner.ToolRunner(
           await safeWhich.safeWhich("git"),
           command,
           {

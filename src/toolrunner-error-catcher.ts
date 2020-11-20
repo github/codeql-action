@@ -1,5 +1,5 @@
 import * as im from "@actions/exec/lib/interfaces";
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
 import { ErrorMatcher } from "./error-matcher";
@@ -48,7 +48,7 @@ export async function toolrunnerErrorCatcher(
   // we capture the original return code or error so that if no match is found we can duplicate the behavior
   let returnState: Error | number;
   try {
-    returnState = await new toolrunnner.ToolRunner(
+    returnState = await new toolrunner.ToolRunner(
       await safeWhich.safeWhich(commandLine),
       args,
       {

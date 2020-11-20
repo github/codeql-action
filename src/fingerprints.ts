@@ -125,7 +125,7 @@ export function hash(callback: hashCallback, input: string) {
 }
 
 // Generate a hash callback function that updates the given result in-place
-// when it recieves a hash for the correct line number. Ignores hashes for other lines.
+// when it receives a hash for the correct line number. Ignores hashes for other lines.
 function locationUpdateCallback(
   result: any,
   location: any,

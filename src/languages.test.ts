@@ -10,7 +10,7 @@ import { setupTests } from "./testing-utils";
 
 setupTests(test);
 
-test("parseLangauge", async (t) => {
+test("parseLanguage", async (t) => {
   // Exact matches
   t.deepEqual(parseLanguage("csharp"), Language.csharp);
   t.deepEqual(parseLanguage("cpp"), Language.cpp);

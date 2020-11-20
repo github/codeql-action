@@ -24,7 +24,7 @@ inputs:
     description: The number of threads to be used by CodeQL.
     required: false
   checkout_path:
-    description: "The path at which the analyzed repository was checked out. Used to relativeize any absolute paths in the uploaded SARIF file."
+    description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
     required: false
     default: ${{ github.workspace }}
   token:

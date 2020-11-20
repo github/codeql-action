@@ -295,6 +295,14 @@ export async function createStatusReportBase(
   return statusReport;
 }
 
+interface HTTPError {
+  status: number;
+}
+
+function isHTTPError(arg: any): arg is HTTPError {
+  return arg?.status !== undefined && Number.isInteger(arg.status);
+}
+
 /**
  * Send a status report to the code_scanning/analysis/status endpoint.
  *
@@ -305,14 +313,8 @@ export async function createStatusReportBase(
  * Returns whether sending the status report was successful of not.
  */
 export async function sendStatusReport<S extends StatusReportBase>(
-  statusReport: S,
-  ignoreFailures?: boolean
+  statusReport: S
 ): Promise<boolean> {
-  if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
-    core.debug("Not sending status report to GitHub Enterprise");
-    return true;
-  }
-
   if (isLocalRun()) {
     core.debug("Not sending status report because this is a local run");
     return true;
@@ -324,37 +326,56 @@ export async function sendStatusReport<S extends StatusReportBase>(
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
   const client = api.getActionsApiClient();
-  const statusResponse = await client.request(
-    "PUT /repos/:owner/:repo/code-scanning/analysis/status",
-    {
-      owner,
-      repo,
-      data: statusReportJSON,
-    }
-  );
 
-  if (!ignoreFailures) {
-    // If the status report request fails with a 403 or a 404, then this is a deliberate
-    // message from the endpoint that the SARIF upload can be expected to fail too,
-    // so the action should fail to avoid wasting actions minutes.
-    //
-    // Other failure responses (or lack thereof) could be transitory and should not
-    // cause the action to fail.
-    if (statusResponse.status === 403) {
-      core.setFailed(
-        "The repo on which this action is running is not opted-in to CodeQL code scanning."
-      );
-      return false;
+  try {
+    await client.request(
+      "PUT /repos/:owner/:repo/code-scanning/analysis/status",
+      {
+        owner,
+        repo,
+        data: statusReportJSON,
+      }
+    );
+
+    return true;
+  } catch (e) {
+    if (isHTTPError(e)) {
+      switch (e.status) {
+        case 403:
+          core.setFailed(
+            "The repo on which this action is running is not opted-in to CodeQL code scanning."
+          );
+          return false;
+        case 404:
+          core.setFailed(
+            "Not authorized to used the CodeQL code scanning feature on this repo."
+          );
+          return false;
+        case 422:
+          // schema incompatibility when reporting status
+          // this means that this action version is no longer compatible with the API
+          // we still want to continue as it is likely the analysis endpoint will work
+          if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
+            core.warning(
+              "CodeQL Action version is incompatible with the code scanning endpoint. Please update to a compatible version of codeql-action."
+            );
+          } else {
+            core.warning(
+              "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action."
+            );
+          }
+
+          return true;
+      }
     }
-    if (statusResponse.status === 404) {
-      core.setFailed(
-        "Not authorized to used the CodeQL code scanning feature on this repo."
-      );
-      return false;
-    }
+
+    // something else has gone wrong and the request/response will be logged by octokit
+    // it's possible this is a transient error and we should continue scanning
+    core.error(
+      "An unexpected error occured when sending code scanning status report."
+    );
+    return true;
   }
-
-  return true;
 }
 
 // Is the current action executing a local copy (i.e. we're running a workflow on the codeql-action repo itself)

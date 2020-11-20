@@ -354,7 +354,7 @@ test("Default queries are used", async (t) => {
 
     // The important point of this config is that it doesn't specify
     // the disable-default-queries field.
-    // Any other details are hopefully irrelevant for this tetst.
+    // Any other details are hopefully irrelevant for this test.
     const inputFileContents = `
       paths:
         - foo`;

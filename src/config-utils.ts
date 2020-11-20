@@ -216,8 +216,8 @@ async function addBuiltinSuiteQueries(
   suiteName: string,
   configFile?: string
 ) {
-  const suite = builtinSuites.find((suite) => suite === suiteName);
-  if (!suite) {
+  const found = builtinSuites.find((suite) => suite === suiteName);
+  if (!found) {
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
   }
 
@@ -388,20 +388,20 @@ export function validateAndSanitisePath(
   logger: Logger
 ): string {
   // Take a copy so we don't modify the original path, so we can still construct error messages
-  let path = originalPath;
+  let newPath = originalPath;
 
   // All paths are relative to the src root, so strip off leading slashes.
-  while (path.charAt(0) === "/") {
-    path = path.substring(1);
+  while (newPath.charAt(0) === "/") {
+    newPath = newPath.substring(1);
   }
 
   // Trailing ** are redundant, so strip them off
-  if (path.endsWith("/**")) {
-    path = path.substring(0, path.length - 2);
+  if (newPath.endsWith("/**")) {
+    newPath = newPath.substring(0, newPath.length - 2);
   }
 
   // An empty path is not allowed as it's meaningless
-  if (path === "") {
+  if (newPath === "") {
     throw new Error(
       getConfigFilePropertyError(
         configFile,
@@ -413,7 +413,7 @@ export function validateAndSanitisePath(
   }
 
   // Check for illegal uses of **
-  if (path.match(pathStarsRegex)) {
+  if (newPath.match(pathStarsRegex)) {
     throw new Error(
       getConfigFilePropertyError(
         configFile,
@@ -426,7 +426,7 @@ export function validateAndSanitisePath(
 
   // Check for other regex characters that we don't support.
   // Output a warning so the user knows, but otherwise continue normally.
-  if (path.match(filterPatternCharactersRegex)) {
+  if (newPath.match(filterPatternCharactersRegex)) {
     logger.warning(
       getConfigFilePropertyError(
         configFile,
@@ -440,7 +440,7 @@ export function validateAndSanitisePath(
   // Ban any uses of backslash for now.
   // This may not play nicely with project layouts.
   // This restriction can be lifted later if we determine they are ok.
-  if (path.indexOf("\\") !== -1) {
+  if (newPath.indexOf("\\") !== -1) {
     throw new Error(
       getConfigFilePropertyError(
         configFile,
@@ -451,7 +451,7 @@ export function validateAndSanitisePath(
     );
   }
 
-  return path;
+  return newPath;
 }
 
 // An undefined configFile in some of these functions indicates that
@@ -890,12 +890,17 @@ async function loadConfig(
     if (!(parsedYAML[PATHS_IGNORE_PROPERTY] instanceof Array)) {
       throw new Error(getPathsIgnoreInvalid(configFile));
     }
-    for (const path of parsedYAML[PATHS_IGNORE_PROPERTY]!) {
-      if (typeof path !== "string" || path === "") {
+    for (const ignorePath of parsedYAML[PATHS_IGNORE_PROPERTY]!) {
+      if (typeof ignorePath !== "string" || ignorePath === "") {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
       pathsIgnore.push(
-        validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile, logger)
+        validateAndSanitisePath(
+          ignorePath,
+          PATHS_IGNORE_PROPERTY,
+          configFile,
+          logger
+        )
       );
     }
   }
@@ -904,12 +909,12 @@ async function loadConfig(
     if (!(parsedYAML[PATHS_PROPERTY] instanceof Array)) {
       throw new Error(getPathsInvalid(configFile));
     }
-    for (const path of parsedYAML[PATHS_PROPERTY]!) {
-      if (typeof path !== "string" || path === "") {
+    for (const includePath of parsedYAML[PATHS_PROPERTY]!) {
+      if (typeof includePath !== "string" || includePath === "") {
         throw new Error(getPathsInvalid(configFile));
       }
       paths.push(
-        validateAndSanitisePath(path, PATHS_PROPERTY, configFile, logger)
+        validateAndSanitisePath(includePath, PATHS_PROPERTY, configFile, logger)
       );
     }
   }

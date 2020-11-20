@@ -631,9 +631,36 @@ function getCodeQLForCmd(cmd: string): CodeQL {
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
  */
-function getExtraOptionsFromEnv(path: string[]) {
+function getExtraOptionsFromEnv(paths: string[]) {
   const options: ExtraOptions = util.getExtraOptionsEnvParam();
-  return getExtraOptions(options, path, []);
+  return getExtraOptions(options, paths, []);
+}
+
+/**
+ * Gets `options` as an array of extra option strings.
+ *
+ * - throws an exception mentioning `pathInfo` if this conversion is impossible.
+ */
+function asExtraOptions(options: any, pathInfo: string[]): string[] {
+  if (options === undefined) {
+    return [];
+  }
+  if (!Array.isArray(options)) {
+    const msg = `The extra options for '${pathInfo.join(
+      "."
+    )}' ('${JSON.stringify(options)}') are not in an array.`;
+    throw new Error(msg);
+  }
+  return options.map((o) => {
+    const t = typeof o;
+    if (t !== "string" && t !== "number" && t !== "boolean") {
+      const msg = `The extra option for '${pathInfo.join(
+        "."
+      )}' ('${JSON.stringify(o)}') is not a primitive value.`;
+      throw new Error(msg);
+    }
+    return `${o}`;
+  });
 }
 
 /**
@@ -646,43 +673,17 @@ function getExtraOptionsFromEnv(path: string[]) {
  */
 export function getExtraOptions(
   options: any,
-  path: string[],
+  paths: string[],
   pathInfo: string[]
 ): string[] {
-  /**
-   * Gets `options` as an array of extra option strings.
-   *
-   * - throws an exception mentioning `pathInfo` if this conversion is impossible.
-   */
-  function asExtraOptions(options: any, pathInfo: string[]): string[] {
-    if (options === undefined) {
-      return [];
-    }
-    if (!Array.isArray(options)) {
-      const msg = `The extra options for '${pathInfo.join(
-        "."
-      )}' ('${JSON.stringify(options)}') are not in an array.`;
-      throw new Error(msg);
-    }
-    return options.map((o) => {
-      const t = typeof o;
-      if (t !== "string" && t !== "number" && t !== "boolean") {
-        const msg = `The extra option for '${pathInfo.join(
-          "."
-        )}' ('${JSON.stringify(o)}') is not a primitive value.`;
-        throw new Error(msg);
-      }
-      return `${o}`;
-    });
-  }
   const all = asExtraOptions(options?.["*"], pathInfo.concat("*"));
   const specific =
-    path.length === 0
+    paths.length === 0
       ? asExtraOptions(options, pathInfo)
       : getExtraOptions(
-          options?.[path[0]],
-          path?.slice(1),
-          pathInfo.concat(path[0])
+          options?.[paths[0]],
+          paths?.slice(1),
+          pathInfo.concat(paths[0])
         );
   return all.concat(specific);
 }

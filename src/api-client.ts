@@ -34,7 +34,7 @@ export const getApiClient = function (
     throw new Error("Invalid API call in local run");
   }
   const customOctokit = githubUtils.GitHub.plugin(retry.retry, (octokit, _) => {
-    octokit.hook.after("request", (response: OctokitResponse<any>, _) => {
+    octokit.hook.after("request", (response: OctokitResponse<any>, __) => {
       if (response.status < 400 && !possibleFailureExpected) {
         if (hasBeenWarnedAboutVersion) {
           return;

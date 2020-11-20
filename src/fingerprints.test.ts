@@ -125,16 +125,16 @@ test("resolveUriToFile", (t) => {
   const cwd = process.cwd();
   const filepath = __filename;
   t.true(filepath.startsWith(`${cwd}/`));
-  const relativeFilepaht = filepath.substring(cwd.length + 1);
+  const relativeFilepath = filepath.substring(cwd.length + 1);
 
   // Absolute paths are unmodified
   t.is(testResolveUriToFile(filepath, undefined, []), filepath);
   t.is(testResolveUriToFile(`file://${filepath}`, undefined, []), filepath);
 
   // Relative paths are made absolute
-  t.is(testResolveUriToFile(relativeFilepaht, undefined, []), filepath);
+  t.is(testResolveUriToFile(relativeFilepath, undefined, []), filepath);
   t.is(
-    testResolveUriToFile(`file://${relativeFilepaht}`, undefined, []),
+    testResolveUriToFile(`file://${relativeFilepath}`, undefined, []),
     filepath
   );
 
@@ -153,7 +153,7 @@ test("resolveUriToFile", (t) => {
   t.is(testResolveUriToFile(1, undefined, []), undefined);
   t.is(testResolveUriToFile(undefined, undefined, []), undefined);
 
-  // Non-existant files are discarded
+  // Non-existent files are discarded
   t.is(testResolveUriToFile(`${filepath}2`, undefined, []), undefined);
 
   // Index is resolved

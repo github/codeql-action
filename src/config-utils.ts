@@ -419,7 +419,7 @@ export function validateAndSanitisePath(
         configFile,
         propertyName,
         `"${originalPath}" contains an invalid "**" wildcard. ` +
-          `They must be immediately preceeded and followed by a slash as in "/**/", or come at the start or end.`
+          `They must be immediately preceded and followed by a slash as in "/**/", or come at the start or end.`
       )
     );
   }

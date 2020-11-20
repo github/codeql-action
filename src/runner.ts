@@ -193,7 +193,7 @@ program
         );
       }
 
-      // Always output a json file of the env that can be consumed programatically
+      // Always output a json file of the env that can be consumed programmatically
       const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
       fs.writeFileSync(jsonEnvFile, JSON.stringify(tracerConfig.env));
 

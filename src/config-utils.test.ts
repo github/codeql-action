@@ -477,7 +477,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
     const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
     // This config item should take precedence over the config file but shouldn't affect the default queries.
-    const queries = "./override";
+    const testQueries = "./override";
 
     fs.mkdirSync(path.join(tmpDir, "foo"));
     fs.mkdirSync(path.join(tmpDir, "override"));
@@ -500,7 +500,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
 
     const config = await configUtils.initConfig(
       languages,
-      queries,
+      testQueries,
       configFilePath,
       { owner: "github", repo: "example " },
       tmpDir,
@@ -541,7 +541,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       disable-default-queries: true`;
     const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
-    const queries = "./workflow-query";
+    const testQueries = "./workflow-query";
     fs.mkdirSync(path.join(tmpDir, "workflow-query"));
 
     const resolveQueriesArgs: Array<{
@@ -562,7 +562,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
 
     const config = await configUtils.initConfig(
       languages,
-      queries,
+      testQueries,
       configFilePath,
       { owner: "github", repo: "example " },
       tmpDir,
@@ -594,7 +594,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     fs.mkdirSync(path.join(tmpDir, "override1"));
     fs.mkdirSync(path.join(tmpDir, "override2"));
 
-    const queries = "./override1,./override2";
+    const testQueries = "./override1,./override2";
 
     const resolveQueriesArgs: Array<{
       queries: string[];
@@ -614,7 +614,7 @@ test("Multiple queries can be specified in workflow file, no config file require
 
     const config = await configUtils.initConfig(
       languages,
-      queries,
+      testQueries,
       undefined,
       { owner: "github", repo: "example " },
       tmpDir,
@@ -660,7 +660,7 @@ test("Queries in workflow file can be added to the set of queries without overri
     const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
     // These queries shouldn't override anything, because the value is prefixed with "+"
-    const queries = "+./additional1,./additional2";
+    const testQueries = "+./additional1,./additional2";
 
     fs.mkdirSync(path.join(tmpDir, "foo"));
     fs.mkdirSync(path.join(tmpDir, "additional1"));
@@ -684,7 +684,7 @@ test("Queries in workflow file can be added to the set of queries without overri
 
     const config = await configUtils.initConfig(
       languages,
-      queries,
+      testQueries,
       configFilePath,
       { owner: "github", repo: "example " },
       tmpDir,
@@ -1090,20 +1090,20 @@ test("path validations", (t) => {
   const propertyName = "paths";
   const configFile = "./.github/codeql/config.yml";
 
-  for (const path of validPaths) {
+  for (const validPath of validPaths) {
     t.truthy(
       configUtils.validateAndSanitisePath(
-        path,
+        validPath,
         propertyName,
         configFile,
         getRunnerLogger(true)
       )
     );
   }
-  for (const path of invalidPaths) {
+  for (const invalidPath of invalidPaths) {
     t.throws(() =>
       configUtils.validateAndSanitisePath(
-        path,
+        invalidPath,
         propertyName,
         configFile,
         getRunnerLogger(true)

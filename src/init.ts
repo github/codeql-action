@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as toolrunnner from "@actions/exec/lib/toolrunner";
-import * as safeWhich from "@chrisgavin/safe-which";
 
 import * as analysisPaths from "./analysis-paths";
 import { CodeQL, setupCodeQL } from "./codeql";
@@ -173,7 +172,7 @@ export async function injectWindowsTracer(
   fs.writeFileSync(injectTracerPath, script);
 
   await new toolrunnner.ToolRunner(
-    await safeWhich.safeWhich("powershell"),
+    "powershell",
     [
       "-ExecutionPolicy",
       "Bypass",
@@ -199,10 +198,9 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   if (process.env["ImageOS"] !== undefined) {
     try {
       if (process.platform === "win32") {
-        await new toolrunnner.ToolRunner(
-          await safeWhich.safeWhich("powershell"),
-          [path.join(scriptsFolder, "install_tools.ps1")]
-        ).exec();
+        await new toolrunnner.ToolRunner("powershell", [
+          path.join(scriptsFolder, "install_tools.ps1"),
+        ]).exec();
       } else {
         await new toolrunnner.ToolRunner(
           path.join(scriptsFolder, "install_tools.sh")
@@ -223,7 +221,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   try {
     const script = "auto_install_packages.py";
     if (process.platform === "win32") {
-      await new toolrunnner.ToolRunner(await safeWhich.safeWhich("py"), [
+      await new toolrunnner.ToolRunner("py", [
         "-3",
         path.join(scriptsFolder, script),
         path.dirname(codeql.getPath()),

@@ -1,7 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as safeWhich from "@chrisgavin/safe-which";
 
 import { Logger } from "./logging";
 
@@ -28,12 +29,12 @@ export async function checkoutExternalRepository(
 
   if (!fs.existsSync(checkoutLocation)) {
     const repoURL = `${githubUrl}/${repository}`;
-    await new toolrunnner.ToolRunner("git", [
+    await new toolrunner.ToolRunner(await safeWhich.safeWhich("git"), [
       "clone",
       repoURL,
       checkoutLocation,
     ]).exec();
-    await new toolrunnner.ToolRunner("git", [
+    await new toolrunner.ToolRunner(await safeWhich.safeWhich("git"), [
       `--work-tree=${checkoutLocation}`,
       `--git-dir=${checkoutLocation}/.git`,
       "checkout",

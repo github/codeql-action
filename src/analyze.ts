@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
@@ -49,7 +49,7 @@ export interface QueriesStatusReport {
   analyze_custom_queries_javascript_duration_ms?: number;
   // Time taken in ms to analyze custom queries for python (or undefined if this language was not analyzed)
   analyze_custom_queries_python_duration_ms?: number;
-  // Name of language that errored during analysis (or undefined if no langauge failed)
+  // Name of language that errored during analysis (or undefined if no language failed)
   analyze_failure_language?: string;
 }
 
@@ -73,7 +73,7 @@ async function setupPythonExtractor(logger: Logger) {
     },
   };
 
-  await new toolrunnner.ToolRunner(
+  await new toolrunner.ToolRunner(
     codeqlPython,
     [
       "-c",
@@ -85,7 +85,7 @@ async function setupPythonExtractor(logger: Logger) {
   process.env["LGTM_INDEX_IMPORT_PATH"] = output;
 
   output = "";
-  await new toolrunnner.ToolRunner(
+  await new toolrunner.ToolRunner(
     codeqlPython,
     ["-c", "import sys; print(sys.version_info[0])"],
     options

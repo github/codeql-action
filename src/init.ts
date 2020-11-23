@@ -5,6 +5,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
 import * as analysisPaths from "./analysis-paths";
+import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Logger } from "./logging";
@@ -14,8 +15,7 @@ import * as util from "./util";
 
 export async function initCodeQL(
   codeqlURL: string | undefined,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: GitHubApiDetails,
   tempDir: string,
   toolsDir: string,
   mode: util.Mode,
@@ -24,8 +24,7 @@ export async function initCodeQL(
   logger.startGroup("Setup CodeQL tools");
   const { codeql, toolsVersion } = await setupCodeQL(
     codeqlURL,
-    githubAuth,
-    githubUrl,
+    apiDetails,
     tempDir,
     toolsDir,
     mode,
@@ -45,8 +44,7 @@ export async function initConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
 ): Promise<configUtils.Config> {
@@ -60,8 +58,7 @@ export async function initConfig(
     toolCacheDir,
     codeQL,
     checkoutPath,
-    githubAuth,
-    githubUrl,
+    apiDetails,
     mode,
     logger
   );

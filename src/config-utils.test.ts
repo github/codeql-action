@@ -15,6 +15,11 @@ import * as util from "./util";
 
 setupTests(test);
 
+const sampleApiDetails = {
+  auth: "token",
+  url: "https://github.example.com",
+};
+
 // Returns the filepath of the newly-created file
 function createConfigFile(inputFileContents: string, tmpDir: string): string {
   const configFilePath = path.join(tmpDir, "input");
@@ -76,8 +81,7 @@ test("load empty config", async (t) => {
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       logger
     );
@@ -92,8 +96,7 @@ test("load empty config", async (t) => {
         tmpDir,
         codeQL,
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         logger
       )
@@ -130,8 +133,7 @@ test("loading config saves config", async (t) => {
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       logger
     );
@@ -157,8 +159,7 @@ test("load input outside of workspace", async (t) => {
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         getRunnerLogger(true)
       );
@@ -191,8 +192,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         getRunnerLogger(true)
       );
@@ -226,8 +226,7 @@ test("load non-existent input", async (t) => {
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         getRunnerLogger(true)
       );
@@ -311,8 +310,7 @@ test("load non-empty input", async (t) => {
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       getRunnerLogger(true)
     );
@@ -373,8 +371,7 @@ test("Default queries are used", async (t) => {
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       getRunnerLogger(true)
     );
@@ -443,8 +440,7 @@ test("Queries can be specified in config file", async (t) => {
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       getRunnerLogger(true)
     );
@@ -507,8 +503,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       getRunnerLogger(true)
     );
@@ -569,8 +564,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       getRunnerLogger(true)
     );
@@ -621,8 +615,7 @@ test("Multiple queries can be specified in workflow file, no config file require
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       getRunnerLogger(true)
     );
@@ -691,8 +684,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       getRunnerLogger(true)
     );
@@ -754,8 +746,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         tmpDir,
         codeQL,
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         getRunnerLogger(true)
       );
@@ -817,8 +808,7 @@ test("API client used when reading remote config", async (t) => {
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      sampleApiDetails,
       "runner",
       getRunnerLogger(true)
     );
@@ -842,8 +832,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         getRunnerLogger(true)
       );
@@ -875,8 +864,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         getRunnerLogger(true)
       );
@@ -904,8 +892,7 @@ test("No detected languages", async (t) => {
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         getRunnerLogger(true)
       );
@@ -930,8 +917,7 @@ test("Unknown languages", async (t) => {
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        sampleApiDetails,
         "runner",
         getRunnerLogger(true)
       );
@@ -977,8 +963,7 @@ function doInvalidInputTest(
           tmpDir,
           codeQL,
           tmpDir,
-          "token",
-          "https://github.example.com",
+          sampleApiDetails,
           "runner",
           getRunnerLogger(true)
         );

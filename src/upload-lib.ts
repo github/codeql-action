@@ -43,8 +43,7 @@ export function combineSarifFiles(sarifFiles: string[]): string {
 async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
 ) {
@@ -56,7 +55,7 @@ async function uploadPayload(
     return;
   }
 
-  const client = api.getApiClient(githubAuth, githubUrl, mode, logger);
+  const client = api.getApiClient(apiDetails, mode, logger);
 
   const reqURL =
     mode === "actions"
@@ -94,8 +93,7 @@ export async function upload(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
 ): Promise<UploadStatusReport> {
@@ -128,8 +126,7 @@ export async function upload(
     workflowRunID,
     checkoutPath,
     environment,
-    githubAuth,
-    githubUrl,
+    apiDetails,
     mode,
     logger
   );
@@ -182,8 +179,7 @@ async function uploadFiles(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
 ): Promise<UploadStatusReport> {
@@ -250,14 +246,7 @@ async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  await uploadPayload(
-    payload,
-    repositoryNwo,
-    githubAuth,
-    githubUrl,
-    mode,
-    logger
-  );
+  await uploadPayload(payload, repositoryNwo, apiDetails, mode, logger);
 
   return {
     raw_upload_size_bytes: rawUploadSizeBytes,

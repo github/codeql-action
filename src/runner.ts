@@ -150,15 +150,17 @@ program
       if (cmd.codeqlPath !== undefined) {
         codeql = getCodeQL(cmd.codeqlPath);
       } else {
-        codeql = await initCodeQL(
-          undefined,
-          cmd.githubAuth,
-          parseGithubUrl(cmd.githubUrl),
-          tempDir,
-          toolsDir,
-          "runner",
-          logger
-        );
+        codeql = (
+          await initCodeQL(
+            undefined,
+            cmd.githubAuth,
+            parseGithubUrl(cmd.githubUrl),
+            tempDir,
+            toolsDir,
+            "runner",
+            logger
+          )
+        ).codeql;
       }
 
       const config = await initConfig(
@@ -191,7 +193,7 @@ program
         );
       }
 
-      // Always output a json file of the env that can be consumed programatically
+      // Always output a json file of the env that can be consumed programmatically
       const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
       fs.writeFileSync(jsonEnvFile, JSON.stringify(tracerConfig.env));
 

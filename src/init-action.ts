@@ -106,8 +106,10 @@ async function run() {
 
     const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
-      actionsUtil.getRequiredInput("token"),
-      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      {
+        auth: actionsUtil.getRequiredInput("token"),
+        url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      },
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       "actions",
@@ -125,8 +127,10 @@ async function run() {
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
-      actionsUtil.getRequiredInput("token"),
-      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      {
+        auth: actionsUtil.getRequiredInput("token"),
+        url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      },
       "actions",
       logger
     );

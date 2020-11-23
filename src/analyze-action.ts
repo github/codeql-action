@@ -73,8 +73,10 @@ async function run() {
       actionsUtil.getWorkflowRunID(),
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getRequiredInput("matrix"),
-      actionsUtil.getRequiredInput("token"),
-      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      {
+        auth: actionsUtil.getRequiredInput("token"),
+        url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      },
       actionsUtil.getRequiredInput("upload") === "true",
       "actions",
       actionsUtil.getRequiredInput("output"),

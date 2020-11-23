@@ -153,8 +153,10 @@ program
         codeql = (
           await initCodeQL(
             undefined,
-            cmd.githubAuth,
-            parseGithubUrl(cmd.githubUrl),
+            {
+              auth: cmd.githubAuth,
+              url: parseGithubUrl(cmd.githubUrl),
+            },
             tempDir,
             toolsDir,
             "runner",
@@ -172,8 +174,10 @@ program
         toolsDir,
         codeql,
         cmd.checkoutPath || process.cwd(),
-        cmd.githubAuth,
-        parseGithubUrl(cmd.githubUrl),
+        {
+          auth: cmd.githubAuth,
+          url: parseGithubUrl(cmd.githubUrl),
+        },
         "runner",
         logger
       );
@@ -371,8 +375,10 @@ program
         undefined,
         cmd.checkoutPath || process.cwd(),
         undefined,
-        cmd.githubAuth,
-        parseGithubUrl(cmd.githubUrl),
+        {
+          auth: cmd.githubAuth,
+          url: parseGithubUrl(cmd.githubUrl),
+        },
         cmd.upload,
         "runner",
         outputDir,
@@ -438,8 +444,10 @@ program
         undefined,
         cmd.checkoutPath || process.cwd(),
         undefined,
-        cmd.githubAuth,
-        parseGithubUrl(cmd.githubUrl),
+        {
+          auth: cmd.githubAuth,
+          url: parseGithubUrl(cmd.githubUrl),
+        },
         "runner",
         logger
       );

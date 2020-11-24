@@ -96,10 +96,10 @@ async function run() {
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
-    const workflowError = await actionsUtil.getWorkflowError();
+    const workflowErrors = await actionsUtil.getWorkflowErrors();
 
-    if (workflowError !== undefined) {
-      core.warning(workflowError);
+    if (workflowErrors !== undefined) {
+      core.warning(actionsUtil.formatWorkflowErrors(workflowErrors));
     }
 
     if (
@@ -108,7 +108,7 @@ async function run() {
           "init",
           "starting",
           startedAt,
-          workflowError
+          actionsUtil.formatWorkflowCause(workflowErrors)
         )
       ))
     ) {

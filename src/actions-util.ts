@@ -130,20 +130,43 @@ function isObject(o): o is object {
 }
 
 enum MissingTriggers {
-  NONE = 0,
-  PUSH = 1,
-  PULL_REQUEST = 2,
+  None = 0,
+  Push = 1,
+  PullRequest = 2,
 }
 
-export const ErrCheckoutWrongHead = `Git checkout HEAD^2 is no longer necessary. Please remove this line.`;
-export const ErrMismatchedBranches = `Please make sure that every branch in on.pull_request is also in on.push so that CodeQL can establish a baseline.`;
-export const ErrMissingHooks = `Please specify on.push and on.pull_request hooks.`;
-export const ErrMissingPushHook = `Please specify an on.push hook so CodeQL can establish a baseline.`;
-export const ErrMissingPullRequestHook = `Please specify an on.pull_request hook so CodeQL is run against new pull requests.`;
-export const ErrPathsSpecified = `Please do not specify paths at on.pull.`;
+interface WorkflowError {
+  message: string;
+  code: string;
+}
 
-export function validateWorkflow(doc: Workflow): string[] {
-  const errors: string[] = [];
+export const ErrCheckoutWrongHead = {
+  message: `Git checkout HEAD^2 is no longer necessary. Please remove this line.`,
+  code: "CheckoutWrongHead",
+};
+export const ErrMismatchedBranches = {
+  message: `Please make sure that every branch in on.pull_request is also in on.push so that CodeQL can establish a baseline.`,
+  code: "MismatchedBranches",
+};
+export const ErrMissingHooks = {
+  message: `Please specify on.push and on.pull_request hooks.`,
+  code: "MissingHooks",
+};
+export const ErrMissingPushHook = {
+  message: `Please specify an on.push hook so CodeQL can establish a baseline.`,
+  code: "MissingPushHook",
+};
+export const ErrMissingPullRequestHook = {
+  message: `Please specify an on.pull_request hook so CodeQL is run against new pull requests.`,
+  code: "MissingPullRequestHook",
+};
+export const ErrPathsSpecified = {
+  message: `Please do not specify paths at on.pull.`,
+  code: "PathsSpecified",
+};
+
+export function validateWorkflow(doc: Workflow): WorkflowError[] {
+  const errors: WorkflowError[] = [];
 
   // .jobs[key].steps[].run
   for (const job of Object.values(doc?.jobs || {})) {
@@ -154,35 +177,35 @@ export function validateWorkflow(doc: Workflow): string[] {
     }
   }
 
-  let missing = MissingTriggers.NONE;
+  let missing = MissingTriggers.None;
 
   if (doc.on === undefined) {
-    missing = MissingTriggers.PUSH | MissingTriggers.PULL_REQUEST;
+    missing = MissingTriggers.Push | MissingTriggers.PullRequest;
   } else if (typeof doc.on === "string") {
     switch (doc.on) {
       case "push":
-        missing = MissingTriggers.PULL_REQUEST;
+        missing = MissingTriggers.PullRequest;
         break;
       case "pull_request":
-        missing = MissingTriggers.PUSH;
+        missing = MissingTriggers.Push;
         break;
       default:
-        missing = MissingTriggers.PUSH | MissingTriggers.PULL_REQUEST;
+        missing = MissingTriggers.Push | MissingTriggers.PullRequest;
         break;
     }
   } else if (Array.isArray(doc.on)) {
     if (!doc.on.includes("push")) {
-      missing = missing | MissingTriggers.PUSH;
+      missing = missing | MissingTriggers.Push;
     }
     if (!doc.on.includes("pull_request")) {
-      missing = missing | MissingTriggers.PULL_REQUEST;
+      missing = missing | MissingTriggers.PullRequest;
     }
   } else if (isObject(doc.on)) {
     if (!Object.prototype.hasOwnProperty.call(doc.on, "pull_request")) {
-      missing = missing | MissingTriggers.PULL_REQUEST;
+      missing = missing | MissingTriggers.PullRequest;
     }
     if (!Object.prototype.hasOwnProperty.call(doc.on, "push")) {
-      missing = missing | MissingTriggers.PUSH;
+      missing = missing | MissingTriggers.Push;
     } else {
       const paths = doc.on.push?.paths;
       if (Array.isArray(paths) && paths.length > 0) {
@@ -190,26 +213,31 @@ export function validateWorkflow(doc: Workflow): string[] {
       }
     }
 
-    if (doc.on.push && doc.on.pull_request) {
+    if (doc.on.push) {
       const push = doc.on.push.branches || [];
-      const pull_request = doc.on.pull_request.branches || [];
 
-      const intersects = pull_request.filter((value) => !push.includes(value));
-
-      if (intersects.length > 0) {
+      if (doc.on.pull_request) {
+        const pull_request = doc.on.pull_request.branches || [];
+        const intersects = pull_request.filter(
+          (value) => !push.includes(value)
+        );
+        if (intersects.length > 0) {
+          errors.push(ErrMismatchedBranches);
+        }
+      } else if (push.length > 0) {
         errors.push(ErrMismatchedBranches);
       }
     }
   }
 
   switch (missing) {
-    case MissingTriggers.PULL_REQUEST | MissingTriggers.PUSH:
+    case MissingTriggers.PullRequest | MissingTriggers.Push:
       errors.push(ErrMissingHooks);
       break;
-    case MissingTriggers.PULL_REQUEST:
+    case MissingTriggers.PullRequest:
       errors.push(ErrMissingPullRequestHook);
       break;
-    case MissingTriggers.PUSH:
+    case MissingTriggers.Push:
       errors.push(ErrMissingPushHook);
       break;
   }
@@ -217,7 +245,9 @@ export function validateWorkflow(doc: Workflow): string[] {
   return errors;
 }
 
-export async function getWorkflowError(): Promise<string | undefined> {
+export async function getWorkflowErrors(): Promise<
+  WorkflowError[] | undefined
+> {
   const workflow = await getWorkflow();
 
   if (workflow === undefined) {
@@ -230,9 +260,22 @@ export async function getWorkflowError(): Promise<string | undefined> {
     return undefined;
   }
 
-  return `${workflowErrors.length} issue${
-    workflowErrors.length === 1 ? " was" : "s were"
-  } detected with this workflow: ${workflowErrors.join(", ")}`;
+  return workflowErrors;
+}
+
+export function formatWorkflowErrors(errors: WorkflowError[]): string {
+  return `${errors.length} issue${
+    errors.length === 1 ? " was" : "s were"
+  } detected with this workflow: ${errors.map((e) => e.message).join(", ")}`;
+}
+
+export function formatWorkflowCause(
+  errors?: WorkflowError[]
+): undefined | string {
+  if (errors === undefined) {
+    return undefined;
+  }
+  return errors.map((e) => e.code).join(",");
 }
 
 export async function getWorkflow(): Promise<Workflow | undefined> {

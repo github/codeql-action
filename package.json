@@ -5,7 +5,7 @@
   "description": "CodeQL action",
   "scripts": {
     "build": "tsc",
-    "test": "ava src/** --serial --verbose",
+    "test": "ava src/actions-util.test.ts --serial --verbose",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts --fix",
     "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"

@@ -104,12 +104,14 @@ async function run() {
       return;
     }
 
+    const apiDetails = {
+      auth: actionsUtil.getRequiredInput("token"),
+      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+    };
+
     const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
-      {
-        auth: actionsUtil.getRequiredInput("token"),
-        url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
-      },
+      apiDetails,
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       "actions",
@@ -127,10 +129,7 @@ async function run() {
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
-      {
-        auth: actionsUtil.getRequiredInput("token"),
-        url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
-      },
+      apiDetails,
       "actions",
       logger
     );

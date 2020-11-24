@@ -40,6 +40,11 @@ async function run() {
   }
 
   try {
+    const apiDetails = {
+      auth: actionsUtil.getRequiredInput("token"),
+      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+    };
+
     const uploadStats = await upload_lib.upload(
       actionsUtil.getRequiredInput("sarif_file"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
@@ -50,10 +55,7 @@ async function run() {
       actionsUtil.getWorkflowRunID(),
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getRequiredInput("matrix"),
-      {
-        auth: actionsUtil.getRequiredInput("token"),
-        url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
-      },
+      apiDetails,
       "actions",
       getActionsLogger()
     );

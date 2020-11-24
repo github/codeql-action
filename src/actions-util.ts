@@ -1,8 +1,10 @@
+import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
+import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
@@ -133,6 +135,13 @@ enum MissingTriggers {
   PULL_REQUEST = 2,
 }
 
+export const ErrCheckoutWrongHead = `Git checkout HEAD^2 is no longer necessary. Please remove this line.`;
+export const ErrMismatchedBranches = `Please make sure that any branches in on.pull_request are also in on.push so that CodeQL can establish a baseline.`;
+export const ErrMissingHooks = `Please specify on.push and on.pull_request hooks.`;
+export const ErrMissingPushHook = `Please specify an on.push hook so CodeQL can establish a baseline.`;
+export const ErrMissingPullRequestHook = `Please specify an on.pull_request hook so CodeQL is run against new pull requests.`;
+export const ErrPathsSpecified = `Please do not specify paths at on.pull.`;
+
 export function validateWorkflow(doc: Workflow): string[] {
   const errors: string[] = [];
 
@@ -140,9 +149,7 @@ export function validateWorkflow(doc: Workflow): string[] {
   for (const job of Object.values(doc?.jobs || {})) {
     for (const step of job?.steps || []) {
       if (step?.run === "git checkout HEAD^2") {
-        errors.push(
-          `Git checkout HEAD^2 is no longer necessary. Please remove this line from your workflow.`
-        );
+        errors.push(ErrCheckoutWrongHead);
       }
     }
   }
@@ -179,7 +186,7 @@ export function validateWorkflow(doc: Workflow): string[] {
     } else {
       const paths = doc.on.push?.paths;
       if (Array.isArray(paths) && paths.length > 0) {
-        errors.push("Please do not specify paths at on.pull.");
+        errors.push(ErrPathsSpecified);
       }
     }
 
@@ -190,36 +197,38 @@ export function validateWorkflow(doc: Workflow): string[] {
       const intersects = pull_request.filter((value) => !push.includes(value));
 
       if (intersects.length > 0) {
-        errors.push(
-          "Please make sure that any branches in on.pull_request: are also in on.push: so that CodeQL can establish a baseline."
-        );
+        errors.push(ErrMismatchedBranches);
       }
     }
   }
 
   switch (missing) {
     case MissingTriggers.PULL_REQUEST | MissingTriggers.PUSH:
-      errors.push("Please specify on.push and on.pull_request hooks.");
+      errors.push(ErrMissingHooks);
       break;
     case MissingTriggers.PULL_REQUEST:
-      errors.push(
-        "Please specify an on.pull_request hook so CodeQL is run against new pull requests."
-      );
+      errors.push(ErrMissingPullRequestHook);
       break;
     case MissingTriggers.PUSH:
-      errors.push(
-        "Please specify an on.push hook so CodeQL can establish a baseline."
-      );
+      errors.push(ErrMissingPushHook);
       break;
   }
 
   return errors;
 }
 
+export async function getWorkflow(): Promise<Workflow> {
+  return yaml.safeLoad(fs.readFileSync(await getWorkflowPath(), "utf-8"));
+}
+
 /**
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
+  if (isLocalRun()) {
+    return getRequiredEnvParam("WORKFLOW_PATH");
+  }
+
   const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];

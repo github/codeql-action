@@ -190,19 +190,13 @@ export function validateWorkflow(doc: Workflow): string[] {
       }
     }
 
-    if (doc.on.push) {
+    if (doc.on.push && doc.on.pull_request) {
       const push = doc.on.push.branches || [];
-      if (doc.on.pull_request) {
-        const pull_request = doc.on.pull_request.branches || [];
+      const pull_request = doc.on.pull_request.branches || [];
 
-        const intersects = pull_request.filter(
-          (value) => !push.includes(value)
-        );
+      const intersects = pull_request.filter((value) => !push.includes(value));
 
-        if (intersects.length > 0) {
-          errors.push(ErrMismatchedBranches);
-        }
-      } else if (push.length > 0) {
+      if (intersects.length > 0) {
         errors.push(ErrMismatchedBranches);
       }
     }
@@ -223,14 +217,37 @@ export function validateWorkflow(doc: Workflow): string[] {
   return errors;
 }
 
-export async function getWorkflow(): Promise<Workflow> {
+export async function getWorkflowError(): Promise<string | undefined> {
+  const workflow = await getWorkflow();
+
+  if (workflow === undefined) {
+    return undefined;
+  }
+
+  const workflowErrors = validateWorkflow(workflow);
+
+  if (workflowErrors.length === 0) {
+    return undefined;
+  }
+
+  return `${workflowErrors.length} issue${
+    workflowErrors.length === 1 ? " was" : "s were"
+  } detected with this workflow: ${workflowErrors.join(", ")}`;
+}
+
+export async function getWorkflow(): Promise<Workflow | undefined> {
   const relativePath = await getWorkflowPath();
   const absolutePath = path.join(
     getRequiredEnvParam("GITHUB_WORKSPACE"),
     relativePath
   );
 
-  return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
+  try {
+    return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
+  } catch (e) {
+    core.warning(`Could not read workflow: ${e.toString()}`);
+    return undefined;
+  }
 }
 
 /**

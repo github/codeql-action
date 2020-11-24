@@ -160,17 +160,16 @@ function getCodeQLActionRepository(mode: util.Mode, logger: Logger): string {
 }
 
 async function getCodeQLBundleDownloadURL(
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
 ): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository(mode, logger);
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.
-    [githubUrl, codeQLActionRepository],
+    [apiDetails.url, codeQLActionRepository],
     // This GitHub instance, and the canonical Action.
-    [githubUrl, CODEQL_DEFAULT_ACTION_REPOSITORY],
+    [apiDetails.url, CODEQL_DEFAULT_ACTION_REPOSITORY],
     // GitHub.com, and the canonical Action.
     [util.GITHUB_DOTCOM_URL, CODEQL_DEFAULT_ACTION_REPOSITORY],
   ];
@@ -192,7 +191,7 @@ async function getCodeQLBundleDownloadURL(
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {
       const release = await api
-        .getApiClient(githubAuth, githubUrl, mode, logger, false, true)
+        .getApiClient(apiDetails, mode, logger, false, true)
         .repos.getReleaseByTag({
           owner: repositoryOwner,
           repo: repositoryName,
@@ -240,8 +239,7 @@ async function toolcacheDownloadTool(
 
 export async function setupCodeQL(
   codeqlURL: string | undefined,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiDetails,
   tempDir: string,
   toolsDir: string,
   mode: util.Mode,
@@ -289,21 +287,16 @@ export async function setupCodeQL(
       logger.debug(`CodeQL found in cache ${codeqlFolder}`);
     } else {
       if (!codeqlURL) {
-        codeqlURL = await getCodeQLBundleDownloadURL(
-          githubAuth,
-          githubUrl,
-          mode,
-          logger
-        );
+        codeqlURL = await getCodeQLBundleDownloadURL(apiDetails, mode, logger);
       }
 
       const headers: IHeaders = { accept: "application/octet-stream" };
       // We only want to provide an authorization header if we are downloading
       // from the same GitHub instance the Action is running on.
       // This avoids leaking Enterprise tokens to dotcom.
-      if (codeqlURL.startsWith(`${githubUrl}/`)) {
+      if (codeqlURL.startsWith(`${apiDetails.url}/`)) {
         logger.debug("Downloading CodeQL bundle with token.");
-        headers.authorization = `token ${githubAuth}`;
+        headers.authorization = `token ${apiDetails.auth}`;
       } else {
         logger.debug("Downloading CodeQL bundle without token.");
       }

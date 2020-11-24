@@ -14,7 +14,7 @@ setupTests(test);
 
 const sampleApiDetails = {
   auth: "token",
-  url: "https://github.example.com",
+  url: "https://github.com",
 };
 
 test("download codeql bundle cache", async (t) => {

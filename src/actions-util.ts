@@ -116,8 +116,8 @@ interface WorkflowTrigger {
 }
 
 interface WorkflowTriggers {
-  push?: WorkflowTrigger;
-  pull_request?: WorkflowTrigger;
+  push?: WorkflowTrigger | null;
+  pull_request?: WorkflowTrigger | null;
 }
 
 interface Workflow {
@@ -136,7 +136,7 @@ enum MissingTriggers {
 }
 
 export const ErrCheckoutWrongHead = `Git checkout HEAD^2 is no longer necessary. Please remove this line.`;
-export const ErrMismatchedBranches = `Please make sure that any branches in on.pull_request are also in on.push so that CodeQL can establish a baseline.`;
+export const ErrMismatchedBranches = `Please make sure that every branch in on.pull_request is also in on.push so that CodeQL can establish a baseline.`;
 export const ErrMissingHooks = `Please specify on.push and on.pull_request hooks.`;
 export const ErrMissingPushHook = `Please specify an on.push hook so CodeQL can establish a baseline.`;
 export const ErrMissingPullRequestHook = `Please specify an on.pull_request hook so CodeQL is run against new pull requests.`;
@@ -190,13 +190,19 @@ export function validateWorkflow(doc: Workflow): string[] {
       }
     }
 
-    if (doc.on.pull_request !== undefined && doc.on.push !== undefined) {
+    if (doc.on.push) {
       const push = doc.on.push.branches || [];
-      const pull_request = doc.on.pull_request.branches || [];
+      if (doc.on.pull_request) {
+        const pull_request = doc.on.pull_request.branches || [];
 
-      const intersects = pull_request.filter((value) => !push.includes(value));
+        const intersects = pull_request.filter(
+          (value) => !push.includes(value)
+        );
 
-      if (intersects.length > 0) {
+        if (intersects.length > 0) {
+          errors.push(ErrMismatchedBranches);
+        }
+      } else if (push.length > 0) {
         errors.push(ErrMismatchedBranches);
       }
     }

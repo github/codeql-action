@@ -135,44 +135,37 @@ enum MissingTriggers {
   PullRequest = 2,
 }
 
-interface WorkflowError {
+interface CodedError {
   message: string;
   code: string;
 }
 
-export const ErrCheckoutWrongHead = {
-  message: `Git checkout HEAD^2 is no longer necessary. Please remove this line.`,
-  code: "CheckoutWrongHead",
-};
-export const ErrMismatchedBranches = {
-  message: `Please make sure that every branch in on.pull_request is also in on.push so that CodeQL can establish a baseline.`,
-  code: "MismatchedBranches",
-};
-export const ErrMissingHooks = {
-  message: `Please specify on.push and on.pull_request hooks.`,
-  code: "MissingHooks",
-};
-export const ErrMissingPushHook = {
-  message: `Please specify an on.push hook so CodeQL can establish a baseline.`,
-  code: "MissingPushHook",
-};
-export const ErrMissingPullRequestHook = {
-  message: `Please specify an on.pull_request hook so CodeQL is run against new pull requests.`,
-  code: "MissingPullRequestHook",
-};
-export const ErrPathsSpecified = {
-  message: `Please do not specify paths at on.pull.`,
-  code: "PathsSpecified",
-};
+function toCodedErrors(errors: {
+  [key: string]: string;
+}): { [key: string]: CodedError } {
+  return Object.entries(errors).reduce((acc, [key, value]) => {
+    acc[key] = { message: value, code: key };
+    return acc;
+  }, {} as ReturnType<typeof toCodedErrors>);
+}
 
-export function validateWorkflow(doc: Workflow): WorkflowError[] {
-  const errors: WorkflowError[] = [];
+export const WorkflowErrors = toCodedErrors({
+  MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that CodeQL can establish a baseline.`,
+  MissingHooks: `Please specify on.push and on.pull_request hooks.`,
+  MissingPullRequestHook: `Please specify an on.pull_request hook so CodeQL is run against new pull requests.`,
+  MissingPushHook: `Please specify an on.push hook so CodeQL can establish a baseline.`,
+  PathsSpecified: `Please do not specify paths at on.pull.`,
+  CheckoutWrongHead: `Git checkout HEAD^2 is no longer necessary. Please remove this line.`,
+});
+
+export function validateWorkflow(doc: Workflow): CodedError[] {
+  const errors: CodedError[] = [];
 
   // .jobs[key].steps[].run
   for (const job of Object.values(doc?.jobs || {})) {
     for (const step of job?.steps || []) {
       if (step?.run === "git checkout HEAD^2") {
-        errors.push(ErrCheckoutWrongHead);
+        errors.push(WorkflowErrors.CheckoutWrongHead);
       }
     }
   }
@@ -209,7 +202,7 @@ export function validateWorkflow(doc: Workflow): WorkflowError[] {
     } else {
       const paths = doc.on.push?.paths;
       if (Array.isArray(paths) && paths.length > 0) {
-        errors.push(ErrPathsSpecified);
+        errors.push(WorkflowErrors.PathsSpecified);
       }
     }
 
@@ -222,32 +215,30 @@ export function validateWorkflow(doc: Workflow): WorkflowError[] {
           (value) => !push.includes(value)
         );
         if (intersects.length > 0) {
-          errors.push(ErrMismatchedBranches);
+          errors.push(WorkflowErrors.MismatchedBranches);
         }
       } else if (push.length > 0) {
-        errors.push(ErrMismatchedBranches);
+        errors.push(WorkflowErrors.MismatchedBranches);
       }
     }
   }
 
   switch (missing) {
     case MissingTriggers.PullRequest | MissingTriggers.Push:
-      errors.push(ErrMissingHooks);
+      errors.push(WorkflowErrors.MissingHooks);
       break;
     case MissingTriggers.PullRequest:
-      errors.push(ErrMissingPullRequestHook);
+      errors.push(WorkflowErrors.MissingPullRequestHook);
       break;
     case MissingTriggers.Push:
-      errors.push(ErrMissingPushHook);
+      errors.push(WorkflowErrors.MissingPushHook);
       break;
   }
 
   return errors;
 }
 
-export async function getWorkflowErrors(): Promise<
-  WorkflowError[] | undefined
-> {
+export async function getWorkflowErrors(): Promise<CodedError[] | undefined> {
   const workflow = await getWorkflow();
 
   if (workflow === undefined) {
@@ -263,15 +254,17 @@ export async function getWorkflowErrors(): Promise<
   return workflowErrors;
 }
 
-export function formatWorkflowErrors(errors: WorkflowError[]): string {
-  return `${errors.length} issue${
-    errors.length === 1 ? " was" : "s were"
-  } detected with this workflow: ${errors.map((e) => e.message).join(", ")}`;
+export function formatWorkflowErrors(errors: CodedError[]): string {
+  const issuesWere = errors.length === 1 ? "issue was" : "issues were";
+
+  return `${
+    errors.length
+  } ${issuesWere} detected with this workflow: ${errors
+    .map((e) => e.message)
+    .join(", ")}`;
 }
 
-export function formatWorkflowCause(
-  errors?: WorkflowError[]
-): undefined | string {
+export function formatWorkflowCause(errors?: CodedError[]): undefined | string {
   if (errors === undefined) {
     return undefined;
   }

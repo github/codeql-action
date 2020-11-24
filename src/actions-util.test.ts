@@ -186,6 +186,17 @@ test("validateWorkflow() when on.push is mismatched for pull_request", (t) => {
   t.deepEqual(errors, [actionsutil.ErrMismatchedBranches]);
 });
 
+test("validateWorkflow() when on.pull_request for every branch but push specifies branches", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["main"] },
+      pull_request: null,
+    },
+  });
+
+  t.deepEqual(errors, [actionsutil.ErrMismatchedBranches]);
+});
+
 test("validateWorkflow() when HEAD^2 is checked out", (t) => {
   const errors = actionsutil.validateWorkflow({
     on: ["push", "pull_request"],
@@ -193,4 +204,29 @@ test("validateWorkflow() when HEAD^2 is checked out", (t) => {
   });
 
   t.deepEqual(errors, [actionsutil.ErrCheckoutWrongHead]);
+});
+
+test("formatWorkflowErrors() when there is one error", (t) => {
+  const message = actionsutil.formatWorkflowErrors([
+    actionsutil.ErrCheckoutWrongHead,
+  ]);
+  t.true(message.startsWith("1 issue was detected with this workflow:"));
+});
+
+test("formatWorkflowErrors() when there are multiple errors", (t) => {
+  const message = actionsutil.formatWorkflowErrors([
+    actionsutil.ErrCheckoutWrongHead,
+    actionsutil.ErrPathsSpecified,
+  ]);
+  t.true(message.startsWith("2 issues were detected with this workflow:"));
+});
+
+test("formatWorkflowCause()", (t) => {
+  const message = actionsutil.formatWorkflowCause([
+    actionsutil.ErrCheckoutWrongHead,
+    actionsutil.ErrPathsSpecified,
+  ]);
+
+  t.deepEqual(message, "CheckoutWrongHead,PathsSpecified");
+  t.deepEqual(actionsutil.formatWorkflowCause(undefined), undefined);
 });

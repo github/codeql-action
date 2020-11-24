@@ -96,19 +96,10 @@ async function run() {
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
-    const workflowErrors = actionsUtil.validateWorkflow(
-      await actionsUtil.getWorkflow()
-    );
+    const workflowError = await actionsUtil.getWorkflowError();
 
-    const workflowErrorMessage =
-      workflowErrors.length > 0
-        ? `${workflowErrors.length} issue${
-            workflowErrors.length === 1 ? " was" : "s were"
-          } detected with this workflow: ${workflowErrors.join(", ")}`
-        : undefined;
-
-    if (workflowErrorMessage !== undefined) {
-      core.warning(workflowErrorMessage);
+    if (workflowError !== undefined) {
+      core.warning(workflowError);
     }
 
     if (
@@ -117,7 +108,7 @@ async function run() {
           "init",
           "starting",
           startedAt,
-          workflowErrorMessage
+          workflowError
         )
       ))
     ) {

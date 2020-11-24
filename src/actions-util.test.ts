@@ -186,17 +186,6 @@ test("validateWorkflow() when on.push is mismatched for pull_request", (t) => {
   t.deepEqual(errors, [actionsutil.ErrMismatchedBranches]);
 });
 
-test("validateWorkflow() when on.pull_request for every branch but push specifies branches", (t) => {
-  const errors = actionsutil.validateWorkflow({
-    on: {
-      push: { branches: ["main"] },
-      pull_request: null,
-    },
-  });
-
-  t.deepEqual(errors, [actionsutil.ErrMismatchedBranches]);
-});
-
 test("validateWorkflow() when HEAD^2 is checked out", (t) => {
   const errors = actionsutil.validateWorkflow({
     on: ["push", "pull_request"],

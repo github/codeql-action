@@ -146,6 +146,11 @@ program
       fs.rmdirSync(tempDir, { recursive: true });
       fs.mkdirSync(tempDir, { recursive: true });
 
+      const apiDetails = {
+        auth: cmd.githubAuth,
+        url: parseGithubUrl(cmd.githubUrl),
+      };
+
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
         codeql = getCodeQL(cmd.codeqlPath);
@@ -153,10 +158,7 @@ program
         codeql = (
           await initCodeQL(
             undefined,
-            {
-              auth: cmd.githubAuth,
-              url: parseGithubUrl(cmd.githubUrl),
-            },
+            apiDetails,
             tempDir,
             toolsDir,
             "runner",
@@ -174,10 +176,7 @@ program
         toolsDir,
         codeql,
         cmd.checkoutPath || process.cwd(),
-        {
-          auth: cmd.githubAuth,
-          url: parseGithubUrl(cmd.githubUrl),
-        },
+        apiDetails,
         "runner",
         logger
       );
@@ -366,6 +365,12 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
+
+      const apiDetails = {
+        auth: cmd.githubAuth,
+        url: parseGithubUrl(cmd.githubUrl),
+      };
+
       await runAnalyze(
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
@@ -375,10 +380,7 @@ program
         undefined,
         cmd.checkoutPath || process.cwd(),
         undefined,
-        {
-          auth: cmd.githubAuth,
-          url: parseGithubUrl(cmd.githubUrl),
-        },
+        apiDetails,
         cmd.upload,
         "runner",
         outputDir,
@@ -433,6 +435,10 @@ program
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
     const logger = getRunnerLogger(cmd.debug);
+    const apiDetails = {
+      auth: cmd.githubAuth,
+      url: parseGithubUrl(cmd.githubUrl),
+    };
     try {
       await upload_lib.upload(
         cmd.sarifFile,
@@ -444,10 +450,7 @@ program
         undefined,
         cmd.checkoutPath || process.cwd(),
         undefined,
-        {
-          auth: cmd.githubAuth,
-          url: parseGithubUrl(cmd.githubUrl),
-        },
+        apiDetails,
         "runner",
         logger
       );

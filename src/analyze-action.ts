@@ -64,6 +64,10 @@ async function run() {
         "Config file could not be found at expected location. Has the 'init' action been called?"
       );
     }
+    const apiDetails = {
+      auth: actionsUtil.getRequiredInput("token"),
+      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+    };
     stats = await runAnalyze(
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       await actionsUtil.getCommitOid(),
@@ -73,10 +77,7 @@ async function run() {
       actionsUtil.getWorkflowRunID(),
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getRequiredInput("matrix"),
-      {
-        auth: actionsUtil.getRequiredInput("token"),
-        url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
-      },
+      apiDetails,
       actionsUtil.getRequiredInput("upload") === "true",
       "actions",
       actionsUtil.getRequiredInput("output"),

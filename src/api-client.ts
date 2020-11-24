@@ -108,15 +108,12 @@ function getApiUrl(githubUrl: string): string {
 // Once all code has been converted this function should be removed or made canonical
 // and called only from the action entrypoints.
 export function getActionsApiClient(allowLocalRun = false) {
-  return getApiClient(
-    {
-      auth: getRequiredInput("token"),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-    },
-    "actions",
-    getActionsLogger(),
-    allowLocalRun
-  );
+  const apiDetails = {
+    auth: getRequiredInput("token"),
+    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+
+  return getApiClient(apiDetails, "actions", getActionsLogger(), allowLocalRun);
 }
 
 export function apiVersionInRange(

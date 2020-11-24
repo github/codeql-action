@@ -17,14 +17,18 @@ export enum DisallowedAPIVersionReason {
   ACTION_TOO_NEW,
 }
 
+export interface GitHubApiDetails {
+  auth: string;
+  url: string;
+}
+
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
   "CODEQL_ACTION_WARNED_ABOUT_VERSION";
 let hasBeenWarnedAboutVersion = false;
 
 export const getApiClient = function (
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: GitHubApiDetails,
   mode: Mode,
   logger: Logger,
   allowLocalRun = false,
@@ -78,8 +82,8 @@ export const getApiClient = function (
     });
   });
   return new customOctokit(
-    githubUtils.getOctokitOptions(githubAuth, {
-      baseUrl: getApiUrl(githubUrl),
+    githubUtils.getOctokitOptions(apiDetails.auth, {
+      baseUrl: getApiUrl(apiDetails.url),
       userAgent: "CodeQL Action",
       log: consoleLogLevel({ level: "debug" }),
     })
@@ -104,13 +108,12 @@ function getApiUrl(githubUrl: string): string {
 // Once all code has been converted this function should be removed or made canonical
 // and called only from the action entrypoints.
 export function getActionsApiClient(allowLocalRun = false) {
-  return getApiClient(
-    getRequiredInput("token"),
-    getRequiredEnvParam("GITHUB_SERVER_URL"),
-    "actions",
-    getActionsLogger(),
-    allowLocalRun
-  );
+  const apiDetails = {
+    auth: getRequiredInput("token"),
+    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+
+  return getApiClient(apiDetails, "actions", getActionsLogger(), allowLocalRun);
 }
 
 export function apiVersionInRange(

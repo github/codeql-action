@@ -85,7 +85,7 @@ test("prepareEnvironment() when a local run", (t) => {
 test("validateWorkflow() when on is missing", (t) => {
   const errors = actionsutil.validateWorkflow({});
 
-  t.deepEqual(errors, ["Please specify on.push and on.pull_request hooks."]);
+  t.deepEqual(errors, [actionsutil.ErrMissingHooks]);
 });
 
 test("validateWorkflow() when on.push is missing", (t) => {
@@ -93,23 +93,19 @@ test("validateWorkflow() when on.push is missing", (t) => {
 
   console.log(errors);
 
-  t.deepEqual(errors, ["Please specify on.push and on.pull_request hooks."]);
+  t.deepEqual(errors, [actionsutil.ErrMissingHooks]);
 });
 
 test("validateWorkflow() when on.push is an array missing pull_request", (t) => {
   const errors = actionsutil.validateWorkflow({ on: ["push"] });
 
-  t.deepEqual(errors, [
-    "Please specify an on.pull_request hook so CodeQL is run against new pull requests.",
-  ]);
+  t.deepEqual(errors, [actionsutil.ErrMissingPullRequestHook]);
 });
 
 test("validateWorkflow() when on.push is an array missing push", (t) => {
   const errors = actionsutil.validateWorkflow({ on: ["pull_request"] });
 
-  t.deepEqual(errors, [
-    "Please specify an on.push hook so CodeQL can establish a baseline.",
-  ]);
+  t.deepEqual(errors, [actionsutil.ErrMissingPushHook]);
 });
 
 test("validateWorkflow() when on.push is valid", (t) => {
@@ -136,7 +132,7 @@ test("validateWorkflow() when on.push should not have a path", (t) => {
     },
   });
 
-  t.deepEqual(errors, ["Please do not specify paths at on.pull."]);
+  t.deepEqual(errors, [actionsutil.ErrPathsSpecified]);
 });
 
 test("validateWorkflow() when on.push is a correct object", (t) => {
@@ -165,9 +161,7 @@ test("validateWorkflow() when on.push is mismatched", (t) => {
     },
   });
 
-  t.deepEqual(errors, [
-    "Please make sure that any branches in on.pull_request: are also in on.push: so that CodeQL can establish a baseline.",
-  ]);
+  t.deepEqual(errors, [actionsutil.ErrMismatchedBranches]);
 });
 
 test("validateWorkflow() when on.push is not mismatched", (t) => {
@@ -189,9 +183,7 @@ test("validateWorkflow() when on.push is mismatched for pull_request", (t) => {
     },
   });
 
-  t.deepEqual(errors, [
-    "Please make sure that any branches in on.pull_request: are also in on.push: so that CodeQL can establish a baseline.",
-  ]);
+  t.deepEqual(errors, [actionsutil.ErrMismatchedBranches]);
 });
 
 test("validateWorkflow() when HEAD^2 is checked out", (t) => {
@@ -200,7 +192,5 @@ test("validateWorkflow() when HEAD^2 is checked out", (t) => {
     jobs: { test: { steps: [{ run: "git checkout HEAD^2" }] } },
   });
 
-  t.deepEqual(errors, [
-    "Git checkout HEAD^2 is no longer necessary. Please remove this line from your workflow.",
-  ]);
+  t.deepEqual(errors, [actionsutil.ErrCheckoutWrongHead]);
 });

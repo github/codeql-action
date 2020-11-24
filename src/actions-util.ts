@@ -218,7 +218,13 @@ export function validateWorkflow(doc: Workflow): string[] {
 }
 
 export async function getWorkflow(): Promise<Workflow> {
-  return yaml.safeLoad(fs.readFileSync(await getWorkflowPath(), "utf-8"));
+  const relativePath = await getWorkflowPath();
+  const absolutePath = path.join(
+    getRequiredEnvParam("GITHUB_WORKSPACE"),
+    relativePath
+  );
+
+  return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
 }
 
 /**

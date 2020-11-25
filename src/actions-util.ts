@@ -150,12 +150,12 @@ function toCodedErrors(errors: {
 }
 
 export const WorkflowErrors = toCodedErrors({
-  MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that CodeQL can establish a baseline.`,
-  MissingHooks: `Please specify on.push and on.pull_request hooks.`,
-  MissingPullRequestHook: `Please specify an on.pull_request hook so CodeQL is run against new pull requests.`,
-  MissingPushHook: `Please specify an on.push hook so CodeQL can establish a baseline.`,
-  PathsSpecified: `Please do not specify paths at on.pull.`,
-  CheckoutWrongHead: `Git checkout HEAD^2 is no longer necessary. Please remove this line.`,
+  MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that Code Scanning can compare pull requests against the state of the base branch.`,
+  MissingHooks: `Please specify on.push and on.pull_request hooks so that Code Scanning can compare pull requests against the state of the base branch.`,
+  MissingPullRequestHook: `Please specify an on.pull_request hook so that Code Scanning is run against pull requests.`,
+  MissingPushHook: `Please specify an on.push hook so that Code Scanning can compare pull requests against the state of the base branch.`,
+  PathsSpecified: `Please do not specify paths in on.pull as this can cause missing Code Scanning analysis states for the base branch.`,
+  CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 
 export function validateWorkflow(doc: Workflow): CodedError[] {

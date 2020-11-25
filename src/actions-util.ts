@@ -207,8 +207,9 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
     } else {
       const paths = doc.on.push?.paths;
       if (Array.isArray(paths) && paths.length > 0) {
-        // you can end up with commits that have no baseline if they didn't change any files
-        // at the moment we cannot go back through the history and find the most recent baseline
+        // if you specify paths you can end up with commits that have no baseline
+        // if they didn't change any files
+        // currently we cannot go back through the history and find the most recent baseline
         errors.push(WorkflowErrors.PathsSpecified);
       }
     }
@@ -223,6 +224,7 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
         );
         if (intersects.length > 0) {
           // there are branches in pull_request that may not have a baseline
+          // because we are not building them on push
           errors.push(WorkflowErrors.MismatchedBranches);
         }
       } else if (push.length > 0) {

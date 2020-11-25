@@ -164,6 +164,11 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
   // .jobs[key].steps[].run
   for (const job of Object.values(doc?.jobs || {})) {
     for (const step of job?.steps || []) {
+      // this was advice that we used to give in the README
+      // we actually want to run the analysis on the merge commit
+      // to produce results that are more inline with expectations
+      // (i.e: this is what will happen if you merge this PR)
+      // and avoid some race conditions
       if (step?.run === "git checkout HEAD^2") {
         errors.push(WorkflowErrors.CheckoutWrongHead);
       }
@@ -202,6 +207,8 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
     } else {
       const paths = doc.on.push?.paths;
       if (Array.isArray(paths) && paths.length > 0) {
+        // you can end up with commits that have no baseline if they didn't change any files
+        // at the moment we cannot go back through the history and find the most recent baseline
         errors.push(WorkflowErrors.PathsSpecified);
       }
     }
@@ -215,9 +222,12 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
           (value) => !push.includes(value)
         );
         if (intersects.length > 0) {
+          // there are branches in pull_request that may not have a baseline
           errors.push(WorkflowErrors.MismatchedBranches);
         }
       } else if (push.length > 0) {
+        // push is set up to run on a subset of branches
+        // and you could open a PR against a branch with no baseline
         errors.push(WorkflowErrors.MismatchedBranches);
       }
     }

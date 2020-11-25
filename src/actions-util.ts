@@ -154,7 +154,7 @@ export const WorkflowErrors = toCodedErrors({
   MissingHooks: `Please specify on.push and on.pull_request hooks so that Code Scanning can compare pull requests against the state of the base branch.`,
   MissingPullRequestHook: `Please specify an on.pull_request hook so that Code Scanning is run against pull requests.`,
   MissingPushHook: `Please specify an on.push hook so that Code Scanning can compare pull requests against the state of the base branch.`,
-  PathsSpecified: `Please do not specify paths in on.pull as this can cause missing Code Scanning analysis states for the base branch.`,
+  PathsSpecified: `Please do not specify paths in on.push as this can cause missing Code Scanning analysis states for the base branch.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 
@@ -269,13 +269,9 @@ export async function getWorkflowErrors(): Promise<CodedError[] | undefined> {
 export function formatWorkflowErrors(errors: CodedError[]): string {
   const issuesWere = errors.length === 1 ? "issue was" : "issues were";
 
-  const errorsList = `* ${errors.map((e) => e.message).join("\n* ")}`;
+  const errorsList = errors.map((e) => e.message).join(", ");
 
-  return `${errors.length} ${issuesWere} detected with this workflow:
-  
-${errorsList}
-
-Please visit https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning for the latest guidance on configuring Code Scanning.`;
+  return `${errors.length} ${issuesWere} detected with this workflow: ${errorsList}`;
 }
 
 export function formatWorkflowCause(errors?: CodedError[]): undefined | string {

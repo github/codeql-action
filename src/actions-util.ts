@@ -273,7 +273,9 @@ export function formatWorkflowErrors(errors: CodedError[]): string {
     errors.length
   } ${issuesWere} detected with this workflow: ${errors
     .map((e) => e.message)
-    .join(", ")}`;
+    .join(", ")}
+
+Please visit https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning for the latest guidance on configuring Code Scanning.`;
 }
 
 export function formatWorkflowCause(errors?: CodedError[]): undefined | string {

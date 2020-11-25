@@ -1,0 +1,18 @@
+name: "Update lib/"
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build lib/
+      run: npm run-script build
+    - name: Push updates
+      uses: stefanzweifel/git-auto-commit-action@v4.7.2
+      with:
+        commit_message: "Auto-update lib/"

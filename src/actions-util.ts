@@ -269,11 +269,11 @@ export async function getWorkflowErrors(): Promise<CodedError[] | undefined> {
 export function formatWorkflowErrors(errors: CodedError[]): string {
   const issuesWere = errors.length === 1 ? "issue was" : "issues were";
 
-  return `${
-    errors.length
-  } ${issuesWere} detected with this workflow: ${errors
-    .map((e) => e.message)
-    .join(", ")}
+  const errorsList = `* ${errors.map((e) => e.message).join("\n* ")}`;
+
+  return `${errors.length} ${issuesWere} detected with this workflow:
+  
+${errorsList}
 
 Please visit https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning for the latest guidance on configuring Code Scanning.`;
 }

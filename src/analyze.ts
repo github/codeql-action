@@ -259,7 +259,7 @@ export async function runAnalyze(
   }
 
   let uploadStats: upload_lib.UploadStatusReport;
-  if (mode == "actions") {
+  if (mode === "actions") {
     uploadStats = await upload_lib.uploadFromActions(
       outputDir,
       repositoryNwo,
@@ -273,7 +273,7 @@ export async function runAnalyze(
       apiDetails,
       logger
     );
-  } else if (mode == "runner") {
+  } else if (mode === "runner") {
     uploadStats = await upload_lib.uploadFromRunner(
       outputDir,
       repositoryNwo,

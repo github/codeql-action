@@ -26,6 +26,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     tempDir: tmpDir,
     toolCacheDir: tmpDir,
     codeQLCmd: "",
+    ghesVersion: { type: "dotcom" } as util.GHESVersion,
   };
 }
 

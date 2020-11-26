@@ -5,6 +5,7 @@ import zlib from "zlib";
 import * as core from "@actions/core";
 import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
+import * as semver from "semver";
 
 import * as api from "./api-client";
 import * as fingerprints from "./fingerprints";
@@ -55,7 +56,7 @@ async function uploadPayload(
     return;
   }
 
-  const client = api.getApiClient(apiDetails, mode, logger);
+  const client = api.getApiClient(apiDetails);
 
   const reqURL =
     mode === "actions"
@@ -93,6 +94,7 @@ export async function upload(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
+  ghesVersion: util.GHESVersion,
   apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
@@ -126,6 +128,7 @@ export async function upload(
     workflowRunID,
     checkoutPath,
     environment,
+    ghesVersion,
     apiDetails,
     mode,
     logger
@@ -179,6 +182,7 @@ async function uploadFiles(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
+  ghesVersion: util.GHESVersion,
   apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
@@ -215,7 +219,7 @@ async function uploadFiles(
 
   let payload: string;
   if (mode === "actions") {
-    payload = JSON.stringify({
+    const payloadObj = {
       commit_oid: commitOid,
       ref,
       analysis_key: analysisKey,
@@ -226,7 +230,11 @@ async function uploadFiles(
       environment,
       started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
       tool_names: toolNames,
-    });
+    };
+    if (ghesVersion.type !== "ghes" || semver.satisfies(ghesVersion.version, `>=3.0`)) {
+      // add base_ref / base_sha
+    }
+    payload = JSON.stringify(payloadObj);
   } else {
     payload = JSON.stringify({
       commit_sha: commitOid,

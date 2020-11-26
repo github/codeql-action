@@ -9,7 +9,7 @@ import * as externalQueries from "./external-queries";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { Mode } from "./util";
+import { GHESVersion } from "./util";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -93,6 +93,11 @@ export interface Config {
    * Path of the CodeQL executable.
    */
   codeQLCmd: string;
+  /**
+   * Version of GHES that we have determined that we are talking to, or undefined
+   * if talking to github.com.
+   */
+  ghesVersion: GHESVersion;
 }
 
 /**
@@ -592,12 +597,11 @@ export function getUnknownLanguagesError(languages: string[]): string {
 async function getLanguagesInRepo(
   repository: RepositoryNwo,
   apiDetails: api.GitHubApiDetails,
-  mode: Mode,
   logger: Logger
 ): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
   const response = await api
-    .getApiClient(apiDetails, mode, logger, true)
+    .getApiClient(apiDetails, true)
     .repos.listLanguages({
       owner: repository.owner,
       repo: repository.repo,
@@ -633,7 +637,6 @@ async function getLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   apiDetails: api.GitHubApiDetails,
-  mode: Mode,
   logger: Logger
 ): Promise<Language[]> {
   // Obtain from action input 'languages' if set
@@ -645,7 +648,7 @@ async function getLanguages(
 
   if (languages.length === 0) {
     // Obtain languages as all languages in the repo that can be analysed
-    languages = await getLanguagesInRepo(repository, apiDetails, mode, logger);
+    languages = await getLanguagesInRepo(repository, apiDetails, logger);
     logger.info(
       `Automatically detected languages: ${JSON.stringify(languages)}`
     );
@@ -726,15 +729,14 @@ export async function getDefaultConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
+  ghesVersion: GHESVersion,
   apiDetails: api.GitHubApiDetails,
-  mode: Mode,
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
     languagesInput,
     repository,
     apiDetails,
-    mode,
     logger
   );
   const queries: Queries = {};
@@ -761,6 +763,7 @@ export async function getDefaultConfig(
     tempDir,
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
+    ghesVersion,
   };
 }
 
@@ -776,8 +779,8 @@ async function loadConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
+  ghesVersion: GHESVersion,
   apiDetails: api.GitHubApiDetails,
-  mode: Mode,
   logger: Logger
 ): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -787,7 +790,7 @@ async function loadConfig(
     configFile = path.resolve(checkoutPath, configFile);
     parsedYAML = getLocalConfig(configFile, checkoutPath);
   } else {
-    parsedYAML = await getRemoteConfig(configFile, apiDetails, mode, logger);
+    parsedYAML = await getRemoteConfig(configFile, apiDetails);
   }
 
   // Validate that the 'name' property is syntactically correct,
@@ -805,7 +808,6 @@ async function loadConfig(
     languagesInput,
     repository,
     apiDetails,
-    mode,
     logger
   );
 
@@ -925,6 +927,7 @@ async function loadConfig(
     tempDir,
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
+    ghesVersion,
   };
 }
 
@@ -943,8 +946,8 @@ export async function initConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
+  ghesVersion: GHESVersion,
   apiDetails: api.GitHubApiDetails,
-  mode: Mode,
   logger: Logger
 ): Promise<Config> {
   let config: Config;
@@ -960,8 +963,8 @@ export async function initConfig(
       toolCacheDir,
       codeQL,
       checkoutPath,
+      ghesVersion,
       apiDetails,
-      mode,
       logger
     );
   } else {
@@ -974,8 +977,8 @@ export async function initConfig(
       toolCacheDir,
       codeQL,
       checkoutPath,
+      ghesVersion,
       apiDetails,
-      mode,
       logger
     );
   }
@@ -1010,9 +1013,7 @@ function getLocalConfig(configFile: string, checkoutPath: string): UserConfig {
 
 async function getRemoteConfig(
   configFile: string,
-  apiDetails: api.GitHubApiDetails,
-  mode: Mode,
-  logger: Logger
+  apiDetails: api.GitHubApiDetails
 ): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
@@ -1025,7 +1026,7 @@ async function getRemoteConfig(
   }
 
   const response = await api
-    .getApiClient(apiDetails, mode, logger, true)
+    .getApiClient(apiDetails, true)
     .repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,

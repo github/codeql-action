@@ -2,8 +2,13 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
+import * as core from "@actions/core";
+import * as semver from "semver";
+
+import * as apiCompatibility from "./api-compatibility.json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import { getApiClient, GitHubApiDetails } from "./api-client";
 
 /**
  * Are we running on actions, or not.
@@ -207,4 +212,82 @@ export function parseGithubUrl(inputUrl: string): string {
   }
 
   return url.toString();
+}
+
+const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
+const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
+  "CODEQL_ACTION_WARNED_ABOUT_VERSION";
+let hasBeenWarnedAboutVersion = false;
+
+export type GHESVersion = { type: "dotcom" } | { type: "ghes"; version: string };
+
+export async function getGHESVersion(apiDetails: GitHubApiDetails): Promise<GHESVersion> {
+  // Doesn't strictly have to be the meta endpoint as we're only
+  // using the response headers which are available on every request.
+  const apiClient = getApiClient(apiDetails);
+  const response = await apiClient.meta.get();
+  
+  // This happens on dotcom
+  if (
+    response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined
+  ) {
+    return { type: "dotcom" };
+  }
+
+  const version = response.headers[
+    GITHUB_ENTERPRISE_VERSION_HEADER
+  ] as string;
+  return { type: "ghes", version };
+}
+
+export function checkGHESVersionInRange(version: GHESVersion, mode: Mode, logger: Logger) {
+  if (hasBeenWarnedAboutVersion || version.type !== "ghes") {
+    return;
+  }
+
+  const disallowedAPIVersionReason = apiVersionInRange(
+    version.version,
+    apiCompatibility.minimumVersion,
+    apiCompatibility.maximumVersion
+  );
+
+  const toolName = mode === "actions" ? "Action" : "Runner";
+
+  if (
+    disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_OLD
+  ) {
+    logger.warning(
+      `The CodeQL ${toolName} version you are using is too old to be compatible with GitHub Enterprise ${version}. If you experience issues, please upgrade to a more recent version of the CodeQL ${toolName}.`
+    );
+  }
+  if (
+    disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_NEW
+  ) {
+    logger.warning(
+      `GitHub Enterprise ${version} is too old to be compatible with this version of the CodeQL ${toolName}. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL ${toolName}.`
+    );
+  }
+  hasBeenWarnedAboutVersion = true;
+  if (mode === "actions") {
+    core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
+  }
+}
+
+export enum DisallowedAPIVersionReason {
+  ACTION_TOO_OLD,
+  ACTION_TOO_NEW,
+}
+
+export function apiVersionInRange(
+  version: string,
+  minimumVersion: string,
+  maximumVersion: string
+): DisallowedAPIVersionReason | undefined {
+  if (!semver.satisfies(version, `>=${minimumVersion}`)) {
+    return DisallowedAPIVersionReason.ACTION_TOO_NEW;
+  }
+  if (!semver.satisfies(version, `<=${maximumVersion}`)) {
+    return DisallowedAPIVersionReason.ACTION_TOO_OLD;
+  }
+  return undefined;
 }

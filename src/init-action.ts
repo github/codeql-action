@@ -96,9 +96,20 @@ async function run() {
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
+    const workflowErrors = await actionsUtil.getWorkflowErrors();
+
+    if (workflowErrors.length > 0) {
+      core.warning(actionsUtil.formatWorkflowErrors(workflowErrors));
+    }
+
     if (
       !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase("init", "starting", startedAt)
+        await actionsUtil.createStatusReportBase(
+          "init",
+          "starting",
+          startedAt,
+          actionsUtil.formatWorkflowCause(workflowErrors)
+        )
       ))
     ) {
       return;

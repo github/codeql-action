@@ -220,7 +220,13 @@ async function run() {
   await sendSuccessStatusReport(startedAt, config, toolsVersion);
 }
 
-run().catch((e) => {
-  core.setFailed(`init action failed: ${e}`);
-  console.log(e);
-});
+async function runWrapper() {
+  try {
+    await run();
+  } catch (error) {
+    core.setFailed(`init action failed: ${error}`);
+    console.log(error);
+  }
+}
+
+void runWrapper();

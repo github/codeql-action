@@ -98,7 +98,7 @@ async function run() {
 
     const workflowErrors = await actionsUtil.getWorkflowErrors();
 
-    if (workflowErrors !== undefined) {
+    if (workflowErrors.length > 0) {
       core.warning(actionsUtil.formatWorkflowErrors(workflowErrors));
     }
 

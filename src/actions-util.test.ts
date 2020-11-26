@@ -228,5 +228,5 @@ test("formatWorkflowCause()", (t) => {
   ]);
 
   t.deepEqual(message, "CheckoutWrongHead,PathsSpecified");
-  t.deepEqual(actionsutil.formatWorkflowCause(undefined), undefined);
+  t.deepEqual(actionsutil.formatWorkflowCause([]), undefined);
 });

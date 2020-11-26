@@ -102,7 +102,13 @@ async function run() {
   await sendStatusReport(startedAt, stats);
 }
 
-run().catch((e) => {
-  core.setFailed(`analyze action failed: ${e}`);
-  console.log(e);
-});
+async function runWrapper() {
+  try {
+    await run();
+  } catch (error) {
+    core.setFailed(`analyze action failed: ${error}`);
+    console.log(error);
+  }
+}
+
+void runWrapper();

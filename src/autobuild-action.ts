@@ -86,7 +86,13 @@ async function run() {
   await sendCompletedStatusReport(startedAt, language ? [language] : []);
 }
 
-run().catch((e) => {
-  core.setFailed(`autobuild action failed.  ${e}`);
-  console.log(e);
-});
+async function runWrapper() {
+  try {
+    await run();
+  } catch (error) {
+    core.setFailed(`autobuild action failed. ${error}`);
+    console.log(error);
+  }
+}
+
+void runWrapper();

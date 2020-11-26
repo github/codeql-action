@@ -13,6 +13,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { checkGHESVersionInRange, getGHESVersion } from "./util";
 
 interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   // Comma-separated list of languages that analysis was run for
@@ -93,6 +94,16 @@ async function run() {
   let codeql: CodeQL;
   let toolsVersion: string;
 
+  const apiDetails = {
+    auth: actionsUtil.getRequiredInput("token"),
+    url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+
+  const ghesVersion = await getGHESVersion(apiDetails);
+  if (ghesVersion !== undefined) {
+    checkGHESVersionInRange(ghesVersion, "actions", logger);
+  }
+
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
@@ -115,11 +126,6 @@ async function run() {
       return;
     }
 
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
-    };
-
     const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
       apiDetails,
@@ -140,8 +146,8 @@ async function run() {
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
+      ghesVersion,
       apiDetails,
-      "actions",
       logger
     );
 

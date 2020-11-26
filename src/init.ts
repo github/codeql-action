@@ -44,8 +44,8 @@ export async function initConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
+  ghesVersion: util.GHESVersion,
   apiDetails: GitHubApiDetails,
-  mode: util.Mode,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -58,8 +58,8 @@ export async function initConfig(
     toolCacheDir,
     codeQL,
     checkoutPath,
+    ghesVersion,
     apiDetails,
-    mode,
     logger
   );
   analysisPaths.printPathFiltersWarning(config, logger);

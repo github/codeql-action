@@ -34,6 +34,7 @@ test("status report fields", async (t) => {
         tempDir: tmpDir,
         toolCacheDir: tmpDir,
         codeQLCmd: "",
+        ghesVersion: { type: "dotcom" } as util.GHESVersion,
       };
       fs.mkdirSync(util.getCodeQLDatabasePath(config.tempDir, language), {
         recursive: true,

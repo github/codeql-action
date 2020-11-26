@@ -19,6 +19,7 @@ test("emptyPaths", async (t) => {
       tempDir: tmpDir,
       toolCacheDir: tmpDir,
       codeQLCmd: "",
+      ghesVersion: { type: "dotcom" } as util.GHESVersion,
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
@@ -38,6 +39,7 @@ test("nonEmptyPaths", async (t) => {
       tempDir: tmpDir,
       toolCacheDir: tmpDir,
       codeQLCmd: "",
+      ghesVersion: { type: "dotcom" } as util.GHESVersion,
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], "path1\npath2");
@@ -61,6 +63,7 @@ test("exclude temp dir", async (t) => {
       tempDir,
       toolCacheDir,
       codeQLCmd: "",
+      ghesVersion: { type: "dotcom" } as util.GHESVersion,
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);

@@ -440,18 +440,13 @@ program
       url: parseGithubUrl(cmd.githubUrl),
     };
     try {
-      await upload_lib.upload(
+      await upload_lib.uploadFromRunner(
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
-        undefined,
-        undefined,
-        undefined,
         cmd.checkoutPath || process.cwd(),
-        undefined,
         apiDetails,
-        "runner",
         logger
       );
     } catch (e) {

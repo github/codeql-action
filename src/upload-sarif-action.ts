@@ -45,7 +45,7 @@ async function run() {
       url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
     };
 
-    const uploadStats = await upload_lib.upload(
+    const uploadStats = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       await actionsUtil.getCommitOid(),
@@ -56,7 +56,6 @@ async function run() {
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getRequiredInput("matrix"),
       apiDetails,
-      "actions",
       getActionsLogger()
     );
     await sendSuccessStatusReport(startedAt, uploadStats);

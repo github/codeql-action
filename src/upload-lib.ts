@@ -97,6 +97,23 @@ export async function upload(
   mode: util.Mode,
   logger: Logger
 ): Promise<UploadStatusReport> {
+  return await uploadFiles(
+    getSarifFilePaths(sarifPath),
+    repositoryNwo,
+    commitOid,
+    ref,
+    analysisKey,
+    analysisName,
+    workflowRunID,
+    checkoutPath,
+    environment,
+    apiDetails,
+    mode,
+    logger
+  );
+}
+
+function getSarifFilePaths(sarifPath: string) {
   const sarifFiles: string[] = [];
   if (!fs.existsSync(sarifPath)) {
     throw new Error(`Path does not exist: ${sarifPath}`);
@@ -115,21 +132,7 @@ export async function upload(
   } else {
     sarifFiles.push(sarifPath);
   }
-
-  return await uploadFiles(
-    sarifFiles,
-    repositoryNwo,
-    commitOid,
-    ref,
-    analysisKey,
-    analysisName,
-    workflowRunID,
-    checkoutPath,
-    environment,
-    apiDetails,
-    mode,
-    logger
-  );
+  return sarifFiles;
 }
 
 // Counts the number of results in the given SARIF file

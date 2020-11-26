@@ -115,6 +115,11 @@ interface WorkflowTrigger {
   paths?: string[];
 }
 
+// on: {} then push/pull_request are undefined
+// on:
+//   push:
+//   pull_request:
+// then push/pull_request are null
 interface WorkflowTriggers {
   push?: WorkflowTrigger | null;
   pull_request?: WorkflowTrigger | null;
@@ -125,7 +130,7 @@ interface Workflow {
   on?: string | string[] | WorkflowTriggers;
 }
 
-function isObject(o): o is object {
+function isObject(o: unknown): o is object {
   return o !== null && typeof o === "object";
 }
 
@@ -224,10 +229,10 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
 
       if (doc.on.pull_request) {
         const pull_request = doc.on.pull_request.branches || [];
-        const intersects = pull_request.filter(
+        const difference = pull_request.filter(
           (value) => !push.includes(value)
         );
-        if (intersects.length > 0) {
+        if (difference.length > 0) {
           // there are branches in pull_request that may not have a baseline
           // because we are not building them on push
           errors.push(WorkflowErrors.MismatchedBranches);
@@ -255,32 +260,26 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
   return errors;
 }
 
-export async function getWorkflowErrors(): Promise<CodedError[] | undefined> {
+export async function getWorkflowErrors(): Promise<CodedError[]> {
   const workflow = await getWorkflow();
 
   if (workflow === undefined) {
-    return undefined;
+    return [];
   }
 
-  const workflowErrors = validateWorkflow(workflow);
-
-  if (workflowErrors.length === 0) {
-    return undefined;
-  }
-
-  return workflowErrors;
+  return validateWorkflow(workflow);
 }
 
 export function formatWorkflowErrors(errors: CodedError[]): string {
   const issuesWere = errors.length === 1 ? "issue was" : "issues were";
 
-  const errorsList = errors.map((e) => e.message).join(", ");
+  const errorsList = errors.map((e) => e.message).join(" ");
 
   return `${errors.length} ${issuesWere} detected with this workflow: ${errorsList}`;
 }
 
-export function formatWorkflowCause(errors?: CodedError[]): undefined | string {
-  if (errors === undefined) {
+export function formatWorkflowCause(errors: CodedError[]): undefined | string {
+  if (errors.length === 0) {
     return undefined;
   }
   return errors.map((e) => e.code).join(",");

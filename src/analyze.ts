@@ -258,20 +258,34 @@ export async function runAnalyze(
     return { ...queriesStats };
   }
 
-  const uploadStats = await upload_lib.upload(
-    outputDir,
-    repositoryNwo,
-    commitOid,
-    ref,
-    analysisKey,
-    analysisName,
-    workflowRunID,
-    checkoutPath,
-    environment,
-    apiDetails,
-    mode,
-    logger
-  );
+  let uploadStats: upload_lib.UploadStatusReport;
+  if (mode == "actions") {
+    uploadStats = await upload_lib.uploadFromActions(
+      outputDir,
+      repositoryNwo,
+      commitOid,
+      ref,
+      analysisKey!,
+      analysisName!,
+      workflowRunID!,
+      checkoutPath,
+      environment!,
+      apiDetails,
+      logger
+    );
+  } else if (mode == "runner") {
+    uploadStats = await upload_lib.uploadFromRunner(
+      outputDir,
+      repositoryNwo,
+      commitOid,
+      ref,
+      checkoutPath,
+      apiDetails,
+      logger
+    );
+  } else {
+    throw new Error(`Unknown mode "${mode}"`);
+  }
 
   return { ...queriesStats, ...uploadStats };
 }

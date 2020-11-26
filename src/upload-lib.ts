@@ -83,18 +83,17 @@ export interface UploadStatusReport {
 // Uploads a single sarif file or a directory of sarif files
 // depending on what the path happens to refer to.
 // Returns true iff the upload occurred and succeeded
-export async function upload(
+export async function uploadFromActions(
   sarifPath: string,
   repositoryNwo: RepositoryNwo,
   commitOid: string,
   ref: string,
-  analysisKey: string | undefined,
-  analysisName: string | undefined,
-  workflowRunID: number | undefined,
+  analysisKey: string,
+  analysisName: string,
+  workflowRunID: number,
   checkoutPath: string,
-  environment: string | undefined,
+  environment: string,
   apiDetails: api.GitHubApiDetails,
-  mode: util.Mode,
   logger: Logger
 ): Promise<UploadStatusReport> {
   return await uploadFiles(
@@ -108,7 +107,35 @@ export async function upload(
     checkoutPath,
     environment,
     apiDetails,
-    mode,
+    "actions",
+    logger
+  );
+}
+
+// Uploads a single sarif file or a directory of sarif files
+// depending on what the path happens to refer to.
+// Returns true iff the upload occurred and succeeded
+export async function uploadFromRunner(
+  sarifPath: string,
+  repositoryNwo: RepositoryNwo,
+  commitOid: string,
+  ref: string,
+  checkoutPath: string,
+  apiDetails: api.GitHubApiDetails,
+  logger: Logger
+): Promise<UploadStatusReport> {
+  return await uploadFiles(
+    getSarifFilePaths(sarifPath),
+    repositoryNwo,
+    commitOid,
+    ref,
+    undefined,
+    undefined,
+    undefined,
+    checkoutPath,
+    undefined,
+    apiDetails,
+    "runner",
     logger
   );
 }

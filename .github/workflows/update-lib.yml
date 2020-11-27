@@ -2,13 +2,20 @@ name: "Update lib/"
 
 on:
   workflow_dispatch:
+    # Example of how to trigger this:
+    # curl -X POST \
+    #      -H "Authorization: Bearer <token>" \
+    #      https://api.github.com/repos/github/codeql-action/actions/workflows/update-lib.yml/dispatches \
+    #      -d '{"ref":"main","inputs":{"pr":"<pr-number>"}}'
+    # Replace <token> with a personal access token from this page: https://github.com/settings/tokens
+    # Replace <pr-number> by the number of the pull request to update
     inputs:
       pr:
         description: 'The number of the PR to update'
         required: true
 
 jobs:
-  build:
+  update-lib:
     runs-on: ubuntu-latest
 
     steps:

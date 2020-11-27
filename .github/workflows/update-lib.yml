@@ -1,18 +1,30 @@
 name: "Update lib/"
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'The number of the PR to update'
+        required: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build lib/
+    - name: Checkout repository
+      uses: actions/checkout@v2
+    - name: Checkout PR
+      uses: dawidd6/action-checkout-pr@v1
+      with:
+        pr: ${{ github.event.inputs.pr }}
+    - name: Merge main branch
+      run: git merge main --no-ff
+    - name: Remove lib/ directory
+      run: rm -rf lib
+    - name: Update lib/ directory
       run: npm run-script build
     - name: Push updates
-      uses: stefanzweifel/git-auto-commit-action@v4.7.2
+      uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: "Auto-update lib/"

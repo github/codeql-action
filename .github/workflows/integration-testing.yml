@@ -129,6 +129,33 @@ jobs:
       env:
         TEST_MODE: true
 
+  go-custom-tracing-autobuild:
+    # No need to test Go autobuild on multiple OSes since
+    # we're testing Go custom tracing with a manual build on all OSes.
+    runs-on: ubuntu-latest
+    env:
+      CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
+
+    steps:
+    - uses: actions/setup-go@v2
+      if: ${{ matrix.os ==  'macos-latest' }}
+      with:
+        go-version: '^1.13.1'
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+    - uses: ./../action/init
+      with:
+        languages: go
+    - uses: ./../action/autobuild
+    - uses: ./../action/analyze
+      env:
+        TEST_MODE: true
+
   multi-language-repo_rubocop:
     runs-on: ubuntu-latest
 

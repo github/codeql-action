@@ -372,22 +372,26 @@ program
       };
 
       await runAnalyze(
-        parseRepositoryNwo(cmd.repository),
-        cmd.commit,
-        parseRef(cmd.ref),
-        undefined,
-        undefined,
-        undefined,
-        cmd.checkoutPath || process.cwd(),
-        undefined,
-        apiDetails,
-        cmd.upload,
-        "runner",
         outputDir,
         getMemoryFlag(cmd.ram),
         getAddSnippetsFlag(cmd.addSnippets),
         getThreadsFlag(cmd.threads, logger),
         config,
+        logger
+      );
+
+      if (!cmd.upload) {
+        logger.info("Not uploading results");
+        return;
+      }
+      
+      await upload_lib.uploadFromRunner(
+        outputDir,
+        parseRepositoryNwo(cmd.repository),
+        cmd.commit,
+        parseRef(cmd.ref),
+        cmd.checkoutPath || process.cwd(),
+        apiDetails,
         logger
       );
     } catch (e) {

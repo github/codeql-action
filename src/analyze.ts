@@ -4,12 +4,10 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 
 import * as analysisPaths from "./analysis-paths";
-import { GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import { RepositoryNwo } from "./repository";
 import * as sharedEnv from "./shared-environment";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
@@ -217,24 +215,13 @@ export async function runQueries(
 }
 
 export async function runAnalyze(
-  repositoryNwo: RepositoryNwo,
-  commitOid: string,
-  ref: string,
-  analysisKey: string | undefined,
-  analysisName: string | undefined,
-  workflowRunID: number | undefined,
-  checkoutPath: string,
-  environment: string | undefined,
-  apiDetails: GitHubApiDetails,
-  doUpload: boolean,
-  mode: util.Mode,
   outputDir: string,
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
   config: configUtils.Config,
   logger: Logger
-): Promise<AnalysisStatusReport> {
+): Promise<QueriesStatusReport> {
   // Delete the tracer config env var to avoid tracing ourselves
   delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
@@ -253,39 +240,5 @@ export async function runAnalyze(
     logger
   );
 
-  if (!doUpload) {
-    logger.info("Not uploading results");
-    return { ...queriesStats };
-  }
-
-  let uploadStats: upload_lib.UploadStatusReport;
-  if (mode === "actions") {
-    uploadStats = await upload_lib.uploadFromActions(
-      outputDir,
-      repositoryNwo,
-      commitOid,
-      ref,
-      analysisKey!,
-      analysisName!,
-      workflowRunID!,
-      checkoutPath,
-      environment!,
-      apiDetails,
-      logger
-    );
-  } else if (mode === "runner") {
-    uploadStats = await upload_lib.uploadFromRunner(
-      outputDir,
-      repositoryNwo,
-      commitOid,
-      ref,
-      checkoutPath,
-      apiDetails,
-      logger
-    );
-  } else {
-    throw new Error(`Unknown mode "${mode}"`);
-  }
-
-  return { ...queriesStats, ...uploadStats };
+  return { ...queriesStats };
 }

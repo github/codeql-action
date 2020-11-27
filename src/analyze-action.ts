@@ -9,6 +9,7 @@ import {
 import { getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import * as upload_lib from "./upload-lib";
 import * as util from "./util";
 
 interface FinishStatusReport
@@ -68,7 +69,23 @@ async function run() {
       auth: actionsUtil.getRequiredInput("token"),
       url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
     };
-    stats = await runAnalyze(
+    const outputDir = actionsUtil.getRequiredInput("output");
+    const queriesStats = await runAnalyze(
+      outputDir,
+      util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
+      util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
+      util.getThreadsFlag(actionsUtil.getOptionalInput("threads"), logger),
+      config,
+      logger
+    );
+
+    if (actionsUtil.getRequiredInput("upload") !== "true") {
+      logger.info("Not uploading results");
+      return;
+    }
+
+    const uploadStats = await upload_lib.uploadFromActions(
+      outputDir,
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       await actionsUtil.getCommitOid(),
       await actionsUtil.getRef(),
@@ -78,15 +95,10 @@ async function run() {
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getRequiredInput("matrix"),
       apiDetails,
-      actionsUtil.getRequiredInput("upload") === "true",
-      "actions",
-      actionsUtil.getRequiredInput("output"),
-      util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
-      util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
-      util.getThreadsFlag(actionsUtil.getOptionalInput("threads"), logger),
-      config,
       logger
     );
+    stats = { ...queriesStats, ...uploadStats };
+    
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);

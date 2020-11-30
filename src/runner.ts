@@ -14,9 +14,9 @@ import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import {
-  checkGHESVersionInRange,
+  checkGitHubVersionInRange,
   getAddSnippetsFlag,
-  getGHESVersion,
+  getGitHubVersion,
   getMemoryFlag,
   getThreadsFlag,
   parseGithubUrl,
@@ -153,9 +153,9 @@ program
         url: parseGithubUrl(cmd.githubUrl),
       };
 
-      const ghesVersion = await getGHESVersion(apiDetails);
-      if (ghesVersion !== undefined) {
-        checkGHESVersionInRange(ghesVersion, "runner", logger);
+      const gitHubVersion = await getGitHubVersion(apiDetails);
+      if (gitHubVersion !== undefined) {
+        checkGitHubVersionInRange(gitHubVersion, "runner", logger);
       }
 
       let codeql: CodeQL;
@@ -183,7 +183,7 @@ program
         toolsDir,
         codeql,
         cmd.checkoutPath || process.cwd(),
-        ghesVersion,
+        gitHubVersion,
         apiDetails,
         logger
       );
@@ -447,7 +447,7 @@ program
       url: parseGithubUrl(cmd.githubUrl),
     };
     try {
-      const ghesVersion = await getGHESVersion(apiDetails);
+      const gitHubVersion = await getGitHubVersion(apiDetails);
       await upload_lib.upload(
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
@@ -458,7 +458,7 @@ program
         undefined,
         cmd.checkoutPath || process.cwd(),
         undefined,
-        ghesVersion,
+        gitHubVersion,
         apiDetails,
         "runner",
         logger

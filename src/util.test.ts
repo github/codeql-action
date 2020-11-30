@@ -1,8 +1,11 @@
 import * as fs from "fs";
 import * as os from "os";
 
+import * as github from "@actions/github";
 import test from "ava";
+import sinon from "sinon";
 
+import * as api from "./api-client";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -194,4 +197,43 @@ test("allowed API versions", async (t) => {
     util.apiVersionInRange("2.1.0", "1.33", "2.0"),
     util.DisallowedAPIVersionReason.ACTION_TOO_OLD
   );
+});
+
+function mockGetMetaVersionHeader(
+  versionHeader: string | undefined
+): sinon.SinonStub<any, any> {
+  // Passing an auth token is required, so we just use a dummy value
+  const client = github.getOctokit("123");
+  const response = {
+    headers: {
+      "x-github-enterprise-version": versionHeader,
+    },
+  };
+  const spyGetContents = sinon
+    .stub(client.meta, "get")
+    .resolves(response as any);
+  sinon.stub(api, "getApiClient").value(() => client);
+  return spyGetContents;
+}
+
+test("getGitHubVersion", async (t) => {
+  const v = await util.getGitHubVersion({
+    auth: "",
+    url: "https://github.com",
+  });
+  t.deepEqual("dotcom", v.type);
+
+  mockGetMetaVersionHeader("2.0");
+  const v2 = await util.getGitHubVersion({
+    auth: "",
+    url: "https://ghe.example.com",
+  });
+  t.deepEqual({ type: "ghes", version: "2.0" }, v2);
+
+  mockGetMetaVersionHeader(undefined);
+  const v3 = await util.getGitHubVersion({
+    auth: "",
+    url: "https://ghe.example.com",
+  });
+  t.deepEqual({ type: "dotcom" }, v3);
 });

@@ -5,10 +5,10 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as semver from "semver";
 
+import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { getApiClient, GitHubApiDetails } from "./api-client";
 
 /**
  * Are we running on actions, or not.
@@ -219,28 +219,38 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
   "CODEQL_ACTION_WARNED_ABOUT_VERSION";
 let hasBeenWarnedAboutVersion = false;
 
-export type GHESVersion = { type: "dotcom" } | { type: "ghes"; version: string };
+export type GitHubVersion =
+  | { type: "dotcom" }
+  | { type: "ghes"; version: string };
 
-export async function getGHESVersion(apiDetails: GitHubApiDetails): Promise<GHESVersion> {
+export async function getGitHubVersion(
+  apiDetails: GitHubApiDetails
+): Promise<GitHubVersion> {
+  // We can avoid making an API request in the standard dotcom case
+  if (parseGithubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
+    return { type: "dotcom" };
+  }
+
   // Doesn't strictly have to be the meta endpoint as we're only
   // using the response headers which are available on every request.
   const apiClient = getApiClient(apiDetails);
   const response = await apiClient.meta.get();
-  
-  // This happens on dotcom
-  if (
-    response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined
-  ) {
+
+  // This happens on dotcom, although we expect to have already returned in that
+  // case. This can also serve as a fallback in cases we haven't foreseen.
+  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
     return { type: "dotcom" };
   }
 
-  const version = response.headers[
-    GITHUB_ENTERPRISE_VERSION_HEADER
-  ] as string;
+  const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
   return { type: "ghes", version };
 }
 
-export function checkGHESVersionInRange(version: GHESVersion, mode: Mode, logger: Logger) {
+export function checkGitHubVersionInRange(
+  version: GitHubVersion,
+  mode: Mode,
+  logger: Logger
+) {
   if (hasBeenWarnedAboutVersion || version.type !== "ghes") {
     return;
   }

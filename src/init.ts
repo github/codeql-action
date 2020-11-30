@@ -44,7 +44,7 @@ export async function initConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  ghesVersion: util.GHESVersion,
+  gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiDetails,
   logger: Logger
 ): Promise<configUtils.Config> {
@@ -58,7 +58,7 @@ export async function initConfig(
     toolCacheDir,
     codeQL,
     checkoutPath,
-    ghesVersion,
+    gitHubVersion,
     apiDetails,
     logger
   );

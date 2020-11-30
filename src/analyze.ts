@@ -268,7 +268,7 @@ export async function runAnalyze(
     workflowRunID,
     checkoutPath,
     environment,
-    config.ghesVersion,
+    config.gitHubVersion,
     apiDetails,
     mode,
     logger

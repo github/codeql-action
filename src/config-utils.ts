@@ -9,7 +9,7 @@ import * as externalQueries from "./external-queries";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { GHESVersion } from "./util";
+import { GitHubVersion } from "./util";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -97,7 +97,7 @@ export interface Config {
    * Version of GHES that we have determined that we are talking to, or undefined
    * if talking to github.com.
    */
-  ghesVersion: GHESVersion;
+  gitHubVersion: GitHubVersion;
 }
 
 /**
@@ -729,7 +729,7 @@ export async function getDefaultConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  ghesVersion: GHESVersion,
+  gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Config> {
@@ -763,7 +763,7 @@ export async function getDefaultConfig(
     tempDir,
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
-    ghesVersion,
+    gitHubVersion,
   };
 }
 
@@ -779,7 +779,7 @@ async function loadConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  ghesVersion: GHESVersion,
+  gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Config> {
@@ -927,7 +927,7 @@ async function loadConfig(
     tempDir,
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
-    ghesVersion,
+    gitHubVersion,
   };
 }
 
@@ -946,7 +946,7 @@ export async function initConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  ghesVersion: GHESVersion,
+  gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Config> {
@@ -963,7 +963,7 @@ export async function initConfig(
       toolCacheDir,
       codeQL,
       checkoutPath,
-      ghesVersion,
+      gitHubVersion,
       apiDetails,
       logger
     );
@@ -977,7 +977,7 @@ export async function initConfig(
       toolCacheDir,
       codeQL,
       checkoutPath,
-      ghesVersion,
+      gitHubVersion,
       apiDetails,
       logger
     );
@@ -1025,14 +1025,12 @@ async function getRemoteConfig(
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api
-    .getApiClient(apiDetails, true)
-    .repos.getContent({
-      owner: pieces.groups.owner,
-      repo: pieces.groups.repo,
-      path: pieces.groups.path,
-      ref: pieces.groups.ref,
-    });
+  const response = await api.getApiClient(apiDetails, true).repos.getContent({
+    owner: pieces.groups.owner,
+    repo: pieces.groups.repo,
+    path: pieces.groups.path,
+    ref: pieces.groups.ref,
+  });
 
   let fileContents: string;
   if ("content" in response.data && response.data.content !== undefined) {

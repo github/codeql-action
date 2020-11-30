@@ -94,7 +94,7 @@ export async function upload(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
-  ghesVersion: util.GHESVersion,
+  gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
@@ -128,7 +128,7 @@ export async function upload(
     workflowRunID,
     checkoutPath,
     environment,
-    ghesVersion,
+    gitHubVersion,
     apiDetails,
     mode,
     logger
@@ -170,6 +170,65 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
   }
 }
 
+// buildPayload constructs a map ready to be uploaded to the API from the given
+// parameters, respecting the current mode and target GitHub instance version.
+export function buildPayload(
+  commitOid: string,
+  ref: string,
+  analysisKey: string | undefined,
+  analysisName: string | undefined,
+  zippedSarif: string,
+  workflowRunID: number | undefined,
+  checkoutURI: string,
+  environment: string | undefined,
+  toolNames: string[],
+  gitHubVersion: util.GitHubVersion,
+  mode: util.Mode
+) {
+  if (mode === "actions") {
+    const payloadObj = {
+      commit_oid: commitOid,
+      ref,
+      analysis_key: analysisKey,
+      analysis_name: analysisName,
+      sarif: zippedSarif,
+      workflow_run_id: workflowRunID,
+      checkout_uri: checkoutURI,
+      environment,
+      started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
+      tool_names: toolNames,
+      base_ref: undefined,
+      base_sha: undefined,
+    };
+
+    // This behaviour can be made the default when support for GHES 3.0 is discontinued.
+    if (
+      gitHubVersion.type === "dotcom" ||
+      semver.satisfies(gitHubVersion.version, `>=3.1`)
+    ) {
+      if (
+        process.env.GITHUB_EVENT_NAME === "pull_request" &&
+        process.env.GITHUB_EVENT_PATH
+      ) {
+        const githubEvent = JSON.parse(
+          fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
+        );
+        payloadObj.base_ref = githubEvent.pull_request.base.ref;
+        payloadObj.base_sha = githubEvent.pull_request.base.sha;
+      }
+    }
+    return payloadObj;
+  } else {
+    return {
+      commit_sha: commitOid,
+      ref,
+      sarif: zippedSarif,
+      checkout_uri: checkoutURI,
+      tool_name: toolNames[0],
+    };
+  }
+}
+
 // Uploads the given set of sarif files.
 // Returns true iff the upload occurred and succeeded
 async function uploadFiles(
@@ -182,7 +241,7 @@ async function uploadFiles(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
-  ghesVersion: util.GHESVersion,
+  gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
@@ -212,43 +271,29 @@ async function uploadFiles(
     logger
   );
 
-  const zipped_sarif = zlib.gzipSync(sarifPayload).toString("base64");
+  const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = fileUrl(checkoutPath);
 
   const toolNames = util.getToolNames(sarifPayload);
 
-  let payload: string;
-  if (mode === "actions") {
-    const payloadObj = {
-      commit_oid: commitOid,
-      ref,
-      analysis_key: analysisKey,
-      analysis_name: analysisName,
-      sarif: zipped_sarif,
-      workflow_run_id: workflowRunID,
-      checkout_uri: checkoutURI,
-      environment,
-      started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
-      tool_names: toolNames,
-    };
-    if (ghesVersion.type !== "ghes" || semver.satisfies(ghesVersion.version, `>=3.0`)) {
-      // add base_ref / base_sha
-    }
-    payload = JSON.stringify(payloadObj);
-  } else {
-    payload = JSON.stringify({
-      commit_sha: commitOid,
-      ref,
-      sarif: zipped_sarif,
-      checkout_uri: checkoutURI,
-      tool_name: toolNames[0],
-    });
-  }
+  const payload = buildPayload(
+    commitOid,
+    ref,
+    analysisKey,
+    analysisName,
+    zippedSarif,
+    workflowRunID,
+    checkoutURI,
+    environment,
+    toolNames,
+    gitHubVersion,
+    mode
+  );
 
   // Log some useful debug info about the info
   const rawUploadSizeBytes = sarifPayload.length;
   logger.debug(`Raw upload size: ${rawUploadSizeBytes} bytes`);
-  const zippedUploadSizeBytes = zipped_sarif.length;
+  const zippedUploadSizeBytes = zippedSarif.length;
   logger.debug(`Base64 zipped upload size: ${zippedUploadSizeBytes} bytes`);
   const numResultInSarif = countResultsInSarif(sarifPayload);
   logger.debug(`Number of results in upload: ${numResultInSarif}`);

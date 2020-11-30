@@ -190,13 +190,11 @@ async function getCodeQLBundleDownloadURL(
     }
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {
-      const release = await api
-        .getApiClient(apiDetails)
-        .repos.getReleaseByTag({
-          owner: repositoryOwner,
-          repo: repositoryName,
-          tag: CODEQL_BUNDLE_VERSION,
-        });
+      const release = await api.getApiClient(apiDetails).repos.getReleaseByTag({
+        owner: repositoryOwner,
+        repo: repositoryName,
+        tag: CODEQL_BUNDLE_VERSION,
+      });
       for (const asset of release.data.assets) {
         if (asset.name === codeQLBundleName) {
           logger.info(

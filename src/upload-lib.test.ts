@@ -32,6 +32,7 @@ test("validate correct payload used per version", async (t) => {
   ];
   const allVersions = newVersions.concat(oldVersions);
 
+  process.env["GITHUB_EVENT_NAME"] = "push";
   for (const version of allVersions) {
     const payload: any = uploadLib.buildPayload(
       "commit",
@@ -87,6 +88,7 @@ test("validate correct payload used per version", async (t) => {
       version,
       "actions"
     );
+    // These older versions won't expect these values
     t.falsy(payload.base_ref);
     t.falsy(payload.base_sha);
   }

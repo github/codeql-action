@@ -186,7 +186,7 @@ export function buildPayload(
   mode: util.Mode
 ) {
   if (mode === "actions") {
-    const payloadObj = {
+    const payloadObj: any = {
       commit_oid: commitOid,
       ref,
       analysis_key: analysisKey,
@@ -213,7 +213,7 @@ export function buildPayload(
         const githubEvent = JSON.parse(
           fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
         );
-        payloadObj.base_ref = githubEvent.pull_request.base.ref;
+        payloadObj.base_ref = `refs/heads/$githubEvent.pull_request.base.ref`;
         payloadObj.base_sha = githubEvent.pull_request.base.sha;
       }
     }

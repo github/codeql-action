@@ -232,6 +232,7 @@ export const WorkflowErrors = toCodedErrors({
   PathsSpecified: `Using on.push.paths can prevent Code Scanning annotating new alerts in your pull requests.`,
   PathsIgnoreSpecified: `Using on.push.paths-ignore can prevent Code Scanning annotating new alerts in your pull requests.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
+  LintFailed: `Unable to lint workflow for CodeQL.`,
 });
 
 export function validateWorkflow(doc: Workflow): CodedError[] {
@@ -332,13 +333,17 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
 }
 
 export async function getWorkflowErrors(): Promise<CodedError[]> {
-  const workflow = await getWorkflow();
+  try {
+    const workflow = await getWorkflow();
 
-  if (workflow === undefined) {
-    return [];
+    if (workflow === undefined) {
+      return [];
+    }
+
+    return validateWorkflow(workflow);
+  } catch (e) {
+    return [WorkflowErrors.LintFailed];
   }
-
-  return validateWorkflow(workflow);
 }
 
 export function formatWorkflowErrors(errors: CodedError[]): string {

@@ -143,6 +143,22 @@ test("validateWorkflow() when on.push is a correct object", (t) => {
   t.deepEqual(errors.length, 0);
 });
 
+test("validateWorkflow() when on.pull_requests is a string", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: { push: { branches: ["main"] }, pull_request: { branches: "*" } },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MismatchedBranches]);
+});
+
+test("validateWorkflow() when on.pull_requests is a string and correct", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: { push: { branches: "*" }, pull_request: { branches: "*" } },
+  });
+
+  t.deepEqual(errors, []);
+});
+
 test("validateWorkflow() when on.push is correct with empty objects", (t) => {
   const errors = actionsutil.validateWorkflow({
     on: { push: undefined, pull_request: undefined },

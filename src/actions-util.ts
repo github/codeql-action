@@ -111,7 +111,7 @@ interface WorkflowJob {
 }
 
 interface WorkflowTrigger {
-  branches?: string[];
+  branches?: string[] | string;
   paths?: string[];
 }
 
@@ -134,6 +134,19 @@ function isObject(o: unknown): o is object {
   return o !== null && typeof o === "object";
 }
 
+function branchesToArray(branches?: string | null | string[]): string[] | "*" {
+  if (typeof branches === 'string') {
+    if (branches === "*") {
+      return "*";
+    }
+    return [branches];
+  }
+  if (!branches || branches.length === 0) {
+    return "*";
+  }
+  return branches;
+}
+
 enum MissingTriggers {
   None = 0,
   Push = 1,
@@ -144,7 +157,6 @@ interface CodedError {
   message: string;
   code: string;
 }
-
 function toCodedErrors(errors: {
   [key: string]: string;
 }): { [key: string]: CodedError } {
@@ -224,11 +236,12 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
       }
     }
 
-    if (doc.on.push) {
-      const push = doc.on.push.branches || [];
+    const push = branchesToArray(doc.on.push?.branches);
 
-      if (doc.on.pull_request) {
-        const pull_request = doc.on.pull_request.branches || [];
+    if (push !== "*") {
+      const pull_request = branchesToArray(doc.on.pull_request?.branches);
+
+      if (pull_request !== "*") {
         const difference = pull_request.filter(
           (value) => !push.includes(value)
         );

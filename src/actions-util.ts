@@ -134,69 +134,36 @@ function isObject(o: unknown): o is object {
   return o !== null && typeof o === "object";
 }
 
-const WORKSPACE_BRANCES_PATTERN = new RegExp("(\\*\\*?|/)");
+const GLOB_PATTERN = new RegExp("(\\*\\*?)");
 
-function tokenize(value: string): string[] {
-  return value.split(WORKSPACE_BRANCES_PATTERN).reduce(function (arr, cur) {
-    if (cur) {
-      arr.push(cur);
-    }
-    return arr;
-  }, [] as ReturnType<typeof tokenize>);
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
 }
 
-function considerToken(
-  a: string,
-  b: string
-): { advance: boolean; consume: boolean } {
-  switch (a) {
-    case "*":
-      return { advance: b === "/", consume: b !== "/" };
-    case "**":
-      return { advance: false, consume: true };
-    default:
-      return { advance: a === b, consume: a === b };
-  }
+function patternToRegExp(value) {
+  return new RegExp(
+    `^${value
+      .split(GLOB_PATTERN)
+      .reduce(function (arr, cur) {
+        if (cur) {
+          if (cur === "**") {
+            arr.push(".*?");
+          } else if (cur === "*") {
+            arr.push("[^/]*?");
+          } else {
+            arr.push(escapeRegExp(cur));
+          }
+        }
+        return arr;
+      }, [])
+      .join("")}$`
+  );
 }
 
-function tokensAreSuperset(tokensA: string[], tokensB: string[]) {
-  let indexA = 0;
-  let indexB = 0;
-
-  let advance;
-  let consume = true;
-
-  while (advance || consume) {
-    const currentA = tokensA[indexA];
-    const currentB = tokensB[indexB];
-
-    if (currentB === undefined) {
-      return true;
-    }
-    if (currentA === undefined) {
-      return false;
-    }
-
-    const next = considerToken(currentA, currentB);
-
-    advance = next.advance;
-    consume = next.consume;
-
-    if (consume) {
-      indexB += 1;
-    }
-    if (advance) {
-      indexA += 1;
-    }
-  }
-  return false;
-}
-
+// this function should return true if patternA is a superset of patternB
+// e.g: * is a superset of main-* but main-* is not a superset of *.
 export function patternIsSuperset(patternA: string, patternB: string): boolean {
-  const tokensA = tokenize(patternA);
-  const tokensB = tokenize(patternB);
-
-  return tokensAreSuperset(tokensA, tokensB) && tokensAreSuperset(tokensA.reverse(), tokensB.reverse());
+  return patternToRegExp(patternA).test(patternB);
 }
 
 function branchesToArray(branches?: string | null | string[]): string[] | "**" {

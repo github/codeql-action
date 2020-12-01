@@ -101,7 +101,9 @@ async function run() {
     // we do not want to worry users if linting is failing
     // but we do want to send a status report containing this error code
     // below
-    const userWorkflowErrors = workflowErrors.filter(o => o.code !== 'LintFailed');
+    const userWorkflowErrors = workflowErrors.filter(
+      (o) => o.code !== "LintFailed"
+    );
 
     if (userWorkflowErrors.length > 0) {
       core.warning(actionsUtil.formatWorkflowErrors(userWorkflowErrors));

@@ -134,15 +134,73 @@ function isObject(o: unknown): o is object {
   return o !== null && typeof o === "object";
 }
 
-function branchesToArray(branches?: string | null | string[]): string[] | "*" {
-  if (typeof branches === 'string') {
-    if (branches === "*") {
-      return "*";
+const WORKSPACE_BRANCES_PATTERN = new RegExp("(\\*\\*?|/)");
+
+function tokenize(value: string): string[] {
+  return value.split(WORKSPACE_BRANCES_PATTERN).reduce(function (arr, cur) {
+    if (cur) {
+      arr.push(cur);
     }
+    return arr;
+  }, [] as ReturnType<typeof tokenize>);
+}
+
+function considerToken(
+  a: string,
+  b: string
+): { advance: boolean; consume: boolean } {
+  switch (a) {
+    case "*":
+      return { advance: b === "/", consume: b !== "/" };
+    case "**":
+      return { advance: false, consume: true };
+    default:
+      return { advance: a === b, consume: a === b };
+  }
+}
+
+export function patternsOverlap(patternA: string, patternB: string): boolean {
+  const patternATokens = tokenize(patternA);
+  const patternBTokens = tokenize(patternB);
+
+  let indexA = 0;
+  let indexB = 0;
+
+  let advance;
+  let consume = true;
+
+  while (advance || consume) {
+    const currentA = patternATokens[indexA];
+    const currentB = patternBTokens[indexB];
+
+    if (currentB === undefined) {
+      return true;
+    }
+    if (currentA === undefined) {
+      return false;
+    }
+
+    const next = considerToken(currentA, currentB);
+
+    advance = next.advance;
+    consume = next.consume;
+
+    if (consume) {
+      indexB += 1;
+    }
+    if (advance) {
+      indexA += 1;
+    }
+  }
+  return false;
+}
+
+function branchesToArray(branches?: string | null | string[]): string[] | "**" {
+  if (typeof branches === "string") {
     return [branches];
   }
   if (!branches || branches.length === 0) {
-    return "*";
+    return "**";
   }
   return branches;
 }
@@ -238,12 +296,12 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
 
     const push = branchesToArray(doc.on.push?.branches);
 
-    if (push !== "*") {
+    if (push !== "**") {
       const pull_request = branchesToArray(doc.on.pull_request?.branches);
 
-      if (pull_request !== "*") {
+      if (pull_request !== "**") {
         const difference = pull_request.filter(
-          (value) => !push.includes(value)
+          (value) => !push.some((o) => patternsOverlap(o, value))
         );
         if (difference.length > 0) {
           // there are branches in pull_request that may not have a baseline

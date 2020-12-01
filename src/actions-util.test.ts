@@ -246,3 +246,8 @@ test("formatWorkflowCause()", (t) => {
   t.deepEqual(message, "CheckoutWrongHead,PathsSpecified");
   t.deepEqual(actionsutil.formatWorkflowCause([]), undefined);
 });
+
+test("patternsOverlap()", (t) => {
+  t.false(actionsutil.patternsOverlap("main-*", "main"));
+  t.true(actionsutil.patternsOverlap("*", "*"));
+});

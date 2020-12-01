@@ -269,26 +269,28 @@ test("formatWorkflowCause()", (t) => {
   t.deepEqual(actionsutil.formatWorkflowCause([]), undefined);
 });
 
-test("patternsOverlap()", (t) => {
-  t.false(actionsutil.patternsOverlap("main-*", "main"));
-  t.true(actionsutil.patternsOverlap("*", "*"));
-  t.true(actionsutil.patternsOverlap("*", "main-*"));
-  t.false(actionsutil.patternsOverlap("main-*", "*"));
-  t.false(actionsutil.patternsOverlap("main-*", "main"));
-  t.true(actionsutil.patternsOverlap("main", "main"));
-  t.false(actionsutil.patternsOverlap("*", "feature/*"));
-  t.true(actionsutil.patternsOverlap("**", "feature/*"));
-  t.false(actionsutil.patternsOverlap("feature-*", "**"));
-  t.false(actionsutil.patternsOverlap("a/**/c", "a/**/d"));
-  t.false(actionsutil.patternsOverlap("a/**/c", "a/**"));
+test("patternIsSuperset()", (t) => {
+  t.false(actionsutil.patternIsSuperset("main-*", "main"));
+  t.true(actionsutil.patternIsSuperset("*", "*"));
+  t.true(actionsutil.patternIsSuperset("*", "main-*"));
+  t.false(actionsutil.patternIsSuperset("main-*", "*"));
+  t.false(actionsutil.patternIsSuperset("main-*", "main"));
+  t.true(actionsutil.patternIsSuperset("main", "main"));
+  t.false(actionsutil.patternIsSuperset("*", "feature/*"));
+  t.true(actionsutil.patternIsSuperset("**", "feature/*"));
+  t.false(actionsutil.patternIsSuperset("feature-*", "**"));
+  t.false(actionsutil.patternIsSuperset("a/**/c", "a/**/d"));
+  t.false(actionsutil.patternIsSuperset("a/**/c", "a/**"));
+  t.true(actionsutil.patternIsSuperset("a/**/c", "a/main-**/c"));
+  t.false(actionsutil.patternIsSuperset("a/main-**/c", "a/**/c"));
   t.true(
-    actionsutil.patternsOverlap(
+    actionsutil.patternIsSuperset(
       "/robin/*/release/*",
       "/robin/moose/release/goose"
     )
   );
   t.false(
-    actionsutil.patternsOverlap(
+    actionsutil.patternIsSuperset(
       "/robin/moose/release/goose",
       "/robin/*/release/*"
     )

@@ -159,7 +159,7 @@ function considerToken(
   }
 }
 
-function tokensMatch(tokensA: string[], tokensB: string[]) {
+function tokensAreSuperset(tokensA: string[], tokensB: string[]) {
   let indexA = 0;
   let indexB = 0;
 
@@ -192,11 +192,11 @@ function tokensMatch(tokensA: string[], tokensB: string[]) {
   return false;
 }
 
-export function patternsOverlap(patternA: string, patternB: string): boolean {
+export function patternIsSuperset(patternA: string, patternB: string): boolean {
   const tokensA = tokenize(patternA);
   const tokensB = tokenize(patternB);
 
-  return tokensMatch(tokensA, tokensB) && tokensMatch(tokensA.reverse(), tokensB.reverse());
+  return tokensAreSuperset(tokensA, tokensB) && tokensAreSuperset(tokensA.reverse(), tokensB.reverse());
 }
 
 function branchesToArray(branches?: string | null | string[]): string[] | "**" {
@@ -306,7 +306,7 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
 
       if (pull_request !== "**") {
         const difference = pull_request.filter(
-          (value) => !push.some((o) => patternsOverlap(o, value))
+          (value) => !push.some((o) => patternIsSuperset(o, value))
         );
         if (difference.length > 0) {
           // there are branches in pull_request that may not have a baseline

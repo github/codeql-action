@@ -159,10 +159,7 @@ function considerToken(
   }
 }
 
-export function patternsOverlap(patternA: string, patternB: string): boolean {
-  const patternATokens = tokenize(patternA);
-  const patternBTokens = tokenize(patternB);
-
+function tokensMatch(tokensA: string[], tokensB: string[]) {
   let indexA = 0;
   let indexB = 0;
 
@@ -170,8 +167,8 @@ export function patternsOverlap(patternA: string, patternB: string): boolean {
   let consume = true;
 
   while (advance || consume) {
-    const currentA = patternATokens[indexA];
-    const currentB = patternBTokens[indexB];
+    const currentA = tokensA[indexA];
+    const currentB = tokensB[indexB];
 
     if (currentB === undefined) {
       return true;
@@ -193,6 +190,13 @@ export function patternsOverlap(patternA: string, patternB: string): boolean {
     }
   }
   return false;
+}
+
+export function patternsOverlap(patternA: string, patternB: string): boolean {
+  const tokensA = tokenize(patternA);
+  const tokensB = tokenize(patternB);
+
+  return tokensMatch(tokensA, tokensB) && tokensMatch(tokensA.reverse(), tokensB.reverse());
 }
 
 function branchesToArray(branches?: string | null | string[]): string[] | "**" {

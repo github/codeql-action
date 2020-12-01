@@ -279,6 +279,8 @@ test("patternsOverlap()", (t) => {
   t.false(actionsutil.patternsOverlap("*", "feature/*"));
   t.true(actionsutil.patternsOverlap("**", "feature/*"));
   t.false(actionsutil.patternsOverlap("feature-*", "**"));
+  t.false(actionsutil.patternsOverlap("a/**/c", "a/**/d"));
+  t.false(actionsutil.patternsOverlap("a/**/c", "a/**"));
   t.true(
     actionsutil.patternsOverlap(
       "/robin/*/release/*",

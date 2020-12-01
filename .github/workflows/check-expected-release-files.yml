@@ -1,0 +1,22 @@
+name: Check Expected Release Files
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/check-expected-release-files.yml
+      - src/defaults.json
+
+jobs:
+  check-expected-release-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout CodeQL Action
+        uses: actions/checkout@v2
+      - name: Check Expected Release Files
+        run: |
+          bundle_version="$(cat "./src/defaults.json" | jq -r ".bundleVersion")"
+          set -x
+          for expected_file in "codeql-bundle.tar.gz" "codeql-bundle-linux64.tar.gz" "codeql-bundle-osx64.tar.gz" "codeql-bundle-win64.tar.gz" "codeql-runner-linux" "codeql-runner-macos" "codeql-runner-win.exe"; do
+            curl --location --fail --head --request GET "https://github.com/github/codeql-action/releases/download/$bundle_version/$expected_file" > /dev/null
+          done

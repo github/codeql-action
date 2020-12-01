@@ -217,19 +217,18 @@ test("validateWorkflow() when on.pull_request for wildcard branches", (t) => {
   const errors = actionsutil.validateWorkflow({
     on: {
       push: { branches: ["feature/*"] },
-      pull_request: {branches: "feature/moose"},
+      pull_request: { branches: "feature/moose" },
     },
   });
 
   t.deepEqual(errors, []);
 });
 
-
 test("validateWorkflow() when on.pull_request for mismatched wildcard branches", (t) => {
   const errors = actionsutil.validateWorkflow({
     on: {
       push: { branches: ["feature/moose"] },
-      pull_request: {branches: "feature/*"},
+      pull_request: { branches: "feature/*" },
     },
   });
 
@@ -273,4 +272,23 @@ test("formatWorkflowCause()", (t) => {
 test("patternsOverlap()", (t) => {
   t.false(actionsutil.patternsOverlap("main-*", "main"));
   t.true(actionsutil.patternsOverlap("*", "*"));
+  t.true(actionsutil.patternsOverlap("*", "main-*"));
+  t.false(actionsutil.patternsOverlap("main-*", "*"));
+  t.false(actionsutil.patternsOverlap("main-*", "main"));
+  t.true(actionsutil.patternsOverlap("main", "main"));
+  t.false(actionsutil.patternsOverlap("*", "feature/*"));
+  t.true(actionsutil.patternsOverlap("**", "feature/*"));
+  t.false(actionsutil.patternsOverlap("feature-*", "**"));
+  t.true(
+    actionsutil.patternsOverlap(
+      "/robin/*/release/*",
+      "/robin/moose/release/goose"
+    )
+  );
+  t.false(
+    actionsutil.patternsOverlap(
+      "/robin/moose/release/goose",
+      "/robin/*/release/*"
+    )
+  );
 });

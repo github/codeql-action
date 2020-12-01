@@ -213,6 +213,29 @@ test("validateWorkflow() when on.pull_request for every branch but push specifie
   t.deepEqual(errors, [actionsutil.WorkflowErrors.MismatchedBranches]);
 });
 
+test("validateWorkflow() when on.pull_request for wildcard branches", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["feature/*"] },
+      pull_request: {branches: "feature/moose"},
+    },
+  });
+
+  t.deepEqual(errors, []);
+});
+
+
+test("validateWorkflow() when on.pull_request for mismatched wildcard branches", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["feature/moose"] },
+      pull_request: {branches: "feature/*"},
+    },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MismatchedBranches]);
+});
+
 test("validateWorkflow() when HEAD^2 is checked out", (t) => {
   const errors = actionsutil.validateWorkflow({
     on: ["push", "pull_request"],

@@ -145,14 +145,12 @@ function patternToRegExp(value) {
     `^${value
       .split(GLOB_PATTERN)
       .reduce(function (arr, cur) {
-        if (cur) {
-          if (cur === "**") {
-            arr.push(".*?");
-          } else if (cur === "*") {
-            arr.push("[^/]*?");
-          } else {
-            arr.push(escapeRegExp(cur));
-          }
+        if (cur === "**") {
+          arr.push(".*?");
+        } else if (cur === "*") {
+          arr.push("[^/]*?");
+        } else if (cur) {
+          arr.push(escapeRegExp(cur));
         }
         return arr;
       }, [])

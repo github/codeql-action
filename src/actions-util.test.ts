@@ -284,6 +284,9 @@ test("patternIsSuperset()", (t) => {
   t.true(actionsutil.patternIsSuperset("a/**", "a/**/c"));
   t.true(actionsutil.patternIsSuperset("a/**/c", "a/main-**/c"));
   t.false(actionsutil.patternIsSuperset("a/**/b/**/c", "a/**/d/**/c"));
+  t.true(actionsutil.patternIsSuperset("a/**/b/**/c", "a/**/b/c/**/c"));
+  t.true(actionsutil.patternIsSuperset("a/**/b/**/c", "a/**/b/d/**/c"));
+  t.false(actionsutil.patternIsSuperset("a/**/c/d/**/c", "a/**/b/**/c"));
   t.false(actionsutil.patternIsSuperset("a/main-**/c", "a/**/c"));
   t.true(
     actionsutil.patternIsSuperset(

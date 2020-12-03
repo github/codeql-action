@@ -209,14 +209,16 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
 
   // .jobs[key].steps[].run
   for (const job of Object.values(doc?.jobs || {})) {
-    for (const step of job?.steps || []) {
-      // this was advice that we used to give in the README
-      // we actually want to run the analysis on the merge commit
-      // to produce results that are more inline with expectations
-      // (i.e: this is what will happen if you merge this PR)
-      // and avoid some race conditions
-      if (step?.run === "git checkout HEAD^2") {
-        errors.push(WorkflowErrors.CheckoutWrongHead);
+    if (Array.isArray(job?.steps)) {
+      for (const step of job?.steps) {
+        // this was advice that we used to give in the README
+        // we actually want to run the analysis on the merge commit
+        // to produce results that are more inline with expectations
+        // (i.e: this is what will happen if you merge this PR)
+        // and avoid some race conditions
+        if (step?.run === "git checkout HEAD^2") {
+          errors.push(WorkflowErrors.CheckoutWrongHead);
+        }
       }
     }
   }
@@ -284,6 +286,10 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
         errors.push(WorkflowErrors.MismatchedBranches);
       }
     }
+  } else {
+    // on is not a known type
+    // this workflow is likely malformed
+    missing = MissingTriggers.Push | MissingTriggers.PullRequest;
   }
 
   switch (missing) {

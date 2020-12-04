@@ -168,10 +168,13 @@ function branchesToArray(branches?: string | null | string[]): string[] | "**" {
   if (typeof branches === "string") {
     return [branches];
   }
-  if (!branches || branches.length === 0) {
-    return "**";
+  if (Array.isArray(branches)) {
+    if (branches.length === 0) {
+      return "**";
+    }
+    return branches;
   }
-  return branches;
+  return "**";
 }
 
 enum MissingTriggers {

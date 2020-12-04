@@ -285,6 +285,20 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
   t.deepEqual(actionsutil.validateWorkflow(1 as any), [
     actionsutil.WorkflowErrors.MissingHooks,
   ]);
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: {
+        push: {
+          branches: 1,
+        },
+        pull_request: {
+          branches: 1,
+        },
+      },
+    } as any),
+    []
+  );
 });
 
 test("validateWorkflow() when on.pull_request for every branch but push specifies branches", (t) => {

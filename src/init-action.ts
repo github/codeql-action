@@ -13,6 +13,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { checkGitHubVersionInRange, getGitHubVersion } from "./util";
 
 interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   // Comma-separated list of languages that analysis was run for
@@ -93,13 +94,30 @@ async function run() {
   let codeql: CodeQL;
   let toolsVersion: string;
 
+  const apiDetails = {
+    auth: actionsUtil.getRequiredInput("token"),
+    url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+
+  const gitHubVersion = await getGitHubVersion(apiDetails);
+  if (gitHubVersion !== undefined) {
+    checkGitHubVersionInRange(gitHubVersion, "actions", logger);
+  }
+
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
     const workflowErrors = await actionsUtil.getWorkflowErrors();
 
-    if (workflowErrors.length > 0) {
-      core.warning(actionsUtil.formatWorkflowErrors(workflowErrors));
+    // we do not want to worry users if linting is failing
+    // but we do want to send a status report containing this error code
+    // below
+    const userWorkflowErrors = workflowErrors.filter(
+      (o) => o.code !== "LintFailed"
+    );
+
+    if (userWorkflowErrors.length > 0) {
+      core.warning(actionsUtil.formatWorkflowErrors(userWorkflowErrors));
     }
 
     if (
@@ -114,11 +132,6 @@ async function run() {
     ) {
       return;
     }
-
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
-    };
 
     const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
@@ -140,8 +153,8 @@ async function run() {
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
+      gitHubVersion,
       apiDetails,
-      "actions",
       logger
     );
 

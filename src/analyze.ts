@@ -268,6 +268,7 @@ export async function runAnalyze(
     workflowRunID,
     checkoutPath,
     environment,
+    config.gitHubVersion,
     apiDetails,
     mode,
     logger

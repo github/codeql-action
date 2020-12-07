@@ -111,7 +111,7 @@ interface WorkflowJob {
 }
 
 interface WorkflowTrigger {
-  branches?: string[];
+  branches?: string[] | string;
   paths?: string[];
 }
 
@@ -134,6 +134,49 @@ function isObject(o: unknown): o is object {
   return o !== null && typeof o === "object";
 }
 
+const GLOB_PATTERN = new RegExp("(\\*\\*?)");
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+}
+
+function patternToRegExp(value) {
+  return new RegExp(
+    `^${value
+      .split(GLOB_PATTERN)
+      .reduce(function (arr, cur) {
+        if (cur === "**") {
+          arr.push(".*?");
+        } else if (cur === "*") {
+          arr.push("[^/]*?");
+        } else if (cur) {
+          arr.push(escapeRegExp(cur));
+        }
+        return arr;
+      }, [])
+      .join("")}$`
+  );
+}
+
+// this function should return true if patternA is a superset of patternB
+// e.g: * is a superset of main-* but main-* is not a superset of *.
+export function patternIsSuperset(patternA: string, patternB: string): boolean {
+  return patternToRegExp(patternA).test(patternB);
+}
+
+function branchesToArray(branches?: string | null | string[]): string[] | "**" {
+  if (typeof branches === "string") {
+    return [branches];
+  }
+  if (Array.isArray(branches)) {
+    if (branches.length === 0) {
+      return "**";
+    }
+    return branches;
+  }
+  return "**";
+}
+
 enum MissingTriggers {
   None = 0,
   Push = 1,
@@ -144,7 +187,6 @@ interface CodedError {
   message: string;
   code: string;
 }
-
 function toCodedErrors(errors: {
   [key: string]: string;
 }): { [key: string]: CodedError } {
@@ -157,11 +199,12 @@ function toCodedErrors(errors: {
 export const WorkflowErrors = toCodedErrors({
   MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that Code Scanning can compare pull requests against the state of the base branch.`,
   MissingHooks: `Please specify on.push and on.pull_request hooks so that Code Scanning can compare pull requests against the state of the base branch.`,
-  MissingPullRequestHook: `Please specify an on.pull_request hook so that Code Scanning is run against pull requests.`,
+  MissingPullRequestHook: `Please specify an on.pull_request hook so that Code Scanning is explicitly run against pull requests. This will be required to see results on pull requests from January 31 2021.`,
   MissingPushHook: `Please specify an on.push hook so that Code Scanning can compare pull requests against the state of the base branch.`,
   PathsSpecified: `Using on.push.paths can prevent Code Scanning annotating new alerts in your pull requests.`,
   PathsIgnoreSpecified: `Using on.push.paths-ignore can prevent Code Scanning annotating new alerts in your pull requests.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
+  LintFailed: `Unable to lint workflow for CodeQL.`,
 });
 
 export function validateWorkflow(doc: Workflow): CodedError[] {
@@ -169,14 +212,16 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
 
   // .jobs[key].steps[].run
   for (const job of Object.values(doc?.jobs || {})) {
-    for (const step of job?.steps || []) {
-      // this was advice that we used to give in the README
-      // we actually want to run the analysis on the merge commit
-      // to produce results that are more inline with expectations
-      // (i.e: this is what will happen if you merge this PR)
-      // and avoid some race conditions
-      if (step?.run === "git checkout HEAD^2") {
-        errors.push(WorkflowErrors.CheckoutWrongHead);
+    if (Array.isArray(job?.steps)) {
+      for (const step of job?.steps) {
+        // this was advice that we used to give in the README
+        // we actually want to run the analysis on the merge commit
+        // to produce results that are more inline with expectations
+        // (i.e: this is what will happen if you merge this PR)
+        // and avoid some race conditions
+        if (step?.run === "git checkout HEAD^2") {
+          errors.push(WorkflowErrors.CheckoutWrongHead);
+        }
       }
     }
   }
@@ -224,13 +269,14 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
       }
     }
 
-    if (doc.on.push) {
-      const push = doc.on.push.branches || [];
+    const push = branchesToArray(doc.on.push?.branches);
 
-      if (doc.on.pull_request) {
-        const pull_request = doc.on.pull_request.branches || [];
+    if (push !== "**") {
+      const pull_request = branchesToArray(doc.on.pull_request?.branches);
+
+      if (pull_request !== "**") {
         const difference = pull_request.filter(
-          (value) => !push.includes(value)
+          (value) => !push.some((o) => patternIsSuperset(o, value))
         );
         if (difference.length > 0) {
           // there are branches in pull_request that may not have a baseline
@@ -243,6 +289,10 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
         errors.push(WorkflowErrors.MismatchedBranches);
       }
     }
+  } else {
+    // on is not a known type
+    // this workflow is likely malformed
+    missing = MissingTriggers.Push | MissingTriggers.PullRequest;
   }
 
   switch (missing) {
@@ -261,13 +311,17 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
 }
 
 export async function getWorkflowErrors(): Promise<CodedError[]> {
-  const workflow = await getWorkflow();
+  try {
+    const workflow = await getWorkflow();
 
-  if (workflow === undefined) {
-    return [];
+    if (workflow === undefined) {
+      return [];
+    }
+
+    return validateWorkflow(workflow);
+  } catch (e) {
+    return [WorkflowErrors.LintFailed];
   }
-
-  return validateWorkflow(workflow);
 }
 
 export function formatWorkflowErrors(errors: CodedError[]): string {
@@ -560,11 +614,11 @@ export async function sendStatusReport<S extends StatusReportBase>(
           // this means that this action version is no longer compatible with the API
           // we still want to continue as it is likely the analysis endpoint will work
           if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
-            core.warning(
+            core.debug(
               "CodeQL Action version is incompatible with the code scanning endpoint. Please update to a compatible version of codeql-action."
             );
           } else {
-            core.warning(
+            core.debug(
               "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action."
             );
           }

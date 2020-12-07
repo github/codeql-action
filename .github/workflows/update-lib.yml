@@ -1,0 +1,66 @@
+name: "Update lib/"
+
+on:
+  workflow_dispatch:
+    # Example of how to trigger this using the API:
+    # curl -X POST \
+    #      -H "Authorization: Bearer <token>" \
+    #      https://api.github.com/repos/github/codeql-action/actions/workflows/update-lib.yml/dispatches \
+    #      -d '{"ref":"main","inputs":{"branch":"<branch name>"}}'
+    # Replace <token> with a personal access token from this page: https://github.com/settings/tokens
+    # Replace <pr-number> by the number of the pull request to update
+    inputs:
+      branch:
+        description: 'The branch to update'
+        required: true
+
+jobs:
+  update-lib:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        ref: ${{ github.event.inputs.branch }}
+    - name: Update branch
+      run: |
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+
+        # git merge can return a non-zero exit code for various reasons.
+        # If it's the specific reason that there were conflicts then we want to carry,
+        # otherwise we should abort here as something has gone wrong.
+        git fetch origin
+        if ! merge_output=$(git merge origin/main --no-ff); then
+          if echo "$merge_output" | grep -q "Automatic merge failed; fix conflicts and then commit the result."; then
+            echo "Ignoring git merge failure because of conflicts"
+          else
+            echo "git merge failed"
+            echo "$merge_output"
+            exit 1
+          fi
+        fi
+
+        # Only bother fixing up lib directory if checkout is dirty
+        if [ ! -z "$(git status --porcelain)" ]; then
+          # Wipe and rebuild the lib directory
+          rm -rf lib
+          npm run-script build
+
+          # If there were conflicts in the lib directory then we've just fixed them so we
+          # want to accept any changes there.
+          # If there were conflicts elsewhere then we can't resolve them here.
+          git add lib
+
+          # If there are still conflicts after rebuilding lib/ then abort
+          if [ "$(git ls-files -u | wc -l)" -gt 0 ] ; then
+            echo "Aborting because there are still merge conflict are rebuilding lib/ directory"
+            exit 1
+          fi
+
+          git commit -am "merge main"
+        fi
+
+        git push origin HEAD:${{ github.event.inputs.branch }}

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 
 import * as analysisPaths from "./analysis-paths";
+import { GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { isScannedLanguage, Language } from "./languages";
@@ -224,8 +225,7 @@ export async function runAnalyze(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: GitHubApiDetails,
   doUpload: boolean,
   mode: util.Mode,
   outputDir: string,
@@ -268,8 +268,7 @@ export async function runAnalyze(
     workflowRunID,
     checkoutPath,
     environment,
-    githubAuth,
-    githubUrl,
+    apiDetails,
     mode,
     logger
   );

@@ -186,7 +186,7 @@ export function buildPayload(
   mode: util.Mode
 ) {
   if (mode === "actions") {
-    const payloadObj: any = {
+    const payloadObj = {
       commit_oid: commitOid,
       ref,
       analysis_key: analysisKey,
@@ -197,8 +197,8 @@ export function buildPayload(
       environment,
       started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
       tool_names: toolNames,
-      base_ref: undefined,
-      base_sha: undefined,
+      base_ref: undefined as undefined | string,
+      base_sha: undefined as undefined | string,
     };
 
     // This behaviour can be made the default when support for GHES 3.0 is discontinued.

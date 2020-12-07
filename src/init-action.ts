@@ -96,18 +96,40 @@ async function run() {
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
+    const workflowErrors = await actionsUtil.getWorkflowErrors();
+
+    // we do not want to worry users if linting is failing
+    // but we do want to send a status report containing this error code
+    // below
+    const userWorkflowErrors = workflowErrors.filter(
+      (o) => o.code !== "LintFailed"
+    );
+
+    if (userWorkflowErrors.length > 0) {
+      core.warning(actionsUtil.formatWorkflowErrors(userWorkflowErrors));
+    }
+
     if (
       !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase("init", "starting", startedAt)
+        await actionsUtil.createStatusReportBase(
+          "init",
+          "starting",
+          startedAt,
+          actionsUtil.formatWorkflowCause(workflowErrors)
+        )
       ))
     ) {
       return;
     }
 
+    const apiDetails = {
+      auth: actionsUtil.getRequiredInput("token"),
+      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+    };
+
     const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
-      actionsUtil.getRequiredInput("token"),
-      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiDetails,
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       "actions",
@@ -125,8 +147,7 @@ async function run() {
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
-      actionsUtil.getRequiredInput("token"),
-      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiDetails,
       "actions",
       logger
     );
@@ -206,7 +227,13 @@ async function run() {
   await sendSuccessStatusReport(startedAt, config, toolsVersion);
 }
 
-run().catch((e) => {
-  core.setFailed(`init action failed: ${e}`);
-  console.log(e);
-});
+async function runWrapper() {
+  try {
+    await run();
+  } catch (error) {
+    core.setFailed(`init action failed: ${error}`);
+    console.log(error);
+  }
+}
+
+void runWrapper();

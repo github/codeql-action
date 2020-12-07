@@ -81,3 +81,322 @@ test("prepareEnvironment() when a local run", (t) => {
   t.deepEqual(process.env.GITHUB_JOB, "UNKNOWN-JOB");
   t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "LOCAL-RUN:UNKNOWN-JOB");
 });
+
+test("validateWorkflow() when on is missing", (t) => {
+  const errors = actionsutil.validateWorkflow({});
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MissingHooks]);
+});
+
+test("validateWorkflow() when on.push is missing", (t) => {
+  const errors = actionsutil.validateWorkflow({ on: {} });
+
+  console.log(errors);
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MissingHooks]);
+});
+
+test("validateWorkflow() when on.push is an array missing pull_request", (t) => {
+  const errors = actionsutil.validateWorkflow({ on: ["push"] });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MissingPullRequestHook]);
+});
+
+test("validateWorkflow() when on.push is an array missing push", (t) => {
+  const errors = actionsutil.validateWorkflow({ on: ["pull_request"] });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MissingPushHook]);
+});
+
+test("validateWorkflow() when on.push is valid", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: ["push", "pull_request"],
+  });
+
+  t.deepEqual(errors, []);
+});
+
+test("validateWorkflow() when on.push is a valid superset", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: ["push", "pull_request", "schedule"],
+  });
+
+  t.deepEqual(errors, []);
+});
+
+test("validateWorkflow() when on.push should not have a path", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["main"], paths: ["test/*"] },
+      pull_request: { branches: ["main"] },
+    },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.PathsSpecified]);
+});
+
+test("validateWorkflow() when on.push is a correct object", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: { push: { branches: ["main"] }, pull_request: { branches: ["main"] } },
+  });
+
+  t.deepEqual(errors, []);
+});
+
+test("validateWorkflow() when on.pull_requests is a string", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: { push: { branches: ["main"] }, pull_request: { branches: "*" } },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MismatchedBranches]);
+});
+
+test("validateWorkflow() when on.pull_requests is a string and correct", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: { push: { branches: "*" }, pull_request: { branches: "*" } },
+  });
+
+  t.deepEqual(errors, []);
+});
+
+test("validateWorkflow() when on.push is correct with empty objects", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: { push: undefined, pull_request: undefined },
+  });
+
+  t.deepEqual(errors, []);
+});
+
+test("validateWorkflow() when on.push is mismatched", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["main"] },
+      pull_request: { branches: ["feature"] },
+    },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MismatchedBranches]);
+});
+
+test("validateWorkflow() when on.push is not mismatched", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["main", "feature"] },
+      pull_request: { branches: ["main"] },
+    },
+  });
+
+  t.deepEqual(errors, []);
+});
+
+test("validateWorkflow() when on.push is mismatched for pull_request", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["main"] },
+      pull_request: { branches: ["main", "feature"] },
+    },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MismatchedBranches]);
+});
+
+test("validateWorkflow() for a range of malformed workflows", (t) => {
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: {
+        push: 1,
+        pull_request: 1,
+      },
+    } as any),
+    []
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+      jobs: 1,
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+      jobs: [1],
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+      jobs: { 1: 1 },
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+      jobs: { test: 1 },
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+      jobs: { test: [1] },
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+      jobs: { test: { steps: 1 } },
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+      jobs: { test: { steps: [{ notrun: "git checkout HEAD^2" }] } },
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: 1,
+      jobs: { test: [undefined] },
+    } as any),
+    [actionsutil.WorkflowErrors.MissingHooks]
+  );
+
+  t.deepEqual(actionsutil.validateWorkflow(1 as any), [
+    actionsutil.WorkflowErrors.MissingHooks,
+  ]);
+
+  t.deepEqual(
+    actionsutil.validateWorkflow({
+      on: {
+        push: {
+          branches: 1,
+        },
+        pull_request: {
+          branches: 1,
+        },
+      },
+    } as any),
+    []
+  );
+});
+
+test("validateWorkflow() when on.pull_request for every branch but push specifies branches", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["main"] },
+      pull_request: null,
+    },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MismatchedBranches]);
+});
+
+test("validateWorkflow() when on.pull_request for wildcard branches", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["feature/*"] },
+      pull_request: { branches: "feature/moose" },
+    },
+  });
+
+  t.deepEqual(errors, []);
+});
+
+test("validateWorkflow() when on.pull_request for mismatched wildcard branches", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: {
+      push: { branches: ["feature/moose"] },
+      pull_request: { branches: "feature/*" },
+    },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.MismatchedBranches]);
+});
+
+test("validateWorkflow() when HEAD^2 is checked out", (t) => {
+  const errors = actionsutil.validateWorkflow({
+    on: ["push", "pull_request"],
+    jobs: { test: { steps: [{ run: "git checkout HEAD^2" }] } },
+  });
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.CheckoutWrongHead]);
+});
+
+test("formatWorkflowErrors() when there is one error", (t) => {
+  const message = actionsutil.formatWorkflowErrors([
+    actionsutil.WorkflowErrors.CheckoutWrongHead,
+  ]);
+  t.true(message.startsWith("1 issue was detected with this workflow:"));
+});
+
+test("formatWorkflowErrors() when there are multiple errors", (t) => {
+  const message = actionsutil.formatWorkflowErrors([
+    actionsutil.WorkflowErrors.CheckoutWrongHead,
+    actionsutil.WorkflowErrors.PathsSpecified,
+  ]);
+  t.true(message.startsWith("2 issues were detected with this workflow:"));
+});
+
+test("formatWorkflowCause()", (t) => {
+  const message = actionsutil.formatWorkflowCause([
+    actionsutil.WorkflowErrors.CheckoutWrongHead,
+    actionsutil.WorkflowErrors.PathsSpecified,
+  ]);
+
+  t.deepEqual(message, "CheckoutWrongHead,PathsSpecified");
+  t.deepEqual(actionsutil.formatWorkflowCause([]), undefined);
+});
+
+test("patternIsSuperset()", (t) => {
+  t.false(actionsutil.patternIsSuperset("main-*", "main"));
+  t.true(actionsutil.patternIsSuperset("*", "*"));
+  t.true(actionsutil.patternIsSuperset("*", "main-*"));
+  t.false(actionsutil.patternIsSuperset("main-*", "*"));
+  t.false(actionsutil.patternIsSuperset("main-*", "main"));
+  t.true(actionsutil.patternIsSuperset("main", "main"));
+  t.false(actionsutil.patternIsSuperset("*", "feature/*"));
+  t.true(actionsutil.patternIsSuperset("**", "feature/*"));
+  t.false(actionsutil.patternIsSuperset("feature-*", "**"));
+  t.false(actionsutil.patternIsSuperset("a/**/c", "a/**/d"));
+  t.false(actionsutil.patternIsSuperset("a/**/c", "a/**"));
+  t.true(actionsutil.patternIsSuperset("a/**", "a/**/c"));
+  t.true(actionsutil.patternIsSuperset("a/**/c", "a/main-**/c"));
+  t.false(actionsutil.patternIsSuperset("a/**/b/**/c", "a/**/d/**/c"));
+  t.true(actionsutil.patternIsSuperset("a/**/b/**/c", "a/**/b/c/**/c"));
+  t.true(actionsutil.patternIsSuperset("a/**/b/**/c", "a/**/b/d/**/c"));
+  t.false(actionsutil.patternIsSuperset("a/**/c/d/**/c", "a/**/b/**/c"));
+  t.false(actionsutil.patternIsSuperset("a/main-**/c", "a/**/c"));
+  t.true(
+    actionsutil.patternIsSuperset(
+      "/robin/*/release/*",
+      "/robin/moose/release/goose"
+    )
+  );
+  t.false(
+    actionsutil.patternIsSuperset(
+      "/robin/moose/release/goose",
+      "/robin/*/release/*"
+    )
+  );
+});

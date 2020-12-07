@@ -34,6 +34,7 @@ test("status report fields", async (t) => {
         tempDir: tmpDir,
         toolCacheDir: tmpDir,
         codeQLCmd: "",
+        gitHubVersion: { type: "dotcom" } as util.GitHubVersion,
       };
       fs.mkdirSync(util.getCodeQLDatabasePath(config.tempDir, language), {
         recursive: true,

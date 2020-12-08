@@ -6,7 +6,27 @@ on:
   pull_request:
 
 jobs:
+  # This job and check-node-modules below dupliacte checks from `pr-checks.yml`.
+  # We run them here as well to gate the more expensive checks which wouldn't
+  # even be executing the correct code if these fail.
+  check-js:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Check generated JavaScript
+      run: .github/workflows/script/check-js.sh
+
+  check-node-modules:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Check node modules up to date
+      run: .github/workflows/script/check-node-modules.sh
+
   multi-language-repo_test-autodetect-languages:
+    needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
     steps:
@@ -40,6 +60,7 @@ jobs:
         fi
 
   multi-language-repo_test-custom-queries-and-remote-config:
+    needs: [check-js, check-node-modules]
     strategy:
       fail-fast: false
       matrix:
@@ -69,6 +90,7 @@ jobs:
 
   # Currently is not possible to analyze Go in conjunction with other languages in macos
   multi-language-repo_test-go-custom-queries:
+    needs: [check-js, check-node-modules]
     strategy:
       fail-fast: false
       matrix:
@@ -99,6 +121,7 @@ jobs:
         TEST_MODE: true
 
   go-custom-tracing:
+    needs: [check-js, check-node-modules]
     strategy:
       fail-fast: false
       matrix:
@@ -130,6 +153,7 @@ jobs:
         TEST_MODE: true
 
   go-custom-tracing-autobuild:
+    needs: [check-js, check-node-modules]
     # No need to test Go autobuild on multiple OSes since
     # we're testing Go custom tracing with a manual build on all OSes.
     runs-on: ubuntu-latest
@@ -153,6 +177,7 @@ jobs:
         TEST_MODE: true
 
   multi-language-repo_rubocop:
+    needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
     steps:
@@ -184,6 +209,7 @@ jobs:
         TEST_MODE: true
 
   test-proxy:
+    needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
     container:
       image: ubuntu:18.04
@@ -211,6 +237,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-javascript-ubuntu:
+    needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
     steps:
@@ -237,6 +264,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-javascript-windows:
+    needs: [check-js, check-node-modules]
     runs-on: windows-latest
 
     steps:
@@ -259,6 +287,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-javascript-macos:
+    needs: [check-js, check-node-modules]
     runs-on: macos-latest
 
     steps:
@@ -281,6 +310,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-ubuntu:
+    needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
     steps:
@@ -315,6 +345,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-windows:
+    needs: [check-js, check-node-modules]
     runs-on: windows-latest
 
     steps:
@@ -350,6 +381,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-macos:
+    needs: [check-js, check-node-modules]
     runs-on: macos-latest
 
     steps:
@@ -386,6 +418,7 @@ jobs:
 
 
   runner-analyze-csharp-autobuild-ubuntu:
+    needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
     steps:
@@ -419,6 +452,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-autobuild-windows:
+    needs: [check-js, check-node-modules]
     runs-on: windows-latest
 
     steps:
@@ -453,6 +487,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-autobuild-macos:
+    needs: [check-js, check-node-modules]
     runs-on: macos-latest
 
     steps:
@@ -487,6 +522,7 @@ jobs:
         TEST_MODE: true
 
   runner-upload-sarif:
+    needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id }}

@@ -287,8 +287,13 @@ async function compileQueries(
     }
   }
   // Compute hash
-  const hash = "abc";
-  return hash;
+  const globHash = require("glob-hash");
+  const finalHash = await globHash({
+    include: [`${config.tempDir}/**/.cache/data`],
+    files: true,
+  });
+  logger.info(finalHash);
+  return finalHash;
 }
 
 void runWrapper();

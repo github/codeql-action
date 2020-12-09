@@ -290,7 +290,10 @@ async function compileQueries(
   const globHash = require("glob-hash");
   logger.info("Temp dir ${config.tempDir}");
   const finalHash = await globHash({
-    include: [`${config.tempDir}/**/.cache/data/**`],
+    include: [
+      `${config.tempDir}/**/.cache/data/**`,
+      `${config.toolCacheDir}/**/.cache/data/**`,
+    ],
     files: true,
   });
   logger.info(finalHash);

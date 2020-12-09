@@ -11,6 +11,7 @@ import * as configUtils from "./config-utils";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
+import * as sarifCache from "./sarif-cache";
 import * as util from "./util";
 
 export async function initCodeQL(
@@ -71,6 +72,12 @@ export async function runInit(
   codeql: CodeQL,
   config: configUtils.Config
 ): Promise<TracerConfig | undefined> {
+  console.log("Restore cache...")
+  await sarifCache.restoreSARIFResults();
+  if (await sarifCache.skipAnalysis()) {
+    return undefined;
+  }
+
   const sourceRoot = path.resolve();
 
   fs.mkdirSync(util.getCodeQLDatabasesDir(config.tempDir), { recursive: true });

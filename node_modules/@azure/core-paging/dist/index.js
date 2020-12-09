@@ -1,0 +1,5 @@
+"use strict";
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+Object.defineProperty(exports, "__esModule", { value: true });
+require("@azure/core-asynciterator-polyfill");

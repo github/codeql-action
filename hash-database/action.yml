@@ -1,0 +1,18 @@
+name: 'CodeQL: Hash Database'
+description: 'Hashes the built database, using a stable hash'
+author: 'GitHub'
+inputs:
+  token:
+    default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
+  threads:
+    description: The number of threads to be used by CodeQL.
+    required: false
+    default: 1 # a surgical way of forcing all `util.getThreadsFlag(...)` to resolve to 1 for our purposes
+outputs:
+  hash:
+    description: the stable hash of the database
+runs:
+  using: 'node12'
+  main: '../lib/hash-database-action.js'

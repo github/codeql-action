@@ -1,3 +1,5 @@
+import * as fs from "fs";
+
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -11,7 +13,7 @@ import {
   runInit,
 } from "./init";
 import { Language } from "./languages";
-import { getActionsLogger } from "./logging";
+import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { checkGitHubVersionInRange, getGitHubVersion } from "./util";
 
@@ -158,6 +160,10 @@ async function run() {
       logger
     );
 
+    // Compile queries and (TODO: extract query cache hash)
+    // MG: Spell out what info we need from the config, and move to init.ts
+    await compileQueries(codeql, config, logger);
+
     if (
       config.languages.includes(Language.python) &&
       actionsUtil.getRequiredInput("setup-python-dependencies") === "true"
@@ -240,6 +246,49 @@ async function runWrapper() {
     core.setFailed(`init action failed: ${error}`);
     console.log(error);
   }
+}
+
+async function compileQueries(
+  codeql: CodeQL,
+  config: configUtils.Config,
+  logger: Logger
+): Promise<string> {
+  // MG: This method is based of `runQueries`.
+  //       Creating the query suite file could be refactored out of that method.
+  for (const language of config.languages) {
+    logger.startGroup(`Analyzing ${language}`);
+
+    const queries = config.queries[language];
+    if (queries.builtin.length === 0 && queries.custom.length === 0) {
+      throw new Error(
+        `Unable to analyse ${language} as no queries were selected for this language`
+      );
+    }
+
+    for (const type of ["custom"]) {
+      // MG: Only compile custom, but we would be ok doing also builtin
+      if (queries[type].length > 0) {
+        // Pass the queries to codeql using a file instead of using the command
+        // line to avoid command line length restrictions, particularly on windows.
+        const querySuitePath = `${language}-queries-${type}.qls`;
+        const querySuiteContents = queries[type]
+          .map((q: string) => `- query: ${q}`)
+          .join("\n");
+        fs.writeFileSync(querySuitePath, querySuiteContents);
+        logger.debug(
+          `Query suite file for ${language}...\n${querySuiteContents}`
+        );
+
+        await codeql.queryCompile(querySuitePath);
+
+        logger.debug(`Queries compiled`);
+        logger.endGroup();
+      }
+    }
+  }
+  // Compute hash
+  const hash = "abc";
+  return hash;
 }
 
 void runWrapper();

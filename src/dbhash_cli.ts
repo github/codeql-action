@@ -12,4 +12,6 @@ const stableHash = DatabaseHash(
     logger
 );
 
-logger.info(`stableHash: ${stableHash}`);
+stableHash.then(function (v:string) {
+    logger.info(`stableHash: ${v}`);
+});

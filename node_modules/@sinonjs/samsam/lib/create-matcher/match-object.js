@@ -1,11 +1,16 @@
 "use strict";
 
 var every = require("@sinonjs/commons").prototypes.array.every;
+var concat = require("@sinonjs/commons").prototypes.array.concat;
 var typeOf = require("@sinonjs/commons").typeOf;
 
 var deepEqualFactory = require("../deep-equal").use;
 
 var isMatcher = require("./is-matcher");
+
+var keys = Object.keys;
+var getOwnPropertySymbols = Object.getOwnPropertySymbols;
+
 /**
  * Matches `actual` with `expectation`
  *
@@ -21,7 +26,13 @@ function matchObject(actual, expectation, matcher) {
         return false;
     }
 
-    return every(Object.keys(expectation), function(key) {
+    var expectedKeys = keys(expectation);
+    /* istanbul ignore else: cannot collect coverage for engine that doesn't support Symbol */
+    if (typeOf(getOwnPropertySymbols) === "function") {
+        expectedKeys = concat(expectedKeys, getOwnPropertySymbols(expectation));
+    }
+
+    return every(expectedKeys, function(key) {
         var exp = expectation[key];
         var act = actual[key];
 

@@ -354,7 +354,9 @@ If the matcher does not have a test method, a recursive match is performed. If
 all properties of `matcher` matches corresponding properties in `object`,
 `match` returns `true`. Note that the object matcher does not care if the
 number of properties in the two objects are the same - only if all properties in
-the matcher recursively matches ones in `object`.
+the matcher recursively matches ones in `object`. If supported, this object matchers
+include [symbolic properties](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol)
+in the comparison.
 
 ```javascript
 // true

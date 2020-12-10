@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # create PRs for out-of-range updates
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    versioning-strategy: "increase"
+    labels:
+      - "maintenance"
+
+  # Update actions with branch-based versioning
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+      - "maintenance"

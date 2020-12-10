@@ -187,6 +187,30 @@ createMatcher.hasNested = function(property, value) {
     }, message);
 };
 
+var jsonParseResultTypes = {
+    null: true,
+    boolean: true,
+    number: true,
+    string: true,
+    object: true,
+    array: true
+};
+createMatcher.json = function(value) {
+    if (!jsonParseResultTypes[typeOf(value)]) {
+        throw new TypeError("Value cannot be the result of JSON.parse");
+    }
+    var message = "json(" + JSON.stringify(value, null, "  ") + ")";
+    return createMatcher(function(actual) {
+        var parsed;
+        try {
+            parsed = JSON.parse(actual);
+        } catch (e) {
+            return false;
+        }
+        return deepEqual(parsed, value);
+    }, message);
+};
+
 createMatcher.every = function(predicate) {
     assertMatcher(predicate);
 

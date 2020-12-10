@@ -11,6 +11,7 @@ import * as configUtils from "./config-utils";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import * as sarifCache from "./sarif-cache";
 import * as sharedEnv from "./shared-environment";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
@@ -262,21 +263,46 @@ export async function runAnalyze(
     return { ...queriesStats };
   }
 
-  const uploadStats = await upload_lib.upload(
-    outputDir,
-    repositoryNwo,
-    commitOid,
-    ref,
-    analysisKey,
-    analysisName,
-    workflowRunID,
-    checkoutPath,
-    environment,
-    config.gitHubVersion,
-    apiDetails,
-    mode,
-    logger
-  );
+  if (await sarifCache.skipAnalysis()) {
+    sarifCache.copySARIFResults(outputDir);
+    return {};
+  } else {
+    logger.info("Finalizing database creation");
+    await finalizeDatabaseCreation(config, threadsFlag, logger);
 
-  return { ...queriesStats, ...uploadStats };
+    logger.info("Analyzing database");
+    const queriesStats = await runQueries(
+      outputDir,
+      memoryFlag,
+      addSnippetsFlag,
+      threadsFlag,
+      config,
+      logger
+    );
+
+    if (!doUpload) {
+      logger.info("Not uploading results");
+      return { ...queriesStats };
+    }
+
+    const uploadStats = await upload_lib.upload(
+      outputDir,
+      repositoryNwo,
+      commitOid,
+      ref,
+      analysisKey,
+      analysisName,
+      workflowRunID,
+      checkoutPath,
+      environment,
+      config.gitHubVersion,
+      apiDetails,
+      mode,
+      logger
+    );
+
+    await sarifCache.saveSARIFResults(outputDir);
+
+    return { ...queriesStats, ...uploadStats };
+  }
 }

@@ -33,7 +33,15 @@ function responseArray(handler) {
 }
 
 function getDefaultWindowLocation() {
-    return { host: "localhost", protocol: "http" };
+    var winloc = {
+        hostname: "localhost",
+        port: process.env.PORT || 80,
+        protocol: "http:"
+    };
+    winloc.host =
+        winloc.hostname +
+        (String(winloc.port) === "80" ? "" : ":" + winloc.port);
+    return winloc;
 }
 
 function getWindowLocation() {
@@ -73,12 +81,12 @@ function matchOne(response, reqMethod, reqUrl) {
 function match(response, request) {
     var wloc = getWindowLocation();
 
-    var rCurrLoc = new RegExp("^" + wloc.protocol + "//" + wloc.host);
+    var rCurrLoc = new RegExp("^" + wloc.protocol + "//" + wloc.host + "/");
 
     var requestUrl = request.url;
 
     if (!/^https?:\/\//.test(requestUrl) || rCurrLoc.test(requestUrl)) {
-        requestUrl = requestUrl.replace(rCurrLoc, "");
+        requestUrl = requestUrl.replace(rCurrLoc, "/");
     }
 
     if (matchOne(response, this.getHTTPMethod(request), requestUrl)) {
@@ -226,6 +234,13 @@ var fakeServer = {
             url = method;
             // eslint-disable-next-line no-param-reassign
             method = null;
+        }
+
+        // Escape port number to prevent "named" parameters in 'path-to-regexp' module
+        if (typeof url === "string" && url !== "" && /:[0-9]+\//.test(url)) {
+            var m = url.match(/^(https?:\/\/.*?):([0-9]+\/.*)$/);
+            // eslint-disable-next-line no-param-reassign
+            url = m[1] + "\\:" + m[2];
         }
 
         push.call(this.responses, {

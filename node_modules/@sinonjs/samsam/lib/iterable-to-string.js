@@ -29,7 +29,7 @@ function iterableToString(obj) {
 function mapToString(map) {
     var representation = "";
 
-    /* eslint-disable-next-line local-rules/no-prototype-methods */
+    // eslint-disable-next-line @sinonjs/no-prototype-methods/no-prototype-methods
     map.forEach(function(value, key) {
         representation += "[" + stringify(key) + "," + stringify(value) + "],";
     });
@@ -48,7 +48,7 @@ function mapToString(map) {
 function genericIterableToString(iterable) {
     var representation = "";
 
-    /* eslint-disable-next-line local-rules/no-prototype-methods */
+    // eslint-disable-next-line @sinonjs/no-prototype-methods/no-prototype-methods
     iterable.forEach(function(value) {
         representation += stringify(value) + ",";
     });

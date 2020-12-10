@@ -13,12 +13,12 @@
 Browsers
 </th><td width=100%>
 
-Load `@octokit/plugin-retry` and [`@octokit/core`](https://github.com/octokit/core.js) (or core-compatible module) directly from [cdn.pika.dev](https://cdn.pika.dev)
+Load `@octokit/plugin-retry` and [`@octokit/core`](https://github.com/octokit/core.js) (or core-compatible module) directly from [cdn.skypack.dev](https://cdn.skypack.dev)
 
 ```html
 <script type="module">
-  import { Octokit } from "https://cdn.pika.dev/@octokit/core";
-  import { retry } from "https://cdn.pika.dev/@octokit/plugin-retry";
+  import { Octokit } from "https://cdn.skypack.dev/@octokit/core";
+  import { retry } from "https://cdn.skypack.dev/@octokit/plugin-retry";
 </script>
 ```
 

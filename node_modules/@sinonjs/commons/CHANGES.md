@@ -1,5 +1,12 @@
 # Changes
 
+## 1.8.1
+
+- [`07b9e7a`](https://github.com/sinonjs/commons/commit/07b9e7a1d784771273a9a58d74945bbc7319b5d4)
+  Optimize npm package size (Uladzimir Havenchyk)
+
+_Released on 2020-07-17._
+
 ## 1.8.0
 
 - [`4282205`](https://github.com/sinonjs/commons/commit/4282205343a4dcde2a35ccf2a8c2094300dad369)

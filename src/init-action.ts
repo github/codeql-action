@@ -252,7 +252,7 @@ async function compileQueries(
   codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger
-): Promise<string> {
+): Promise<void> {
   // MG: This method is based of `runQueries`.
   //       Creating the query suite file could be refactored out of that method.
   for (const language of config.languages) {
@@ -286,17 +286,6 @@ async function compileQueries(
       }
     }
   }
-  // Compute hash
-  const globHash = require("glob-hash");
-  const finalHash = await globHash({
-    include: [
-      `${config.tempDir}/**/.cache/data/**`,
-      `${config.toolCacheDir}/**/.cache/data/**`,
-    ],
-    files: false, // MG: List matched files for debugging
-  });
-  logger.info(`FinalHash: ${finalHash}`);
-  return finalHash;
 }
 
 void runWrapper();

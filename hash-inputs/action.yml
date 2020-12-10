@@ -1,18 +1,18 @@
-name: 'CodeQL: Hash Database'
-description: 'Hashes the built database, using a stable hash'
+name: 'CodeQL: Hash query inputs'
+description: 'Hashes the query inputs, such as the database, queries and the cli itself'
 author: 'GitHub'
 inputs:
   token:
     default: ${{ github.token }}
   matrix:
     default: ${{ toJson(matrix) }}
-  mode:
+  database-mode:
     description: The hashing strategy (currently supports ".rel")
     required: false
     default: ".rel"
 outputs:
-  hash:
-    description: the stable hash of the database
+  hashes:
+    description: A per-language JSON object with hashes for the inputs
 runs:
   using: 'node12'
   main: '../lib/hash-database-action.js'

@@ -93,6 +93,10 @@ export interface CodeQL {
     addSnippetsFlag: string,
     threadsFlag: string
   ): Promise<void>;
+  /**
+   * Run 'codeql query compile'.
+   */
+  queryCompile(querySuite: string): Promise<void>;
 }
 
 export interface ResolveQueriesOutput {
@@ -405,6 +409,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     databaseAnalyze: resolveFunction(partialCodeql, "databaseAnalyze"),
+    queryCompile: resolveFunction(partialCodeql, "queryCompile"),
   };
   return cachedCodeQL;
 }
@@ -610,6 +615,13 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         `--output=${sarifFile}`,
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "analyze"]),
+        querySuite,
+      ]).exec();
+    },
+    async queryCompile(querySuite: string) {
+      await new toolrunner.ToolRunner(cmd, [
+        "query",
+        "compile",
         querySuite,
       ]).exec();
     },

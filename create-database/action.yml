@@ -1,0 +1,14 @@
+name: 'CodeQL: Create Database'
+description: 'Create CodeQL database,'
+author: 'GitHub'
+inputs:
+  token:
+    default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
+  threads:
+    description: The number of threads to be used by CodeQL.
+    required: false
+runs:
+  using: 'node12'
+  main: '../lib/create-database-action.js'

@@ -1,5 +1,5 @@
 name: 'CodeQL: Finish'
-description: 'Finalize CodeQL database'
+description: 'Analyze CodeQL database'
 author: 'GitHub'
 inputs:
   check_name:
@@ -23,6 +23,10 @@ inputs:
   threads:
     description: The number of threads to be used by CodeQL.
     required: false
+  database-is-finalized:
+    description: True iff the database is finalized
+    required: false
+    default: "false"
   checkout_path:
     description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
     required: false

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 
 import * as analysisPaths from "./analysis-paths";
+import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
@@ -121,11 +122,13 @@ async function createdDBForScannedLanguages(
   }
 }
 
-async function finalizeDatabaseCreation(
+export async function finalizeDatabaseCreation(
   config: configUtils.Config,
   threadsFlag: string,
   logger: Logger
 ) {
+  logger.info("Finalizing database creation");
+
   await createdDBForScannedLanguages(config, logger);
 
   const codeql = getCodeQL(config.codeQLCmd);
@@ -240,8 +243,9 @@ export async function runAnalyze(
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  logger.info("Finalizing database creation");
-  await finalizeDatabaseCreation(config, threadsFlag, logger);
+  if (!actionsUtil.getOptionalInput("database-is-finalized")) {
+    await finalizeDatabaseCreation(config, threadsFlag, logger);
+  }
 
   logger.info("Analyzing database");
   const queriesStats = await runQueries(

@@ -6,10 +6,10 @@ inputs:
     default: ${{ github.token }}
   matrix:
     default: ${{ toJson(matrix) }}
-  threads:
-    description: The number of threads to be used by CodeQL.
+  mode:
+    description: The hashing strategy (currently supports ".rel")
     required: false
-    default: 1 # a surgical way of forcing all `util.getThreadsFlag(...)` to resolve to 1 for our purposes
+    default: ".rel"
 outputs:
   hash:
     description: the stable hash of the database

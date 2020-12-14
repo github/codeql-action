@@ -13,6 +13,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { checkGitHubVersionInRange, getGitHubVersion } from "./util";
 
 interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   // Comma-separated list of languages that analysis was run for
@@ -93,6 +94,16 @@ async function run() {
   let codeql: CodeQL;
   let toolsVersion: string;
 
+  const apiDetails = {
+    auth: actionsUtil.getRequiredInput("token"),
+    url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+
+  const gitHubVersion = await getGitHubVersion(apiDetails);
+  if (gitHubVersion !== undefined) {
+    checkGitHubVersionInRange(gitHubVersion, "actions", logger);
+  }
+
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
@@ -122,11 +133,6 @@ async function run() {
       return;
     }
 
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
-    };
-
     const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
       apiDetails,
@@ -147,8 +153,8 @@ async function run() {
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
+      gitHubVersion,
       apiDetails,
-      "actions",
       logger
     );
 

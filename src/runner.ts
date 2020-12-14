@@ -14,7 +14,9 @@ import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import {
+  checkGitHubVersionInRange,
   getAddSnippetsFlag,
+  getGitHubVersion,
   getMemoryFlag,
   getThreadsFlag,
   parseGithubUrl,
@@ -151,6 +153,11 @@ program
         url: parseGithubUrl(cmd.githubUrl),
       };
 
+      const gitHubVersion = await getGitHubVersion(apiDetails);
+      if (gitHubVersion !== undefined) {
+        checkGitHubVersionInRange(gitHubVersion, "runner", logger);
+      }
+
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
         codeql = getCodeQL(cmd.codeqlPath);
@@ -176,8 +183,8 @@ program
         toolsDir,
         codeql,
         cmd.checkoutPath || process.cwd(),
+        gitHubVersion,
         apiDetails,
-        "runner",
         logger
       );
 
@@ -440,6 +447,7 @@ program
       url: parseGithubUrl(cmd.githubUrl),
     };
     try {
+      const gitHubVersion = await getGitHubVersion(apiDetails);
       await upload_lib.upload(
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
@@ -450,6 +458,7 @@ program
         undefined,
         cmd.checkoutPath || process.cwd(),
         undefined,
+        gitHubVersion,
         apiDetails,
         "runner",
         logger

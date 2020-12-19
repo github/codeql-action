@@ -7,7 +7,7 @@ import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 
 interface AutobuildStatusReport extends actionsUtil.StatusReportBase {
-  // Comma-separated set of languages being autobuilt
+  // Comma-separated set of languages being auto-built
   autobuild_languages: string;
   // Language that failed autobuilding (or undefined if all languages succeeded).
   autobuild_failure?: string;
@@ -50,8 +50,7 @@ async function run() {
           "autobuild",
           "starting",
           startedAt
-        ),
-        true
+        )
       ))
     ) {
       return;
@@ -87,7 +86,13 @@ async function run() {
   await sendCompletedStatusReport(startedAt, language ? [language] : []);
 }
 
-run().catch((e) => {
-  core.setFailed(`autobuild action failed.  ${e}`);
-  console.log(e);
-});
+async function runWrapper() {
+  try {
+    await run();
+  } catch (error) {
+    core.setFailed(`autobuild action failed. ${error}`);
+    console.log(error);
+  }
+}
+
+void runWrapper();

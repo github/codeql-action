@@ -1,5 +1,10 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import * as core from "@actions/core";
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as safeWhich from "@chrisgavin/safe-which";
+import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
@@ -52,6 +57,12 @@ export function prepareLocalRunEnvironment() {
   if (!process.env.GITHUB_JOB) {
     core.exportVariable("GITHUB_JOB", "UNKNOWN-JOB");
   }
+  if (!process.env.CODEQL_ACTION_ANALYSIS_KEY) {
+    core.exportVariable(
+      "CODEQL_ACTION_ANALYSIS_KEY",
+      `LOCAL-RUN:${process.env.GITHUB_JOB}`
+    );
+  }
 }
 
 /**
@@ -67,17 +78,21 @@ export const getCommitOid = async function (): Promise<string> {
   // reported on the merge commit.
   try {
     let commitOid = "";
-    await new toolrunnner.ToolRunner("git", ["rev-parse", "HEAD"], {
-      silent: true,
-      listeners: {
-        stdout: (data) => {
-          commitOid += data.toString();
+    await new toolrunner.ToolRunner(
+      await safeWhich.safeWhich("git"),
+      ["rev-parse", "HEAD"],
+      {
+        silent: true,
+        listeners: {
+          stdout: (data) => {
+            commitOid += data.toString();
+          },
+          stderr: (data) => {
+            process.stderr.write(data);
+          },
         },
-        stderr: (data) => {
-          process.stderr.write(data);
-        },
-      },
-    }).exec();
+      }
+    ).exec();
     return commitOid.trim();
   } catch (e) {
     core.info(
@@ -87,10 +102,266 @@ export const getCommitOid = async function (): Promise<string> {
   }
 };
 
+interface WorkflowJobStep {
+  run: any;
+}
+
+interface WorkflowJob {
+  steps?: WorkflowJobStep[];
+}
+
+interface WorkflowTrigger {
+  branches?: string[] | string;
+  paths?: string[];
+}
+
+// on: {} then push/pull_request are undefined
+// on:
+//   push:
+//   pull_request:
+// then push/pull_request are null
+interface WorkflowTriggers {
+  push?: WorkflowTrigger | null;
+  pull_request?: WorkflowTrigger | null;
+}
+
+interface Workflow {
+  jobs?: { [key: string]: WorkflowJob };
+  on?: string | string[] | WorkflowTriggers;
+}
+
+function isObject(o: unknown): o is object {
+  return o !== null && typeof o === "object";
+}
+
+const GLOB_PATTERN = new RegExp("(\\*\\*?)");
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+}
+
+function patternToRegExp(value) {
+  return new RegExp(
+    `^${value
+      .split(GLOB_PATTERN)
+      .reduce(function (arr, cur) {
+        if (cur === "**") {
+          arr.push(".*?");
+        } else if (cur === "*") {
+          arr.push("[^/]*?");
+        } else if (cur) {
+          arr.push(escapeRegExp(cur));
+        }
+        return arr;
+      }, [])
+      .join("")}$`
+  );
+}
+
+// this function should return true if patternA is a superset of patternB
+// e.g: * is a superset of main-* but main-* is not a superset of *.
+export function patternIsSuperset(patternA: string, patternB: string): boolean {
+  return patternToRegExp(patternA).test(patternB);
+}
+
+function branchesToArray(branches?: string | null | string[]): string[] | "**" {
+  if (typeof branches === "string") {
+    return [branches];
+  }
+  if (Array.isArray(branches)) {
+    if (branches.length === 0) {
+      return "**";
+    }
+    return branches;
+  }
+  return "**";
+}
+
+enum MissingTriggers {
+  None = 0,
+  Push = 1,
+  PullRequest = 2,
+}
+
+interface CodedError {
+  message: string;
+  code: string;
+}
+function toCodedErrors(errors: {
+  [key: string]: string;
+}): { [key: string]: CodedError } {
+  return Object.entries(errors).reduce((acc, [key, value]) => {
+    acc[key] = { message: value, code: key };
+    return acc;
+  }, {} as ReturnType<typeof toCodedErrors>);
+}
+
+export const WorkflowErrors = toCodedErrors({
+  MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that Code Scanning can compare pull requests against the state of the base branch.`,
+  MissingHooks: `Please specify on.push and on.pull_request hooks so that Code Scanning can compare pull requests against the state of the base branch.`,
+  MissingPullRequestHook: `Please specify an on.pull_request hook so that Code Scanning is explicitly run against pull requests. This will be required to see results on pull requests from January 31 2021.`,
+  MissingPushHook: `Please specify an on.push hook so that Code Scanning can compare pull requests against the state of the base branch.`,
+  PathsSpecified: `Using on.push.paths can prevent Code Scanning annotating new alerts in your pull requests.`,
+  PathsIgnoreSpecified: `Using on.push.paths-ignore can prevent Code Scanning annotating new alerts in your pull requests.`,
+  CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
+  LintFailed: `Unable to lint workflow for CodeQL.`,
+});
+
+export function validateWorkflow(doc: Workflow): CodedError[] {
+  const errors: CodedError[] = [];
+
+  // .jobs[key].steps[].run
+  for (const job of Object.values(doc?.jobs || {})) {
+    if (Array.isArray(job?.steps)) {
+      for (const step of job?.steps) {
+        // this was advice that we used to give in the README
+        // we actually want to run the analysis on the merge commit
+        // to produce results that are more inline with expectations
+        // (i.e: this is what will happen if you merge this PR)
+        // and avoid some race conditions
+        if (step?.run === "git checkout HEAD^2") {
+          errors.push(WorkflowErrors.CheckoutWrongHead);
+        }
+      }
+    }
+  }
+
+  let missing = MissingTriggers.None;
+
+  if (doc.on === undefined) {
+    missing = MissingTriggers.Push | MissingTriggers.PullRequest;
+  } else if (typeof doc.on === "string") {
+    switch (doc.on) {
+      case "push":
+        missing = MissingTriggers.PullRequest;
+        break;
+      case "pull_request":
+        missing = MissingTriggers.Push;
+        break;
+      default:
+        missing = MissingTriggers.Push | MissingTriggers.PullRequest;
+        break;
+    }
+  } else if (Array.isArray(doc.on)) {
+    if (!doc.on.includes("push")) {
+      missing = missing | MissingTriggers.Push;
+    }
+    if (!doc.on.includes("pull_request")) {
+      missing = missing | MissingTriggers.PullRequest;
+    }
+  } else if (isObject(doc.on)) {
+    if (!Object.prototype.hasOwnProperty.call(doc.on, "pull_request")) {
+      missing = missing | MissingTriggers.PullRequest;
+    }
+    if (!Object.prototype.hasOwnProperty.call(doc.on, "push")) {
+      missing = missing | MissingTriggers.Push;
+    } else {
+      const paths = doc.on.push?.paths;
+      // if you specify paths or paths-ignore you can end up with commits that have no baseline
+      // if they didn't change any files
+      // currently we cannot go back through the history and find the most recent baseline
+      if (Array.isArray(paths) && paths.length > 0) {
+        errors.push(WorkflowErrors.PathsSpecified);
+      }
+      const pathsIgnore = doc.on.push?.["paths-ignore"];
+      if (Array.isArray(pathsIgnore) && pathsIgnore.length > 0) {
+        errors.push(WorkflowErrors.PathsIgnoreSpecified);
+      }
+    }
+
+    const push = branchesToArray(doc.on.push?.branches);
+
+    if (push !== "**") {
+      const pull_request = branchesToArray(doc.on.pull_request?.branches);
+
+      if (pull_request !== "**") {
+        const difference = pull_request.filter(
+          (value) => !push.some((o) => patternIsSuperset(o, value))
+        );
+        if (difference.length > 0) {
+          // there are branches in pull_request that may not have a baseline
+          // because we are not building them on push
+          errors.push(WorkflowErrors.MismatchedBranches);
+        }
+      } else if (push.length > 0) {
+        // push is set up to run on a subset of branches
+        // and you could open a PR against a branch with no baseline
+        errors.push(WorkflowErrors.MismatchedBranches);
+      }
+    }
+  } else {
+    // on is not a known type
+    // this workflow is likely malformed
+    missing = MissingTriggers.Push | MissingTriggers.PullRequest;
+  }
+
+  switch (missing) {
+    case MissingTriggers.PullRequest | MissingTriggers.Push:
+      errors.push(WorkflowErrors.MissingHooks);
+      break;
+    case MissingTriggers.PullRequest:
+      errors.push(WorkflowErrors.MissingPullRequestHook);
+      break;
+    case MissingTriggers.Push:
+      errors.push(WorkflowErrors.MissingPushHook);
+      break;
+  }
+
+  return errors;
+}
+
+export async function getWorkflowErrors(): Promise<CodedError[]> {
+  try {
+    const workflow = await getWorkflow();
+
+    if (workflow === undefined) {
+      return [];
+    }
+
+    return validateWorkflow(workflow);
+  } catch (e) {
+    return [WorkflowErrors.LintFailed];
+  }
+}
+
+export function formatWorkflowErrors(errors: CodedError[]): string {
+  const issuesWere = errors.length === 1 ? "issue was" : "issues were";
+
+  const errorsList = errors.map((e) => e.message).join(" ");
+
+  return `${errors.length} ${issuesWere} detected with this workflow: ${errorsList}`;
+}
+
+export function formatWorkflowCause(errors: CodedError[]): undefined | string {
+  if (errors.length === 0) {
+    return undefined;
+  }
+  return errors.map((e) => e.code).join(",");
+}
+
+export async function getWorkflow(): Promise<Workflow | undefined> {
+  const relativePath = await getWorkflowPath();
+  const absolutePath = path.join(
+    getRequiredEnvParam("GITHUB_WORKSPACE"),
+    relativePath
+  );
+
+  try {
+    return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
+  } catch (e) {
+    core.warning(`Could not read workflow: ${e.toString()}`);
+    return undefined;
+  }
+}
+
 /**
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
+  if (isLocalRun()) {
+    return getRequiredEnvParam("WORKFLOW_PATH");
+  }
+
   const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
@@ -191,7 +462,9 @@ export interface StatusReportBase {
   ref: string;
   // Name of the action being executed
   action_name: ActionName;
-  // Version if the action being executed, as a commit oid
+  // Version of the action being executed, as a ref
+  action_ref?: string;
+  // Version of the action being executed, as a commit oid
   action_oid: string;
   // Time the first action started. Normally the init action
   started_at: string;
@@ -241,6 +514,11 @@ export async function createStatusReportBase(
       workflowStartedAt
     );
   }
+  // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
+  // See https://github.com/actions/runner/issues/803
+  const actionRef = isRunningLocalAction()
+    ? undefined
+    : process.env["GITHUB_ACTION_REF"];
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
@@ -250,6 +528,7 @@ export async function createStatusReportBase(
     commit_oid: commitOid,
     ref,
     action_name: actionName,
+    action_ref: actionRef,
     action_oid: "unknown", // TODO decide if it's possible to fill this in
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),
@@ -274,6 +553,14 @@ export async function createStatusReportBase(
   return statusReport;
 }
 
+interface HTTPError {
+  status: number;
+}
+
+function isHTTPError(arg: any): arg is HTTPError {
+  return arg?.status !== undefined && Number.isInteger(arg.status);
+}
+
 /**
  * Send a status report to the code_scanning/analysis/status endpoint.
  *
@@ -284,14 +571,8 @@ export async function createStatusReportBase(
  * Returns whether sending the status report was successful of not.
  */
 export async function sendStatusReport<S extends StatusReportBase>(
-  statusReport: S,
-  ignoreFailures?: boolean
+  statusReport: S
 ): Promise<boolean> {
-  if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
-    core.debug("Not sending status report to GitHub Enterprise");
-    return true;
-  }
-
   if (isLocalRun()) {
     core.debug("Not sending status report because this is a local run");
     return true;
@@ -303,35 +584,71 @@ export async function sendStatusReport<S extends StatusReportBase>(
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
   const client = api.getActionsApiClient();
-  const statusResponse = await client.request(
-    "PUT /repos/:owner/:repo/code-scanning/analysis/status",
-    {
-      owner,
-      repo,
-      data: statusReportJSON,
-    }
-  );
 
-  if (!ignoreFailures) {
-    // If the status report request fails with a 403 or a 404, then this is a deliberate
-    // message from the endpoint that the SARIF upload can be expected to fail too,
-    // so the action should fail to avoid wasting actions minutes.
-    //
-    // Other failure responses (or lack thereof) could be transitory and should not
-    // cause the action to fail.
-    if (statusResponse.status === 403) {
-      core.setFailed(
-        "The repo on which this action is running is not opted-in to CodeQL code scanning."
-      );
-      return false;
+  try {
+    await client.request(
+      "PUT /repos/:owner/:repo/code-scanning/analysis/status",
+      {
+        owner,
+        repo,
+        data: statusReportJSON,
+      }
+    );
+
+    return true;
+  } catch (e) {
+    if (isHTTPError(e)) {
+      switch (e.status) {
+        case 403:
+          core.setFailed(
+            "The repo on which this action is running is not opted-in to CodeQL code scanning."
+          );
+          return false;
+        case 404:
+          core.setFailed(
+            "Not authorized to used the CodeQL code scanning feature on this repo."
+          );
+          return false;
+        case 422:
+          // schema incompatibility when reporting status
+          // this means that this action version is no longer compatible with the API
+          // we still want to continue as it is likely the analysis endpoint will work
+          if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
+            core.debug(
+              "CodeQL Action version is incompatible with the code scanning endpoint. Please update to a compatible version of codeql-action."
+            );
+          } else {
+            core.debug(
+              "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action."
+            );
+          }
+
+          return true;
+      }
     }
-    if (statusResponse.status === 404) {
-      core.setFailed(
-        "Not authorized to used the CodeQL code scanning feature on this repo."
-      );
-      return false;
-    }
+
+    // something else has gone wrong and the request/response will be logged by octokit
+    // it's possible this is a transient error and we should continue scanning
+    core.error(
+      "An unexpected error occured when sending code scanning status report."
+    );
+    return true;
   }
+}
 
-  return true;
+// Is the current action executing a local copy (i.e. we're running a workflow on the codeql-action repo itself)
+// as opposed to running a remote action (i.e. when another repo references us)
+export function isRunningLocalAction(): boolean {
+  const relativeScriptPath = getRelativeScriptPath();
+  return (
+    relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)
+  );
+}
+
+// Get the location where the action is running from.
+// This can be used to get the actions name or tell if we're running a local action.
+export function getRelativeScriptPath(): string {
+  const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
+  const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
+  return path.relative(actionsDirectory, __filename);
 }

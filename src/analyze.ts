@@ -1,9 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as toolrunnner from "@actions/exec/lib/toolrunner";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 
 import * as analysisPaths from "./analysis-paths";
+import { GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { isScannedLanguage, Language } from "./languages";
@@ -49,7 +50,7 @@ export interface QueriesStatusReport {
   analyze_custom_queries_javascript_duration_ms?: number;
   // Time taken in ms to analyze custom queries for python (or undefined if this language was not analyzed)
   analyze_custom_queries_python_duration_ms?: number;
-  // Name of language that errored during analysis (or undefined if no langauge failed)
+  // Name of language that errored during analysis (or undefined if no language failed)
   analyze_failure_language?: string;
 }
 
@@ -73,7 +74,7 @@ async function setupPythonExtractor(logger: Logger) {
     },
   };
 
-  await new toolrunnner.ToolRunner(
+  await new toolrunner.ToolRunner(
     codeqlPython,
     [
       "-c",
@@ -85,7 +86,7 @@ async function setupPythonExtractor(logger: Logger) {
   process.env["LGTM_INDEX_IMPORT_PATH"] = output;
 
   output = "";
-  await new toolrunnner.ToolRunner(
+  await new toolrunner.ToolRunner(
     codeqlPython,
     ["-c", "import sys; print(sys.version_info[0])"],
     options
@@ -122,6 +123,7 @@ async function createdDBForScannedLanguages(
 
 async function finalizeDatabaseCreation(
   config: configUtils.Config,
+  threadsFlag: string,
   logger: Logger
 ) {
   await createdDBForScannedLanguages(config, logger);
@@ -130,7 +132,8 @@ async function finalizeDatabaseCreation(
   for (const language of config.languages) {
     logger.startGroup(`Finalizing ${language}`);
     await codeql.finalizeDatabase(
-      util.getCodeQLDatabasePath(config.tempDir, language)
+      util.getCodeQLDatabasePath(config.tempDir, language),
+      threadsFlag
     );
     logger.endGroup();
   }
@@ -222,8 +225,7 @@ export async function runAnalyze(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: GitHubApiDetails,
   doUpload: boolean,
   mode: util.Mode,
   outputDir: string,
@@ -239,7 +241,7 @@ export async function runAnalyze(
   fs.mkdirSync(outputDir, { recursive: true });
 
   logger.info("Finalizing database creation");
-  await finalizeDatabaseCreation(config, logger);
+  await finalizeDatabaseCreation(config, threadsFlag, logger);
 
   logger.info("Analyzing database");
   const queriesStats = await runQueries(
@@ -266,8 +268,8 @@ export async function runAnalyze(
     workflowRunID,
     checkoutPath,
     environment,
-    githubAuth,
-    githubUrl,
+    config.gitHubVersion,
+    apiDetails,
     mode,
     logger
   );

@@ -13,6 +13,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { checkGitHubVersionInRange, getGitHubVersion } from "./util";
 
 interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   // Comma-separated list of languages that analysis was run for
@@ -28,11 +29,16 @@ interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   disable_default_queries: string;
   // Comma-separated list of queries sources, from the 'queries' config field or workflow input
   queries: string;
+  // Value given by the user as the "tools" input
+  tools_input: string;
+  // Version of the bundle used
+  tools_resolved_version: string;
 }
 
 async function sendSuccessStatusReport(
   startedAt: Date,
-  config: configUtils.Config
+  config: configUtils.Config,
+  toolsVersion: string
 ) {
   const statusReportBase = await actionsUtil.createStatusReportBase(
     "init",
@@ -74,6 +80,8 @@ async function sendSuccessStatusReport(
     paths_ignore: pathsIgnore,
     disable_default_queries: disableDefaultQueries,
     queries: queries.join(","),
+    tools_input: actionsUtil.getOptionalInput("tools") || "",
+    tools_resolved_version: toolsVersion,
   };
 
   await actionsUtil.sendStatusReport(statusReport);
@@ -84,43 +92,83 @@ async function run() {
   const logger = getActionsLogger();
   let config: configUtils.Config;
   let codeql: CodeQL;
+  let toolsVersion: string;
+
+  const apiDetails = {
+    auth: actionsUtil.getRequiredInput("token"),
+    url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+
+  const externalRepositoryAPIDetails = {
+    auth:
+      actionsUtil.getOptionalInput("external-repository-token") ??
+      actionsUtil.getRequiredInput("token"),
+    url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+
+  const gitHubVersion = await getGitHubVersion(apiDetails);
+  if (gitHubVersion !== undefined) {
+    checkGitHubVersionInRange(gitHubVersion, "actions", logger);
+  }
 
   try {
     actionsUtil.prepareLocalRunEnvironment();
+
+    const workflowErrors = await actionsUtil.getWorkflowErrors();
+
+    // we do not want to worry users if linting is failing
+    // but we do want to send a status report containing this error code
+    // below
+    const userWorkflowErrors = workflowErrors.filter(
+      (o) => o.code !== "LintFailed"
+    );
+
+    if (userWorkflowErrors.length > 0) {
+      core.warning(actionsUtil.formatWorkflowErrors(userWorkflowErrors));
+    }
+
     if (
       !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase("init", "starting", startedAt),
-        true
+        await actionsUtil.createStatusReportBase(
+          "init",
+          "starting",
+          startedAt,
+          actionsUtil.formatWorkflowCause(workflowErrors)
+        )
       ))
     ) {
       return;
     }
 
-    codeql = await initCodeQL(
+    const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
-      actionsUtil.getRequiredInput("token"),
-      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiDetails,
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       "actions",
       logger
     );
+    codeql = initCodeQLResult.codeql;
+    toolsVersion = initCodeQLResult.toolsVersion;
+
     config = await initConfig(
       actionsUtil.getOptionalInput("languages"),
       actionsUtil.getOptionalInput("queries"),
       actionsUtil.getOptionalInput("config-file"),
-      actionsUtil.getOptionalInput("external-repository-token"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
-      actionsUtil.getRequiredInput("token"),
-      actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      gitHubVersion,
+      externalRepositoryAPIDetails,
       logger
     );
 
-    if (config.languages.includes(Language.python)) {
+    if (
+      config.languages.includes(Language.python) &&
+      actionsUtil.getRequiredInput("setup-python-dependencies") === "true"
+    ) {
       try {
         await installPythonDeps(codeql, logger);
       } catch (err) {
@@ -173,6 +221,8 @@ async function run() {
         );
       }
     }
+
+    core.setOutput("codeql-path", config.codeQLCmd);
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);
@@ -187,10 +237,16 @@ async function run() {
     );
     return;
   }
-  await sendSuccessStatusReport(startedAt, config);
+  await sendSuccessStatusReport(startedAt, config, toolsVersion);
 }
 
-run().catch((e) => {
-  core.setFailed(`init action failed: ${e}`);
-  console.log(e);
-});
+async function runWrapper() {
+  try {
+    await run();
+  } catch (error) {
+    core.setFailed(`init action failed: ${error}`);
+    console.log(error);
+  }
+}
+
+void runWrapper();

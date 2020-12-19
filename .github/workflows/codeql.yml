@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, v1]
   pull_request:
+    branches: [main, v1]
 
 jobs:
   build:
@@ -15,7 +16,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: ./init
+      id: init
       with:
         languages: javascript
         config-file: ./.github/codeql/codeql-config.yml
+    # confirm steps.init.outputs.codeql-path points to the codeql binary
+    - name: Print CodeQL Version
+      run: ${{steps.init.outputs.codeql-path}} version --format=json
     - uses: ./analyze

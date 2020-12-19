@@ -15,6 +15,13 @@ import * as util from "./util";
 
 setupTests(test);
 
+const sampleApiDetails = {
+  auth: "token",
+  url: "https://github.example.com",
+};
+
+const gitHubVersion = { type: "dotcom" } as util.GitHubVersion;
+
 // Returns the filepath of the newly-created file
 function createConfigFile(inputFileContents: string, tmpDir: string): string {
   const configFilePath = path.join(tmpDir, "input");
@@ -71,14 +78,13 @@ test("load empty config", async (t) => {
       languages,
       undefined,
       undefined,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       logger
     );
 
@@ -92,9 +98,8 @@ test("load empty config", async (t) => {
         tmpDir,
         codeQL,
         tmpDir,
-        "token",
-        "https://github.example.com",
-        undefined,
+        gitHubVersion,
+        sampleApiDetails,
         logger
       )
     );
@@ -125,14 +130,13 @@ test("loading config saves config", async (t) => {
       "javascript,python",
       undefined,
       undefined,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       logger
     );
 
@@ -152,14 +156,13 @@ test("load input outside of workspace", async (t) => {
         undefined,
         undefined,
         "../input",
-        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        gitHubVersion,
+        sampleApiDetails,
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -186,14 +189,13 @@ test("load non-local input with invalid repo syntax", async (t) => {
         undefined,
         undefined,
         configFile,
-        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        gitHubVersion,
+        sampleApiDetails,
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -221,14 +223,13 @@ test("load non-existent input", async (t) => {
         languages,
         undefined,
         configFile,
-        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        gitHubVersion,
+        sampleApiDetails,
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -297,6 +298,7 @@ test("load non-empty input", async (t) => {
       tempDir: tmpDir,
       toolCacheDir: tmpDir,
       codeQLCmd: codeQL.getPath(),
+      gitHubVersion,
     };
 
     const languages = "javascript";
@@ -306,14 +308,13 @@ test("load non-empty input", async (t) => {
       languages,
       undefined,
       configFilePath,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       getRunnerLogger(true)
     );
 
@@ -354,7 +355,7 @@ test("Default queries are used", async (t) => {
 
     // The important point of this config is that it doesn't specify
     // the disable-default-queries field.
-    // Any other details are hopefully irrelevant for this tetst.
+    // Any other details are hopefully irrelevant for this test.
     const inputFileContents = `
       paths:
         - foo`;
@@ -368,14 +369,13 @@ test("Default queries are used", async (t) => {
       languages,
       undefined,
       configFilePath,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       getRunnerLogger(true)
     );
 
@@ -438,14 +438,13 @@ test("Queries can be specified in config file", async (t) => {
       languages,
       undefined,
       configFilePath,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       getRunnerLogger(true)
     );
 
@@ -477,7 +476,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
     const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
     // This config item should take precedence over the config file but shouldn't affect the default queries.
-    const queries = "./override";
+    const testQueries = "./override";
 
     fs.mkdirSync(path.join(tmpDir, "foo"));
     fs.mkdirSync(path.join(tmpDir, "override"));
@@ -500,16 +499,15 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
 
     const config = await configUtils.initConfig(
       languages,
-      queries,
+      testQueries,
       configFilePath,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       getRunnerLogger(true)
     );
 
@@ -541,7 +539,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       disable-default-queries: true`;
     const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
-    const queries = "./workflow-query";
+    const testQueries = "./workflow-query";
     fs.mkdirSync(path.join(tmpDir, "workflow-query"));
 
     const resolveQueriesArgs: Array<{
@@ -562,16 +560,15 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
 
     const config = await configUtils.initConfig(
       languages,
-      queries,
+      testQueries,
       configFilePath,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       getRunnerLogger(true)
     );
 
@@ -594,7 +591,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     fs.mkdirSync(path.join(tmpDir, "override1"));
     fs.mkdirSync(path.join(tmpDir, "override2"));
 
-    const queries = "./override1,./override2";
+    const testQueries = "./override1,./override2";
 
     const resolveQueriesArgs: Array<{
       queries: string[];
@@ -614,16 +611,15 @@ test("Multiple queries can be specified in workflow file, no config file require
 
     const config = await configUtils.initConfig(
       languages,
-      queries,
-      undefined,
+      testQueries,
       undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       getRunnerLogger(true)
     );
 
@@ -660,7 +656,7 @@ test("Queries in workflow file can be added to the set of queries without overri
     const configFilePath = createConfigFile(inputFileContents, tmpDir);
 
     // These queries shouldn't override anything, because the value is prefixed with "+"
-    const queries = "+./additional1,./additional2";
+    const testQueries = "+./additional1,./additional2";
 
     fs.mkdirSync(path.join(tmpDir, "foo"));
     fs.mkdirSync(path.join(tmpDir, "additional1"));
@@ -684,16 +680,15 @@ test("Queries in workflow file can be added to the set of queries without overri
 
     const config = await configUtils.initConfig(
       languages,
-      queries,
+      testQueries,
       configFilePath,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      "token",
-      "https://github.example.com",
+      gitHubVersion,
+      sampleApiDetails,
       getRunnerLogger(true)
     );
 
@@ -749,14 +744,13 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         languages,
         queries,
         undefined,
-        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
         codeQL,
         tmpDir,
-        "token",
-        "https://github.example.com",
+        gitHubVersion,
+        sampleApiDetails,
         getRunnerLogger(true)
       );
       t.fail("initConfig did not throw error");
@@ -800,6 +794,7 @@ test("API client used when reading remote config", async (t) => {
     const dummyResponse = {
       content: Buffer.from(inputFileContents).toString("base64"),
     };
+    const spyGetContents = mockGetContents(dummyResponse);
 
     // Create checkout directory for remote queries repository
     fs.mkdirSync(path.join(tmpDir, "foo/bar/dev"), { recursive: true });
@@ -807,49 +802,20 @@ test("API client used when reading remote config", async (t) => {
     const configFile = "octo-org/codeql-config/config.yaml@main";
     const languages = "javascript";
 
-    const token = "token";
-    const externalToken = "Token";
-    const githubURL = "https://github.example.com";
-
-    let spyGetContents = mockGetContents(dummyResponse);
-    let apiSpy = sinon.spy(api, "getApiClient");
     await configUtils.initConfig(
       languages,
       undefined,
       configFile,
-      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
       codeQL,
       tmpDir,
-      token,
-      githubURL,
+      gitHubVersion,
+      sampleApiDetails,
       getRunnerLogger(true)
     );
     t.assert(spyGetContents.called);
-    t.assert(apiSpy.alwaysCalledWithExactly(token, githubURL, true));
-
-    // If we pass in an external token, that should be used instead of the normal API token.
-    sinon.restore();
-    spyGetContents = mockGetContents(dummyResponse);
-    apiSpy = sinon.spy(api, "getApiClient");
-    await configUtils.initConfig(
-      languages,
-      undefined,
-      configFile,
-      externalToken,
-      { owner: "github", repo: "example" },
-      tmpDir,
-      tmpDir,
-      codeQL,
-      tmpDir,
-      token,
-      githubURL,
-      getRunnerLogger(true)
-    );
-    t.assert(spyGetContents.called);
-    t.assert(apiSpy.alwaysCalledWithExactly(externalToken, githubURL, true));
   });
 });
 
@@ -864,14 +830,13 @@ test("Remote config handles the case where a directory is provided", async (t) =
         undefined,
         undefined,
         repoReference,
-        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        gitHubVersion,
+        sampleApiDetails,
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -897,14 +862,13 @@ test("Invalid format of remote config handled correctly", async (t) => {
         undefined,
         undefined,
         repoReference,
-        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        gitHubVersion,
+        sampleApiDetails,
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -926,14 +890,13 @@ test("No detected languages", async (t) => {
         undefined,
         undefined,
         undefined,
-        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        gitHubVersion,
+        sampleApiDetails,
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -952,14 +915,13 @@ test("Unknown languages", async (t) => {
         languages,
         undefined,
         undefined,
-        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
         getCachedCodeQL(),
         tmpDir,
-        "token",
-        "https://github.example.com",
+        gitHubVersion,
+        sampleApiDetails,
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -999,14 +961,13 @@ function doInvalidInputTest(
           languages,
           undefined,
           configFile,
-          undefined,
           { owner: "github", repo: "example " },
           tmpDir,
           tmpDir,
           codeQL,
           tmpDir,
-          "token",
-          "https://github.example.com",
+          gitHubVersion,
+          sampleApiDetails,
           getRunnerLogger(true)
         );
         throw new Error("initConfig did not throw error");
@@ -1117,20 +1078,20 @@ test("path validations", (t) => {
   const propertyName = "paths";
   const configFile = "./.github/codeql/config.yml";
 
-  for (const path of validPaths) {
+  for (const validPath of validPaths) {
     t.truthy(
       configUtils.validateAndSanitisePath(
-        path,
+        validPath,
         propertyName,
         configFile,
         getRunnerLogger(true)
       )
     );
   }
-  for (const path of invalidPaths) {
+  for (const invalidPath of invalidPaths) {
     t.throws(() =>
       configUtils.validateAndSanitisePath(
-        path,
+        invalidPath,
         propertyName,
         configFile,
         getRunnerLogger(true)

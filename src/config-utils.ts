@@ -9,6 +9,7 @@ import * as externalQueries from "./external-queries";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { GitHubVersion } from "./util";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -92,6 +93,11 @@ export interface Config {
    * Path of the CodeQL executable.
    */
   codeQLCmd: string;
+  /**
+   * Version of GHES that we have determined that we are talking to, or undefined
+   * if talking to github.com.
+   */
+  gitHubVersion: GitHubVersion;
 }
 
 /**
@@ -215,8 +221,8 @@ async function addBuiltinSuiteQueries(
   suiteName: string,
   configFile?: string
 ) {
-  const suite = builtinSuites.find((suite) => suite === suiteName);
-  if (!suite) {
+  const found = builtinSuites.find((suite) => suite === suiteName);
+  if (!found) {
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
   }
 
@@ -269,7 +275,6 @@ async function addRemoteQueries(
   queryUses: string,
   tempDir: string,
   githubUrl: string,
-  githubAuth: string,
   logger: Logger,
   configFile?: string
 ) {
@@ -298,7 +303,7 @@ async function addRemoteQueries(
     nwo,
     ref,
     githubUrl,
-    githubAuth,
+    "",
     tempDir,
     logger
   );
@@ -327,7 +332,6 @@ async function parseQueryUses(
   tempDir: string,
   checkoutPath: string,
   githubUrl: string,
-  githubAuth: string,
   logger: Logger,
   configFile?: string
 ) {
@@ -367,7 +371,6 @@ async function parseQueryUses(
     queryUses,
     tempDir,
     githubUrl,
-    githubAuth,
     logger,
     configFile
   );
@@ -391,20 +394,20 @@ export function validateAndSanitisePath(
   logger: Logger
 ): string {
   // Take a copy so we don't modify the original path, so we can still construct error messages
-  let path = originalPath;
+  let newPath = originalPath;
 
   // All paths are relative to the src root, so strip off leading slashes.
-  while (path.charAt(0) === "/") {
-    path = path.substring(1);
+  while (newPath.charAt(0) === "/") {
+    newPath = newPath.substring(1);
   }
 
   // Trailing ** are redundant, so strip them off
-  if (path.endsWith("/**")) {
-    path = path.substring(0, path.length - 2);
+  if (newPath.endsWith("/**")) {
+    newPath = newPath.substring(0, newPath.length - 2);
   }
 
   // An empty path is not allowed as it's meaningless
-  if (path === "") {
+  if (newPath === "") {
     throw new Error(
       getConfigFilePropertyError(
         configFile,
@@ -416,20 +419,20 @@ export function validateAndSanitisePath(
   }
 
   // Check for illegal uses of **
-  if (path.match(pathStarsRegex)) {
+  if (newPath.match(pathStarsRegex)) {
     throw new Error(
       getConfigFilePropertyError(
         configFile,
         propertyName,
         `"${originalPath}" contains an invalid "**" wildcard. ` +
-          `They must be immediately preceeded and followed by a slash as in "/**/", or come at the start or end.`
+          `They must be immediately preceded and followed by a slash as in "/**/", or come at the start or end.`
       )
     );
   }
 
   // Check for other regex characters that we don't support.
   // Output a warning so the user knows, but otherwise continue normally.
-  if (path.match(filterPatternCharactersRegex)) {
+  if (newPath.match(filterPatternCharactersRegex)) {
     logger.warning(
       getConfigFilePropertyError(
         configFile,
@@ -443,7 +446,7 @@ export function validateAndSanitisePath(
   // Ban any uses of backslash for now.
   // This may not play nicely with project layouts.
   // This restriction can be lifted later if we determine they are ok.
-  if (path.indexOf("\\") !== -1) {
+  if (newPath.indexOf("\\") !== -1) {
     throw new Error(
       getConfigFilePropertyError(
         configFile,
@@ -454,7 +457,7 @@ export function validateAndSanitisePath(
     );
   }
 
-  return path;
+  return newPath;
 }
 
 // An undefined configFile in some of these functions indicates that
@@ -594,13 +597,12 @@ export function getUnknownLanguagesError(languages: string[]): string {
  */
 async function getLanguagesInRepo(
   repository: RepositoryNwo,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
   const response = await api
-    .getApiClient(githubAuth, githubUrl, true)
+    .getApiClient(apiDetails, true)
     .repos.listLanguages({
       owner: repository.owner,
       repo: repository.repo,
@@ -635,8 +637,7 @@ async function getLanguagesInRepo(
 async function getLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
-  githubAuth: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Language[]> {
   // Obtain from action input 'languages' if set
@@ -648,12 +649,7 @@ async function getLanguages(
 
   if (languages.length === 0) {
     // Obtain languages as all languages in the repo that can be analysed
-    languages = await getLanguagesInRepo(
-      repository,
-      githubAuth,
-      githubUrl,
-      logger
-    );
+    languages = await getLanguagesInRepo(repository, apiDetails, logger);
     logger.info(
       `Automatically detected languages: ${JSON.stringify(languages)}`
     );
@@ -691,7 +687,6 @@ async function addQueriesFromWorkflow(
   tempDir: string,
   checkoutPath: string,
   githubUrl: string,
-  githubAuth: string,
   logger: Logger
 ) {
   queriesInput = queriesInput.trim();
@@ -707,7 +702,6 @@ async function addQueriesFromWorkflow(
       tempDir,
       checkoutPath,
       githubUrl,
-      githubAuth,
       logger
     );
   }
@@ -736,16 +730,14 @@ export async function getDefaultConfig(
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  githubAuth: string,
-  githubUrl: string,
-  externalRepositoryToken: string | undefined,
+  gitHubVersion: GitHubVersion,
+  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
     languagesInput,
     repository,
-    githubAuth,
-    githubUrl,
+    apiDetails,
     logger
   );
   const queries: Queries = {};
@@ -758,8 +750,7 @@ export async function getDefaultConfig(
       queries,
       tempDir,
       checkoutPath,
-      githubUrl,
-      externalRepositoryToken ?? githubAuth,
+      apiDetails.url,
       logger
     );
   }
@@ -773,6 +764,7 @@ export async function getDefaultConfig(
     tempDir,
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
+    gitHubVersion,
   };
 }
 
@@ -783,14 +775,13 @@ async function loadConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string,
-  externalRepositoryToken: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  githubAuth: string,
-  githubUrl: string,
+  gitHubVersion: GitHubVersion,
+  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -800,11 +791,7 @@ async function loadConfig(
     configFile = path.resolve(checkoutPath, configFile);
     parsedYAML = getLocalConfig(configFile, checkoutPath);
   } else {
-    parsedYAML = await getRemoteConfig(
-      configFile,
-      externalRepositoryToken ?? githubAuth,
-      githubUrl
-    );
+    parsedYAML = await getRemoteConfig(configFile, apiDetails);
   }
 
   // Validate that the 'name' property is syntactically correct,
@@ -821,8 +808,7 @@ async function loadConfig(
   const languages = await getLanguages(
     languagesInput,
     repository,
-    githubAuth,
-    githubUrl,
+    apiDetails,
     logger
   );
 
@@ -853,8 +839,7 @@ async function loadConfig(
       queries,
       tempDir,
       checkoutPath,
-      githubUrl,
-      externalRepositoryToken ?? githubAuth,
+      apiDetails.url,
       logger
     );
   }
@@ -879,8 +864,7 @@ async function loadConfig(
         query[QUERIES_USES_PROPERTY],
         tempDir,
         checkoutPath,
-        githubUrl,
-        externalRepositoryToken ?? githubAuth,
+        apiDetails.url,
         logger,
         configFile
       );
@@ -891,12 +875,17 @@ async function loadConfig(
     if (!(parsedYAML[PATHS_IGNORE_PROPERTY] instanceof Array)) {
       throw new Error(getPathsIgnoreInvalid(configFile));
     }
-    for (const path of parsedYAML[PATHS_IGNORE_PROPERTY]!) {
-      if (typeof path !== "string" || path === "") {
+    for (const ignorePath of parsedYAML[PATHS_IGNORE_PROPERTY]!) {
+      if (typeof ignorePath !== "string" || ignorePath === "") {
         throw new Error(getPathsIgnoreInvalid(configFile));
       }
       pathsIgnore.push(
-        validateAndSanitisePath(path, PATHS_IGNORE_PROPERTY, configFile, logger)
+        validateAndSanitisePath(
+          ignorePath,
+          PATHS_IGNORE_PROPERTY,
+          configFile,
+          logger
+        )
       );
     }
   }
@@ -905,12 +894,12 @@ async function loadConfig(
     if (!(parsedYAML[PATHS_PROPERTY] instanceof Array)) {
       throw new Error(getPathsInvalid(configFile));
     }
-    for (const path of parsedYAML[PATHS_PROPERTY]!) {
-      if (typeof path !== "string" || path === "") {
+    for (const includePath of parsedYAML[PATHS_PROPERTY]!) {
+      if (typeof includePath !== "string" || includePath === "") {
         throw new Error(getPathsInvalid(configFile));
       }
       paths.push(
-        validateAndSanitisePath(path, PATHS_PROPERTY, configFile, logger)
+        validateAndSanitisePath(includePath, PATHS_PROPERTY, configFile, logger)
       );
     }
   }
@@ -939,6 +928,7 @@ async function loadConfig(
     tempDir,
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
+    gitHubVersion,
   };
 }
 
@@ -952,14 +942,13 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string | undefined,
-  externalRepositoryToken: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
   checkoutPath: string,
-  githubAuth: string,
-  githubUrl: string,
+  gitHubVersion: GitHubVersion,
+  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Config> {
   let config: Config;
@@ -975,9 +964,8 @@ export async function initConfig(
       toolCacheDir,
       codeQL,
       checkoutPath,
-      githubAuth,
-      githubUrl,
-      externalRepositoryToken,
+      gitHubVersion,
+      apiDetails,
       logger
     );
   } else {
@@ -985,14 +973,13 @@ export async function initConfig(
       languagesInput,
       queriesInput,
       configFile,
-      externalRepositoryToken,
       repository,
       tempDir,
       toolCacheDir,
       codeQL,
       checkoutPath,
-      githubAuth,
-      githubUrl,
+      gitHubVersion,
+      apiDetails,
       logger
     );
   }
@@ -1027,8 +1014,7 @@ function getLocalConfig(configFile: string, checkoutPath: string): UserConfig {
 
 async function getRemoteConfig(
   configFile: string,
-  githubAuth: string,
-  githubUrl: string
+  apiDetails: api.GitHubApiDetails
 ): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
@@ -1040,14 +1026,12 @@ async function getRemoteConfig(
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api
-    .getApiClient(githubAuth, githubUrl, true)
-    .repos.getContent({
-      owner: pieces.groups.owner,
-      repo: pieces.groups.repo,
-      path: pieces.groups.path,
-      ref: pieces.groups.ref,
-    });
+  const response = await api.getApiClient(apiDetails, true).repos.getContent({
+    owner: pieces.groups.owner,
+    repo: pieces.groups.repo,
+    path: pieces.groups.path,
+    ref: pieces.groups.ref,
+  });
 
   let fileContents: string;
   if ("content" in response.data && response.data.content !== undefined) {

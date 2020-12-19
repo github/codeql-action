@@ -14,7 +14,9 @@ import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import {
+  checkGitHubVersionInRange,
   getAddSnippetsFlag,
+  getGitHubVersion,
   getMemoryFlag,
   getThreadsFlag,
   parseGithubUrl,
@@ -151,33 +153,48 @@ program
       fs.rmdirSync(tempDir, { recursive: true });
       fs.mkdirSync(tempDir, { recursive: true });
 
+      const apiDetails = {
+        auth: cmd.githubAuth,
+        url: parseGithubUrl(cmd.githubUrl),
+      };
+
+      const externalRepositoryAPIDetails = {
+        auth: cmd.externalRepositoryToken ?? cmd.githubAuth,
+        url: parseGithubUrl(cmd.githubUrl),
+      };
+
+      const gitHubVersion = await getGitHubVersion(apiDetails);
+      if (gitHubVersion !== undefined) {
+        checkGitHubVersionInRange(gitHubVersion, "runner", logger);
+      }
+
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
         codeql = getCodeQL(cmd.codeqlPath);
       } else {
-        codeql = await initCodeQL(
-          undefined,
-          cmd.githubAuth,
-          parseGithubUrl(cmd.githubUrl),
-          tempDir,
-          toolsDir,
-          "runner",
-          logger
-        );
+        codeql = (
+          await initCodeQL(
+            undefined,
+            apiDetails,
+            tempDir,
+            toolsDir,
+            "runner",
+            logger
+          )
+        ).codeql;
       }
 
       const config = await initConfig(
         cmd.languages,
         cmd.queries,
         cmd.configFile,
-        cmd.externalRepositoryToken,
         parseRepositoryNwo(cmd.repository),
         tempDir,
         toolsDir,
         codeql,
         cmd.checkoutPath || process.cwd(),
-        cmd.githubAuth,
-        parseGithubUrl(cmd.githubUrl),
+        gitHubVersion,
+        externalRepositoryAPIDetails,
         logger
       );
 
@@ -196,7 +213,7 @@ program
         );
       }
 
-      // Always output a json file of the env that can be consumed programatically
+      // Always output a json file of the env that can be consumed programmatically
       const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
       fs.writeFileSync(jsonEnvFile, JSON.stringify(tracerConfig.env));
 
@@ -215,7 +232,7 @@ program
 
         logger.info(
           `\nCodeQL environment output to "${jsonEnvFile}", "${batEnvFile}" and "${powershellEnvFile}". ` +
-            `Please export these variables to future processes so the build can be traced. ` +
+            `Please export these variables to future processes so that CodeQL can monitor the build. ` +
             `If using cmd/batch run "call ${batEnvFile}" ` +
             `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`
         );
@@ -232,7 +249,7 @@ program
 
         logger.info(
           `\nCodeQL environment output to "${jsonEnvFile}" and "${shEnvFile}". ` +
-            `Please export these variables to future processes so the build can be traced, ` +
+            `Please export these variables to future processes so that CodeQL can monitor the build, ` +
             `for example by running ". ${shEnvFile}".`
         );
       }
@@ -365,6 +382,12 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
+
+      const apiDetails = {
+        auth: cmd.githubAuth,
+        url: parseGithubUrl(cmd.githubUrl),
+      };
+
       await runAnalyze(
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
@@ -374,8 +397,7 @@ program
         undefined,
         cmd.checkoutPath || process.cwd(),
         undefined,
-        cmd.githubAuth,
-        parseGithubUrl(cmd.githubUrl),
+        apiDetails,
         cmd.upload,
         "runner",
         outputDir,
@@ -430,7 +452,12 @@ program
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
     const logger = getRunnerLogger(cmd.debug);
+    const apiDetails = {
+      auth: cmd.githubAuth,
+      url: parseGithubUrl(cmd.githubUrl),
+    };
     try {
+      const gitHubVersion = await getGitHubVersion(apiDetails);
       await upload_lib.upload(
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
@@ -441,8 +468,8 @@ program
         undefined,
         cmd.checkoutPath || process.cwd(),
         undefined,
-        cmd.githubAuth,
-        parseGithubUrl(cmd.githubUrl),
+        gitHubVersion,
+        apiDetails,
         "runner",
         logger
       );

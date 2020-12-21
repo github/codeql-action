@@ -1,4 +1,5 @@
 import test from "ava";
+import * as yaml from "js-yaml";
 import sinon from "sinon";
 
 import * as actionsutil from "./actions-util";
@@ -399,4 +400,35 @@ test("patternIsSuperset()", (t) => {
       "/robin/*/release/*"
     )
   );
+});
+
+test("validateWorkflow() when branches contain dots", (t) => {
+  const errors = actionsutil.validateWorkflow(
+    yaml.safeLoad(`
+  on:
+    push:
+      branches: [4.1, master]
+    pull_request:
+      # The branches below must be a subset of the branches above
+      branches: [4.1, master]
+`)
+  );
+
+  t.deepEqual(errors, []);
+});
+
+test("validateWorkflow() when on.push has a trailing comma", (t) => {
+  const errors = actionsutil.validateWorkflow(
+    yaml.safeLoad(`
+name: "CodeQL"
+on:
+  push:
+    branches: [master, ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [master]
+`)
+  );
+
+  t.deepEqual(errors, []);
 });

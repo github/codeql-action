@@ -212,7 +212,7 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
   const errors: CodedError[] = [];
 
   // .jobs[key].steps[].run
-  for (const job of Object.values(doc?.jobs || {})) {
+  outer: for (const job of Object.values(doc?.jobs || {})) {
     if (Array.isArray(job?.steps)) {
       for (const step of job?.steps) {
         // this was advice that we used to give in the README
@@ -222,6 +222,7 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
         // and avoid some race conditions
         if (step?.run === "git checkout HEAD^2") {
           errors.push(WorkflowErrors.CheckoutWrongHead);
+          break outer;
         }
       }
     }

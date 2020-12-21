@@ -432,3 +432,27 @@ on:
 
   t.deepEqual(errors, []);
 });
+
+test("validateWorkflow() should only report the first CheckoutWrongHead", (t) => {
+  const errors = actionsutil.validateWorkflow(
+    yaml.safeLoad(`
+name: "CodeQL"
+on:
+  push:
+    branches: [master]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [master]
+jobs:
+  test:
+    steps:
+      - run: "git checkout HEAD^2"
+      - run: "git checkout HEAD^2"
+      - run: "git checkout HEAD^2"
+      - run: "git checkout HEAD^2"
+      - run: "git checkout HEAD^2"
+`)
+  );
+
+  t.deepEqual(errors, [actionsutil.WorkflowErrors.CheckoutWrongHead]);
+});

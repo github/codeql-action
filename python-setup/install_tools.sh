@@ -10,16 +10,11 @@ set -e
 # subsequent actions in the current job, and not the current action.
 export PATH="$HOME/.local/bin:$PATH"
 
-# The Ubuntu 20.04 GHA environment does not come with a Python 2 pip
-curl https://bootstrap.pypa.io/get-pip.py --output get-pip.py
-python2 get-pip.py
-
-python2 -m pip install --user --upgrade pip setuptools wheel
+# Setup Python 3 dependency installation tools.
 python3 -m pip install --user --upgrade pip setuptools wheel
 
 # virtualenv is a bit nicer for setting up virtual environment, since it will provide up-to-date versions of
 # pip/setuptools/wheel which basic `python3 -m venv venv` won't
-python2 -m pip install --user virtualenv
 python3 -m pip install --user virtualenv
 
 # We install poetry with pip instead of the recommended way, since the recommended way
@@ -32,3 +27,14 @@ python3 -m pip install --user virtualenv
 # poetry 1.0.10 has error (https://github.com/python-poetry/poetry/issues/2711)
 python3 -m pip install --user poetry!=1.0.10
 python3 -m pip install --user pipenv
+
+if command -v python2 &> /dev/null; then
+	# Setup Python 2 dependency installation tools.
+	# The Ubuntu 20.04 GHA environment does not come with a Python 2 pip
+	curl https://bootstrap.pypa.io/get-pip.py --output get-pip.py
+	python2 get-pip.py
+
+	python2 -m pip install --user --upgrade pip setuptools wheel
+
+	python2 -m pip install --user virtualenv
+fi

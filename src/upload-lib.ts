@@ -94,7 +94,6 @@ export async function uploadFromActions(
   workflowRunID: number,
   checkoutPath: string,
   environment: string,
-  gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<UploadStatusReport> {
@@ -108,7 +107,6 @@ export async function uploadFromActions(
     workflowRunID,
     checkoutPath,
     environment,
-    gitHubVersion,
     apiDetails,
     "actions",
     logger
@@ -124,7 +122,6 @@ export async function uploadFromRunner(
   commitOid: string,
   ref: string,
   checkoutPath: string,
-  gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<UploadStatusReport> {
@@ -138,7 +135,6 @@ export async function uploadFromRunner(
     undefined,
     checkoutPath,
     undefined,
-    gitHubVersion,
     apiDetails,
     "runner",
     logger
@@ -273,7 +269,6 @@ async function uploadFiles(
   workflowRunID: number | undefined,
   checkoutPath: string,
   environment: string | undefined,
-  gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
   logger: Logger
@@ -308,6 +303,7 @@ async function uploadFiles(
 
   const toolNames = util.getToolNames(sarifPayload);
 
+  const gitHubVersion = await util.getGitHubVersion(apiDetails);
   const payload = buildPayload(
     commitOid,
     ref,

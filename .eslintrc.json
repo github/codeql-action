@@ -49,8 +49,7 @@
             "@typescript-eslint/prefer-regexp-exec": "off",
             "@typescript-eslint/require-await": "off",
             "@typescript-eslint/restrict-template-expressions": "off",
-            "func-style": "off",
-            "github/no-then": "off"
+            "func-style": "off"
         }
     }]
 }

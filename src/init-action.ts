@@ -13,6 +13,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { checkGitHubVersionInRange, getGitHubVersion } from "./util";
 
 interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
   // Comma-separated list of languages that analysis was run for
@@ -93,21 +94,44 @@ async function run() {
   let codeql: CodeQL;
   let toolsVersion: string;
 
+  const apiDetails = {
+    auth: actionsUtil.getRequiredInput("token"),
+    url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+
+  const gitHubVersion = await getGitHubVersion(apiDetails);
+  if (gitHubVersion !== undefined) {
+    checkGitHubVersionInRange(gitHubVersion, "actions", logger);
+  }
+
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
+    const workflowErrors = await actionsUtil.getWorkflowErrors();
+
+    // we do not want to worry users if linting is failing
+    // but we do want to send a status report containing this error code
+    // below
+    const userWorkflowErrors = workflowErrors.filter(
+      (o) => o.code !== "LintFailed"
+    );
+
+    if (userWorkflowErrors.length > 0) {
+      core.warning(actionsUtil.formatWorkflowErrors(userWorkflowErrors));
+    }
+
     if (
       !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase("init", "starting", startedAt)
+        await actionsUtil.createStatusReportBase(
+          "init",
+          "starting",
+          startedAt,
+          actionsUtil.formatWorkflowCause(workflowErrors)
+        )
       ))
     ) {
       return;
     }
-
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
-    };
 
     const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
@@ -129,8 +153,8 @@ async function run() {
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
+      gitHubVersion,
       apiDetails,
-      "actions",
       logger
     );
 
@@ -209,7 +233,13 @@ async function run() {
   await sendSuccessStatusReport(startedAt, config, toolsVersion);
 }
 
-run().catch((e) => {
-  core.setFailed(`init action failed: ${e}`);
-  console.log(e);
-});
+async function runWrapper() {
+  try {
+    await run();
+  } catch (error) {
+    core.setFailed(`init action failed: ${error}`);
+    console.log(error);
+  }
+}
+
+void runWrapper();

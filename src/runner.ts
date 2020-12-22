@@ -391,7 +391,7 @@ program
         logger.info("Not uploading results");
         return;
       }
-      
+
       const gitHubVersion = await getGitHubVersion(apiDetails);
       await upload_lib.uploadFromRunner(
         outputDir,

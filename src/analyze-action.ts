@@ -100,7 +100,6 @@ async function run() {
       logger
     );
     stats = { ...queriesStats, ...uploadStats };
-    
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);

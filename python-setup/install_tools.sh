@@ -31,8 +31,7 @@ python3 -m pip install --user pipenv
 if command -v python2 &> /dev/null; then
 	# Setup Python 2 dependency installation tools.
 	# The Ubuntu 20.04 GHA environment does not come with a Python 2 pip
-	curl https://bootstrap.pypa.io/get-pip.py --output get-pip.py
-	python2 get-pip.py
+	curl --location --fail https://bootstrap.pypa.io/get-pip.py | python2
 
 	python2 -m pip install --user --upgrade pip setuptools wheel
 

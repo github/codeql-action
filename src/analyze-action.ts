@@ -84,7 +84,6 @@ async function run() {
       return;
     }
 
-    const gitHubVersion = await util.getGitHubVersion(apiDetails);
     const uploadStats = await upload_lib.uploadFromActions(
       outputDir,
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
@@ -95,7 +94,6 @@ async function run() {
       actionsUtil.getWorkflowRunID(),
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getRequiredInput("matrix"),
-      gitHubVersion,
       apiDetails,
       logger
     );

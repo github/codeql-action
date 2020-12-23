@@ -1,11 +1,11 @@
 import * as fs from "fs";
-import * as path from "path";
 import zlib from "zlib";
 
 import * as core from "@actions/core";
 import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
 import * as semver from "semver";
+import glob from "glob";
 
 import * as api from "./api-client";
 import * as fingerprints from "./fingerprints";
@@ -99,18 +99,14 @@ export async function upload(
   mode: util.Mode,
   logger: Logger
 ): Promise<UploadStatusReport> {
-  const sarifFiles: string[] = [];
   if (!fs.existsSync(sarifPath)) {
     throw new Error(`Path does not exist: ${sarifPath}`);
   }
+  let sarifFiles: string[] = [];
   if (fs.lstatSync(sarifPath).isDirectory()) {
-    const paths = fs
-      .readdirSync(sarifPath)
-      .filter((f) => f.endsWith(".sarif"))
-      .map((f) => path.resolve(sarifPath, f));
-    for (const filepath of paths) {
-      sarifFiles.push(filepath);
-    }
+    glob(`${sarifPath}/**/*.sarif`, (_err: Error | null, files: string[]) =>
+      sarifFiles = files
+    )
     if (sarifFiles.length === 0) {
       throw new Error(`No SARIF files found to upload in "${sarifPath}".`);
     }

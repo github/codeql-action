@@ -31,6 +31,7 @@
     "console-log-level": "^1.4.1",
     "file-url": "^3.0.0",
     "fs": "0.0.1-security",
+    "glob": "^7.1.6",
     "js-yaml": "^3.13.1",
     "jsonschema": "1.2.6",
     "long": "^4.0.0",

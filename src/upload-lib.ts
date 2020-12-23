@@ -3,9 +3,9 @@ import zlib from "zlib";
 
 import * as core from "@actions/core";
 import fileUrl from "file-url";
+import glob from "glob";
 import * as jsonschema from "jsonschema";
 import * as semver from "semver";
-import glob from "glob";
 
 import * as api from "./api-client";
 import * as fingerprints from "./fingerprints";
@@ -104,9 +104,10 @@ export async function upload(
   }
   let sarifFiles: string[] = [];
   if (fs.lstatSync(sarifPath).isDirectory()) {
-    glob(`${sarifPath}/**/*.sarif`, (_err: Error | null, files: string[]) =>
-      sarifFiles = files
-    )
+    glob(
+      `${sarifPath}/**/*.sarif`,
+      (_err: Error | null, files: string[]) => (sarifFiles = files)
+    );
     if (sarifFiles.length === 0) {
       throw new Error(`No SARIF files found to upload in "${sarifPath}".`);
     }

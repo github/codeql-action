@@ -435,7 +435,7 @@ on:
   t.deepEqual(errors, []);
 });
 
-test("validateWorkflow() should only report the first CheckoutWrongHead", (t) => {
+test("validateWorkflow() should only report the current job's CheckoutWrongHead", (t) => {
   process.env.GITHUB_JOB = "test";
 
   const errors = actionsutil.validateWorkflow(
@@ -457,10 +457,38 @@ jobs:
       - run: "git checkout HEAD^2"
 
   test3:
-    steps:
-      - run: "git checkout HEAD^2"
+    steps: []
 `)
   );
 
   t.deepEqual(errors, [actionsutil.WorkflowErrors.CheckoutWrongHead]);
+});
+
+test("validateWorkflow() should not report a different job's CheckoutWrongHead", (t) => {
+  process.env.GITHUB_JOB = "test3";
+
+  const errors = actionsutil.validateWorkflow(
+    yaml.safeLoad(`
+name: "CodeQL"
+on:
+  push:
+    branches: [master]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [master]
+jobs:
+  test:
+    steps:
+      - run: "git checkout HEAD^2"
+
+  test2:
+    steps:
+      - run: "git checkout HEAD^2"
+
+  test3:
+    steps: []
+`)
+  );
+
+  t.deepEqual(errors, []);
 });

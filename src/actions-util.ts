@@ -143,6 +143,7 @@ function escapeRegExp(string) {
 function patternToRegExp(value) {
   return new RegExp(
     `^${value
+      .toString()
       .split(GLOB_PATTERN)
       .reduce(function (arr, cur) {
         if (cur === "**") {

@@ -211,10 +211,15 @@ export const WorkflowErrors = toCodedErrors({
 export function validateWorkflow(doc: Workflow): CodedError[] {
   const errors: CodedError[] = [];
 
-  // .jobs[key].steps[].run
-  outer: for (const job of Object.values(doc?.jobs || {})) {
-    if (Array.isArray(job?.steps)) {
-      for (const step of job?.steps) {
+  const jobName = process.env.GITHUB_JOB;
+
+  if (jobName) {
+    const job = doc?.jobs?.[jobName];
+
+    const steps = job?.steps;
+
+    if (Array.isArray(steps)) {
+      for (const step of steps) {
         // this was advice that we used to give in the README
         // we actually want to run the analysis on the merge commit
         // to produce results that are more inline with expectations
@@ -222,7 +227,7 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
         // and avoid some race conditions
         if (step?.run === "git checkout HEAD^2") {
           errors.push(WorkflowErrors.CheckoutWrongHead);
-          break outer;
+          break;
         }
       }
     }

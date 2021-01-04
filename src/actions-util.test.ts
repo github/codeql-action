@@ -336,6 +336,8 @@ test("validateWorkflow() when on.pull_request for mismatched wildcard branches",
 });
 
 test("validateWorkflow() when HEAD^2 is checked out", (t) => {
+  process.env.GITHUB_JOB = "test";
+
   const errors = actionsutil.validateWorkflow({
     on: ["push", "pull_request"],
     jobs: { test: { steps: [{ run: "git checkout HEAD^2" }] } },
@@ -434,6 +436,8 @@ on:
 });
 
 test("validateWorkflow() should only report the first CheckoutWrongHead", (t) => {
+  process.env.GITHUB_JOB = "test";
+
   const errors = actionsutil.validateWorkflow(
     yaml.safeLoad(`
 name: "CodeQL"
@@ -447,9 +451,13 @@ jobs:
   test:
     steps:
       - run: "git checkout HEAD^2"
+
+  test2:
+    steps:
       - run: "git checkout HEAD^2"
-      - run: "git checkout HEAD^2"
-      - run: "git checkout HEAD^2"
+
+  test3:
+    steps:
       - run: "git checkout HEAD^2"
 `)
   );

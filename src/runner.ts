@@ -392,14 +392,13 @@ program
         return;
       }
 
-      const gitHubVersion = await getGitHubVersion(apiDetails);
       await upload_lib.uploadFromRunner(
         outputDir,
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
         cmd.checkoutPath || process.cwd(),
-        gitHubVersion,
+        config.gitHubVersion,
         apiDetails,
         logger
       );

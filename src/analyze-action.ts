@@ -79,25 +79,25 @@ async function run() {
       logger
     );
 
-    if (actionsUtil.getRequiredInput("upload") !== "true") {
+    if (actionsUtil.getRequiredInput("upload") === "true") {
+      const uploadStats = await upload_lib.uploadFromActions(
+        outputDir,
+        parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
+        await actionsUtil.getCommitOid(),
+        await actionsUtil.getRef(),
+        await actionsUtil.getAnalysisKey(),
+        actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
+        actionsUtil.getWorkflowRunID(),
+        actionsUtil.getRequiredInput("checkout_path"),
+        actionsUtil.getRequiredInput("matrix"),
+        apiDetails,
+        logger
+      );
+      stats = { ...queriesStats, ...uploadStats };
+    } else {
       logger.info("Not uploading results");
-      return;
+      stats = { ...queriesStats }
     }
-
-    const uploadStats = await upload_lib.uploadFromActions(
-      outputDir,
-      parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
-      await actionsUtil.getCommitOid(),
-      await actionsUtil.getRef(),
-      await actionsUtil.getAnalysisKey(),
-      actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
-      actionsUtil.getWorkflowRunID(),
-      actionsUtil.getRequiredInput("checkout_path"),
-      actionsUtil.getRequiredInput("matrix"),
-      apiDetails,
-      logger
-    );
-    stats = { ...queriesStats, ...uploadStats };
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);

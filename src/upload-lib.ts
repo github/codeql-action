@@ -81,6 +81,24 @@ export interface UploadStatusReport {
   num_results_in_sarif?: number;
 }
 
+// Recursively walks a directory and returns all SARIF files it finds.
+// Does not follow symlinks.
+export function findSarifFilesInDir(sarifPath: string): string[] {
+  const sarifFiles: string[] = [];
+  const walkSarifFiles = (dir: string) => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith(".sarif")) {
+        sarifFiles.push(path.resolve(dir, entry.name));
+      } else if (entry.isDirectory()) {
+        walkSarifFiles(path.resolve(dir, entry.name));
+      }
+    }
+  };
+  walkSarifFiles(sarifPath);
+  return sarifFiles;
+}
+
 // Uploads a single sarif file or a directory of sarif files
 // depending on what the path happens to refer to.
 // Returns true iff the upload occurred and succeeded
@@ -146,23 +164,18 @@ export async function uploadFromRunner(
 }
 
 function getSarifFilePaths(sarifPath: string) {
-  const sarifFiles: string[] = [];
   if (!fs.existsSync(sarifPath)) {
     throw new Error(`Path does not exist: ${sarifPath}`);
   }
+
+  let sarifFiles: string[];
   if (fs.lstatSync(sarifPath).isDirectory()) {
-    const paths = fs
-      .readdirSync(sarifPath)
-      .filter((f) => f.endsWith(".sarif"))
-      .map((f) => path.resolve(sarifPath, f));
-    for (const filepath of paths) {
-      sarifFiles.push(filepath);
-    }
+    sarifFiles = findSarifFilesInDir(sarifPath);
     if (sarifFiles.length === 0) {
       throw new Error(`No SARIF files found to upload in "${sarifPath}".`);
     }
   } else {
-    sarifFiles.push(sarifPath);
+    sarifFiles = [sarifPath];
   }
   return sarifFiles;
 }

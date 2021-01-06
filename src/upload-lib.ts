@@ -102,21 +102,68 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 // Uploads a single sarif file or a directory of sarif files
 // depending on what the path happens to refer to.
 // Returns true iff the upload occurred and succeeded
-export async function upload(
+export async function uploadFromActions(
   sarifPath: string,
   repositoryNwo: RepositoryNwo,
   commitOid: string,
   ref: string,
-  analysisKey: string | undefined,
-  analysisName: string | undefined,
-  workflowRunID: number | undefined,
+  analysisKey: string,
+  analysisName: string,
+  workflowRunID: number,
   checkoutPath: string,
-  environment: string | undefined,
+  environment: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
-  mode: util.Mode,
   logger: Logger
 ): Promise<UploadStatusReport> {
+  return await uploadFiles(
+    getSarifFilePaths(sarifPath),
+    repositoryNwo,
+    commitOid,
+    ref,
+    analysisKey,
+    analysisName,
+    workflowRunID,
+    checkoutPath,
+    environment,
+    gitHubVersion,
+    apiDetails,
+    "actions",
+    logger
+  );
+}
+
+// Uploads a single sarif file or a directory of sarif files
+// depending on what the path happens to refer to.
+// Returns true iff the upload occurred and succeeded
+export async function uploadFromRunner(
+  sarifPath: string,
+  repositoryNwo: RepositoryNwo,
+  commitOid: string,
+  ref: string,
+  checkoutPath: string,
+  gitHubVersion: util.GitHubVersion,
+  apiDetails: api.GitHubApiDetails,
+  logger: Logger
+): Promise<UploadStatusReport> {
+  return await uploadFiles(
+    getSarifFilePaths(sarifPath),
+    repositoryNwo,
+    commitOid,
+    ref,
+    undefined,
+    undefined,
+    undefined,
+    checkoutPath,
+    undefined,
+    gitHubVersion,
+    apiDetails,
+    "runner",
+    logger
+  );
+}
+
+function getSarifFilePaths(sarifPath: string) {
   if (!fs.existsSync(sarifPath)) {
     throw new Error(`Path does not exist: ${sarifPath}`);
   }
@@ -130,22 +177,7 @@ export async function upload(
   } else {
     sarifFiles = [sarifPath];
   }
-
-  return await uploadFiles(
-    sarifFiles,
-    repositoryNwo,
-    commitOid,
-    ref,
-    analysisKey,
-    analysisName,
-    workflowRunID,
-    checkoutPath,
-    environment,
-    gitHubVersion,
-    apiDetails,
-    mode,
-    logger
-  );
+  return sarifFiles;
 }
 
 // Counts the number of results in the given SARIF file

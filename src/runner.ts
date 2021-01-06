@@ -392,12 +392,14 @@ program
         return;
       }
 
+      const gitHubVersion = await getGitHubVersion(apiDetails);
       await upload_lib.uploadFromRunner(
         outputDir,
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
         cmd.checkoutPath || process.cwd(),
+        gitHubVersion,
         apiDetails,
         logger
       );
@@ -451,12 +453,14 @@ program
       url: parseGithubUrl(cmd.githubUrl),
     };
     try {
+      const gitHubVersion = await getGitHubVersion(apiDetails);
       await upload_lib.uploadFromRunner(
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
         cmd.checkoutPath || process.cwd(),
+        gitHubVersion,
         apiDetails,
         logger
       );

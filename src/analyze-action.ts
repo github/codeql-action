@@ -2,15 +2,19 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import {
-  AnalysisStatusReport,
   runAnalyze,
   CodeQLAnalysisError,
+  QueriesStatusReport,
 } from "./analyze";
 import { getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
+
+interface AnalysisStatusReport
+  extends upload_lib.UploadStatusReport,
+    QueriesStatusReport {}
 
 interface FinishStatusReport
   extends actionsUtil.StatusReportBase,

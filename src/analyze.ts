@@ -9,7 +9,6 @@ import * as configUtils from "./config-utils";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
-import * as upload_lib from "./upload-lib";
 import * as util from "./util";
 
 export class CodeQLAnalysisError extends Error {
@@ -51,10 +50,6 @@ export interface QueriesStatusReport {
   // Name of language that errored during analysis (or undefined if no language failed)
   analyze_failure_language?: string;
 }
-
-export interface AnalysisStatusReport
-  extends upload_lib.UploadStatusReport,
-    QueriesStatusReport {}
 
 async function setupPythonExtractor(logger: Logger) {
   const codeqlPython = process.env["CODEQL_PYTHON"];

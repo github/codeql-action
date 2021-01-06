@@ -87,7 +87,9 @@ async function run() {
       const gitHubVersion = await util.getGitHubVersion(apiDetails);
       const uploadStats = await upload_lib.uploadFromActions(
         outputDir,
-        parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
+        parseRepositoryNwo(
+          actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")
+        ),
         await actionsUtil.getCommitOid(),
         await actionsUtil.getRef(),
         await actionsUtil.getAnalysisKey(),
@@ -102,7 +104,7 @@ async function run() {
       stats = { ...queriesStats, ...uploadStats };
     } else {
       logger.info("Not uploading results");
-      stats = { ...queriesStats }
+      stats = { ...queriesStats };
     }
   } catch (error) {
     core.setFailed(error.message);

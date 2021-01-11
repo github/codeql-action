@@ -48,7 +48,7 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion(apiDetails);
 
-    const uploadStats = await upload_lib.upload(
+    const uploadStats = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       await actionsUtil.getCommitOid(),
@@ -60,7 +60,6 @@ async function run() {
       actionsUtil.getRequiredInput("matrix"),
       gitHubVersion,
       apiDetails,
-      "actions",
       getActionsLogger()
     );
     await sendSuccessStatusReport(startedAt, uploadStats);

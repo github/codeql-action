@@ -203,6 +203,16 @@ program
         );
       }
 
+      // On macos include the path to preload_tracer in the env as that
+      // executable is needed to trace when System Integrity Protection is enabled.
+      if (process.platform === "darwin") {
+        const codeqlDist = tracerConfig.env["CODEQL_DIST"];
+        tracerConfig.env["CODEQL_PRELOAD_TRACER"] = path.join(
+          codeqlDist,
+          "tools/osx64/preload_tracer"
+        );
+      }
+
       // Always output a json file of the env that can be consumed programmatically
       const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
       fs.writeFileSync(jsonEnvFile, JSON.stringify(tracerConfig.env));

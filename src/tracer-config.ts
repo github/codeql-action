@@ -189,11 +189,12 @@ export async function getCombinedTracerConfig(
   // on order to trace when System Integrity Protection is enabled.
   // The exectuable also exists and works for other platforms so we output this env
   // var with a path to the runner regardless so it's always available.
+  const runnerExeName = process.platform === "win32" ? "runner.exe" : "runner";
   mainTracerConfig.env["CODEQL_RUNNER"] = path.join(
     mainTracerConfig.env["CODEQL_DIST"],
     "tools",
     mainTracerConfig.env["CODEQL_PLATFORM"],
-    "runner"
+    runnerExeName
   );
 
   return mainTracerConfig;

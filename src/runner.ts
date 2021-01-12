@@ -207,9 +207,12 @@ program
       // executable is needed to trace when System Integrity Protection is enabled.
       if (process.platform === "darwin") {
         const codeqlDist = tracerConfig.env["CODEQL_DIST"];
+        const codeqlPlatform = tracerConfig.env["CODEQL_PLATFORM"];
         tracerConfig.env["CODEQL_PRELOAD_TRACER"] = path.join(
           codeqlDist,
-          "tools/osx64/preload_tracer"
+          "tools",
+          codeqlPlatform,
+          "preload_tracer"
         );
       }
 

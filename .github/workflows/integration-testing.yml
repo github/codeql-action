@@ -336,7 +336,7 @@ jobs:
     - name: Build code
       run: |
         . ./codeql-runner/codeql-env.sh
-        dotnet build
+        $CODEQL_RUNNER dotnet build
 
     - name: Run analyze
       run: |
@@ -372,7 +372,7 @@ jobs:
       shell: powershell
       run: |
         cat ./codeql-runner/codeql-env.sh | Invoke-Expression
-        dotnet build
+        $Env:CODEQL_RUNNER dotnet build
 
     - name: Run analyze
       run: |
@@ -408,7 +408,7 @@ jobs:
       shell: bash
       run: |
         . ./codeql-runner/codeql-env.sh
-        dotnet build
+        $CODEQL_RUNNER dotnet build
 
     - name: Run analyze
       run: |

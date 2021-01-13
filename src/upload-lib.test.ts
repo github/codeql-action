@@ -73,8 +73,8 @@ test("validate correct payload used per version", async (t) => {
       version,
       "actions"
     );
-    t.truthy(payload.base_ref);
-    t.truthy(payload.base_sha);
+    t.deepEqual(payload.base_ref, "master");
+    t.deepEqual(payload.base_sha, "f95f852bd8fca8fcc58a9a2d6c842781e32a215e");
   }
 
   for (const version of oldVersions) {

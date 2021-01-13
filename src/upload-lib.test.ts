@@ -73,7 +73,7 @@ test("validate correct payload used per version", async (t) => {
       version,
       "actions"
     );
-    t.deepEqual(payload.base_ref, "master");
+    t.deepEqual(payload.base_ref, "refs/heads/master");
     t.deepEqual(payload.base_sha, "f95f852bd8fca8fcc58a9a2d6c842781e32a215e");
   }
 

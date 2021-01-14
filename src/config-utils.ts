@@ -274,7 +274,7 @@ async function addRemoteQueries(
   resultMap: Queries,
   queryUses: string,
   tempDir: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiExternalRepoDetails,
   logger: Logger,
   configFile?: string
 ) {
@@ -302,7 +302,7 @@ async function addRemoteQueries(
   const checkoutPath = await externalQueries.checkoutExternalRepository(
     nwo,
     ref,
-    githubUrl,
+    apiDetails,
     tempDir,
     logger
   );
@@ -330,7 +330,7 @@ async function parseQueryUses(
   queryUses: string,
   tempDir: string,
   checkoutPath: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiExternalRepoDetails,
   logger: Logger,
   configFile?: string
 ) {
@@ -369,7 +369,7 @@ async function parseQueryUses(
     resultMap,
     queryUses,
     tempDir,
-    githubUrl,
+    apiDetails,
     logger,
     configFile
   );
@@ -685,7 +685,7 @@ async function addQueriesFromWorkflow(
   resultMap: Queries,
   tempDir: string,
   checkoutPath: string,
-  githubUrl: string,
+  apiDetails: api.GitHubApiExternalRepoDetails,
   logger: Logger
 ) {
   queriesInput = queriesInput.trim();
@@ -700,7 +700,7 @@ async function addQueriesFromWorkflow(
       query,
       tempDir,
       checkoutPath,
-      githubUrl,
+      apiDetails,
       logger
     );
   }
@@ -730,7 +730,7 @@ export async function getDefaultConfig(
   codeQL: CodeQL,
   checkoutPath: string,
   gitHubVersion: GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
+  apiDetails: api.GitHubApiCombinedDetails,
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
@@ -749,7 +749,7 @@ export async function getDefaultConfig(
       queries,
       tempDir,
       checkoutPath,
-      apiDetails.url,
+      apiDetails,
       logger
     );
   }
@@ -780,7 +780,7 @@ async function loadConfig(
   codeQL: CodeQL,
   checkoutPath: string,
   gitHubVersion: GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
+  apiDetails: api.GitHubApiCombinedDetails,
   logger: Logger
 ): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -838,7 +838,7 @@ async function loadConfig(
       queries,
       tempDir,
       checkoutPath,
-      apiDetails.url,
+      apiDetails,
       logger
     );
   }
@@ -863,7 +863,7 @@ async function loadConfig(
         query[QUERIES_USES_PROPERTY],
         tempDir,
         checkoutPath,
-        apiDetails.url,
+        apiDetails,
         logger,
         configFile
       );
@@ -947,7 +947,7 @@ export async function initConfig(
   codeQL: CodeQL,
   checkoutPath: string,
   gitHubVersion: GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
+  apiDetails: api.GitHubApiCombinedDetails,
   logger: Logger
 ): Promise<Config> {
   let config: Config;

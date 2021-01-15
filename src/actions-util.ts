@@ -236,18 +236,10 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
   let missing = MissingTriggers.None;
 
   if (doc.on === undefined) {
-    // codeql will scan the default branch
+    // this is not a valid config
   } else if (typeof doc.on === "string") {
-    switch (doc.on) {
-      case "push":
-        // valid configuration
-        break;
-      case "pull_request":
-        missing = MissingTriggers.Push;
-        break;
-      default:
-        missing = MissingTriggers.Push | MissingTriggers.PullRequest;
-        break;
+    if (doc.on === "pull_request") {
+      missing = MissingTriggers.Push;
     }
   } else if (Array.isArray(doc.on)) {
     const hasPush = doc.on.includes("push");
@@ -262,7 +254,7 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
       "pull_request"
     );
 
-    if (!hasPush) {
+    if (!hasPush && hasPullRequest) {
       missing = missing | MissingTriggers.Push;
     }
     if (hasPush && hasPullRequest) {
@@ -279,8 +271,9 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
       }
     }
 
-    // check the user is scanning PRs right now
-    // if not the warning does not apply
+    // if doc.on.pull_request is null that means 'all branches'
+    // if doc.on.pull_request is undefined that means 'off'
+    // we only want to check for mismatched branches if pull_request is on.
     if (doc.on.pull_request !== undefined) {
       const push = branchesToArray(doc.on.push?.branches);
 

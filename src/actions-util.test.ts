@@ -90,12 +90,10 @@ test("prepareEnvironment() when a local run", (t) => {
   t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "LOCAL-RUN:UNKNOWN-JOB");
 });
 
-test("validateWorkflow() when on.push is missing", (t) => {
+test("validateWorkflow() when on is empty", (t) => {
   const errors = actionsutil.validateWorkflow({ on: {} });
 
-  t.deepEqual(
-    ...errorCodes(errors, [actionsutil.WorkflowErrors.MissingPushHook])
-  );
+  t.deepEqual(...errorCodes(errors, []));
 });
 
 test("validateWorkflow() when on.push is an array missing pull_request", (t) => {
@@ -547,6 +545,45 @@ name: "CodeQL"
   );
 
   t.deepEqual(...errorCodes(errors, []));
+});
+
+test("validateWorkflow() with a different on setup", (t) => {
+  t.deepEqual(
+    ...errorCodes(
+      actionsutil.validateWorkflow(
+        yaml.safeLoad(`
+name: "CodeQL"
+on: "workflow_dispatch"
+`)
+      ),
+      []
+    )
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      actionsutil.validateWorkflow(
+        yaml.safeLoad(`
+name: "CodeQL"
+on: [workflow_dispatch]
+`)
+      ),
+      []
+    )
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      actionsutil.validateWorkflow(
+        yaml.safeLoad(`
+name: "CodeQL"
+on:
+  workflow_dispatch: {}
+`)
+      ),
+      []
+    )
+  );
 });
 
 test("validateWorkflow() should not report an error if PRs are totally unconfigured", (t) => {

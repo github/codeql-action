@@ -11,8 +11,16 @@ export enum DisallowedAPIVersionReason {
   ACTION_TOO_NEW,
 }
 
+export type GitHubApiCombinedDetails = GitHubApiDetails &
+  GitHubApiExternalRepoDetails;
+
 export interface GitHubApiDetails {
   auth: string;
+  url: string;
+}
+
+export interface GitHubApiExternalRepoDetails {
+  externalRepoAuth: string;
   url: string;
 }
 

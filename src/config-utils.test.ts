@@ -17,6 +17,7 @@ setupTests(test);
 
 const sampleApiDetails = {
   auth: "token",
+  externalRepoAuth: "token",
   url: "https://github.example.com",
 };
 

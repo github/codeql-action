@@ -96,7 +96,16 @@ Use the `config-file` parameter of the `init` action to enable the configuration
     config-file: ./.github/codeql/codeql-config.yml
 ```
 
-The configuration file must be located within the local repository. For information on how to write a configuration file, see "[Using a custom configuration file](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration-file)."
+The configuration file can be located in a different repository. This is useful if you want to share the same configuration across multiple repositories. If the configuration file is in a private repository you can also specify an `external-repository-token` option. This should be a personal access token that has read access to any repositories containing referenced config files and queries.
+
+```yaml
+- uses: github/codeql-action/init@v1
+  with:
+    config-file: owner/repo/codeql-config.yml@branch
+    external-repository-token: ${{ secrets.EXTERNAL_REPOSITORY_TOKEN }}
+```
+
+For information on how to write a configuration file, see "[Using a custom configuration file](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration-file)."
 
 If you only want to customise the queries used, you can specify them in your workflow instead of creating a config file, using the `queries` property of the `init` action:
 

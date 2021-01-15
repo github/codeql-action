@@ -5,7 +5,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
 import * as analysisPaths from "./analysis-paths";
-import { GitHubApiDetails } from "./api-client";
+import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Logger } from "./logging";
@@ -45,7 +45,7 @@ export async function initConfig(
   codeQL: CodeQL,
   checkoutPath: string,
   gitHubVersion: util.GitHubVersion,
-  apiDetails: GitHubApiDetails,
+  apiDetails: GitHubApiCombinedDetails,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");

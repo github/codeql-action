@@ -302,6 +302,7 @@ test("getCombinedTracerConfig - return undefined when no languages are traced la
       async getTracerEnv() {
         return {
           ODASA_TRACER_CONFIGURATION: "abc",
+          CODEQL_DIST: "/",
           foo: "bar",
         };
       },
@@ -318,21 +319,35 @@ test("getCombinedTracerConfig - valid spec file", async (t) => {
     const spec = path.join(tmpDir, "spec");
     fs.writeFileSync(spec, "foo.log\n2\nabc\ndef");
 
+    const bundlePath = path.join(tmpDir, "bundle");
+    const codeqlPlatform =
+      process.platform === "win32"
+        ? "win64"
+        : process.platform === "darwin"
+        ? "osx64"
+        : "linux64";
+
     const codeQL = setCodeQL({
       async getTracerEnv() {
         return {
           ODASA_TRACER_CONFIGURATION: spec,
+          CODEQL_DIST: bundlePath,
+          CODEQL_PLATFORM: codeqlPlatform,
           foo: "bar",
         };
       },
     });
 
     const result = await getCombinedTracerConfig(config, codeQL);
+    t.notDeepEqual(result, undefined);
 
     const expectedEnv = {
       foo: "bar",
+      CODEQL_DIST: bundlePath,
+      CODEQL_PLATFORM: codeqlPlatform,
       ODASA_TRACER_CONFIGURATION: result!.spec,
     };
+
     if (process.platform === "darwin") {
       expectedEnv["DYLD_INSERT_LIBRARIES"] = path.join(
         path.dirname(codeQL.getPath()),
@@ -346,6 +361,23 @@ test("getCombinedTracerConfig - valid spec file", async (t) => {
         "tools",
         "linux64",
         "${LIB}trace.so"
+      );
+    }
+
+    if (process.platform === "win32") {
+      expectedEnv["CODEQL_RUNNER"] = path.join(
+        bundlePath,
+        "tools/win64/runner.exe"
+      );
+    } else if (process.platform === "darwin") {
+      expectedEnv["CODEQL_RUNNER"] = path.join(
+        bundlePath,
+        "tools/osx64/runner"
+      );
+    } else {
+      expectedEnv["CODEQL_RUNNER"] = path.join(
+        bundlePath,
+        "tools/linux64/runner"
       );
     }
 

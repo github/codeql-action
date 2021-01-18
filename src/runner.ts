@@ -96,6 +96,7 @@ interface InitArgs {
   repository: string;
   githubUrl: string;
   githubAuth: string;
+  externalRepositoryToken: string | undefined;
   debug: boolean;
 }
 
@@ -107,6 +108,10 @@ program
   .requiredOption(
     "--github-auth <auth>",
     "GitHub Apps token or personal access token. (Required)"
+  )
+  .option(
+    "--external-repository-token <token>",
+    "A token for fetching external config files and queries if they reside in a private repository."
   )
   .option(
     "--languages <languages>",
@@ -150,6 +155,7 @@ program
 
       const apiDetails = {
         auth: cmd.githubAuth,
+        externalRepoAuth: cmd.externalRepositoryToken ?? cmd.githubAuth,
         url: parseGithubUrl(cmd.githubUrl),
       };
 

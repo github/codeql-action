@@ -85,7 +85,7 @@ test("checkoutExternalQueries", async (t) => {
     await externalQueries.checkoutExternalRepository(
       repoName,
       commit1Sha,
-      `file://${testRepoBaseDir}`,
+      { url: `file://${testRepoBaseDir}`, externalRepoAuth: "" },
       tmpDir,
       getRunnerLogger(true)
     );
@@ -99,7 +99,7 @@ test("checkoutExternalQueries", async (t) => {
     await externalQueries.checkoutExternalRepository(
       repoName,
       commit2Sha,
-      `file://${testRepoBaseDir}`,
+      { url: `file://${testRepoBaseDir}`, externalRepoAuth: "" },
       tmpDir,
       getRunnerLogger(true)
     );

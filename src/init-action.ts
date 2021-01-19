@@ -96,9 +96,7 @@ async function run() {
 
   const apiDetails = {
     auth: actionsUtil.getRequiredInput("token"),
-    externalRepoAuth:
-      actionsUtil.getOptionalInput("external-repository-token") ??
-      actionsUtil.getRequiredInput("token"),
+    externalRepoAuth: actionsUtil.getOptionalInput("external-repository-token"),
     url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
   };
 

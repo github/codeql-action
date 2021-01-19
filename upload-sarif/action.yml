@@ -3,7 +3,7 @@ description: 'Upload the analysis results'
 author: 'GitHub'
 inputs:
   sarif_file:
-    description: The SARIF file or directory of SARIF files to be uploaded.
+    description: The SARIF file or directory of SARIF files to be uploaded. Each SARIF file should contain a maximum of 1000 results, any additional results are ignored.
     required: false
     default: '../results'
   checkout_path:

@@ -356,7 +356,6 @@ export async function getWorkflow(): Promise<Workflow | undefined> {
   try {
     return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
   } catch (e) {
-    core.warning(`Could not read workflow: ${e.toString()}`);
     return undefined;
   }
 }

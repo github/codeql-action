@@ -207,7 +207,7 @@ export const WorkflowErrors = toCodedErrors({
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 
-export function validateWorkflow(doc: Workflow): CodedError[] {
+export function getWorkflowErrors(doc: Workflow): CodedError[] {
   const errors: CodedError[] = [];
 
   const jobName = process.env.GITHUB_JOB;
@@ -316,12 +316,12 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
   return errors;
 }
 
-export async function getWorkflowErrors(): Promise<undefined | string> {
+export async function validateWorkflow(): Promise<undefined | string> {
   try {
     const workflow = await getWorkflow();
 
     try {
-      const workflowErrors = validateWorkflow(workflow);
+      const workflowErrors = getWorkflowErrors(workflow);
 
       if (workflowErrors.length > 0) {
         core.warning(formatWorkflowErrors(workflowErrors));

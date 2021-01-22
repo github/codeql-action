@@ -327,12 +327,12 @@ export async function validateWorkflow(): Promise<undefined | string> {
         core.warning(formatWorkflowErrors(workflowErrors));
       }
 
-      return formatWorkflowCause(workflowErrors);
+      return `warning: ${formatWorkflowCause(workflowErrors)}`;
     } catch (e) {
-      return `getWorkflowErrors() failed: ${e.toString()}`;
+      return `error: getWorkflowErrors() failed: ${e.toString()}`;
     }
   } catch (e) {
-    return `getWorkflow() failed: ${e.toString()}`;
+    return `error: getWorkflow() failed: ${e.toString()}`;
   }
 }
 

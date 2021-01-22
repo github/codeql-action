@@ -108,7 +108,7 @@ async function run() {
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
-    const workflowErrors = await actionsUtil.getWorkflowErrors();
+    const workflowErrors = await actionsUtil.validateWorkflow();
 
     if (
       !(await actionsUtil.sendStatusReport(

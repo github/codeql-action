@@ -317,23 +317,30 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
 }
 
 export async function validateWorkflow(): Promise<undefined | string> {
+  let workflow: Workflow;
   try {
-    const workflow = await getWorkflow();
-
-    try {
-      const workflowErrors = getWorkflowErrors(workflow);
-
-      if (workflowErrors.length > 0) {
-        core.warning(formatWorkflowErrors(workflowErrors));
-      }
-
-      return `warning: ${formatWorkflowCause(workflowErrors)}`;
-    } catch (e) {
-      return `error: getWorkflowErrors() failed: ${e.toString()}`;
-    }
+    workflow = await getWorkflow();
   } catch (e) {
     return `error: getWorkflow() failed: ${e.toString()}`;
   }
+  let workflowErrors: CodedError[];
+  try {
+    workflowErrors = getWorkflowErrors(workflow);
+  } catch (e) {
+    return `error: getWorkflowErrors() failed: ${e.toString()}`;
+  }
+
+  if (workflowErrors.length > 0) {
+    let message: string;
+    try {
+      message = formatWorkflowErrors(workflowErrors);
+    } catch (e) {
+      return `error: formatWorkflowErrors() failed: ${e.toString()}`;
+    }
+    core.warning(message);
+  }
+
+  return `warning: ${formatWorkflowCause(workflowErrors)}`;
 }
 
 export function formatWorkflowErrors(errors: CodedError[]): string {

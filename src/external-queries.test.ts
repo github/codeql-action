@@ -108,3 +108,35 @@ test("checkoutExternalQueries", async (t) => {
     t.false(fs.existsSync(path.join(tmpDir, repoName, commit2Sha, "b")));
   });
 });
+
+test("buildCheckoutURL", (t) => {
+  t.deepEqual(
+    externalQueries.buildCheckoutURL("foo/bar", {
+      url: "https://github.com",
+      externalRepoAuth: undefined,
+    }),
+    "https://github.com/foo/bar"
+  );
+  t.deepEqual(
+    externalQueries.buildCheckoutURL("foo/bar", {
+      url: "https://github.example.com/",
+      externalRepoAuth: undefined,
+    }),
+    "https://github.example.com/foo/bar"
+  );
+
+  t.deepEqual(
+    externalQueries.buildCheckoutURL("foo/bar", {
+      url: "https://github.com",
+      externalRepoAuth: "abc",
+    }),
+    "https://x-access-token:abc@github.com/foo/bar"
+  );
+  t.deepEqual(
+    externalQueries.buildCheckoutURL("foo/bar", {
+      url: "https://github.example.com/",
+      externalRepoAuth: "abc",
+    }),
+    "https://x-access-token:abc@github.example.com/foo/bar"
+  );
+});

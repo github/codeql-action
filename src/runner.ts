@@ -155,7 +155,7 @@ program
 
       const apiDetails = {
         auth: cmd.githubAuth,
-        externalRepoAuth: cmd.externalRepositoryToken ?? cmd.githubAuth,
+        externalRepoAuth: cmd.externalRepositoryToken,
         url: parseGithubUrl(cmd.githubUrl),
       };
 

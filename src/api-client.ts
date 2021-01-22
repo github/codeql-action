@@ -20,7 +20,7 @@ export interface GitHubApiDetails {
 }
 
 export interface GitHubApiExternalRepoDetails {
-  externalRepoAuth: string;
+  externalRepoAuth: string | undefined;
   url: string;
 }
 

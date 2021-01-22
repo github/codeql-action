@@ -29,13 +29,10 @@ export async function checkoutExternalRepository(
   }
 
   if (!fs.existsSync(checkoutLocation)) {
-    const repoCloneURL = new URL(apiDetails.url);
-    repoCloneURL.username = "x-access-token";
-    repoCloneURL.password = apiDetails.externalRepoAuth;
-    repoCloneURL.pathname += `/${repository}`;
+    const repoCloneURL = buildCheckoutURL(repository, apiDetails);
     await new toolrunner.ToolRunner(await safeWhich.safeWhich("git"), [
       "clone",
-      repoCloneURL.toString(),
+      repoCloneURL,
       checkoutLocation,
     ]).exec();
     await new toolrunner.ToolRunner(await safeWhich.safeWhich("git"), [
@@ -47,4 +44,20 @@ export async function checkoutExternalRepository(
   }
 
   return checkoutLocation;
+}
+
+export function buildCheckoutURL(
+  repository: string,
+  apiDetails: GitHubApiExternalRepoDetails
+): string {
+  const repoCloneURL = new URL(apiDetails.url);
+  if (apiDetails.externalRepoAuth !== undefined) {
+    repoCloneURL.username = "x-access-token";
+    repoCloneURL.password = apiDetails.externalRepoAuth;
+  }
+  if (!repoCloneURL.pathname.endsWith("/")) {
+    repoCloneURL.pathname += "/";
+  }
+  repoCloneURL.pathname += `${repository}`;
+  return repoCloneURL.toString();
 }

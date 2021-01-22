@@ -188,15 +188,15 @@ export interface CodedError {
   message: string;
   code: string;
 }
-function toCodedErrors(errors: {
-  [key: string]: string;
-}): { [key: string]: CodedError } {
+function toCodedErrors<T>(errors: T): Record<keyof T, CodedError> {
   return Object.entries(errors).reduce((acc, [key, value]) => {
     acc[key] = { message: value, code: key };
     return acc;
-  }, {} as ReturnType<typeof toCodedErrors>);
+  }, {} as Record<keyof T, CodedError>);
 }
 
+// codes to send back via status report
+// if message is set to a string a warning annotation will also be added to the run
 export const WorkflowErrors = toCodedErrors({
   MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that Code Scanning can compare pull requests against the state of the base branch.`,
   MissingHooks: `Please specify on.push and on.pull_request hooks so that Code Scanning can compare pull requests against the state of the base branch.`,
@@ -205,7 +205,6 @@ export const WorkflowErrors = toCodedErrors({
   PathsSpecified: `Using on.push.paths can prevent Code Scanning annotating new alerts in your pull requests.`,
   PathsIgnoreSpecified: `Using on.push.paths-ignore can prevent Code Scanning annotating new alerts in your pull requests.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
-  LintFailed: `Unable to lint workflow for CodeQL.`,
 });
 
 export function validateWorkflow(doc: Workflow): CodedError[] {
@@ -317,17 +316,23 @@ export function validateWorkflow(doc: Workflow): CodedError[] {
   return errors;
 }
 
-export async function getWorkflowErrors(): Promise<CodedError[]> {
+export async function getWorkflowErrors(): Promise<undefined | string> {
   try {
     const workflow = await getWorkflow();
 
-    if (workflow === undefined) {
-      return [];
-    }
+    try {
+      const workflowErrors = validateWorkflow(workflow);
 
-    return validateWorkflow(workflow);
+      if (workflowErrors.length > 0) {
+        core.warning(formatWorkflowErrors(workflowErrors));
+      }
+
+      return formatWorkflowCause(workflowErrors);
+    } catch (e) {
+      return `getWorkflowErrors() failed: ${e.toString()}`;
+    }
   } catch (e) {
-    return [WorkflowErrors.LintFailed];
+    return `getWorkflow() failed: ${e.toString()}`;
   }
 }
 
@@ -346,18 +351,14 @@ export function formatWorkflowCause(errors: CodedError[]): undefined | string {
   return errors.map((e) => e.code).join(",");
 }
 
-export async function getWorkflow(): Promise<Workflow | undefined> {
+export async function getWorkflow(): Promise<Workflow> {
   const relativePath = await getWorkflowPath();
   const absolutePath = path.join(
     getRequiredEnvParam("GITHUB_WORKSPACE"),
     relativePath
   );
 
-  try {
-    return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
-  } catch (e) {
-    return undefined;
-  }
+  return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
 }
 
 /**

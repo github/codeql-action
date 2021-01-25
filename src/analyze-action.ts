@@ -1,4 +1,8 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import * as core from "@actions/core";
+import * as glob from "@actions/glob";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -6,7 +10,7 @@ import {
   CodeQLAnalysisError,
   QueriesStatusReport,
 } from "./analyze";
-import { getConfig } from "./config-utils";
+import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -46,6 +50,7 @@ async function sendStatusReport(
 async function run() {
   const startedAt = new Date();
   let stats: AnalysisStatusReport | undefined = undefined;
+  let config: Config | undefined = undefined;
   try {
     actionsUtil.prepareLocalRunEnvironment();
     if (
@@ -60,7 +65,7 @@ async function run() {
       return;
     }
     const logger = getActionsLogger();
-    const config = await getConfig(
+    config = await getConfig(
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       logger
     );
@@ -115,6 +120,27 @@ async function run() {
 
     await sendStatusReport(startedAt, stats, error);
     return;
+  } finally {
+    if (core.isDebug() && config !== undefined) {
+      core.info("Debug mode is on. Printing CodeQL debug logs...");
+      for (const language of config.languages) {
+        const logsDirectory = util.getCodeQLDatabasePath(
+          config.tempDir,
+          language
+        );
+        const logGlobber = await glob.create(
+          path.join(logsDirectory, "log", "**")
+        );
+        const logFiles = await logGlobber.glob();
+        for (const logFile of logFiles) {
+          if (fs.statSync(logFile).isFile()) {
+            core.startGroup(`CodeQL Debug Logs - ${language} - ${logFile}`);
+            process.stderr.write(fs.readFileSync(logFile));
+            core.endGroup();
+          }
+        }
+      }
+    }
   }
 
   await sendStatusReport(startedAt, stats);

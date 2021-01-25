@@ -90,44 +90,44 @@ test("prepareEnvironment() when a local run", (t) => {
   t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "LOCAL-RUN:UNKNOWN-JOB");
 });
 
-test("validateWorkflow() when on is empty", (t) => {
-  const errors = actionsutil.validateWorkflow({ on: {} });
+test("getWorkflowErrors() when on is empty", (t) => {
+  const errors = actionsutil.getWorkflowErrors({ on: {} });
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.push is an array missing pull_request", (t) => {
-  const errors = actionsutil.validateWorkflow({ on: ["push"] });
+test("getWorkflowErrors() when on.push is an array missing pull_request", (t) => {
+  const errors = actionsutil.getWorkflowErrors({ on: ["push"] });
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.push is an array missing push", (t) => {
-  const errors = actionsutil.validateWorkflow({ on: ["pull_request"] });
+test("getWorkflowErrors() when on.push is an array missing push", (t) => {
+  const errors = actionsutil.getWorkflowErrors({ on: ["pull_request"] });
 
   t.deepEqual(
     ...errorCodes(errors, [actionsutil.WorkflowErrors.MissingPushHook])
   );
 });
 
-test("validateWorkflow() when on.push is valid", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.push is valid", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: ["push", "pull_request"],
   });
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.push is a valid superset", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.push is a valid superset", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: ["push", "pull_request", "schedule"],
   });
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.push should not have a path", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.push should not have a path", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: {
       push: { branches: ["main"], paths: ["test/*"] },
       pull_request: { branches: ["main"] },
@@ -139,16 +139,16 @@ test("validateWorkflow() when on.push should not have a path", (t) => {
   );
 });
 
-test("validateWorkflow() when on.push is a correct object", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.push is a correct object", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: { push: { branches: ["main"] }, pull_request: { branches: ["main"] } },
   });
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.pull_requests is a string", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.pull_requests is a string", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: { push: { branches: ["main"] }, pull_request: { branches: "*" } },
   });
 
@@ -157,16 +157,16 @@ test("validateWorkflow() when on.pull_requests is a string", (t) => {
   );
 });
 
-test("validateWorkflow() when on.pull_requests is a string and correct", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.pull_requests is a string and correct", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: { push: { branches: "*" }, pull_request: { branches: "*" } },
   });
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.push is correct with empty objects", (t) => {
-  const errors = actionsutil.validateWorkflow(
+test("getWorkflowErrors() when on.push is correct with empty objects", (t) => {
+  const errors = actionsutil.getWorkflowErrors(
     yaml.safeLoad(`
 on:
   push:
@@ -177,8 +177,8 @@ on:
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.push is mismatched", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.push is mismatched", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: {
       push: { branches: ["main"] },
       pull_request: { branches: ["feature"] },
@@ -190,8 +190,8 @@ test("validateWorkflow() when on.push is mismatched", (t) => {
   );
 });
 
-test("validateWorkflow() when on.push is not mismatched", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.push is not mismatched", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: {
       push: { branches: ["main", "feature"] },
       pull_request: { branches: ["main"] },
@@ -201,8 +201,8 @@ test("validateWorkflow() when on.push is not mismatched", (t) => {
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.push is mismatched for pull_request", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.push is mismatched for pull_request", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: {
       push: { branches: ["main"] },
       pull_request: { branches: ["main", "feature"] },
@@ -214,10 +214,10 @@ test("validateWorkflow() when on.push is mismatched for pull_request", (t) => {
   );
 });
 
-test("validateWorkflow() for a range of malformed workflows", (t) => {
+test("getWorkflowErrors() for a range of malformed workflows", (t) => {
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: {
           push: 1,
           pull_request: 1,
@@ -229,7 +229,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
       } as any),
       [actionsutil.WorkflowErrors.MissingHooks]
@@ -238,7 +238,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
         jobs: 1,
       } as any),
@@ -248,7 +248,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
         jobs: [1],
       } as any),
@@ -258,7 +258,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
         jobs: { 1: 1 },
       } as any),
@@ -268,7 +268,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
         jobs: { test: 1 },
       } as any),
@@ -278,7 +278,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
         jobs: { test: [1] },
       } as any),
@@ -288,7 +288,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
         jobs: { test: { steps: 1 } },
       } as any),
@@ -298,7 +298,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
         jobs: { test: { steps: [{ notrun: "git checkout HEAD^2" }] } },
       } as any),
@@ -308,7 +308,7 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: 1,
         jobs: { test: [undefined] },
       } as any),
@@ -316,11 +316,11 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
     )
   );
 
-  t.deepEqual(...errorCodes(actionsutil.validateWorkflow(1 as any), []));
+  t.deepEqual(...errorCodes(actionsutil.getWorkflowErrors(1 as any), []));
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow({
+      actionsutil.getWorkflowErrors({
         on: {
           push: {
             branches: 1,
@@ -335,8 +335,8 @@ test("validateWorkflow() for a range of malformed workflows", (t) => {
   );
 });
 
-test("validateWorkflow() when on.pull_request for every branch but push specifies branches", (t) => {
-  const errors = actionsutil.validateWorkflow(
+test("getWorkflowErrors() when on.pull_request for every branch but push specifies branches", (t) => {
+  const errors = actionsutil.getWorkflowErrors(
     yaml.safeLoad(`
 name: "CodeQL"
 on:
@@ -351,8 +351,8 @@ on:
   );
 });
 
-test("validateWorkflow() when on.pull_request for wildcard branches", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.pull_request for wildcard branches", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: {
       push: { branches: ["feature/*"] },
       pull_request: { branches: "feature/moose" },
@@ -362,8 +362,8 @@ test("validateWorkflow() when on.pull_request for wildcard branches", (t) => {
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.pull_request for mismatched wildcard branches", (t) => {
-  const errors = actionsutil.validateWorkflow({
+test("getWorkflowErrors() when on.pull_request for mismatched wildcard branches", (t) => {
+  const errors = actionsutil.getWorkflowErrors({
     on: {
       push: { branches: ["feature/moose"] },
       pull_request: { branches: "feature/*" },
@@ -375,10 +375,10 @@ test("validateWorkflow() when on.pull_request for mismatched wildcard branches",
   );
 });
 
-test("validateWorkflow() when HEAD^2 is checked out", (t) => {
+test("getWorkflowErrors() when HEAD^2 is checked out", (t) => {
   process.env.GITHUB_JOB = "test";
 
-  const errors = actionsutil.validateWorkflow({
+  const errors = actionsutil.getWorkflowErrors({
     on: ["push", "pull_request"],
     jobs: { test: { steps: [{ run: "git checkout HEAD^2" }] } },
   });
@@ -446,8 +446,8 @@ test("patternIsSuperset()", (t) => {
   );
 });
 
-test("validateWorkflow() when branches contain dots", (t) => {
-  const errors = actionsutil.validateWorkflow(
+test("getWorkflowErrors() when branches contain dots", (t) => {
+  const errors = actionsutil.getWorkflowErrors(
     yaml.safeLoad(`
   on:
     push:
@@ -461,8 +461,8 @@ test("validateWorkflow() when branches contain dots", (t) => {
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on.push has a trailing comma", (t) => {
-  const errors = actionsutil.validateWorkflow(
+test("getWorkflowErrors() when on.push has a trailing comma", (t) => {
+  const errors = actionsutil.getWorkflowErrors(
     yaml.safeLoad(`
 name: "CodeQL"
 on:
@@ -477,10 +477,10 @@ on:
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() should only report the current job's CheckoutWrongHead", (t) => {
+test("getWorkflowErrors() should only report the current job's CheckoutWrongHead", (t) => {
   process.env.GITHUB_JOB = "test";
 
-  const errors = actionsutil.validateWorkflow(
+  const errors = actionsutil.getWorkflowErrors(
     yaml.safeLoad(`
 name: "CodeQL"
 on:
@@ -508,10 +508,10 @@ jobs:
   );
 });
 
-test("validateWorkflow() should not report a different job's CheckoutWrongHead", (t) => {
+test("getWorkflowErrors() should not report a different job's CheckoutWrongHead", (t) => {
   process.env.GITHUB_JOB = "test3";
 
-  const errors = actionsutil.validateWorkflow(
+  const errors = actionsutil.getWorkflowErrors(
     yaml.safeLoad(`
 name: "CodeQL"
 on:
@@ -537,8 +537,8 @@ jobs:
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() when on is missing", (t) => {
-  const errors = actionsutil.validateWorkflow(
+test("getWorkflowErrors() when on is missing", (t) => {
+  const errors = actionsutil.getWorkflowErrors(
     yaml.safeLoad(`
 name: "CodeQL"
 `)
@@ -547,10 +547,10 @@ name: "CodeQL"
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("validateWorkflow() with a different on setup", (t) => {
+test("getWorkflowErrors() with a different on setup", (t) => {
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow(
+      actionsutil.getWorkflowErrors(
         yaml.safeLoad(`
 name: "CodeQL"
 on: "workflow_dispatch"
@@ -562,7 +562,7 @@ on: "workflow_dispatch"
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow(
+      actionsutil.getWorkflowErrors(
         yaml.safeLoad(`
 name: "CodeQL"
 on: [workflow_dispatch]
@@ -574,7 +574,7 @@ on: [workflow_dispatch]
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow(
+      actionsutil.getWorkflowErrors(
         yaml.safeLoad(`
 name: "CodeQL"
 on:
@@ -586,10 +586,10 @@ on:
   );
 });
 
-test("validateWorkflow() should not report an error if PRs are totally unconfigured", (t) => {
+test("getWorkflowErrors() should not report an error if PRs are totally unconfigured", (t) => {
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow(
+      actionsutil.getWorkflowErrors(
         yaml.safeLoad(`
 name: "CodeQL"
 on:
@@ -603,7 +603,7 @@ on:
 
   t.deepEqual(
     ...errorCodes(
-      actionsutil.validateWorkflow(
+      actionsutil.getWorkflowErrors(
         yaml.safeLoad(`
 name: "CodeQL"
 on: ["push"]

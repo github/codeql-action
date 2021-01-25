@@ -726,10 +726,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
     // This function just needs to be type-correct; it doesn't need to do anything,
     // since we're deliberately passing in invalid data
     const codeQL = setCodeQL({
-      async resolveQueries(
-        _queries: string[],
-        _extraSearchPath: string | undefined
-      ) {
+      async resolveQueries() {
         return {
           byLanguage: {
             javascript: {},

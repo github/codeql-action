@@ -96,9 +96,7 @@ async function run() {
 
   const apiDetails = {
     auth: actionsUtil.getRequiredInput("token"),
-    externalRepoAuth:
-      actionsUtil.getOptionalInput("external-repository-token") ??
-      actionsUtil.getRequiredInput("token"),
+    externalRepoAuth: actionsUtil.getOptionalInput("external-repository-token"),
     url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
   };
 
@@ -110,18 +108,7 @@ async function run() {
   try {
     actionsUtil.prepareLocalRunEnvironment();
 
-    const workflowErrors = await actionsUtil.getWorkflowErrors();
-
-    // we do not want to worry users if linting is failing
-    // but we do want to send a status report containing this error code
-    // below
-    const userWorkflowErrors = workflowErrors.filter(
-      (o) => o.code !== "LintFailed"
-    );
-
-    if (userWorkflowErrors.length > 0) {
-      core.warning(actionsUtil.formatWorkflowErrors(userWorkflowErrors));
-    }
+    const workflowErrors = await actionsUtil.validateWorkflow();
 
     if (
       !(await actionsUtil.sendStatusReport(
@@ -129,7 +116,7 @@ async function run() {
           "init",
           "starting",
           startedAt,
-          actionsUtil.formatWorkflowCause(workflowErrors)
+          workflowErrors
         )
       ))
     ) {

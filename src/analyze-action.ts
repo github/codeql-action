@@ -136,7 +136,7 @@ async function run() {
               core.startGroup(
                 `CodeQL Debug Logs - ${language} - ${entry.name}`
               );
-              process.stderr.write(
+              process.stdout.write(
                 fs.readFileSync(path.resolve(dir, entry.name))
               );
               core.endGroup();

@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as glob from "@actions/glob";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -124,21 +123,29 @@ async function run() {
     if (core.isDebug() && config !== undefined) {
       core.info("Debug mode is on. Printing CodeQL debug logs...");
       for (const language of config.languages) {
-        const logsDirectory = util.getCodeQLDatabasePath(
+        const databaseDirectory = util.getCodeQLDatabasePath(
           config.tempDir,
           language
         );
-        const logGlobber = await glob.create(
-          path.join(logsDirectory, "log", "**")
-        );
-        const logFiles = await logGlobber.glob();
-        for (const logFile of logFiles) {
-          if (fs.statSync(logFile).isFile()) {
-            core.startGroup(`CodeQL Debug Logs - ${language} - ${logFile}`);
-            process.stderr.write(fs.readFileSync(logFile));
-            core.endGroup();
+        const logsDirectory = path.join(databaseDirectory, "log");
+
+        const walkLogFiles = (dir: string) => {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isFile()) {
+              core.startGroup(
+                `CodeQL Debug Logs - ${language} - ${entry.name}`
+              );
+              process.stderr.write(
+                fs.readFileSync(path.resolve(dir, entry.name))
+              );
+              core.endGroup();
+            } else if (entry.isDirectory()) {
+              walkLogFiles(path.resolve(dir, entry.name));
+            }
           }
-        }
+        };
+        walkLogFiles(logsDirectory);
       }
     }
   }

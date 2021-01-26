@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -6,7 +9,7 @@ import {
   CodeQLAnalysisError,
   QueriesStatusReport,
 } from "./analyze";
-import { getConfig } from "./config-utils";
+import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -46,6 +49,7 @@ async function sendStatusReport(
 async function run() {
   const startedAt = new Date();
   let stats: AnalysisStatusReport | undefined = undefined;
+  let config: Config | undefined = undefined;
   try {
     actionsUtil.prepareLocalRunEnvironment();
     if (
@@ -60,7 +64,7 @@ async function run() {
       return;
     }
     const logger = getActionsLogger();
-    const config = await getConfig(
+    config = await getConfig(
       actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
       logger
     );
@@ -115,6 +119,35 @@ async function run() {
 
     await sendStatusReport(startedAt, stats, error);
     return;
+  } finally {
+    if (core.isDebug() && config !== undefined) {
+      core.info("Debug mode is on. Printing CodeQL debug logs...");
+      for (const language of config.languages) {
+        const databaseDirectory = util.getCodeQLDatabasePath(
+          config.tempDir,
+          language
+        );
+        const logsDirectory = path.join(databaseDirectory, "log");
+
+        const walkLogFiles = (dir: string) => {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isFile()) {
+              core.startGroup(
+                `CodeQL Debug Logs - ${language} - ${entry.name}`
+              );
+              process.stdout.write(
+                fs.readFileSync(path.resolve(dir, entry.name))
+              );
+              core.endGroup();
+            } else if (entry.isDirectory()) {
+              walkLogFiles(path.resolve(dir, entry.name));
+            }
+          }
+        };
+        walkLogFiles(logsDirectory);
+      }
+    }
   }
 
   await sendStatusReport(startedAt, stats);

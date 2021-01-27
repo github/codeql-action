@@ -20,6 +20,7 @@ jobs:
       with:
         languages: javascript
         config-file: ./.github/codeql/codeql-config.yml
+        tools: latest
     # confirm steps.init.outputs.codeql-path points to the codeql binary
     - name: Print CodeQL Version
       run: ${{steps.init.outputs.codeql-path}} version --format=json

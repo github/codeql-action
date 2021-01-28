@@ -109,27 +109,16 @@ export async function uploadFromActions(
   apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<UploadStatusReport> {
-  const repositoryNwo = parseRepositoryNwo(
-    actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")
-  );
-  const commitOid = await actionsUtil.getCommitOid();
-  const ref = await actionsUtil.getRef();
-  const analysisKey = await actionsUtil.getAnalysisKey();
-  const analysisName = actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW");
-  const workflowRunID = actionsUtil.getWorkflowRunID();
-  const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
-  const environment = actionsUtil.getRequiredInput("matrix");
-
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
-    repositoryNwo,
-    commitOid,
-    ref,
-    analysisKey,
-    analysisName,
-    workflowRunID,
-    checkoutPath,
-    environment,
+    parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
+    await actionsUtil.getCommitOid(),
+    await actionsUtil.getRef(),
+    await actionsUtil.getAnalysisKey(),
+    actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
+    actionsUtil.getWorkflowRunID(),
+    actionsUtil.getRequiredInput("checkout_path"),
+    actionsUtil.getRequiredInput("matrix"),
     gitHubVersion,
     apiDetails,
     "actions",

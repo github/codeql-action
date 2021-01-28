@@ -11,7 +11,6 @@ import {
 } from "./analyze";
 import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
 
@@ -90,16 +89,6 @@ async function run() {
     if (actionsUtil.getRequiredInput("upload") === "true") {
       const uploadStats = await upload_lib.uploadFromActions(
         outputDir,
-        parseRepositoryNwo(
-          actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")
-        ),
-        await actionsUtil.getCommitOid(),
-        await actionsUtil.getRef(),
-        await actionsUtil.getAnalysisKey(),
-        actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
-        actionsUtil.getWorkflowRunID(),
-        actionsUtil.getRequiredInput("checkout_path"),
-        actionsUtil.getRequiredInput("matrix"),
         config.gitHubVersion,
         apiDetails,
         logger

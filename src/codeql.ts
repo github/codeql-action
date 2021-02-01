@@ -7,6 +7,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as http from "@actions/http-client";
 import { IHeaders } from "@actions/http-client/interfaces";
 import * as toolcache from "@actions/tool-cache";
+import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
@@ -176,7 +177,9 @@ async function getCodeQLBundleDownloadURL(
   // We now filter out any duplicates.
   // Duplicates will happen either because the GitHub instance is GitHub.com, or because the Action is not a fork.
   const uniqueDownloadSources = potentialDownloadSources.filter(
-    (url, index, self) => index === self.indexOf(url)
+    (source, index, self) => {
+      return !self.slice(0, index).some((other) => deepEqual(source, other));
+    }
   );
   const codeQLBundleName = getCodeQLBundleName();
   for (const downloadSource of uniqueDownloadSources) {

@@ -267,14 +267,14 @@ export function checkGitHubVersionInRange(
     disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_OLD
   ) {
     logger.warning(
-      `The CodeQL ${toolName} version you are using is too old to be compatible with GitHub Enterprise ${version}. If you experience issues, please upgrade to a more recent version of the CodeQL ${toolName}.`
+      `The CodeQL ${toolName} version you are using is too old to be compatible with GitHub Enterprise ${version.version}. If you experience issues, please upgrade to a more recent version of the CodeQL ${toolName}.`
     );
   }
   if (
     disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_NEW
   ) {
     logger.warning(
-      `GitHub Enterprise ${version} is too old to be compatible with this version of the CodeQL ${toolName}. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL ${toolName}.`
+      `GitHub Enterprise ${version.version} is too old to be compatible with this version of the CodeQL ${toolName}. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL ${toolName}.`
     );
   }
   hasBeenWarnedAboutVersion = true;

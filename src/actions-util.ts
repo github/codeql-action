@@ -177,17 +177,11 @@ function branchesToArray(branches?: string | null | string[]): string[] | "**" {
   }
   return "**";
 }
-
-enum MissingTriggers {
-  None = 0,
-  Push = 1,
-  PullRequest = 2,
-}
-
 export interface CodedError {
   message: string;
   code: string;
 }
+
 function toCodedErrors<T>(errors: T): Record<keyof T, CodedError> {
   return Object.entries(errors).reduce((acc, [key, value]) => {
     acc[key] = { message: value, code: key };
@@ -199,8 +193,6 @@ function toCodedErrors<T>(errors: T): Record<keyof T, CodedError> {
 // message to add as a warning annotation to the run
 export const WorkflowErrors = toCodedErrors({
   MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that Code Scanning can compare pull requests against the state of the base branch.`,
-  MissingHooks: `Please specify on.push and on.pull_request hooks so that Code Scanning can compare pull requests against the state of the base branch.`,
-  MissingPullRequestHook: `Please specify an on.pull_request hook so that Code Scanning is explicitly run against pull requests. This will be required to see results on pull requests from January 31 2021.`,
   MissingPushHook: `Please specify an on.push hook so that Code Scanning can compare pull requests against the state of the base branch.`,
   PathsSpecified: `Using on.push.paths can prevent Code Scanning annotating new alerts in your pull requests.`,
   PathsIgnoreSpecified: `Using on.push.paths-ignore can prevent Code Scanning annotating new alerts in your pull requests.`,
@@ -232,19 +224,19 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
     }
   }
 
-  let missing = MissingTriggers.None;
+  let missingPush = false;
 
   if (doc.on === undefined) {
     // this is not a valid config
   } else if (typeof doc.on === "string") {
     if (doc.on === "pull_request") {
-      missing = MissingTriggers.Push;
+      missingPush = true;
     }
   } else if (Array.isArray(doc.on)) {
     const hasPush = doc.on.includes("push");
     const hasPullRequest = doc.on.includes("pull_request");
     if (hasPullRequest && !hasPush) {
-      missing = missing | MissingTriggers.Push;
+      missingPush = true;
     }
   } else if (isObject(doc.on)) {
     const hasPush = Object.prototype.hasOwnProperty.call(doc.on, "push");
@@ -254,7 +246,7 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
     );
 
     if (!hasPush && hasPullRequest) {
-      missing = missing | MissingTriggers.Push;
+      missingPush = true;
     }
     if (hasPush && hasPullRequest) {
       const paths = doc.on.push?.paths;
@@ -295,22 +287,10 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
         }
       }
     }
-  } else {
-    // on is not a known type
-    // this workflow is likely malformed
-    missing = MissingTriggers.Push | MissingTriggers.PullRequest;
   }
 
-  switch (missing) {
-    case MissingTriggers.PullRequest | MissingTriggers.Push:
-      errors.push(WorkflowErrors.MissingHooks);
-      break;
-    case MissingTriggers.PullRequest:
-      errors.push(WorkflowErrors.MissingPullRequestHook);
-      break;
-    case MissingTriggers.Push:
-      errors.push(WorkflowErrors.MissingPushHook);
-      break;
+  if (missingPush) {
+    errors.push(WorkflowErrors.MissingPushHook);
   }
 
   return errors;

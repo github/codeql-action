@@ -45,6 +45,11 @@ export function getRequiredEnvParam(paramName: string): string {
   return value;
 }
 
+export function getTemporaryDirectory(): string {
+  const value = process.env["CODEQL_ACTION_TEMP"];
+  return value !== undefined ? value : getRequiredEnvParam("RUNNER_TEMP");
+}
+
 /**
  * Ensures all required environment variables are set in the context of a local run.
  */

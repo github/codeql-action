@@ -403,6 +403,13 @@ test("formatWorkflowErrors() when there are multiple errors", (t) => {
   t.true(message.startsWith("2 issues were detected with this workflow:"));
 });
 
+test("formatWorkflowCause() with no errors", (t) => {
+  const message = actionsutil.formatWorkflowCause([
+  ]);
+
+  t.deepEqual(message, undefined);
+});
+
 test("formatWorkflowCause()", (t) => {
   const message = actionsutil.formatWorkflowCause([
     actionsutil.WorkflowErrors.CheckoutWrongHead,

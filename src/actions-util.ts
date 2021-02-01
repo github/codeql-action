@@ -320,7 +320,7 @@ export async function validateWorkflow(): Promise<undefined | string> {
     core.warning(message);
   }
 
-  return `warning: ${formatWorkflowCause(workflowErrors)}`;
+  return formatWorkflowCause(workflowErrors);
 }
 
 export function formatWorkflowErrors(errors: CodedError[]): string {

@@ -35,7 +35,7 @@ def open_pr(repo, all_commits, short_main_sha, branch_name):
   commits_without_pull_requests = []
   for commit in all_commits:
     pr = get_pr_for_commit(repo, commit)
-    
+
     if pr is None:
       commits_without_pull_requests.append(commit)
     elif not any(p for p in pull_requests if p.number == pr.number):
@@ -47,7 +47,7 @@ def open_pr(repo, all_commits, short_main_sha, branch_name):
   # Sort PRs and commits by age
   pull_requests = sorted(pull_requests, key=lambda pr: pr.number)
   commits_without_pull_requests = sorted(commits_without_pull_requests, key=lambda c: c.commit.author.date)
-  
+
   # Start constructing the body text
   body = 'Merging ' + short_main_sha + ' into ' + LATEST_RELEASE_BRANCH
 
@@ -62,7 +62,7 @@ def open_pr(repo, all_commits, short_main_sha, branch_name):
       body += '\n- #' + str(pr.number)
       body += ' - ' + pr.title
       body += ' (@' + merger + ')'
-  
+
   # List all commits not part of a PR
   if len(commits_without_pull_requests) > 0:
     body += '\n\nContains the following commits not from a pull request:'
@@ -86,7 +86,7 @@ def get_conductor(repo, pull_requests, other_commits):
   # If there are any PRs then use whoever merged the last one
   if len(pull_requests) > 0:
     return get_merger_of_pr(repo, pull_requests[-1])
-  
+
   # Otherwise take the author of the latest commit
   return other_commits[-1].author.login
 
@@ -95,7 +95,7 @@ def get_conductor(repo, pull_requests, other_commits):
 # This will not include any commits that exist on the release branch
 # that aren't on main.
 def get_commit_difference(repo):
-  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + LATEST_RELEASE_BRANCH + '...' + MAIN_BRANCH).strip().split('\n')
+  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + LATEST_RELEASE_BRANCH + '..' + MAIN_BRANCH).strip().split('\n')
 
   # Convert to full-fledged commit objects
   commits = [repo.get_commit(c) for c in commits]
@@ -119,7 +119,7 @@ def get_truncated_commit_message(commit):
 # Returns the PR object, or None if no PR could be found.
 def get_pr_for_commit(repo, commit):
   prs = commit.get_pulls()
-  
+
   if prs.totalCount > 0:
     # In the case that there are multiple PRs, return the earliest one
     prs = list(prs)
@@ -165,7 +165,7 @@ def main():
   if branch_exists_on_remote(new_branch_name):
     print('Branch ' + new_branch_name + ' already exists. Nothing to do.')
     return
-  
+
   # Create the new branch and push it to the remote
   print('Creating branch ' + new_branch_name)
   run_git('checkout', '-b', new_branch_name, MAIN_BRANCH)

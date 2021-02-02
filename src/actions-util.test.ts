@@ -232,7 +232,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
       actionsutil.getWorkflowErrors({
         on: 1,
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -242,7 +242,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: 1,
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -252,7 +252,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: [1],
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -262,7 +262,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { 1: 1 },
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -272,7 +272,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: 1 },
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -282,7 +282,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: [1] },
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -292,7 +292,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: { steps: 1 } },
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -302,7 +302,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: { steps: [{ notrun: "git checkout HEAD^2" }] } },
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -312,7 +312,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: [undefined] },
       } as any),
-      [actionsutil.WorkflowErrors.MissingHooks]
+      []
     )
   );
 
@@ -401,6 +401,12 @@ test("formatWorkflowErrors() when there are multiple errors", (t) => {
     actionsutil.WorkflowErrors.PathsSpecified,
   ]);
   t.true(message.startsWith("2 issues were detected with this workflow:"));
+});
+
+test("formatWorkflowCause() with no errors", (t) => {
+  const message = actionsutil.formatWorkflowCause([]);
+
+  t.deepEqual(message, undefined);
 });
 
 test("formatWorkflowCause()", (t) => {

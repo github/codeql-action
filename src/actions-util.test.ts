@@ -404,8 +404,7 @@ test("formatWorkflowErrors() when there are multiple errors", (t) => {
 });
 
 test("formatWorkflowCause() with no errors", (t) => {
-  const message = actionsutil.formatWorkflowCause([
-  ]);
+  const message = actionsutil.formatWorkflowCause([]);
 
   t.deepEqual(message, undefined);
 });

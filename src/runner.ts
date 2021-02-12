@@ -20,6 +20,7 @@ import {
   getMemoryFlag,
   getThreadsFlag,
   parseGithubUrl,
+  getGitHubAuth,
 } from "./util";
 
 const program = new Command();
@@ -96,6 +97,7 @@ interface InitArgs {
   repository: string;
   githubUrl: string;
   githubAuth: string;
+  githubAuthStdin: boolean;
   externalRepositoryToken: string | undefined;
   debug: boolean;
 }
@@ -105,9 +107,13 @@ program
   .description("Initializes CodeQL")
   .requiredOption("--repository <repository>", "Repository name. (Required)")
   .requiredOption("--github-url <url>", "URL of GitHub instance. (Required)")
-  .requiredOption(
+  .option(
     "--github-auth <auth>",
-    "GitHub Apps token or personal access token. (Required)"
+    "GitHub Apps token or personal access token. This option is insecure and deprecated, please use `--github-auth-stdin` instead."
+  )
+  .option(
+    "--github-auth-stdin",
+    "Read GitHub Apps token or personal access token from stdin."
   )
   .option(
     "--external-repository-token <token>",
@@ -153,8 +159,14 @@ program
       fs.rmdirSync(tempDir, { recursive: true });
       fs.mkdirSync(tempDir, { recursive: true });
 
+      const auth = await getGitHubAuth(
+        logger,
+        cmd.githubAuth,
+        cmd.githubAuthStdin
+      );
+
       const apiDetails = {
-        auth: cmd.githubAuth,
+        auth,
         externalRepoAuth: cmd.externalRepositoryToken,
         url: parseGithubUrl(cmd.githubUrl),
       };
@@ -315,6 +327,7 @@ interface AnalyzeArgs {
   ref: string;
   githubUrl: string;
   githubAuth: string;
+  githubAuthStdin: boolean;
   checkoutPath: string | undefined;
   upload: boolean;
   outputDir: string | undefined;
@@ -335,9 +348,13 @@ program
   )
   .requiredOption("--ref <ref>", "Name of ref that was analyzed. (Required)")
   .requiredOption("--github-url <url>", "URL of GitHub instance. (Required)")
-  .requiredOption(
+  .option(
     "--github-auth <auth>",
-    "GitHub Apps token or personal access token. (Required)"
+    "GitHub Apps token or personal access token. This option is insecure and deprecated, please use `--github-auth-stdin` instead."
+  )
+  .option(
+    "--github-auth-stdin",
+    "Read GitHub Apps token or personal access token from stdin."
   )
   .option(
     "--checkout-path <path>",
@@ -379,8 +396,14 @@ program
         );
       }
 
+      const auth = await getGitHubAuth(
+        logger,
+        cmd.githubAuth,
+        cmd.githubAuthStdin
+      );
+
       const apiDetails = {
-        auth: cmd.githubAuth,
+        auth,
         url: parseGithubUrl(cmd.githubUrl),
       };
 
@@ -421,6 +444,7 @@ interface UploadArgs {
   commit: string;
   ref: string;
   githubUrl: string;
+  githubAuthStdin: boolean;
   githubAuth: string;
   checkoutPath: string | undefined;
   debug: boolean;
@@ -442,9 +466,13 @@ program
   )
   .requiredOption("--ref <ref>", "Name of ref that was analyzed. (Required)")
   .requiredOption("--github-url <url>", "URL of GitHub instance. (Required)")
-  .requiredOption(
+  .option(
     "--github-auth <auth>",
-    "GitHub Apps token or personal access token. (Required)"
+    "GitHub Apps token or personal access token. This option is insecure and deprecated, please use `--github-auth-stdin` instead."
+  )
+  .option(
+    "--github-auth-stdin",
+    "Read GitHub Apps token or personal access token from stdin."
   )
   .option(
     "--checkout-path <path>",
@@ -453,8 +481,13 @@ program
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
     const logger = getRunnerLogger(cmd.debug);
+    const auth = await getGitHubAuth(
+      logger,
+      cmd.githubAuth,
+      cmd.githubAuthStdin
+    );
     const apiDetails = {
-      auth: cmd.githubAuth,
+      auth,
       url: parseGithubUrl(cmd.githubUrl),
     };
     try {

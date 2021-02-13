@@ -230,6 +230,13 @@ test("getGitHubVersion", async (t) => {
   });
   t.deepEqual({ type: "ghes", version: "2.0" }, v2);
 
+  mockGetMetaVersionHeader("GitHub AE");
+  const ghae = await util.getGitHubVersion({
+    auth: "",
+    url: "https://example.githubenterprise.com",
+  });
+  t.deepEqual({ type: "ghae" }, ghae);
+
   mockGetMetaVersionHeader(undefined);
   const v3 = await util.getGitHubVersion({
     auth: "",

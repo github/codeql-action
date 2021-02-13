@@ -221,6 +221,7 @@ let hasBeenWarnedAboutVersion = false;
 
 export type GitHubVersion =
   | { type: "dotcom" }
+  | { type: "ghae" }
   | { type: "ghes"; version: string };
 
 export async function getGitHubVersion(
@@ -240,6 +241,10 @@ export async function getGitHubVersion(
   // case. This can also serve as a fallback in cases we haven't foreseen.
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
     return { type: "dotcom" };
+  }
+
+  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "GitHub AE") {
+    return { type: "ghae" };
   }
 
   const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;

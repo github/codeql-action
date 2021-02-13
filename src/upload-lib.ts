@@ -241,7 +241,7 @@ export function buildPayload(
 
     // This behaviour can be made the default when support for GHES 3.0 is discontinued.
     if (
-      gitHubVersion.type === "dotcom" ||
+      gitHubVersion.type !== "ghes" ||
       semver.satisfies(gitHubVersion.version, `>=3.1`)
     ) {
       if (

@@ -7,10 +7,11 @@ import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
 import * as semver from "semver";
 
+import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import * as fingerprints from "./fingerprints";
 import { Logger } from "./logging";
-import { RepositoryNwo } from "./repository";
+import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as sharedEnv from "./shared-environment";
 import * as util from "./util";
 
@@ -104,28 +105,20 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 // Returns true iff the upload occurred and succeeded
 export async function uploadFromActions(
   sarifPath: string,
-  repositoryNwo: RepositoryNwo,
-  commitOid: string,
-  ref: string,
-  analysisKey: string,
-  analysisName: string,
-  workflowRunID: number,
-  checkoutPath: string,
-  environment: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<UploadStatusReport> {
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
-    repositoryNwo,
-    commitOid,
-    ref,
-    analysisKey,
-    analysisName,
-    workflowRunID,
-    checkoutPath,
-    environment,
+    parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
+    await actionsUtil.getCommitOid(),
+    await actionsUtil.getRef(),
+    await actionsUtil.getAnalysisKey(),
+    actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
+    actionsUtil.getWorkflowRunID(),
+    actionsUtil.getRequiredInput("checkout_path"),
+    actionsUtil.getRequiredInput("matrix"),
     gitHubVersion,
     apiDetails,
     "actions",

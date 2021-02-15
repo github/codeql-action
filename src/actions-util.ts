@@ -47,7 +47,9 @@ export function getRequiredEnvParam(paramName: string): string {
 
 export function getTemporaryDirectory(): string {
   const value = process.env["CODEQL_ACTION_TEMP"];
-  return value !== undefined ? value : getRequiredEnvParam("RUNNER_TEMP");
+  return value !== undefined && value !== ""
+    ? value
+    : getRequiredEnvParam("RUNNER_TEMP");
 }
 
 /**

@@ -219,17 +219,22 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
   "CODEQL_ACTION_WARNED_ABOUT_VERSION";
 let hasBeenWarnedAboutVersion = false;
 
+export enum GitHubVariant {
+  DOTCOM,
+  GHES,
+  GHAE,
+}
 export type GitHubVersion =
-  | { type: "dotcom" }
-  | { type: "ghae" }
-  | { type: "ghes"; version: string };
+  | { type: GitHubVariant.DOTCOM }
+  | { type: GitHubVariant.GHAE }
+  | { type: GitHubVariant.GHES; version: string };
 
 export async function getGitHubVersion(
   apiDetails: GitHubApiDetails
 ): Promise<GitHubVersion> {
   // We can avoid making an API request in the standard dotcom case
   if (parseGithubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
-    return { type: "dotcom" };
+    return { type: GitHubVariant.DOTCOM };
   }
 
   // Doesn't strictly have to be the meta endpoint as we're only
@@ -240,15 +245,15 @@ export async function getGitHubVersion(
   // This happens on dotcom, although we expect to have already returned in that
   // case. This can also serve as a fallback in cases we haven't foreseen.
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
-    return { type: "dotcom" };
+    return { type: GitHubVariant.DOTCOM };
   }
 
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "GitHub AE") {
-    return { type: "ghae" };
+    return { type: GitHubVariant.GHAE };
   }
 
   const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
-  return { type: "ghes", version };
+  return { type: GitHubVariant.GHES, version };
 }
 
 export function checkGitHubVersionInRange(
@@ -256,7 +261,7 @@ export function checkGitHubVersionInRange(
   mode: Mode,
   logger: Logger
 ) {
-  if (hasBeenWarnedAboutVersion || version.type !== "ghes") {
+  if (hasBeenWarnedAboutVersion || version.type !== GitHubVariant.GHES) {
     return;
   }
 

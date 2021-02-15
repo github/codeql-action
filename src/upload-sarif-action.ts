@@ -2,7 +2,6 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import { getGitHubVersion } from "./util";
 
@@ -50,14 +49,6 @@ async function run() {
 
     const uploadStats = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
-      parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
-      await actionsUtil.getCommitOid(),
-      await actionsUtil.getRef(),
-      await actionsUtil.getAnalysisKey(),
-      actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
-      actionsUtil.getWorkflowRunID(),
-      actionsUtil.getRequiredInput("checkout_path"),
-      actionsUtil.getRequiredInput("matrix"),
       gitHubVersion,
       apiDetails,
       getActionsLogger()

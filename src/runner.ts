@@ -98,7 +98,6 @@ interface InitArgs {
   githubUrl: string;
   githubAuth: string;
   githubAuthStdin: boolean;
-  externalRepositoryToken: string | undefined;
   debug: boolean;
 }
 
@@ -114,10 +113,6 @@ program
   .option(
     "--github-auth-stdin",
     "Read GitHub Apps token or personal access token from stdin."
-  )
-  .option(
-    "--external-repository-token <token>",
-    "A token for fetching external config files and queries if they reside in a private repository."
   )
   .option(
     "--languages <languages>",
@@ -167,7 +162,6 @@ program
 
       const apiDetails = {
         auth,
-        externalRepoAuth: cmd.externalRepositoryToken,
         url: parseGithubUrl(cmd.githubUrl),
       };
 

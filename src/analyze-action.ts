@@ -63,10 +63,7 @@ async function run() {
       return;
     }
     const logger = getActionsLogger();
-    config = await getConfig(
-      actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
-      logger
-    );
+    config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
         "Config file could not be found at expected location. Has the 'init' action been called?"

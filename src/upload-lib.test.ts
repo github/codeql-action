@@ -6,7 +6,7 @@ import test from "ava";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
-import { GitHubVersion, withTmpDir } from "./util";
+import { GitHubVersion, GitHubVariant, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -26,12 +26,12 @@ test("validateSarifFileSchema - invalid", (t) => {
 
 test("validate correct payload used per version", async (t) => {
   const newVersions: GitHubVersion[] = [
-    { type: "dotcom" },
-    { type: "ghes", version: "3.1.0" },
+    { type: GitHubVariant.DOTCOM },
+    { type: GitHubVariant.GHES, version: "3.1.0" },
   ];
   const oldVersions: GitHubVersion[] = [
-    { type: "ghes", version: "2.22.1" },
-    { type: "ghes", version: "3.0.0" },
+    { type: GitHubVariant.GHES, version: "2.22.1" },
+    { type: GitHubVariant.GHES, version: "3.0.0" },
   ];
   const allVersions = newVersions.concat(oldVersions);
 

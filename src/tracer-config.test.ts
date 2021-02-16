@@ -26,7 +26,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     tempDir: tmpDir,
     toolCacheDir: tmpDir,
     codeQLCmd: "",
-    gitHubVersion: { type: "dotcom" } as util.GitHubVersion,
+    gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
   };
 }
 

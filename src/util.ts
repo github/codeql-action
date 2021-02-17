@@ -83,8 +83,21 @@ export async function withTmpDir<T>(
 }
 
 /**
+ * Gets an OS-specific amount of memory (in MB) to reserve for OS processes
+ * when the user doesn't explicitly specify a memory setting.
+ * This is a heuristic to avoid OOM errors (exit code 137 / SIGKILL)
+ * from committing too much of the available memory to CodeQL.
+ * @returns number
+ */
+function getSystemReservedMemoryMegaBytes(): number {
+  // Windows needs more memory for OS processes.
+  return 1024 * (process.platform === "win32" ? 1.5 : 1);
+}
+
+/**
  * Get the codeql `--ram` flag as configured by the `ram` input. If no value was
- * specified, the total available memory will be used minus 256 MB.
+ * specified, the total available memory will be used minus a threshold
+ * reserved for the OS.
  *
  * @returns string
  */
@@ -98,8 +111,8 @@ export function getMemoryFlag(userInput: string | undefined): string {
   } else {
     const totalMemoryBytes = os.totalmem();
     const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
-    const systemReservedMemoryMegaBytes = 256;
-    memoryToUseMegaBytes = totalMemoryMegaBytes - systemReservedMemoryMegaBytes;
+    const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes();
+    memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
   return `--ram=${Math.floor(memoryToUseMegaBytes)}`;
 }

@@ -24,10 +24,11 @@ test("getToolNames", (t) => {
 
 test("getMemoryFlag() should return the correct --ram flag", (t) => {
   const totalMem = Math.floor(os.totalmem() / (1024 * 1024));
+  const expectedThreshold = process.platform === "win32" ? 1536 : 1024;
 
   const tests = [
-    [undefined, `--ram=${totalMem - 256}`],
-    ["", `--ram=${totalMem - 256}`],
+    [undefined, `--ram=${totalMem - expectedThreshold}`],
+    ["", `--ram=${totalMem - expectedThreshold}`],
     ["512", "--ram=512"],
   ];
 

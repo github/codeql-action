@@ -162,6 +162,7 @@ program
 
       const apiDetails = {
         auth,
+        externalRepoAuth: auth,
         url: parseGithubUrl(cmd.githubUrl),
       };
 

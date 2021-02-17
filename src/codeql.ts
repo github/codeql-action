@@ -8,6 +8,7 @@ import * as http from "@actions/http-client";
 import { IHeaders } from "@actions/http-client/interfaces";
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
+import { default as queryString } from "query-string";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
@@ -212,6 +213,31 @@ async function getCodeQLBundleDownloadURL(
       );
     }
   }
+  try {
+    const release = await api
+      .getApiClient(apiDetails)
+      .request("GET /enterprise/code-scanning/codeql-bundle/find/{tag}", {
+        tag: CODEQL_BUNDLE_VERSION,
+      });
+    const assetID = release.data.assets[codeQLBundleName];
+    if (assetID !== undefined) {
+      const download = await api
+        .getApiClient(apiDetails)
+        .request(
+          "GET /enterprise/code-scanning/codeql-bundle/download/{asset_id}",
+          { asset_id: assetID }
+        );
+      const downloadURL = download.data.url;
+      logger.info(
+        `Found CodeQL bundle at GitHub AE endpoint with URL ${downloadURL}.`
+      );
+      return downloadURL;
+    }
+  } catch (e) {
+    logger.info(
+      `Attempted to fetch bundle from GitHub AE endpoint but got error ${e}.`
+    );
+  }
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${codeQLBundleName}`;
 }
 
@@ -291,11 +317,17 @@ export async function setupCodeQL(
         codeqlURL = await getCodeQLBundleDownloadURL(apiDetails, mode, logger);
       }
 
+      const parsedCodeQLURL = new URL(codeqlURL);
+      const parsedQueryString = queryString.parse(parsedCodeQLURL.search);
       const headers: IHeaders = { accept: "application/octet-stream" };
       // We only want to provide an authorization header if we are downloading
       // from the same GitHub instance the Action is running on.
       // This avoids leaking Enterprise tokens to dotcom.
-      if (codeqlURL.startsWith(`${apiDetails.url}/`)) {
+      // We also don't want to send an authorization header if there's already a token provided in the URL.
+      if (
+        codeqlURL.startsWith(`${apiDetails.url}/`) &&
+        parsedQueryString["token"] === undefined
+      ) {
         logger.debug("Downloading CodeQL bundle with token.");
         headers.authorization = `token ${apiDetails.auth}`;
       } else {

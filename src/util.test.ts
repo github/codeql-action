@@ -1,12 +1,13 @@
 import * as fs from "fs";
 import * as os from "os";
+import * as stream from "stream";
 
 import * as github from "@actions/github";
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 import sinon from "sinon";
 
 import * as api from "./api-client";
-import { getRunnerLogger } from "./logging";
+import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -23,10 +24,11 @@ test("getToolNames", (t) => {
 
 test("getMemoryFlag() should return the correct --ram flag", (t) => {
   const totalMem = Math.floor(os.totalmem() / (1024 * 1024));
+  const expectedThreshold = process.platform === "win32" ? 1536 : 1024;
 
   const tests = [
-    [undefined, `--ram=${totalMem - 256}`],
-    ["", `--ram=${totalMem - 256}`],
+    [undefined, `--ram=${totalMem - expectedThreshold}`],
+    ["", `--ram=${totalMem - expectedThreshold}`],
     ["512", "--ram=512"],
   ];
 
@@ -221,19 +223,85 @@ test("getGitHubVersion", async (t) => {
     auth: "",
     url: "https://github.com",
   });
-  t.deepEqual("dotcom", v.type);
+  t.deepEqual(util.GitHubVariant.DOTCOM, v.type);
 
   mockGetMetaVersionHeader("2.0");
   const v2 = await util.getGitHubVersion({
     auth: "",
     url: "https://ghe.example.com",
   });
-  t.deepEqual({ type: "ghes", version: "2.0" }, v2);
+  t.deepEqual({ type: util.GitHubVariant.GHES, version: "2.0" }, v2);
+
+  mockGetMetaVersionHeader("GitHub AE");
+  const ghae = await util.getGitHubVersion({
+    auth: "",
+    url: "https://example.githubenterprise.com",
+  });
+  t.deepEqual({ type: util.GitHubVariant.GHAE }, ghae);
 
   mockGetMetaVersionHeader(undefined);
   const v3 = await util.getGitHubVersion({
     auth: "",
     url: "https://ghe.example.com",
   });
-  t.deepEqual({ type: "dotcom" }, v3);
+  t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
 });
+
+test("getGitHubAuth", async (t) => {
+  const msgs: string[] = [];
+  const mockLogger = ({
+    warning: (msg: string) => msgs.push(msg),
+  } as unknown) as Logger;
+
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  t.throwsAsync(async () => util.getGitHubAuth(mockLogger, "abc", true));
+
+  process.env.GITHUB_TOKEN = "123";
+  t.is("123", await util.getGitHubAuth(mockLogger, undefined, undefined));
+  t.is(msgs.length, 0);
+  t.is("abc", await util.getGitHubAuth(mockLogger, "abc", undefined));
+  t.is(msgs.length, 1); // warning expected
+
+  msgs.length = 0;
+  await mockStdInForAuth(t, mockLogger, "def", "def");
+  await mockStdInForAuth(t, mockLogger, "def", "", "def");
+  await mockStdInForAuth(
+    t,
+    mockLogger,
+    "def",
+    "def\n some extra garbage",
+    "ghi"
+  );
+  await mockStdInForAuth(t, mockLogger, "defghi", "def", "ghi\n123");
+
+  await mockStdInForAuthExpectError(t, mockLogger, "");
+  await mockStdInForAuthExpectError(t, mockLogger, "", " ", "abc");
+  await mockStdInForAuthExpectError(
+    t,
+    mockLogger,
+    "  def\n some extra garbage",
+    "ghi"
+  );
+  t.is(msgs.length, 0);
+});
+
+async function mockStdInForAuth(
+  t: ExecutionContext<any>,
+  mockLogger: Logger,
+  expected: string,
+  ...text: string[]
+) {
+  const stdin = stream.Readable.from(text) as any;
+  t.is(expected, await util.getGitHubAuth(mockLogger, undefined, true, stdin));
+}
+
+async function mockStdInForAuthExpectError(
+  t: ExecutionContext<unknown>,
+  mockLogger: Logger,
+  ...text: string[]
+) {
+  const stdin = stream.Readable.from(text) as any;
+  await t.throwsAsync(async () =>
+    util.getGitHubAuth(mockLogger, undefined, true, stdin)
+  );
+}

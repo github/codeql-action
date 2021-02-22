@@ -57,7 +57,7 @@ async function run() {
     }
 
     const config = await config_utils.getConfig(
-      actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
+      actionsUtil.getTemporaryDirectory(),
       logger
     );
     if (config === undefined) {

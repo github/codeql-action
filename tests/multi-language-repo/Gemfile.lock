@@ -1,0 +1,12 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+
+PLATFORMS
+  x86_64-linux
+
+DEPENDENCIES
+  bundler (= 2.2.9)
+
+BUNDLED WITH
+   2.2.9

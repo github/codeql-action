@@ -21,7 +21,7 @@ const sampleApiDetails = {
   url: "https://github.example.com",
 };
 
-const gitHubVersion = { type: "dotcom" } as util.GitHubVersion;
+const gitHubVersion = { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion;
 
 // Returns the filepath of the newly-created file
 function createConfigFile(inputFileContents: string, tmpDir: string): string {

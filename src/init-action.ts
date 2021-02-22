@@ -126,7 +126,7 @@ async function run() {
     const initCodeQLResult = await initCodeQL(
       actionsUtil.getOptionalInput("tools"),
       apiDetails,
-      actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
+      actionsUtil.getTemporaryDirectory(),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       "actions",
       logger
@@ -139,7 +139,7 @@ async function run() {
       actionsUtil.getOptionalInput("queries"),
       actionsUtil.getOptionalInput("config-file"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
-      actionsUtil.getRequiredEnvParam("RUNNER_TEMP"),
+      actionsUtil.getTemporaryDirectory(),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),

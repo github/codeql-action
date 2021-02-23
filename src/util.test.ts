@@ -126,15 +126,15 @@ test("getExtraOptionsEnvParam() fails on invalid JSON", (t) => {
 });
 
 test("parseGithubUrl", (t) => {
-  t.deepEqual(util.parseGithubUrl("github.com"), "https://github.com");
-  t.deepEqual(util.parseGithubUrl("https://github.com"), "https://github.com");
+  t.deepEqual(util.parseGithubUrl("github.com"), "https://github.com/");
+  t.deepEqual(util.parseGithubUrl("https://github.com"), "https://github.com/");
   t.deepEqual(
-    util.parseGithubUrl("https://api.github.com"),
-    "https://github.com"
+    util.parseGithubUrl("https://api.github.com/"),
+    "https://github.com/"
   );
   t.deepEqual(
     util.parseGithubUrl("https://github.com/foo/bar"),
-    "https://github.com"
+    "https://github.com/"
   );
 
   t.deepEqual(

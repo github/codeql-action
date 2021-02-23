@@ -19,7 +19,7 @@ export type Mode = "actions" | "runner";
 /**
  * The URL for github.com.
  */
-export const GITHUB_DOTCOM_URL = "https://github.com";
+export const GITHUB_DOTCOM_URL = "https://github.com/";
 
 /**
  * Get the extra options for the codeql commands.

@@ -125,62 +125,62 @@ test("getExtraOptionsEnvParam() fails on invalid JSON", (t) => {
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
 });
 
-test("parseGithubUrl", (t) => {
-  t.deepEqual(util.parseGithubUrl("github.com"), "https://github.com");
-  t.deepEqual(util.parseGithubUrl("https://github.com"), "https://github.com");
+test("parseGitHubUrl", (t) => {
+  t.deepEqual(util.parseGitHubUrl("github.com"), "https://github.com");
+  t.deepEqual(util.parseGitHubUrl("https://github.com"), "https://github.com");
   t.deepEqual(
-    util.parseGithubUrl("https://api.github.com"),
+    util.parseGitHubUrl("https://api.github.com"),
     "https://github.com"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://github.com/foo/bar"),
+    util.parseGitHubUrl("https://github.com/foo/bar"),
     "https://github.com"
   );
 
   t.deepEqual(
-    util.parseGithubUrl("github.example.com"),
+    util.parseGitHubUrl("github.example.com"),
     "https://github.example.com/"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://github.example.com"),
+    util.parseGitHubUrl("https://github.example.com"),
     "https://github.example.com/"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://api.github.example.com"),
+    util.parseGitHubUrl("https://api.github.example.com"),
     "https://github.example.com/"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://github.example.com/api/v3"),
+    util.parseGitHubUrl("https://github.example.com/api/v3"),
     "https://github.example.com/"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://github.example.com:1234"),
+    util.parseGitHubUrl("https://github.example.com:1234"),
     "https://github.example.com:1234/"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://api.github.example.com:1234"),
+    util.parseGitHubUrl("https://api.github.example.com:1234"),
     "https://github.example.com:1234/"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://github.example.com:1234/api/v3"),
+    util.parseGitHubUrl("https://github.example.com:1234/api/v3"),
     "https://github.example.com:1234/"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://github.example.com/base/path"),
+    util.parseGitHubUrl("https://github.example.com/base/path"),
     "https://github.example.com/base/path/"
   );
   t.deepEqual(
-    util.parseGithubUrl("https://github.example.com/base/path/api/v3"),
+    util.parseGitHubUrl("https://github.example.com/base/path/api/v3"),
     "https://github.example.com/base/path/"
   );
 
-  t.throws(() => util.parseGithubUrl(""), {
+  t.throws(() => util.parseGitHubUrl(""), {
     message: '"" is not a valid URL',
   });
-  t.throws(() => util.parseGithubUrl("ssh://github.com"), {
+  t.throws(() => util.parseGitHubUrl("ssh://github.com"), {
     message: '"ssh://github.com" is not a http or https URL',
   });
-  t.throws(() => util.parseGithubUrl("http:///::::433"), {
+  t.throws(() => util.parseGitHubUrl("http:///::::433"), {
     message: '"http:///::::433" is not a valid URL',
   });
 });

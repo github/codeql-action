@@ -19,7 +19,7 @@ import {
   getGitHubVersion,
   getMemoryFlag,
   getThreadsFlag,
-  parseGithubUrl,
+  parseGitHubUrl,
   getGitHubAuth,
   setupActionsVars,
 } from "./util";
@@ -166,7 +166,7 @@ program
       const apiDetails = {
         auth,
         externalRepoAuth: auth,
-        url: parseGithubUrl(cmd.githubUrl),
+        url: parseGitHubUrl(cmd.githubUrl),
       };
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
@@ -400,7 +400,7 @@ program
 
       const apiDetails = {
         auth,
-        url: parseGithubUrl(cmd.githubUrl),
+        url: parseGitHubUrl(cmd.githubUrl),
       };
 
       const outputDir =
@@ -486,7 +486,7 @@ program
     );
     const apiDetails = {
       auth,
-      url: parseGithubUrl(cmd.githubUrl),
+      url: parseGitHubUrl(cmd.githubUrl),
     };
     try {
       const gitHubVersion = await getGitHubVersion(apiDetails);

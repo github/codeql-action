@@ -34,7 +34,7 @@ export function printPathFiltersWarning(
     !config.languages.every(isInterpretedLanguage)
   ) {
     logger.warning(
-      'The "paths"/"paths-ignore" fields of the config only have effect for Javascript and Python'
+      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript and Python'
     );
   }
 }

@@ -189,7 +189,7 @@ export function getCodeQLDatabasePath(tempDir: string, language: Language) {
  * Parses user input of a github.com or GHES URL to a canonical form.
  * Removes any API prefix or suffix if one is present.
  */
-export function parseGithubUrl(inputUrl: string): string {
+export function parseGitHubUrl(inputUrl: string): string {
   const originalUrl = inputUrl;
   if (inputUrl.indexOf("://") === -1) {
     inputUrl = `https://${inputUrl}`;
@@ -247,7 +247,7 @@ export async function getGitHubVersion(
   apiDetails: GitHubApiDetails
 ): Promise<GitHubVersion> {
   // We can avoid making an API request in the standard dotcom case
-  if (parseGithubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
+  if (parseGitHubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
     return { type: GitHubVariant.DOTCOM };
   }
 

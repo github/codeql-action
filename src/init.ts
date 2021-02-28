@@ -192,7 +192,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
 
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
 
-  // Setup tools on the Github hosted runners
+  // Setup tools on the GitHub hosted runners
   if (process.env["ImageOS"] !== undefined) {
     try {
       if (process.platform === "win32") {

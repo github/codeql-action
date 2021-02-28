@@ -396,7 +396,7 @@ export function getWorkflowRunID(): number {
 }
 
 /**
- * Get the analysis key paramter for the current job.
+ * Get the analysis key parameter for the current job.
  *
  * This will combine the workflow path and current job name.
  * Computing this the first time requires making requests to
@@ -633,7 +633,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
     // something else has gone wrong and the request/response will be logged by octokit
     // it's possible this is a transient error and we should continue scanning
     core.error(
-      "An unexpected error occured when sending code scanning status report."
+      "An unexpected error occurred when sending code scanning status report."
     );
     return true;
   }

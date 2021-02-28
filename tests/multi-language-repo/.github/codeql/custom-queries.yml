@@ -23,7 +23,7 @@ queries:
     uses: Anthophila/go-querypack@master
   - name: Cpp queries 
     uses: Anthophila/cpp-querypack@second-branch
-  - name: Javascript queries 
+  - name: JavaScript queries 
     uses: Anthophila/javascript-querypack/show_ifs2.ql@master
   - name: Python queries 
     uses: Anthophila/python-querypack/show_ifs2.ql@second-branch 

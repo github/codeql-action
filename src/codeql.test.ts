@@ -187,7 +187,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
   });
 });
 
-test('download codeql bundle cache with pinned different version cached if "latests" tools specified', async (t) => {
+test('download codeql bundle cache with pinned different version cached if "latest" tools specified', async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     util.setupActionsVars(tmpDir, tmpDir);
 

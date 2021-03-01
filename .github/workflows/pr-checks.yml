@@ -1,5 +1,8 @@
 name: "PR checks"
 
+env:
+  GO111MODULE: auto
+
 on:
   push:
     branches: [main, v1]

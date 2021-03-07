@@ -19,6 +19,7 @@ export async function initCodeQL(
   tempDir: string,
   toolsDir: string,
   mode: util.Mode,
+  variant: util.GitHubVariant,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
@@ -28,6 +29,7 @@ export async function initCodeQL(
     tempDir,
     toolsDir,
     mode,
+    variant,
     logger
   );
   await codeql.printVersion();

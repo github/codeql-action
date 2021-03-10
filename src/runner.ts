@@ -167,9 +167,7 @@ program
       };
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
-      if (gitHubVersion !== undefined) {
-        checkGitHubVersionInRange(gitHubVersion, "runner", logger);
-      }
+      checkGitHubVersionInRange(gitHubVersion, "runner", logger);
 
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
@@ -182,6 +180,7 @@ program
             tempDir,
             toolsDir,
             "runner",
+            gitHubVersion.type,
             logger
           )
         ).codeql;

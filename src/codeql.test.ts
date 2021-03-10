@@ -17,6 +17,11 @@ const sampleApiDetails = {
   url: "https://github.com",
 };
 
+const sampleGHAEApiDetails = {
+  auth: "token",
+  url: "https://example.githubenterprise.com",
+};
+
 test("download codeql bundle cache", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     const versions = ["20200601", "20200610"];
@@ -37,6 +42,7 @@ test("download codeql bundle cache", async (t) => {
         tmpDir,
         tmpDir,
         "runner",
+        util.GitHubVariant.DOTCOM,
         getRunnerLogger(true)
       );
 
@@ -64,6 +70,7 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       tmpDir,
       tmpDir,
       "runner",
+      util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
 
@@ -82,6 +89,7 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       tmpDir,
       tmpDir,
       "runner",
+      util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
 
@@ -104,6 +112,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       tmpDir,
       tmpDir,
       "runner",
+      util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
 
@@ -115,6 +124,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       tmpDir,
       tmpDir,
       "runner",
+      util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
 
@@ -139,6 +149,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       tmpDir,
       tmpDir,
       "runner",
+      util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
 
@@ -165,6 +176,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       tmpDir,
       tmpDir,
       "runner",
+      util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
 
@@ -189,6 +201,7 @@ test('download codeql bundle cache with pinned different version cached if "late
       tmpDir,
       tmpDir,
       "runner",
+      util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
 
@@ -216,12 +229,65 @@ test('download codeql bundle cache with pinned different version cached if "late
       tmpDir,
       tmpDir,
       "runner",
+      util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
 
     t.is(cachedVersions.length, 2);
+  });
+});
+
+test("download codeql bundle from github ae endpoint", async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    const bundleAssetID = 10;
+
+    const platform =
+      process.platform === "win32"
+        ? "win64"
+        : process.platform === "linux"
+        ? "linux64"
+        : "osx64";
+    const codeQLBundleName = `codeql-bundle-${platform}.tar.gz`;
+
+    nock("https://example.githubenterprise.com")
+      .get(
+        `/api/v3/enterprise/code-scanning/codeql-bundle/find/${defaults.bundleVersion}`
+      )
+      .reply(200, {
+        assets: { [codeQLBundleName]: bundleAssetID },
+      });
+
+    nock("https://example.githubenterprise.com")
+      .get(
+        `/api/v3/enterprise/code-scanning/codeql-bundle/download/${bundleAssetID}`
+      )
+      .reply(200, {
+        url: `https://example.githubenterprise.com/github/codeql-action/releases/download/${defaults.bundleVersion}/${codeQLBundleName}`,
+      });
+
+    nock("https://example.githubenterprise.com")
+      .get(
+        `/github/codeql-action/releases/download/${defaults.bundleVersion}/${codeQLBundleName}`
+      )
+      .replyWithFile(
+        200,
+        path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`)
+      );
+
+    await codeql.setupCodeQL(
+      undefined,
+      sampleGHAEApiDetails,
+      tmpDir,
+      tmpDir,
+      "runner",
+      util.GitHubVariant.GHAE,
+      getRunnerLogger(true)
+    );
+
+    const cachedVersions = toolcache.findAllVersions("CodeQL");
+    t.is(cachedVersions.length, 1);
   });
 });
 

@@ -101,9 +101,7 @@ async function run() {
   };
 
   const gitHubVersion = await getGitHubVersion(apiDetails);
-  if (gitHubVersion !== undefined) {
-    checkGitHubVersionInRange(gitHubVersion, "actions", logger);
-  }
+  checkGitHubVersionInRange(gitHubVersion, "actions", logger);
 
   try {
     actionsUtil.prepareLocalRunEnvironment();
@@ -129,6 +127,7 @@ async function run() {
       actionsUtil.getTemporaryDirectory(),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       "actions",
+      gitHubVersion.type,
       logger
     );
     codeql = initCodeQLResult.codeql;

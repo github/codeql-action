@@ -86,6 +86,22 @@ function parseTraceProcessLevel(): number | undefined {
   return undefined;
 }
 
+// Sets environment variables that make using some libraries designed for
+// use only on actions safe to use outside of actions.
+//
+// Obviously this is not a tremendously great thing we're doing and it
+// would be better to write our own implementation of libraries to use
+// outside of actions. For now this works well enough.
+//
+// Currently this list of libraries that is deemed to now be safe includes:
+// - @actions/tool-cache
+//
+// Also see "queries/unguarded-action-lib.ql".
+function setupActionsVars(tempDir: string, toolsDir: string) {
+  process.env["RUNNER_TEMP"] = tempDir;
+  process.env["RUNNER_TOOL_CACHE"] = toolsDir;
+}
+
 interface InitArgs {
   languages: string | undefined;
   queries: string | undefined;
@@ -149,6 +165,8 @@ program
       const tempDir = getTempDir(cmd.tempDir);
       const toolsDir = getToolsDir(cmd.toolsDir);
 
+      setupActionsVars(tempDir, toolsDir);
+
       // Wipe the temp dir
       logger.info(`Cleaning temp directory ${tempDir}`);
       fs.rmdirSync(tempDir, { recursive: true });
@@ -178,7 +196,6 @@ program
             undefined,
             apiDetails,
             tempDir,
-            toolsDir,
             "runner",
             gitHubVersion.type,
             logger
@@ -290,6 +307,7 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
+      setupActionsVars(config.tempDir, config.toolCacheDir);
       importTracerEnvironment(config);
       let language: Language | undefined = undefined;
       if (cmd.language !== undefined) {
@@ -380,8 +398,6 @@ program
   .action(async (cmd: AnalyzeArgs) => {
     const logger = getRunnerLogger(cmd.debug);
     try {
-      const tempDir = getTempDir(cmd.tempDir);
-      const outputDir = cmd.outputDir || path.join(tempDir, "codeql-sarif");
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
       if (config === undefined) {
         throw new Error(
@@ -389,6 +405,7 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
+      setupActionsVars(config.tempDir, config.toolCacheDir);
 
       const auth = await getGitHubAuth(
         logger,
@@ -401,6 +418,8 @@ program
         url: parseGithubUrl(cmd.githubUrl),
       };
 
+      const outputDir =
+        cmd.outputDir || path.join(config.tempDir, "codeql-sarif");
       await runAnalyze(
         outputDir,
         getMemoryFlag(cmd.ram),

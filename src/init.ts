@@ -17,7 +17,6 @@ export async function initCodeQL(
   codeqlURL: string | undefined,
   apiDetails: GitHubApiDetails,
   tempDir: string,
-  toolsDir: string,
   mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
@@ -27,7 +26,6 @@ export async function initCodeQL(
     codeqlURL,
     apiDetails,
     tempDir,
-    toolsDir,
     mode,
     variant,
     logger

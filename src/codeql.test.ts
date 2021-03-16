@@ -24,6 +24,8 @@ const sampleGHAEApiDetails = {
 
 test("download codeql bundle cache", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
+    util.setupActionsVars(tmpDir, tmpDir);
+
     const versions = ["20200601", "20200610"];
 
     for (let i = 0; i < versions.length; i++) {
@@ -56,6 +58,8 @@ test("download codeql bundle cache", async (t) => {
 
 test("download codeql bundle cache explicitly requested with pinned different version cached", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
+    util.setupActionsVars(tmpDir, tmpDir);
+
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
       .replyWithFile(
@@ -96,6 +100,8 @@ test("download codeql bundle cache explicitly requested with pinned different ve
 
 test("don't download codeql bundle cache with pinned different version cached", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
+    util.setupActionsVars(tmpDir, tmpDir);
+
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
       .replyWithFile(
@@ -131,6 +137,8 @@ test("don't download codeql bundle cache with pinned different version cached", 
 
 test("download codeql bundle cache with different version cached (not pinned)", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
+    util.setupActionsVars(tmpDir, tmpDir);
+
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
       .replyWithFile(
@@ -181,6 +189,8 @@ test("download codeql bundle cache with different version cached (not pinned)", 
 
 test('download codeql bundle cache with pinned different version cached if "latests" tools specified', async (t) => {
   await util.withTmpDir(async (tmpDir) => {
+    util.setupActionsVars(tmpDir, tmpDir);
+
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
       .replyWithFile(
@@ -232,6 +242,8 @@ test('download codeql bundle cache with pinned different version cached if "late
 
 test("download codeql bundle from github ae endpoint", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
+    util.setupActionsVars(tmpDir, tmpDir);
+
     const bundleAssetID = 10;
 
     const platform =

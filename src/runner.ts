@@ -21,6 +21,7 @@ import {
   getThreadsFlag,
   parseGithubUrl,
   getGitHubAuth,
+  setupActionsVars,
 } from "./util";
 
 const program = new Command();
@@ -84,22 +85,6 @@ function parseTraceProcessLevel(): number | undefined {
     }
   }
   return undefined;
-}
-
-// Sets environment variables that make using some libraries designed for
-// use only on actions safe to use outside of actions.
-//
-// Obviously this is not a tremendously great thing we're doing and it
-// would be better to write our own implementation of libraries to use
-// outside of actions. For now this works well enough.
-//
-// Currently this list of libraries that is deemed to now be safe includes:
-// - @actions/tool-cache
-//
-// Also see "queries/unguarded-action-lib.ql".
-function setupActionsVars(tempDir: string, toolsDir: string) {
-  process.env["RUNNER_TEMP"] = tempDir;
-  process.env["RUNNER_TOOL_CACHE"] = toolsDir;
 }
 
 interface InitArgs {

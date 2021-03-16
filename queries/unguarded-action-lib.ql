@@ -20,6 +20,21 @@ predicate isSafeActionLib(string lib) {
 }
 
 /**
+ * Matches libraries that are not always safe to use outside of actions
+ * but can be made so by setting certain environment variables.
+ */
+predicate isSafeActionLibWithActionsEnvVars(string lib) {
+    lib = "@actions/tool-cache"
+}
+
+/**
+ * Matches the names of runner commands that set action env vars
+ */
+predicate commandSetsActionsEnvVars(string commandName) {
+    commandName = "init" or commandName = "autobuild" or commandName = "analyze"
+}
+
+/**
  * An import from a library that is meant for GitHub Actions and
  * we do not want to be using outside of actions.
  */
@@ -44,6 +59,32 @@ class ActionsLibImport extends ImportDeclaration {
 class RunnerEntrypoint extends Function {
   RunnerEntrypoint() {
     getFile().getAbsolutePath().matches("%/runner.ts")
+  }
+
+  /**
+   * Does this runner entry point set the RUNNER_TEMP and
+   * RUNNER_TOOL_CACHE env vars which make some actions libraries
+   * safe to use outside of actions.
+   * See "setupActionsVars" in "runner.ts".
+   */
+  predicate setsActionsEnvVars() {
+    // This is matching code of the following format, where "this"
+    // is the function being passed to the "action" method.
+    //
+    // program
+    //   .command("init")
+    //   ...
+    //   .action(async (cmd: InitArgs) => {
+    //     ...
+    //   })
+    exists(MethodCallExpr actionCall,
+        MethodCallExpr commandCall |
+        commandCall.getMethodName() = "command" and
+        commandCall.getReceiver().(VarAccess).getVariable().getName() = "program" and
+        commandSetsActionsEnvVars(commandCall.getArgument(0).(StringLiteral).getValue()) and
+        actionCall.getMethodName() = "action" and
+        actionCall.getReceiver().getAChildExpr*() = commandCall and
+        actionCall.getArgument(0).getAChildExpr*() = this)
   }
 }
 
@@ -114,6 +155,7 @@ Function calledBy(Function f) {
 from VarAccess v, ActionsLibImport actionsLib, RunnerEntrypoint runnerEntry 
 where actionsLib.getAProvidedVariable() = v.getVariable()
   and getAFunctionChildExpr(calledBy*(runnerEntry)) = v
+  and not (isSafeActionLibWithActionsEnvVars(actionsLib.getName()) and runnerEntry.setsActionsEnvVars())
 select v, "$@ is imported from $@ and this code can be called from $@",
   v, v.getName(),
   actionsLib, actionsLib.getName(),

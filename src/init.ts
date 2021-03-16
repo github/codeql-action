@@ -127,6 +127,7 @@ export async function injectWindowsTracer(
       }
       Write-Host "Final process: $p"
       Write-Host "Final pid: $id"
+      Write-Host "Running: &$tracer --inject=$id"
       Invoke-Expression "&$tracer --inject=$id"`;
   } else {
     // If the level is not defined then guess at the 3rd parent process.

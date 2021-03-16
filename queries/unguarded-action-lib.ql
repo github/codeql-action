@@ -65,7 +65,7 @@ class RunnerEntrypoint extends Function {
    * Does this runner entry point set the RUNNER_TEMP and
    * RUNNER_TOOL_CACHE env vars which make some actions libraries
    * safe to use outside of actions.
-   * See "setupActionsVars" in "runner.ts".
+   * See "setupActionsVars" in "util.ts".
    */
   predicate setsActionsEnvVars() {
     // This is matching code of the following format, where "this"

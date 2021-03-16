@@ -164,6 +164,7 @@ function getCodeQLActionRepository(mode: util.Mode, logger: Logger): string {
 async function getCodeQLBundleDownloadURL(
   apiDetails: api.GitHubApiDetails,
   mode: util.Mode,
+  variant: util.GitHubVariant,
   logger: Logger
 ): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository(mode, logger);
@@ -183,6 +184,39 @@ async function getCodeQLBundleDownloadURL(
     }
   );
   const codeQLBundleName = getCodeQLBundleName();
+  if (variant === util.GitHubVariant.GHAE) {
+    try {
+      const release = await api
+        .getApiClient(apiDetails)
+        .request("GET /enterprise/code-scanning/codeql-bundle/find/{tag}", {
+          tag: CODEQL_BUNDLE_VERSION,
+        });
+      const assetID = release.data.assets[codeQLBundleName];
+      if (assetID !== undefined) {
+        const download = await api
+          .getApiClient(apiDetails)
+          .request(
+            "GET /enterprise/code-scanning/codeql-bundle/download/{asset_id}",
+            { asset_id: assetID }
+          );
+        const downloadURL = download.data.url;
+        logger.info(
+          `Found CodeQL bundle at GitHub AE endpoint with URL ${downloadURL}.`
+        );
+        return downloadURL;
+      } else {
+        logger.info(
+          `Attempted to fetch bundle from GitHub AE endpoint but the bundle ${codeQLBundleName} was not found in the assets ${JSON.stringify(
+            release.data.assets
+          )}.`
+        );
+      }
+    } catch (e) {
+      logger.info(
+        `Attempted to fetch bundle from GitHub AE endpoint but got error ${e}.`
+      );
+    }
+  }
   for (const downloadSource of uniqueDownloadSources) {
     const [apiURL, repository] = downloadSource;
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
@@ -212,31 +246,6 @@ async function getCodeQLBundleDownloadURL(
         `Looked for CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} but got error ${e}.`
       );
     }
-  }
-  try {
-    const release = await api
-      .getApiClient(apiDetails)
-      .request("GET /enterprise/code-scanning/codeql-bundle/find/{tag}", {
-        tag: CODEQL_BUNDLE_VERSION,
-      });
-    const assetID = release.data.assets[codeQLBundleName];
-    if (assetID !== undefined) {
-      const download = await api
-        .getApiClient(apiDetails)
-        .request(
-          "GET /enterprise/code-scanning/codeql-bundle/download/{asset_id}",
-          { asset_id: assetID }
-        );
-      const downloadURL = download.data.url;
-      logger.info(
-        `Found CodeQL bundle at GitHub AE endpoint with URL ${downloadURL}.`
-      );
-      return downloadURL;
-    }
-  } catch (e) {
-    logger.info(
-      `Attempted to fetch bundle from GitHub AE endpoint but got error ${e}.`
-    );
   }
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${codeQLBundleName}`;
 }
@@ -270,6 +279,7 @@ export async function setupCodeQL(
   tempDir: string,
   toolsDir: string,
   mode: util.Mode,
+  variant: util.GitHubVariant,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   // Setting these two env vars makes the toolcache code safe to use outside,
@@ -314,7 +324,12 @@ export async function setupCodeQL(
       logger.debug(`CodeQL found in cache ${codeqlFolder}`);
     } else {
       if (!codeqlURL) {
-        codeqlURL = await getCodeQLBundleDownloadURL(apiDetails, mode, logger);
+        codeqlURL = await getCodeQLBundleDownloadURL(
+          apiDetails,
+          mode,
+          variant,
+          logger
+        );
       }
 
       const parsedCodeQLURL = new URL(codeqlURL);

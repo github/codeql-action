@@ -113,6 +113,7 @@ export async function injectWindowsTracer(
 
       $id = $PID
       while ($true) {
+        Write-Host "Looking for process with id : $id"
         $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
         Write-Host "Found process: $p"
         if ($p -eq $null) {
@@ -125,7 +126,7 @@ export async function injectWindowsTracer(
         }
       }
       Write-Host "Final process: $p"
-
+      Write-Host "Final pid: $id"
       Invoke-Expression "&$tracer --inject=$id"`;
   } else {
     // If the level is not defined then guess at the 3rd parent process.

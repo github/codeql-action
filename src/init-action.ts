@@ -125,7 +125,6 @@ async function run() {
       actionsUtil.getOptionalInput("tools"),
       apiDetails,
       actionsUtil.getTemporaryDirectory(),
-      actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       "actions",
       gitHubVersion.type,
       logger

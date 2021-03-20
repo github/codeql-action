@@ -136,7 +136,6 @@ jobs:
       with:
         languages: go
         config-file: ./.github/codeql/custom-queries.yml
-        tools: latest
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -170,7 +169,6 @@ jobs:
     - uses: ./../action/init
       with:
         languages: go
-        tools: latest
     - name: Build code
       shell: bash
       run: go build main.go
@@ -198,7 +196,6 @@ jobs:
     - uses: ./../action/init
       with:
         languages: go
-        tools: latest
     - uses: ./../action/autobuild
     - uses: ./../action/analyze
       env:
@@ -262,7 +259,6 @@ jobs:
     - uses: ./../action/init
       with:
         languages: javascript
-        tools: latest
     - uses: ./../action/analyze
       env:
         TEST_MODE: true

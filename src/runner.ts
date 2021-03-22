@@ -19,8 +19,9 @@ import {
   getGitHubVersion,
   getMemoryFlag,
   getThreadsFlag,
-  parseGithubUrl,
+  parseGitHubUrl,
   getGitHubAuth,
+  setupActionsVars,
 } from "./util";
 
 const program = new Command();
@@ -149,6 +150,8 @@ program
       const tempDir = getTempDir(cmd.tempDir);
       const toolsDir = getToolsDir(cmd.toolsDir);
 
+      setupActionsVars(tempDir, toolsDir);
+
       // Wipe the temp dir
       logger.info(`Cleaning temp directory ${tempDir}`);
       fs.rmdirSync(tempDir, { recursive: true });
@@ -163,7 +166,7 @@ program
       const apiDetails = {
         auth,
         externalRepoAuth: auth,
-        url: parseGithubUrl(cmd.githubUrl),
+        url: parseGitHubUrl(cmd.githubUrl),
       };
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
@@ -178,7 +181,6 @@ program
             undefined,
             apiDetails,
             tempDir,
-            toolsDir,
             "runner",
             gitHubVersion.type,
             logger
@@ -290,6 +292,7 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
+      setupActionsVars(config.tempDir, config.toolCacheDir);
       importTracerEnvironment(config);
       let language: Language | undefined = undefined;
       if (cmd.language !== undefined) {
@@ -380,8 +383,6 @@ program
   .action(async (cmd: AnalyzeArgs) => {
     const logger = getRunnerLogger(cmd.debug);
     try {
-      const tempDir = getTempDir(cmd.tempDir);
-      const outputDir = cmd.outputDir || path.join(tempDir, "codeql-sarif");
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
       if (config === undefined) {
         throw new Error(
@@ -389,6 +390,7 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
+      setupActionsVars(config.tempDir, config.toolCacheDir);
 
       const auth = await getGitHubAuth(
         logger,
@@ -398,9 +400,11 @@ program
 
       const apiDetails = {
         auth,
-        url: parseGithubUrl(cmd.githubUrl),
+        url: parseGitHubUrl(cmd.githubUrl),
       };
 
+      const outputDir =
+        cmd.outputDir || path.join(config.tempDir, "codeql-sarif");
       await runAnalyze(
         outputDir,
         getMemoryFlag(cmd.ram),
@@ -482,7 +486,7 @@ program
     );
     const apiDetails = {
       auth,
-      url: parseGithubUrl(cmd.githubUrl),
+      url: parseGitHubUrl(cmd.githubUrl),
     };
     try {
       const gitHubVersion = await getGitHubVersion(apiDetails);

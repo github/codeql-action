@@ -137,8 +137,12 @@ function getCodeQLBundleName(): string {
 function getCodeQLActionRepository(mode: util.Mode, logger: Logger): string {
   if (mode !== "actions") {
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
+  } else {
+    return getActionsCodeQLActionRepository(logger);
   }
+}
 
+function getActionsCodeQLActionRepository(logger: Logger): string {
   if (process.env["GITHUB_ACTION_REPOSITORY"] !== undefined) {
     return process.env["GITHUB_ACTION_REPOSITORY"];
   }
@@ -277,17 +281,10 @@ export async function setupCodeQL(
   codeqlURL: string | undefined,
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
-  toolsDir: string,
   mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
-  // Setting these two env vars makes the toolcache code safe to use outside,
-  // of actions but this is obviously not a great thing we're doing and it would
-  // be better to write our own implementation to use outside of actions.
-  process.env["RUNNER_TEMP"] = tempDir;
-  process.env["RUNNER_TOOL_CACHE"] = toolsDir;
-
   try {
     // We use the special value of 'latest' to prioritize the version in the
     // defaults over any pinned cached version.

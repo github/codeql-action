@@ -189,7 +189,7 @@ export function getCodeQLDatabasePath(tempDir: string, language: Language) {
  * Parses user input of a github.com or GHES URL to a canonical form.
  * Removes any API prefix or suffix if one is present.
  */
-export function parseGithubUrl(inputUrl: string): string {
+export function parseGitHubUrl(inputUrl: string): string {
   const originalUrl = inputUrl;
   if (inputUrl.indexOf("://") === -1) {
     inputUrl = `https://${inputUrl}`;
@@ -247,7 +247,7 @@ export async function getGitHubVersion(
   apiDetails: GitHubApiDetails
 ): Promise<GitHubVersion> {
   // We can avoid making an API request in the standard dotcom case
-  if (parseGithubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
+  if (parseGitHubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
     return { type: GitHubVariant.DOTCOM };
   }
 
@@ -389,4 +389,20 @@ export async function getGitHubAuth(
   throw new Error(
     "No GitHub authentication token was specified. Please provide a token via the GITHUB_TOKEN environment variable, or by adding the `--github-auth-stdin` flag and passing the token via standard input."
   );
+}
+
+// Sets environment variables that make using some libraries designed for
+// use only on actions safe to use outside of actions.
+//
+// Obviously this is not a tremendously great thing we're doing and it
+// would be better to write our own implementation of libraries to use
+// outside of actions. For now this works well enough.
+//
+// Currently this list of libraries that is deemed to now be safe includes:
+// - @actions/tool-cache
+//
+// Also see "queries/unguarded-action-lib.ql".
+export function setupActionsVars(tempDir: string, toolsDir: string) {
+  process.env["RUNNER_TEMP"] = tempDir;
+  process.env["RUNNER_TOOL_CACHE"] = toolsDir;
 }

@@ -432,7 +432,12 @@ export async function getRef(): Promise<string> {
   // than the 'merge' ref. If so, we want to convert the ref that
   // we report back.
   const pull_ref_regex = /refs\/pull\/(\d+)\/merge/;
+  if (!pull_ref_regex.test(ref)) {
+    return ref;
+  }
+
   const head = await getCommitOid("HEAD");
+
   // in actions/checkout@v2 we can check if git rev-parse HEAD == GITHUB_SHA
   // in actions/checkout@v1 this may not be true as it checks out the repository
   // using GITHUB_REF. There is a subtle race condition where
@@ -440,7 +445,7 @@ export async function getRef(): Promise<string> {
   // git git-parse GITHUB_REF == git rev-parse HEAD instead.
   const hasChangedRef = sha !== head && (await getCommitOid(ref)) !== head;
 
-  if (pull_ref_regex.test(ref) && hasChangedRef) {
+  if (hasChangedRef) {
     const newRef = ref.replace(pull_ref_regex, "refs/pull/$1/head");
     core.debug(
       `No longer on merge commit, rewriting ref from ${ref} to ${newRef}.`

@@ -75,7 +75,7 @@ export function prepareLocalRunEnvironment() {
 /**
  * Gets the SHA of the commit that is currently checked out.
  */
-export const getCommitOid = async function (): Promise<string> {
+export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
   // Try to use git to get the current commit SHA. If that fails then
   // log but otherwise silently fall back to using the SHA from the environment.
   // The only time these two values will differ is during analysis of a PR when
@@ -87,7 +87,7 @@ export const getCommitOid = async function (): Promise<string> {
     let commitOid = "";
     await new toolrunner.ToolRunner(
       await safeWhich.safeWhich("git"),
-      ["rev-parse", "HEAD"],
+      ["rev-parse", ref],
       {
         silent: true,
         listeners: {
@@ -425,19 +425,27 @@ export async function getRef(): Promise<string> {
   // Will be in the form "refs/heads/master" on a push event
   // or in the form "refs/pull/N/merge" on a pull_request event
   const ref = getRequiredEnvParam("GITHUB_REF");
+  const sha = getRequiredEnvParam("GITHUB_SHA");
 
   // For pull request refs we want to detect whether the workflow
   // has run `git checkout HEAD^2` to analyze the 'head' ref rather
   // than the 'merge' ref. If so, we want to convert the ref that
   // we report back.
   const pull_ref_regex = /refs\/pull\/(\d+)\/merge/;
-  const checkoutSha = await getCommitOid();
+  const head = await getCommitOid("HEAD");
+  // in actions@v2 we can check if git rev-parse HEAD == GITHUB_SHA
+  // in actions@v1 this may not be true as it checks out the repository
+  // using GITHUB_REF. There is a subtle race condition where
+  // git rev-parse GITHUB_REF != GITHUB_SHA, so we must check
+  // git git-parse GITHUB_REF == git rev-parse HEAD instead.
+  const hasChangedRef = sha !== head && (await getCommitOid(ref)) !== head;
 
-  if (
-    pull_ref_regex.test(ref) &&
-    checkoutSha !== getRequiredEnvParam("GITHUB_SHA")
-  ) {
-    return ref.replace(pull_ref_regex, "refs/pull/$1/head");
+  if (pull_ref_regex.test(ref) && hasChangedRef) {
+    const newRef = ref.replace(pull_ref_regex, "refs/pull/$1/head");
+    core.info(
+      `No longer on merge commit, rewriting ref from ${ref} to ${newRef}.`
+    );
+    return newRef;
   } else {
     return ref;
   }

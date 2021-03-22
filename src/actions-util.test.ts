@@ -25,20 +25,40 @@ test("getRef() returns merge PR ref if GITHUB_SHA still checked out", async (t) 
   process.env["GITHUB_REF"] = expectedRef;
   process.env["GITHUB_SHA"] = currentSha;
 
-  sinon.stub(actionsutil, "getCommitOid").resolves(currentSha);
+  const callback = sinon.stub(actionsutil, "getCommitOid");
+  callback.withArgs("HEAD").resolves(currentSha);
 
   const actualRef = await actionsutil.getRef();
   t.deepEqual(actualRef, expectedRef);
+  callback.restore();
 });
 
-test("getRef() returns head PR ref if GITHUB_SHA not currently checked out", async (t) => {
+test("getRef() returns merge PR ref if GITHUB_REF still checked out but sha has changed (actions checkout@v1)", async (t) => {
+  const expectedRef = "refs/pull/1/merge";
+  process.env["GITHUB_REF"] = expectedRef;
+  process.env["GITHUB_SHA"] = "b".repeat(40);
+  const sha = "a".repeat(40);
+
+  const callback = sinon.stub(actionsutil, "getCommitOid");
+  callback.withArgs("refs/pull/1/merge").resolves(sha);
+  callback.withArgs("HEAD").resolves(sha);
+
+  const actualRef = await actionsutil.getRef();
+  t.deepEqual(actualRef, expectedRef);
+  callback.restore();
+});
+
+test("getRef() returns head PR ref if GITHUB_REF no longer checked out", async (t) => {
   process.env["GITHUB_REF"] = "refs/pull/1/merge";
   process.env["GITHUB_SHA"] = "a".repeat(40);
 
-  sinon.stub(actionsutil, "getCommitOid").resolves("b".repeat(40));
+  const callback = sinon.stub(actionsutil, "getCommitOid");
+  callback.withArgs("refs/pull/1/merge").resolves("a".repeat(40));
+  callback.withArgs("HEAD").resolves("b".repeat(40));
 
   const actualRef = await actionsutil.getRef();
   t.deepEqual(actualRef, "refs/pull/1/head");
+  callback.restore();
 });
 
 test("getAnalysisKey() when a local run", async (t) => {

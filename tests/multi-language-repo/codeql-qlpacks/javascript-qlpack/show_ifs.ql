@@ -1,6 +1,6 @@
 /**
- * @name Show Javascript Ifs
- * @description Show Javascript Ifs
+ * @name Show JavaScript Ifs
+ * @description Show JavaScript Ifs
  * @kind problem
  * @id inrepo-javascript-querypack/show-ifs
  */

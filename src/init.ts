@@ -17,7 +17,6 @@ export async function initCodeQL(
   codeqlURL: string | undefined,
   apiDetails: GitHubApiDetails,
   tempDir: string,
-  toolsDir: string,
   mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
@@ -27,7 +26,6 @@ export async function initCodeQL(
     codeqlURL,
     apiDetails,
     tempDir,
-    toolsDir,
     mode,
     variant,
     logger
@@ -194,7 +192,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
 
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
 
-  // Setup tools on the Github hosted runners
+  // Setup tools on the GitHub hosted runners
   if (process.env["ImageOS"] !== undefined) {
     try {
       if (process.platform === "win32") {

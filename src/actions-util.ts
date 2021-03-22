@@ -396,7 +396,7 @@ export function getWorkflowRunID(): number {
 }
 
 /**
- * Get the analysis key paramter for the current job.
+ * Get the analysis key parameter for the current job.
  *
  * This will combine the workflow path and current job name.
  * Computing this the first time requires making requests to
@@ -556,11 +556,21 @@ export async function createStatusReportBase(
 
 interface HTTPError {
   status: number;
+  message?: string;
 }
 
 function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }
+
+const GENERIC_403_MSG =
+  "The repo on which this action is running is not opted-in to CodeQL code scanning.";
+const GENERIC_404_MSG =
+  "Not authorized to used the CodeQL code scanning feature on this repo.";
+const OUT_OF_DATE_MSG =
+  "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action.";
+const INCOMPATIBLE_MSG =
+  "CodeQL Action version is incompatible with the code scanning endpoint. Please update to a compatible version of codeql-action.";
 
 /**
  * Send a status report to the code_scanning/analysis/status endpoint.
@@ -598,32 +608,24 @@ export async function sendStatusReport<S extends StatusReportBase>(
 
     return true;
   } catch (e) {
+    console.log(e);
     if (isHTTPError(e)) {
       switch (e.status) {
         case 403:
-          core.setFailed(
-            "The repo on which this action is running is not opted-in to CodeQL code scanning."
-          );
+          core.setFailed(e.message || GENERIC_403_MSG);
           return false;
         case 404:
-          core.setFailed(
-            "Not authorized to used the CodeQL code scanning feature on this repo."
-          );
+          core.setFailed(GENERIC_404_MSG);
           return false;
         case 422:
           // schema incompatibility when reporting status
           // this means that this action version is no longer compatible with the API
           // we still want to continue as it is likely the analysis endpoint will work
           if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
-            core.debug(
-              "CodeQL Action version is incompatible with the code scanning endpoint. Please update to a compatible version of codeql-action."
-            );
+            core.debug(INCOMPATIBLE_MSG);
           } else {
-            core.debug(
-              "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action."
-            );
+            core.debug(OUT_OF_DATE_MSG);
           }
-
           return true;
       }
     }
@@ -631,7 +633,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
     // something else has gone wrong and the request/response will be logged by octokit
     // it's possible this is a transient error and we should continue scanning
     core.error(
-      "An unexpected error occured when sending code scanning status report."
+      "An unexpected error occurred when sending code scanning status report."
     );
     return true;
   }

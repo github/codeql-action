@@ -176,7 +176,20 @@ function getSarifFilePaths(sarifPath: string) {
 // Counts the number of results in the given SARIF file
 export function countResultsInSarif(sarif: string): number {
   let numResults = 0;
-  for (const run of JSON.parse(sarif).runs) {
+  let parsedSarif;
+  try {
+    parsedSarif = JSON.parse(sarif);
+  } catch (e) {
+    throw new Error(`Invalid SARIF. JSON syntax error: ${e.message}`);
+  }
+  if (!Array.isArray(parsedSarif.runs)) {
+    throw new Error("Invalid SARIF. Missing 'runs' array.");
+  }
+
+  for (const run of parsedSarif.runs) {
+    if (!Array.isArray(run.results)) {
+      throw new Error("Invalid SARIF. Missing 'results' array in run.");
+    }
     numResults += run.results.length;
   }
   return numResults;

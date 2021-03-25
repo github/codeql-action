@@ -40,7 +40,7 @@ test("getRef() returns merge PR ref if GITHUB_REF still checked out but sha has 
   const sha = "a".repeat(40);
 
   const callback = sinon.stub(actionsutil, "getCommitOid");
-  callback.withArgs("refs/pull/1/merge").resolves(sha);
+  callback.withArgs("refs/remotes/pull/1/merge").resolves(sha);
   callback.withArgs("HEAD").resolves(sha);
 
   const actualRef = await actionsutil.getRef();

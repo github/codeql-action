@@ -443,7 +443,10 @@ export async function getRef(): Promise<string> {
   // using GITHUB_REF. There is a subtle race condition where
   // git rev-parse GITHUB_REF != GITHUB_SHA, so we must check
   // git git-parse GITHUB_REF == git rev-parse HEAD instead.
-  const hasChangedRef = sha !== head && (await getCommitOid(ref)) !== head;
+  const hasChangedRef =
+    sha !== head &&
+    (await getCommitOid(ref.replace(/^refs\/pull\//, "refs/remotes/pull/"))) !==
+      head;
 
   if (hasChangedRef) {
     const newRef = ref.replace(pull_ref_regex, "refs/pull/$1/head");

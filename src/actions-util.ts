@@ -628,11 +628,12 @@ export async function sendStatusReport<S extends StatusReportBase>(
     if (isHTTPError(e)) {
       switch (e.status) {
         case 403:
-          if (isDependabotActor()) {
+          if (workflowIsTriggeredByPushEvent() && isDependabotActor()) {
             core.setFailed(
               'Workflows triggered by Dependabot on the "push" event run with read-only access. ' +
+                "Uploading Code Scanning results requires write access. " +
                 'To use Code Scanning with Dependabot please ensure you are using the "pull_request" event for this workflow and avoid triggering on the "push" event for dependabot branches. ' +
-                "See https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestbranchestags for more information on how to configure these events."
+                "See https://docs.github.com/en/code-security/secure-coding/configuring-code-scanning#scanning-on-push for more information on how to configure these events."
             );
           } else {
             core.setFailed(e.message || GENERIC_403_MSG);
@@ -661,6 +662,11 @@ export async function sendStatusReport<S extends StatusReportBase>(
     );
     return true;
   }
+}
+
+// Was the workflow run triggered by a `push` event, for example as opposed to a `pull_request` event.
+function workflowIsTriggeredByPushEvent() {
+  return process.env["GITHUB_EVENT_NAME"] === "push";
 }
 
 // Is dependabot the actor that triggered the current workflow run.

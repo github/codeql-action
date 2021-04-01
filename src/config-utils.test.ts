@@ -284,7 +284,12 @@ test("load non-empty input", async (t) => {
       queries: {
         javascript: {
           builtin: [],
-          custom: ["/foo/a.ql", "/bar/b.ql"],
+          custom: [
+            {
+              queries: ["/foo/a.ql", "/bar/b.ql"],
+              searchPath: tmpDir,
+            },
+          ],
         },
       },
       pathsIgnore: ["a", "b"],
@@ -463,7 +468,7 @@ test("Queries can be specified in config file", async (t) => {
       config.queries["javascript"].builtin[0],
       /javascript-code-scanning.qls$/
     );
-    t.regex(config.queries["javascript"].custom[0], /.*\/foo$/);
+    t.regex(config.queries["javascript"].custom[0].queries[0], /.*\/foo$/);
   });
 });
 
@@ -526,7 +531,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       config.queries["javascript"].builtin[0],
       /javascript-code-scanning.qls$/
     );
-    t.regex(config.queries["javascript"].custom[0], /.*\/override$/);
+    t.regex(config.queries["javascript"].custom[0].queries[0], /.*\/override$/);
   });
 });
 
@@ -583,7 +588,10 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
     // Now check that the end result contains only the workflow query, and not the default one
     t.deepEqual(config.queries["javascript"].builtin.length, 0);
     t.deepEqual(config.queries["javascript"].custom.length, 1);
-    t.regex(config.queries["javascript"].custom[0], /.*\/workflow-query$/);
+    t.regex(
+      config.queries["javascript"].custom[0].queries[0],
+      /.*\/workflow-query$/
+    );
   });
 });
 
@@ -640,8 +648,14 @@ test("Multiple queries can be specified in workflow file, no config file require
       config.queries["javascript"].builtin[0],
       /javascript-code-scanning.qls$/
     );
-    t.regex(config.queries["javascript"].custom[0], /.*\/override1$/);
-    t.regex(config.queries["javascript"].custom[1], /.*\/override2$/);
+    t.regex(
+      config.queries["javascript"].custom[0].queries[0],
+      /.*\/override1$/
+    );
+    t.regex(
+      config.queries["javascript"].custom[1].queries[0],
+      /.*\/override2$/
+    );
   });
 });
 
@@ -712,9 +726,15 @@ test("Queries in workflow file can be added to the set of queries without overri
       config.queries["javascript"].builtin[0],
       /javascript-code-scanning.qls$/
     );
-    t.regex(config.queries["javascript"].custom[0], /.*\/additional1$/);
-    t.regex(config.queries["javascript"].custom[1], /.*\/additional2$/);
-    t.regex(config.queries["javascript"].custom[2], /.*\/foo$/);
+    t.regex(
+      config.queries["javascript"].custom[0].queries[0],
+      /.*\/additional1$/
+    );
+    t.regex(
+      config.queries["javascript"].custom[1].queries[0],
+      /.*\/additional2$/
+    );
+    t.regex(config.queries["javascript"].custom[2].queries[0], /.*\/foo$/);
   });
 });
 

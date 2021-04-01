@@ -46,10 +46,22 @@ type Queries = {
   [language: string]: {
     /** Queries from one of the builtin suites */
     builtin: string[];
+
     /** Custom queries, from a non-standard location */
-    custom: string[];
+    custom: QueriesWithSearchPath[];
   };
 };
+
+/**
+ * Contains some information about a user-defined query.
+ */
+export interface QueriesWithSearchPath {
+  /** Additional search path to use when running these queries. */
+  searchPath: string;
+
+  /** Array of absolute paths to a .ql file containing the queries. */
+  queries: string[];
+}
 
 /**
  * Format of the parsed config file.
@@ -188,7 +200,10 @@ async function runResolveQueries(
       (q) => !queryIsDisabled(language, q)
     );
     if (extraSearchPath !== undefined) {
-      resultMap[language].custom.push(...queries);
+      resultMap[language].custom.push({
+        searchPath: extraSearchPath,
+        queries,
+      });
     } else {
       resultMap[language].builtin.push(...queries);
     }

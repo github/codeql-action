@@ -117,6 +117,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        tools: [~, latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -136,6 +137,7 @@ jobs:
       with:
         languages: go
         config-file: ./.github/codeql/custom-queries.yml
+        tools: ${{ matrix.tools }}
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -149,6 +151,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        tools: [~, latest]
     runs-on: ${{ matrix.os }}
     env:
       CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
@@ -169,6 +172,7 @@ jobs:
     - uses: ./../action/init
       with:
         languages: go
+        tools: ${{ matrix.tools }}
     - name: Build code
       shell: bash
       run: go build main.go
@@ -178,6 +182,10 @@ jobs:
 
   go-custom-tracing-autobuild:
     needs: [check-js, check-node-modules]
+    strategy:
+      fail-fast: false
+      matrix:
+        tools: [~, latest]
     # No need to test Go autobuild on multiple OSes since
     # we're testing Go custom tracing with a manual build on all OSes.
     runs-on: ubuntu-latest
@@ -196,6 +204,7 @@ jobs:
     - uses: ./../action/init
       with:
         languages: go
+        tools: ${{ matrix.tools }}
     - uses: ./../action/autobuild
     - uses: ./../action/analyze
       env:
@@ -236,6 +245,10 @@ jobs:
 
   test-proxy:
     needs: [check-js, check-node-modules]
+    strategy:
+      fail-fast: false
+      matrix:
+        tools: [~, latest]
     runs-on: ubuntu-latest
     container:
       image: ubuntu:18.04
@@ -259,6 +272,7 @@ jobs:
     - uses: ./../action/init
       with:
         languages: javascript
+        tools: ${{ matrix.tools }}
     - uses: ./../action/analyze
       env:
         TEST_MODE: true

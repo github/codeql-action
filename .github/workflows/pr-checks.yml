@@ -80,13 +80,65 @@ jobs:
           exit 1
         fi
 
-  multi-language-repo_test-custom-queries-and-remote-config:
+  # Identify the CodeQL tool versions to integration test against.
+  check-codeql-versions:
     needs: [check-js, check-node-modules]
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.compare.outputs.versions }}
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - name: Init with default CodeQL bundle from the VM image
+      id: init-default
+      uses: ./../action/init
+      with:
+        languages: javascript
+    - name: Remove empty database
+      # allows us to run init a second time
+      run: |
+        rm -rf "$RUNNER_TEMP/codeql_databases"
+    - name: Init with latest CodeQL bundle
+      id: init-latest
+      uses: ./../action/init
+      with:
+        tools: latest
+        languages: javascript
+    - name: Compare default and latest CodeQL bundle versions
+      id: compare
+      env:
+        CODEQL_DEFAULT: ${{ steps.init-default.outputs.codeql-path }}
+        CODEQL_LATEST: ${{ steps.init-latest.outputs.codeql-path }}
+      run: |
+        CODEQL_VERSION_DEFAULT="$("$CODEQL_DEFAULT" version --format terse)"
+        CODEQL_VERSION_LATEST="$("$CODEQL_LATEST" version --format terse)"
+        echo "Default CodeQL bundle version is $CODEQL_VERSION_DEFAULT"
+        echo "Latest CodeQL bundle version is $CODEQL_VERSION_LATEST"
+        if [[ "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
+          # Just use `tools: null` to avoid duplication in the integration tests.
+          VERSIONS_JSON='[null]'
+        else
+          # Use both `tools: null` and `tools: latest` in the integration tests.
+          VERSIONS_JSON='[null, "latest"]'
+        fi
+        # Output a JSON-encoded list with the distinct versions to test against.
+        echo "Suggested matrix config for integration tests: $VERSIONS_JSON"
+        echo "::set-output name=versions::${VERSIONS_JSON}"
+
+  multi-language-repo_test-custom-queries-and-remote-config:
+    needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: [~, latest]
+        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -112,12 +164,12 @@ jobs:
 
   # Currently is not possible to analyze Go in conjunction with other languages in macos
   multi-language-repo_test-go-custom-queries:
-    needs: [check-js, check-node-modules]
+    needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: [~, latest]
+        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -146,12 +198,12 @@ jobs:
         TEST_MODE: true
 
   go-custom-tracing:
-    needs: [check-js, check-node-modules]
+    needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: [~, latest]
+        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
     runs-on: ${{ matrix.os }}
     env:
       CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
@@ -181,11 +233,11 @@ jobs:
         TEST_MODE: true
 
   go-custom-tracing-autobuild:
-    needs: [check-js, check-node-modules]
+    needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
       matrix:
-        tools: [~, latest]
+        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
     # No need to test Go autobuild on multiple OSes since
     # we're testing Go custom tracing with a manual build on all OSes.
     runs-on: ubuntu-latest
@@ -244,11 +296,11 @@ jobs:
         TEST_MODE: true
 
   test-proxy:
-    needs: [check-js, check-node-modules]
+    needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
       matrix:
-        tools: [~, latest]
+        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
     runs-on: ubuntu-latest
     container:
       image: ubuntu:18.04

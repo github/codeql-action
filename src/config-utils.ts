@@ -601,7 +601,7 @@ async function getLanguagesInRepo(
 ): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
   const response = await api
-    .getApiClient(apiDetails, true)
+    .getApiClient(apiDetails, { allowLocalRun: true })
     .repos.listLanguages({
       owner: repository.owner,
       repo: repository.repo,
@@ -1013,7 +1013,7 @@ function getLocalConfig(configFile: string, checkoutPath: string): UserConfig {
 
 async function getRemoteConfig(
   configFile: string,
-  apiDetails: api.GitHubApiDetails
+  apiDetails: api.GitHubApiCombinedDetails
 ): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
@@ -1025,12 +1025,14 @@ async function getRemoteConfig(
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.getApiClient(apiDetails, true).repos.getContent({
-    owner: pieces.groups.owner,
-    repo: pieces.groups.repo,
-    path: pieces.groups.path,
-    ref: pieces.groups.ref,
-  });
+  const response = await api
+    .getApiClient(apiDetails, { allowLocalRun: true, allowExternal: true })
+    .repos.getContent({
+      owner: pieces.groups.owner,
+      repo: pieces.groups.repo,
+      path: pieces.groups.path,
+      ref: pieces.groups.ref,
+    });
 
   let fileContents: string;
   if ("content" in response.data && response.data.content !== undefined) {

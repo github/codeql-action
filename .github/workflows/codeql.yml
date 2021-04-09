@@ -7,11 +7,56 @@ on:
     branches: [main, v1]
 
 jobs:
+  # Identify the CodeQL tool versions to use in the analysis job.
+  check-codeql-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.compare.outputs.versions }}
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Init with default CodeQL bundle from the VM image
+      id: init-default
+      uses: ./init
+      with:
+        languages: javascript
+    - name: Remove empty database
+      # allows us to run init a second time
+      run: |
+        rm -rf "$RUNNER_TEMP/codeql_databases"
+    - name: Init with latest CodeQL bundle
+      id: init-latest
+      uses: ./init
+      with:
+        tools: latest
+        languages: javascript
+    - name: Compare default and latest CodeQL bundle versions
+      id: compare
+      env:
+        CODEQL_DEFAULT: ${{ steps.init-default.outputs.codeql-path }}
+        CODEQL_LATEST: ${{ steps.init-latest.outputs.codeql-path }}
+      run: |
+        CODEQL_VERSION_DEFAULT="$("$CODEQL_DEFAULT" version --format terse)"
+        CODEQL_VERSION_LATEST="$("$CODEQL_LATEST" version --format terse)"
+        echo "Default CodeQL bundle version is $CODEQL_VERSION_DEFAULT"
+        echo "Latest CodeQL bundle version is $CODEQL_VERSION_LATEST"
+        if [[ "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
+          # Just use `tools: null` to avoid duplication in the analysis job.
+          VERSIONS_JSON='[null]'
+        else
+          # Use both `tools: null` and `tools: latest` in the analysis job.
+          VERSIONS_JSON='[null, "latest"]'
+        fi
+        # Output a JSON-encoded list with the distinct versions to test against.
+        echo "Suggested matrix config for analysis job: $VERSIONS_JSON"
+        echo "::set-output name=versions::${VERSIONS_JSON}"
+
   build:
+    needs: [check-codeql-versions]
     strategy:
       matrix:
         os: [ubuntu-latest,windows-latest,macos-latest]
-        tools: [~, latest]
+        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
     runs-on: ${{ matrix.os }}
 
     steps:

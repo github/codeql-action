@@ -40,6 +40,37 @@ export function combineSarifFiles(sarifFiles: string[]): string {
   return JSON.stringify(combinedSarif);
 }
 
+// Populates the run.automationDetails.id field using the analysis_key and environment
+// and return an updated sarif file contents.
+export function populateRunAutomationDetails(
+  sarifContents: string,
+  analysis_key: string | undefined,
+  environment: string | undefined
+): string {
+  if (analysis_key === undefined) {
+    return sarifContents;
+  }
+  let automationID = `${analysis_key}/`;
+
+  // the id has to be deterministic so we sort the fields
+  if (environment !== undefined) {
+    console.log(environment);
+    const environmentObject = JSON.parse(environment);
+    for (const entry of Object.entries(environmentObject).sort()) {
+      automationID += `${entry[0]}:${entry[1]}/`; //automationID + entry[0] + ':' + entry[1] + '/';
+    }
+  }
+
+  const sarif = JSON.parse(sarifContents);
+  for (const run of sarif.runs || []) {
+    run.automationDetails = {
+      id: automationID,
+    };
+  }
+
+  return JSON.stringify(sarif);
+}
+
 // Upload the given payload.
 // If the request fails then this will retry a small number of times.
 async function uploadPayload(
@@ -320,6 +351,11 @@ async function uploadFiles(
     sarifPayload,
     checkoutPath,
     logger
+  );
+  sarifPayload = populateRunAutomationDetails(
+    sarifPayload,
+    analysisKey,
+    environment
   );
 
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");

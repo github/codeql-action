@@ -53,11 +53,10 @@ export function populateRunAutomationDetails(
   let automationID = `${analysis_key}/`;
 
   // the id has to be deterministic so we sort the fields
-  if (environment !== undefined) {
-    console.log(environment);
+  if (environment !== undefined && environment !== "null") {
     const environmentObject = JSON.parse(environment);
     for (const entry of Object.entries(environmentObject).sort()) {
-      automationID += `${entry[0]}:${entry[1]}/`; //automationID + entry[0] + ':' + entry[1] + '/';
+      automationID += `${entry[0]}:${entry[1]}/`;
     }
   }
 

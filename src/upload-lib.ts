@@ -63,9 +63,11 @@ export function populateRunAutomationDetails(
 
   const sarif = JSON.parse(sarifContents);
   for (const run of sarif.runs || []) {
-    run.automationDetails = {
-      id: automationID,
-    };
+    if (run.automationDetails === undefined) {
+      run.automationDetails = {
+        id: automationID,
+      };
+    }
   }
 
   return JSON.stringify(sarif);

@@ -141,9 +141,14 @@ program
     "Checkout path. Default is the current working directory."
   )
   .option("--debug", "Print more verbose output", false)
-  // This prevents a message like: error: unknown option '--trace-process-level'
-  // Remove this if commander.js starts supporting hidden options.
-  .allowUnknownOption()
+  .option(
+    "--trace-process-name <string>",
+    "(Advanced, windows-only) Inject a windows tracer of this process into a process with the given process name."
+  )
+  .option(
+    "--trace-process-level <number>",
+    "(Advanced, windows-only) Inject a windows tracer of this process into a parent process <number> levels up."
+  )
   .action(async (cmd: InitArgs) => {
     const logger = getRunnerLogger(cmd.debug);
     try {

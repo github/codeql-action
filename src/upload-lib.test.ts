@@ -131,3 +131,46 @@ test("finding SARIF files", async (t) => {
     ]);
   });
 });
+
+test("populateRunAutomationDetails", (t) => {
+  let sarif = '{"runs": [{}]}';
+  const analysisKey = ".github/workflows/codeql-analysis.yml:analyze";
+
+  let expectedSarif =
+    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"}}]}';
+
+  let modifiedSarif = uploadLib.populateRunAutomationDetails(
+    sarif,
+    analysisKey,
+    '{"language": "javascript", "os": "linux"}'
+  );
+  t.deepEqual(modifiedSarif, expectedSarif);
+
+  // check the environment sorting
+  modifiedSarif = uploadLib.populateRunAutomationDetails(
+    sarif,
+    analysisKey,
+    '{"os": "linux", "language": "javascript"}'
+  );
+  t.deepEqual(modifiedSarif, expectedSarif);
+
+  // check that an empty environment produces the right results
+  expectedSarif =
+    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/"}}]}';
+  modifiedSarif = uploadLib.populateRunAutomationDetails(
+    sarif,
+    analysisKey,
+    "{}"
+  );
+  t.deepEqual(modifiedSarif, expectedSarif);
+
+  // check that an empty environment produces the right results
+  sarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
+  expectedSarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
+  modifiedSarif = uploadLib.populateRunAutomationDetails(
+    sarif,
+    analysisKey,
+    '{"os": "linux", "language": "javascript"}'
+  );
+  t.deepEqual(modifiedSarif, expectedSarif);
+});

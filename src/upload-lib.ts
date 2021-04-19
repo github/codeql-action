@@ -47,6 +47,7 @@ export function populateRunAutomationDetails(
   analysis_key: string | undefined,
   environment: string | undefined
 ): string {
+  console.log("populateRunAutomationDetails");
   if (analysis_key === undefined) {
     return sarifContents;
   }
@@ -59,6 +60,9 @@ export function populateRunAutomationDetails(
       automationID += `${entry[0]}:${entry[1]}/`;
     }
   }
+
+  console.log("automationID");
+  console.log(automationID);
 
   const sarif = JSON.parse(sarifContents);
   for (const run of sarif.runs || []) {
@@ -347,6 +351,7 @@ async function uploadFiles(
     validateSarifFileSchema(file, logger);
   }
 
+  console.log("upload files");
   let sarifPayload = combineSarifFiles(sarifFiles);
   sarifPayload = fingerprints.addFingerprints(
     sarifPayload,

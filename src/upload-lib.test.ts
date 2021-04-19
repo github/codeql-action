@@ -133,7 +133,7 @@ test("finding SARIF files", async (t) => {
 });
 
 test("populateRunAutomationDetails", (t) => {
-  const sarif = '{"runs": [{}]}';
+  let sarif = '{"runs": [{}]}';
   const analysisKey = ".github/workflows/codeql-analysis.yml:analyze";
 
   let expectedSarif =
@@ -161,6 +161,16 @@ test("populateRunAutomationDetails", (t) => {
     sarif,
     analysisKey,
     "{}"
+  );
+  t.deepEqual(modifiedSarif, expectedSarif);
+
+  // check that an empty environment produces the right results
+  sarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
+  expectedSarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
+  modifiedSarif = uploadLib.populateRunAutomationDetails(
+    sarif,
+    analysisKey,
+    '{"os": "linux", "language": "javascript"}'
   );
   t.deepEqual(modifiedSarif, expectedSarif);
 });

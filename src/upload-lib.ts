@@ -56,7 +56,13 @@ export function populateRunAutomationDetails(
   if (environment !== undefined && environment !== "null") {
     const environmentObject = JSON.parse(environment);
     for (const entry of Object.entries(environmentObject).sort()) {
-      automationID += `${entry[0]}:${entry[1]}/`;
+      if (typeof entry[1] === "string") {
+        automationID += `${entry[0]}:${entry[1]}/`;
+      } else {
+        // In code scanning we just handle the string values,
+        // the rest get converted to the empty string
+        automationID += `${entry[0]}:/`;
+      }
     }
   }
 

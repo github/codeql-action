@@ -90,6 +90,7 @@ export interface CodeQL {
   databaseAnalyze(
     databasePath: string,
     sarifFile: string,
+    extraSearchPath: string | undefined,
     querySuite: string,
     memoryFlag: string,
     addSnippetsFlag: string,
@@ -640,12 +641,13 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     async databaseAnalyze(
       databasePath: string,
       sarifFile: string,
+      extraSearchPath: string | undefined,
       querySuite: string,
       memoryFlag: string,
       addSnippetsFlag: string,
       threadsFlag: string
     ) {
-      await new toolrunner.ToolRunner(cmd, [
+      const args = [
         "database",
         "analyze",
         memoryFlag,
@@ -657,8 +659,12 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         `--output=${sarifFile}`,
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "analyze"]),
-        querySuite,
-      ]).exec();
+      ];
+      if (extraSearchPath !== undefined) {
+        args.push("--search-path", extraSearchPath);
+      }
+      args.push(querySuite);
+      await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
 }

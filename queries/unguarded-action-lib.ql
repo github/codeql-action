@@ -16,6 +16,7 @@ bindingset[lib]
 predicate isSafeActionLib(string lib) {
   lib = "@actions/http-client" or
   lib = "@actions/exec" or
+  lib = "@actions/io" or
   lib.matches("@actions/exec/%")
 }
 
@@ -41,7 +42,8 @@ predicate commandSetsActionsEnvVars(string commandName) {
 class ActionsLibImport extends ImportDeclaration {
   ActionsLibImport() {
     getImportedPath().getValue().matches("@actions/%") and
-    not isSafeActionLib(getImportedPath().getValue())
+    not isSafeActionLib(getImportedPath().getValue()) or
+    getImportedPath().getValue() = "./actions-util"
   }
 
   string getName() {

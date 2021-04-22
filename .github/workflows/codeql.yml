@@ -13,6 +13,9 @@ jobs:
     outputs:
       versions: ${{ steps.compare.outputs.versions }}
 
+    permissions:
+      contents: read
+
     steps:
     - uses: actions/checkout@v2
     - name: Init with default CodeQL bundle from the VM image
@@ -58,6 +61,11 @@ jobs:
         os: [ubuntu-latest,windows-latest,macos-latest]
         tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
     runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: read
+      security-events: write
+
 
     steps:
     - uses: actions/checkout@v2

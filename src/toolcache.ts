@@ -5,6 +5,7 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 import * as actionsToolcache from "@actions/tool-cache";
+import * as safeWhich from "@chrisgavin/safe-which";
 import * as semver from "semver";
 
 import { Logger } from "./logging";
@@ -49,14 +50,18 @@ export async function extractTar(
     // Determine whether GNU tar
     logger.debug("Checking tar --version");
     let versionOutput = "";
-    await new toolrunner.ToolRunner("tar", ["--version"], {
-      ignoreReturnCode: true,
-      silent: true,
-      listeners: {
-        stdout: (data) => (versionOutput += data.toString()),
-        stderr: (data) => (versionOutput += data.toString()),
-      },
-    }).exec();
+    await new toolrunner.ToolRunner(
+      await safeWhich.safeWhich("tar"),
+      ["--version"],
+      {
+        ignoreReturnCode: true,
+        silent: true,
+        listeners: {
+          stdout: (data) => (versionOutput += data.toString()),
+          stderr: (data) => (versionOutput += data.toString()),
+        },
+      }
+    ).exec();
     logger.debug(versionOutput.trim());
     const isGnuTar = versionOutput.toUpperCase().includes("GNU TAR");
     // Initialize args

@@ -52,6 +52,13 @@ export function getTemporaryDirectory(): string {
     : getRequiredEnvParam("RUNNER_TEMP");
 }
 
+export function getToolCacheDirectory(): string {
+  const value = process.env["CODEQL_ACTION_TOOL_CACHE"];
+  return value !== undefined && value !== ""
+    ? value
+    : getRequiredEnvParam("RUNNER_TOOL_CACHE");
+}
+
 /**
  * Ensures all required environment variables are set in the context of a local run.
  */

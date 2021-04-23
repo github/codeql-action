@@ -3,7 +3,6 @@ import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 
-import * as actionsUtil from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
@@ -169,7 +168,7 @@ export async function runQueries(
           new Date().getTime() - startTimeBuliltIn;
       }
       const startTimeCustom = new Date().getTime();
-      const temporarySarifDir = actionsUtil.getTemporaryDirectory();
+      const temporarySarifDir = config.tempDir;
       const temporarySarifFiles: string[] = [];
       for (let i = 0; i < queries["custom"].length; ++i) {
         if (queries["custom"][i].queries.length > 0) {

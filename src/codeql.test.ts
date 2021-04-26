@@ -7,7 +7,7 @@ import nock from "nock";
 import * as codeql from "./codeql";
 import * as defaults from "./defaults.json";
 import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { setupTests, setupActionsVars } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -24,7 +24,7 @@ const sampleGHAEApiDetails = {
 
 test("download codeql bundle cache", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    util.setupActionsVars(tmpDir, tmpDir);
+    setupActionsVars(tmpDir, tmpDir);
 
     const versions = ["20200601", "20200610"];
 
@@ -42,6 +42,7 @@ test("download codeql bundle cache", async (t) => {
         `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
         sampleApiDetails,
         tmpDir,
+        tmpDir,
         "runner",
         util.GitHubVariant.DOTCOM,
         getRunnerLogger(true)
@@ -58,7 +59,7 @@ test("download codeql bundle cache", async (t) => {
 
 test("download codeql bundle cache explicitly requested with pinned different version cached", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    util.setupActionsVars(tmpDir, tmpDir);
+    setupActionsVars(tmpDir, tmpDir);
 
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
@@ -70,6 +71,7 @@ test("download codeql bundle cache explicitly requested with pinned different ve
     await codeql.setupCodeQL(
       "https://example.com/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
       sampleApiDetails,
+      tmpDir,
       tmpDir,
       "runner",
       util.GitHubVariant.DOTCOM,
@@ -89,6 +91,7 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       "https://example.com/download/codeql-bundle-20200610/codeql-bundle.tar.gz",
       sampleApiDetails,
       tmpDir,
+      tmpDir,
       "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
@@ -100,7 +103,7 @@ test("download codeql bundle cache explicitly requested with pinned different ve
 
 test("don't download codeql bundle cache with pinned different version cached", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    util.setupActionsVars(tmpDir, tmpDir);
+    setupActionsVars(tmpDir, tmpDir);
 
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
@@ -113,6 +116,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       "https://example.com/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
       sampleApiDetails,
       tmpDir,
+      tmpDir,
       "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
@@ -123,6 +127,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
     await codeql.setupCodeQL(
       undefined,
       sampleApiDetails,
+      tmpDir,
       tmpDir,
       "runner",
       util.GitHubVariant.DOTCOM,
@@ -137,7 +142,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
 
 test("download codeql bundle cache with different version cached (not pinned)", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    util.setupActionsVars(tmpDir, tmpDir);
+    setupActionsVars(tmpDir, tmpDir);
 
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
@@ -149,6 +154,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
     await codeql.setupCodeQL(
       "https://example.com/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
       sampleApiDetails,
+      tmpDir,
       tmpDir,
       "runner",
       util.GitHubVariant.DOTCOM,
@@ -176,6 +182,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       undefined,
       sampleApiDetails,
       tmpDir,
+      tmpDir,
       "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
@@ -189,7 +196,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
 
 test('download codeql bundle cache with pinned different version cached if "latest" tools specified', async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    util.setupActionsVars(tmpDir, tmpDir);
+    setupActionsVars(tmpDir, tmpDir);
 
     nock("https://example.com")
       .get(`/download/codeql-bundle-20200601/codeql-bundle.tar.gz`)
@@ -201,6 +208,7 @@ test('download codeql bundle cache with pinned different version cached if "late
     await codeql.setupCodeQL(
       "https://example.com/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
       sampleApiDetails,
+      tmpDir,
       tmpDir,
       "runner",
       util.GitHubVariant.DOTCOM,
@@ -229,6 +237,7 @@ test('download codeql bundle cache with pinned different version cached if "late
       "latest",
       sampleApiDetails,
       tmpDir,
+      tmpDir,
       "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
@@ -242,7 +251,7 @@ test('download codeql bundle cache with pinned different version cached if "late
 
 test("download codeql bundle from github ae endpoint", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    util.setupActionsVars(tmpDir, tmpDir);
+    setupActionsVars(tmpDir, tmpDir);
 
     const bundleAssetID = 10;
 
@@ -282,6 +291,7 @@ test("download codeql bundle from github ae endpoint", async (t) => {
     await codeql.setupCodeQL(
       undefined,
       sampleGHAEApiDetails,
+      tmpDir,
       tmpDir,
       "runner",
       util.GitHubVariant.GHAE,

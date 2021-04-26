@@ -7,7 +7,7 @@ import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { setupTests, setupActionsVars } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -18,6 +18,8 @@ setupTests(test);
 test("status report fields and search path setting", async (t) => {
   let searchPathsUsed: string[] = [];
   return await util.withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+
     setCodeQL({
       databaseAnalyze: async (
         _,

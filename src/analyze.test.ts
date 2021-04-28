@@ -20,7 +20,7 @@ setupTests(test);
 // paths are set in the database analyze invocation.
 test("status report fields and search path setting", async (t) => {
   const mockLinesOfCode = Object.entries(Language).reduce((obj, [lang], i) => {
-    // use a different line count for each languaged
+    // use a different line count for each language
     obj[lang] = i + 1;
     return obj;
   }, {});

@@ -77,6 +77,14 @@ export class Languages {
   public getExtensionMap() {
     return this.extensionMap;
   }
+
+  /**
+   * get file type through a path
+   */
+   public getType(path: string): string {
+    const fileExtension = `.${path.split('.').pop()}`;
+    return this.extensionMap[fileExtension] || '';
+  }
 }
 
 export interface Regexes {

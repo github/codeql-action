@@ -2,9 +2,6 @@
 
 import chalk from 'chalk';
 import program from 'commander';
-// @ts-ignore
-import slash from 'slash2';
-import path from 'path';
 
 import { LocDir } from './directory';
 import { LocFile, LineInfo } from './file';

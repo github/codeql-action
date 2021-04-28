@@ -151,7 +151,7 @@ export async function runQueries(
     // config.paths specifies external directories. the current
     // directory is included in the analysis by default. Replicate
     // that here.
-    ["**"].concat(config.paths || []),
+    config.paths,
     config.pathsIgnore,
     config.languages,
     logger

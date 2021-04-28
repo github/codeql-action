@@ -5,6 +5,7 @@ import path from 'path';
 import slash from 'slash2';
 
 import { LineInfo, LocFile } from './file';
+import { Languages } from './languages';
 
 const defaultInfo: LineInfo = {
   total: 0,
@@ -16,6 +17,7 @@ export interface LocDirOptions {
   cwd?: string;
   include?: string[] | string;
   exclude?: string[] | string;
+  analysisLanguages?: string[];
 }
 
 export interface LocResult {
@@ -38,7 +40,86 @@ const defaultExclude = [
   '**/*.snap',
 
   // java
-  '**/target'
+  '**/target',
+  "**/*.class",
+  "**/*.o",
+  "**/bin",
+  "**/*.map",
+
+  // python
+  "**/*.pyc",
+  "**/*.pyo",
+
+  // other
+  "**/*.dil",
+  "**/*.ra",
+
+  // images
+  '**/*.png',
+  '**/*.jpg',
+  '**/*.jpeg',
+  '**/*.gif',
+  '**/*.ico',
+  '**/*.bmp',
+  '**/*.webp',
+  '**/*.tiff',
+  '**/*.psd',
+  '**/*.ai',
+  '**/*.ps',
+  '**/*.eps',
+
+  // fonts
+  '**/*.ttf',
+  '**/*.otf',
+  '**/*.woff',
+  '**/*.woff2',
+  '**/*.eot',
+  '**/*.ttc',
+
+  // audio
+  '**/*.mp3',
+  '**/*.wav',
+  '**/*.ogg',
+  '**/*.flac',
+  '**/*.aac',
+  '**/*.m4a',
+  '**/*.aif*',
+
+  // video
+  '**/*.mp4',
+  '**/*.mkv',
+  '**/*.avi',
+  '**/*.mov',
+  '**/*.wmv',
+  '**/*.mpg',
+  '**/*.mpeg',
+  '**/*.m2v',
+  '**/*.m4v',
+
+  // office
+  '**/*.doc',
+  '**/*.docx',
+  '**/*.docm',
+  '**/*.dot',
+  '**/*.dotx',
+  '**/*.xls',
+  '**/*.xlsx',
+
+  // documents
+  '**/*.pdf',
+  '**/*.epub',
+  '**/*.mobi',
+
+  // archives
+  '**/*.rar',
+  '**/*.zip',
+  '**/*.7z',
+  '**/*.tar',
+  '**/*.gz',
+  '**/*.bz2',
+  '**/*.bz',
+  '**/*.tbz',
+  '**/*.tgz',
 ];
 
 /**
@@ -48,6 +129,8 @@ export class LocDir {
   private cwd: string;
   private include: string[];
   private exclude: string[];
+  private analysisLanguages?: string[];
+  private allLanguages = new Languages();
 
   constructor(options: LocDirOptions) {
 
@@ -63,6 +146,7 @@ export class LocDir {
       .map(item => item.startsWith('./') ? item.substring(2) : item)
       .map(item => item.endsWith('**') ? item : `${item}/**`);
     this.cwd = options.cwd || process.cwd();
+    this.analysisLanguages = options.analysisLanguages;
   }
 
   /**
@@ -86,6 +170,7 @@ export class LocDir {
       const fullPath = slash(path.join(this.cwd, pathItem));
       if (
         !pathItem ||
+        this.ignoreLanguage(pathItem) ||
         !(await fs.pathExists(fullPath)) ||
         (await fs.stat(fullPath)).isDirectory()
       ) {
@@ -114,6 +199,14 @@ export class LocDir {
       info,
       languages,
     };
+  }
+
+  /**
+   * Ignore analyzing this file if analysis languages are specified
+   * and this language is not one of them.
+   */
+  private ignoreLanguage(pathItem: string): boolean {
+    return this.analysisLanguages && !this.analysisLanguages.includes(this.allLanguages.getType(pathItem));
   }
 }
 

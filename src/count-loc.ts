@@ -15,6 +15,17 @@ const supportedLanguages = {
   typescript: "js",
 };
 
+const supportedLanguagesReversed = Object.entries(supportedLanguages).reduce(
+  (obj, [key, value]) => {
+    if (!obj[value]) {
+      obj[value] = [];
+    }
+    obj[value].push(key);
+    return obj;
+  },
+  {}
+);
+
 /**
  * Count the lines of code of the specified language using the include
  * and exclude glob paths.
@@ -34,8 +45,11 @@ export async function countLoc(
 ): Promise<Record<string, number>> {
   const result = await new LocDir({
     cwd,
-    include,
+    include: ["**"].concat(include || []),
     exclude,
+    analysisLanguages: dbLanguages.flatMap(
+      (lang) => supportedLanguagesReversed[lang]
+    ),
   }).loadInfo();
 
   // The analysis counts LoC in all languages. We need to

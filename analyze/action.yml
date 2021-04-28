@@ -27,6 +27,9 @@ inputs:
     description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
     required: false
     default: ${{ github.workspace }}
+  category:
+    description: String used by Code Scanning for matching the analyses
+    required: false
   token:
     default: ${{ github.token }}
   matrix:

@@ -137,10 +137,31 @@ test("populateRunAutomationDetails", (t) => {
   const analysisKey = ".github/workflows/codeql-analysis.yml:analyze";
 
   let expectedSarif =
-    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"}}]}';
+    '{"runs":[{"automationDetails":{"id":"language:javascript/os:linux/"}}]}';
 
+  // Category has priority over analysis_key/environment
   let modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
+    "language:javascript/os:linux",
+    analysisKey,
+    '{"language": "other", "os": "other"}'
+  );
+  t.deepEqual(modifiedSarif, expectedSarif);
+
+  // It doesn't matter if the category has a slash at the end or not
+  modifiedSarif = uploadLib.populateRunAutomationDetails(
+    sarif,
+    "language:javascript/os:linux/",
+    analysisKey,
+    ""
+  );
+  t.deepEqual(modifiedSarif, expectedSarif);
+
+  expectedSarif =
+    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"}}]}';
+  modifiedSarif = uploadLib.populateRunAutomationDetails(
+    sarif,
+    undefined,
     analysisKey,
     '{"language": "javascript", "os": "linux"}'
   );
@@ -149,6 +170,7 @@ test("populateRunAutomationDetails", (t) => {
   // check the environment sorting
   modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
+    undefined,
     analysisKey,
     '{"os": "linux", "language": "javascript"}'
   );
@@ -159,6 +181,7 @@ test("populateRunAutomationDetails", (t) => {
     '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/"}}]}';
   modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
+    undefined,
     analysisKey,
     "{}"
   );
@@ -169,6 +192,7 @@ test("populateRunAutomationDetails", (t) => {
     '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/number:/object:/"}}]}';
   modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
+    undefined,
     analysisKey,
     '{"number": 1, "object": {"language": "javascript"}}'
   );
@@ -179,6 +203,7 @@ test("populateRunAutomationDetails", (t) => {
   expectedSarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
   modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
+    undefined,
     analysisKey,
     '{"os": "linux", "language": "javascript"}'
   );

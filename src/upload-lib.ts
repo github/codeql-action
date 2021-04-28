@@ -44,12 +44,47 @@ export function combineSarifFiles(sarifFiles: string[]): string {
 // and return an updated sarif file contents.
 export function populateRunAutomationDetails(
   sarifContents: string,
+  category: string | undefined,
   analysis_key: string | undefined,
   environment: string | undefined
 ): string {
   if (analysis_key === undefined) {
     return sarifContents;
   }
+  const automationID = getAutomationID(category, analysis_key, environment);
+
+  const sarif = JSON.parse(sarifContents);
+  for (const run of sarif.runs || []) {
+    if (run.automationDetails === undefined) {
+      run.automationDetails = {
+        id: automationID,
+      };
+    }
+  }
+
+  return JSON.stringify(sarif);
+}
+
+function getAutomationID(
+  category: string | undefined,
+  analysis_key: string | undefined,
+  environment: string | undefined
+): string {
+  if (category !== undefined) {
+    let automationID = category;
+    if (!automationID.endsWith("/")) {
+      automationID += "/";
+    }
+    return automationID;
+  }
+
+  return computeAutomationID(analysis_key, environment);
+}
+
+function computeAutomationID(
+  analysis_key: string | undefined,
+  environment: string | undefined
+): string {
   let automationID = `${analysis_key}/`;
 
   // the id has to be deterministic so we sort the fields
@@ -66,16 +101,7 @@ export function populateRunAutomationDetails(
     }
   }
 
-  const sarif = JSON.parse(sarifContents);
-  for (const run of sarif.runs || []) {
-    if (run.automationDetails === undefined) {
-      run.automationDetails = {
-        id: automationID,
-      };
-    }
-  }
-
-  return JSON.stringify(sarif);
+  return automationID;
 }
 
 // Upload the given payload.
@@ -361,6 +387,7 @@ async function uploadFiles(
   );
   sarifPayload = populateRunAutomationDetails(
     sarifPayload,
+    actionsUtil.getOptionalInput("category"),
     analysisKey,
     environment
   );

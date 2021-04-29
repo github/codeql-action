@@ -134,6 +134,7 @@ export function concatTracerConfigs(
   for (const e of Object.entries(env)) {
     const key = e[0];
     const value = e[1];
+    console.log(`Setting ${key} to ${value}\n`);
     const lineBuffer = Buffer.from(`${key}=${value}\0`, "utf8");
     const sizeBuffer = Buffer.alloc(4);
     sizeBuffer.writeInt32LE(lineBuffer.length, 0);
@@ -143,7 +144,6 @@ export function concatTracerConfigs(
   const envPath = `${spec}.environment`;
   fs.writeFileSync(envPath, buffer);
   console.log('Compound tracer environment written to', envPath)
-  console.log(buffer.toString());
 
   return { env, spec };
 }

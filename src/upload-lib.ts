@@ -179,6 +179,7 @@ export async function uploadFromActions(
     await actionsUtil.getCommitOid(),
     await actionsUtil.getRef(),
     await actionsUtil.getAnalysisKey(),
+    actionsUtil.getOptionalInput("category"),
     actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
@@ -208,6 +209,7 @@ export async function uploadFromRunner(
     repositoryNwo,
     commitOid,
     ref,
+    undefined,
     undefined,
     undefined,
     undefined,
@@ -352,6 +354,7 @@ async function uploadFiles(
   commitOid: string,
   ref: string,
   analysisKey: string | undefined,
+  category: string | undefined,
   analysisName: string | undefined,
   workflowRunID: number | undefined,
   checkoutPath: string,
@@ -387,7 +390,7 @@ async function uploadFiles(
   );
   sarifPayload = populateRunAutomationDetails(
     sarifPayload,
-    actionsUtil.getOptionalInput("category"),
+    category,
     analysisKey,
     environment
   );

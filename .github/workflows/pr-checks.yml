@@ -156,7 +156,7 @@ jobs:
         languages: cpp,csharp,java,javascript,python
         config-file: github/codeql-action/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
     - name: Archive database working directory
-      if: ${{ matrix.os == 'windows-latest' && tools == 'latest' }}
+      if: ${{ matrix.os == 'windows-latest' && matrix.tools == 'latest' }}
       uses: actions/upload-artifact@v2
       with:
         name: multi-language-repo-db-cpp-working

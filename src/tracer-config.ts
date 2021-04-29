@@ -27,7 +27,7 @@ export async function getTracerConfigForLanguage(
   const env = await codeql.getTracerEnv(
     util.getCodeQLDatabasePath(config.tempDir, language)
   );
-  console.log('Tracer environment for language ', language, env);
+  console.log("Tracer environment for language ", language, env);
 
   const spec = env["ODASA_TRACER_CONFIGURATION"];
   const info: TracerConfig = { spec, env: {} };
@@ -134,7 +134,7 @@ export function concatTracerConfigs(
   for (const e of Object.entries(env)) {
     const key = e[0];
     const value = e[1];
-    console.log(`Setting ${key} to ${value}\n`);
+    console.log(`Exporting ${key}=${value}`);
     const lineBuffer = Buffer.from(`${key}=${value}\0`, "utf8");
     const sizeBuffer = Buffer.alloc(4);
     sizeBuffer.writeInt32LE(lineBuffer.length, 0);
@@ -143,7 +143,7 @@ export function concatTracerConfigs(
   // Write the compound environment
   const envPath = `${spec}.environment`;
   fs.writeFileSync(envPath, buffer);
-  console.log('Compound tracer environment written to', envPath)
+  console.log("Compound tracer environment written to ", envPath)
 
   return { env, spec };
 }

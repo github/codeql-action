@@ -137,8 +137,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
+        os: [windows-latest]
+        tools: [latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -174,8 +174,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
+        os: [windows-latest]
+        tools: [latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -208,8 +208,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
+        os: [windows-latest]
+        tools: [latest]
     runs-on: ${{ matrix.os }}
     env:
       CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
@@ -338,6 +338,7 @@ jobs:
   runner-analyze-javascript-ubuntu:
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
+    if: 'false'
 
     steps:
     - uses: actions/checkout@v2
@@ -365,6 +366,7 @@ jobs:
   runner-analyze-javascript-windows:
     needs: [check-js, check-node-modules]
     runs-on: windows-latest
+    if: 'false'
 
     steps:
     - uses: actions/checkout@v2
@@ -388,6 +390,7 @@ jobs:
   runner-analyze-javascript-macos:
     needs: [check-js, check-node-modules]
     runs-on: macos-latest
+    if: 'false'
 
     steps:
     - uses: actions/checkout@v2
@@ -469,6 +472,12 @@ jobs:
       run: |
         ../action/runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages csharp --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
+    - name: Archive database working directory
+      uses: actions/upload-artifact@v2
+      with:
+        name: runner-db-csharp-working
+        path: D:\a\codeql-action\codeql-action\codeql-runner\codeql_databases\csharp
+
     - name: Build code
       shell: powershell
       run: |
@@ -522,6 +531,7 @@ jobs:
   runner-analyze-csharp-autobuild-ubuntu:
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
+    if: 'false'
 
     steps:
     - uses: actions/checkout@v2
@@ -557,6 +567,7 @@ jobs:
   runner-analyze-csharp-autobuild-windows:
     needs: [check-js, check-node-modules]
     runs-on: windows-latest
+    if: 'false'
 
     steps:
     - uses: actions/checkout@v2
@@ -593,6 +604,7 @@ jobs:
   runner-analyze-csharp-autobuild-macos:
     needs: [check-js, check-node-modules]
     runs-on: macos-latest
+    if: 'false'
 
     steps:
     - uses: actions/checkout@v2

@@ -155,6 +155,12 @@ jobs:
         tools: ${{ matrix.tools }}
         languages: cpp,csharp,java,javascript,python
         config-file: github/codeql-action/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
+    - name: Archive database working directory
+      if: ${{ matrix.os == 'windows-latest' && tools == 'latest' }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: multi-language-repo-db-cpp-working
+        path: D:\a\_temp\codeql_databases\cpp\working
     - name: Build code
       shell: bash
       run: ./build.sh

@@ -363,6 +363,10 @@ export async function getWorkflow(): Promise<Workflow> {
   return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /**
  * Get the path of the currently executing workflow.
  */
@@ -379,15 +383,25 @@ async function getWorkflowPath(): Promise<string> {
   const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
 
   const apiClient = api.getActionsApiClient();
-  console.log(`GET /repos/${owner}/${repo}/actions/runs/${run_id}`);
-  const runsResponse = await apiClient.request(
-    "GET /repos/:owner/:repo/actions/runs/:run_id",
-    {
-      owner,
-      repo,
-      run_id,
+  let runsResponse;
+  while (true) {
+    try {
+      console.log(`GET /repos/${owner}/${repo}/actions/runs/${run_id}`);
+      runsResponse = await apiClient.request(
+        "GET /repos/:owner/:repo/actions/runs/:run_id",
+        {
+          owner,
+          repo,
+          run_id,
+        }
+      );
+      break;
     }
-  );
+    catch (e) {
+      console.log(`failed. retry. ${e}`);
+      await sleep(5000);
+    }
+  }
   const workflowUrl = runsResponse.data.workflow_url;
 
   const workflowResponse = await apiClient.request(`GET ${workflowUrl}`);

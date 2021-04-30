@@ -125,6 +125,7 @@ async function run() {
       actionsUtil.getOptionalInput("tools"),
       apiDetails,
       actionsUtil.getTemporaryDirectory(),
+      actionsUtil.getToolCacheDirectory(),
       "actions",
       gitHubVersion.type,
       logger

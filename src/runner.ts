@@ -21,7 +21,6 @@ import {
   getThreadsFlag,
   parseGitHubUrl,
   getGitHubAuth,
-  setupActionsVars,
 } from "./util";
 
 const program = new Command();
@@ -155,8 +154,6 @@ program
       const tempDir = getTempDir(cmd.tempDir);
       const toolsDir = getToolsDir(cmd.toolsDir);
 
-      setupActionsVars(tempDir, toolsDir);
-
       // Wipe the temp dir
       logger.info(`Cleaning temp directory ${tempDir}`);
       fs.rmdirSync(tempDir, { recursive: true });
@@ -186,6 +183,7 @@ program
             undefined,
             apiDetails,
             tempDir,
+            toolsDir,
             "runner",
             gitHubVersion.type,
             logger
@@ -297,7 +295,6 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
-      setupActionsVars(config.tempDir, config.toolCacheDir);
       importTracerEnvironment(config);
       let language: Language | undefined = undefined;
       if (cmd.language !== undefined) {
@@ -395,7 +392,6 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
-      setupActionsVars(config.tempDir, config.toolCacheDir);
 
       const auth = await getGitHubAuth(
         logger,

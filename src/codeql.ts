@@ -6,7 +6,6 @@ import * as globalutil from "util";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as http from "@actions/http-client";
 import { IHeaders } from "@actions/http-client/interfaces";
-import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
@@ -18,6 +17,7 @@ import * as defaults from "./defaults.json"; // Referenced from codeql-action-sy
 import { errorMatchers } from "./error-matcher";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import * as toolcache from "./toolcache";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
 
@@ -282,6 +282,7 @@ export async function setupCodeQL(
   codeqlURL: string | undefined,
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
+  toolCacheDir: string,
   mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
@@ -300,15 +301,32 @@ export async function setupCodeQL(
     const codeqlURLSemVer = convertToSemVer(codeqlURLVersion, logger);
 
     // If we find the specified version, we always use that.
-    let codeqlFolder = toolcache.find("CodeQL", codeqlURLSemVer);
+    let codeqlFolder = toolcache.find(
+      "CodeQL",
+      codeqlURLSemVer,
+      mode,
+      toolCacheDir,
+      logger
+    );
 
     // If we don't find the requested version, in some cases we may allow a
     // different version to save download time if the version hasn't been
     // specified explicitly (in which case we always honor it).
     if (!codeqlFolder && !codeqlURL && !forceLatest) {
-      const codeqlVersions = toolcache.findAllVersions("CodeQL");
+      const codeqlVersions = toolcache.findAllVersions(
+        "CodeQL",
+        mode,
+        toolCacheDir,
+        logger
+      );
       if (codeqlVersions.length === 1) {
-        const tmpCodeqlFolder = toolcache.find("CodeQL", codeqlVersions[0]);
+        const tmpCodeqlFolder = toolcache.find(
+          "CodeQL",
+          codeqlVersions[0],
+          mode,
+          toolCacheDir,
+          logger
+        );
         if (fs.existsSync(path.join(tmpCodeqlFolder, "pinned-version"))) {
           logger.debug(
             `CodeQL in cache overriding the default ${CODEQL_BUNDLE_VERSION}`
@@ -357,11 +375,19 @@ export async function setupCodeQL(
       );
       logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 
-      const codeqlExtracted = await toolcache.extractTar(codeqlPath);
+      const codeqlExtracted = await toolcache.extractTar(
+        codeqlPath,
+        mode,
+        tempDir,
+        logger
+      );
       codeqlFolder = await toolcache.cacheDir(
         codeqlExtracted,
         "CodeQL",
-        codeqlURLSemVer
+        codeqlURLSemVer,
+        mode,
+        toolCacheDir,
+        logger
       );
     }
 

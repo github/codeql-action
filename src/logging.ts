@@ -6,6 +6,8 @@ export interface Logger {
   warning: (message: string) => void;
   error: (message: string) => void;
 
+  isDebug: () => boolean;
+
   startGroup: (name: string) => void;
   endGroup: () => void;
 }
@@ -20,6 +22,7 @@ export function getRunnerLogger(debugMode: boolean): Logger {
     info: console.info,
     warning: console.warn,
     error: console.error,
+    isDebug: () => debugMode,
     startGroup: () => undefined,
     endGroup: () => undefined,
   };

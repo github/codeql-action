@@ -313,6 +313,7 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
 export async function validateWorkflow(): Promise<undefined | string> {
   let workflow: Workflow;
   try {
+    console.log("GETTING WORKFLOW");
     workflow = await getWorkflow();
   } catch (e) {
     return `error: getWorkflow() failed: ${e.toString()}`;
@@ -366,7 +367,9 @@ export async function getWorkflow(): Promise<Workflow> {
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
+  console.log("GET WORKFLOW PATH");
   if (isLocalRun()) {
+    console.log("LOCAL");
     return getRequiredEnvParam("WORKFLOW_PATH");
   }
 
@@ -376,6 +379,7 @@ async function getWorkflowPath(): Promise<string> {
   const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
 
   const apiClient = api.getActionsApiClient();
+  console.log("CALL");
   const runsResponse = await apiClient.request(
     "GET /repos/:owner/:repo/actions/runs/:run_id",
     {

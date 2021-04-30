@@ -139,8 +139,11 @@ export function concatTracerConfigs(
     buffer = Buffer.concat([buffer, sizeBuffer, lineBuffer]);
   }
   // Write the compound environment
-  const envPath = `${spec}.environment`;
-  fs.writeFileSync(envPath, buffer);
+  // but temporarily not if we're on Windows
+  if (process.platform !== "win32") {
+    const envPath = `${spec}.environment`;
+    fs.writeFileSync(envPath, buffer);
+  }
 
   return { env, spec };
 }

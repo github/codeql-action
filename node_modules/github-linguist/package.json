@@ -1,6 +1,6 @@
 {
   "name": "github-linguist",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "A tool to count lines of code in a repository powered by github-linguist langauge mappings.",
   "keywords": [
     "loc",

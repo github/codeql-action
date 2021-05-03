@@ -73,6 +73,38 @@ test("getAnalysisKey() when a local run", async (t) => {
   t.deepEqual(actualAnalysisKey, "LOCAL-RUN:UNKNOWN-JOB");
 });
 
+test("getAutomationID() when a local run", async (t) => {
+  process.env.CODEQL_LOCAL_RUN = "true";
+  process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
+
+  // TODO: setup the matrix as an input
+  process.env.MATRIX = '{"language": "javascript", "os": "linux"}';
+  actionsutil.prepareLocalRunEnvironment();
+  // TODO: uncomment once the matrix is setup
+  // const actualAutomationID = await actionsutil.getAutomationID();
+  // t.deepEqual(actualAutomationID, "LOCAL-RUN:UNKNOWN-JOB/language:javascript/os:linux/");
+
+  // check the environment sorting
+  process.env.MATRIX = '{"os": "linux", "language": "javascript"}';
+  actionsutil.prepareLocalRunEnvironment();
+  // TODO: uncomment once the matrix is setup
+  // const actualAutomationID = await actionsutil.getAutomationID();
+  // t.deepEqual(actualAutomationID, "LOCAL-RUN:UNKNOWN-JOB/language:javascript/os:linux/");
+
+  // check that an empty environment produces the right results
+  process.env.MATRIX = "{}";
+  actionsutil.prepareLocalRunEnvironment();
+  const actualAutomationID = await actionsutil.getAutomationID();
+  t.deepEqual(actualAutomationID, "LOCAL-RUN:UNKNOWN-JOB/");
+
+  // check non string environment values
+  process.env.MATRIX = '{"number": 1, "object": {"language": "javascript"}}';
+  actionsutil.prepareLocalRunEnvironment();
+  // TODO: uncomment once the matrix is setup
+  // const actualAutomationID = await actionsutil.getAutomationID();
+  // t.deepEqual(actualAutomationID, "LOCAL-RUN:UNKNOWN-JOB/number:/object:/");
+});
+
 test("prepareEnvironment() when a local run", (t) => {
   process.env.CODEQL_LOCAL_RUN = "false";
   process.env.GITHUB_JOB = "YYY";

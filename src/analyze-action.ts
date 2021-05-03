@@ -75,11 +75,16 @@ async function run() {
       url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
     };
     const outputDir = actionsUtil.getRequiredInput("output");
+    const automationId = util.getAutomationID(
+      await actionsUtil.getAnalysisKey(),
+      actionsUtil.getRequiredInput("matrix")
+    );
     const queriesStats = await runAnalyze(
       outputDir,
       util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
       util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
       util.getThreadsFlag(actionsUtil.getOptionalInput("threads"), logger),
+      automationId,
       config,
       logger
     );

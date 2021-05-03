@@ -426,8 +426,17 @@ export async function getAnalysisKey(): Promise<string> {
 }
 
 export async function getAutomationID(): Promise<string> {
-  let automationID = `${await getAnalysisKey()}/`;
-  const environment = getOptionalInput("matrix");
+  const analysis_key = await getAnalysisKey();
+  const environment = getRequiredInput("matrix");
+
+  return computeAutomationID(analysis_key, environment);
+}
+
+export function computeAutomationID(
+  analysis_key: string | undefined,
+  environment: string | undefined
+): string {
+  let automationID = `${analysis_key}/`;
 
   // the id has to be deterministic so we sort the fields
   if (environment !== undefined && environment !== "null") {

@@ -157,47 +157,6 @@ test("populateRunAutomationDetails", (t) => {
   );
   t.deepEqual(modifiedSarif, expectedSarif);
 
-  expectedSarif =
-    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"}}]}';
-  modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
-    undefined,
-    analysisKey,
-    '{"language": "javascript", "os": "linux"}'
-  );
-  t.deepEqual(modifiedSarif, expectedSarif);
-
-  // check the environment sorting
-  modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
-    undefined,
-    analysisKey,
-    '{"os": "linux", "language": "javascript"}'
-  );
-  t.deepEqual(modifiedSarif, expectedSarif);
-
-  // check that an empty environment produces the right results
-  expectedSarif =
-    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/"}}]}';
-  modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
-    undefined,
-    analysisKey,
-    "{}"
-  );
-  t.deepEqual(modifiedSarif, expectedSarif);
-
-  // check non string environment values
-  expectedSarif =
-    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/number:/object:/"}}]}';
-  modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
-    undefined,
-    analysisKey,
-    '{"number": 1, "object": {"language": "javascript"}}'
-  );
-  t.deepEqual(modifiedSarif, expectedSarif);
-
   // check that the automation details doesn't get overwritten
   sarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
   expectedSarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';

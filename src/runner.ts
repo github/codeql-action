@@ -416,7 +416,7 @@ program
         getMemoryFlag(cmd.ram),
         getAddSnippetsFlag(cmd.addSnippets),
         getThreadsFlag(cmd.threads, logger),
-        undefined,
+        cmd.category,
         config,
         logger
       );

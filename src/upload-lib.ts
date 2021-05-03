@@ -78,30 +78,7 @@ function getAutomationID(
     return automationID;
   }
 
-  return computeAutomationID(analysis_key, environment);
-}
-
-function computeAutomationID(
-  analysis_key: string | undefined,
-  environment: string | undefined
-): string {
-  let automationID = `${analysis_key}/`;
-
-  // the id has to be deterministic so we sort the fields
-  if (environment !== undefined && environment !== "null") {
-    const environmentObject = JSON.parse(environment);
-    for (const entry of Object.entries(environmentObject).sort()) {
-      if (typeof entry[1] === "string") {
-        automationID += `${entry[0]}:${entry[1]}/`;
-      } else {
-        // In code scanning we just handle the string values,
-        // the rest get converted to the empty string
-        automationID += `${entry[0]}:/`;
-      }
-    }
-  }
-
-  return automationID;
+  return actionsUtil.computeAutomationID(analysis_key, environment);
 }
 
 // Upload the given payload.

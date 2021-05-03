@@ -140,6 +140,7 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger
 ): Promise<QueriesStatusReport> {
@@ -244,7 +245,8 @@ export async function runQueries(
       querySuitePath,
       memoryFlag,
       addSnippetsFlag,
-      threadsFlag
+      threadsFlag,
+      automationDetailsId
     );
 
     logger.debug(
@@ -261,6 +263,7 @@ export async function runAnalyze(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger
 ): Promise<QueriesStatusReport> {
@@ -278,6 +281,7 @@ export async function runAnalyze(
     memoryFlag,
     addSnippetsFlag,
     threadsFlag,
+    automationDetailsId,
     config,
     logger
   );

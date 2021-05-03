@@ -80,6 +80,7 @@ async function run() {
       util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
       util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
       util.getThreadsFlag(actionsUtil.getOptionalInput("threads"), logger),
+      actionsUtil.getOptionalInput("category"),
       config,
       logger
     );

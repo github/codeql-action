@@ -295,16 +295,16 @@ async function injectLinesOfCode(
     const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
     if (Array.isArray(sarif.runs)) {
       for (const run of sarif.runs) {
-        const metricId = `${language}/summary/lines-of-code`;
+        const ruleId = `${language}/summary/lines-of-code`;
         run.properties = run.properties || {};
         run.properties.metricResults = run.properties.metricResults || [];
-        const metric = run.properties.metricResults.find(
-          // the metric id can be in either of two places
-          (m) => m.metricId === metricId || m.metric?.id === metricId
+        const rule = run.properties.metricResults.find(
+          // the rule id can be in either of two places
+          (r) => r.ruleId === ruleId || r.rule?.id === ruleId
         );
-        // only add the baseline value if the metric already exists
-        if (metric) {
-          metric.baseline = lineCounts[language];
+        // only add the baseline value if the rule already exists
+        if (rule) {
+          rule.baseline = lineCounts[language];
         }
       }
     }

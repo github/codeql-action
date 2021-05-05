@@ -20,7 +20,7 @@ setupTests(test);
 // paths are set in the database analyze invocation.
 test("status report fields and search path setting", async (t) => {
   const mockLinesOfCode = Object.entries(Language).reduce((obj, [lang], i) => {
-    // use a different line count for each languaged
+    // use a different line count for each language
     obj[lang] = i + 1;
     return obj;
   }, {});
@@ -44,23 +44,23 @@ test("status report fields and search path setting", async (t) => {
             sarifFile,
             JSON.stringify({
               runs: [
-                // variant 1 uses metricId
+                // variant 1 uses ruleId
                 {
                   properties: {
                     metricResults: [
                       {
-                        metricId: `${language}/summary/lines-of-code`,
+                        ruleId: `${language}/summary/lines-of-code`,
                         value: 123,
                       },
                     ],
                   },
                 },
-                // variant 2 uses metric.id
+                // variant 2 uses rule.id
                 {
                   properties: {
                     metricResults: [
                       {
-                        metric: {
+                        rule: {
                           id: `${language}/summary/lines-of-code`,
                         },
                         value: 123,
@@ -168,21 +168,21 @@ test("status report fields and search path setting", async (t) => {
     const sarif = JSON.parse(fs.readFileSync(filePath, "utf8"));
     t.deepEqual(sarif.runs[0].properties.metricResults, [
       {
-        metricId: `${lang}/summary/lines-of-code`,
+        ruleId: `${lang}/summary/lines-of-code`,
         value: 123,
         baseline: lineCount,
       },
     ]);
     t.deepEqual(sarif.runs[1].properties.metricResults, [
       {
-        metric: {
+        rule: {
           id: `${lang}/summary/lines-of-code`,
         },
         value: 123,
         baseline: lineCount,
       },
     ]);
-    // when the metric doesn't exists, it should not be added
+    // when the rule doesn't exists, it should not be added
     t.deepEqual(sarif.runs[2].properties.metricResults, []);
   }
 });

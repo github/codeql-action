@@ -67,7 +67,7 @@ export function populateRunAutomationDetails(
 
 function getAutomationID(
   category: string | undefined,
-  analysis_key: string | undefined,
+  analysis_key: string,
   environment: string | undefined
 ): string {
   if (category !== undefined) {

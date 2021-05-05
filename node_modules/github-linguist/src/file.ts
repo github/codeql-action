@@ -42,7 +42,7 @@ export class LocFile {
   public path: string;
   private rawPath: string;
 
-  private language = new Languages();
+  private languages = new Languages();
 
   /**
    * Creates an instance of LocFile.
@@ -50,14 +50,6 @@ export class LocFile {
   constructor(rawPath: string, private debug = false) {
     this.path = slash(rawPath);
     this.rawPath = rawPath;
-  }
-
-  /**
-   * get file type through a path
-   */
-  private getType(path: string): string {
-    const fileExtension = `.${path.split('.').pop()}`;
-    return this.language.extensionMap[fileExtension] || '';
   }
 
   private filterData = (data: string, regexes: Regexes): LineInfo => {
@@ -155,12 +147,12 @@ export class LocFile {
       newData = data || await fs.readFile(this.path, 'utf-8');
       info.name = name;
       info.size = (stat && stat.size) || 0;
-      info.languages = this.getType(this.path);
+      info.languages = this.languages.getType(this.path);
       if (!info.languages) {
         return info;
       }
       if (newData) {
-        const regexes = this.language.getRegexes(info.languages);
+        const regexes = this.languages.getRegexes(info.languages);
         info.lines = this.filterData(newData, regexes);
       }
     } catch (err) {
@@ -172,8 +164,8 @@ export class LocFile {
   public getFileInfoByContent(name: string, data: string): FileInfo {
     const info: FileInfo = Object.assign({}, DefaultFileInfo);
     info.name = name;
-    info.languages = this.getType(name);
-    info.lines = this.filterData(data, this.language.getRegexes(info.languages));
+    info.languages = this.languages.getType(name);
+    info.lines = this.filterData(data, this.languages.getRegexes(info.languages));
     return info;
   }
 }

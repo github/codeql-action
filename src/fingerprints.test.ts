@@ -163,6 +163,11 @@ test("resolveUriToFile", (t) => {
   // Invalid indexes are discarded
   t.is(testResolveUriToFile(undefined, 1, [filepath]), undefined);
   t.is(testResolveUriToFile(undefined, "0", [filepath]), undefined);
+
+  // Directories are discarded
+  const dirpath = __dirname;
+  t.is(testResolveUriToFile(dirpath, undefined, []), undefined);
+  t.is(testResolveUriToFile(`file://${dirpath}`, undefined, []), undefined);
 });
 
 test("addFingerprints", (t) => {

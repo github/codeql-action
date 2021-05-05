@@ -227,6 +227,11 @@ export function resolveUriToFile(
     return undefined;
   }
 
+  if (fs.statSync(uri).isDirectory()) {
+    logger.debug(`Unable to compute fingerprint for directory: ${uri}`);
+    return undefined;
+  }
+
   return uri;
 }
 

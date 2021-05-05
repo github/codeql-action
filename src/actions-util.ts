@@ -439,7 +439,7 @@ export function computeAutomationID(
   let automationID = `${analysis_key}/`;
 
   // the id has to be deterministic so we sort the fields
-  if (environment) {
+  if (environment !== undefined && environment !== "null") {
     const environmentObject = JSON.parse(environment);
     for (const entry of Object.entries(environmentObject).sort()) {
       if (typeof entry[1] === "string") {

@@ -433,13 +433,13 @@ export async function getAutomationID(): Promise<string> {
 }
 
 export function computeAutomationID(
-  analysis_key: string | undefined,
+  analysis_key: string,
   environment: string | undefined
 ): string {
   let automationID = `${analysis_key}/`;
 
   // the id has to be deterministic so we sort the fields
-  if (environment !== undefined && environment !== "null") {
+  if (environment) {
     const environmentObject = JSON.parse(environment);
     for (const entry of Object.entries(environmentObject).sort()) {
       if (typeof entry[1] === "string") {

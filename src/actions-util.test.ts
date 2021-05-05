@@ -112,6 +112,16 @@ test("computeAutomationID()", async (t) => {
     actualAutomationID,
     ".github/workflows/codeql-analysis.yml:analyze/number:/object:/"
   );
+
+  // check undefined environment
+  actualAutomationID = actionsutil.computeAutomationID(
+    ".github/workflows/codeql-analysis.yml:analyze",
+    undefined
+  );
+  t.deepEqual(
+    actualAutomationID,
+    ".github/workflows/codeql-analysis.yml:analyze/"
+  );
 });
 
 test("prepareEnvironment() when a local run", (t) => {

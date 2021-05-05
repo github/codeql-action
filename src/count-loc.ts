@@ -72,7 +72,16 @@ export async function countLoc(
       logger.debug(`  ${language}: ${count}`);
     }
   } else {
-    logger.warning("Did not find any lines of code in database.");
+    logger.info(
+      "Could not determine the total number of lines of code in this repository. " +
+        "Because of this, it will not be possible to compare the number of lines " +
+        "of code analyzed by code scanning with the total number of lines of " +
+        "code in the repository. This will not affect the results produced by code " +
+        "scanning. If you have any questions, you can raise an issue at " +
+        "https://github.com/github/codeql-action/issues. Please include a link " +
+        "to the repository if public, or otherwise information about the code scanning " +
+        "workflow you are using."
+    );
   }
 
   return lineCounts;

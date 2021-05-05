@@ -249,7 +249,7 @@ program
         const shEnvFileContents = Object.entries(tracerConfig.env)
           // Some vars contain ${LIB} that we do not want to be expanded when executing this script
           .map(
-            ([key, value]) => `export ${key}="${value.replace(/\$/g, "\\$")}"`
+            ([key, value]) => `export ${key}='${value.replace(/'/g, "'\"'\"'")}'`
           )
           .join("\n");
         fs.writeFileSync(shEnvFile, shEnvFileContents);

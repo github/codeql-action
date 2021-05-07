@@ -3,6 +3,7 @@ import * as path from "path";
 import test from "ava";
 
 import { countLoc } from "./count-loc";
+import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 
@@ -13,7 +14,7 @@ test("ensure lines of code works for cpp and js", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     [],
     [],
-    ["cpp", "js"],
+    [Language.cpp, Language.javascript],
     getRunnerLogger(true)
   );
 
@@ -28,12 +29,12 @@ test("ensure lines of code can handle undefined language", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     [],
     [],
-    ["rb", "py", "hucairz"],
+    [Language.javascript, Language.python, "hucairz" as Language],
     getRunnerLogger(true)
   );
 
   t.deepEqual(results, {
-    rb: 6,
+    js: 3,
     py: 5,
   });
 });
@@ -57,7 +58,7 @@ test("ensure lines of code can handle includes", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     ["../../src/testdata"],
     [],
-    ["js"],
+    [Language.javascript],
     getRunnerLogger(true)
   );
 
@@ -71,11 +72,11 @@ test("ensure lines of code can handle exclude", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     [],
     ["**/*.py"],
-    ["rb", "py"],
+    [Language.javascript, Language.python],
     getRunnerLogger(true)
   );
 
   t.deepEqual(results, {
-    rb: 6,
+    js: 3,
   });
 });

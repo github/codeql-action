@@ -6,37 +6,14 @@ on:
   pull_request:
 
 jobs:
-
   test-setup-python-scripts:
     runs-on: ${{ matrix.os }}
     strategy:
         fail-fast: false
         matrix:
           os: [ubuntu-latest, macos-latest]
-          include:
-            - test_dir: python-setup/tests/pipenv/requests-2
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
-            - test_dir: python-setup/tests/pipenv/requests-3
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
-
-            - test_dir: python-setup/tests/poetry/requests-2
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
-            - test_dir: python-setup/tests/poetry/requests-3
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
-
-            - test_dir: python-setup/tests/requirements/requests-2
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
-            - test_dir: python-setup/tests/requirements/requests-3
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
-
-            - test_dir: python-setup/tests/setup_py/requests-2
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 2
-            - test_dir: python-setup/tests/setup_py/requests-3
-              test_script: $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh 3
-
-            # This one shouldn't fail, but also won't install packages
-            - test_dir: python-setup/tests/requirements/non-standard-location
-              test_script: test -z $LGTM_INDEX_IMPORT_PATH
+          python_deps_type: [pipenv, poetry, requirements, setup_py]
+          python_version: [2, 3]
 
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -55,7 +32,7 @@ jobs:
         set -x
         $GITHUB_WORKSPACE/python-setup/install_tools.sh
 
-        cd $GITHUB_WORKSPACE/${{ matrix.test_dir }}
+        cd $GITHUB_WORKSPACE/python-setup/tests/${{ matrix.python_deps_type }}/requests-${{ matrix.python_version }}
 
         case ${{ matrix.os }} in
             ubuntu-latest*)     basePath="/opt";;
@@ -71,35 +48,65 @@ jobs:
         if [ ! -z $CODEQL_PYTHON ]; then
             $GITHUB_WORKSPACE/python-setup/tests/from_python_exe.py $CODEQL_PYTHON;
         fi
+
     - name: Verify packages installed
       run: |
-        ${{ matrix.test_script }}
+        $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh ${{ matrix.python_version }}
+
+  # This one shouldn't fail, but also won't install packages
+  test-setup-python-scripts-non-standard-location:
+    runs-on: ${{ matrix.os }}
+    strategy:
+        fail-fast: false
+        matrix:
+          os: [ubuntu-latest, macos-latest]
+
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Initialize CodeQL
+      uses: ./init
+      id: init
+      with:
+        tools: latest
+        languages: python
+        setup-python-dependencies: false
+
+    - name: Test Auto Package Installation
+      run: |
+        set -x
+        $GITHUB_WORKSPACE/python-setup/install_tools.sh
+
+        cd $GITHUB_WORKSPACE/python-setup/tests/requirements/non-standard-location
+
+        case ${{ matrix.os }} in
+            ubuntu-latest*)     basePath="/opt";;
+            macos-latest*)    basePath="/Users/runner";;
+        esac
+        echo ${basePath}
+
+        $GITHUB_WORKSPACE/python-setup/auto_install_packages.py "$(dirname ${{steps.init.outputs.codeql-path}})"
+
+    - name: Setup for extractor
+      run: |
+        echo $CODEQL_PYTHON
+        # only run if $CODEQL_PYTHON is set
+        if [ ! -z $CODEQL_PYTHON ]; then
+            $GITHUB_WORKSPACE/python-setup/tests/from_python_exe.py $CODEQL_PYTHON;
+        fi
+
+    - name: Verify packages installed
+      run: |
+        test -z $LGTM_INDEX_IMPORT_PATH
 
   test-setup-python-scripts-windows:
     runs-on: windows-latest
     strategy:
         fail-fast: false
         matrix:
-          include:
-            - test_dir: python-setup/tests/pipenv/requests-2
-              python_version: 2
-            - test_dir: python-setup/tests/pipenv/requests-3
-              python_version: 3
-
-            - test_dir: python-setup/tests/poetry/requests-2
-              python_version: 2
-            - test_dir: python-setup/tests/poetry/requests-3
-              python_version: 3
-
-            - test_dir: python-setup/tests/requirements/requests-2
-              python_version: 2
-            - test_dir: python-setup/tests/requirements/requests-3
-              python_version: 3
-
-            - test_dir: python-setup/tests/setup_py/requests-2
-              python_version: 2
-            - test_dir: python-setup/tests/setup_py/requests-3
-              python_version: 3
+          python_deps_type: [pipenv, poetry, requirements, setup_py]
+          python_version: [2, 3]
 
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -117,16 +124,18 @@ jobs:
         $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\install_tools.ps1"
         powershell -File $cmd
 
-        cd $Env:GITHUB_WORKSPACE\\${{ matrix.test_dir }}
+        cd $Env:GITHUB_WORKSPACE\\python-setup/tests/${{ matrix.python_deps_type }}/requests-${{ matrix.python_version }}
         $DefaultsPath = Join-Path (Join-Path $Env:GITHUB_WORKSPACE "src") "defaults.json"
         $CodeQLBundleName = (Get-Content -Raw -Path $DefaultsPath | ConvertFrom-Json).bundleVersion
         $CodeQLVersion = "0.0.0-" + $CodeQLBundleName.split("-")[-1]
         py -3 $Env:GITHUB_WORKSPACE\\python-setup\\auto_install_packages.py C:\\hostedtoolcache\\windows\\CodeQL\\$CodeQLVersion\\x64\\codeql
+
     - name: Setup for extractor
       run: |
         echo $Env:CODEQL_PYTHON
 
         py -3 $Env:GITHUB_WORKSPACE\\python-setup\\tests\\from_python_exe.py $Env:CODEQL_PYTHON
+
     - name: Verify packages installed
       run: |
         $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\tests\\check_requests_123.ps1"

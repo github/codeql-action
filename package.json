@@ -4,7 +4,7 @@
   "private": true,
   "description": "CodeQL action",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "test": "ava src/** --serial --verbose",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts --fix",

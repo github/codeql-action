@@ -137,40 +137,23 @@ test("populateRunAutomationDetails", (t) => {
   const analysisKey = ".github/workflows/codeql-analysis.yml:analyze";
 
   let expectedSarif =
-    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"}}]}';
+    '{"runs":[{"automationDetails":{"id":"language:javascript/os:linux/"}}]}';
 
+  // Category has priority over analysis_key/environment
   let modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
+    "language:javascript/os:linux",
     analysisKey,
-    '{"language": "javascript", "os": "linux"}'
+    '{"language": "other", "os": "other"}'
   );
   t.deepEqual(modifiedSarif, expectedSarif);
 
-  // check the environment sorting
+  // It doesn't matter if the category has a slash at the end or not
   modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
+    "language:javascript/os:linux/",
     analysisKey,
-    '{"os": "linux", "language": "javascript"}'
-  );
-  t.deepEqual(modifiedSarif, expectedSarif);
-
-  // check that an empty environment produces the right results
-  expectedSarif =
-    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/"}}]}';
-  modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
-    analysisKey,
-    "{}"
-  );
-  t.deepEqual(modifiedSarif, expectedSarif);
-
-  // check non string environment values
-  expectedSarif =
-    '{"runs":[{"automationDetails":{"id":".github/workflows/codeql-analysis.yml:analyze/number:/object:/"}}]}';
-  modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
-    analysisKey,
-    '{"number": 1, "object": {"language": "javascript"}}'
+    ""
   );
   t.deepEqual(modifiedSarif, expectedSarif);
 
@@ -179,6 +162,7 @@ test("populateRunAutomationDetails", (t) => {
   expectedSarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
   modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
+    undefined,
     analysisKey,
     '{"os": "linux", "language": "javascript"}'
   );

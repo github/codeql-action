@@ -28,7 +28,7 @@ You may want to run `tsc --watch` from the command line or inside of vscode in o
 
 Because CodeQL Action users consume the code directly from this repository, and there can be no build step during an GitHub Actions run, this repository contains all compiled artifacts and node modules. There is a PR check that will fail if any of the compiled artifacts are not up to date. Compiled artifacts are stored in the `lib/` directory. For all day-to-day development purposes, this folder can be ignored.
 
-Only run `npm install` if you are explicitly changing the set of dependencies in `package.json`. The `node_modules` directory should be up to date when you check out, but if for some reason, there is an inconsistency use `npm ci && npm run removeNPMAbsolutePaths` to bring the ensure the directory is in a state consistent with the `package-lock.json`. There is a PR check to ensure the consistency of the `node_modules` directory.
+Only run `npm install` if you are explicitly changing the set of dependencies in `package.json`. The `node_modules` directory should be up to date when you check out, but if for some reason, there is an inconsistency use `npm ci && npm run removeNPMAbsolutePaths` to ensure the directory is in a state consistent with the `package-lock.json`. There is a PR check to ensure the consistency of the `node_modules` directory.
 
 ### Running the action
 

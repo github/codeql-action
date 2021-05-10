@@ -6,7 +6,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { countLoc } from "./count-loc";
+import { IdPrefixes, countLoc } from "./count-loc";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
@@ -140,6 +140,7 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger
 ): Promise<QueriesStatusReport> {
@@ -244,7 +245,8 @@ export async function runQueries(
       querySuitePath,
       memoryFlag,
       addSnippetsFlag,
-      threadsFlag
+      threadsFlag,
+      automationDetailsId
     );
 
     logger.debug(
@@ -261,6 +263,7 @@ export async function runAnalyze(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger
 ): Promise<QueriesStatusReport> {
@@ -278,6 +281,7 @@ export async function runAnalyze(
     memoryFlag,
     addSnippetsFlag,
     threadsFlag,
+    automationDetailsId,
     config,
     logger
   );
@@ -288,7 +292,7 @@ export async function runAnalyze(
 async function injectLinesOfCode(
   sarifFile: string,
   language: string,
-  locPromise: Promise<Record<string, number>>
+  locPromise: Promise<Partial<Record<IdPrefixes, number>>>
 ) {
   const lineCounts = await locPromise;
   if (language in lineCounts) {

@@ -94,7 +94,8 @@ export interface CodeQL {
     querySuite: string,
     memoryFlag: string,
     addSnippetsFlag: string,
-    threadsFlag: string
+    threadsFlag: string,
+    automationDetailsId: string | undefined
   ): Promise<void>;
 }
 
@@ -671,7 +672,8 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       querySuite: string,
       memoryFlag: string,
       addSnippetsFlag: string,
-      threadsFlag: string
+      threadsFlag: string,
+      automationDetailsId: string | undefined
     ) {
       const args = [
         "database",
@@ -691,6 +693,9 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ];
       if (extraSearchPath !== undefined) {
         args.push("--search-path", extraSearchPath);
+      }
+      if (automationDetailsId !== undefined) {
+        args.push("--sarif-category", automationDetailsId);
       }
       args.push(querySuite);
       await new toolrunner.ToolRunner(cmd, args).exec();

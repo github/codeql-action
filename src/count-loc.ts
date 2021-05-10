@@ -1,29 +1,59 @@
 import { LocDir } from "github-linguist";
 
+import { Language } from "./languages";
 import { Logger } from "./logging";
 
-// Map from linguist language names to language prefixes used in our metrics
-const supportedLanguages = {
-  c: "cpp",
-  "c++": "cpp",
-  "c#": "cs",
-  go: "go",
-  java: "java",
-  javascript: "js",
-  python: "py",
-  ruby: "rb",
-  typescript: "js",
+// Language IDs used by codeql when specifying its metrics.
+export type IdPrefixes = "cpp" | "cs" | "go" | "java" | "js" | "py" | "rb";
+
+// Map from linguist language names to language prefixes used in the action and codeql
+const linguistToMetrics: Record<
+  string,
+  { name: Language; prefix: IdPrefixes }
+> = {
+  c: {
+    name: Language.cpp,
+    prefix: "cpp",
+  },
+  "c++": {
+    name: Language.cpp,
+    prefix: "cpp",
+  },
+  "c#": {
+    name: Language.csharp,
+    prefix: "cs",
+  },
+  go: {
+    name: Language.go,
+    prefix: "go",
+  },
+  java: {
+    name: Language.java,
+    prefix: "java",
+  },
+  javascript: {
+    name: Language.javascript,
+    prefix: "js",
+  },
+  python: {
+    name: Language.python,
+    prefix: "py",
+  },
+  typescript: {
+    name: Language.javascript,
+    prefix: "js",
+  },
 };
 
-const supportedLanguagesReversed = Object.entries(supportedLanguages).reduce(
-  (obj, [key, value]) => {
-    if (!obj[value]) {
-      obj[value] = [];
+const nameToLinguist = Object.entries(linguistToMetrics).reduce(
+  (obj, [key, { name: action }]) => {
+    if (!obj[action]) {
+      obj[action] = [];
     }
-    obj[value].push(key);
+    obj[action].push(key);
     return obj;
   },
-  {}
+  {} as Record<Language, string[]>
 );
 
 /**
@@ -40,16 +70,14 @@ export async function countLoc(
   cwd: string,
   include: string[],
   exclude: string[],
-  dbLanguages: string[],
+  dbLanguages: Language[],
   logger: Logger
-): Promise<Record<string, number>> {
+): Promise<Partial<Record<IdPrefixes, number>>> {
   const result = await new LocDir({
     cwd,
     include: ["**"].concat(include || []),
     exclude,
-    analysisLanguages: dbLanguages.flatMap(
-      (lang) => supportedLanguagesReversed[lang]
-    ),
+    analysisLanguages: dbLanguages.flatMap((lang) => nameToLinguist[lang]),
   }).loadInfo();
 
   // The analysis counts LoC in all languages. We need to
@@ -57,13 +85,13 @@ export async function countLoc(
   // the analysis uses slightly different names for language.
   const lineCounts = Object.entries(result.languages).reduce(
     (obj, [language, { code }]) => {
-      const dbLanguage = supportedLanguages[language];
-      if (dbLanguage && dbLanguages.includes(dbLanguage)) {
-        obj[dbLanguage] = code + (obj[dbLanguage] || 0);
+      const metricsLanguage = linguistToMetrics[language];
+      if (metricsLanguage && dbLanguages.includes(metricsLanguage.name)) {
+        obj[metricsLanguage.prefix] = code + (obj[metricsLanguage.prefix] || 0);
       }
       return obj;
     },
-    {} as Record<string, number>
+    {} as Record<IdPrefixes, number>
   );
 
   if (Object.keys(lineCounts).length) {

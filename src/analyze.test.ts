@@ -103,6 +103,7 @@ test("status report fields and search path setting", async (t) => {
         memoryFlag,
         addSnippetsFlag,
         threadsFlag,
+        undefined,
         config,
         getRunnerLogger(true)
       );
@@ -129,6 +130,7 @@ test("status report fields and search path setting", async (t) => {
         memoryFlag,
         addSnippetsFlag,
         threadsFlag,
+        undefined,
         config,
         getRunnerLogger(true)
       );

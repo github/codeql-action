@@ -4,7 +4,7 @@ import * as githubUtils from "@actions/github/lib/utils";
 import consoleLogLevel from "console-log-level";
 
 import { getRequiredEnvParam, getRequiredInput } from "./actions-util";
-import { isLocalRun } from "./util";
+import { isLocalRun, isAction } from "./util";
 
 export enum DisallowedAPIVersionReason {
   ACTION_TOO_OLD,
@@ -37,7 +37,7 @@ export const getApiClient = function (
   return new githubUtils.GitHub(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: getApiUrl(apiDetails.url),
-      userAgent: "CodeQL Action",
+      userAgent: isAction() ? "CodeQL Action" : "CodeQL Runner",
       log: consoleLogLevel({ level: "debug" }),
     })
   );

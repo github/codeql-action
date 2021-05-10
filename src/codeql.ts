@@ -399,6 +399,9 @@ export async function setupCodeQL(
       throw new Error(`Unsupported platform: ${process.platform}`);
     }
 
+    // set a  environment variable to let CodeQL know where we are running
+    process.env.CODEQL_WRAPPER = util.isAction() ? "action" : "runner";
+
     cachedCodeQL = getCodeQLForCmd(codeqlCmd);
     return { codeql: cachedCodeQL, toolsVersion: codeqlURLVersion };
   } catch (e) {

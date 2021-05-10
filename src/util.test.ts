@@ -305,3 +305,10 @@ async function mockStdInForAuthExpectError(
     util.getGitHubAuth(mockLogger, undefined, true, stdin)
   );
 }
+
+test("isAction", async (t) => {
+  process.env.GITHUB_ACTIONS = "true";
+  t.assert(util.isAction(), "Should be running in actions");
+  delete process.env.GITHUB_ACTIONS;
+  t.assert(!util.isAction(), "Should be running in runner");
+});

@@ -390,3 +390,11 @@ export async function getGitHubAuth(
     "No GitHub authentication token was specified. Please provide a token via the GITHUB_TOKEN environment variable, or by adding the `--github-auth-stdin` flag and passing the token via standard input."
   );
 }
+
+/**
+ * Returns true if this process is running as part of github actions.
+ * False otherwise.
+ */
+export function isAction() {
+  return "GITHUB_ACTIONS" in process.env;
+}

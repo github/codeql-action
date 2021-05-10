@@ -686,6 +686,9 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "--sarif-multicause-markdown",
         `--output=${sarifFile}`,
         addSnippetsFlag,
+        // Enable progress verbosity so we log each query as it's interpreted. This aids debugging
+        // when interpretation takes a while for one of the queries being analyzed.
+        "-v",
         ...getExtraOptionsFromEnv(["database", "analyze"]),
       ];
       if (extraSearchPath !== undefined) {

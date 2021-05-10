@@ -180,7 +180,7 @@ export function resolveUriToFile(
       location.index >= artifacts.length ||
       typeof artifacts[location.index].location !== "object"
     ) {
-      logger.debug(`Ignoring location as URI "${location.index}" is invalid`);
+      logger.debug(`Ignoring location as index "${location.index}" is invalid`);
       return undefined;
     }
     location = artifacts[location.index].location;
@@ -188,7 +188,7 @@ export function resolveUriToFile(
 
   // Get the URI and decode
   if (typeof location.uri !== "string") {
-    logger.debug(`Ignoring location as index "${location.uri}" is invalid`);
+    logger.debug(`Ignoring location as URI "${location.uri}" is invalid`);
     return undefined;
   }
   let uri = decodeURIComponent(location.uri);
@@ -224,6 +224,11 @@ export function resolveUriToFile(
   // Check the file exists
   if (!fs.existsSync(uri)) {
     logger.debug(`Unable to compute fingerprint for non-existent file: ${uri}`);
+    return undefined;
+  }
+
+  if (fs.statSync(uri).isDirectory()) {
+    logger.debug(`Unable to compute fingerprint for directory: ${uri}`);
     return undefined;
   }
 

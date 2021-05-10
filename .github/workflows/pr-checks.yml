@@ -465,8 +465,10 @@ jobs:
 
     - name: Build code
       shell: powershell
+      # Note we want to make sure that the .win32env file is read correctly, so we unset the CODEQL_EXTRACTOR_CSHARP_ROOT from the .sh file.
       run: |
         cat ./codeql-runner/codeql-env.sh | Invoke-Expression
+        $Env:CODEQL_EXTRACTOR_CSHARP_ROOT = ""
         & $Env:CODEQL_RUNNER dotnet build
 
     - name: Run analyze

@@ -15,6 +15,10 @@ jobs:
           python_deps_type: [pipenv, poetry, requirements, setup_py]
           python_version: [2, 3]
 
+    env:
+      PYTHON_DEPS_TYPE: ${{ matrix.python_deps_type }}
+      PYTHON_VERSION: ${{ matrix.python_version }}
+
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
@@ -32,7 +36,7 @@ jobs:
         set -x
         $GITHUB_WORKSPACE/python-setup/install_tools.sh
 
-        cd $GITHUB_WORKSPACE/python-setup/tests/${{ matrix.python_deps_type }}/requests-${{ matrix.python_version }}
+        cd $GITHUB_WORKSPACE/python-setup/tests/${PYTHON_DEPS_TYPE}/requests-${PYTHON_VERSION}
 
         case ${{ matrix.os }} in
             ubuntu-latest*)     basePath="/opt";;
@@ -51,7 +55,7 @@ jobs:
 
     - name: Verify packages installed
       run: |
-        $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh ${{ matrix.python_version }}
+        $GITHUB_WORKSPACE/python-setup/tests/check_requests_123.sh ${PYTHON_VERSION}
 
   # This one shouldn't fail, but also won't install packages
   test-setup-python-scripts-non-standard-location:
@@ -108,6 +112,10 @@ jobs:
           python_deps_type: [pipenv, poetry, requirements, setup_py]
           python_version: [2, 3]
 
+    env:
+      PYTHON_DEPS_TYPE: ${{ matrix.python_deps_type }}
+      PYTHON_VERSION: ${{ matrix.python_version }}
+
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
@@ -124,7 +132,7 @@ jobs:
         $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\install_tools.ps1"
         powershell -File $cmd
 
-        cd $Env:GITHUB_WORKSPACE\\python-setup/tests/${{ matrix.python_deps_type }}/requests-${{ matrix.python_version }}
+        cd $Env:GITHUB_WORKSPACE\\python-setup/tests/${PYTHON_DEPS_TYPE}/requests-${PYTHON_VERSION}
         $DefaultsPath = Join-Path (Join-Path $Env:GITHUB_WORKSPACE "src") "defaults.json"
         $CodeQLBundleName = (Get-Content -Raw -Path $DefaultsPath | ConvertFrom-Json).bundleVersion
         $CodeQLVersion = "0.0.0-" + $CodeQLBundleName.split("-")[-1]
@@ -139,4 +147,4 @@ jobs:
     - name: Verify packages installed
       run: |
         $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\tests\\check_requests_123.ps1"
-        powershell -File $cmd ${{ matrix.python_version }}
+        powershell -File $cmd ${PYTHON_VERSION}

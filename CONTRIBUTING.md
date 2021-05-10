@@ -22,6 +22,14 @@ Before you start, ensure that you have a recent version of node installed. You c
 
 This project also includes configuration to run tests from VSCode (with support for breakpoints) - open the test file you wish to run and choose "Debug AVA test file" from the Run menu in the Run panel.
 
+You may want to run `tsc --watch` from the command line or inside of vscode in order to ensure build artifacts are up to date as you are working.
+
+### Checking in compiled artifacts and `node_modules`
+
+Because CodeQL Action users consume the code directly from this repository, and there can be no build step during an GitHub Actions run, this repository contains all compiled artifacts and node modules. There is a PR check that will fail if any of the compiled artifacts are not up to date. Compiled artifacts are stored in the `lib/` folder. For all day-to-day development purposes, this folder can be ignored.
+
+Avoid running `npm install` (the node moddules should be up to date when you check out anyway) and instead use `npm ci` when you want to update dependencies `package.json`. If you make any changes to the `node_modules` folder , you must run `npm run removeNPMAbsolutePaths` to clean the folder and remove any locally identifying data. There is a PR check to ensure that this command has been run.
+
 ### Running the action
 
 To see the effect of your changes and to test them, push your changes in a branch and then look at the [Actions output](https://github.com/github/codeql-action/actions) for that branch.  You can also exercise the code locally by running the automated tests.

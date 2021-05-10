@@ -58,7 +58,8 @@ export async function getTracerConfigForLanguage(
 
 export function concatTracerConfigs(
   tracerConfigs: { [lang: string]: TracerConfig },
-  config: configUtils.Config
+  config: configUtils.Config,
+  writeBothEnvironments = false
 ): TracerConfig {
   // A tracer config is a map containing additional environment variables and a tracer 'spec' file.
   // A tracer 'spec' file has the following format [log_file, number_of_blocks, blocks_text]
@@ -127,20 +128,43 @@ export function concatTracerConfigs(
 
   fs.writeFileSync(spec, newSpecContent.join("\n"));
 
-  // Prepare the content of the compound environment file
-  let buffer = Buffer.alloc(4);
-  buffer.writeInt32LE(envSize, 0);
-  for (const e of Object.entries(env)) {
-    const key = e[0];
-    const value = e[1];
-    const lineBuffer = Buffer.from(`${key}=${value}\0`, "utf8");
-    const sizeBuffer = Buffer.alloc(4);
-    sizeBuffer.writeInt32LE(lineBuffer.length, 0);
-    buffer = Buffer.concat([buffer, sizeBuffer, lineBuffer]);
+  if (writeBothEnvironments || process.platform !== "win32") {
+    // Prepare the content of the compound environment file on Unix
+    let buffer = Buffer.alloc(4);
+    buffer.writeInt32LE(envSize, 0);
+    for (const e of Object.entries(env)) {
+      const key = e[0];
+      const value = e[1];
+      const lineBuffer = Buffer.from(`${key}=${value}\0`, "utf8");
+      const sizeBuffer = Buffer.alloc(4);
+      sizeBuffer.writeInt32LE(lineBuffer.length, 0);
+      buffer = Buffer.concat([buffer, sizeBuffer, lineBuffer]);
+    }
+    // Write the compound environment for Unix
+    const envPath = `${spec}.environment`;
+    fs.writeFileSync(envPath, buffer);
   }
-  // Write the compound environment
-  const envPath = `${spec}.environment`;
-  fs.writeFileSync(envPath, buffer);
+
+  if (writeBothEnvironments || process.platform === "win32") {
+    // Prepare the content of the compound environment file on Windows
+    let bufferWindows = Buffer.alloc(0);
+    let length = 0;
+    for (const e of Object.entries(env)) {
+      const key = e[0];
+      const value = e[1];
+      const string = `${key}=${value}\0`;
+      length += string.length;
+      const lineBuffer = Buffer.from(string, "utf16le");
+      bufferWindows = Buffer.concat([bufferWindows, lineBuffer]);
+    }
+    const sizeBuffer = Buffer.alloc(4);
+    sizeBuffer.writeInt32LE(length + 1, 0); // Add one for trailing null character marking end
+    const trailingNull = Buffer.from(`\0`, "utf16le");
+    bufferWindows = Buffer.concat([sizeBuffer, bufferWindows, trailingNull]);
+    // Write the compound environment for Windows
+    const envPathWindows = `${spec}.win32env`;
+    fs.writeFileSync(envPathWindows, bufferWindows);
+  }
 
   return { env, spec };
 }

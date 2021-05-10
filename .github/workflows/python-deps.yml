@@ -132,7 +132,7 @@ jobs:
         $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\install_tools.ps1"
         powershell -File $cmd
 
-        cd $Env:GITHUB_WORKSPACE\\python-setup/tests/${PYTHON_DEPS_TYPE}/requests-${PYTHON_VERSION}
+        cd $Env:GITHUB_WORKSPACE\\python-setup/tests/$Env:PYTHON_DEPS_TYPE/requests-$Env:PYTHON_VERSION
         $DefaultsPath = Join-Path (Join-Path $Env:GITHUB_WORKSPACE "src") "defaults.json"
         $CodeQLBundleName = (Get-Content -Raw -Path $DefaultsPath | ConvertFrom-Json).bundleVersion
         $CodeQLVersion = "0.0.0-" + $CodeQLBundleName.split("-")[-1]
@@ -147,4 +147,4 @@ jobs:
     - name: Verify packages installed
       run: |
         $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\tests\\check_requests_123.ps1"
-        powershell -File $cmd ${PYTHON_VERSION}
+        powershell -File $cmd $Env:PYTHON_VERSION

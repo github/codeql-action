@@ -190,6 +190,10 @@ export async function runQueries(
         }
       }
 
+      logger.info("111111111");
+      logger.info("About to start LoC");
+      logger.info("111111111");
+
       if (allSarifFiles.length > 0) {
         const linesOfCode = await countLoc(
           path.resolve(),
@@ -201,6 +205,10 @@ export async function runQueries(
           config.languages,
           logger
         );
+
+        logger.info("22222222");
+        logger.info("Finished LoC");
+        logger.info("22222222");
 
         for (const sarifFile of allSarifFiles) {
           injectLinesOfCode(sarifFile, language, linesOfCode);
@@ -245,17 +253,17 @@ export async function runQueries(
 
     const sarifFile = path.join(destinationFolder, `${language}-${type}.sarif`);
 
-    const codeql = getCodeQL(config.codeQLCmd);
-    await codeql.databaseAnalyze(
-      databasePath,
-      sarifFile,
-      searchPath,
-      querySuitePath,
-      memoryFlag,
-      addSnippetsFlag,
-      threadsFlag,
-      automationDetailsId
-    );
+    // const codeql = getCodeQL(config.codeQLCmd);
+    // await codeql.databaseAnalyze(
+    //   databasePath,
+    //   sarifFile,
+    //   searchPath,
+    //   querySuitePath,
+    //   memoryFlag,
+    //   addSnippetsFlag,
+    //   threadsFlag,
+    //   automationDetailsId
+    // );
 
     logger.debug(
       `SARIF results for database ${language} created at "${sarifFile}"`

@@ -146,18 +146,6 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
-  // count the number of lines in the background
-  const locPromise = countLoc(
-    path.resolve(),
-    // config.paths specifies external directories. the current
-    // directory is included in the analysis by default. Replicate
-    // that here.
-    config.paths,
-    config.pathsIgnore,
-    config.languages,
-    logger
-  );
-
   for (const language of config.languages) {
     logger.startGroup(`Analyzing ${language}`);
 
@@ -168,6 +156,7 @@ export async function runQueries(
       );
     }
 
+    const allSarifFiles: string[] = [];
     try {
       if (queries["builtin"].length > 0) {
         const startTimeBuliltIn = new Date().getTime();
@@ -178,7 +167,8 @@ export async function runQueries(
           sarifFolder,
           undefined
         );
-        await injectLinesOfCode(sarifFile, language, locPromise);
+
+        allSarifFiles.push(sarifFile);
 
         statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
           new Date().getTime() - startTimeBuliltIn;
@@ -196,12 +186,30 @@ export async function runQueries(
             queries["custom"][i].searchPath
           );
           temporarySarifFiles.push(sarifFile);
+          allSarifFiles.push(sarifFile);
         }
       }
+
+      if (allSarifFiles.length > 0) {
+        const linesOfCode = await countLoc(
+          path.resolve(),
+          // config.paths specifies external directories. the current
+          // directory is included in the analysis by default. Replicate
+          // that here.
+          config.paths,
+          config.pathsIgnore,
+          config.languages,
+          logger
+        );
+
+        for (const sarifFile of allSarifFiles) {
+          injectLinesOfCode(sarifFile, language, linesOfCode);
+        }
+      }
+
       if (temporarySarifFiles.length > 0) {
         const sarifFile = path.join(sarifFolder, `${language}-custom.sarif`);
         fs.writeFileSync(sarifFile, combineSarifFiles(temporarySarifFiles));
-        await injectLinesOfCode(sarifFile, language, locPromise);
 
         statusReport[`analyze_custom_queries_${language}_duration_ms`] =
           new Date().getTime() - startTimeCustom;
@@ -289,13 +297,12 @@ export async function runAnalyze(
   return { ...queriesStats };
 }
 
-async function injectLinesOfCode(
+function injectLinesOfCode(
   sarifFile: string,
   language: string,
-  locPromise: Promise<Partial<Record<IdPrefixes, number>>>
+  linesOfCode: Partial<Record<IdPrefixes, number>>
 ) {
-  const lineCounts = await locPromise;
-  if (language in lineCounts) {
+  if (language in linesOfCode) {
     const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
     if (Array.isArray(sarif.runs)) {
       for (const run of sarif.runs) {
@@ -308,7 +315,7 @@ async function injectLinesOfCode(
         );
         // only add the baseline value if the rule already exists
         if (rule) {
-          rule.baseline = lineCounts[language];
+          rule.baseline = linesOfCode[language];
         }
       }
     }

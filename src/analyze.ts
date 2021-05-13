@@ -6,7 +6,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { IdPrefixes, countLoc } from "./count-loc";
+import { countLoc, getIdPrefix } from "./count-loc";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
@@ -206,6 +206,8 @@ export async function runQueries(
         statusReport[`analyze_custom_queries_${language}_duration_ms`] =
           new Date().getTime() - startTimeCustom;
       }
+
+      printLinesOfCodeSummary(logger, language, await locPromise);
     } catch (e) {
       logger.info(e);
       statusReport.analyze_failure_language = language;
@@ -291,15 +293,16 @@ export async function runAnalyze(
 
 async function injectLinesOfCode(
   sarifFile: string,
-  language: string,
-  locPromise: Promise<Partial<Record<IdPrefixes, number>>>
+  language: Language,
+  locPromise: Promise<Partial<Record<Language, number>>>
 ) {
   const lineCounts = await locPromise;
+  const idPrefix = getIdPrefix(language);
   if (language in lineCounts) {
     const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
     if (Array.isArray(sarif.runs)) {
       for (const run of sarif.runs) {
-        const ruleId = `${language}/summary/lines-of-code`;
+        const ruleId = `${idPrefix}/summary/lines-of-code`;
         run.properties = run.properties || {};
         run.properties.metricResults = run.properties.metricResults || [];
         const rule = run.properties.metricResults.find(
@@ -313,5 +316,17 @@ async function injectLinesOfCode(
       }
     }
     fs.writeFileSync(sarifFile, JSON.stringify(sarif));
+  }
+}
+
+function printLinesOfCodeSummary(
+  logger: Logger,
+  language: Language,
+  lineCounts: Partial<Record<Language, number>>
+) {
+  if (language in lineCounts) {
+    logger.info(
+      `Counted ${lineCounts[language]} lines of code for ${language} as a baseline.`
+    );
   }
 }

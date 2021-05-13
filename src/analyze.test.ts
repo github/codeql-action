@@ -7,6 +7,7 @@ import sinon from "sinon";
 import { runQueries } from "./analyze";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import { getIdPrefix } from "./count-loc";
 import * as count from "./count-loc";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -19,7 +20,7 @@ setupTests(test);
 // and correct case of builtin or custom. Also checks the correct search
 // paths are set in the database analyze invocation.
 test("status report fields and search path setting", async (t) => {
-  const mockLinesOfCode = Object.entries(Language).reduce((obj, [lang], i) => {
+  const mockLinesOfCode = Object.values(Language).reduce((obj, lang, i) => {
     // use a different line count for each language
     obj[lang] = i + 1;
     return obj;
@@ -49,7 +50,9 @@ test("status report fields and search path setting", async (t) => {
                   properties: {
                     metricResults: [
                       {
-                        ruleId: `${language}/summary/lines-of-code`,
+                        ruleId: `${getIdPrefix(
+                          language
+                        )}/summary/lines-of-code`,
                         value: 123,
                       },
                     ],
@@ -61,7 +64,7 @@ test("status report fields and search path setting", async (t) => {
                     metricResults: [
                       {
                         rule: {
-                          id: `${language}/summary/lines-of-code`,
+                          id: `${getIdPrefix(language)}/summary/lines-of-code`,
                         },
                         value: 123,
                       },
@@ -148,12 +151,12 @@ test("status report fields and search path setting", async (t) => {
     // eslint-disable-next-line github/array-foreach
     Object.keys(Language).forEach((lang, i) => {
       verifyLineCountForFile(
-        lang,
+        lang as Language,
         path.join(tmpDir, `${lang}-builtin.sarif`),
         i + 1
       );
       verifyLineCountForFile(
-        lang,
+        lang as Language,
         path.join(tmpDir, `${lang}-custom.sarif`),
         i + 1
       );
@@ -161,14 +164,15 @@ test("status report fields and search path setting", async (t) => {
   }
 
   function verifyLineCountForFile(
-    lang: string,
+    lang: Language,
     filePath: string,
     lineCount: number
   ) {
+    const idPrefix = getIdPrefix(lang);
     const sarif = JSON.parse(fs.readFileSync(filePath, "utf8"));
     t.deepEqual(sarif.runs[0].properties.metricResults, [
       {
-        ruleId: `${lang}/summary/lines-of-code`,
+        ruleId: `${idPrefix}/summary/lines-of-code`,
         value: 123,
         baseline: lineCount,
       },
@@ -176,7 +180,7 @@ test("status report fields and search path setting", async (t) => {
     t.deepEqual(sarif.runs[1].properties.metricResults, [
       {
         rule: {
-          id: `${lang}/summary/lines-of-code`,
+          id: `${idPrefix}/summary/lines-of-code`,
         },
         value: 123,
         baseline: lineCount,

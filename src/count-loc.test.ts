@@ -20,7 +20,7 @@ test("ensure lines of code works for cpp and js", async (t) => {
 
   t.deepEqual(results, {
     cpp: 6,
-    js: 3,
+    javascript: 3,
   });
 });
 
@@ -34,8 +34,8 @@ test("ensure lines of code can handle undefined language", async (t) => {
   );
 
   t.deepEqual(results, {
-    js: 3,
-    py: 5,
+    javascript: 3,
+    python: 5,
   });
 });
 
@@ -63,7 +63,7 @@ test("ensure lines of code can handle includes", async (t) => {
   );
 
   t.deepEqual(results, {
-    js: 15,
+    javascript: 15,
   });
 });
 
@@ -77,6 +77,6 @@ test("ensure lines of code can handle exclude", async (t) => {
   );
 
   t.deepEqual(results, {
-    js: 3,
+    javascript: 3,
   });
 });

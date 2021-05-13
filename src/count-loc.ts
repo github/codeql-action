@@ -2,59 +2,53 @@ import { LocDir } from "github-linguist";
 
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import { assertNever } from "./util";
 
 // Language IDs used by codeql when specifying its metrics.
-export type IdPrefixes = "cpp" | "cs" | "go" | "java" | "js" | "py" | "rb";
+export type IdPrefix = "cpp" | "cs" | "go" | "java" | "js" | "py" | "rb";
 
 // Map from linguist language names to language prefixes used in the action and codeql
-const linguistToMetrics: Record<
-  string,
-  { name: Language; prefix: IdPrefixes }
-> = {
-  c: {
-    name: Language.cpp,
-    prefix: "cpp",
-  },
-  "c++": {
-    name: Language.cpp,
-    prefix: "cpp",
-  },
-  "c#": {
-    name: Language.csharp,
-    prefix: "cs",
-  },
-  go: {
-    name: Language.go,
-    prefix: "go",
-  },
-  java: {
-    name: Language.java,
-    prefix: "java",
-  },
-  javascript: {
-    name: Language.javascript,
-    prefix: "js",
-  },
-  python: {
-    name: Language.python,
-    prefix: "py",
-  },
-  typescript: {
-    name: Language.javascript,
-    prefix: "js",
-  },
+const linguistToMetrics: Record<string, Language> = {
+  c: Language.cpp,
+  "c++": Language.cpp,
+  "c#": Language.csharp,
+  go: Language.go,
+  java: Language.java,
+  javascript: Language.javascript,
+  python: Language.python,
+  typescript: Language.javascript,
 };
 
 const nameToLinguist = Object.entries(linguistToMetrics).reduce(
-  (obj, [key, { name: action }]) => {
-    if (!obj[action]) {
-      obj[action] = [];
+  (obj, [key, name]) => {
+    if (!obj[name]) {
+      obj[name] = [];
     }
-    obj[action].push(key);
+    obj[name].push(key);
     return obj;
   },
   {} as Record<Language, string[]>
 );
+
+export function getIdPrefix(language: Language): IdPrefix {
+  switch (language) {
+    case Language.cpp:
+      return "cpp";
+    case Language.csharp:
+      return "cs";
+    case Language.go:
+      return "go";
+    case Language.java:
+      return "java";
+    case Language.javascript:
+      return "js";
+    case Language.python:
+      return "py";
+
+    default:
+      assertNever(language);
+  }
+}
 
 /**
  * Count the lines of code of the specified language using the include
@@ -72,7 +66,7 @@ export async function countLoc(
   exclude: string[],
   dbLanguages: Language[],
   logger: Logger
-): Promise<Partial<Record<IdPrefixes, number>>> {
+): Promise<Partial<Record<Language, number>>> {
   const result = await new LocDir({
     cwd,
     include: ["**"].concat(include || []),
@@ -86,12 +80,12 @@ export async function countLoc(
   const lineCounts = Object.entries(result.languages).reduce(
     (obj, [language, { code }]) => {
       const metricsLanguage = linguistToMetrics[language];
-      if (metricsLanguage && dbLanguages.includes(metricsLanguage.name)) {
-        obj[metricsLanguage.prefix] = code + (obj[metricsLanguage.prefix] || 0);
+      if (metricsLanguage && dbLanguages.includes(metricsLanguage)) {
+        obj[metricsLanguage] = code + (obj[metricsLanguage] || 0);
       }
       return obj;
     },
-    {} as Record<IdPrefixes, number>
+    {} as Record<Language, number>
   );
 
   if (Object.keys(lineCounts).length) {

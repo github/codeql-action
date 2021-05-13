@@ -166,7 +166,9 @@ export class LocDir {
       };
     } = {};
 
-    await Promise.all(paths.map(async (pathItem) => {
+    // We _could_ use Promise.all to count the files in parallel, but that
+    // would lead to out of memory errors when there are many files.
+    for (const pathItem of paths) {
       const fullPath = slash(path.join(this.cwd, pathItem));
       if (
         !pathItem ||
@@ -174,7 +176,7 @@ export class LocDir {
         !(await fs.pathExists(fullPath)) ||
         (await fs.stat(fullPath)).isDirectory()
       ) {
-        return;
+        continue;
       }
       const file = new LocFile(fullPath);
       const fileLineInfo = await file.getFileInfo();
@@ -192,7 +194,7 @@ export class LocDir {
         [fileLineInfo.languages]: language,
       };
       files.push(fullPath);
-    }));
+    }
 
     return {
       files,

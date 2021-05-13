@@ -20,7 +20,7 @@ test("ensure lines of code works for cpp and js", async (t) => {
 
   t.deepEqual(results, {
     cpp: 6,
-    js: 3,
+    javascript: 3,
   });
 });
 
@@ -34,8 +34,8 @@ test("ensure lines of code can handle undefined language", async (t) => {
   );
 
   t.deepEqual(results, {
-    js: 3,
-    py: 5,
+    javascript: 3,
+    python: 5,
   });
 });
 
@@ -63,7 +63,23 @@ test("ensure lines of code can handle includes", async (t) => {
   );
 
   t.deepEqual(results, {
-    js: 15,
+    javascript: 12,
+  });
+});
+
+test("ensure lines of code can handle empty includes", async (t) => {
+  // note that "**" is always included. The includes are for extra
+  // directories outside the normal structure.
+  const results = await countLoc(
+    path.join(__dirname, "../tests/multi-language-repo"),
+    ["idontexist"],
+    [],
+    [Language.javascript],
+    getRunnerLogger(true)
+  );
+
+  t.deepEqual(results, {
+    // should get no results
   });
 });
 
@@ -77,6 +93,6 @@ test("ensure lines of code can handle exclude", async (t) => {
   );
 
   t.deepEqual(results, {
-    js: 3,
+    javascript: 3,
   });
 });

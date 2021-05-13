@@ -69,7 +69,7 @@ export async function countLoc(
 ): Promise<Partial<Record<Language, number>>> {
   const result = await new LocDir({
     cwd,
-    include: ["**"].concat(include || []),
+    include: Array.isArray(include) && include.length > 0 ? include : ["**"],
     exclude,
     analysisLanguages: dbLanguages.flatMap((lang) => nameToLinguist[lang]),
   }).loadInfo();

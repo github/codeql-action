@@ -63,7 +63,23 @@ test("ensure lines of code can handle includes", async (t) => {
   );
 
   t.deepEqual(results, {
-    javascript: 15,
+    javascript: 12,
+  });
+});
+
+test("ensure lines of code can handle empty includes", async (t) => {
+  // note that "**" is always included. The includes are for extra
+  // directories outside the normal structure.
+  const results = await countLoc(
+    path.join(__dirname, "../tests/multi-language-repo"),
+    ["idontexist"],
+    [],
+    [Language.javascript],
+    getRunnerLogger(true)
+  );
+
+  t.deepEqual(results, {
+    // should get no results
   });
 });
 

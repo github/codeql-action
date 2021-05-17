@@ -59,6 +59,8 @@ jobs:
         mv ../action/tests/multi-language-repo/{*,.github} .
         mv ../action/.github/workflows .github
     - uses: ./../action/init
+      with:
+        db-location: "${{ runner.temp }}/customDbLocation"
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -66,7 +68,7 @@ jobs:
       env:
         TEST_MODE: true
     - run: |
-        cd "$RUNNER_TEMP/codeql_databases"
+        cd "$RUNNER_TEMP/customDbLocation"
         # List all directories as there will be precisely one directory per database
         # but there may be other files in this directory such as query suites.
         if [ "$(ls -d */ | wc -l)" != 6 ] || \
@@ -261,6 +263,12 @@ jobs:
     - uses: ./../action/analyze
       env:
         TEST_MODE: true
+    - run: |
+        cd "$RUNNER_TEMP/codeql_databases"
+        if [[ ! -d go ]]; then
+          echo "Did not find a Go database"
+          exit 1
+        fi
 
   multi-language-repo_rubocop:
     needs: [check-js, check-node-modules]

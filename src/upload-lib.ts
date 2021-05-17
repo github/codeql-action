@@ -44,27 +44,14 @@ export function combineSarifFiles(sarifFiles: string[]): string {
 // and return an updated sarif file contents.
 export function populateRunAutomationDetails(
   sarifContents: string,
+  category: string | undefined,
   analysis_key: string | undefined,
   environment: string | undefined
 ): string {
   if (analysis_key === undefined) {
     return sarifContents;
   }
-  let automationID = `${analysis_key}/`;
-
-  // the id has to be deterministic so we sort the fields
-  if (environment !== undefined && environment !== "null") {
-    const environmentObject = JSON.parse(environment);
-    for (const entry of Object.entries(environmentObject).sort()) {
-      if (typeof entry[1] === "string") {
-        automationID += `${entry[0]}:${entry[1]}/`;
-      } else {
-        // In code scanning we just handle the string values,
-        // the rest get converted to the empty string
-        automationID += `${entry[0]}:/`;
-      }
-    }
-  }
+  const automationID = getAutomationID(category, analysis_key, environment);
 
   const sarif = JSON.parse(sarifContents);
   for (const run of sarif.runs || []) {
@@ -76,6 +63,22 @@ export function populateRunAutomationDetails(
   }
 
   return JSON.stringify(sarif);
+}
+
+function getAutomationID(
+  category: string | undefined,
+  analysis_key: string,
+  environment: string | undefined
+): string {
+  if (category !== undefined) {
+    let automationID = category;
+    if (!automationID.endsWith("/")) {
+      automationID += "/";
+    }
+    return automationID;
+  }
+
+  return actionsUtil.computeAutomationID(analysis_key, environment);
 }
 
 // Upload the given payload.
@@ -153,6 +156,7 @@ export async function uploadFromActions(
     await actionsUtil.getCommitOid(),
     await actionsUtil.getRef(),
     await actionsUtil.getAnalysisKey(),
+    actionsUtil.getOptionalInput("category"),
     actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
@@ -172,6 +176,7 @@ export async function uploadFromRunner(
   repositoryNwo: RepositoryNwo,
   commitOid: string,
   ref: string,
+  category: string | undefined,
   checkoutPath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
@@ -183,6 +188,7 @@ export async function uploadFromRunner(
     commitOid,
     ref,
     undefined,
+    category,
     undefined,
     undefined,
     checkoutPath,
@@ -326,6 +332,7 @@ async function uploadFiles(
   commitOid: string,
   ref: string,
   analysisKey: string | undefined,
+  category: string | undefined,
   analysisName: string | undefined,
   workflowRunID: number | undefined,
   checkoutPath: string,
@@ -361,6 +368,7 @@ async function uploadFiles(
   );
   sarifPayload = populateRunAutomationDetails(
     sarifPayload,
+    category,
     analysisKey,
     environment
   );

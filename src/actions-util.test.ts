@@ -73,6 +73,57 @@ test("getAnalysisKey() when a local run", async (t) => {
   t.deepEqual(actualAnalysisKey, "LOCAL-RUN:UNKNOWN-JOB");
 });
 
+test("computeAutomationID()", async (t) => {
+  let actualAutomationID = actionsutil.computeAutomationID(
+    ".github/workflows/codeql-analysis.yml:analyze",
+    '{"language": "javascript", "os": "linux"}'
+  );
+  t.deepEqual(
+    actualAutomationID,
+    ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"
+  );
+
+  // check the environment sorting
+  actualAutomationID = actionsutil.computeAutomationID(
+    ".github/workflows/codeql-analysis.yml:analyze",
+    '{"os": "linux", "language": "javascript"}'
+  );
+  t.deepEqual(
+    actualAutomationID,
+    ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"
+  );
+
+  // check that an empty environment produces the right results
+  actualAutomationID = actionsutil.computeAutomationID(
+    ".github/workflows/codeql-analysis.yml:analyze",
+    "{}"
+  );
+  t.deepEqual(
+    actualAutomationID,
+    ".github/workflows/codeql-analysis.yml:analyze/"
+  );
+
+  // check non string environment values
+  actualAutomationID = actionsutil.computeAutomationID(
+    ".github/workflows/codeql-analysis.yml:analyze",
+    '{"number": 1, "object": {"language": "javascript"}}'
+  );
+  t.deepEqual(
+    actualAutomationID,
+    ".github/workflows/codeql-analysis.yml:analyze/number:/object:/"
+  );
+
+  // check undefined environment
+  actualAutomationID = actionsutil.computeAutomationID(
+    ".github/workflows/codeql-analysis.yml:analyze",
+    undefined
+  );
+  t.deepEqual(
+    actualAutomationID,
+    ".github/workflows/codeql-analysis.yml:analyze/"
+  );
+});
+
 test("prepareEnvironment() when a local run", (t) => {
   process.env.CODEQL_LOCAL_RUN = "false";
   process.env.GITHUB_JOB = "YYY";

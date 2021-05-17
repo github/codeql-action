@@ -6,7 +6,6 @@ import * as globalutil from "util";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as http from "@actions/http-client";
 import { IHeaders } from "@actions/http-client/interfaces";
-import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
@@ -18,6 +17,7 @@ import * as defaults from "./defaults.json"; // Referenced from codeql-action-sy
 import { errorMatchers } from "./error-matcher";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import * as toolcache from "./toolcache";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
 
@@ -90,10 +90,12 @@ export interface CodeQL {
   databaseAnalyze(
     databasePath: string,
     sarifFile: string,
+    extraSearchPath: string | undefined,
     querySuite: string,
     memoryFlag: string,
     addSnippetsFlag: string,
-    threadsFlag: string
+    threadsFlag: string,
+    automationDetailsId: string | undefined
   ): Promise<void>;
 }
 
@@ -281,6 +283,7 @@ export async function setupCodeQL(
   codeqlURL: string | undefined,
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
+  toolCacheDir: string,
   mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
@@ -299,15 +302,32 @@ export async function setupCodeQL(
     const codeqlURLSemVer = convertToSemVer(codeqlURLVersion, logger);
 
     // If we find the specified version, we always use that.
-    let codeqlFolder = toolcache.find("CodeQL", codeqlURLSemVer);
+    let codeqlFolder = toolcache.find(
+      "CodeQL",
+      codeqlURLSemVer,
+      mode,
+      toolCacheDir,
+      logger
+    );
 
     // If we don't find the requested version, in some cases we may allow a
     // different version to save download time if the version hasn't been
     // specified explicitly (in which case we always honor it).
     if (!codeqlFolder && !codeqlURL && !forceLatest) {
-      const codeqlVersions = toolcache.findAllVersions("CodeQL");
+      const codeqlVersions = toolcache.findAllVersions(
+        "CodeQL",
+        mode,
+        toolCacheDir,
+        logger
+      );
       if (codeqlVersions.length === 1) {
-        const tmpCodeqlFolder = toolcache.find("CodeQL", codeqlVersions[0]);
+        const tmpCodeqlFolder = toolcache.find(
+          "CodeQL",
+          codeqlVersions[0],
+          mode,
+          toolCacheDir,
+          logger
+        );
         if (fs.existsSync(path.join(tmpCodeqlFolder, "pinned-version"))) {
           logger.debug(
             `CodeQL in cache overriding the default ${CODEQL_BUNDLE_VERSION}`
@@ -356,11 +376,19 @@ export async function setupCodeQL(
       );
       logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 
-      const codeqlExtracted = await toolcache.extractTar(codeqlPath);
+      const codeqlExtracted = await toolcache.extractTar(
+        codeqlPath,
+        mode,
+        tempDir,
+        logger
+      );
       codeqlFolder = await toolcache.cacheDir(
         codeqlExtracted,
         "CodeQL",
-        codeqlURLSemVer
+        codeqlURLSemVer,
+        mode,
+        toolCacheDir,
+        logger
       );
     }
 
@@ -480,11 +508,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     },
     async getTracerEnv(databasePath: string) {
       // Write tracer-env.js to a temp location.
+      // BEWARE: The name and location of this file is recognized by `codeql database
+      // trace-command` in order to enable special support for concatenable tracer
+      // configurations. Consequently the name must not be changed.
+      // (This warning can be removed once a different way to recognize the
+      // action/runner has been implemented in `codeql database trace-command`
+      // _and_ is present in the latest supported CLI release.)
       const tracerEnvJs = path.resolve(
         databasePath,
         "working",
         "tracer-env.js"
       );
+
       fs.mkdirSync(path.dirname(tracerEnvJs), { recursive: true });
       fs.writeFileSync(
         tracerEnvJs,
@@ -502,7 +537,14 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         fs.writeFileSync(process.argv[2], JSON.stringify(env), 'utf-8');`
       );
 
+      // BEWARE: The name and location of this file is recognized by `codeql database
+      // trace-command` in order to enable special support for concatenable tracer
+      // configurations. Consequently the name must not be changed.
+      // (This warning can be removed once a different way to recognize the
+      // action/runner has been implemented in `codeql database trace-command`
+      // _and_ is present in the latest supported CLI release.)
       const envFile = path.resolve(databasePath, "working", "env.tmp");
+
       await new toolrunner.ToolRunner(cmd, [
         "database",
         "trace-command",
@@ -640,12 +682,14 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     async databaseAnalyze(
       databasePath: string,
       sarifFile: string,
+      extraSearchPath: string | undefined,
       querySuite: string,
       memoryFlag: string,
       addSnippetsFlag: string,
-      threadsFlag: string
+      threadsFlag: string,
+      automationDetailsId: string | undefined
     ) {
-      await new toolrunner.ToolRunner(cmd, [
+      const args = [
         "database",
         "analyze",
         memoryFlag,
@@ -656,9 +700,19 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "--sarif-multicause-markdown",
         `--output=${sarifFile}`,
         addSnippetsFlag,
+        // Enable progress verbosity so we log each query as it's interpreted. This aids debugging
+        // when interpretation takes a while for one of the queries being analyzed.
+        "-v",
         ...getExtraOptionsFromEnv(["database", "analyze"]),
-        querySuite,
-      ]).exec();
+      ];
+      if (extraSearchPath !== undefined) {
+        args.push("--search-path", extraSearchPath);
+      }
+      if (automationDetailsId !== undefined) {
+        args.push("--sarif-category", automationDetailsId);
+      }
+      args.push(querySuite);
+      await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
 }

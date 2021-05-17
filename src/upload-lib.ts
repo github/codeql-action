@@ -40,6 +40,47 @@ export function combineSarifFiles(sarifFiles: string[]): string {
   return JSON.stringify(combinedSarif);
 }
 
+// Populates the run.automationDetails.id field using the analysis_key and environment
+// and return an updated sarif file contents.
+export function populateRunAutomationDetails(
+  sarifContents: string,
+  category: string | undefined,
+  analysis_key: string | undefined,
+  environment: string | undefined
+): string {
+  if (analysis_key === undefined) {
+    return sarifContents;
+  }
+  const automationID = getAutomationID(category, analysis_key, environment);
+
+  const sarif = JSON.parse(sarifContents);
+  for (const run of sarif.runs || []) {
+    if (run.automationDetails === undefined) {
+      run.automationDetails = {
+        id: automationID,
+      };
+    }
+  }
+
+  return JSON.stringify(sarif);
+}
+
+function getAutomationID(
+  category: string | undefined,
+  analysis_key: string,
+  environment: string | undefined
+): string {
+  if (category !== undefined) {
+    let automationID = category;
+    if (!automationID.endsWith("/")) {
+      automationID += "/";
+    }
+    return automationID;
+  }
+
+  return actionsUtil.computeAutomationID(analysis_key, environment);
+}
+
 // Upload the given payload.
 // If the request fails then this will retry a small number of times.
 async function uploadPayload(
@@ -115,6 +156,7 @@ export async function uploadFromActions(
     await actionsUtil.getCommitOid(),
     await actionsUtil.getRef(),
     await actionsUtil.getAnalysisKey(),
+    actionsUtil.getOptionalInput("category"),
     actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
@@ -134,6 +176,7 @@ export async function uploadFromRunner(
   repositoryNwo: RepositoryNwo,
   commitOid: string,
   ref: string,
+  category: string | undefined,
   checkoutPath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
@@ -145,6 +188,7 @@ export async function uploadFromRunner(
     commitOid,
     ref,
     undefined,
+    category,
     undefined,
     undefined,
     checkoutPath,
@@ -288,6 +332,7 @@ async function uploadFiles(
   commitOid: string,
   ref: string,
   analysisKey: string | undefined,
+  category: string | undefined,
   analysisName: string | undefined,
   workflowRunID: number | undefined,
   checkoutPath: string,
@@ -320,6 +365,12 @@ async function uploadFiles(
     sarifPayload,
     checkoutPath,
     logger
+  );
+  sarifPayload = populateRunAutomationDetails(
+    sarifPayload,
+    category,
+    analysisKey,
+    environment
   );
 
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");

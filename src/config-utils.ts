@@ -46,10 +46,22 @@ type Queries = {
   [language: string]: {
     /** Queries from one of the builtin suites */
     builtin: string[];
+
     /** Custom queries, from a non-standard location */
-    custom: string[];
+    custom: QueriesWithSearchPath[];
   };
 };
+
+/**
+ * Contains some information about a user-defined query.
+ */
+export interface QueriesWithSearchPath {
+  /** Additional search path to use when running these queries. */
+  searchPath: string;
+
+  /** Array of absolute paths to a .ql file containing the queries. */
+  queries: string[];
+}
 
 /**
  * Format of the parsed config file.
@@ -188,7 +200,10 @@ async function runResolveQueries(
       (q) => !queryIsDisabled(language, q)
     );
     if (extraSearchPath !== undefined) {
-      resultMap[language].custom.push(...queries);
+      resultMap[language].custom.push({
+        searchPath: extraSearchPath,
+        queries,
+      });
     } else {
       resultMap[language].builtin.push(...queries);
     }
@@ -601,7 +616,7 @@ async function getLanguagesInRepo(
 ): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
   const response = await api
-    .getApiClient(apiDetails, true)
+    .getApiClient(apiDetails, { allowLocalRun: true })
     .repos.listLanguages({
       owner: repository.owner,
       repo: repository.repo,
@@ -1013,7 +1028,7 @@ function getLocalConfig(configFile: string, checkoutPath: string): UserConfig {
 
 async function getRemoteConfig(
   configFile: string,
-  apiDetails: api.GitHubApiDetails
+  apiDetails: api.GitHubApiCombinedDetails
 ): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
@@ -1025,12 +1040,14 @@ async function getRemoteConfig(
     throw new Error(getConfigFileRepoFormatInvalidMessage(configFile));
   }
 
-  const response = await api.getApiClient(apiDetails, true).repos.getContent({
-    owner: pieces.groups.owner,
-    repo: pieces.groups.repo,
-    path: pieces.groups.path,
-    ref: pieces.groups.ref,
-  });
+  const response = await api
+    .getApiClient(apiDetails, { allowLocalRun: true, allowExternal: true })
+    .repos.getContent({
+      owner: pieces.groups.owner,
+      repo: pieces.groups.repo,
+      path: pieces.groups.path,
+      ref: pieces.groups.ref,
+    });
 
   let fileContents: string;
   if ("content" in response.data && response.data.content !== undefined) {

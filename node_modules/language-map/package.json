@@ -1,0 +1,36 @@
+{
+  "name": "language-map",
+  "version": "1.4.0",
+  "description": "GitHub's Linguist YAML language map provided as JSON",
+  "main": "languages.json",
+  "scripts": {
+    "test": "istanbul cover node_modules/mocha/bin/_mocha -- -R spec --bail",
+    "build": "node scripts/build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/blakeembrey/language-map.git"
+  },
+  "keywords": [
+    "language",
+    "map",
+    "linguist"
+  ],
+  "author": {
+    "name": "Blake Embrey",
+    "email": "hello@blakeembrey.com",
+    "url": "http://blakeembrey.me"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/blakeembrey/language-map/issues"
+  },
+  "homepage": "https://github.com/blakeembrey/language-map",
+  "devDependencies": {
+    "camel-case": "^3.0.0",
+    "istanbul": "^0.4.5",
+    "js-yaml": "^3.0.2",
+    "mocha": "^5.2.0",
+    "request": "^2.34.0"
+  }
+}

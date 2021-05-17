@@ -6,9 +6,11 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { countLoc, getIdPrefix } from "./count-loc";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
+import { combineSarifFiles } from "./upload-lib";
 import * as util from "./util";
 
 export class CodeQLAnalysisError extends Error {
@@ -138,10 +140,23 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
+
+  // count the number of lines in the background
+  const locPromise = countLoc(
+    path.resolve(),
+    // config.paths specifies external directories. the current
+    // directory is included in the analysis by default. Replicate
+    // that here.
+    config.paths,
+    config.pathsIgnore,
+    config.languages,
+    logger
+  );
 
   for (const language of config.languages) {
     logger.startGroup(`Analyzing ${language}`);
@@ -154,48 +169,45 @@ export async function runQueries(
     }
 
     try {
-      for (const type of ["builtin", "custom"]) {
-        if (queries[type].length > 0) {
-          const startTime = new Date().getTime();
+      if (queries["builtin"].length > 0) {
+        const startTimeBuliltIn = new Date().getTime();
+        const sarifFile = await runQueryGroup(
+          language,
+          "builtin",
+          queries["builtin"],
+          sarifFolder,
+          undefined
+        );
+        await injectLinesOfCode(sarifFile, language, locPromise);
 
-          const databasePath = util.getCodeQLDatabasePath(
-            config.tempDir,
-            language
+        statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
+          new Date().getTime() - startTimeBuliltIn;
+      }
+      const startTimeCustom = new Date().getTime();
+      const temporarySarifDir = config.tempDir;
+      const temporarySarifFiles: string[] = [];
+      for (let i = 0; i < queries["custom"].length; ++i) {
+        if (queries["custom"][i].queries.length > 0) {
+          const sarifFile = await runQueryGroup(
+            language,
+            `custom-${i}`,
+            queries["custom"][i].queries,
+            temporarySarifDir,
+            queries["custom"][i].searchPath
           );
-          // Pass the queries to codeql using a file instead of using the command
-          // line to avoid command line length restrictions, particularly on windows.
-          const querySuitePath = `${databasePath}-queries-${type}.qls`;
-          const querySuiteContents = queries[type]
-            .map((q: string) => `- query: ${q}`)
-            .join("\n");
-          fs.writeFileSync(querySuitePath, querySuiteContents);
-          logger.debug(
-            `Query suite file for ${language}...\n${querySuiteContents}`
-          );
-
-          const sarifFile = path.join(sarifFolder, `${language}-${type}.sarif`);
-
-          const codeql = getCodeQL(config.codeQLCmd);
-          await codeql.databaseAnalyze(
-            databasePath,
-            sarifFile,
-            querySuitePath,
-            memoryFlag,
-            addSnippetsFlag,
-            threadsFlag
-          );
-
-          logger.debug(
-            `SARIF results for database ${language} created at "${sarifFile}"`
-          );
-          logger.endGroup();
-
-          // Record the performance
-          const endTime = new Date().getTime();
-          statusReport[`analyze_${type}_queries_${language}_duration_ms`] =
-            endTime - startTime;
+          temporarySarifFiles.push(sarifFile);
         }
       }
+      if (temporarySarifFiles.length > 0) {
+        const sarifFile = path.join(sarifFolder, `${language}-custom.sarif`);
+        fs.writeFileSync(sarifFile, combineSarifFiles(temporarySarifFiles));
+        await injectLinesOfCode(sarifFile, language, locPromise);
+
+        statusReport[`analyze_custom_queries_${language}_duration_ms`] =
+          new Date().getTime() - startTimeCustom;
+      }
+
+      printLinesOfCodeSummary(logger, language, await locPromise);
     } catch (e) {
       logger.info(e);
       statusReport.analyze_failure_language = language;
@@ -207,6 +219,45 @@ export async function runQueries(
   }
 
   return statusReport;
+
+  async function runQueryGroup(
+    language: Language,
+    type: string,
+    queries: string[],
+    destinationFolder: string,
+    searchPath: string | undefined
+  ): Promise<string> {
+    const databasePath = util.getCodeQLDatabasePath(config.tempDir, language);
+    // Pass the queries to codeql using a file instead of using the command
+    // line to avoid command line length restrictions, particularly on windows.
+    const querySuitePath = `${databasePath}-queries-${type}.qls`;
+    const querySuiteContents = queries
+      .map((q: string) => `- query: ${q}`)
+      .join("\n");
+    fs.writeFileSync(querySuitePath, querySuiteContents);
+    logger.debug(`Query suite file for ${language}...\n${querySuiteContents}`);
+
+    const sarifFile = path.join(destinationFolder, `${language}-${type}.sarif`);
+
+    const codeql = getCodeQL(config.codeQLCmd);
+    await codeql.databaseAnalyze(
+      databasePath,
+      sarifFile,
+      searchPath,
+      querySuitePath,
+      memoryFlag,
+      addSnippetsFlag,
+      threadsFlag,
+      automationDetailsId
+    );
+
+    logger.debug(
+      `SARIF results for database ${language} created at "${sarifFile}"`
+    );
+    logger.endGroup();
+
+    return sarifFile;
+  }
 }
 
 export async function runAnalyze(
@@ -214,6 +265,7 @@ export async function runAnalyze(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger
 ): Promise<QueriesStatusReport> {
@@ -231,9 +283,50 @@ export async function runAnalyze(
     memoryFlag,
     addSnippetsFlag,
     threadsFlag,
+    automationDetailsId,
     config,
     logger
   );
 
   return { ...queriesStats };
+}
+
+async function injectLinesOfCode(
+  sarifFile: string,
+  language: Language,
+  locPromise: Promise<Partial<Record<Language, number>>>
+) {
+  const lineCounts = await locPromise;
+  const idPrefix = getIdPrefix(language);
+  if (language in lineCounts) {
+    const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
+    if (Array.isArray(sarif.runs)) {
+      for (const run of sarif.runs) {
+        const ruleId = `${idPrefix}/summary/lines-of-code`;
+        run.properties = run.properties || {};
+        run.properties.metricResults = run.properties.metricResults || [];
+        const rule = run.properties.metricResults.find(
+          // the rule id can be in either of two places
+          (r) => r.ruleId === ruleId || r.rule?.id === ruleId
+        );
+        // only add the baseline value if the rule already exists
+        if (rule) {
+          rule.baseline = lineCounts[language];
+        }
+      }
+    }
+    fs.writeFileSync(sarifFile, JSON.stringify(sarif));
+  }
+}
+
+function printLinesOfCodeSummary(
+  logger: Logger,
+  language: Language,
+  lineCounts: Partial<Record<Language, number>>
+) {
+  if (language in lineCounts) {
+    logger.info(
+      `Counted ${lineCounts[language]} lines of code for ${language} as a baseline.`
+    );
+  }
 }

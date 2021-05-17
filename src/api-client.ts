@@ -25,14 +25,17 @@ export interface GitHubApiExternalRepoDetails {
 }
 
 export const getApiClient = function (
-  apiDetails: GitHubApiDetails,
-  allowLocalRun = false
+  apiDetails: GitHubApiCombinedDetails,
+  { allowLocalRun = false, allowExternal = false } = {}
 ) {
   if (isLocalRun() && !allowLocalRun) {
     throw new Error("Invalid API call in local run");
   }
+
+  const auth =
+    (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   return new githubUtils.GitHub(
-    githubUtils.getOctokitOptions(apiDetails.auth, {
+    githubUtils.getOctokitOptions(auth, {
       baseUrl: getApiUrl(apiDetails.url),
       userAgent: "CodeQL Action",
       log: consoleLogLevel({ level: "debug" }),
@@ -63,5 +66,5 @@ export function getActionsApiClient(allowLocalRun = false) {
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
   };
 
-  return getApiClient(apiDetails, allowLocalRun);
+  return getApiClient(apiDetails, { allowLocalRun });
 }

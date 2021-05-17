@@ -21,7 +21,6 @@ import {
   getThreadsFlag,
   parseGitHubUrl,
   getGitHubAuth,
-  setupActionsVars,
 } from "./util";
 
 const program = new Command();
@@ -141,16 +140,19 @@ program
     "Checkout path. Default is the current working directory."
   )
   .option("--debug", "Print more verbose output", false)
-  // This prevents a message like: error: unknown option '--trace-process-level'
-  // Remove this if commander.js starts supporting hidden options.
-  .allowUnknownOption()
+  .option(
+    "--trace-process-name <string>",
+    "(Advanced, windows-only) Inject a windows tracer of this process into a process with the given process name."
+  )
+  .option(
+    "--trace-process-level <number>",
+    "(Advanced, windows-only) Inject a windows tracer of this process into a parent process <number> levels up."
+  )
   .action(async (cmd: InitArgs) => {
     const logger = getRunnerLogger(cmd.debug);
     try {
       const tempDir = getTempDir(cmd.tempDir);
       const toolsDir = getToolsDir(cmd.toolsDir);
-
-      setupActionsVars(tempDir, toolsDir);
 
       // Wipe the temp dir
       logger.info(`Cleaning temp directory ${tempDir}`);
@@ -181,6 +183,7 @@ program
             undefined,
             apiDetails,
             tempDir,
+            toolsDir,
             "runner",
             gitHubVersion.type,
             logger
@@ -246,7 +249,8 @@ program
         const shEnvFileContents = Object.entries(tracerConfig.env)
           // Some vars contain ${LIB} that we do not want to be expanded when executing this script
           .map(
-            ([key, value]) => `export ${key}="${value.replace(/\$/g, "\\$")}"`
+            ([key, value]) =>
+              `export ${key}='${value.replace(/'/g, "'\"'\"'")}'`
           )
           .join("\n");
         fs.writeFileSync(shEnvFile, shEnvFileContents);
@@ -292,7 +296,6 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
-      setupActionsVars(config.tempDir, config.toolCacheDir);
       importTracerEnvironment(config);
       let language: Language | undefined = undefined;
       if (cmd.language !== undefined) {
@@ -322,6 +325,7 @@ interface AnalyzeArgs {
   repository: string;
   commit: string;
   ref: string;
+  category: string | undefined;
   githubUrl: string;
   githubAuth: string;
   githubAuthStdin: boolean;
@@ -379,6 +383,10 @@ program
     "--temp-dir <dir>",
     'Directory to use for temporary files. Default is "./codeql-runner".'
   )
+  .option(
+    "--category <category>",
+    "String used by Code Scanning for matching the analyses."
+  )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: AnalyzeArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -390,7 +398,6 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
-      setupActionsVars(config.tempDir, config.toolCacheDir);
 
       const auth = await getGitHubAuth(
         logger,
@@ -410,6 +417,7 @@ program
         getMemoryFlag(cmd.ram),
         getAddSnippetsFlag(cmd.addSnippets),
         getThreadsFlag(cmd.threads, logger),
+        cmd.category,
         config,
         logger
       );
@@ -424,6 +432,7 @@ program
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
+        cmd.category,
         cmd.checkoutPath || process.cwd(),
         config.gitHubVersion,
         apiDetails,
@@ -441,6 +450,7 @@ interface UploadArgs {
   repository: string;
   commit: string;
   ref: string;
+  category: string | undefined;
   githubUrl: string;
   githubAuthStdin: boolean;
   githubAuth: string;
@@ -476,6 +486,10 @@ program
     "--checkout-path <path>",
     "Checkout path. Default is the current working directory."
   )
+  .option(
+    "--category <category>",
+    "String used by Code Scanning for matching the analyses."
+  )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -495,6 +509,7 @@ program
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
+        cmd.category,
         cmd.checkoutPath || process.cwd(),
         gitHubVersion,
         apiDetails,

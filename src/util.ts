@@ -391,18 +391,19 @@ export async function getGitHubAuth(
   );
 }
 
-// Sets environment variables that make using some libraries designed for
-// use only on actions safe to use outside of actions.
-//
-// Obviously this is not a tremendously great thing we're doing and it
-// would be better to write our own implementation of libraries to use
-// outside of actions. For now this works well enough.
-//
-// Currently this list of libraries that is deemed to now be safe includes:
-// - @actions/tool-cache
-//
-// Also see "queries/unguarded-action-lib.ql".
-export function setupActionsVars(tempDir: string, toolsDir: string) {
-  process.env["RUNNER_TEMP"] = tempDir;
-  process.env["RUNNER_TOOL_CACHE"] = toolsDir;
+/**
+ * This error is used to indicate a runtime failure of an exhaustivity check enforced at compile time.
+ */
+class ExhaustivityCheckingError extends Error {
+  constructor(public expectedExhaustiveValue: never) {
+    super("Internal error: exhaustivity checking failure");
+  }
+}
+
+/**
+ * Used to perform compile-time exhaustivity checking on a value.  This function will not be executed at runtime unless
+ * the type system has been subverted.
+ */
+export function assertNever(value: never): never {
+  throw new ExhaustivityCheckingError(value);
 }

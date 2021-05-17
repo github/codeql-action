@@ -82,3 +82,10 @@ export function setupTests(test: TestInterface<any>) {
     process.env = t.context.env;
   });
 }
+
+// Sets environment variables that make using some libraries designed for
+// use only on actions safe to use outside of actions.
+export function setupActionsVars(tempDir: string, toolsDir: string) {
+  process.env["RUNNER_TEMP"] = tempDir;
+  process.env["RUNNER_TOOL_CACHE"] = toolsDir;
+}

@@ -69,6 +69,7 @@ async function run() {
         "Config file could not be found at expected location. Has the 'init' action been called?"
       );
     }
+
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),
       url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
@@ -79,6 +80,7 @@ async function run() {
       util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
       util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
       util.getThreadsFlag(actionsUtil.getOptionalInput("threads"), logger),
+      actionsUtil.getOptionalInput("category"),
       config,
       logger
     );

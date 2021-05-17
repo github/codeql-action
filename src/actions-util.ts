@@ -52,6 +52,13 @@ export function getTemporaryDirectory(): string {
     : getRequiredEnvParam("RUNNER_TEMP");
 }
 
+export function getToolCacheDirectory(): string {
+  const value = process.env["CODEQL_ACTION_TOOL_CACHE"];
+  return value !== undefined && value !== ""
+    ? value
+    : getRequiredEnvParam("RUNNER_TOOL_CACHE");
+}
+
 /**
  * Ensures all required environment variables are set in the context of a local run.
  */
@@ -416,6 +423,36 @@ export async function getAnalysisKey(): Promise<string> {
   analysisKey = `${workflowPath}:${jobName}`;
   core.exportVariable(analysisKeyEnvVar, analysisKey);
   return analysisKey;
+}
+
+export async function getAutomationID(): Promise<string> {
+  const analysis_key = await getAnalysisKey();
+  const environment = getRequiredInput("matrix");
+
+  return computeAutomationID(analysis_key, environment);
+}
+
+export function computeAutomationID(
+  analysis_key: string,
+  environment: string | undefined
+): string {
+  let automationID = `${analysis_key}/`;
+
+  // the id has to be deterministic so we sort the fields
+  if (environment !== undefined && environment !== "null") {
+    const environmentObject = JSON.parse(environment);
+    for (const entry of Object.entries(environmentObject).sort()) {
+      if (typeof entry[1] === "string") {
+        automationID += `${entry[0]}:${entry[1]}/`;
+      } else {
+        // In code scanning we just handle the string values,
+        // the rest get converted to the empty string
+        automationID += `${entry[0]}:/`;
+      }
+    }
+  }
+
+  return automationID;
 }
 
 /**

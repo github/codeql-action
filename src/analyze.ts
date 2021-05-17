@@ -108,7 +108,7 @@ async function createdDBForScannedLanguages(
       }
 
       await codeql.extractScannedLanguage(
-        util.getCodeQLDatabasePath(config.tempDir, language),
+        util.getCodeQLDatabasePath(config, language),
         language
       );
       logger.endGroup();
@@ -127,7 +127,7 @@ async function finalizeDatabaseCreation(
   for (const language of config.languages) {
     logger.startGroup(`Finalizing ${language}`);
     await codeql.finalizeDatabase(
-      util.getCodeQLDatabasePath(config.tempDir, language),
+      util.getCodeQLDatabasePath(config, language),
       threadsFlag
     );
     logger.endGroup();
@@ -227,7 +227,7 @@ export async function runQueries(
     destinationFolder: string,
     searchPath: string | undefined
   ): Promise<string> {
-    const databasePath = util.getCodeQLDatabasePath(config.tempDir, language);
+    const databasePath = util.getCodeQLDatabasePath(config, language);
     // Pass the queries to codeql using a file instead of using the command
     // line to avoid command line length restrictions, particularly on windows.
     const querySuitePath = `${databasePath}-queries-${type}.qls`;

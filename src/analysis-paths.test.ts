@@ -20,6 +20,7 @@ test("emptyPaths", async (t) => {
       toolCacheDir: tmpDir,
       codeQLCmd: "",
       gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
+      dbLocation: path.resolve(tmpDir, "codeql_databases"),
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
@@ -40,6 +41,7 @@ test("nonEmptyPaths", async (t) => {
       toolCacheDir: tmpDir,
       codeQLCmd: "",
       gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
+      dbLocation: path.resolve(tmpDir, "codeql_databases"),
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], "path1\npath2");
@@ -64,6 +66,7 @@ test("exclude temp dir", async (t) => {
       toolCacheDir,
       codeQLCmd: "",
       gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
+      dbLocation: path.resolve(tempDir, "codeql_databases"),
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);

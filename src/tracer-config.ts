@@ -25,7 +25,7 @@ export async function getTracerConfigForLanguage(
   language: Language
 ): Promise<TracerConfig> {
   const env = await codeql.getTracerEnv(
-    util.getCodeQLDatabasePath(config.tempDir, language)
+    util.getCodeQLDatabasePath(config, language)
   );
 
   const spec = env["ODASA_TRACER_CONFIGURATION"];

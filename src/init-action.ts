@@ -137,6 +137,7 @@ async function run() {
       actionsUtil.getOptionalInput("languages"),
       actionsUtil.getOptionalInput("queries"),
       actionsUtil.getOptionalInput("config-file"),
+      actionsUtil.getOptionalInput("db-location"),
       parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
       actionsUtil.getTemporaryDirectory(),
       actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),

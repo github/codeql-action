@@ -16,6 +16,9 @@ inputs:
   config-file:
     description: Path of the config file to use
     required: false
+  db-location:
+    description: Path where CodeQL databases should be created. If not specified, a temporary directory will be used.
+    required: false
   queries:
     description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
     required: false

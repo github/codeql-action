@@ -110,6 +110,10 @@ export interface Config {
    * if talking to github.com or GitHub AE.
    */
   gitHubVersion: GitHubVersion;
+  /**
+   * The location where CodeQL databases should be stored.
+   */
+  dbLocation: string;
 }
 
 /**
@@ -739,6 +743,7 @@ function shouldAddConfigFileQueries(queriesInput: string | undefined): boolean {
 export async function getDefaultConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
+  dbLocation: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -779,6 +784,7 @@ export async function getDefaultConfig(
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
+    dbLocation: dbLocationOrDefault(dbLocation, tempDir),
   };
 }
 
@@ -789,6 +795,7 @@ async function loadConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string,
+  dbLocation: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -943,7 +950,15 @@ async function loadConfig(
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
+    dbLocation: dbLocationOrDefault(dbLocation, tempDir),
   };
+}
+
+function dbLocationOrDefault(
+  dbLocation: string | undefined,
+  tempDir: string
+): string {
+  return dbLocation || path.resolve(tempDir, "codeql_databases");
 }
 
 /**
@@ -956,6 +971,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string | undefined,
+  dbLocation: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -973,6 +989,7 @@ export async function initConfig(
     config = await getDefaultConfig(
       languagesInput,
       queriesInput,
+      dbLocation,
       repository,
       tempDir,
       toolCacheDir,
@@ -987,6 +1004,7 @@ export async function initConfig(
       languagesInput,
       queriesInput,
       configFile,
+      dbLocation,
       repository,
       tempDir,
       toolCacheDir,

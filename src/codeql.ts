@@ -96,7 +96,7 @@ export interface CodeQL {
     addSnippetsFlag: string,
     threadsFlag: string,
     automationDetailsId: string | undefined
-  ): Promise<void>;
+  ): Promise<string>;
 }
 
 export interface ResolveQueriesOutput {
@@ -688,7 +688,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       addSnippetsFlag: string,
       threadsFlag: string,
       automationDetailsId: string | undefined
-    ) {
+    ): Promise<string> {
       const args = [
         "database",
         "analyze",
@@ -712,7 +712,16 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         args.push("--sarif-category", automationDetailsId);
       }
       args.push(querySuite);
-      await new toolrunner.ToolRunner(cmd, args).exec();
+      // capture stdout, which contains analysis summaries
+      let output = "";
+      await new toolrunner.ToolRunner(cmd, args, {
+        listeners: {
+          stdout: (data: Buffer) => {
+            output += data.toString();
+          },
+        },
+      }).exec();
+      return output;
     },
   };
 }

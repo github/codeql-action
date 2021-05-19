@@ -94,7 +94,8 @@ export interface CodeQL {
     querySuite: string,
     memoryFlag: string,
     addSnippetsFlag: string,
-    threadsFlag: string
+    threadsFlag: string,
+    automationDetailsId: string | undefined
   ): Promise<void>;
 }
 
@@ -507,11 +508,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     },
     async getTracerEnv(databasePath: string) {
       // Write tracer-env.js to a temp location.
+      // BEWARE: The name and location of this file is recognized by `codeql database
+      // trace-command` in order to enable special support for concatenable tracer
+      // configurations. Consequently the name must not be changed.
+      // (This warning can be removed once a different way to recognize the
+      // action/runner has been implemented in `codeql database trace-command`
+      // _and_ is present in the latest supported CLI release.)
       const tracerEnvJs = path.resolve(
         databasePath,
         "working",
         "tracer-env.js"
       );
+
       fs.mkdirSync(path.dirname(tracerEnvJs), { recursive: true });
       fs.writeFileSync(
         tracerEnvJs,
@@ -529,7 +537,14 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         fs.writeFileSync(process.argv[2], JSON.stringify(env), 'utf-8');`
       );
 
+      // BEWARE: The name and location of this file is recognized by `codeql database
+      // trace-command` in order to enable special support for concatenable tracer
+      // configurations. Consequently the name must not be changed.
+      // (This warning can be removed once a different way to recognize the
+      // action/runner has been implemented in `codeql database trace-command`
+      // _and_ is present in the latest supported CLI release.)
       const envFile = path.resolve(databasePath, "working", "env.tmp");
+
       await new toolrunner.ToolRunner(cmd, [
         "database",
         "trace-command",
@@ -671,7 +686,8 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       querySuite: string,
       memoryFlag: string,
       addSnippetsFlag: string,
-      threadsFlag: string
+      threadsFlag: string,
+      automationDetailsId: string | undefined
     ) {
       const args = [
         "database",
@@ -691,6 +707,9 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       ];
       if (extraSearchPath !== undefined) {
         args.push("--search-path", extraSearchPath);
+      }
+      if (automationDetailsId !== undefined) {
+        args.push("--sarif-category", automationDetailsId);
       }
       args.push(querySuite);
       await new toolrunner.ToolRunner(cmd, args).exec();

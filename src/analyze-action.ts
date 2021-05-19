@@ -80,6 +80,7 @@ async function run() {
       util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
       util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
       util.getThreadsFlag(actionsUtil.getOptionalInput("threads"), logger),
+      actionsUtil.getOptionalInput("category"),
       config,
       logger
     );
@@ -110,10 +111,7 @@ async function run() {
     if (core.isDebug() && config !== undefined) {
       core.info("Debug mode is on. Printing CodeQL debug logs...");
       for (const language of config.languages) {
-        const databaseDirectory = util.getCodeQLDatabasePath(
-          config.tempDir,
-          language
-        );
+        const databaseDirectory = util.getCodeQLDatabasePath(config, language);
         const logsDirectory = path.join(databaseDirectory, "log");
 
         const walkLogFiles = (dir: string) => {

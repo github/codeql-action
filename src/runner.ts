@@ -195,6 +195,7 @@ program
         cmd.languages,
         cmd.queries,
         cmd.configFile,
+        undefined,
         parseRepositoryNwo(cmd.repository),
         tempDir,
         toolsDir,
@@ -325,6 +326,7 @@ interface AnalyzeArgs {
   repository: string;
   commit: string;
   ref: string;
+  category: string | undefined;
   githubUrl: string;
   githubAuth: string;
   githubAuthStdin: boolean;
@@ -382,6 +384,10 @@ program
     "--temp-dir <dir>",
     'Directory to use for temporary files. Default is "./codeql-runner".'
   )
+  .option(
+    "--category <category>",
+    "String used by Code Scanning for matching the analyses."
+  )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: AnalyzeArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -412,6 +418,7 @@ program
         getMemoryFlag(cmd.ram),
         getAddSnippetsFlag(cmd.addSnippets),
         getThreadsFlag(cmd.threads, logger),
+        cmd.category,
         config,
         logger
       );
@@ -426,6 +433,7 @@ program
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
+        cmd.category,
         cmd.checkoutPath || process.cwd(),
         config.gitHubVersion,
         apiDetails,
@@ -443,6 +451,7 @@ interface UploadArgs {
   repository: string;
   commit: string;
   ref: string;
+  category: string | undefined;
   githubUrl: string;
   githubAuthStdin: boolean;
   githubAuth: string;
@@ -478,6 +487,10 @@ program
     "--checkout-path <path>",
     "Checkout path. Default is the current working directory."
   )
+  .option(
+    "--category <category>",
+    "String used by Code Scanning for matching the analyses."
+  )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -497,6 +510,7 @@ program
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
+        cmd.category,
         cmd.checkoutPath || process.cwd(),
         gitHubVersion,
         apiDetails,

@@ -14,6 +14,9 @@ inputs:
     default: ${{ github.token }}
   matrix:
     default: ${{ toJson(matrix) }}
+  category:
+    description: String used by Code Scanning for matching the analyses
+    required: false
 runs:
   using: 'node12'
   main: '../lib/upload-sarif-action.js'

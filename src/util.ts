@@ -8,6 +8,7 @@ import * as semver from "semver";
 
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
+import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -172,17 +173,10 @@ export function getThreadsFlag(
 }
 
 /**
- * Get the directory where CodeQL databases should be placed.
- */
-export function getCodeQLDatabasesDir(tempDir: string) {
-  return path.resolve(tempDir, "codeql_databases");
-}
-
-/**
  * Get the path where the CodeQL database for the given language lives.
  */
-export function getCodeQLDatabasePath(tempDir: string, language: Language) {
-  return path.resolve(getCodeQLDatabasesDir(tempDir), language);
+export function getCodeQLDatabasePath(config: Config, language: Language) {
+  return path.resolve(config.dbLocation, language);
 }
 
 /**
@@ -389,4 +383,21 @@ export async function getGitHubAuth(
   throw new Error(
     "No GitHub authentication token was specified. Please provide a token via the GITHUB_TOKEN environment variable, or by adding the `--github-auth-stdin` flag and passing the token via standard input."
   );
+}
+
+/**
+ * This error is used to indicate a runtime failure of an exhaustivity check enforced at compile time.
+ */
+class ExhaustivityCheckingError extends Error {
+  constructor(public expectedExhaustiveValue: never) {
+    super("Internal error: exhaustivity checking failure");
+  }
+}
+
+/**
+ * Used to perform compile-time exhaustivity checking on a value.  This function will not be executed at runtime unless
+ * the type system has been subverted.
+ */
+export function assertNever(value: never): never {
+  throw new ExhaustivityCheckingError(value);
 }

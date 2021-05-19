@@ -8,6 +8,7 @@ import * as semver from "semver";
 
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
+import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -172,17 +173,10 @@ export function getThreadsFlag(
 }
 
 /**
- * Get the directory where CodeQL databases should be placed.
- */
-export function getCodeQLDatabasesDir(tempDir: string) {
-  return path.resolve(tempDir, "codeql_databases");
-}
-
-/**
  * Get the path where the CodeQL database for the given language lives.
  */
-export function getCodeQLDatabasePath(tempDir: string, language: Language) {
-  return path.resolve(getCodeQLDatabasesDir(tempDir), language);
+export function getCodeQLDatabasePath(config: Config, language: Language) {
+  return path.resolve(config.dbLocation, language);
 }
 
 /**

@@ -1,0 +1,98 @@
+# This workflow runs after a release of the action.
+# It merges any changes from the release back into the
+# main branch. Typically, this is just a single commit
+# that updates the changelog.
+name: Mergeback after release
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseBranch:
+        description: 'The base branch to merge into'
+        default: v1
+        required: false
+
+  # Commented for now to ensure we don't run this accidentally after a real merge
+  # push:
+  #   branches:
+  #     - v1
+
+  pull_request:
+    paths:
+      - .github/workflows/post-release-mergeback.yml
+
+jobs:
+  merge-back:
+    runs-on: ubuntu-latest
+    env:
+      BASE_BRANCH: "${{ github.event.inputs.baseBranch || 'main' }}"
+      # TODO head_ref won't exist in workflow dispatch
+      HEAD_BRANCH: "${{ github.head_ref }}"
+      NEW_BRANCH: "mergeback/${{ github.head_ref }}-to-${{ github.event.inputs.baseBranch || 'main' }}"
+
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: '${{ toJson(github) }}'
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: validate
+        run: |
+          if [ "$BASE_BRANCH" -eq "$HEAD_BRANCH" ]; then
+            echo "error::Base branch and head branch are the same $BASE_BRANCH."
+            exit -1
+          fi
+
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+
+      - name: Update git config
+        run: |
+          git config --global user.email "codeql-core@github.com"
+          git config --global user.name "CodeQL Actions Bot"
+
+      - name: Create mergeback branch
+        run: |
+          git checkout -b $NEW_BRANCH
+
+      - name: Check for tag
+        id: check
+        run: |
+          set +e # don't fail on an errored command
+          VERSION="$(jq '.version' -r 'package.json')"
+          TAG="v$VERSION"
+          git ls-remote --tags origin | grep $TAG
+          EXISTS="$?"
+          if [ "$EXISTS" -ne 0 ]; then
+             echo "::set-output name=exists::true"
+             echo "Tag $TAG exists. Not going to re-release."
+          fi
+
+      # we didn't tag the release during the update-release-branch workflow because the
+      # commit that actually makes it to the main branch may be different than the one
+      # created by the workflow. We tag now because we know the correct commit
+      - name: Tag release
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          VERSION="$(jq '.version' -r 'package.json')"
+          git tag -a "v$VERSION" -m "v$VERSION"
+          git push origin --follow-tags "v$VERSION"
+
+      - name: Create mergeback branch
+        if: steps.check.outputs.exists == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -exu
+          PR_TITLE="Mergeback $HEAD_BRANCH into $BASE_BRANCH"
+          PR_BODY="Updates version and changelog."
+
+          # Update the changelog
+          perl -i -pe 's/^/## \[UNRELEASED\]\n\n/ if($.==3)' CHANGELOG.md
+          git add CHANGELOG.md
+          git commit -m "Update changelog for new version"
+          npm version
+
+          # Create pull request TODO: choose a better reviewer
+          git push origin "$NEW_BRANCH"
+          gh pr create --head "$NEW_BRANCH" --base "$BASE_BRANCH" --reviewer "aeisenberg" --title "$PR_TITLE" --body "$PR_BODY"

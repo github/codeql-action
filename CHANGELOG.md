@@ -1,3 +1,3 @@
-# CodeQL Action and CodQL Runner Changelog
+# CodeQL Action and CodeQL Runner Changelog
 
 ## [UNRELEASED]

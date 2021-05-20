@@ -760,6 +760,14 @@ export async function getDefaultConfig(
     logger
   );
   const queries: Queries = {};
+  for (const language of languages) {
+    if (queries[language] === undefined) {
+      queries[language] = {
+        builtin: [],
+        custom: [],
+      };
+    }
+  }
   await addDefaultQueries(codeQL, languages, queries);
   if (queriesInput) {
     await addQueriesFromWorkflow(
@@ -834,6 +842,14 @@ async function loadConfig(
   );
 
   const queries: Queries = {};
+  for (const language of languages) {
+    if (queries[language] === undefined) {
+      queries[language] = {
+        builtin: [],
+        custom: [],
+      };
+    }
+  }
   const pathsIgnore: string[] = [];
   const paths: string[] = [];
 

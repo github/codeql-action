@@ -666,7 +666,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         ...getExtraOptionsFromEnv(["resolve", "queries"]),
       ];
       if (extraSearchPath !== undefined) {
-        codeqlArgs.push("--search-path", extraSearchPath);
+        codeqlArgs.push("--additional-packs", extraSearchPath);
       }
       let output = "";
       await new toolrunner.ToolRunner(cmd, codeqlArgs, {
@@ -706,7 +706,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         ...getExtraOptionsFromEnv(["database", "analyze"]),
       ];
       if (extraSearchPath !== undefined) {
-        args.push("--search-path", extraSearchPath);
+        args.push("--additional-packs", extraSearchPath);
       }
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);

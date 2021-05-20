@@ -717,7 +717,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       await new toolrunner.ToolRunner(cmd, args, {
         listeners: {
           stdout: (data: Buffer) => {
-            output += data.toString();
+            output += data.toString("utf8");
           },
         },
       }).exec();

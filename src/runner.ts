@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { Command } from "commander";
 
+import { Mode, setMode } from "./actions-util";
 import { runAnalyze } from "./analyze";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import { CodeQL, getCodeQL } from "./codeql";
@@ -149,7 +150,9 @@ program
     "(Advanced, windows-only) Inject a windows tracer of this process into a parent process <number> levels up."
   )
   .action(async (cmd: InitArgs) => {
+    setMode(Mode.runner);
     const logger = getRunnerLogger(cmd.debug);
+
     try {
       const tempDir = getTempDir(cmd.tempDir);
       const toolsDir = getToolsDir(cmd.toolsDir);
@@ -172,7 +175,7 @@ program
       };
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
-      checkGitHubVersionInRange(gitHubVersion, "runner", logger);
+      checkGitHubVersionInRange(gitHubVersion, logger, Mode.runner);
 
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
@@ -184,7 +187,6 @@ program
             apiDetails,
             tempDir,
             toolsDir,
-            "runner",
             gitHubVersion.type,
             logger
           )
@@ -288,6 +290,8 @@ program
   )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: AutobuildArgs) => {
+    setMode(Mode.runner);
+
     const logger = getRunnerLogger(cmd.debug);
     try {
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
@@ -390,6 +394,7 @@ program
   )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: AnalyzeArgs) => {
+    setMode(Mode.runner);
     const logger = getRunnerLogger(cmd.debug);
     try {
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
@@ -493,6 +498,7 @@ program
   )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
+    setMode(Mode.runner);
     const logger = getRunnerLogger(cmd.debug);
     const auth = await getGitHubAuth(
       logger,

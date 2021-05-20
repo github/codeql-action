@@ -3,8 +3,11 @@ import * as path from "path";
 import * as githubUtils from "@actions/github/lib/utils";
 import consoleLogLevel from "console-log-level";
 
-import { getRequiredEnvParam, getRequiredInput } from "./actions-util";
+import { getMode, getRequiredEnvParam, getRequiredInput } from "./actions-util";
 import { isLocalRun } from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 export enum DisallowedAPIVersionReason {
   ACTION_TOO_OLD,
@@ -37,7 +40,7 @@ export const getApiClient = function (
   return new githubUtils.GitHub(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: getApiUrl(apiDetails.url),
-      userAgent: "CodeQL Action",
+      userAgent: `CodeQL ${getMode()}/${pkg.version}`,
       log: consoleLogLevel({ level: "debug" }),
     })
   );

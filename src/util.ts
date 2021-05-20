@@ -6,16 +6,12 @@ import { Readable } from "stream";
 import * as core from "@actions/core";
 import * as semver from "semver";
 
+import { isActions, Mode } from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-
-/**
- * Are we running on actions, or not.
- */
-export type Mode = "actions" | "runner";
 
 /**
  * The URL for github.com.
@@ -225,6 +221,7 @@ export function parseGitHubUrl(inputUrl: string): string {
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
   "CODEQL_ACTION_WARNED_ABOUT_VERSION";
+
 let hasBeenWarnedAboutVersion = false;
 
 export enum GitHubVariant {
@@ -266,8 +263,8 @@ export async function getGitHubVersion(
 
 export function checkGitHubVersionInRange(
   version: GitHubVersion,
-  mode: Mode,
-  logger: Logger
+  logger: Logger,
+  toolName: Mode
 ) {
   if (hasBeenWarnedAboutVersion || version.type !== GitHubVariant.GHES) {
     return;
@@ -278,8 +275,6 @@ export function checkGitHubVersionInRange(
     apiCompatibility.minimumVersion,
     apiCompatibility.maximumVersion
   );
-
-  const toolName = mode === "actions" ? "Action" : "Runner";
 
   if (
     disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_OLD
@@ -296,7 +291,7 @@ export function checkGitHubVersionInRange(
     );
   }
   hasBeenWarnedAboutVersion = true;
-  if (mode === "actions") {
+  if (isActions()) {
     core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
   }
 }

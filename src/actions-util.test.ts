@@ -690,3 +690,11 @@ on: ["push"]
     )
   );
 });
+
+test("mode", (t) => {
+  actionsutil.setMode(actionsutil.Mode.actions);
+  t.deepEqual(actionsutil.getMode(), actionsutil.Mode.actions);
+
+  actionsutil.setMode(actionsutil.Mode.runner);
+  t.deepEqual(actionsutil.getMode(), actionsutil.Mode.runner);
+});

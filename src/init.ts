@@ -18,7 +18,6 @@ export async function initCodeQL(
   apiDetails: GitHubApiDetails,
   tempDir: string,
   toolCacheDir: string,
-  mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
@@ -28,7 +27,6 @@ export async function initCodeQL(
     apiDetails,
     tempDir,
     toolCacheDir,
-    mode,
     variant,
     logger
   );

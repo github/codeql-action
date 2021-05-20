@@ -4,6 +4,7 @@ import * as toolcache from "@actions/tool-cache";
 import test from "ava";
 import nock from "nock";
 
+import { Mode, setMode } from "./actions-util";
 import * as codeql from "./codeql";
 import * as defaults from "./defaults.json";
 import { getRunnerLogger } from "./logging";
@@ -21,6 +22,10 @@ const sampleGHAEApiDetails = {
   auth: "token",
   url: "https://example.githubenterprise.com",
 };
+
+test.beforeEach(() => {
+  setMode(Mode.actions);
+});
 
 test("download codeql bundle cache", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
@@ -43,7 +48,6 @@ test("download codeql bundle cache", async (t) => {
         sampleApiDetails,
         tmpDir,
         tmpDir,
-        "runner",
         util.GitHubVariant.DOTCOM,
         getRunnerLogger(true)
       );
@@ -73,7 +77,6 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       sampleApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
@@ -92,7 +95,6 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       sampleApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
@@ -117,7 +119,6 @@ test("don't download codeql bundle cache with pinned different version cached", 
       sampleApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
@@ -129,7 +130,6 @@ test("don't download codeql bundle cache with pinned different version cached", 
       sampleApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
@@ -156,7 +156,6 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       sampleApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
@@ -183,7 +182,6 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       sampleApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
@@ -210,7 +208,6 @@ test('download codeql bundle cache with pinned different version cached if "late
       sampleApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
@@ -238,7 +235,6 @@ test('download codeql bundle cache with pinned different version cached if "late
       sampleApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true)
     );
@@ -293,7 +289,6 @@ test("download codeql bundle from github ae endpoint", async (t) => {
       sampleGHAEApiDetails,
       tmpDir,
       tmpDir,
-      "runner",
       util.GitHubVariant.GHAE,
       getRunnerLogger(true)
     );
@@ -374,4 +369,24 @@ test("getExtraOptions throws for bad content", (t) => {
       []
     )
   );
+});
+
+test.only("getCodeQLActionRepository", (t) => {
+  const logger = getRunnerLogger(true);
+
+  setMode(Mode.actions);
+  const repoActions = codeql.getCodeQLActionRepository(logger);
+  t.deepEqual(repoActions, "github/codeql-action");
+
+  setMode(Mode.runner);
+
+  // isRunningLocalAction() === true
+  delete process.env["GITHUB_ACTION_REPOSITORY"];
+  process.env["RUNNER_TEMP"] = path.dirname(__dirname);
+  const repoLocalRunner = codeql.getCodeQLActionRepository(logger);
+  t.deepEqual(repoLocalRunner, "github/codeql-action");
+
+  process.env["GITHUB_ACTION_REPOSITORY"] = "xxx/yyy";
+  const repoEnv = codeql.getCodeQLActionRepository(logger);
+  t.deepEqual(repoEnv, "xxx/yyy");
 });

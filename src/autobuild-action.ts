@@ -1,12 +1,20 @@
 import * as core from "@actions/core";
 
-import * as actionsUtil from "./actions-util";
+import {
+  createStatusReportBase,
+  getTemporaryDirectory,
+  Mode,
+  prepareLocalRunEnvironment,
+  sendStatusReport,
+  setMode,
+  StatusReportBase,
+} from "./actions-util";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import * as config_utils from "./config-utils";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 
-interface AutobuildStatusReport extends actionsUtil.StatusReportBase {
+interface AutobuildStatusReport extends StatusReportBase {
   // Comma-separated set of languages being auto-built
   autobuild_languages: string;
   // Language that failed autobuilding (or undefined if all languages succeeded).
@@ -19,11 +27,13 @@ async function sendCompletedStatusReport(
   failingLanguage?: string,
   cause?: Error
 ) {
+  setMode(Mode.actions);
+
   const status =
     failingLanguage !== undefined || cause !== undefined
       ? "failure"
       : "success";
-  const statusReportBase = await actionsUtil.createStatusReportBase(
+  const statusReportBase = await createStatusReportBase(
     "autobuild",
     status,
     startedAt,
@@ -35,7 +45,7 @@ async function sendCompletedStatusReport(
     autobuild_languages: allLanguages.join(","),
     autobuild_failure: failingLanguage,
   };
-  await actionsUtil.sendStatusReport(statusReport);
+  await sendStatusReport(statusReport);
 }
 
 async function run() {
@@ -43,21 +53,17 @@ async function run() {
   const startedAt = new Date();
   let language: Language | undefined = undefined;
   try {
-    actionsUtil.prepareLocalRunEnvironment();
+    prepareLocalRunEnvironment();
     if (
-      !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase(
-          "autobuild",
-          "starting",
-          startedAt
-        )
+      !(await sendStatusReport(
+        await createStatusReportBase("autobuild", "starting", startedAt)
       ))
     ) {
       return;
     }
 
     const config = await config_utils.getConfig(
-      actionsUtil.getTemporaryDirectory(),
+      getTemporaryDirectory(),
       logger
     );
     if (config === undefined) {

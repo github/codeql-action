@@ -11,7 +11,11 @@ import { default as queryString } from "query-string";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
+import {
+  isRunningLocalAction,
+  getRelativeScriptPath,
+  isActions,
+} from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
@@ -144,8 +148,8 @@ function getCodeQLBundleName(): string {
   return `codeql-bundle-${platform}.tar.gz`;
 }
 
-function getCodeQLActionRepository(mode: util.Mode, logger: Logger): string {
-  if (mode !== "actions") {
+export function getCodeQLActionRepository(logger: Logger): string {
+  if (isActions()) {
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   } else {
     return getActionsCodeQLActionRepository(logger);
@@ -177,11 +181,10 @@ function getActionsCodeQLActionRepository(logger: Logger): string {
 
 async function getCodeQLBundleDownloadURL(
   apiDetails: api.GitHubApiDetails,
-  mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
 ): Promise<string> {
-  const codeQLActionRepository = getCodeQLActionRepository(mode, logger);
+  const codeQLActionRepository = getCodeQLActionRepository(logger);
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.
     [apiDetails.url, codeQLActionRepository],
@@ -292,7 +295,6 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   toolCacheDir: string,
-  mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
@@ -313,7 +315,6 @@ export async function setupCodeQL(
     let codeqlFolder = toolcache.find(
       "CodeQL",
       codeqlURLSemVer,
-      mode,
       toolCacheDir,
       logger
     );
@@ -324,7 +325,6 @@ export async function setupCodeQL(
     if (!codeqlFolder && !codeqlURL && !forceLatest) {
       const codeqlVersions = toolcache.findAllVersions(
         "CodeQL",
-        mode,
         toolCacheDir,
         logger
       );
@@ -332,7 +332,6 @@ export async function setupCodeQL(
         const tmpCodeqlFolder = toolcache.find(
           "CodeQL",
           codeqlVersions[0],
-          mode,
           toolCacheDir,
           logger
         );
@@ -351,7 +350,6 @@ export async function setupCodeQL(
       if (!codeqlURL) {
         codeqlURL = await getCodeQLBundleDownloadURL(
           apiDetails,
-          mode,
           variant,
           logger
         );
@@ -386,7 +384,6 @@ export async function setupCodeQL(
 
       const codeqlExtracted = await toolcache.extractTar(
         codeqlPath,
-        mode,
         tempDir,
         logger
       );
@@ -394,7 +391,6 @@ export async function setupCodeQL(
         codeqlExtracted,
         "CodeQL",
         codeqlURLSemVer,
-        mode,
         toolCacheDir,
         logger
       );

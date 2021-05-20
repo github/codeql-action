@@ -342,7 +342,8 @@ async function uploadFiles(
   mode: util.Mode,
   logger: Logger
 ): Promise<UploadStatusReport> {
-  logger.info(`Uploading sarif files: ${JSON.stringify(sarifFiles)}`);
+  logger.startGroup("Uploading results");
+  logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
 
   if (mode === "actions") {
     // This check only works on actions as env vars don't persist between calls to the runner
@@ -402,6 +403,8 @@ async function uploadFiles(
 
   // Make the upload
   await uploadPayload(payload, repositoryNwo, apiDetails, mode, logger);
+
+  logger.endGroup();
 
   return {
     raw_upload_size_bytes: rawUploadSizeBytes,

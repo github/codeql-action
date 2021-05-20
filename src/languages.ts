@@ -6,6 +6,7 @@ export enum Language {
   java = "java",
   javascript = "javascript",
   python = "python",
+  ruby = "ruby",
 }
 
 // Additional names for languages

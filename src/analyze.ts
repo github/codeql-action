@@ -37,6 +37,8 @@ export interface QueriesStatusReport {
   analyze_builtin_queries_javascript_duration_ms?: number;
   // Time taken in ms to analyze builtin queries for python (or undefined if this language was not analyzed)
   analyze_builtin_queries_python_duration_ms?: number;
+  // Time taken in ms to analyze builtin queries for ruby (or undefined if this language was not analyzed)
+  analyze_builtin_queries_ruby_duration_ms?: number;
   // Time taken in ms to analyze custom queries for cpp (or undefined if this language was not analyzed)
   analyze_custom_queries_cpp_duration_ms?: number;
   // Time taken in ms to analyze custom queries for csharp (or undefined if this language was not analyzed)
@@ -49,6 +51,8 @@ export interface QueriesStatusReport {
   analyze_custom_queries_javascript_duration_ms?: number;
   // Time taken in ms to analyze custom queries for python (or undefined if this language was not analyzed)
   analyze_custom_queries_python_duration_ms?: number;
+  // Time taken in ms to analyze custom queries for ruby (or undefined if this language was not analyzed)
+  analyze_custom_queries_ruby_duration_ms?: number;
   // Name of language that errored during analysis (or undefined if no language failed)
   analyze_failure_language?: string;
 }

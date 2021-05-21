@@ -68,7 +68,10 @@ test("load empty config", async (t) => {
     const codeQL = setCodeQL({
       async resolveQueries() {
         return {
-          byLanguage: {},
+          byLanguage: {
+            javascript: { queries: ["query1.ql"] },
+            python: { queries: ["query2.ql"] },
+          },
           noDeclaredLanguage: {},
           multipleDeclaredLanguages: {},
         };
@@ -116,7 +119,10 @@ test("loading config saves config", async (t) => {
     const codeQL = setCodeQL({
       async resolveQueries() {
         return {
-          byLanguage: {},
+          byLanguage: {
+            javascript: { queries: ["query1.ql"] },
+            python: { queries: ["query2.ql"] },
+          },
           noDeclaredLanguage: {},
           multipleDeclaredLanguages: {},
         };

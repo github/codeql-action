@@ -27,14 +27,12 @@ jobs:
     env:
       BASE_BRANCH: "${{ github.event.inputs.baseBranch || 'main' }}"
       HEAD_BRANCH: "${{ github.head_ref || github.ref }}"
-      # Would like to use the github/codeql-core team, but that is not working
-      DEFAULT_REVIEWER: "aeisenberg"
 
     steps:
-      - name: Dump GitHub context
+      - name: Dump GitHub Event context
         env:
-          GITHUB_CONTEXT: "${{ toJson(github) }}"
-        run: echo "$GITHUB_CONTEXT"
+          GITHUB_EVENT_CONTEXT: "${{ toJson(github.event) }}"
+        run: echo "$GITHUB_EVENT_CONTEXT"
 
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
@@ -123,5 +121,4 @@ jobs:
             --base "$BASE_BRANCH" \
             --title "$PR_TITLE" \
             --body "$PR_BODY" \
-            --reviewer "$DEFAULT_REVIEWER" \
             "$DRAFT"

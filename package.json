@@ -9,7 +9,8 @@
     "test-debug": "ava src/** --serial --verbose --timeout=20m",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts --fix",
-    "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"
+    "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force",
+    "version": "cd runner && npm version patch && git add ."
   },
   "ava": {
     "typescript": {

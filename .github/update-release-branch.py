@@ -4,6 +4,16 @@ import random
 import requests
 import subprocess
 import sys
+import json
+import datetime
+import os
+
+EMPTY_CHANGELOG = """
+# CodeQL Action and CodeQL Runner Changelog
+
+## [UNRELEASED]
+
+"""
 
 # The branch being merged from.
 # This is the one that contains day-to-day development work.
@@ -49,32 +59,40 @@ def open_pr(repo, all_commits, short_main_sha, branch_name):
   commits_without_pull_requests = sorted(commits_without_pull_requests, key=lambda c: c.commit.author.date)
 
   # Start constructing the body text
-  body = 'Merging ' + short_main_sha + ' into ' + LATEST_RELEASE_BRANCH
+  body = []
+  body.append('Merging ' + short_main_sha + ' into ' + LATEST_RELEASE_BRANCH)
 
   conductor = get_conductor(repo, pull_requests, commits_without_pull_requests)
-  body += '\n\nConductor for this PR is @' + conductor
+  body.append('')
+  body.append('Conductor for this PR is @' + conductor)
 
   # List all PRs merged
   if len(pull_requests) > 0:
-    body += '\n\nContains the following pull requests:'
+    body.append('')
+    body.append('Contains the following pull requests:')
     for pr in pull_requests:
       merger = get_merger_of_pr(repo, pr)
-      body += '\n- #' + str(pr.number)
-      body += ' - ' + pr.title
-      body += ' (@' + merger + ')'
+      body.append('- #' + str(pr.number) + ' - ' + pr.title +' (@' + merger + ')')
 
   # List all commits not part of a PR
   if len(commits_without_pull_requests) > 0:
-    body += '\n\nContains the following commits not from a pull request:'
+    body.append('')
+    body.append('Contains the following commits not from a pull request:')
     for commit in commits_without_pull_requests:
-      body += '\n- ' + commit.sha
-      body += ' - ' + get_truncated_commit_message(commit)
-      body += ' (@' + commit.author.login + ')'
+      body.append('- ' + commit.sha + ' - ' + get_truncated_commit_message(commit) + ' (@' + commit.author.login + ')')
+
+  body.append('')
+  body.append('Please review the following:')
+  body.append(' - [ ] The CHANGELOG displays the correct version and date.')
+  body.append(' - [ ] The CHANGELOG includes all relevant, user-facing changes since the last release.')
+  body.append(' - [ ] There are no unexpected commits being merged into the ' + LATEST_RELEASE_BRANCH + ' branch.')
+  body.append(' - [ ] The docs team is aware of any documentation changes that need to be released.')
+  body.append(' - [ ] The mergeback PR is merged back into ' + MAIN_BRANCH + ' after this PR is merged.')
 
   title = 'Merge ' + MAIN_BRANCH + ' into ' + LATEST_RELEASE_BRANCH
 
   # Create the pull request
-  pr = repo.create_pull(title=title, body=body, head=branch_name, base=LATEST_RELEASE_BRANCH)
+  pr = repo.create_pull(title=title, body='\n'.join(body), head=branch_name, base=LATEST_RELEASE_BRANCH)
   print('Created PR #' + str(pr.number))
 
   # Assign the conductor
@@ -95,7 +113,7 @@ def get_conductor(repo, pull_requests, other_commits):
 # This will not include any commits that exist on the release branch
 # that aren't on main.
 def get_commit_difference(repo):
-  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + LATEST_RELEASE_BRANCH + '..' + MAIN_BRANCH).strip().split('\n')
+  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + LATEST_RELEASE_BRANCH + '..' + ORIGIN + '/' + MAIN_BRANCH).strip().split('\n')
 
   # Convert to full-fledged commit objects
   commits = [repo.get_commit(c) for c in commits]
@@ -135,6 +153,28 @@ def get_pr_for_commit(repo, commit):
 def get_merger_of_pr(repo, pr):
   return repo.get_commit(pr.merge_commit_sha).author.login
 
+def get_current_version():
+  with open('package.json', 'r') as f:
+    return json.load(f)['version']
+
+def get_today_string():
+  today = datetime.datetime.today()
+  return '{:%d %b %Y}'.format(today)
+
+def update_changelog(version):
+  if (os.path.exists('CHANGELOG.md')):
+    content = ''
+    with open('CHANGELOG.md', 'r') as f:
+      content = f.read()
+  else:
+    content = EMPTY_CHANGELOG
+
+  newContent = content.replace('[UNRELEASED]', version + ' - ' + get_today_string(), 1)
+
+  with open('CHANGELOG.md', 'w') as f:
+    f.write(newContent)
+
+
 def main():
   if len(sys.argv) != 3:
     raise Exception('Usage: update-release.branch.py <github token> <repository nwo>')
@@ -142,10 +182,11 @@ def main():
   repository_nwo = sys.argv[2]
 
   repo = Github(github_token).get_repo(repository_nwo)
+  version = get_current_version()
 
   # Print what we intend to go
   print('Considering difference between ' + MAIN_BRANCH + ' and ' + LATEST_RELEASE_BRANCH)
-  short_main_sha = run_git('rev-parse', '--short', MAIN_BRANCH).strip()
+  short_main_sha = run_git('rev-parse', '--short', ORIGIN + '/' + MAIN_BRANCH).strip()
   print('Current head of ' + MAIN_BRANCH + ' is ' + short_main_sha)
 
   # See if there are any commits to merge in
@@ -157,7 +198,7 @@ def main():
   # The branch name is based off of the name of branch being merged into
   # and the SHA of the branch being merged from. Thus if the branch already
   # exists we can assume we don't need to recreate it.
-  new_branch_name = 'update-' + LATEST_RELEASE_BRANCH + '-' + short_main_sha
+  new_branch_name = 'update-v' + version + '-' + short_main_sha
   print('Branch name is ' + new_branch_name)
 
   # Check if the branch already exists. If so we can abort as this script
@@ -168,7 +209,15 @@ def main():
 
   # Create the new branch and push it to the remote
   print('Creating branch ' + new_branch_name)
-  run_git('checkout', '-b', new_branch_name, MAIN_BRANCH)
+  run_git('checkout', '-b', new_branch_name, ORIGIN + '/' + MAIN_BRANCH)
+
+  print('Updating changelog')
+  update_changelog(version)
+
+  # Create a commit that updates the CHANGELOG
+  run_git('add', 'CHANGELOG.md')
+  run_git('commit', '-m', version)
+
   run_git('push', ORIGIN, new_branch_name)
 
   # Open a PR to update the branch

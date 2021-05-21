@@ -1,0 +1,127 @@
+# This workflow runs after a release of the action.
+# It merges any changes from the release back into the
+# main branch. Typically, this is just a single commit
+# that updates the changelog.
+name: Tag release and merge back
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseBranch:
+        description: 'The base branch to merge into'
+        default: main
+        required: false
+
+  push:
+    branches:
+      - v1
+
+  pull_request:
+    paths:
+      - .github/workflows/post-release-mergeback.yml
+
+jobs:
+  merge-back:
+    runs-on: ubuntu-latest
+    if: github.repository == 'github/codeql-action'
+    env:
+      BASE_BRANCH: "${{ github.event.inputs.baseBranch || 'main' }}"
+      HEAD_BRANCH: "${{ github.head_ref || github.ref }}"
+      # Would like to use the github/codeql-core team, but that is not working
+      DEFAULT_REVIEWER: "aeisenberg"
+
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: "${{ toJson(github) }}"
+        run: echo "$GITHUB_CONTEXT"
+
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+
+      - name: Update git config
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Get version and new branch
+        id: getVersion
+        run: |
+          VERSION="v$(jq '.version' -r 'package.json')"
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          echo "::set-output name=version::$VERSION"
+          NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${SHORT_SHA}"
+          echo "::set-output name=newBranch::$NEW_BRANCH"
+
+
+      - name: Dump branches
+        env:
+          NEW_BRANCH: "${{ steps.getVersion.outputs.newBranch }}"
+        run: |
+          echo "BASE_BRANCH $BASE_BRANCH"
+          echo "HEAD_BRANCH $HEAD_BRANCH"
+          echo "NEW_BRANCH $NEW_BRANCH"
+
+      - name: Create mergeback branch
+        env:
+          NEW_BRANCH: "${{ steps.getVersion.outputs.newBranch }}"
+        run: |
+          git checkout -b "$NEW_BRANCH"
+
+      - name: Check for tag
+        id: check
+        env:
+          VERSION: "${{ steps.getVersion.outputs.version }}"
+        run: |
+          set +e # don't fail on an errored command
+          git ls-remote --tags origin | grep "$VERSION"
+          EXISTS="$?"
+          if [ "$EXISTS" -ne 0 ]; then
+             echo "::set-output name=exists::true"
+             echo "Tag $TAG exists. Not going to re-release."
+          fi
+
+      # we didn't tag the release during the update-release-branch workflow because the
+      # commit that actually makes it to the release branch is a merge commit,
+      # and not yet known during the first workflow. We tag now because we know the correct commit.
+      - name: Tag release
+        if: steps.check.outputs.exists == 'true'
+        env:
+          VERSION: ${{ steps.getVersion.outputs.version }}
+        run: |
+          git tag -a "$VERSION" -m "$VERSION"
+          git push origin --follow-tags "$VERSION"
+
+      - name: Create mergeback branch
+        if: steps.check.outputs.exists == 'true'
+        env:
+          VERSION: "${{ steps.getVersion.outputs.version }}"
+          NEW_BRANCH: "${{ steps.getVersion.outputs.newBranch }}"
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          set -exu
+          PR_TITLE="Mergeback $VERSION $HEAD_BRANCH into $BASE_BRANCH"
+          PR_BODY="Updates version and changelog."
+
+          # Update the changelog
+          perl -i -pe 's/^/## \[UNRELEASED\]\n\n/ if($.==3)' CHANGELOG.md
+          git add .
+          git commit -m "Update changelog and version after $VERSION"
+          npm version patch
+
+          # when running this workflow on a PR, this is just a test.
+          # so put into draft mode.
+          if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
+            DRAFT="--draft"
+          else
+            DRAFT=""
+          fi
+
+          git push origin "$NEW_BRANCH"
+          gh pr create \
+            --head "$NEW_BRANCH" \
+            --base "$BASE_BRANCH" \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --reviewer "$DEFAULT_REVIEWER" \
+            "$DRAFT"

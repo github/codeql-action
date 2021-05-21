@@ -162,7 +162,10 @@ export async function runQueries(
     logger.startGroup(`Analyzing ${language}`);
 
     const queries = config.queries[language];
-    if (queries.builtin.length === 0 && queries.custom.length === 0) {
+    if (
+      queries === undefined ||
+      (queries.builtin.length === 0 && queries.custom.length === 0)
+    ) {
       throw new Error(
         `Unable to analyse ${language} as no queries were selected for this language`
       );

@@ -937,21 +937,6 @@ async function loadConfig(
     }
   }
 
-  // The list of queries should not be empty for any language. If it is then
-  // it is a user configuration error.
-  for (const language of languages) {
-    if (
-      queries[language] === undefined ||
-      (queries[language].builtin.length === 0 &&
-        queries[language].custom.length === 0)
-    ) {
-      throw new Error(
-        `Did not detect any queries to run for ${language}. ` +
-          "Please make sure that the default queries are enabled, or you are specifying queries to run."
-      );
-    }
-  }
-
   return {
     languages,
     queries,
@@ -1026,6 +1011,21 @@ export async function initConfig(
       apiDetails,
       logger
     );
+  }
+
+  // The list of queries should not be empty for any language. If it is then
+  // it is a user configuration error.
+  for (const language of config.languages) {
+    if (
+      config.queries[language] === undefined ||
+      (config.queries[language].builtin.length === 0 &&
+        config.queries[language].custom.length === 0)
+    ) {
+      throw new Error(
+        `Did not detect any queries to run for ${language}. ` +
+          "Please make sure that the default queries are enabled, or you are specifying queries to run."
+      );
+    }
   }
 
   // Save the config so we can easily access it again in the future

@@ -761,12 +761,10 @@ export async function getDefaultConfig(
   );
   const queries: Queries = {};
   for (const language of languages) {
-    if (queries[language] === undefined) {
-      queries[language] = {
-        builtin: [],
-        custom: [],
-      };
-    }
+    queries[language] = {
+      builtin: [],
+      custom: [],
+    };
   }
   await addDefaultQueries(codeQL, languages, queries);
   if (queriesInput) {
@@ -843,12 +841,10 @@ async function loadConfig(
 
   const queries: Queries = {};
   for (const language of languages) {
-    if (queries[language] === undefined) {
-      queries[language] = {
-        builtin: [],
-        custom: [],
-      };
-    }
+    queries[language] = {
+      builtin: [],
+      custom: [],
+    };
   }
   const pathsIgnore: string[] = [];
   const paths: string[] = [];

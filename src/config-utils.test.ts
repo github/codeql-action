@@ -951,7 +951,7 @@ test("No detected languages", async (t) => {
 
 test("Unknown languages", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
-    const languages = "ruby,english";
+    const languages = "rubbish,english";
 
     try {
       await configUtils.initConfig(
@@ -972,7 +972,7 @@ test("Unknown languages", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(configUtils.getUnknownLanguagesError(["ruby", "english"]))
+        new Error(configUtils.getUnknownLanguagesError(["rubbish", "english"]))
       );
     }
   });

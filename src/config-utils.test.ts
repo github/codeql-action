@@ -926,6 +926,11 @@ test("Invalid format of remote config handled correctly", async (t) => {
 test("No detected languages", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     mockListLanguages([]);
+    const codeQL = setCodeQL({
+      async resolveLanguages() {
+        return {};
+      },
+    });
 
     try {
       await configUtils.initConfig(
@@ -936,7 +941,7 @@ test("No detected languages", async (t) => {
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
-        getCachedCodeQL(),
+        codeQL,
         tmpDir,
         gitHubVersion,
         sampleApiDetails,

@@ -653,6 +653,7 @@ async function getLanguagesInRepo(
  * then throw an error.
  */
 async function getLanguages(
+  codeQL: CodeQL,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   apiDetails: api.GitHubApiDetails,
@@ -668,6 +669,8 @@ async function getLanguages(
   if (languages.length === 0) {
     // Obtain languages as all languages in the repo that can be analysed
     languages = await getLanguagesInRepo(repository, apiDetails, logger);
+    const availableLanguages = await codeQL.resolveLanguages();
+    languages = languages.filter((value) => value in availableLanguages);
     logger.info(
       `Automatically detected languages: ${JSON.stringify(languages)}`
     );
@@ -754,6 +757,7 @@ export async function getDefaultConfig(
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
+    codeQL,
     languagesInput,
     repository,
     apiDetails,
@@ -833,6 +837,7 @@ async function loadConfig(
   }
 
   const languages = await getLanguages(
+    codeQL,
     languagesInput,
     repository,
     apiDetails,

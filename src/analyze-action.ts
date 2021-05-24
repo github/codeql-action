@@ -8,6 +8,7 @@ import {
   runAnalyze,
   CodeQLAnalysisError,
   QueriesStatusReport,
+  runCleanup,
 } from "./analyze";
 import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
@@ -88,6 +89,20 @@ async function run() {
       config,
       logger
     );
+
+    if (actionsUtil.getOptionalInput("cleanup-level") !== "none") {
+      await runCleanup(
+        config,
+        actionsUtil.getOptionalInput("cleanup-level") || "brutal",
+        logger
+      );
+    }
+
+    const dbLocations: { [lang: string]: string } = {};
+    for (const language of config.languages) {
+      dbLocations[language] = util.getCodeQLDatabasePath(config, language);
+    }
+    core.setOutput("db-locations", dbLocations);
 
     if (actionsUtil.getRequiredInput("upload") === "true") {
       const uploadStats = await upload_lib.uploadFromActions(

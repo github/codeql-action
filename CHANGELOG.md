@@ -2,6 +2,8 @@
 
 ## [UNRELEASED]
 
+- Output the location of CodeQL databases created in the analyze step. [#543](https://github.com/github/codeql-action/pull/543)
+
 ## 1.0.0 - 31 May 2021
 
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)

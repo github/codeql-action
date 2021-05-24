@@ -101,6 +101,10 @@ export interface CodeQL {
     threadsFlag: string,
     automationDetailsId: string | undefined
   ): Promise<string>;
+  /**
+   * Run 'codeql database cleanup'.
+   */
+  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
 }
 
 export interface ResolveLanguagesOutput {
@@ -481,6 +485,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     databaseAnalyze: resolveFunction(partialCodeql, "databaseAnalyze"),
+    databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
   };
   return cachedCodeQL;
 }
@@ -746,6 +751,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         },
       }).exec();
       return output;
+    },
+    async databaseCleanup(
+      databasePath: string,
+      cleanupLevel: string
+    ): Promise<void> {
+      const args = [
+        "database",
+        "cleanup",
+        databasePath,
+        `--mode=${cleanupLevel}`,
+      ];
+      await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
 }

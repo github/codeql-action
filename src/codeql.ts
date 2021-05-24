@@ -674,7 +674,13 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         },
       }).exec();
 
-      return JSON.parse(output);
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve languages: ${e}`
+        );
+      }
     },
     async resolveQueries(
       queries: string[],
@@ -699,7 +705,11 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         },
       }).exec();
 
-      return JSON.parse(output);
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
+      }
     },
     async databaseAnalyze(
       databasePath: string,

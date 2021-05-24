@@ -1,13 +1,16 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import { create } from "@actions/artifact";
 import * as core from "@actions/core";
+import glob from "glob";
 
 import * as actionsUtil from "./actions-util";
 import {
   runAnalyze,
   CodeQLAnalysisError,
   QueriesStatusReport,
+  runCleanup,
 } from "./analyze";
 import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
@@ -86,6 +89,21 @@ async function run() {
       config,
       logger
     );
+
+    if (actionsUtil.getOptionalInput("db-upload") === "true") {
+      await runCleanup(config, logger);
+      logger.info("Uploading databases...");
+      const prefix = actionsUtil.getOptionalInput("db-artifact-prefix") || "db";
+      const artifactClient = create();
+      for (const language of config.languages) {
+        const databaseDirectory = util.getCodeQLDatabasePath(config, language);
+        await artifactClient.uploadArtifact(
+          `${prefix}-${language}`,
+          glob.sync(`${databaseDirectory}/**/*`),
+          databaseDirectory
+        );
+      }
+    }
 
     if (actionsUtil.getRequiredInput("upload") === "true") {
       const uploadStats = await upload_lib.uploadFromActions(

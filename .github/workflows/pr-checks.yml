@@ -64,10 +64,15 @@ jobs:
     - name: Build code
       shell: bash
       run: ./build.sh
-    - uses: ./../action/analyze
+    - name: Analyze code
+      uses: ./../action/analyze
+      with:
+        db-upload: true
+        db-artifact-prefix: "codeql-database"
       env:
         TEST_MODE: true
-    - run: |
+    - name: Check databases exist on disk
+      run: |
         cd "$RUNNER_TEMP/customDbLocation"
         # List all directories as there will be precisely one directory per database
         # but there may be other files in this directory such as query suites.
@@ -79,6 +84,22 @@ jobs:
            [[ ! -d javascript ]] || \
            [[ ! -d python ]]; then
           echo "Did not find expected number of databases. Database dir contains: $(ls)"
+          exit 1
+        fi
+    - name: Download database artifacts
+      uses: actions/download-artifact@v2
+      with:
+        path: "${{ runner.temp }}/artifactsProduced"
+    - name: Check database artifacts all exist
+      run: |
+        cd "$RUNNER_TEMP/artifactsProduced"
+        if [[ ! -d codeql-database-cpp ]] || \
+           [[ ! -d codeql-database-csharp ]] || \
+           [[ ! -d codeql-database-go ]] || \
+           [[ ! -d codeql-database-java ]] || \
+           [[ ! -d codeql-database-javascript ]] || \
+           [[ ! -d codeql-database-python ]]; then
+          echo "Did not find expected artifacts. Artifacts dir contains: $(ls)"
           exit 1
         fi
 

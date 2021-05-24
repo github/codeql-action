@@ -1,6 +1,7 @@
 # CodeQL Action and CodeQL Runner Changelog
 
 ## [UNRELEASED]
+- Add an option to upload the CodeQL databases created by the analyze step as Actions artifacts. [#529](https://github.com/github/codeql-action/pull/529)
 
 ## 1.0.0 - 31 May 2021
 

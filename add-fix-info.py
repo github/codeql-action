@@ -1,5 +1,5 @@
 import json
-import os
+import re
 import sys
 
 def main():
@@ -19,11 +19,12 @@ def main():
 
                 print('Adding fix for js/regex/duplicate-in-character-class')
 
+                repeatedCharacter = re.search("^Character '(.)'", result['message']['text']).group(1)
                 resultPhysicalLocation = result['locations'][0]['physicalLocation']
                 result['fixes'] = [
                     {
                         "description": {
-                            "text": "Remove repeated ':' from character class"
+                            "text": "Remove repeated '" + repeatedCharacter + "' from character class"
                         },
                         "artifactChanges": [
                             {

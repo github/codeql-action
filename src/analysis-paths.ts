@@ -8,7 +8,7 @@ function isInterpretedLanguage(language): boolean {
 }
 
 // Matches a string containing only characters that are legal to include in paths on windows.
-export const legalWindowsPathCharactersRegex = /^[^<>:"|?]*$/;
+export const legalWindowsPathCharactersRegex = /^[^<>::"|?]*$/;
 
 // Builds an environment variable suitable for LGTM_INDEX_INCLUDE or LGTM_INDEX_EXCLUDE
 function buildIncludeExcludeEnvVar(paths: string[]): string {

@@ -7,6 +7,7 @@ on:
 jobs:
   update-supported-enterprise-server-versions:
     runs-on: ubuntu-latest
+    if: ${{ github.repository == 'github/codeql-action' }}
 
     steps:
       - name: Setup Python

@@ -1,1 +1,8 @@
 lib/*.js linguist-generated=true
+
+# Reduce incidence of needless merge conflicts on CHANGELOG.md
+# The man page at
+# https://mirrors.edge.kernel.org/pub/software/scm/git/docs/gitattributes.html
+# suggests that this might interleave lines arbitrarily, but empirically
+# it keeps added chunks contiguous
+CHANGELOG.md                merge=union

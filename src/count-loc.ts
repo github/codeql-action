@@ -16,6 +16,7 @@ const linguistToMetrics: Record<string, Language> = {
   java: Language.java,
   javascript: Language.javascript,
   python: Language.python,
+  ruby: Language.ruby,
   typescript: Language.javascript,
 };
 
@@ -44,6 +45,8 @@ export function getIdPrefix(language: Language): IdPrefix {
       return "js";
     case Language.python:
       return "py";
+    case Language.ruby:
+      return "rb";
 
     default:
       assertNever(language);

@@ -76,6 +76,7 @@ test("status report fields and search path setting", async (t) => {
             })
           );
           searchPathsUsed.push(searchPath!);
+          return "";
         },
       });
 

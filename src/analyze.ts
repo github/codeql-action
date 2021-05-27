@@ -37,6 +37,8 @@ export interface QueriesStatusReport {
   analyze_builtin_queries_javascript_duration_ms?: number;
   // Time taken in ms to analyze builtin queries for python (or undefined if this language was not analyzed)
   analyze_builtin_queries_python_duration_ms?: number;
+  // Time taken in ms to analyze builtin queries for ruby (or undefined if this language was not analyzed)
+  analyze_builtin_queries_ruby_duration_ms?: number;
   // Time taken in ms to analyze custom queries for cpp (or undefined if this language was not analyzed)
   analyze_custom_queries_cpp_duration_ms?: number;
   // Time taken in ms to analyze custom queries for csharp (or undefined if this language was not analyzed)
@@ -49,6 +51,8 @@ export interface QueriesStatusReport {
   analyze_custom_queries_javascript_duration_ms?: number;
   // Time taken in ms to analyze custom queries for python (or undefined if this language was not analyzed)
   analyze_custom_queries_python_duration_ms?: number;
+  // Time taken in ms to analyze custom queries for ruby (or undefined if this language was not analyzed)
+  analyze_custom_queries_ruby_duration_ms?: number;
   // Name of language that errored during analysis (or undefined if no language failed)
   analyze_failure_language?: string;
 }
@@ -162,22 +166,27 @@ export async function runQueries(
     logger.startGroup(`Analyzing ${language}`);
 
     const queries = config.queries[language];
-    if (queries.builtin.length === 0 && queries.custom.length === 0) {
+    if (
+      queries === undefined ||
+      (queries.builtin.length === 0 && queries.custom.length === 0)
+    ) {
       throw new Error(
         `Unable to analyse ${language} as no queries were selected for this language`
       );
     }
 
     try {
+      let analysisSummary = "";
       if (queries["builtin"].length > 0) {
         const startTimeBuliltIn = new Date().getTime();
-        const sarifFile = await runQueryGroup(
+        const { sarifFile, stdout } = await runQueryGroup(
           language,
           "builtin",
           queries["builtin"],
           sarifFolder,
           undefined
         );
+        analysisSummary = stdout;
         await injectLinesOfCode(sarifFile, language, locPromise);
 
         statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
@@ -188,7 +197,7 @@ export async function runQueries(
       const temporarySarifFiles: string[] = [];
       for (let i = 0; i < queries["custom"].length; ++i) {
         if (queries["custom"][i].queries.length > 0) {
-          const sarifFile = await runQueryGroup(
+          const { sarifFile } = await runQueryGroup(
             language,
             `custom-${i}`,
             queries["custom"][i].queries,
@@ -206,8 +215,13 @@ export async function runQueries(
         statusReport[`analyze_custom_queries_${language}_duration_ms`] =
           new Date().getTime() - startTimeCustom;
       }
+      logger.endGroup();
 
+      // Print the LoC baseline and the summary results from database analyze.
+      logger.startGroup(`Analysis summary for ${language}`);
       printLinesOfCodeSummary(logger, language, await locPromise);
+      logger.info(analysisSummary);
+      logger.endGroup();
     } catch (e) {
       logger.info(e);
       statusReport.analyze_failure_language = language;
@@ -226,7 +240,7 @@ export async function runQueries(
     queries: string[],
     destinationFolder: string,
     searchPath: string | undefined
-  ): Promise<string> {
+  ): Promise<{ sarifFile: string; stdout: string }> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     // Pass the queries to codeql using a file instead of using the command
     // line to avoid command line length restrictions, particularly on windows.
@@ -240,7 +254,7 @@ export async function runQueries(
     const sarifFile = path.join(destinationFolder, `${language}-${type}.sarif`);
 
     const codeql = getCodeQL(config.codeQLCmd);
-    await codeql.databaseAnalyze(
+    const databaseAnalyzeStdout = await codeql.databaseAnalyze(
       databasePath,
       sarifFile,
       searchPath,
@@ -254,9 +268,7 @@ export async function runQueries(
     logger.debug(
       `SARIF results for database ${language} created at "${sarifFile}"`
     );
-    logger.endGroup();
-
-    return sarifFile;
+    return { sarifFile, stdout: databaseAnalyzeStdout };
   }
 }
 

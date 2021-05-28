@@ -76,6 +76,7 @@ test("status report fields and search path setting", async (t) => {
             })
           );
           searchPathsUsed.push(searchPath!);
+          return "";
         },
       });
 
@@ -92,8 +93,9 @@ test("status report fields and search path setting", async (t) => {
         gitHubVersion: {
           type: util.GitHubVariant.DOTCOM,
         } as util.GitHubVersion,
+        dbLocation: path.resolve(tmpDir, "codeql_databases"),
       };
-      fs.mkdirSync(util.getCodeQLDatabasePath(config.tempDir, language), {
+      fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
         recursive: true,
       });
 

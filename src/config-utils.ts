@@ -110,6 +110,10 @@ export interface Config {
    * if talking to github.com or GitHub AE.
    */
   gitHubVersion: GitHubVersion;
+  /**
+   * The location where CodeQL databases should be stored.
+   */
+  dbLocation: string;
 }
 
 /**
@@ -649,6 +653,7 @@ async function getLanguagesInRepo(
  * then throw an error.
  */
 async function getLanguages(
+  codeQL: CodeQL,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   apiDetails: api.GitHubApiDetails,
@@ -664,6 +669,8 @@ async function getLanguages(
   if (languages.length === 0) {
     // Obtain languages as all languages in the repo that can be analysed
     languages = await getLanguagesInRepo(repository, apiDetails, logger);
+    const availableLanguages = await codeQL.resolveLanguages();
+    languages = languages.filter((value) => value in availableLanguages);
     logger.info(
       `Automatically detected languages: ${JSON.stringify(languages)}`
     );
@@ -739,6 +746,7 @@ function shouldAddConfigFileQueries(queriesInput: string | undefined): boolean {
 export async function getDefaultConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
+  dbLocation: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -749,12 +757,19 @@ export async function getDefaultConfig(
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
+    codeQL,
     languagesInput,
     repository,
     apiDetails,
     logger
   );
   const queries: Queries = {};
+  for (const language of languages) {
+    queries[language] = {
+      builtin: [],
+      custom: [],
+    };
+  }
   await addDefaultQueries(codeQL, languages, queries);
   if (queriesInput) {
     await addQueriesFromWorkflow(
@@ -779,6 +794,7 @@ export async function getDefaultConfig(
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
+    dbLocation: dbLocationOrDefault(dbLocation, tempDir),
   };
 }
 
@@ -789,6 +805,7 @@ async function loadConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string,
+  dbLocation: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -820,6 +837,7 @@ async function loadConfig(
   }
 
   const languages = await getLanguages(
+    codeQL,
     languagesInput,
     repository,
     apiDetails,
@@ -827,6 +845,12 @@ async function loadConfig(
   );
 
   const queries: Queries = {};
+  for (const language of languages) {
+    queries[language] = {
+      builtin: [],
+      custom: [],
+    };
+  }
   const pathsIgnore: string[] = [];
   const paths: string[] = [];
 
@@ -918,21 +942,6 @@ async function loadConfig(
     }
   }
 
-  // The list of queries should not be empty for any language. If it is then
-  // it is a user configuration error.
-  for (const language of languages) {
-    if (
-      queries[language] === undefined ||
-      (queries[language].builtin.length === 0 &&
-        queries[language].custom.length === 0)
-    ) {
-      throw new Error(
-        `Did not detect any queries to run for ${language}. ` +
-          "Please make sure that the default queries are enabled, or you are specifying queries to run."
-      );
-    }
-  }
-
   return {
     languages,
     queries,
@@ -943,7 +952,15 @@ async function loadConfig(
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
+    dbLocation: dbLocationOrDefault(dbLocation, tempDir),
   };
+}
+
+function dbLocationOrDefault(
+  dbLocation: string | undefined,
+  tempDir: string
+): string {
+  return dbLocation || path.resolve(tempDir, "codeql_databases");
 }
 
 /**
@@ -956,6 +973,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   configFile: string | undefined,
+  dbLocation: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -973,6 +991,7 @@ export async function initConfig(
     config = await getDefaultConfig(
       languagesInput,
       queriesInput,
+      dbLocation,
       repository,
       tempDir,
       toolCacheDir,
@@ -987,6 +1006,7 @@ export async function initConfig(
       languagesInput,
       queriesInput,
       configFile,
+      dbLocation,
       repository,
       tempDir,
       toolCacheDir,
@@ -996,6 +1016,21 @@ export async function initConfig(
       apiDetails,
       logger
     );
+  }
+
+  // The list of queries should not be empty for any language. If it is then
+  // it is a user configuration error.
+  for (const language of config.languages) {
+    if (
+      config.queries[language] === undefined ||
+      (config.queries[language].builtin.length === 0 &&
+        config.queries[language].custom.length === 0)
+    ) {
+      throw new Error(
+        `Did not detect any queries to run for ${language}. ` +
+          "Please make sure that the default queries are enabled, or you are specifying queries to run."
+      );
+    }
   }
 
   // Save the config so we can easily access it again in the future

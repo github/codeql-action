@@ -78,6 +78,10 @@ export interface CodeQL {
    */
   finalizeDatabase(databasePath: string, threadsFlag: string): Promise<void>;
   /**
+   * Run 'codeql resolve languages'.
+   */
+  resolveLanguages(): Promise<ResolveLanguagesOutput>;
+  /**
    * Run 'codeql resolve queries'.
    */
   resolveQueries(
@@ -96,7 +100,11 @@ export interface CodeQL {
     addSnippetsFlag: string,
     threadsFlag: string,
     automationDetailsId: string | undefined
-  ): Promise<void>;
+  ): Promise<string>;
+}
+
+export interface ResolveLanguagesOutput {
+  [language: string]: [string];
 }
 
 export interface ResolveQueriesOutput {
@@ -478,6 +486,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "extractScannedLanguage"
     ),
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
+    resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     databaseAnalyze: resolveFunction(partialCodeql, "databaseAnalyze"),
   };
@@ -654,6 +663,25 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         errorMatchers
       );
     },
+    async resolveLanguages() {
+      const codeqlArgs = ["resolve", "languages", "--format=json"];
+      let output = "";
+      await new toolrunner.ToolRunner(cmd, codeqlArgs, {
+        listeners: {
+          stdout: (data: Buffer) => {
+            output += data.toString();
+          },
+        },
+      }).exec();
+
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve languages: ${e}`
+        );
+      }
+    },
     async resolveQueries(
       queries: string[],
       extraSearchPath: string | undefined
@@ -666,7 +694,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         ...getExtraOptionsFromEnv(["resolve", "queries"]),
       ];
       if (extraSearchPath !== undefined) {
-        codeqlArgs.push("--search-path", extraSearchPath);
+        codeqlArgs.push("--additional-packs", extraSearchPath);
       }
       let output = "";
       await new toolrunner.ToolRunner(cmd, codeqlArgs, {
@@ -677,7 +705,11 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         },
       }).exec();
 
-      return JSON.parse(output);
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
+      }
     },
     async databaseAnalyze(
       databasePath: string,
@@ -688,7 +720,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       addSnippetsFlag: string,
       threadsFlag: string,
       automationDetailsId: string | undefined
-    ) {
+    ): Promise<string> {
       const args = [
         "database",
         "analyze",
@@ -706,13 +738,22 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         ...getExtraOptionsFromEnv(["database", "analyze"]),
       ];
       if (extraSearchPath !== undefined) {
-        args.push("--search-path", extraSearchPath);
+        args.push("--additional-packs", extraSearchPath);
       }
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }
       args.push(querySuite);
-      await new toolrunner.ToolRunner(cmd, args).exec();
+      // capture stdout, which contains analysis summaries
+      let output = "";
+      await new toolrunner.ToolRunner(cmd, args, {
+        listeners: {
+          stdout: (data: Buffer) => {
+            output += data.toString("utf8");
+          },
+        },
+      }).exec();
+      return output;
     },
   };
 }

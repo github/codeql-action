@@ -176,9 +176,10 @@ export async function runQueries(
     }
 
     try {
-      let analysisSummary = "";
+      let analysisSummaryBuiltIn = "";
+      const customAnalysisSummaries: string[] = [];
       if (queries["builtin"].length > 0) {
-        const startTimeBuliltIn = new Date().getTime();
+        const startTimeBuiltIn = new Date().getTime();
         const { sarifFile, stdout } = await runQueryGroup(
           language,
           "builtin",
@@ -186,24 +187,25 @@ export async function runQueries(
           sarifFolder,
           undefined
         );
-        analysisSummary = stdout;
+        analysisSummaryBuiltIn = stdout;
         await injectLinesOfCode(sarifFile, language, locPromise);
 
         statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
-          new Date().getTime() - startTimeBuliltIn;
+          new Date().getTime() - startTimeBuiltIn;
       }
       const startTimeCustom = new Date().getTime();
       const temporarySarifDir = config.tempDir;
       const temporarySarifFiles: string[] = [];
       for (let i = 0; i < queries["custom"].length; ++i) {
         if (queries["custom"][i].queries.length > 0) {
-          const { sarifFile } = await runQueryGroup(
+          const { sarifFile, stdout } = await runQueryGroup(
             language,
             `custom-${i}`,
             queries["custom"][i].queries,
             temporarySarifDir,
             queries["custom"][i].searchPath
           );
+          customAnalysisSummaries.push(stdout);
           temporarySarifFiles.push(sarifFile);
         }
       }
@@ -217,10 +219,27 @@ export async function runQueries(
       }
       logger.endGroup();
 
-      // Print the LoC baseline and the summary results from database analyze.
+      // Print the LoC baseline and the summary results from database analyze for the standard
+      // query suite and (if appropriate) each custom query suite.
       logger.startGroup(`Analysis summary for ${language}`);
+
       printLinesOfCodeSummary(logger, language, await locPromise);
-      logger.info(analysisSummary);
+      logger.info(analysisSummaryBuiltIn);
+
+      for (const [i, customSummary] of customAnalysisSummaries.entries()) {
+        if (customSummary.trim() === "") {
+          continue;
+        }
+        const description =
+          customAnalysisSummaries.length === 1
+            ? "custom queries"
+            : `custom query suite ${i + 1}/${customAnalysisSummaries.length}`;
+        logger.info(`Analysis summary for ${description}:`);
+        logger.info("");
+        logger.info(customSummary);
+        logger.info("");
+      }
+
       logger.endGroup();
     } catch (e) {
       logger.info(e);

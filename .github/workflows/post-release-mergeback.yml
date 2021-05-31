@@ -74,9 +74,11 @@ jobs:
           set +e # don't fail on an errored command
           git ls-remote --tags origin | grep "$VERSION"
           EXISTS="$?"
-          if [ "$EXISTS" -ne 0 ]; then
-             echo "::set-output name=exists::true"
-             echo "Tag $TAG exists. Not going to re-release."
+          if [ "$EXISTS" -eq 0 ]; then
+            echo "Tag $TAG exists. Not going to re-release."
+            echo "::set-output name=exists::true"
+          else
+            echo "Tag $TAG does not exist yet."
           fi
 
       # we didn't tag the release during the update-release-branch workflow because the
@@ -88,6 +90,7 @@ jobs:
           VERSION: ${{ steps.getVersion.outputs.version }}
         run: |
           git tag -a "$VERSION" -m "$VERSION"
+          git fetch --unshallow  # unshallow the repo in order to allow pushes
           git push origin --follow-tags "$VERSION"
 
       - name: Create mergeback branch

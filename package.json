@@ -10,7 +10,7 @@
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts --fix",
     "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force",
-    "version": "cd runner && npm version patch && git add ."
+    "version": "cd runner && npm version patch && cd .. && npm run removeNPMAbsolutePaths && git add runner"
   },
   "ava": {
     "typescript": {

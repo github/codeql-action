@@ -28,7 +28,9 @@ import {
 const pkg = require("../package.json");
 
 const program = new Command();
-program.version(pkg.version);
+program.version(pkg.version).hook("preAction", () => {
+  setMode(Mode.runner);
+});
 
 function getTempDir(userInput: string | undefined): string {
   const tempDir = path.join(userInput || process.cwd(), "codeql-runner");
@@ -153,7 +155,6 @@ program
     "(Advanced, windows-only) Inject a windows tracer of this process into a parent process <number> levels up."
   )
   .action(async (cmd: InitArgs) => {
-    setMode(Mode.runner);
     const logger = getRunnerLogger(cmd.debug);
 
     try {
@@ -293,8 +294,6 @@ program
   )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: AutobuildArgs) => {
-    setMode(Mode.runner);
-
     const logger = getRunnerLogger(cmd.debug);
     try {
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
@@ -397,7 +396,6 @@ program
   )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: AnalyzeArgs) => {
-    setMode(Mode.runner);
     const logger = getRunnerLogger(cmd.debug);
     try {
       const config = await getConfig(getTempDir(cmd.tempDir), logger);
@@ -501,7 +499,6 @@ program
   )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
-    setMode(Mode.runner);
     const logger = getRunnerLogger(cmd.debug);
     const auth = await getGitHubAuth(
       logger,

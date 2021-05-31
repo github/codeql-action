@@ -26,6 +26,7 @@ async function sendSuccessStatusReport(
 }
 
 async function run() {
+  actionsUtil.setMode(actionsUtil.Mode.actions);
   const startedAt = new Date();
   if (
     !(await actionsUtil.sendStatusReport(

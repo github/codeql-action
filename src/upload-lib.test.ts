@@ -3,12 +3,17 @@ import * as path from "path";
 
 import test from "ava";
 
+import { Mode, setMode } from "./actions-util";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { GitHubVersion, GitHubVariant, withTmpDir } from "./util";
 
 setupTests(test);
+
+test.beforeEach(() => {
+  setMode(Mode.actions);
+});
 
 test("validateSarifFileSchema - valid", (t) => {
   const inputFile = `${__dirname}/../src/testdata/valid-sarif.sarif`;
@@ -47,8 +52,7 @@ test("validate correct payload used per version", async (t) => {
       "/opt/src",
       undefined,
       ["CodeQL", "eslint"],
-      version,
-      "actions"
+      version
     );
     // Not triggered by a pull request
     t.falsy(payload.base_ref);
@@ -70,8 +74,7 @@ test("validate correct payload used per version", async (t) => {
       "/opt/src",
       undefined,
       ["CodeQL", "eslint"],
-      version,
-      "actions"
+      version
     );
     t.deepEqual(payload.base_ref, "refs/heads/master");
     t.deepEqual(payload.base_sha, "f95f852bd8fca8fcc58a9a2d6c842781e32a215e");
@@ -88,8 +91,7 @@ test("validate correct payload used per version", async (t) => {
       "/opt/src",
       undefined,
       ["CodeQL", "eslint"],
-      version,
-      "actions"
+      version
     );
     // These older versions won't expect these values
     t.falsy(payload.base_ref);

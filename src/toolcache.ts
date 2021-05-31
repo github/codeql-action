@@ -8,8 +8,8 @@ import * as actionsToolcache from "@actions/tool-cache";
 import * as safeWhich from "@chrisgavin/safe-which";
 import * as semver from "semver";
 
+import { isActions } from "./actions-util";
 import { Logger } from "./logging";
-import { Mode } from "./util";
 
 /*
  * This file acts as an interface to the functionality of the actions toolcache.
@@ -33,11 +33,10 @@ import { Mode } from "./util";
  */
 export async function extractTar(
   file: string,
-  mode: Mode,
   tempDir: string,
   logger: Logger
 ): Promise<string> {
-  if (mode === "actions") {
+  if (isActions()) {
     return await actionsToolcache.extractTar(file);
   } else {
     // Initial implementation copied from node_modules/@actions/tool-cache/lib/tool-cache.js
@@ -104,11 +103,10 @@ export async function cacheDir(
   sourceDir: string,
   tool: string,
   version: string,
-  mode: Mode,
   toolCacheDir: string,
   logger: Logger
 ): Promise<string> {
-  if (mode === "actions") {
+  if (isActions()) {
     return await actionsToolcache.cacheDir(sourceDir, tool, version);
   } else {
     // Initial implementation copied from node_modules/@actions/tool-cache/lib/tool-cache.js
@@ -148,11 +146,10 @@ export async function cacheDir(
 export function find(
   toolName: string,
   versionSpec: string,
-  mode: Mode,
   toolCacheDir: string,
   logger: Logger
 ): string {
-  if (mode === "actions") {
+  if (isActions()) {
     return actionsToolcache.find(toolName, versionSpec);
   } else {
     // Initial implementation copied from node_modules/@actions/tool-cache/lib/tool-cache.js
@@ -166,12 +163,7 @@ export function find(
     const arch = os.arch();
     // attempt to resolve an explicit version
     if (!isExplicitVersion(versionSpec, logger)) {
-      const localVersions = findAllVersions(
-        toolName,
-        mode,
-        toolCacheDir,
-        logger
-      );
+      const localVersions = findAllVersions(toolName, toolCacheDir, logger);
       const match = evaluateVersions(localVersions, versionSpec, logger);
       versionSpec = match;
     }
@@ -198,17 +190,15 @@ export function find(
  * Also see findAllVersions function from node_modules/@actions/tool-cache/lib/tool-cache.d.ts
  *
  * @param toolName  name of the tool
- * @param mode           should run the actions or runner implementation
  * @param toolCacheDir   path to the tool cache directory
  * @param logger         logger to use
  */
 export function findAllVersions(
   toolName: string,
-  mode: Mode,
   toolCacheDir: string,
   logger: Logger
 ): string[] {
-  if (mode === "actions") {
+  if (isActions()) {
     return actionsToolcache.findAllVersions(toolName);
   } else {
     // Initial implementation copied from node_modules/@actions/tool-cache/lib/tool-cache.js

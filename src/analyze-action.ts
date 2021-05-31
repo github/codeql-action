@@ -49,6 +49,8 @@ async function run() {
   const startedAt = new Date();
   let stats: AnalysisStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  actionsUtil.setMode(actionsUtil.Mode.actions);
+
   try {
     actionsUtil.prepareLocalRunEnvironment();
     if (

@@ -87,7 +87,6 @@ async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   apiDetails: api.GitHubApiDetails,
-  mode: util.Mode,
   logger: Logger
 ) {
   logger.info("Uploading results");
@@ -100,10 +99,9 @@ async function uploadPayload(
 
   const client = api.getApiClient(apiDetails);
 
-  const reqURL =
-    mode === "actions"
-      ? "PUT /repos/:owner/:repo/code-scanning/analysis"
-      : "POST /repos/:owner/:repo/code-scanning/sarifs";
+  const reqURL = actionsUtil.isActions()
+    ? "PUT /repos/:owner/:repo/code-scanning/analysis"
+    : "POST /repos/:owner/:repo/code-scanning/sarifs";
   const response = await client.request(reqURL, {
     owner: repositoryNwo.owner,
     repo: repositoryNwo.repo,
@@ -163,7 +161,6 @@ export async function uploadFromActions(
     actionsUtil.getRequiredInput("matrix"),
     gitHubVersion,
     apiDetails,
-    "actions",
     logger
   );
 }
@@ -195,7 +192,6 @@ export async function uploadFromRunner(
     undefined,
     gitHubVersion,
     apiDetails,
-    "runner",
     logger
   );
 }
@@ -277,10 +273,9 @@ export function buildPayload(
   checkoutURI: string,
   environment: string | undefined,
   toolNames: string[],
-  gitHubVersion: util.GitHubVersion,
-  mode: util.Mode
+  gitHubVersion: util.GitHubVersion
 ) {
-  if (mode === "actions") {
+  if (actionsUtil.isActions()) {
     const payloadObj = {
       commit_oid: commitOid,
       ref,
@@ -339,13 +334,12 @@ async function uploadFiles(
   environment: string | undefined,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
-  mode: util.Mode,
   logger: Logger
 ): Promise<UploadStatusReport> {
   logger.startGroup("Uploading results");
   logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
 
-  if (mode === "actions") {
+  if (actionsUtil.isActions()) {
     // This check only works on actions as env vars don't persist between calls to the runner
     const sentinelEnvVar = "CODEQL_UPLOAD_SARIF";
     if (process.env[sentinelEnvVar]) {
@@ -389,8 +383,7 @@ async function uploadFiles(
     checkoutURI,
     environment,
     toolNames,
-    gitHubVersion,
-    mode
+    gitHubVersion
   );
 
   // Log some useful debug info about the info
@@ -402,7 +395,7 @@ async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  await uploadPayload(payload, repositoryNwo, apiDetails, mode, logger);
+  await uploadPayload(payload, repositoryNwo, apiDetails, logger);
 
   logger.endGroup();
 

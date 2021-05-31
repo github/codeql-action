@@ -91,16 +91,87 @@ class RunnerEntrypoint extends Function {
 }
 
 /**
- * A check of whether we are in actions mode or runner mode.
+ * A generic check to see if we are in actions or runner mode in a particular block of code.
  */
-class ModeGuard extends IfStmt {
-  ModeGuard() {
-    getCondition().(EqualityTest).getAnOperand().(StringLiteral).getValue() = "actions" or
-    getCondition().(EqualityTest).getAnOperand().(StringLiteral).getValue() = "runner"
+abstract class ActionsGuard extends IfStmt {
+
+  /**
+   * Get a statement block that is only executed on actions
+   */
+  abstract Stmt getActionsBlock();
+
+  /**
+    * Gets an expr that is only executed on actions
+   */
+  final Expr getAnActionsExpr() { getActionsBlock().getAChildStmt*().getAChildExpr*() = result }
+
+}
+
+/**
+ * A check of whether we are in actions mode or runner mode, based on
+ * the presense of a call to `isActions()` in the condition of an if statement.
+ */
+class IsActionsGuard extends ActionsGuard {
+  IsActionsGuard() {
+    getCondition().(CallExpr).getCalleeName() = "isActions"
   }
 
-  string getOperand() {
-    result = getCondition().(EqualityTest).getAnOperand().(StringLiteral).getValue()
+  /**
+   * Get the "then" block that is the "actions" path.
+   */
+  override Stmt getActionsBlock() {
+    result = getThen()
+  }
+}
+
+/**
+ * A check of whether we are in actions mode or runner mode, based on
+ * the presense of a call to `!isActions()` in the condition of an if statement.
+ */
+class NegatedIsActionsGuard extends ActionsGuard {
+  NegatedIsActionsGuard() {
+    getCondition().(LogNotExpr).getOperand().(CallExpr).getCalleeName() = "isActions"
+  }
+
+  /**
+   * Get the "else" block that is the "actions" path.
+   */
+  override Stmt getActionsBlock() {
+    result = getElse()
+  }
+}
+
+class ModeAccess extends PropAccess {
+  ModeAccess() {
+    (
+      // eg- Mode.actions
+      getBase().(Identifier).getName() = "Mode" or
+      // eg- actionUtil.Mode.actions
+      getBase().(PropAccess).getPropertyName() = "Mode"
+    ) and
+    (getPropertyName() = "actions" or getPropertyName() = "runner")
+  }
+
+  predicate isActions() {
+    getPropertyName() = "actions"
+  }
+
+  predicate isRunner() {
+    getPropertyName() = "runner"
+  }
+}
+
+/**
+ * A check of whether we are in actions mode or runner mode.
+ */
+class ModeGuard extends ActionsGuard {
+  ModeGuard() {
+    getCondition().(EqualityTest).getAnOperand().(ModeAccess).isActions() or
+    getCondition().(EqualityTest).getAnOperand().(ModeAccess).isRunner()
+  }
+
+  ModeAccess getOperand() {
+    result = getCondition().(EqualityTest).getAnOperand()
   }
 
   predicate isPositive() {
@@ -110,21 +181,14 @@ class ModeGuard extends IfStmt {
   /**
    * Get the then or else block that is the "actions" path.
    */
-  Stmt getActionsBlock() {
-    (getOperand() = "actions" and isPositive() and result = getThen())
+  override Stmt getActionsBlock() {
+    (getOperand().isActions() and isPositive() and result = getThen())
     or
-    (getOperand() = "runner" and not isPositive() and result = getThen())
+    (getOperand().isRunner() and not isPositive() and result = getThen())
     or
-    (getOperand() = "actions" and not isPositive() and result = getElse())
+    (getOperand().isActions() and not isPositive() and result = getElse())
     or
-    (getOperand() = "runner" and isPositive() and result = getElse())
-  }
-
-  /**
-   * Get an expr that is only executed on actions
-   */
-  Expr getAnActionsExpr() {
-    getActionsBlock().getAChildStmt*().getAChildExpr*() = result
+    (getOperand().isRunner() and isPositive() and result = getElse())
   }
 }
 
@@ -133,7 +197,7 @@ class ModeGuard extends IfStmt {
  * and is not only called on actions.
  */
 Expr getAFunctionChildExpr(Function f) {
-  not exists(ModeGuard guard | guard.getAnActionsExpr() = result) and
+  not exists(ActionsGuard guard | guard.getAnActionsExpr() = result) and
   result.getContainer() = f
 }
 
@@ -145,16 +209,16 @@ Function calledBy(Function f) {
   exists(InvokeExpr invokeExpr |
     invokeExpr = getAFunctionChildExpr(f) and
     invokeExpr.getResolvedCallee() = result and
-    not exists(ModeGuard guard | guard.getAnActionsExpr() = invokeExpr)
+    not exists(ActionsGuard guard | guard.getAnActionsExpr() = invokeExpr)
   )
   or
   // Assume outer function causes inner function to be called
   (result instanceof Expr and
   result.getEnclosingContainer() = f and
-  not exists(ModeGuard guard | guard.getAnActionsExpr() = result))
+  not exists(ActionsGuard guard | guard.getAnActionsExpr() = result))
 }
 
-from VarAccess v, ActionsLibImport actionsLib, RunnerEntrypoint runnerEntry 
+from VarAccess v, ActionsLibImport actionsLib, RunnerEntrypoint runnerEntry
 where actionsLib.getAProvidedVariable() = v.getVariable()
   and getAFunctionChildExpr(calledBy*(runnerEntry)) = v
   and not (isSafeActionLibWithActionsEnvVars(actionsLib.getName()) and runnerEntry.setsActionsEnvVars())

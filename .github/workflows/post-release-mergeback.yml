@@ -83,7 +83,7 @@ jobs:
       # commit that actually makes it to the release branch is a merge commit,
       # and not yet known during the first workflow. We tag now because we know the correct commit.
       - name: Tag release
-        if: steps.check.outputs.exists == 'true'
+        if: steps.check.outputs.exists != 'true'
         env:
           VERSION: ${{ steps.getVersion.outputs.version }}
         run: |
@@ -91,7 +91,7 @@ jobs:
           git push origin --follow-tags "$VERSION"
 
       - name: Create mergeback branch
-        if: steps.check.outputs.exists == 'true'
+        if: steps.check.outputs.exists != 'true'
         env:
           VERSION: "${{ steps.getVersion.outputs.version }}"
           NEW_BRANCH: "${{ steps.getVersion.outputs.newBranch }}"

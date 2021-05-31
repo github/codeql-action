@@ -2,6 +2,8 @@
 
 ## [UNRELEASED]
 
+## [UNRELEASED]
+
 ## 1.0.0 - 31 May 2021
 
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)

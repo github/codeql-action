@@ -37,6 +37,8 @@ export interface QueriesStatusReport {
   analyze_builtin_queries_javascript_duration_ms?: number;
   // Time taken in ms to analyze builtin queries for python (or undefined if this language was not analyzed)
   analyze_builtin_queries_python_duration_ms?: number;
+  // Time taken in ms to analyze builtin queries for ruby (or undefined if this language was not analyzed)
+  analyze_builtin_queries_ruby_duration_ms?: number;
   // Time taken in ms to analyze custom queries for cpp (or undefined if this language was not analyzed)
   analyze_custom_queries_cpp_duration_ms?: number;
   // Time taken in ms to analyze custom queries for csharp (or undefined if this language was not analyzed)
@@ -49,6 +51,8 @@ export interface QueriesStatusReport {
   analyze_custom_queries_javascript_duration_ms?: number;
   // Time taken in ms to analyze custom queries for python (or undefined if this language was not analyzed)
   analyze_custom_queries_python_duration_ms?: number;
+  // Time taken in ms to analyze custom queries for ruby (or undefined if this language was not analyzed)
+  analyze_custom_queries_ruby_duration_ms?: number;
   // Name of language that errored during analysis (or undefined if no language failed)
   analyze_failure_language?: string;
 }
@@ -172,9 +176,10 @@ export async function runQueries(
     }
 
     try {
-      let analysisSummary = "";
+      let analysisSummaryBuiltIn = "";
+      const customAnalysisSummaries: string[] = [];
       if (queries["builtin"].length > 0) {
-        const startTimeBuliltIn = new Date().getTime();
+        const startTimeBuiltIn = new Date().getTime();
         const { sarifFile, stdout } = await runQueryGroup(
           language,
           "builtin",
@@ -182,24 +187,25 @@ export async function runQueries(
           sarifFolder,
           undefined
         );
-        analysisSummary = stdout;
+        analysisSummaryBuiltIn = stdout;
         await injectLinesOfCode(sarifFile, language, locPromise);
 
         statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
-          new Date().getTime() - startTimeBuliltIn;
+          new Date().getTime() - startTimeBuiltIn;
       }
       const startTimeCustom = new Date().getTime();
       const temporarySarifDir = config.tempDir;
       const temporarySarifFiles: string[] = [];
       for (let i = 0; i < queries["custom"].length; ++i) {
         if (queries["custom"][i].queries.length > 0) {
-          const { sarifFile } = await runQueryGroup(
+          const { sarifFile, stdout } = await runQueryGroup(
             language,
             `custom-${i}`,
             queries["custom"][i].queries,
             temporarySarifDir,
             queries["custom"][i].searchPath
           );
+          customAnalysisSummaries.push(stdout);
           temporarySarifFiles.push(sarifFile);
         }
       }
@@ -213,10 +219,27 @@ export async function runQueries(
       }
       logger.endGroup();
 
-      // Print the LoC baseline and the summary results from database analyze.
+      // Print the LoC baseline and the summary results from database analyze for the standard
+      // query suite and (if appropriate) each custom query suite.
       logger.startGroup(`Analysis summary for ${language}`);
+
       printLinesOfCodeSummary(logger, language, await locPromise);
-      logger.info(analysisSummary);
+      logger.info(analysisSummaryBuiltIn);
+
+      for (const [i, customSummary] of customAnalysisSummaries.entries()) {
+        if (customSummary.trim() === "") {
+          continue;
+        }
+        const description =
+          customAnalysisSummaries.length === 1
+            ? "custom queries"
+            : `custom query suite ${i + 1}/${customAnalysisSummaries.length}`;
+        logger.info(`Analysis summary for ${description}:`);
+        logger.info("");
+        logger.info(customSummary);
+        logger.info("");
+      }
+
       logger.endGroup();
     } catch (e) {
       logger.info(e);

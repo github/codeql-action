@@ -78,6 +78,10 @@ export interface CodeQL {
    */
   finalizeDatabase(databasePath: string, threadsFlag: string): Promise<void>;
   /**
+   * Run 'codeql resolve languages'.
+   */
+  resolveLanguages(): Promise<ResolveLanguagesOutput>;
+  /**
    * Run 'codeql resolve queries'.
    */
   resolveQueries(
@@ -97,6 +101,10 @@ export interface CodeQL {
     threadsFlag: string,
     automationDetailsId: string | undefined
   ): Promise<string>;
+}
+
+export interface ResolveLanguagesOutput {
+  [language: string]: [string];
 }
 
 export interface ResolveQueriesOutput {
@@ -478,6 +486,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "extractScannedLanguage"
     ),
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
+    resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     databaseAnalyze: resolveFunction(partialCodeql, "databaseAnalyze"),
   };
@@ -654,6 +663,25 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         errorMatchers
       );
     },
+    async resolveLanguages() {
+      const codeqlArgs = ["resolve", "languages", "--format=json"];
+      let output = "";
+      await new toolrunner.ToolRunner(cmd, codeqlArgs, {
+        listeners: {
+          stdout: (data: Buffer) => {
+            output += data.toString();
+          },
+        },
+      }).exec();
+
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve languages: ${e}`
+        );
+      }
+    },
     async resolveQueries(
       queries: string[],
       extraSearchPath: string | undefined
@@ -677,7 +705,11 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         },
       }).exec();
 
-      return JSON.parse(output);
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
+      }
     },
     async databaseAnalyze(
       databasePath: string,

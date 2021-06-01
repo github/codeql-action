@@ -8,8 +8,7 @@ import json
 import datetime
 import os
 
-EMPTY_CHANGELOG = """
-# CodeQL Action and CodeQL Runner Changelog
+EMPTY_CHANGELOG = """# CodeQL Action and CodeQL Runner Changelog
 
 ## [UNRELEASED]
 

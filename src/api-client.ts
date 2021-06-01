@@ -4,7 +4,7 @@ import * as githubUtils from "@actions/github/lib/utils";
 import consoleLogLevel from "console-log-level";
 
 import { getRequiredInput } from "./actions-util";
-import { getMode, getRequiredEnvParam, isLocalRun } from "./util";
+import { getMode, getRequiredEnvParam } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -29,12 +29,8 @@ export interface GitHubApiExternalRepoDetails {
 
 export const getApiClient = function (
   apiDetails: GitHubApiCombinedDetails,
-  { allowLocalRun = false, allowExternal = false } = {}
+  { allowExternal = false } = {}
 ) {
-  if (isLocalRun() && !allowLocalRun) {
-    throw new Error("Invalid API call in local run");
-  }
-
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   return new githubUtils.GitHub(
@@ -63,11 +59,11 @@ function getApiUrl(githubUrl: string): string {
 // Temporary function to aid in the transition to running on and off of github actions.
 // Once all code has been converted this function should be removed or made canonical
 // and called only from the action entrypoints.
-export function getActionsApiClient(allowLocalRun = false) {
+export function getActionsApiClient() {
   const apiDetails = {
     auth: getRequiredInput("token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
   };
 
-  return getApiClient(apiDetails, { allowLocalRun });
+  return getApiClient(apiDetails);
 }

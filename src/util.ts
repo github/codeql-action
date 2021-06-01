@@ -40,7 +40,9 @@ export function isLocalRun(): boolean {
   return (
     !!process.env.CODEQL_LOCAL_RUN &&
     process.env.CODEQL_LOCAL_RUN !== "false" &&
-    process.env.CODEQL_LOCAL_RUN !== "0"
+    process.env.CODEQL_LOCAL_RUN !== "0" &&
+    // local runs only allowed for actions
+    isActions()
   );
 }
 

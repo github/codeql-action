@@ -5,6 +5,9 @@ import { getActionsLogger } from "./logging";
 import * as upload_lib from "./upload-lib";
 import { getGitHubVersion } from "./util";
 
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
+
 interface UploadSarifStatusReport
   extends actionsUtil.StatusReportBase,
     upload_lib.UploadStatusReport {}
@@ -26,7 +29,7 @@ async function sendSuccessStatusReport(
 }
 
 async function run() {
-  actionsUtil.setMode(actionsUtil.Mode.actions);
+  actionsUtil.initializeEnvironment(actionsUtil.Mode.actions, pkg.version);
   const startedAt = new Date();
   if (
     !(await actionsUtil.sendStatusReport(

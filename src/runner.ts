@@ -4,7 +4,7 @@ import * as path from "path";
 
 import { Command } from "commander";
 
-import { Mode, setMode } from "./actions-util";
+import { initializeEnvironment, Mode } from "./actions-util";
 import { runAnalyze } from "./analyze";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import { CodeQL, getCodeQL } from "./codeql";
@@ -29,7 +29,7 @@ const pkg = require("../package.json");
 
 const program = new Command();
 program.version(pkg.version).hook("preAction", () => {
-  setMode(Mode.runner);
+  initializeEnvironment(Mode.runner, pkg.version);
 });
 
 function getTempDir(userInput: string | undefined): string {

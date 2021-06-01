@@ -14,6 +14,9 @@ import { getActionsLogger } from "./logging";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
 
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
+
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
     QueriesStatusReport {}
@@ -49,10 +52,9 @@ async function run() {
   const startedAt = new Date();
   let stats: AnalysisStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
-  actionsUtil.setMode(actionsUtil.Mode.actions);
+  actionsUtil.initializeEnvironment(actionsUtil.Mode.actions, pkg.version);
 
   try {
-    actionsUtil.prepareLocalRunEnvironment();
     if (
       !(await actionsUtil.sendStatusReport(
         await actionsUtil.createStatusReportBase(

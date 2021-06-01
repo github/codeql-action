@@ -67,7 +67,7 @@ export function getToolCacheDirectory(): string {
 /**
  * Ensures all required environment variables are set in the context of a local run.
  */
-export function prepareLocalRunEnvironment() {
+function prepareLocalRunEnvironment() {
   if (!isLocalRun()) {
     return;
   }
@@ -733,14 +733,53 @@ export function getRelativeScriptPath(): string {
   return path.relative(actionsDirectory, __filename);
 }
 
-const CODEQL_RUN_MODE_ENV_VAR = "CODEQL_RUN_MODE";
+/**
+ * Environment variables to be set by the action and possibly used by the
+ * CLI.
+ */
+enum EnvVar {
+  // either 'actions' or 'runner'
+  RUN_MODE = "CODEQL_ACTION_RUN_MODE",
 
-export function setMode(mode: Mode) {
+  // semver of this action
+  VERSION = "CODEQL_ACTION_VERSION",
+
+  // if set to a truthy value, then the action might combine SARIF
+  // output from several `interpret-results` runs for the same language
+  FEATURE_SARIF_COMBINE = "CODEQL_ACTION_FEATURE_SARIF_COMBINE",
+
+  // if set to a truthy value, then the action will upload SARIF,
+  // not the CLI
+  FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
+
+  // if set to a truthy value, then the action is using its
+  // own deprecated and non-standard way of scanning for multiple
+  // languages
+  FEATURE_MULTI_LANGUAGE = "CODEQL_ACTION_FEATURE_MULTI_LANGUAGE",
+
+  // if set to a truthy value, then the action is using its
+  // own sandwiched workflow mechanism
+  FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
+}
+
+export function initializeEnvironment(mode: Mode, version: string) {
   // avoid accessing actions core when in runner mode
   if (mode === Mode.actions) {
-    core.exportVariable(CODEQL_RUN_MODE_ENV_VAR, mode);
+    core.exportVariable(EnvVar.RUN_MODE, mode);
+    core.exportVariable(EnvVar.VERSION, version);
+    core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
+    core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
+    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
+
+    prepareLocalRunEnvironment();
   } else {
-    process.env[CODEQL_RUN_MODE_ENV_VAR] = mode;
+    process.env[EnvVar.RUN_MODE] = mode;
+    process.env[EnvVar.VERSION] = version;
+    process.env[EnvVar.FEATURE_SARIF_COMBINE] = "true";
+    process.env[EnvVar.FEATURE_WILL_UPLOAD] = "true";
+    process.env[EnvVar.FEATURE_MULTI_LANGUAGE] = "true";
+    process.env[EnvVar.FEATURE_SANDWICH] = "true";
   }
 }
 
@@ -748,7 +787,7 @@ export function getMode(): Mode {
   // Make sure we fail fast if the env var is missing. This should
   // only happen if there is a bug in our code and we neglected
   // to set the mode early in the process.
-  const mode = getRequiredEnvParam(CODEQL_RUN_MODE_ENV_VAR);
+  const mode = getRequiredEnvParam(EnvVar.RUN_MODE);
 
   if (mode !== Mode.actions && mode !== Mode.runner) {
     throw new Error(`Unknown mode: ${mode}.`);

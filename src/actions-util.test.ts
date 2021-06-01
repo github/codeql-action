@@ -66,7 +66,7 @@ test("getAnalysisKey() when a local run", async (t) => {
   process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
   process.env.GITHUB_JOB = "";
 
-  actionsutil.prepareLocalRunEnvironment();
+  actionsutil.initializeEnvironment(actionsutil.Mode.actions, "1.2.3");
 
   const actualAnalysisKey = await actionsutil.getAnalysisKey();
 
@@ -129,7 +129,7 @@ test("prepareEnvironment() when a local run", (t) => {
   process.env.GITHUB_JOB = "YYY";
   process.env.CODEQL_ACTION_ANALYSIS_KEY = "TEST";
 
-  actionsutil.prepareLocalRunEnvironment();
+  actionsutil.initializeEnvironment(actionsutil.Mode.actions, "1.2.3");
 
   // unchanged
   t.deepEqual(process.env.GITHUB_JOB, "YYY");
@@ -137,7 +137,7 @@ test("prepareEnvironment() when a local run", (t) => {
 
   process.env.CODEQL_LOCAL_RUN = "true";
 
-  actionsutil.prepareLocalRunEnvironment();
+  actionsutil.initializeEnvironment(actionsutil.Mode.actions, "1.2.3");
 
   // unchanged
   t.deepEqual(process.env.GITHUB_JOB, "YYY");
@@ -145,7 +145,7 @@ test("prepareEnvironment() when a local run", (t) => {
 
   process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
 
-  actionsutil.prepareLocalRunEnvironment();
+  actionsutil.initializeEnvironment(actionsutil.Mode.actions, "1.2.3");
 
   // updated
   t.deepEqual(process.env.GITHUB_JOB, "YYY");
@@ -154,11 +154,20 @@ test("prepareEnvironment() when a local run", (t) => {
   process.env.GITHUB_JOB = "";
   process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
 
-  actionsutil.prepareLocalRunEnvironment();
+  actionsutil.initializeEnvironment(actionsutil.Mode.actions, "1.2.3");
 
   // updated
   t.deepEqual(process.env.GITHUB_JOB, "UNKNOWN-JOB");
   t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "LOCAL-RUN:UNKNOWN-JOB");
+
+  process.env.GITHUB_JOB = "";
+  process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
+
+  actionsutil.initializeEnvironment(actionsutil.Mode.runner, "1.2.3");
+
+  // unchanged. local runs not allowed for runner
+  t.deepEqual(process.env.GITHUB_JOB, "");
+  t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "");
 });
 
 test("getWorkflowErrors() when on is empty", (t) => {
@@ -691,10 +700,12 @@ on: ["push"]
   );
 });
 
-test("mode", (t) => {
-  actionsutil.setMode(actionsutil.Mode.actions);
+test("initializeEnvironment", (t) => {
+  actionsutil.initializeEnvironment(actionsutil.Mode.actions, "1.2.3");
   t.deepEqual(actionsutil.getMode(), actionsutil.Mode.actions);
+  t.deepEqual(process.env.CODEQL_ACTION_VERSION, "1.2.3");
 
-  actionsutil.setMode(actionsutil.Mode.runner);
+  actionsutil.initializeEnvironment(actionsutil.Mode.runner, "4.5.6");
   t.deepEqual(actionsutil.getMode(), actionsutil.Mode.runner);
+  t.deepEqual(process.env.CODEQL_ACTION_VERSION, "4.5.6");
 });

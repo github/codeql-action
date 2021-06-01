@@ -4,12 +4,12 @@ import * as toolcache from "@actions/tool-cache";
 import test from "ava";
 import nock from "nock";
 
-import { Mode, setMode } from "./actions-util";
 import * as codeql from "./codeql";
 import * as defaults from "./defaults.json";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars } from "./testing-utils";
 import * as util from "./util";
+import { Mode, initializeEnvironment } from "./util";
 
 setupTests(test);
 
@@ -24,7 +24,7 @@ const sampleGHAEApiDetails = {
 };
 
 test.beforeEach(() => {
-  setMode(Mode.actions);
+  initializeEnvironment(Mode.actions, "1.2.3");
 });
 
 test("download codeql bundle cache", async (t) => {
@@ -371,14 +371,14 @@ test("getExtraOptions throws for bad content", (t) => {
   );
 });
 
-test.only("getCodeQLActionRepository", (t) => {
+test("getCodeQLActionRepository", (t) => {
   const logger = getRunnerLogger(true);
 
-  setMode(Mode.actions);
+  initializeEnvironment(Mode.actions, "1.2.3");
   const repoActions = codeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoActions, "github/codeql-action");
 
-  setMode(Mode.runner);
+  initializeEnvironment(Mode.runner, "1.2.3");
 
   // isRunningLocalAction() === true
   delete process.env["GITHUB_ACTION_REPOSITORY"];

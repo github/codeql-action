@@ -6,7 +6,7 @@ import { Readable } from "stream";
 import * as core from "@actions/core";
 import * as semver from "semver";
 
-import { isActions, Mode } from "./actions-util";
+import { prepareLocalRunEnvironment } from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { Config } from "./config-utils";
@@ -40,7 +40,9 @@ export function isLocalRun(): boolean {
   return (
     !!process.env.CODEQL_LOCAL_RUN &&
     process.env.CODEQL_LOCAL_RUN !== "false" &&
-    process.env.CODEQL_LOCAL_RUN !== "0"
+    process.env.CODEQL_LOCAL_RUN !== "0" &&
+    // local runs only allowed for actions
+    isActions()
   );
 }
 
@@ -395,4 +397,95 @@ class ExhaustivityCheckingError extends Error {
  */
 export function assertNever(value: never): never {
   throw new ExhaustivityCheckingError(value);
+}
+
+export enum Mode {
+  actions = "Action",
+  runner = "Runner",
+}
+
+/**
+ * Environment variables to be set by codeql-action and used by the
+ * CLI. These environment variables are relevant for both the runner
+ * and the action.
+ */
+enum EnvVar {
+  // either 'actions' or 'runner'
+  RUN_MODE = "CODEQL_ACTION_RUN_MODE",
+
+  // semver of this action
+  VERSION = "CODEQL_ACTION_VERSION",
+
+  // if set to a truthy value, then the action might combine SARIF
+  // output from several `interpret-results` runs for the same language
+  FEATURE_SARIF_COMBINE = "CODEQL_ACTION_FEATURE_SARIF_COMBINE",
+
+  // if set to a truthy value, then the action will upload SARIF,
+  // not the CLI
+  FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
+
+  // if set to a truthy value, then the action is using its
+  // own deprecated and non-standard way of scanning for multiple
+  // languages
+  FEATURE_MULTI_LANGUAGE = "CODEQL_ACTION_FEATURE_MULTI_LANGUAGE",
+
+  // if set to a truthy value, then the action is using its
+  // own sandwiched workflow mechanism
+  FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
+}
+
+export function initializeEnvironment(mode: Mode, version: string) {
+  // avoid accessing actions core when in runner mode
+  if (mode === Mode.actions) {
+    core.exportVariable(EnvVar.RUN_MODE, mode);
+    core.exportVariable(EnvVar.VERSION, version);
+    core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
+    core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
+    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
+
+    prepareLocalRunEnvironment();
+  } else {
+    process.env[EnvVar.RUN_MODE] = mode;
+    process.env[EnvVar.VERSION] = version;
+    process.env[EnvVar.FEATURE_SARIF_COMBINE] = "true";
+    process.env[EnvVar.FEATURE_WILL_UPLOAD] = "true";
+    process.env[EnvVar.FEATURE_MULTI_LANGUAGE] = "true";
+    process.env[EnvVar.FEATURE_SANDWICH] = "true";
+  }
+}
+
+export function getMode(): Mode {
+  // Make sure we fail fast if the env var is missing. This should
+  // only happen if there is a bug in our code and we neglected
+  // to set the mode early in the process.
+  const mode = getRequiredEnvParam(EnvVar.RUN_MODE);
+
+  if (mode !== Mode.actions && mode !== Mode.runner) {
+    throw new Error(`Unknown mode: ${mode}.`);
+  }
+  return mode;
+}
+
+export function isActions(): boolean {
+  return getMode() === Mode.actions;
+}
+
+/**
+ * Get an environment parameter, but throw an error if it is not set.
+ */
+export function getRequiredEnvParam(paramName: string): string {
+  const value = process.env[paramName];
+  if (value === undefined || value.length === 0) {
+    throw new Error(`${paramName} environment variable must be set`);
+  }
+  core.debug(`${paramName}=${value}`);
+  return value;
+}
+
+export function getTemporaryDirectory(): string {
+  const value = process.env["CODEQL_ACTION_TEMP"];
+  return value !== undefined && value !== ""
+    ? value
+    : getRequiredEnvParam("RUNNER_TEMP");
 }

@@ -2,17 +2,17 @@ import * as core from "@actions/core";
 
 import {
   createStatusReportBase,
-  getTemporaryDirectory,
-  Mode,
-  prepareLocalRunEnvironment,
   sendStatusReport,
-  setMode,
   StatusReportBase,
 } from "./actions-util";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import * as config_utils from "./config-utils";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
+import { getTemporaryDirectory, initializeEnvironment, Mode } from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 interface AutobuildStatusReport extends StatusReportBase {
   // Comma-separated set of languages being auto-built
@@ -27,7 +27,7 @@ async function sendCompletedStatusReport(
   failingLanguage?: string,
   cause?: Error
 ) {
-  setMode(Mode.actions);
+  initializeEnvironment(Mode.actions, pkg.version);
 
   const status =
     failingLanguage !== undefined || cause !== undefined
@@ -53,7 +53,6 @@ async function run() {
   const startedAt = new Date();
   let language: Language | undefined = undefined;
   try {
-    prepareLocalRunEnvironment();
     if (
       !(await sendStatusReport(
         await createStatusReportBase("autobuild", "starting", startedAt)

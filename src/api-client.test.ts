@@ -2,9 +2,9 @@ import * as githubUtils from "@actions/github/lib/utils";
 import test, { ExecutionContext } from "ava";
 import sinon from "sinon";
 
-import { Mode, setMode } from "./actions-util";
 import { getApiClient } from "./api-client";
 import { setupTests } from "./testing-utils";
+import { Mode, initializeEnvironment } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -15,7 +15,7 @@ let githubStub: sinon.SinonStub;
 
 test.beforeEach(() => {
   githubStub = sinon.stub(githubUtils, "GitHub");
-  setMode(Mode.actions);
+  initializeEnvironment(Mode.actions, pkg.version);
 });
 
 test("Get the client API", async (t) => {
@@ -30,7 +30,7 @@ test("Get the client API", async (t) => {
     {
       auth: "token xyz",
       baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL Action/${pkg.version}`,
+      userAgent: `CodeQL-Action/${pkg.version}`,
     }
   );
 });
@@ -47,7 +47,7 @@ test("Get the client API external", async (t) => {
     {
       auth: "token abc",
       baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL Action/${pkg.version}`,
+      userAgent: `CodeQL-Action/${pkg.version}`,
     }
   );
 });
@@ -63,7 +63,7 @@ test("Get the client API external not present", async (t) => {
     {
       auth: "token xyz",
       baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL Action/${pkg.version}`,
+      userAgent: `CodeQL-Action/${pkg.version}`,
     }
   );
 });
@@ -79,7 +79,7 @@ test("Get the client API with github url", async (t) => {
     {
       auth: "token xyz",
       baseUrl: "https://api.github.com",
-      userAgent: `CodeQL Action/${pkg.version}`,
+      userAgent: `CodeQL-Action/${pkg.version}`,
     }
   );
 });

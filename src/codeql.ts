@@ -11,11 +11,7 @@ import { default as queryString } from "query-string";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import {
-  isRunningLocalAction,
-  getRelativeScriptPath,
-  isActions,
-} from "./actions-util";
+import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
@@ -149,7 +145,7 @@ function getCodeQLBundleName(): string {
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
-  if (isActions()) {
+  if (util.isActions()) {
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   } else {
     return getActionsCodeQLActionRepository(logger);

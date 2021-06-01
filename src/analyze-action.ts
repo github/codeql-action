@@ -14,6 +14,9 @@ import { getActionsLogger } from "./logging";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
 
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
+
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
     QueriesStatusReport {}
@@ -49,10 +52,9 @@ async function run() {
   const startedAt = new Date();
   let stats: AnalysisStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
-  actionsUtil.setMode(actionsUtil.Mode.actions);
+  util.initializeEnvironment(util.Mode.actions, pkg.version);
 
   try {
-    actionsUtil.prepareLocalRunEnvironment();
     if (
       !(await actionsUtil.sendStatusReport(
         await actionsUtil.createStatusReportBase(
@@ -65,7 +67,7 @@ async function run() {
       return;
     }
     const logger = getActionsLogger();
-    config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
+    config = await getConfig(util.getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
         "Config file could not be found at expected location. Has the 'init' action been called?"
@@ -74,7 +76,7 @@ async function run() {
 
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),
-      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      url: util.getRequiredEnvParam("GITHUB_SERVER_URL"),
     };
     const outputDir = actionsUtil.getRequiredInput("output");
     const queriesStats = await runAnalyze(

@@ -3,14 +3,9 @@ import * as core from "@actions/core";
 import {
   createStatusReportBase,
   getOptionalInput,
-  getRequiredEnvParam,
   getRequiredInput,
-  getTemporaryDirectory,
   getToolCacheDirectory,
-  Mode,
-  prepareLocalRunEnvironment,
   sendStatusReport,
-  setMode,
   StatusReportBase,
   validateWorkflow,
 } from "./actions-util";
@@ -26,7 +21,17 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { checkGitHubVersionInRange, getGitHubVersion } from "./util";
+import {
+  getRequiredEnvParam,
+  getTemporaryDirectory,
+  initializeEnvironment,
+  Mode,
+  checkGitHubVersionInRange,
+  getGitHubVersion,
+} from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 interface InitSuccessStatusReport extends StatusReportBase {
   // Comma-separated list of languages that analysis was run for
@@ -103,7 +108,7 @@ async function sendSuccessStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  setMode(Mode.actions);
+  initializeEnvironment(Mode.actions, pkg.version);
 
   let config: configUtils.Config;
   let codeql: CodeQL;
@@ -119,8 +124,6 @@ async function run() {
   checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
   try {
-    prepareLocalRunEnvironment();
-
     const workflowErrors = await validateWorkflow();
 
     if (

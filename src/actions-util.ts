@@ -8,12 +8,12 @@ import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
-import { GITHUB_DOTCOM_URL, isLocalRun } from "./util";
+import { getRequiredEnvParam, GITHUB_DOTCOM_URL, isLocalRun } from "./util";
 
-export enum Mode {
-  actions = "Action",
-  runner = "Runner",
-}
+/**
+ * The utils in this module are meant to be run inside of the action only.
+ * Code paths from the runner should not enter this module.
+ */
 
 /**
  * Wrapper around core.getInput for inputs that always have a value.
@@ -36,25 +36,6 @@ export function getRequiredInput(name: string): string {
 export function getOptionalInput(name: string): string | undefined {
   const value = core.getInput(name);
   return value.length > 0 ? value : undefined;
-}
-
-/**
- * Get an environment parameter, but throw an error if it is not set.
- */
-export function getRequiredEnvParam(paramName: string): string {
-  const value = process.env[paramName];
-  if (value === undefined || value.length === 0) {
-    throw new Error(`${paramName} environment variable must be set`);
-  }
-  core.debug(`${paramName}=${value}`);
-  return value;
-}
-
-export function getTemporaryDirectory(): string {
-  const value = process.env["CODEQL_ACTION_TEMP"];
-  return value !== undefined && value !== ""
-    ? value
-    : getRequiredEnvParam("RUNNER_TEMP");
 }
 
 export function getToolCacheDirectory(): string {
@@ -731,31 +712,4 @@ export function getRelativeScriptPath(): string {
   const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);
-}
-
-const CODEQL_RUN_MODE_ENV_VAR = "CODEQL_RUN_MODE";
-
-export function setMode(mode: Mode) {
-  // avoid accessing actions core when in runner mode
-  if (mode === Mode.actions) {
-    core.exportVariable(CODEQL_RUN_MODE_ENV_VAR, mode);
-  } else {
-    process.env[CODEQL_RUN_MODE_ENV_VAR] = mode;
-  }
-}
-
-export function getMode(): Mode {
-  // Make sure we fail fast if the env var is missing. This should
-  // only happen if there is a bug in our code and we neglected
-  // to set the mode early in the process.
-  const mode = getRequiredEnvParam(CODEQL_RUN_MODE_ENV_VAR);
-
-  if (mode !== Mode.actions && mode !== Mode.runner) {
-    throw new Error(`Unknown mode: ${mode}.`);
-  }
-  return mode;
-}
-
-export function isActions(): boolean {
-  return getMode() === Mode.actions;
 }

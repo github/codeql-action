@@ -36,16 +36,6 @@ export function getExtraOptionsEnvParam(): object {
   }
 }
 
-export function isLocalRun(): boolean {
-  return (
-    !!process.env.CODEQL_LOCAL_RUN &&
-    process.env.CODEQL_LOCAL_RUN !== "false" &&
-    process.env.CODEQL_LOCAL_RUN !== "0" &&
-    // local runs only allowed for actions
-    isActions()
-  );
-}
-
 /**
  * Get the array of all the tool names contained in the given sarif contents.
  *

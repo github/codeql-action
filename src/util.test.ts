@@ -9,7 +9,6 @@ import sinon from "sinon";
 import * as api from "./api-client";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
-import { initializeEnvironment, Mode } from "./util";
 import * as util from "./util";
 
 setupTests(test);
@@ -75,28 +74,6 @@ test("getThreadsFlag() should return the correct --threads flag", (t) => {
 
 test("getThreadsFlag() throws if the threads input is not an integer", (t) => {
   t.throws(() => util.getThreadsFlag("hello!", getRunnerLogger(true)));
-});
-
-test("isLocalRun() runs correctly", (t) => {
-  initializeEnvironment(Mode.actions, "1.2.3");
-
-  process.env.CODEQL_LOCAL_RUN = "";
-  t.assert(!util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = "false";
-  t.assert(!util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = "0";
-  t.assert(!util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = "true";
-  t.assert(util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = "hucairz";
-  t.assert(util.isLocalRun());
-
-  initializeEnvironment(Mode.runner, "1.2.3");
-  t.assert(!util.isLocalRun());
 });
 
 test("getExtraOptionsEnvParam() succeeds on valid JSON with invalid options (for now)", (t) => {

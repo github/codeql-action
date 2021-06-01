@@ -6,7 +6,6 @@ import { Readable } from "stream";
 import * as core from "@actions/core";
 import * as semver from "semver";
 
-import { prepareLocalRunEnvironment } from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { Config } from "./config-utils";
@@ -34,16 +33,6 @@ export function getExtraOptionsEnvParam(): object {
       `${varName} environment variable is set, but does not contain valid JSON: ${e.message}`
     );
   }
-}
-
-export function isLocalRun(): boolean {
-  return (
-    !!process.env.CODEQL_LOCAL_RUN &&
-    process.env.CODEQL_LOCAL_RUN !== "false" &&
-    process.env.CODEQL_LOCAL_RUN !== "0" &&
-    // local runs only allowed for actions
-    isActions()
-  );
 }
 
 /**
@@ -444,7 +433,6 @@ export function initializeEnvironment(mode: Mode, version: string) {
     core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
     core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
 
-    prepareLocalRunEnvironment();
   } else {
     process.env[EnvVar.RUN_MODE] = mode;
     process.env[EnvVar.VERSION] = version;

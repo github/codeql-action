@@ -62,18 +62,6 @@ test("getRef() returns head PR ref if GITHUB_REF no longer checked out", async (
   callback.restore();
 });
 
-test("getAnalysisKey() when a local run", async (t) => {
-  process.env.CODEQL_LOCAL_RUN = "true";
-  process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
-  process.env.GITHUB_JOB = "";
-
-  initializeEnvironment(Mode.actions, "1.2.3");
-
-  const actualAnalysisKey = await actionsutil.getAnalysisKey();
-
-  t.deepEqual(actualAnalysisKey, "LOCAL-RUN:UNKNOWN-JOB");
-});
-
 test("computeAutomationID()", async (t) => {
   let actualAutomationID = actionsutil.computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
@@ -123,52 +111,6 @@ test("computeAutomationID()", async (t) => {
     actualAutomationID,
     ".github/workflows/codeql-analysis.yml:analyze/"
   );
-});
-
-test("prepareEnvironment() when a local run", (t) => {
-  process.env.CODEQL_LOCAL_RUN = "false";
-  process.env.GITHUB_JOB = "YYY";
-  process.env.CODEQL_ACTION_ANALYSIS_KEY = "TEST";
-
-  initializeEnvironment(Mode.actions, "1.2.3");
-
-  // unchanged
-  t.deepEqual(process.env.GITHUB_JOB, "YYY");
-  t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "TEST");
-
-  process.env.CODEQL_LOCAL_RUN = "true";
-
-  initializeEnvironment(Mode.actions, "1.2.3");
-
-  // unchanged
-  t.deepEqual(process.env.GITHUB_JOB, "YYY");
-  t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "TEST");
-
-  process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
-
-  initializeEnvironment(Mode.actions, "1.2.3");
-
-  // updated
-  t.deepEqual(process.env.GITHUB_JOB, "YYY");
-  t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "LOCAL-RUN:YYY");
-
-  process.env.GITHUB_JOB = "";
-  process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
-
-  initializeEnvironment(Mode.actions, "1.2.3");
-
-  // updated
-  t.deepEqual(process.env.GITHUB_JOB, "UNKNOWN-JOB");
-  t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "LOCAL-RUN:UNKNOWN-JOB");
-
-  process.env.GITHUB_JOB = "";
-  process.env.CODEQL_ACTION_ANALYSIS_KEY = "";
-
-  initializeEnvironment(Mode.runner, "1.2.3");
-
-  // unchanged. local runs not allowed for runner
-  t.deepEqual(process.env.GITHUB_JOB, "");
-  t.deepEqual(process.env.CODEQL_ACTION_ANALYSIS_KEY, "");
 });
 
 test("getWorkflowErrors() when on is empty", (t) => {

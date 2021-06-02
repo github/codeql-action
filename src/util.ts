@@ -432,7 +432,6 @@ export function initializeEnvironment(mode: Mode, version: string) {
     core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
     core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
     core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
-
   } else {
     process.env[EnvVar.RUN_MODE] = mode;
     process.env[EnvVar.VERSION] = version;

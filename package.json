@@ -21,6 +21,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@actions/artifact": "^0.5.1",
     "@actions/core": "^1.2.6",
     "@actions/exec": "^1.0.1",
     "@actions/github": "^4.0.0",
@@ -36,6 +37,7 @@
     "file-url": "^3.0.0",
     "fs": "0.0.1-security",
     "github-linguist": "^2.4.2",
+    "glob": "^7.1.7",
     "js-yaml": "^3.13.1",
     "jsonschema": "1.2.6",
     "long": "^4.0.0",

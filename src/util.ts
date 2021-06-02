@@ -466,7 +466,10 @@ export function getRequiredEnvParam(paramName: string): string {
   if (value === undefined || value.length === 0) {
     throw new Error(`${paramName} environment variable must be set`);
   }
-  core.debug(`${paramName}=${value}`);
+
+  if (process.env[EnvVar.RUN_MODE] === Mode.actions) {
+    core.debug(`${paramName}=${value}`);
+  }
   return value;
 }
 

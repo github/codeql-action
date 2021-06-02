@@ -43,7 +43,7 @@ class ActionsLibImport extends ImportDeclaration {
   ActionsLibImport() {
     getImportedPath().getValue().matches("@actions/%") and
     not isSafeActionLib(getImportedPath().getValue()) or
-    getImportedPath().getValue().matches("/actions-util$")
+    getImportedPath().getValue().matches("%/actions-util$")
   }
 
   string getName() {

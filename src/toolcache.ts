@@ -8,8 +8,8 @@ import * as actionsToolcache from "@actions/tool-cache";
 import * as safeWhich from "@chrisgavin/safe-which";
 import * as semver from "semver";
 
-import { isActions } from "./actions-util";
 import { Logger } from "./logging";
+import { isActions } from "./util";
 
 /*
  * This file acts as an interface to the functionality of the actions toolcache.

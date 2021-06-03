@@ -6,7 +6,6 @@ import { Readable } from "stream";
 import * as core from "@actions/core";
 import * as semver from "semver";
 
-import { isActions, Mode } from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { Config } from "./config-utils";
@@ -34,14 +33,6 @@ export function getExtraOptionsEnvParam(): object {
       `${varName} environment variable is set, but does not contain valid JSON: ${e.message}`
     );
   }
-}
-
-export function isLocalRun(): boolean {
-  return (
-    !!process.env.CODEQL_LOCAL_RUN &&
-    process.env.CODEQL_LOCAL_RUN !== "false" &&
-    process.env.CODEQL_LOCAL_RUN !== "0"
-  );
 }
 
 /**
@@ -395,4 +386,95 @@ class ExhaustivityCheckingError extends Error {
  */
 export function assertNever(value: never): never {
   throw new ExhaustivityCheckingError(value);
+}
+
+export enum Mode {
+  actions = "Action",
+  runner = "Runner",
+}
+
+/**
+ * Environment variables to be set by codeql-action and used by the
+ * CLI. These environment variables are relevant for both the runner
+ * and the action.
+ */
+enum EnvVar {
+  /**
+   * The mode of the codeql-action, either 'actions' or 'runner'.
+   */
+  RUN_MODE = "CODEQL_ACTION_RUN_MODE",
+
+  /**
+   * Semver of the codeql-action as specified in package.json.
+   */
+  VERSION = "CODEQL_ACTION_VERSION",
+
+  /**
+   * If set to a truthy value, then the codeql-action might combine SARIF
+   * output from several `interpret-results` runs for the same Language.
+   */
+  FEATURE_SARIF_COMBINE = "CODEQL_ACTION_FEATURE_SARIF_COMBINE",
+
+  /**
+   * If set to the "true" string, then the codeql-action will upload SARIF,
+   * not the cli.
+   */
+  FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
+
+  /**
+   * If set to the "true" string, then the codeql-action is using its
+   * own deprecated and non-standard way of scanning for multiple
+   * languages.
+   */
+  FEATURE_MULTI_LANGUAGE = "CODEQL_ACTION_FEATURE_MULTI_LANGUAGE",
+
+  /**
+   * If set to the "true" string, then the codeql-action is using its
+   * own sandwiched workflow mechanism
+   */
+  FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
+}
+
+export function initializeEnvironment(mode: Mode, version: string) {
+  const exportVar = (name: string, value: string) => {
+    if (mode === Mode.actions) {
+      core.exportVariable(name, value);
+    } else {
+      process.env[name] = value;
+    }
+  };
+
+  exportVar(EnvVar.RUN_MODE, mode);
+  exportVar(EnvVar.VERSION, version);
+  exportVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  exportVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  exportVar(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+  exportVar(EnvVar.FEATURE_SANDWICH, "true");
+}
+
+export function getMode(): Mode {
+  // Make sure we fail fast if the env var is missing. This should
+  // only happen if there is a bug in our code and we neglected
+  // to set the mode early in the process.
+  const mode = getRequiredEnvParam(EnvVar.RUN_MODE);
+
+  if (mode !== Mode.actions && mode !== Mode.runner) {
+    throw new Error(`Unknown mode: ${mode}.`);
+  }
+  return mode;
+}
+
+export function isActions(): boolean {
+  return getMode() === Mode.actions;
+}
+
+/**
+ * Get an environment parameter, but throw an error if it is not set.
+ */
+export function getRequiredEnvParam(paramName: string): string {
+  const value = process.env[paramName];
+  if (value === undefined || value.length === 0) {
+    throw new Error(`${paramName} environment variable must be set`);
+  }
+  return value;
 }

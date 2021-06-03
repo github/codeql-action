@@ -13,6 +13,7 @@ import { v4 as uuidV4 } from "uuid";
 
 import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
+import { PackWithVersion } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
 import { Language } from "./languages";
@@ -88,6 +89,12 @@ export interface CodeQL {
     queries: string[],
     extraSearchPath: string | undefined
   ): Promise<ResolveQueriesOutput>;
+
+  /**
+   * Run 'codeql pack download'.
+   */
+  packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput>;
+
   /**
    * Run 'codeql database analyze'.
    */
@@ -119,6 +126,17 @@ export interface ResolveQueriesOutput {
   multipleDeclaredLanguages: {
     [queryPath: string]: {};
   };
+}
+
+export interface PackDownloadOutput {
+  packs: PackDownloadItem[];
+}
+
+interface PackDownloadItem {
+  name: string;
+  version: string;
+  packDir: string;
+  installResult: string;
 }
 
 /**
@@ -481,6 +499,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     databaseAnalyze: resolveFunction(partialCodeql, "databaseAnalyze"),
+    packDownload: resolveFunction(partialCodeql, "packDownload"),
   };
   return cachedCodeQL;
 }
@@ -747,9 +766,43 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       }).exec();
       return output;
     },
+
+    // Download specified packs into the package cache. If the specified
+    // package and version already exists (e.g., from a previous analysis run),
+    // then it is not downloaded again (unless the extra option `--force` is
+    // specified).
+    async packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput> {
+      const args = [
+        "pack",
+        "download",
+        "-v",
+        ...getExtraOptionsFromEnv(["pack", "download"]),
+        ...packs.map(packWithVersionToString),
+      ];
+
+      let output = "";
+      await new toolrunner.ToolRunner(cmd, args, {
+        listeners: {
+          stdout: (data: Buffer) => {
+            output += data.toString("utf8");
+          },
+        },
+      }).exec();
+
+      try {
+        return JSON.parse(output) as PackDownloadOutput;
+      } catch (e) {
+        throw new Error(
+          `Attempted to download specified packs but got error ${e}.`
+        );
+      }
+    },
   };
 }
 
+function packWithVersionToString(pack: PackWithVersion): string {
+  return pack.version ? `${pack.packName}@${pack.version}` : pack.packName;
+}
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
  */

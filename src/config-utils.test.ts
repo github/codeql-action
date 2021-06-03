@@ -2,7 +2,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as github from "@actions/github";
-import test from "ava";
+import test, { ExecutionContext } from "ava";
+import { parse } from "semver";
 import sinon from "sinon";
 
 import * as api from "./api-client";
@@ -318,6 +319,7 @@ test("load non-empty input", async (t) => {
       codeQLCmd: codeQL.getPath(),
       gitHubVersion,
       dbLocation: path.resolve(tmpDir, "codeql_databases"),
+      packs: {} as configUtils.Packs,
     };
 
     const languages = "javascript";
@@ -983,6 +985,137 @@ test("Unknown languages", async (t) => {
   });
 });
 
+test("Config specifies packages", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeQL = setCodeQL({
+      async resolveQueries() {
+        return {
+          byLanguage: {},
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    const inputFileContents = `
+      name: my config
+      disable-default-queries: true
+      packs:
+        - a/b@1.2.3
+      `;
+
+    const configFile = path.join(tmpDir, "codeql-config.yaml");
+    fs.writeFileSync(configFile, inputFileContents);
+
+    const languages = "javascript";
+
+    const { packs } = await configUtils.initConfig(
+      languages,
+      undefined,
+      configFile,
+      undefined,
+      { owner: "github", repo: "example " },
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      gitHubVersion,
+      sampleApiDetails,
+      getRunnerLogger(true)
+    );
+    t.deepEqual(packs as unknown, {
+      [Language.javascript]: [
+        {
+          packName: "a/b",
+          version: parse("1.2.3"),
+        },
+      ],
+    });
+  });
+});
+
+test("Config specifies packages for multiple languages", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeQL = setCodeQL({
+      async resolveQueries() {
+        return {
+          byLanguage: {
+            cpp: { "/foo/a.ql": {} },
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    const inputFileContents = `
+      name: my config
+      disable-default-queries: true
+      queries:
+      - uses: ./foo
+      packs:
+        javascript:
+          - a/b@1.2.3
+        python:
+          - c/d@1.2.3
+      `;
+
+    const configFile = path.join(tmpDir, "codeql-config.yaml");
+    fs.writeFileSync(configFile, inputFileContents);
+    fs.mkdirSync(path.join(tmpDir, "foo"));
+
+    const languages = "javascript,python,cpp";
+
+    const { packs, queries } = await configUtils.initConfig(
+      languages,
+      undefined,
+      configFile,
+      undefined,
+      { owner: "github", repo: "example" },
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      gitHubVersion,
+      sampleApiDetails,
+      getRunnerLogger(true)
+    );
+    t.deepEqual(packs as unknown, {
+      [Language.javascript]: [
+        {
+          packName: "a/b",
+          version: parse("1.2.3"),
+        },
+      ],
+      [Language.python]: [
+        {
+          packName: "c/d",
+          version: parse("1.2.3"),
+        },
+      ],
+    });
+    t.deepEqual(queries, {
+      cpp: {
+        builtin: [],
+        custom: [
+          {
+            queries: ["/foo/a.ql"],
+            searchPath: tmpDir,
+          },
+        ],
+      },
+      javascript: {
+        builtin: [],
+        custom: [],
+      },
+      python: {
+        builtin: [],
+        custom: [],
+      },
+    });
+  });
+});
+
 function doInvalidInputTest(
   testName: string,
   inputFileContents: string,
@@ -1177,3 +1310,109 @@ test("path sanitisation", (t) => {
     "foo/"
   );
 });
+
+/**
+ * Test macro for ensuring the packs block is valid
+ */
+function parsePacksMacro(
+  t: ExecutionContext<unknown>,
+  packsByLanguage,
+  languages: Language[],
+  expected
+) {
+  t.deepEqual(
+    configUtils.parsePacks(packsByLanguage, languages, "/a/b"),
+    expected
+  );
+}
+parsePacksMacro.title = (providedTitle: string) =>
+  `Parse Packs: ${providedTitle}`;
+
+/**
+ * Test macro for testing when the packs block is invalid
+ */
+function parsePacksErrorMacro(
+  t: ExecutionContext<unknown>,
+  packsByLanguage,
+  languages: Language[],
+  expected: RegExp
+) {
+  t.throws(
+    () => {
+      configUtils.parsePacks(packsByLanguage, languages, "/a/b");
+    },
+    {
+      message: expected,
+    }
+  );
+}
+parsePacksErrorMacro.title = (providedTitle: string) =>
+  `Parse Packs Error: ${providedTitle}`;
+
+function invalidPackNameMacro(t: ExecutionContext<unknown>, name: string) {
+  parsePacksErrorMacro(
+    t,
+    { [Language.cpp]: [name] },
+    [Language.cpp],
+    new RegExp(
+      `The configuration file "/a/b" is invalid: property "packs" "${name}" is not a valid pack`
+    )
+  );
+}
+invalidPackNameMacro.title = (_: string, arg: string) =>
+  `Invalid pack string: ${arg}`;
+
+test("no packs", parsePacksMacro, undefined, [], {});
+test("two packs", parsePacksMacro, ["a/b", "c/d@1.2.3"], [Language.cpp], {
+  [Language.cpp]: [
+    { packName: "a/b", version: undefined },
+    { packName: "c/d", version: parse("1.2.3") },
+  ],
+});
+test(
+  "two packs with language",
+  parsePacksMacro,
+  {
+    [Language.cpp]: ["a/b", "c/d@1.2.3"],
+    [Language.java]: ["d/e", "f/g@1.2.3"],
+  },
+  [Language.cpp, Language.java, Language.csharp],
+  {
+    [Language.cpp]: [
+      { packName: "a/b", version: undefined },
+      { packName: "c/d", version: parse("1.2.3") },
+    ],
+    [Language.java]: [
+      { packName: "d/e", version: undefined },
+      { packName: "f/g", version: parse("1.2.3") },
+    ],
+  }
+);
+
+test(
+  "no language",
+  parsePacksErrorMacro,
+  ["a/b@1.2.3"],
+  [Language.java, Language.python],
+  /The configuration file "\/a\/b" is invalid: property "packs" must split packages by language/
+);
+test(
+  "invalid language",
+  parsePacksErrorMacro,
+  { [Language.java]: ["c/d"] },
+  [Language.cpp],
+  /The configuration file "\/a\/b" is invalid: property "packs" has "java", but it is not one of the languages to analyze/
+);
+test(
+  "not an array",
+  parsePacksErrorMacro,
+  { [Language.cpp]: "c/d" },
+  [Language.cpp],
+  /The configuration file "\/a\/b" is invalid: property "packs" must be an array of non-empty strings/
+);
+
+test(invalidPackNameMacro, "c");
+test(invalidPackNameMacro, "c-/d");
+test(invalidPackNameMacro, "-c/d");
+test(invalidPackNameMacro, "c/d_d");
+test(invalidPackNameMacro, "c/d@x");

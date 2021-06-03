@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import {
   createStatusReportBase,
+  getTemporaryDirectory,
   sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
@@ -9,7 +10,7 @@ import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import * as config_utils from "./config-utils";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
-import { getTemporaryDirectory, initializeEnvironment, Mode } from "./util";
+import { initializeEnvironment, Mode } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");

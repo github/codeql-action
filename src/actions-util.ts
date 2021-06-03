@@ -38,6 +38,13 @@ export function getOptionalInput(name: string): string | undefined {
   return value.length > 0 ? value : undefined;
 }
 
+export function getTemporaryDirectory(): string {
+  const value = process.env["CODEQL_ACTION_TEMP"];
+  return value !== undefined && value !== ""
+    ? value
+    : getRequiredEnvParam("RUNNER_TEMP");
+}
+
 export function getToolCacheDirectory(): string {
   const value = process.env["CODEQL_ACTION_TOOL_CACHE"];
   return value !== undefined && value !== ""

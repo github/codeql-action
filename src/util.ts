@@ -399,47 +399,57 @@ export enum Mode {
  * and the action.
  */
 enum EnvVar {
-  // either 'actions' or 'runner'
+  /**
+   * The mode of the codeql-action, either 'actions' or 'runner'.
+   */
   RUN_MODE = "CODEQL_ACTION_RUN_MODE",
 
-  // semver of this action
+  /**
+   * Semver of the codeql-action as specified in package.json.
+   */
   VERSION = "CODEQL_ACTION_VERSION",
 
-  // if set to a truthy value, then the action might combine SARIF
-  // output from several `interpret-results` runs for the same language
+  /**
+   * If set to a truthy value, then the codeql-action might combine SARIF
+   * output from several `interpret-results` runs for the same Language.
+   */
   FEATURE_SARIF_COMBINE = "CODEQL_ACTION_FEATURE_SARIF_COMBINE",
 
-  // if set to a truthy value, then the action will upload SARIF,
-  // not the CLI
+  /**
+   * If set to the "true" string, then the codeql-action will upload SARIF,
+   * not the cli.
+   */
   FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
 
-  // if set to a truthy value, then the action is using its
-  // own deprecated and non-standard way of scanning for multiple
-  // languages
+  /**
+   * If set to the "true" string, then the codeql-action is using its
+   * own deprecated and non-standard way of scanning for multiple
+   * languages.
+   */
   FEATURE_MULTI_LANGUAGE = "CODEQL_ACTION_FEATURE_MULTI_LANGUAGE",
 
-  // if set to a truthy value, then the action is using its
-  // own sandwiched workflow mechanism
+  /**
+   * If set to the "true" string, then the codeql-action is using its
+   * own sandwiched workflow mechanism
+   */
   FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
 }
 
 export function initializeEnvironment(mode: Mode, version: string) {
-  // avoid accessing actions core when in runner mode
-  if (mode === Mode.actions) {
-    core.exportVariable(EnvVar.RUN_MODE, mode);
-    core.exportVariable(EnvVar.VERSION, version);
-    core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
-    core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
-    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
-  } else {
-    process.env[EnvVar.RUN_MODE] = mode;
-    process.env[EnvVar.VERSION] = version;
-    process.env[EnvVar.FEATURE_SARIF_COMBINE] = "true";
-    process.env[EnvVar.FEATURE_WILL_UPLOAD] = "true";
-    process.env[EnvVar.FEATURE_MULTI_LANGUAGE] = "true";
-    process.env[EnvVar.FEATURE_SANDWICH] = "true";
-  }
+  const exportVar = (name: string, value: string) => {
+    if (mode === Mode.actions) {
+      core.exportVariable(name, value);
+    } else {
+      process.env[name] = value;
+    }
+  };
+
+  exportVar(EnvVar.RUN_MODE, mode);
+  exportVar(EnvVar.VERSION, version);
+  exportVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  exportVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  exportVar(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+  exportVar(EnvVar.FEATURE_SANDWICH, "true");
 }
 
 export function getMode(): Mode {
@@ -466,16 +476,5 @@ export function getRequiredEnvParam(paramName: string): string {
   if (value === undefined || value.length === 0) {
     throw new Error(`${paramName} environment variable must be set`);
   }
-
-  if (process.env[EnvVar.RUN_MODE] === Mode.actions) {
-    core.debug(`${paramName}=${value}`);
-  }
   return value;
-}
-
-export function getTemporaryDirectory(): string {
-  const value = process.env["CODEQL_ACTION_TEMP"];
-  return value !== undefined && value !== ""
-    ? value
-    : getRequiredEnvParam("RUNNER_TEMP");
 }

@@ -4,6 +4,7 @@ import {
   createStatusReportBase,
   getOptionalInput,
   getRequiredInput,
+  getTemporaryDirectory,
   getToolCacheDirectory,
   sendStatusReport,
   StatusReportBase,
@@ -23,7 +24,6 @@ import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   getRequiredEnvParam,
-  getTemporaryDirectory,
   initializeEnvironment,
   Mode,
   checkGitHubVersionInRange,

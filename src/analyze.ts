@@ -166,6 +166,7 @@ export async function runQueries(
     logger.startGroup(`Analyzing ${language}`);
 
     const queries = config.queries[language];
+    const packsWithVersion = config.packs[language] || [];
     if (
       queries === undefined ||
       (queries.builtin.length === 0 && queries.custom.length === 0)
@@ -183,7 +184,7 @@ export async function runQueries(
         const { sarifFile, stdout } = await runQueryGroup(
           language,
           "builtin",
-          queries["builtin"],
+          createQuerySuiteContents(queries["builtin"]),
           sarifFolder,
           undefined
         );
@@ -201,13 +202,24 @@ export async function runQueries(
           const { sarifFile, stdout } = await runQueryGroup(
             language,
             `custom-${i}`,
-            queries["custom"][i].queries,
+            createQuerySuiteContents(queries["custom"][i].queries),
             temporarySarifDir,
             queries["custom"][i].searchPath
           );
           customAnalysisSummaries.push(stdout);
           temporarySarifFiles.push(sarifFile);
         }
+      }
+      if (packsWithVersion.length > 0) {
+        const { sarifFile, stdout } = await runQueryGroup(
+          language,
+          "packs",
+          createPackSuiteContents(packsWithVersion),
+          temporarySarifDir,
+          undefined
+        );
+        customAnalysisSummaries.push(stdout);
+        temporarySarifFiles.push(sarifFile);
       }
       if (temporarySarifFiles.length > 0) {
         const sarifFile = path.join(sarifFolder, `${language}-custom.sarif`);
@@ -256,7 +268,7 @@ export async function runQueries(
   async function runQueryGroup(
     language: Language,
     type: string,
-    queries: string[],
+    querySuiteContents: string,
     destinationFolder: string,
     searchPath: string | undefined
   ): Promise<{ sarifFile: string; stdout: string }> {
@@ -264,11 +276,10 @@ export async function runQueries(
     // Pass the queries to codeql using a file instead of using the command
     // line to avoid command line length restrictions, particularly on windows.
     const querySuitePath = `${databasePath}-queries-${type}.qls`;
-    const querySuiteContents = queries
-      .map((q: string) => `- query: ${q}`)
-      .join("\n");
     fs.writeFileSync(querySuitePath, querySuiteContents);
-    logger.debug(`Query suite file for ${language}...\n${querySuiteContents}`);
+    logger.debug(
+      `Query suite file for ${language}-${type}...\n${querySuiteContents}`
+    );
 
     const sarifFile = path.join(destinationFolder, `${language}-${type}.sarif`);
 
@@ -289,6 +300,26 @@ export async function runQueries(
     );
     return { sarifFile, stdout: databaseAnalyzeStdout };
   }
+}
+
+function createQuerySuiteContents(queries: string[]) {
+  return queries.map((q: string) => `- query: ${q}`).join("\n");
+}
+
+function createPackSuiteContents(
+  packsWithVersion: configUtils.PackWithVersion[]
+) {
+  return packsWithVersion.map(packWithVersionToQuerySuiteEntry).join("\n");
+}
+
+function packWithVersionToQuerySuiteEntry(
+  pack: configUtils.PackWithVersion
+): string {
+  let text = `- qlpack: ${pack.packName}`;
+  if (pack.version) {
+    text += `${"\n"}  version: ${pack.version}`;
+  }
+  return text;
 }
 
 export async function runAnalyze(

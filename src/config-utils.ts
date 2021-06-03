@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as yaml from "js-yaml";
+import * as semver from "semver";
 
 import * as api from "./api-client";
 import { CodeQL, ResolveQueriesOutput } from "./codeql";
@@ -18,6 +19,7 @@ const QUERIES_PROPERTY = "queries";
 const QUERIES_USES_PROPERTY = "uses";
 const PATHS_IGNORE_PROPERTY = "paths-ignore";
 const PATHS_PROPERTY = "paths";
+const PACKS_PROPERTY = "packs";
 
 /**
  * Format of the config file supplied by the user.
@@ -31,6 +33,11 @@ export interface UserConfig {
   }>;
   "paths-ignore"?: string[];
   paths?: string[];
+
+  // If this is a multi-language analysis, then the packages must be split by
+  // language. If this is a single language analysis, then no split by
+  // language is necessary.
+  packs?: Record<string, string[]> | string[];
 }
 
 /**
@@ -114,6 +121,19 @@ export interface Config {
    * The location where CodeQL databases should be stored.
    */
   dbLocation: string;
+  /**
+   * List of packages, separated by language to download before any analysis.
+   */
+  packs: Packs;
+}
+
+export type Packs = Record<Partial<Language>, PackWithVersion[]>;
+
+export interface PackWithVersion {
+  /** qualified name of a package reference */
+  packName: string;
+  /** version of the package, or undefined, which means latest version */
+  version?: semver.SemVer;
 }
 
 /**
@@ -536,6 +556,44 @@ export function getPathsInvalid(configFile: string): string {
   );
 }
 
+export function getPacksRequireLanguage(
+  lang: string,
+  configFile: string
+): string {
+  return getConfigFilePropertyError(
+    configFile,
+    PACKS_PROPERTY,
+    `has "${lang}", but it is not one of the languages to analyze`
+  );
+}
+
+export function getPacksInvalidSplit(configFile: string): string {
+  return getConfigFilePropertyError(
+    configFile,
+    PACKS_PROPERTY,
+    "must split packages by language"
+  );
+}
+
+export function getPacksInvalid(configFile: string): string {
+  return getConfigFilePropertyError(
+    configFile,
+    PACKS_PROPERTY,
+    "must be an array of non-empty strings"
+  );
+}
+
+export function getPacksStrInvalid(
+  packStr: string,
+  configFile: string
+): string {
+  return getConfigFilePropertyError(
+    configFile,
+    PACKS_PROPERTY,
+    `"${packStr}" is not a valid pack`
+  );
+}
+
 export function getLocalPathOutsideOfRepository(
   configFile: string | undefined,
   localPath: string
@@ -787,6 +845,7 @@ export async function getDefaultConfig(
     queries,
     pathsIgnore: [],
     paths: [],
+    packs: {} as Record<Language, PackWithVersion[]>,
     originalUserInput: {},
     tempDir,
     toolCacheDir,
@@ -883,7 +942,7 @@ async function loadConfig(
     shouldAddConfigFileQueries(queriesInput) &&
     QUERIES_PROPERTY in parsedYAML
   ) {
-    if (!(parsedYAML[QUERIES_PROPERTY] instanceof Array)) {
+    if (!Array.isArray(parsedYAML[QUERIES_PROPERTY])) {
       throw new Error(getQueriesInvalid(configFile));
     }
     for (const query of parsedYAML[QUERIES_PROPERTY]!) {
@@ -908,7 +967,7 @@ async function loadConfig(
   }
 
   if (PATHS_IGNORE_PROPERTY in parsedYAML) {
-    if (!(parsedYAML[PATHS_IGNORE_PROPERTY] instanceof Array)) {
+    if (!Array.isArray(parsedYAML[PATHS_IGNORE_PROPERTY])) {
       throw new Error(getPathsIgnoreInvalid(configFile));
     }
     for (const ignorePath of parsedYAML[PATHS_IGNORE_PROPERTY]!) {
@@ -927,7 +986,7 @@ async function loadConfig(
   }
 
   if (PATHS_PROPERTY in parsedYAML) {
-    if (!(parsedYAML[PATHS_PROPERTY] instanceof Array)) {
+    if (!Array.isArray(parsedYAML[PATHS_PROPERTY])) {
       throw new Error(getPathsInvalid(configFile));
     }
     for (const includePath of parsedYAML[PATHS_PROPERTY]!) {
@@ -940,17 +999,92 @@ async function loadConfig(
     }
   }
 
+  const packs = parsePacks(parsedYAML[PACKS_PROPERTY], languages, configFile);
+
   return {
     languages,
     queries,
     pathsIgnore,
     paths,
+    packs,
     originalUserInput: parsedYAML,
     tempDir,
     toolCacheDir,
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
+  };
+}
+
+// Only alpha-numeric characters, with `-` allowed as long as not the first or last char
+const PACK_IDENTIFIER_PATTERN = (function () {
+  const alphaNumeric = "[a-z0-9]";
+  const alphaNumericDash = "[a-z0-9-]";
+  const component = `${alphaNumeric}(${alphaNumericDash}*${alphaNumeric})?`;
+  return new RegExp(`^${component}/${component}$`);
+})();
+
+// Exported for testing
+export function parsePacks(
+  packsByLanguage: string[] | Record<string, string[]> | undefined,
+  languages: Language[],
+  configFile: string
+) {
+  const packs = {} as Packs;
+
+  if (!packsByLanguage) {
+    return packs;
+  }
+
+  if (Array.isArray(packsByLanguage)) {
+    if (languages.length === 1) {
+      // single language analysis, so language is implicit
+      packsByLanguage = {
+        [languages[0]]: packsByLanguage,
+      };
+    } else {
+      // this is an error since multi-language analysis requires
+      // packs split by language
+      throw new Error(getPacksInvalidSplit(configFile));
+    }
+  }
+
+  for (const [lang, packsArr] of Object.entries(packsByLanguage)) {
+    if (!Array.isArray(packsArr)) {
+      throw new Error(getPacksInvalid(configFile));
+    }
+    if (!languages.includes(lang as Language)) {
+      throw new Error(getPacksRequireLanguage(lang, configFile));
+    }
+    packs[lang] = [];
+    for (const packStr of packsArr) {
+      packs[lang].push(toPackWithVersion(packStr, configFile));
+    }
+  }
+  return packs;
+}
+
+function toPackWithVersion(packStr, configFile: string): PackWithVersion {
+  if (typeof packStr !== "string") {
+    throw new Error(getPacksStrInvalid(packStr, configFile));
+  }
+  const nameWithVersion = packStr.split("@");
+  let version: semver.SemVer | undefined;
+  if (
+    nameWithVersion.length > 2 ||
+    !PACK_IDENTIFIER_PATTERN.test(nameWithVersion[0])
+  ) {
+    throw new Error(getPacksStrInvalid(packStr, configFile));
+  } else if (nameWithVersion.length === 2) {
+    version = semver.parse(nameWithVersion[1]) || undefined;
+    if (!version) {
+      throw new Error(getPacksStrInvalid(packStr, configFile));
+    }
+  }
+
+  return {
+    packName: nameWithVersion[0],
+    version,
   };
 }
 
@@ -1019,11 +1153,11 @@ export async function initConfig(
   // The list of queries should not be empty for any language. If it is then
   // it is a user configuration error.
   for (const language of config.languages) {
-    if (
-      config.queries[language] === undefined ||
-      (config.queries[language].builtin.length === 0 &&
-        config.queries[language].custom.length === 0)
-    ) {
+    const hasPacks = config.packs[language]?.length > 0;
+    const hasQueries =
+      config.queries[language]?.builtin.length > 0 ||
+      config.queries[language]?.custom.length > 0;
+    if (!hasPacks && !hasQueries) {
       throw new Error(
         `Did not detect any queries to run for ${language}. ` +
           "Please make sure that the default queries are enabled, or you are specifying queries to run."

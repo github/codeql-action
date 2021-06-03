@@ -3,16 +3,21 @@ import * as path from "path";
 
 import test from "ava";
 
-import { Mode, setMode } from "./actions-util";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
-import { GitHubVersion, GitHubVariant, withTmpDir } from "./util";
+import {
+  initializeEnvironment,
+  Mode,
+  GitHubVersion,
+  GitHubVariant,
+  withTmpDir,
+} from "./util";
 
 setupTests(test);
 
 test.beforeEach(() => {
-  setMode(Mode.actions);
+  initializeEnvironment(Mode.actions, "1.2.3");
 });
 
 test("validateSarifFileSchema - valid", (t) => {

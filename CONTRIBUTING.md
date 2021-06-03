@@ -34,26 +34,6 @@ Only run `npm install` if you are explicitly changing the set of dependencies in
 
 To see the effect of your changes and to test them, push your changes in a branch and then look at the [Actions output](https://github.com/github/codeql-action/actions) for that branch.  You can also exercise the code locally by running the automated tests.
 
-### Running the action locally
-
-It is possible to run this action locally via [act](https://github.com/nektos/act) via the following steps:
-
-1. Create a GitHub [Personal Access Token](https://github.com/settings/tokens) (PAT).
-1. Install [act](https://github.com/nektos/act) v0.2.10 or greater.
-1. Add a `.env` file in the root of the project you are running:
-
-  ```bash
-  CODEQL_LOCAL_RUN=true
-  GITHUB_SERVER_URL=https://github.com
-
-  # Optional, for better logging
-  GITHUB_JOB=<ANY_JOB_NAME>
-  ```
-
-1. Run `act -j codeql -s GITHUB_TOKEN=<PAT>`
-
-Running locally will generate the CodeQL database and run all the queries, but it will avoid uploading and reporting results to GitHub. Note that this must be done on a repository that _consumes_ this action, not this repository. The use case is to debug failures of this action on specific repositories.
-
 ### Integration tests
 
 As well as the unit tests (see _Common tasks_ above), there are integration tests, defined in `.github/workflows/integration-testing.yml`.  These are run by a CI check.  Depending on the change you’re making, you may want to add a test to this file or extend an existing one.

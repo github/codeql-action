@@ -99,7 +99,7 @@ async function uploadPayload(
 
   const client = api.getApiClient(apiDetails);
 
-  const reqURL = actionsUtil.isActions()
+  const reqURL = util.isActions()
     ? "PUT /repos/:owner/:repo/code-scanning/analysis"
     : "POST /repos/:owner/:repo/code-scanning/sarifs";
   const response = await client.request(reqURL, {
@@ -150,12 +150,12 @@ export async function uploadFromActions(
 ): Promise<UploadStatusReport> {
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
-    parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
+    parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
     await actionsUtil.getCommitOid(),
     await actionsUtil.getRef(),
     await actionsUtil.getAnalysisKey(),
     actionsUtil.getOptionalInput("category"),
-    actionsUtil.getRequiredEnvParam("GITHUB_WORKFLOW"),
+    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
     actionsUtil.getRequiredInput("matrix"),
@@ -275,7 +275,7 @@ export function buildPayload(
   toolNames: string[],
   gitHubVersion: util.GitHubVersion
 ) {
-  if (actionsUtil.isActions()) {
+  if (util.isActions()) {
     const payloadObj = {
       commit_oid: commitOid,
       ref,
@@ -339,7 +339,7 @@ async function uploadFiles(
   logger.startGroup("Uploading results");
   logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
 
-  if (actionsUtil.isActions()) {
+  if (util.isActions()) {
     // This check only works on actions as env vars don't persist between calls to the runner
     const sentinelEnvVar = "CODEQL_UPLOAD_SARIF";
     if (process.env[sentinelEnvVar]) {

@@ -619,12 +619,10 @@ async function getLanguagesInRepo(
   logger: Logger
 ): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
-  const response = await api
-    .getApiClient(apiDetails, { allowLocalRun: true })
-    .repos.listLanguages({
-      owner: repository.owner,
-      repo: repository.repo,
-    });
+  const response = await api.getApiClient(apiDetails).repos.listLanguages({
+    owner: repository.owner,
+    repo: repository.repo,
+  });
 
   logger.debug(`Languages API response: ${JSON.stringify(response)}`);
 
@@ -1076,7 +1074,7 @@ async function getRemoteConfig(
   }
 
   const response = await api
-    .getApiClient(apiDetails, { allowLocalRun: true, allowExternal: true })
+    .getApiClient(apiDetails, { allowExternal: true })
     .repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,

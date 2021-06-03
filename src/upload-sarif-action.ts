@@ -3,7 +3,15 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getActionsLogger } from "./logging";
 import * as upload_lib from "./upload-lib";
-import { getGitHubVersion } from "./util";
+import {
+  getGitHubVersion,
+  getRequiredEnvParam,
+  initializeEnvironment,
+  Mode,
+} from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 interface UploadSarifStatusReport
   extends actionsUtil.StatusReportBase,
@@ -26,7 +34,7 @@ async function sendSuccessStatusReport(
 }
 
 async function run() {
-  actionsUtil.setMode(actionsUtil.Mode.actions);
+  initializeEnvironment(Mode.actions, pkg.version);
   const startedAt = new Date();
   if (
     !(await actionsUtil.sendStatusReport(
@@ -43,7 +51,7 @@ async function run() {
   try {
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),
-      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
     };
 
     const gitHubVersion = await getGitHubVersion(apiDetails);

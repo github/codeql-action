@@ -727,6 +727,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "--format=sarif-latest",
         "--sarif-multicause-markdown",
+        "--sarif-group-rules-by-pack",
         `--output=${sarifFile}`,
         addSnippetsFlag,
         // Enable progress verbosity so we log each query as it's interpreted. This aids debugging

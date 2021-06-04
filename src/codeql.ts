@@ -760,7 +760,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       await new toolrunner.ToolRunner(cmd, args, {
         listeners: {
           stdout: (data: Buffer) => {
-            output += data.toString("utf8");
+            output += data.toString();
           },
         },
       }).exec();
@@ -781,7 +781,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       const args = [
         "pack",
         "download",
-        "-v",
+        "--format=json",
         ...getExtraOptionsFromEnv(["pack", "download"]),
         ...packs.map(packWithVersionToString),
       ];

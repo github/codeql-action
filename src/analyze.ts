@@ -178,6 +178,16 @@ export async function runQueries(
     }
 
     try {
+      if (hasPackWithCustomQueries) {
+        const codeql = getCodeQL(config.codeQLCmd);
+        const results = await codeql.packDownload(packsWithVersion);
+        logger.info(
+          `Downloaded packs: ${results.packs
+            .map((r) => `${r.name}@${r.version || "latest"}`)
+            .join(", ")}`
+        );
+      }
+
       let analysisSummaryBuiltIn = "";
       const customAnalysisSummaries: string[] = [];
       if (queries["builtin"].length > 0) {
@@ -256,6 +266,7 @@ export async function runQueries(
       logger.endGroup();
     } catch (e) {
       logger.info(e);
+      logger.info(e.stack);
       statusReport.analyze_failure_language = language;
       throw new CodeQLAnalysisError(
         statusReport,

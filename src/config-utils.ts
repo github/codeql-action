@@ -133,7 +133,7 @@ export interface PackWithVersion {
   /** qualified name of a package reference */
   packName: string;
   /** version of the package, or undefined, which means latest version */
-  version?: semver.SemVer;
+  version?: string;
 }
 
 /**
@@ -1072,14 +1072,14 @@ function toPackWithVersion(packStr, configFile: string): PackWithVersion {
     throw new Error(getPacksStrInvalid(packStr, configFile));
   }
   const nameWithVersion = packStr.split("@");
-  let version: semver.SemVer | undefined;
+  let version: string | undefined;
   if (
     nameWithVersion.length > 2 ||
     !PACK_IDENTIFIER_PATTERN.test(nameWithVersion[0])
   ) {
     throw new Error(getPacksStrInvalid(packStr, configFile));
   } else if (nameWithVersion.length === 2) {
-    version = semver.parse(nameWithVersion[1]) || undefined;
+    version = semver.clean(nameWithVersion[1]) || undefined;
     if (!version) {
       throw new Error(getPacksStrInvalid(packStr, configFile));
     }

@@ -26,7 +26,7 @@ test("status report fields and search path setting", async (t) => {
     return obj;
   }, {});
   sinon.stub(count, "countLoc").resolves(mockLinesOfCode);
-  let searchPathsUsed: string[] = [];
+  let searchPathsUsed: Array<string | undefined> = [];
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -36,10 +36,16 @@ test("status report fields and search path setting", async (t) => {
 
     for (const language of Object.values(Language)) {
       setCodeQL({
-        databaseAnalyze: async (
-          _,
-          sarifFile: string,
+        databaseRunQueries: async (
+          _db: string,
           searchPath: string | undefined
+        ) => {
+          searchPathsUsed.push(searchPath);
+        },
+        databaseInterpretResults: async (
+          _db: string,
+          _queriesRun: string[],
+          sarifFile: string
         ) => {
           fs.writeFileSync(
             sarifFile,
@@ -75,7 +81,6 @@ test("status report fields and search path setting", async (t) => {
               ],
             })
           );
-          searchPathsUsed.push(searchPath!);
           return "";
         },
       });
@@ -112,9 +117,12 @@ test("status report fields and search path setting", async (t) => {
         config,
         getRunnerLogger(true)
       );
-      t.deepEqual(Object.keys(builtinStatusReport).length, 1);
+      t.deepEqual(Object.keys(builtinStatusReport).length, 2);
       t.true(
         `analyze_builtin_queries_${language}_duration_ms` in builtinStatusReport
+      );
+      t.true(
+        `interpret_results_${language}_duration_ms` in builtinStatusReport
       );
 
       config.queries[language] = {
@@ -139,10 +147,11 @@ test("status report fields and search path setting", async (t) => {
         config,
         getRunnerLogger(true)
       );
-      t.deepEqual(Object.keys(customStatusReport).length, 1);
+      t.deepEqual(Object.keys(customStatusReport).length, 2);
       t.true(
         `analyze_custom_queries_${language}_duration_ms` in customStatusReport
       );
+      t.true(`interpret_results_${language}_duration_ms` in customStatusReport);
       t.deepEqual(searchPathsUsed, [undefined, "/1", "/2"]);
     }
 
@@ -154,12 +163,7 @@ test("status report fields and search path setting", async (t) => {
     Object.keys(Language).forEach((lang, i) => {
       verifyLineCountForFile(
         lang as Language,
-        path.join(tmpDir, `${lang}-builtin.sarif`),
-        i + 1
-      );
-      verifyLineCountForFile(
-        lang as Language,
-        path.join(tmpDir, `${lang}-custom.sarif`),
+        path.join(tmpDir, `${lang}.sarif`),
         i + 1
       );
     });

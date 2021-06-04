@@ -89,22 +89,30 @@ export interface CodeQL {
     extraSearchPath: string | undefined
   ): Promise<ResolveQueriesOutput>;
   /**
-   * Run 'codeql database analyze'.
+   * Run 'codeql database cleanup'.
    */
-  databaseAnalyze(
+  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
+  /**
+   * Run 'codeql database run-queries'.
+   */
+  databaseRunQueries(
     databasePath: string,
-    sarifFile: string,
     extraSearchPath: string | undefined,
-    querySuite: string,
+    querySuitePath: string,
     memoryFlag: string,
+    threadsFlag: string
+  ): Promise<void>;
+  /**
+   * Run 'codeql database interpret-results'.
+   */
+  databaseInterpretResults(
+    databasePath: string,
+    querySuitePaths: string[],
+    sarifFile: string,
     addSnippetsFlag: string,
     threadsFlag: string,
     automationDetailsId: string | undefined
   ): Promise<string>;
-  /**
-   * Run 'codeql database cleanup'.
-   */
-  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
 }
 
 export interface ResolveLanguagesOutput {
@@ -484,8 +492,12 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
-    databaseAnalyze: resolveFunction(partialCodeql, "databaseAnalyze"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
+    databaseRunQueries: resolveFunction(partialCodeql, "databaseRunQueries"),
+    databaseInterpretResults: resolveFunction(
+      partialCodeql,
+      "databaseInterpretResults"
+    ),
   };
   return cachedCodeQL;
 }
@@ -708,40 +720,53 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
       }
     },
-    async databaseAnalyze(
+    async databaseRunQueries(
       databasePath: string,
-      sarifFile: string,
       extraSearchPath: string | undefined,
-      querySuite: string,
+      querySuitePath: string,
       memoryFlag: string,
+      threadsFlag: string
+    ): Promise<void> {
+      const args = [
+        "database",
+        "run-queries",
+        memoryFlag,
+        threadsFlag,
+        databasePath,
+        "--min-disk-free=1024", // Try to leave at least 1GB free
+        "-v",
+        ...getExtraOptionsFromEnv(["database", "run-queries"]),
+      ];
+      if (extraSearchPath !== undefined) {
+        args.push("--additional-packs", extraSearchPath);
+      }
+      args.push(querySuitePath);
+      await new toolrunner.ToolRunner(cmd, args).exec();
+    },
+    async databaseInterpretResults(
+      databasePath: string,
+      querySuitePaths: string[],
+      sarifFile: string,
       addSnippetsFlag: string,
       threadsFlag: string,
       automationDetailsId: string | undefined
     ): Promise<string> {
       const args = [
         "database",
-        "analyze",
-        memoryFlag,
+        "interpret-results",
         threadsFlag,
-        databasePath,
-        "--min-disk-free=1024", // Try to leave at least 1GB free
         "--format=sarif-latest",
-        "--sarif-multicause-markdown",
+        "--print-metrics-summary",
         "--sarif-group-rules-by-pack",
+        "-v",
         `--output=${sarifFile}`,
         addSnippetsFlag,
-        // Enable progress verbosity so we log each query as it's interpreted. This aids debugging
-        // when interpretation takes a while for one of the queries being analyzed.
-        "-v",
-        ...getExtraOptionsFromEnv(["database", "analyze"]),
+        ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
-      if (extraSearchPath !== undefined) {
-        args.push("--additional-packs", extraSearchPath);
-      }
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }
-      args.push(querySuite);
+      args.push(databasePath, ...querySuitePaths);
       // capture stdout, which contains analysis summaries
       let output = "";
       await new toolrunner.ToolRunner(cmd, args, {

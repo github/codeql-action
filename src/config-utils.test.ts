@@ -1411,7 +1411,7 @@ test(
   /The configuration file "\/a\/b" is invalid: property "packs" must be an array of non-empty strings/
 );
 
-test(invalidPackNameMacro, "c");
+test(invalidPackNameMacro, "c"); // all packs require at least a scope and a name
 test(invalidPackNameMacro, "c-/d");
 test(invalidPackNameMacro, "-c/d");
 test(invalidPackNameMacro, "c/d_d");

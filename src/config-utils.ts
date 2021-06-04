@@ -1016,7 +1016,10 @@ async function loadConfig(
   };
 }
 
-// Only alpha-numeric characters, with `-` allowed as long as not the first or last char
+/**
+ * Pack names must be in the form of `scope/name`, with only alpha-numeric characters,
+ * and `-` allowed as long as not the first or last char.
+ **/
 const PACK_IDENTIFIER_PATTERN = (function () {
   const alphaNumeric = "[a-z0-9]";
   const alphaNumericDash = "[a-z0-9-]";

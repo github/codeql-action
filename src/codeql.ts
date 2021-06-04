@@ -767,10 +767,16 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       return output;
     },
 
-    // Download specified packs into the package cache. If the specified
-    // package and version already exists (e.g., from a previous analysis run),
-    // then it is not downloaded again (unless the extra option `--force` is
-    // specified).
+    /**
+     * Download specified packs into the package cache. If the specified
+     * package and version already exists (e.g., from a previous analysis run),
+     * then it is not downloaded again (unless the extra option `--force` is
+     * specified).
+     *
+     * If no version is specified, then the latest version is
+     * downloaded. The check to determine what the latest version is is done
+     * each time this package is requested.
+     */
     async packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput> {
       const args = [
         "pack",
@@ -793,7 +799,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         return JSON.parse(output) as PackDownloadOutput;
       } catch (e) {
         throw new Error(
-          `Attempted to download specified packs but got error ${e}.`
+          `Attempted to download specified packs but got an error:${"\n"}${output}.`
         );
       }
     },

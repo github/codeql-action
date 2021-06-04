@@ -3,7 +3,7 @@ import * as path from "path";
 
 import test from "ava";
 import * as yaml from "js-yaml";
-import { parse } from "semver";
+import { clean } from "semver";
 import sinon from "sinon";
 
 import { runQueries } from "./analyze";
@@ -39,13 +39,13 @@ test("status report fields and search path setting", async (t) => {
       [Language.cpp]: [
         {
           packName: "a/b",
-          version: parse("1.0.0"),
+          version: clean("1.0.0"),
         },
       ],
       [Language.java]: [
         {
           packName: "c/d",
-          version: parse("2.0.0"),
+          version: clean("2.0.0"),
         },
       ],
     } as Packs;

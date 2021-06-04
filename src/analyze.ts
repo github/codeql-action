@@ -318,7 +318,7 @@ function packWithVersionToQuerySuiteEntry(
 ): string {
   let text = `- qlpack: ${pack.packName}`;
   if (pack.version) {
-    text += `${"\n"}  version: ${pack.version.format()}`;
+    text += `${"\n"}  version: ${pack.version}`;
   }
   return text;
 }

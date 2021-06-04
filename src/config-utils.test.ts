@@ -3,7 +3,7 @@ import * as path from "path";
 
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
-import { parse } from "semver";
+import { clean } from "semver";
 import sinon from "sinon";
 
 import * as api from "./api-client";
@@ -1027,7 +1027,7 @@ test("Config specifies packages", async (t) => {
       [Language.javascript]: [
         {
           packName: "a/b",
-          version: parse("1.2.3"),
+          version: clean("1.2.3"),
         },
       ],
     });
@@ -1084,13 +1084,13 @@ test("Config specifies packages for multiple languages", async (t) => {
       [Language.javascript]: [
         {
           packName: "a/b",
-          version: parse("1.2.3"),
+          version: clean("1.2.3"),
         },
       ],
       [Language.python]: [
         {
           packName: "c/d",
-          version: parse("1.2.3"),
+          version: clean("1.2.3"),
         },
       ],
     });
@@ -1366,7 +1366,7 @@ test("no packs", parsePacksMacro, undefined, [], {});
 test("two packs", parsePacksMacro, ["a/b", "c/d@1.2.3"], [Language.cpp], {
   [Language.cpp]: [
     { packName: "a/b", version: undefined },
-    { packName: "c/d", version: parse("1.2.3") },
+    { packName: "c/d", version: clean("1.2.3") },
   ],
 });
 test(
@@ -1380,11 +1380,11 @@ test(
   {
     [Language.cpp]: [
       { packName: "a/b", version: undefined },
-      { packName: "c/d", version: parse("1.2.3") },
+      { packName: "c/d", version: clean("1.2.3") },
     ],
     [Language.java]: [
       { packName: "d/e", version: undefined },
-      { packName: "f/g", version: parse("1.2.3") },
+      { packName: "f/g", version: clean("1.2.3") },
     ],
   }
 );

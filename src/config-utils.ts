@@ -1156,11 +1156,10 @@ export async function initConfig(
   // The list of queries should not be empty for any language. If it is then
   // it is a user configuration error.
   for (const language of config.languages) {
+    const hasBuiltinQueries = config.queries[language]?.builtin.length > 0;
+    const hasCustomQueries = config.queries[language]?.custom.length > 0;
     const hasPacks = config.packs[language]?.length > 0;
-    const hasQueries =
-      config.queries[language]?.builtin.length > 0 ||
-      config.queries[language]?.custom.length > 0;
-    if (!hasPacks && !hasQueries) {
+    if (!hasPacks && !hasBuiltinQueries && !hasCustomQueries) {
       throw new Error(
         `Did not detect any queries to run for ${language}. ` +
           "Please make sure that the default queries are enabled, or you are specifying queries to run."

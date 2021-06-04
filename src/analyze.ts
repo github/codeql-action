@@ -167,10 +167,11 @@ export async function runQueries(
 
     const queries = config.queries[language];
     const packsWithVersion = config.packs[language] || [];
-    if (
-      queries === undefined ||
-      (queries.builtin.length === 0 && queries.custom.length === 0)
-    ) {
+
+    const hasBuiltinQueries = queries?.builtin.length > 0;
+    const hasCustomQueries = queries?.custom.length > 0;
+    const hasPackWithCustomQueries = packsWithVersion.length > 0;
+    if (!hasBuiltinQueries && !hasCustomQueries && !hasPackWithCustomQueries) {
       throw new Error(
         `Unable to analyse ${language} as no queries were selected for this language`
       );
@@ -317,7 +318,7 @@ function packWithVersionToQuerySuiteEntry(
 ): string {
   let text = `- qlpack: ${pack.packName}`;
   if (pack.version) {
-    text += `${"\n"}  version: ${pack.version}`;
+    text += `${"\n"}  version: ${pack.version.format()}`;
   }
   return text;
 }

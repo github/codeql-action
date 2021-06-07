@@ -11,10 +11,13 @@ const pkg = require("../package.json");
 
 setupTests(test);
 
+let pluginStub: sinon.SinonStub;
 let githubStub: sinon.SinonStub;
 
 test.beforeEach(() => {
-  githubStub = sinon.stub(githubUtils, "GitHub");
+  pluginStub = sinon.stub(githubUtils.GitHub, "plugin");
+  githubStub = sinon.stub();
+  pluginStub.returns(githubStub);
   initializeEnvironment(Mode.actions, pkg.version);
 });
 

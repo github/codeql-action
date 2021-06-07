@@ -8,6 +8,7 @@ const tab = "\t".charCodeAt(0);
 const space = " ".charCodeAt(0);
 const lf = "\n".charCodeAt(0);
 const cr = "\r".charCodeAt(0);
+const EOF = 65535;
 const BLOCK_SIZE = 100;
 const MOD = Long.fromInt(37); // L
 
@@ -114,17 +115,13 @@ export async function hash(callback: hashCallback, filepath: string) {
     updateHash(current);
   };
 
-  await new Promise((fulfill) => {
-    const readStream = fs.createReadStream(filepath, "utf8");
-    readStream.on("close", fulfill);
-    readStream.on("end", () => {
-      processCharacter(65535);
-    });
-    readStream.on("data", (data) => {
-      for (let i = 0; i < data.length; ++i)
-        processCharacter(data.charCodeAt(i));
-    });
-  });
+  const readStream = fs.createReadStream(filepath, "utf8");
+  for await (const data of readStream) {
+    for (let i = 0; i < data.length; ++i) {
+      processCharacter(data.charCodeAt(i));
+    }
+  }
+  processCharacter(EOF);
 
   // Flush the remaining lines
   for (let i = 0; i < BLOCK_SIZE; i++) {
@@ -274,10 +271,7 @@ export async function addFingerprints(
         continue;
       }
 
-      if (
-        typeof primaryLocation?.physicalLocation?.region?.startLine ===
-        "undefined"
-      ) {
+      if (primaryLocation?.physicalLocation?.region?.startLine === undefined) {
         // Locations without a line number are unlikely to be source files
         continue;
       }

@@ -124,4 +124,4 @@ jobs:
             --base "$BASE_BRANCH" \
             --title "$PR_TITLE" \
             --body "$PR_BODY" \
-            "$DRAFT"
+            ${DRAFT:+"$DRAFT"} # no quotes around $DRAFT. gh will error out if there is an empty ""

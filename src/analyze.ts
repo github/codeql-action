@@ -322,6 +322,19 @@ export async function runAnalyze(
   return { ...queriesStats };
 }
 
+export async function runCleanup(
+  config: configUtils.Config,
+  cleanupLevel: string,
+  logger: Logger
+): Promise<void> {
+  logger.info("Cleaning up databases...");
+  for (const language of config.languages) {
+    const codeql = getCodeQL(config.codeQLCmd);
+    const databasePath = util.getCodeQLDatabasePath(config, language);
+    await codeql.databaseCleanup(databasePath, cleanupLevel);
+  }
+}
+
 async function injectLinesOfCode(
   sarifFile: string,
   language: Language,

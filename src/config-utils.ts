@@ -127,7 +127,7 @@ export interface Config {
   packs: Packs;
 }
 
-export type Packs = Record<Partial<Language>, PackWithVersion[]>;
+export type Packs = Partial<Record<Language, PackWithVersion[]>>;
 
 export interface PackWithVersion {
   /** qualified name of a package reference */
@@ -1032,8 +1032,8 @@ export function parsePacks(
   packsByLanguage: string[] | Record<string, string[]> | undefined,
   languages: Language[],
   configFile: string
-) {
-  const packs = {} as Packs;
+): Packs {
+  const packs = {};
 
   if (!packsByLanguage) {
     return packs;
@@ -1071,6 +1071,7 @@ function toPackWithVersion(packStr, configFile: string): PackWithVersion {
   if (typeof packStr !== "string") {
     throw new Error(getPacksStrInvalid(packStr, configFile));
   }
+
   const nameWithVersion = packStr.split("@");
   let version: string | undefined;
   if (
@@ -1158,7 +1159,7 @@ export async function initConfig(
   for (const language of config.languages) {
     const hasBuiltinQueries = config.queries[language]?.builtin.length > 0;
     const hasCustomQueries = config.queries[language]?.custom.length > 0;
-    const hasPacks = config.packs[language]?.length > 0;
+    const hasPacks = (config.packs[language]?.length || 0) > 0;
     if (!hasPacks && !hasBuiltinQueries && !hasCustomQueries) {
       throw new Error(
         `Did not detect any queries to run for ${language}. ` +

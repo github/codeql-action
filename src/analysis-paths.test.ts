@@ -3,7 +3,6 @@ import * as path from "path";
 import test from "ava";
 
 import * as analysisPaths from "./analysis-paths";
-import { Packs } from "./config-utils";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -22,7 +21,7 @@ test("emptyPaths", async (t) => {
       codeQLCmd: "",
       gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
       dbLocation: path.resolve(tmpDir, "codeql_databases"),
-      packs: {} as Packs,
+      packs: {},
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
@@ -44,7 +43,7 @@ test("nonEmptyPaths", async (t) => {
       codeQLCmd: "",
       gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
       dbLocation: path.resolve(tmpDir, "codeql_databases"),
-      packs: {} as Packs,
+      packs: {},
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], "path1\npath2");
@@ -70,7 +69,7 @@ test("exclude temp dir", async (t) => {
       codeQLCmd: "",
       gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
       dbLocation: path.resolve(tempDir, "codeql_databases"),
-      packs: {} as Packs,
+      packs: {},
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);

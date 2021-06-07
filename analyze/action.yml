@@ -13,6 +13,10 @@ inputs:
     description: Upload the SARIF file
     required: false
     default: "true"
+  cleanup-level:
+    description: "Level of cleanup to perform on CodeQL databases at the end of the analyze step. This should either be 'none' to skip cleanup, or be a valid argument for the --mode flag of the CodeQL CLI command 'codeql database cleanup' as documented at https://codeql.github.com/docs/codeql-cli/manual/database-cleanup"
+    required: false
+    default: "brutal"
   ram:
     description: Override the amount of memory in MB to be used by CodeQL. By default, almost all the memory of the machine is used.
     required: false
@@ -34,6 +38,9 @@ inputs:
     default: ${{ github.token }}
   matrix:
     default: ${{ toJson(matrix) }}
+outputs:
+  db-locations:
+    description: A map from language to absolute path for each database created by CodeQL.
 runs:
   using: 'node12'
   main: '../lib/analyze-action.js'

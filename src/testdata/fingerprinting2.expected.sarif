@@ -30,9 +30,7 @@
                     "message": {
                         "text": "This header file should contain a header guard to prevent multiple inclusion."
                     },
-                    "partialFingerprints": {
-                        "primaryLocationLineHash": "599c824c91d0f75e:1"
-                    },
+                    "partialFingerprints": {},
                     "ruleId": "cpp/missing-header-guard",
                     "ruleIndex": 0
                 }

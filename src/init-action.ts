@@ -1,9 +1,4 @@
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-
 import * as core from "@actions/core";
-import * as yaml from "js-yaml";
 
 import {
   createStatusReportBase,
@@ -182,28 +177,6 @@ async function run() {
         );
       }
     }
-
-    ////////////////////////////////
-    // TODO This should not happen in the action, we should be able to
-    // generate the default qlconfig from the CLI
-    // DO NOT COMMIT THIS
-    const defaultQlConfig = {
-      registryKind: "docker",
-      registries: [
-        {
-          url: "https://ghcr.io/v2/",
-          packages: "*",
-        },
-      ],
-    };
-
-    fs.mkdirSync(path.join(os.homedir(), ".codeql"));
-    fs.writeFileSync(
-      path.join(os.homedir(), ".codeql", "qlconfig.yml"),
-      yaml.safeDump(defaultQlConfig),
-      "utf8"
-    );
-    ////////////////////////////////
   } catch (e) {
     core.setFailed(e.message);
     console.log(e);

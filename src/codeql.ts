@@ -796,10 +796,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       }).exec();
 
       try {
-        return JSON.parse(output) as PackDownloadOutput;
+        const parsedOutput: PackDownloadOutput = JSON.parse(output);
+        if (
+          Array.isArray(parsedOutput.packs) &&
+          parsedOutput.packs.every((p) => p.name && p.version)
+        ) {
+          return parsedOutput;
+        } else {
+          throw new Error("Unexpected output from pack download");
+        }
       } catch (e) {
         throw new Error(
-          `Attempted to download specified packs but got an error:${"\n"}${output}.`
+          `Attempted to download specified packs but got an error:\n${output}\n${e}`
         );
       }
     },

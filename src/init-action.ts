@@ -1,6 +1,15 @@
 import * as core from "@actions/core";
 
-import * as actionsUtil from "./actions-util";
+import {
+  createStatusReportBase,
+  getOptionalInput,
+  getRequiredInput,
+  getTemporaryDirectory,
+  getToolCacheDirectory,
+  sendStatusReport,
+  StatusReportBase,
+  validateWorkflow,
+} from "./actions-util";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import {
@@ -13,9 +22,18 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { checkGitHubVersionInRange, getGitHubVersion } from "./util";
+import {
+  getRequiredEnvParam,
+  initializeEnvironment,
+  Mode,
+  checkGitHubVersionInRange,
+  getGitHubVersion,
+} from "./util";
 
-interface InitSuccessStatusReport extends actionsUtil.StatusReportBase {
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
+
+interface InitSuccessStatusReport extends StatusReportBase {
   // Comma-separated list of languages that analysis was run for
   // This may be from the workflow file or may be calculated from repository contents
   languages: string;
@@ -40,14 +58,14 @@ async function sendSuccessStatusReport(
   config: configUtils.Config,
   toolsVersion: string
 ) {
-  const statusReportBase = await actionsUtil.createStatusReportBase(
+  const statusReportBase = await createStatusReportBase(
     "init",
     "success",
     startedAt
   );
 
   const languages = config.languages.join(",");
-  const workflowLanguages = actionsUtil.getOptionalInput("languages");
+  const workflowLanguages = getOptionalInput("languages");
   const paths = (config.originalUserInput.paths || []).join(",");
   const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
     ","
@@ -59,7 +77,7 @@ async function sendSuccessStatusReport(
     : "";
 
   const queries: string[] = [];
-  let queriesInput = actionsUtil.getOptionalInput("queries")?.trim();
+  let queriesInput = getOptionalInput("queries")?.trim();
   if (queriesInput === undefined || queriesInput.startsWith("+")) {
     queries.push(
       ...(config.originalUserInput.queries || []).map((q) => q.uses)
@@ -80,37 +98,37 @@ async function sendSuccessStatusReport(
     paths_ignore: pathsIgnore,
     disable_default_queries: disableDefaultQueries,
     queries: queries.join(","),
-    tools_input: actionsUtil.getOptionalInput("tools") || "",
+    tools_input: getOptionalInput("tools") || "",
     tools_resolved_version: toolsVersion,
   };
 
-  await actionsUtil.sendStatusReport(statusReport);
+  await sendStatusReport(statusReport);
 }
 
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
+  initializeEnvironment(Mode.actions, pkg.version);
+
   let config: configUtils.Config;
   let codeql: CodeQL;
   let toolsVersion: string;
 
   const apiDetails = {
-    auth: actionsUtil.getRequiredInput("token"),
-    externalRepoAuth: actionsUtil.getOptionalInput("external-repository-token"),
-    url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+    auth: getRequiredInput("token"),
+    externalRepoAuth: getOptionalInput("external-repository-token"),
+    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
   };
 
   const gitHubVersion = await getGitHubVersion(apiDetails);
-  checkGitHubVersionInRange(gitHubVersion, "actions", logger);
+  checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
   try {
-    actionsUtil.prepareLocalRunEnvironment();
-
-    const workflowErrors = await actionsUtil.validateWorkflow();
+    const workflowErrors = await validateWorkflow();
 
     if (
-      !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase(
+      !(await sendStatusReport(
+        await createStatusReportBase(
           "init",
           "starting",
           startedAt,
@@ -122,11 +140,10 @@ async function run() {
     }
 
     const initCodeQLResult = await initCodeQL(
-      actionsUtil.getOptionalInput("tools"),
+      getOptionalInput("tools"),
       apiDetails,
-      actionsUtil.getTemporaryDirectory(),
-      actionsUtil.getToolCacheDirectory(),
-      "actions",
+      getTemporaryDirectory(),
+      getToolCacheDirectory(),
       gitHubVersion.type,
       logger
     );
@@ -134,15 +151,15 @@ async function run() {
     toolsVersion = initCodeQLResult.toolsVersion;
 
     config = await initConfig(
-      actionsUtil.getOptionalInput("languages"),
-      actionsUtil.getOptionalInput("queries"),
-      actionsUtil.getOptionalInput("config-file"),
-      actionsUtil.getOptionalInput("db-location"),
-      parseRepositoryNwo(actionsUtil.getRequiredEnvParam("GITHUB_REPOSITORY")),
-      actionsUtil.getTemporaryDirectory(),
-      actionsUtil.getRequiredEnvParam("RUNNER_TOOL_CACHE"),
+      getOptionalInput("languages"),
+      getOptionalInput("queries"),
+      getOptionalInput("config-file"),
+      getOptionalInput("db-location"),
+      parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
+      getTemporaryDirectory(),
+      getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
-      actionsUtil.getRequiredEnvParam("GITHUB_WORKSPACE"),
+      getRequiredEnvParam("GITHUB_WORKSPACE"),
       gitHubVersion,
       apiDetails,
       logger
@@ -150,7 +167,7 @@ async function run() {
 
     if (
       config.languages.includes(Language.python) &&
-      actionsUtil.getRequiredInput("setup-python-dependencies") === "true"
+      getRequiredInput("setup-python-dependencies") === "true"
     ) {
       try {
         await installPythonDeps(codeql, logger);
@@ -163,13 +180,8 @@ async function run() {
   } catch (e) {
     core.setFailed(e.message);
     console.log(e);
-    await actionsUtil.sendStatusReport(
-      await actionsUtil.createStatusReportBase(
-        "init",
-        "aborted",
-        startedAt,
-        e.message
-      )
+    await sendStatusReport(
+      await createStatusReportBase("init", "aborted", startedAt, e.message)
     );
     return;
   }
@@ -209,8 +221,8 @@ async function run() {
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);
-    await actionsUtil.sendStatusReport(
-      await actionsUtil.createStatusReportBase(
+    await sendStatusReport(
+      await createStatusReportBase(
         "init",
         "failure",
         startedAt,

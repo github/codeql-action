@@ -13,11 +13,6 @@ import { Language } from "./languages";
 import { Logger } from "./logging";
 
 /**
- * Are we running on actions, or not.
- */
-export type Mode = "actions" | "runner";
-
-/**
  * The URL for github.com.
  */
 export const GITHUB_DOTCOM_URL = "https://github.com";
@@ -38,14 +33,6 @@ export function getExtraOptionsEnvParam(): object {
       `${varName} environment variable is set, but does not contain valid JSON: ${e.message}`
     );
   }
-}
-
-export function isLocalRun(): boolean {
-  return (
-    !!process.env.CODEQL_LOCAL_RUN &&
-    process.env.CODEQL_LOCAL_RUN !== "false" &&
-    process.env.CODEQL_LOCAL_RUN !== "0"
-  );
 }
 
 /**
@@ -225,6 +212,7 @@ export function parseGitHubUrl(inputUrl: string): string {
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
   "CODEQL_ACTION_WARNED_ABOUT_VERSION";
+
 let hasBeenWarnedAboutVersion = false;
 
 export enum GitHubVariant {
@@ -266,8 +254,8 @@ export async function getGitHubVersion(
 
 export function checkGitHubVersionInRange(
   version: GitHubVersion,
-  mode: Mode,
-  logger: Logger
+  logger: Logger,
+  toolName: Mode
 ) {
   if (hasBeenWarnedAboutVersion || version.type !== GitHubVariant.GHES) {
     return;
@@ -278,8 +266,6 @@ export function checkGitHubVersionInRange(
     apiCompatibility.minimumVersion,
     apiCompatibility.maximumVersion
   );
-
-  const toolName = mode === "actions" ? "Action" : "Runner";
 
   if (
     disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_OLD
@@ -296,7 +282,7 @@ export function checkGitHubVersionInRange(
     );
   }
   hasBeenWarnedAboutVersion = true;
-  if (mode === "actions") {
+  if (isActions()) {
     core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
   }
 }
@@ -400,4 +386,95 @@ class ExhaustivityCheckingError extends Error {
  */
 export function assertNever(value: never): never {
   throw new ExhaustivityCheckingError(value);
+}
+
+export enum Mode {
+  actions = "Action",
+  runner = "Runner",
+}
+
+/**
+ * Environment variables to be set by codeql-action and used by the
+ * CLI. These environment variables are relevant for both the runner
+ * and the action.
+ */
+enum EnvVar {
+  /**
+   * The mode of the codeql-action, either 'actions' or 'runner'.
+   */
+  RUN_MODE = "CODEQL_ACTION_RUN_MODE",
+
+  /**
+   * Semver of the codeql-action as specified in package.json.
+   */
+  VERSION = "CODEQL_ACTION_VERSION",
+
+  /**
+   * If set to a truthy value, then the codeql-action might combine SARIF
+   * output from several `interpret-results` runs for the same Language.
+   */
+  FEATURE_SARIF_COMBINE = "CODEQL_ACTION_FEATURE_SARIF_COMBINE",
+
+  /**
+   * If set to the "true" string, then the codeql-action will upload SARIF,
+   * not the cli.
+   */
+  FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
+
+  /**
+   * If set to the "true" string, then the codeql-action is using its
+   * own deprecated and non-standard way of scanning for multiple
+   * languages.
+   */
+  FEATURE_MULTI_LANGUAGE = "CODEQL_ACTION_FEATURE_MULTI_LANGUAGE",
+
+  /**
+   * If set to the "true" string, then the codeql-action is using its
+   * own sandwiched workflow mechanism
+   */
+  FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
+}
+
+export function initializeEnvironment(mode: Mode, version: string) {
+  const exportVar = (name: string, value: string) => {
+    if (mode === Mode.actions) {
+      core.exportVariable(name, value);
+    } else {
+      process.env[name] = value;
+    }
+  };
+
+  exportVar(EnvVar.RUN_MODE, mode);
+  exportVar(EnvVar.VERSION, version);
+  exportVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  exportVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  exportVar(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+  exportVar(EnvVar.FEATURE_SANDWICH, "true");
+}
+
+export function getMode(): Mode {
+  // Make sure we fail fast if the env var is missing. This should
+  // only happen if there is a bug in our code and we neglected
+  // to set the mode early in the process.
+  const mode = getRequiredEnvParam(EnvVar.RUN_MODE);
+
+  if (mode !== Mode.actions && mode !== Mode.runner) {
+    throw new Error(`Unknown mode: ${mode}.`);
+  }
+  return mode;
+}
+
+export function isActions(): boolean {
+  return getMode() === Mode.actions;
+}
+
+/**
+ * Get an environment parameter, but throw an error if it is not set.
+ */
+export function getRequiredEnvParam(paramName: string): string {
+  const value = process.env[paramName];
+  if (value === undefined || value.length === 0) {
+    throw new Error(`${paramName} environment variable must be set`);
+  }
+  return value;
 }

@@ -21,10 +21,17 @@ import {
   getThreadsFlag,
   parseGitHubUrl,
   getGitHubAuth,
+  initializeEnvironment,
+  Mode,
 } from "./util";
 
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
+
 const program = new Command();
-program.version("0.0.1");
+program.version(pkg.version).hook("preAction", () => {
+  initializeEnvironment(Mode.runner, pkg.version);
+});
 
 function getTempDir(userInput: string | undefined): string {
   const tempDir = path.join(userInput || process.cwd(), "codeql-runner");
@@ -150,6 +157,7 @@ program
   )
   .action(async (cmd: InitArgs) => {
     const logger = getRunnerLogger(cmd.debug);
+
     try {
       const tempDir = getTempDir(cmd.tempDir);
       const toolsDir = getToolsDir(cmd.toolsDir);
@@ -172,7 +180,7 @@ program
       };
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
-      checkGitHubVersionInRange(gitHubVersion, "runner", logger);
+      checkGitHubVersionInRange(gitHubVersion, logger, Mode.runner);
 
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
@@ -184,7 +192,6 @@ program
             apiDetails,
             tempDir,
             toolsDir,
-            "runner",
             gitHubVersion.type,
             logger
           )

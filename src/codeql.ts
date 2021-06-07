@@ -101,6 +101,10 @@ export interface CodeQL {
     threadsFlag: string,
     automationDetailsId: string | undefined
   ): Promise<string>;
+  /**
+   * Run 'codeql database cleanup'.
+   */
+  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
 }
 
 export interface ResolveLanguagesOutput {
@@ -144,8 +148,8 @@ function getCodeQLBundleName(): string {
   return `codeql-bundle-${platform}.tar.gz`;
 }
 
-function getCodeQLActionRepository(mode: util.Mode, logger: Logger): string {
-  if (mode !== "actions") {
+export function getCodeQLActionRepository(logger: Logger): string {
+  if (util.isActions()) {
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   } else {
     return getActionsCodeQLActionRepository(logger);
@@ -177,11 +181,10 @@ function getActionsCodeQLActionRepository(logger: Logger): string {
 
 async function getCodeQLBundleDownloadURL(
   apiDetails: api.GitHubApiDetails,
-  mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
 ): Promise<string> {
-  const codeQLActionRepository = getCodeQLActionRepository(mode, logger);
+  const codeQLActionRepository = getCodeQLActionRepository(logger);
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.
     [apiDetails.url, codeQLActionRepository],
@@ -292,7 +295,6 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   toolCacheDir: string,
-  mode: util.Mode,
   variant: util.GitHubVariant,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
@@ -313,7 +315,6 @@ export async function setupCodeQL(
     let codeqlFolder = toolcache.find(
       "CodeQL",
       codeqlURLSemVer,
-      mode,
       toolCacheDir,
       logger
     );
@@ -324,7 +325,6 @@ export async function setupCodeQL(
     if (!codeqlFolder && !codeqlURL && !forceLatest) {
       const codeqlVersions = toolcache.findAllVersions(
         "CodeQL",
-        mode,
         toolCacheDir,
         logger
       );
@@ -332,7 +332,6 @@ export async function setupCodeQL(
         const tmpCodeqlFolder = toolcache.find(
           "CodeQL",
           codeqlVersions[0],
-          mode,
           toolCacheDir,
           logger
         );
@@ -351,7 +350,6 @@ export async function setupCodeQL(
       if (!codeqlURL) {
         codeqlURL = await getCodeQLBundleDownloadURL(
           apiDetails,
-          mode,
           variant,
           logger
         );
@@ -386,7 +384,6 @@ export async function setupCodeQL(
 
       const codeqlExtracted = await toolcache.extractTar(
         codeqlPath,
-        mode,
         tempDir,
         logger
       );
@@ -394,7 +391,6 @@ export async function setupCodeQL(
         codeqlExtracted,
         "CodeQL",
         codeqlURLSemVer,
-        mode,
         toolCacheDir,
         logger
       );
@@ -489,6 +485,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     databaseAnalyze: resolveFunction(partialCodeql, "databaseAnalyze"),
+    databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
   };
   return cachedCodeQL;
 }
@@ -730,6 +727,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "--format=sarif-latest",
         "--sarif-multicause-markdown",
+        "--sarif-group-rules-by-pack",
         `--output=${sarifFile}`,
         addSnippetsFlag,
         // Enable progress verbosity so we log each query as it's interpreted. This aids debugging
@@ -754,6 +752,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         },
       }).exec();
       return output;
+    },
+    async databaseCleanup(
+      databasePath: string,
+      cleanupLevel: string
+    ): Promise<void> {
+      const args = [
+        "database",
+        "cleanup",
+        databasePath,
+        `--mode=${cleanupLevel}`,
+      ];
+      await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
 }

@@ -76,23 +76,6 @@ test("getThreadsFlag() throws if the threads input is not an integer", (t) => {
   t.throws(() => util.getThreadsFlag("hello!", getRunnerLogger(true)));
 });
 
-test("isLocalRun() runs correctly", (t) => {
-  process.env.CODEQL_LOCAL_RUN = "";
-  t.assert(!util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = "false";
-  t.assert(!util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = "0";
-  t.assert(!util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = "true";
-  t.assert(util.isLocalRun());
-
-  process.env.CODEQL_LOCAL_RUN = "hucairz";
-  t.assert(util.isLocalRun());
-});
-
 test("getExtraOptionsEnvParam() succeeds on valid JSON with invalid options (for now)", (t) => {
   const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
 

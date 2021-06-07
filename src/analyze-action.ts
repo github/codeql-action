@@ -8,11 +8,15 @@ import {
   runAnalyze,
   CodeQLAnalysisError,
   QueriesStatusReport,
+  runCleanup,
 } from "./analyze";
 import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
@@ -49,8 +53,9 @@ async function run() {
   const startedAt = new Date();
   let stats: AnalysisStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  util.initializeEnvironment(util.Mode.actions, pkg.version);
+
   try {
-    actionsUtil.prepareLocalRunEnvironment();
     if (
       !(await actionsUtil.sendStatusReport(
         await actionsUtil.createStatusReportBase(
@@ -72,7 +77,7 @@ async function run() {
 
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),
-      url: actionsUtil.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      url: util.getRequiredEnvParam("GITHUB_SERVER_URL"),
     };
     const outputDir = actionsUtil.getRequiredInput("output");
     const queriesStats = await runAnalyze(
@@ -84,6 +89,20 @@ async function run() {
       config,
       logger
     );
+
+    if (actionsUtil.getOptionalInput("cleanup-level") !== "none") {
+      await runCleanup(
+        config,
+        actionsUtil.getOptionalInput("cleanup-level") || "brutal",
+        logger
+      );
+    }
+
+    const dbLocations: { [lang: string]: string } = {};
+    for (const language of config.languages) {
+      dbLocations[language] = util.getCodeQLDatabasePath(config, language);
+    }
+    core.setOutput("db-locations", dbLocations);
 
     if (actionsUtil.getRequiredInput("upload") === "true") {
       const uploadStats = await upload_lib.uploadFromActions(

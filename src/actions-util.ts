@@ -8,7 +8,12 @@ import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
-import { GITHUB_DOTCOM_URL, isLocalRun } from "./util";
+import { getRequiredEnvParam, GITHUB_DOTCOM_URL } from "./util";
+
+/**
+ * The utils in this module are meant to be run inside of the action only.
+ * Code paths from the runner should not enter this module.
+ */
 
 /**
  * Wrapper around core.getInput for inputs that always have a value.
@@ -33,18 +38,6 @@ export function getOptionalInput(name: string): string | undefined {
   return value.length > 0 ? value : undefined;
 }
 
-/**
- * Get an environment parameter, but throw an error if it is not set.
- */
-export function getRequiredEnvParam(paramName: string): string {
-  const value = process.env[paramName];
-  if (value === undefined || value.length === 0) {
-    throw new Error(`${paramName} environment variable must be set`);
-  }
-  core.debug(`${paramName}=${value}`);
-  return value;
-}
-
 export function getTemporaryDirectory(): string {
   const value = process.env["CODEQL_ACTION_TEMP"];
   return value !== undefined && value !== ""
@@ -57,26 +50,6 @@ export function getToolCacheDirectory(): string {
   return value !== undefined && value !== ""
     ? value
     : getRequiredEnvParam("RUNNER_TOOL_CACHE");
-}
-
-/**
- * Ensures all required environment variables are set in the context of a local run.
- */
-export function prepareLocalRunEnvironment() {
-  if (!isLocalRun()) {
-    return;
-  }
-
-  core.debug("Action is running locally.");
-  if (!process.env.GITHUB_JOB) {
-    core.exportVariable("GITHUB_JOB", "UNKNOWN-JOB");
-  }
-  if (!process.env.CODEQL_ACTION_ANALYSIS_KEY) {
-    core.exportVariable(
-      "CODEQL_ACTION_ANALYSIS_KEY",
-      `LOCAL-RUN:${process.env.GITHUB_JOB}`
-    );
-  }
 }
 
 /**
@@ -366,10 +339,6 @@ export async function getWorkflow(): Promise<Workflow> {
  * Get the path of the currently executing workflow.
  */
 async function getWorkflowPath(): Promise<string> {
-  if (isLocalRun()) {
-    return getRequiredEnvParam("WORKFLOW_PATH");
-  }
-
   const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
@@ -637,11 +606,6 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S
 ): Promise<boolean> {
-  if (isLocalRun()) {
-    core.debug("Not sending status report because this is a local run");
-    return true;
-  }
-
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
 

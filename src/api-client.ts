@@ -1,10 +1,14 @@
 import * as path from "path";
 
 import * as githubUtils from "@actions/github/lib/utils";
+import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
-import { getRequiredEnvParam, getRequiredInput } from "./actions-util";
-import { isLocalRun } from "./util";
+import { getRequiredInput } from "./actions-util";
+import { getMode, getRequiredEnvParam } from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 export enum DisallowedAPIVersionReason {
   ACTION_TOO_OLD,
@@ -26,18 +30,15 @@ export interface GitHubApiExternalRepoDetails {
 
 export const getApiClient = function (
   apiDetails: GitHubApiCombinedDetails,
-  { allowLocalRun = false, allowExternal = false } = {}
+  { allowExternal = false } = {}
 ) {
-  if (isLocalRun() && !allowLocalRun) {
-    throw new Error("Invalid API call in local run");
-  }
-
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
-  return new githubUtils.GitHub(
+  const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+  return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: getApiUrl(apiDetails.url),
-      userAgent: "CodeQL Action",
+      userAgent: `CodeQL-${getMode()}/${pkg.version}`,
       log: consoleLogLevel({ level: "debug" }),
     })
   );
@@ -60,11 +61,11 @@ function getApiUrl(githubUrl: string): string {
 // Temporary function to aid in the transition to running on and off of github actions.
 // Once all code has been converted this function should be removed or made canonical
 // and called only from the action entrypoints.
-export function getActionsApiClient(allowLocalRun = false) {
+export function getActionsApiClient() {
   const apiDetails = {
     auth: getRequiredInput("token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
   };
 
-  return getApiClient(apiDetails, { allowLocalRun });
+  return getApiClient(apiDetails);
 }

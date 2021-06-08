@@ -82,6 +82,50 @@ jobs:
           exit 1
         fi
 
+  # Packaging test that runs against a javascript database
+  test-packaging-javascript:
+    needs: [check-js, check-node-modules]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - uses: ./../action/init
+      with:
+        db-location: "${{ runner.temp }}/customDbLocation"
+        config-file: ".github/codeql/codeql-config-packaging.yml"
+        languages: javascript
+        # TODO: this is temporary until we have a release that includes the latest packaging work.
+        tools: https://github.com/dsp-testing/aeisenberg-codeql-action-packaging/releases/download/codeql-bundle-20210606/codeql-bundle-linux64.tar.gz
+
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      with:
+        output: "${{ runner.temp }}/results"
+      env:
+        TEST_MODE: true
+    - name: Assert Results
+      run: |
+        cd "$RUNNER_TEMP/results"
+        # We should have 3 hits from these rules
+        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+
+        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+        RULES="$(cat javascript-custom.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+        echo "Found matching rules '$RULES'"
+        if [ "$RULES" != "$EXPECTED_RULES" ]; then
+          echo "Did not match expected rules '$EXPECTED_RULES'."
+          exit 1
+        fi
+
   # Identify the CodeQL tool versions to integration test against.
   check-codeql-versions:
     needs: [check-js, check-node-modules]

@@ -176,14 +176,13 @@ export async function runQueries(
   );
 
   for (const language of config.languages) {
-    logger.startGroup(`Running queries for ${language}`);
-
     const queries = config.queries[language];
     const packsWithVersion = config.packs[language] || [];
 
     const hasBuiltinQueries = queries?.builtin.length > 0;
     const hasCustomQueries = queries?.custom.length > 0;
     const hasPackWithCustomQueries = packsWithVersion.length > 0;
+
     if (!hasBuiltinQueries && !hasCustomQueries && !hasPackWithCustomQueries) {
       throw new Error(
         `Unable to analyse ${language} as no queries were selected for this language`
@@ -192,6 +191,8 @@ export async function runQueries(
 
     try {
       if (hasPackWithCustomQueries) {
+        logger.startGroup(`Downloading custom packs for ${language}`);
+
         const codeql = getCodeQL(config.codeQLCmd);
         const results = await codeql.packDownload(packsWithVersion);
         logger.info(
@@ -199,8 +200,11 @@ export async function runQueries(
             .map((r) => `${r.name}@${r.version || "latest"}`)
             .join(", ")}`
         );
+
+        logger.endGroup();
       }
 
+      logger.startGroup(`Running queries for ${language}`);
       const querySuitePaths: string[] = [];
       if (queries["builtin"].length > 0) {
         const startTimeBuiltIn = new Date().getTime();
@@ -419,7 +423,7 @@ function printLinesOfCodeSummary(
 ) {
   if (language in lineCounts) {
     logger.info(
-      `Counted ${lineCounts[language]} lines of code for ${language} as a baseline.`
+      `Counted a baseline of ${lineCounts[language]} lines of code for ${language}.`
     );
   }
 }

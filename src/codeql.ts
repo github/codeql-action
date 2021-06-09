@@ -665,6 +665,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         [
           "database",
           "finalize",
+          "--finalize-dataset",
           threadsFlag,
           ...getExtraOptionsFromEnv(["database", "finalize"]),
           databasePath,

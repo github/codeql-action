@@ -65,20 +65,81 @@ jobs:
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
+      id: analysis
       env:
         TEST_MODE: true
     - run: |
-        cd "$RUNNER_TEMP/customDbLocation"
-        # List all directories as there will be precisely one directory per database
-        # but there may be other files in this directory such as query suites.
-        if [ "$(ls -d */ | wc -l)" != 6 ] || \
-           [[ ! -d cpp ]] || \
-           [[ ! -d csharp ]] || \
-           [[ ! -d go ]] || \
-           [[ ! -d java ]] || \
-           [[ ! -d javascript ]] || \
-           [[ ! -d python ]]; then
-          echo "Did not find expected number of databases. Database dir contains: $(ls)"
+        CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
+        if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+          echo "Did not create a database for CPP, or created it in the wrong location."
+          exit 1
+        fi
+        CSHARP_DB=${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
+        if [[ ! -d $CSHARP_DB ]] || [[ ! $CSHARP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+          echo "Did not create a database for C Sharp, or created it in the wrong location."
+          exit 1
+        fi
+        GO_DB=${{ fromJson(steps.analysis.outputs.db-locations).go }}
+        if [[ ! -d $GO_DB ]] || [[ ! $GO_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+          echo "Did not create a database for Go, or created it in the wrong location."
+          exit 1
+        fi
+        JAVA_DB=${{ fromJson(steps.analysis.outputs.db-locations).java }}
+        if [[ ! -d $JAVA_DB ]] || [[ ! $JAVA_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+          echo "Did not create a database for Java, or created it in the wrong location."
+          exit 1
+        fi
+        JAVASCRIPT_DB=${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
+        if [[ ! -d $JAVASCRIPT_DB ]] || [[ ! $JAVASCRIPT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+          echo "Did not create a database for Javascript, or created it in the wrong location."
+          exit 1
+        fi
+        PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
+        if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+          echo "Did not create a database for Python, or created it in the wrong location."
+          exit 1
+        fi
+
+  # Packaging test that runs against a javascript database
+  test-packaging-javascript:
+    needs: [check-js, check-node-modules]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - uses: ./../action/init
+      with:
+        config-file: ".github/codeql/codeql-config-packaging.yml"
+        languages: javascript
+        # TODO: this is temporary until we have a release that includes the latest packaging work.
+        tools: https://github.com/dsp-testing/aeisenberg-codeql-action-packaging/releases/download/codeql-bundle-20210606/codeql-bundle-linux64.tar.gz
+
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      with:
+        output: "${{ runner.temp }}/results"
+      env:
+        TEST_MODE: true
+    - name: Assert Results
+      run: |
+        cd "$RUNNER_TEMP/results"
+        # We should have 3 hits from these rules
+        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+
+        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+        RULES="$(cat javascript-custom.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+        echo "Found matching rules '$RULES'"
+        if [ "$RULES" != "$EXPECTED_RULES" ]; then
+          echo "Did not match expected rules '$EXPECTED_RULES'."
           exit 1
         fi
 

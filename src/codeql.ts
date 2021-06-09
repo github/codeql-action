@@ -13,6 +13,7 @@ import { v4 as uuidV4 } from "uuid";
 
 import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
+import { PackWithVersion } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
 import { Language } from "./languages";
@@ -88,15 +89,33 @@ export interface CodeQL {
     queries: string[],
     extraSearchPath: string | undefined
   ): Promise<ResolveQueriesOutput>;
+
   /**
-   * Run 'codeql database analyze'.
+   * Run 'codeql pack download'.
    */
-  databaseAnalyze(
+  packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput>;
+
+  /**
+   * Run 'codeql database cleanup'.
+   */
+  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
+  /**
+   * Run 'codeql database run-queries'.
+   */
+  databaseRunQueries(
     databasePath: string,
-    sarifFile: string,
     extraSearchPath: string | undefined,
-    querySuite: string,
+    querySuitePath: string,
     memoryFlag: string,
+    threadsFlag: string
+  ): Promise<void>;
+  /**
+   * Run 'codeql database interpret-results'.
+   */
+  databaseInterpretResults(
+    databasePath: string,
+    querySuitePaths: string[],
+    sarifFile: string,
     addSnippetsFlag: string,
     threadsFlag: string,
     automationDetailsId: string | undefined
@@ -119,6 +138,17 @@ export interface ResolveQueriesOutput {
   multipleDeclaredLanguages: {
     [queryPath: string]: {};
   };
+}
+
+export interface PackDownloadOutput {
+  packs: PackDownloadItem[];
+}
+
+interface PackDownloadItem {
+  name: string;
+  version: string;
+  packDir: string;
+  installResult: string;
 }
 
 /**
@@ -480,7 +510,13 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
-    databaseAnalyze: resolveFunction(partialCodeql, "databaseAnalyze"),
+    packDownload: resolveFunction(partialCodeql, "packDownload"),
+    databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
+    databaseRunQueries: resolveFunction(partialCodeql, "databaseRunQueries"),
+    databaseInterpretResults: resolveFunction(
+      partialCodeql,
+      "databaseInterpretResults"
+    ),
   };
   return cachedCodeQL;
 }
@@ -505,7 +541,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       return cmd;
     },
     async printVersion() {
-      await new toolrunner.ToolRunner(cmd, ["version", "--format=json"]).exec();
+      await runTool(cmd, ["version", "--format=json"]);
     },
     async getTracerEnv(databasePath: string) {
       // Write tracer-env.js to a temp location.
@@ -546,7 +582,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       // _and_ is present in the latest supported CLI release.)
       const envFile = path.resolve(databasePath, "working", "env.tmp");
 
-      await new toolrunner.ToolRunner(cmd, [
+      await runTool(cmd, [
         "database",
         "trace-command",
         databasePath,
@@ -554,7 +590,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         process.execPath,
         tracerEnvJs,
         envFile,
-      ]).exec();
+      ]);
       return JSON.parse(fs.readFileSync(envFile, "utf-8"));
     },
     async databaseInit(
@@ -562,14 +598,14 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       language: Language,
       sourceRoot: string
     ) {
-      await new toolrunner.ToolRunner(cmd, [
+      await runTool(cmd, [
         "database",
         "init",
         databasePath,
         `--language=${language}`,
         `--source-root=${sourceRoot}`,
         ...getExtraOptionsFromEnv(["database", "init"]),
-      ]).exec();
+      ]);
     },
     async runAutobuild(language: Language) {
       const cmdName =
@@ -593,7 +629,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "-Dmaven.wagon.http.pool=false",
       ].join(" ");
 
-      await new toolrunner.ToolRunner(autobuildCmd).exec();
+      await runTool(autobuildCmd);
     },
     async extractScannedLanguage(databasePath: string, language: Language) {
       // Get extractor location
@@ -648,6 +684,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         [
           "database",
           "finalize",
+          "--finalize-dataset",
           threadsFlag,
           ...getExtraOptionsFromEnv(["database", "finalize"]),
           databasePath,
@@ -657,14 +694,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     },
     async resolveLanguages() {
       const codeqlArgs = ["resolve", "languages", "--format=json"];
-      let output = "";
-      await new toolrunner.ToolRunner(cmd, codeqlArgs, {
-        listeners: {
-          stdout: (data: Buffer) => {
-            output += data.toString();
-          },
-        },
-      }).exec();
+      const output = await runTool(cmd, codeqlArgs);
 
       try {
         return JSON.parse(output);
@@ -688,14 +718,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      let output = "";
-      await new toolrunner.ToolRunner(cmd, codeqlArgs, {
-        listeners: {
-          stdout: (data: Buffer) => {
-            output += data.toString();
-          },
-        },
-      }).exec();
+      const output = await runTool(cmd, codeqlArgs);
 
       try {
         return JSON.parse(output);
@@ -703,53 +726,115 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
       }
     },
-    async databaseAnalyze(
+    async databaseRunQueries(
       databasePath: string,
-      sarifFile: string,
       extraSearchPath: string | undefined,
-      querySuite: string,
+      querySuitePath: string,
       memoryFlag: string,
-      addSnippetsFlag: string,
-      threadsFlag: string,
-      automationDetailsId: string | undefined
-    ): Promise<string> {
-      const args = [
+      threadsFlag: string
+    ): Promise<void> {
+      const codeqlArgs = [
         "database",
-        "analyze",
+        "run-queries",
         memoryFlag,
         threadsFlag,
         databasePath,
         "--min-disk-free=1024", // Try to leave at least 1GB free
-        "--format=sarif-latest",
-        "--sarif-multicause-markdown",
-        `--output=${sarifFile}`,
-        addSnippetsFlag,
-        // Enable progress verbosity so we log each query as it's interpreted. This aids debugging
-        // when interpretation takes a while for one of the queries being analyzed.
         "-v",
-        ...getExtraOptionsFromEnv(["database", "analyze"]),
+        ...getExtraOptionsFromEnv(["database", "run-queries"]),
       ];
       if (extraSearchPath !== undefined) {
-        args.push("--additional-packs", extraSearchPath);
+        codeqlArgs.push("--additional-packs", extraSearchPath);
       }
+      codeqlArgs.push(querySuitePath);
+      await runTool(cmd, codeqlArgs);
+    },
+    async databaseInterpretResults(
+      databasePath: string,
+      querySuitePaths: string[],
+      sarifFile: string,
+      addSnippetsFlag: string,
+      threadsFlag: string,
+      automationDetailsId: string | undefined
+    ): Promise<string> {
+      const codeqlArgs = [
+        "database",
+        "interpret-results",
+        threadsFlag,
+        "--format=sarif-latest",
+        "--print-metrics-summary",
+        "--sarif-group-rules-by-pack",
+        "-v",
+        `--output=${sarifFile}`,
+        addSnippetsFlag,
+        ...getExtraOptionsFromEnv(["database", "interpret-results"]),
+      ];
       if (automationDetailsId !== undefined) {
-        args.push("--sarif-category", automationDetailsId);
+        codeqlArgs.push("--sarif-category", automationDetailsId);
       }
-      args.push(querySuite);
+      codeqlArgs.push(databasePath, ...querySuitePaths);
       // capture stdout, which contains analysis summaries
-      let output = "";
-      await new toolrunner.ToolRunner(cmd, args, {
-        listeners: {
-          stdout: (data: Buffer) => {
-            output += data.toString("utf8");
-          },
-        },
-      }).exec();
-      return output;
+      return await runTool(cmd, codeqlArgs);
+    },
+
+    /**
+     * Download specified packs into the package cache. If the specified
+     * package and version already exists (e.g., from a previous analysis run),
+     * then it is not downloaded again (unless the extra option `--force` is
+     * specified).
+     *
+     * If no version is specified, then the latest version is
+     * downloaded. The check to determine what the latest version is is done
+     * each time this package is requested.
+     */
+    async packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput> {
+      const codeqlArgs = [
+        "pack",
+        "download",
+        "--format=json",
+        ...getExtraOptionsFromEnv(["pack", "download"]),
+        ...packs.map(packWithVersionToString),
+      ];
+
+      const output = await runTool(cmd, codeqlArgs);
+
+      try {
+        const parsedOutput: PackDownloadOutput = JSON.parse(output);
+        if (
+          Array.isArray(parsedOutput.packs) &&
+          // TODO PackDownloadOutput will not include the version if it is not specified
+          // in the input. The version is always the latest version available.
+          // It should be added to the output, but this requires a CLI change
+          parsedOutput.packs.every((p) => p.name /* && p.version */)
+        ) {
+          return parsedOutput;
+        } else {
+          throw new Error("Unexpected output from pack download");
+        }
+      } catch (e) {
+        throw new Error(
+          `Attempted to download specified packs but got an error:\n${output}\n${e}`
+        );
+      }
+    },
+    async databaseCleanup(
+      databasePath: string,
+      cleanupLevel: string
+    ): Promise<void> {
+      const codeqlArgs = [
+        "database",
+        "cleanup",
+        databasePath,
+        `--mode=${cleanupLevel}`,
+      ];
+      await runTool(cmd, codeqlArgs);
     },
   };
 }
 
+function packWithVersionToString(pack: PackWithVersion): string {
+  return pack.version ? `${pack.packName}@${pack.version}` : pack.packName;
+}
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
  */
@@ -808,4 +893,16 @@ export function getExtraOptions(
           pathInfo.concat(paths[0])
         );
   return all.concat(specific);
+}
+
+async function runTool(cmd: string, args: string[] = []) {
+  let output = "";
+  await new toolrunner.ToolRunner(cmd, args, {
+    listeners: {
+      stdout: (data: Buffer) => {
+        output += data.toString();
+      },
+    },
+  }).exec();
+  return output;
 }

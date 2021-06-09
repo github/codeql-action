@@ -136,7 +136,7 @@ jobs:
         EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
 
         # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-        RULES="$(cat javascript-custom.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
         echo "Found matching rules '$RULES'"
         if [ "$RULES" != "$EXPECTED_RULES" ]; then
           echo "Did not match expected rules '$EXPECTED_RULES'."

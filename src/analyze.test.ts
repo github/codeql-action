@@ -136,13 +136,31 @@ test("status report fields and search path setting", async (t) => {
         getRunnerLogger(true)
       );
       const hasPacks = language in packs;
-      t.deepEqual(Object.keys(builtinStatusReport).length, hasPacks ? 2 : 1);
-      t.true(
-        `analyze_builtin_queries_${language}_duration_ms` in builtinStatusReport
-      );
-      t.true(
-        `interpret_results_${language}_duration_ms` in builtinStatusReport
-      );
+      const statusReportKeys = Object.keys(builtinStatusReport).sort();
+      if (hasPacks) {
+        t.deepEqual(statusReportKeys.length, 3, statusReportKeys.toString());
+        t.deepEqual(
+          statusReportKeys[0],
+          `analyze_builtin_queries_${language}_duration_ms`
+        );
+        t.deepEqual(
+          statusReportKeys[1],
+          `analyze_custom_queries_${language}_duration_ms`
+        );
+        t.deepEqual(
+          statusReportKeys[2],
+          `interpret_results_${language}_duration_ms`
+        );
+      } else {
+        t.deepEqual(
+          statusReportKeys[0],
+          `analyze_builtin_queries_${language}_duration_ms`
+        );
+        t.deepEqual(
+          statusReportKeys[1],
+          `interpret_results_${language}_duration_ms`
+        );
+      }
 
       config.queries[language] = {
         builtin: [],

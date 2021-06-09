@@ -1316,7 +1316,7 @@ test("path sanitisation", (t) => {
  */
 function parsePacksMacro(
   t: ExecutionContext<unknown>,
-  packsByLanguage,
+  packsByLanguage: string[] | Record<string, string[]>,
   languages: Language[],
   expected
 ) {
@@ -1362,7 +1362,7 @@ function invalidPackNameMacro(t: ExecutionContext<unknown>, name: string) {
 invalidPackNameMacro.title = (_: string, arg: string) =>
   `Invalid pack string: ${arg}`;
 
-test("no packs", parsePacksMacro, undefined, [], {});
+test("no packs", parsePacksMacro, {}, [], {});
 test("two packs", parsePacksMacro, ["a/b", "c/d@1.2.3"], [Language.cpp], {
   [Language.cpp]: [
     { packName: "a/b", version: undefined },

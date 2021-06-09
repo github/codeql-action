@@ -332,12 +332,13 @@ export async function runCleanup(
   cleanupLevel: string,
   logger: Logger
 ): Promise<void> {
-  logger.info("Cleaning up databases...");
+  logger.startGroup("Cleaning up databases");
   for (const language of config.languages) {
     const codeql = getCodeQL(config.codeQLCmd);
     const databasePath = util.getCodeQLDatabasePath(config, language);
     await codeql.databaseCleanup(databasePath, cleanupLevel);
   }
+  logger.endGroup();
 }
 
 async function injectLinesOfCode(

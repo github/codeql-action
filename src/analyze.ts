@@ -357,10 +357,8 @@ export async function runAnalyze(
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  logger.info("Finalizing database creation");
   await finalizeDatabaseCreation(config, threadsFlag, logger);
 
-  logger.info("Analyzing database");
   const queriesStats = await runQueries(
     outputDir,
     memoryFlag,

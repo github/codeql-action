@@ -999,7 +999,11 @@ async function loadConfig(
     }
   }
 
-  const packs = parsePacks(parsedYAML[PACKS_PROPERTY], languages, configFile);
+  const packs = parsePacks(
+    parsedYAML[PACKS_PROPERTY] ?? {},
+    languages,
+    configFile
+  );
 
   return {
     languages,
@@ -1029,15 +1033,11 @@ const PACK_IDENTIFIER_PATTERN = (function () {
 
 // Exported for testing
 export function parsePacks(
-  packsByLanguage: string[] | Record<string, string[]> | undefined,
+  packsByLanguage: string[] | Record<string, string[]>,
   languages: Language[],
   configFile: string
 ): Packs {
   const packs = {};
-
-  if (!packsByLanguage) {
-    return packs;
-  }
 
   if (Array.isArray(packsByLanguage)) {
     if (languages.length === 1) {

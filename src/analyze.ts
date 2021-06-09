@@ -24,34 +24,48 @@ export class CodeQLAnalysisError extends Error {
 }
 
 export interface QueriesStatusReport {
-  // Time taken in ms to analyze builtin queries for cpp (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for cpp (or undefined if this language was not analyzed)
   analyze_builtin_queries_cpp_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for csharp (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for csharp (or undefined if this language was not analyzed)
   analyze_builtin_queries_csharp_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for go (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for go (or undefined if this language was not analyzed)
   analyze_builtin_queries_go_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for java (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for java (or undefined if this language was not analyzed)
   analyze_builtin_queries_java_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for javascript (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for javascript (or undefined if this language was not analyzed)
   analyze_builtin_queries_javascript_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for python (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for python (or undefined if this language was not analyzed)
   analyze_builtin_queries_python_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for ruby (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for ruby (or undefined if this language was not analyzed)
   analyze_builtin_queries_ruby_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for cpp (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for cpp (or undefined if this language was not analyzed)
   analyze_custom_queries_cpp_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for csharp (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for csharp (or undefined if this language was not analyzed)
   analyze_custom_queries_csharp_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for go (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for go (or undefined if this language was not analyzed)
   analyze_custom_queries_go_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for java (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for java (or undefined if this language was not analyzed)
   analyze_custom_queries_java_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for javascript (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for javascript (or undefined if this language was not analyzed)
   analyze_custom_queries_javascript_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for python (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for python (or undefined if this language was not analyzed)
   analyze_custom_queries_python_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for ruby (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for ruby (or undefined if this language was not analyzed)
   analyze_custom_queries_ruby_duration_ms?: number;
+  // Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed)
+  interpret_results_cpp_duration_ms?: number;
+  // Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed)
+  interpret_results_csharp_duration_ms?: number;
+  // Time taken in ms to interpret results for go (or undefined if this language was not analyzed)
+  interpret_results_go_duration_ms?: number;
+  // Time taken in ms to interpret results for java (or undefined if this language was not analyzed)
+  interpret_results_java_duration_ms?: number;
+  // Time taken in ms to interpret results for javascript (or undefined if this language was not analyzed)
+  interpret_results_javascript_duration_ms?: number;
+  // Time taken in ms to interpret results for python (or undefined if this language was not analyzed)
+  interpret_results_python_duration_ms?: number;
+  // Time taken in ms to interpret results for ruby (or undefined if this language was not analyzed)
+  interpret_results_ruby_duration_ms?: number;
   // Name of language that errored during analysis (or undefined if no language failed)
   analyze_failure_language?: string;
 }

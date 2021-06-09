@@ -116,7 +116,6 @@ jobs:
         mv ../action/.github/workflows .github
     - uses: ./../action/init
       with:
-        db-location: "${{ runner.temp }}/customDbLocation"
         config-file: ".github/codeql/codeql-config-packaging.yml"
         languages: javascript
         # TODO: this is temporary until we have a release that includes the latest packaging work.

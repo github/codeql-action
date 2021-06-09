@@ -10,7 +10,6 @@ import { countLoc, getIdPrefix } from "./count-loc";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
-import { combineSarifFiles } from "./upload-lib";
 import * as util from "./util";
 
 export class CodeQLAnalysisError extends Error {
@@ -25,34 +24,48 @@ export class CodeQLAnalysisError extends Error {
 }
 
 export interface QueriesStatusReport {
-  // Time taken in ms to analyze builtin queries for cpp (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for cpp (or undefined if this language was not analyzed)
   analyze_builtin_queries_cpp_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for csharp (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for csharp (or undefined if this language was not analyzed)
   analyze_builtin_queries_csharp_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for go (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for go (or undefined if this language was not analyzed)
   analyze_builtin_queries_go_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for java (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for java (or undefined if this language was not analyzed)
   analyze_builtin_queries_java_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for javascript (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for javascript (or undefined if this language was not analyzed)
   analyze_builtin_queries_javascript_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for python (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for python (or undefined if this language was not analyzed)
   analyze_builtin_queries_python_duration_ms?: number;
-  // Time taken in ms to analyze builtin queries for ruby (or undefined if this language was not analyzed)
+  // Time taken in ms to run builtin queries for ruby (or undefined if this language was not analyzed)
   analyze_builtin_queries_ruby_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for cpp (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for cpp (or undefined if this language was not analyzed)
   analyze_custom_queries_cpp_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for csharp (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for csharp (or undefined if this language was not analyzed)
   analyze_custom_queries_csharp_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for go (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for go (or undefined if this language was not analyzed)
   analyze_custom_queries_go_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for java (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for java (or undefined if this language was not analyzed)
   analyze_custom_queries_java_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for javascript (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for javascript (or undefined if this language was not analyzed)
   analyze_custom_queries_javascript_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for python (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for python (or undefined if this language was not analyzed)
   analyze_custom_queries_python_duration_ms?: number;
-  // Time taken in ms to analyze custom queries for ruby (or undefined if this language was not analyzed)
+  // Time taken in ms to run custom queries for ruby (or undefined if this language was not analyzed)
   analyze_custom_queries_ruby_duration_ms?: number;
+  // Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed)
+  interpret_results_cpp_duration_ms?: number;
+  // Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed)
+  interpret_results_csharp_duration_ms?: number;
+  // Time taken in ms to interpret results for go (or undefined if this language was not analyzed)
+  interpret_results_go_duration_ms?: number;
+  // Time taken in ms to interpret results for java (or undefined if this language was not analyzed)
+  interpret_results_java_duration_ms?: number;
+  // Time taken in ms to interpret results for javascript (or undefined if this language was not analyzed)
+  interpret_results_javascript_duration_ms?: number;
+  // Time taken in ms to interpret results for python (or undefined if this language was not analyzed)
+  interpret_results_python_duration_ms?: number;
+  // Time taken in ms to interpret results for ruby (or undefined if this language was not analyzed)
+  interpret_results_ruby_duration_ms?: number;
   // Name of language that errored during analysis (or undefined if no language failed)
   analyze_failure_language?: string;
 }
@@ -163,86 +176,97 @@ export async function runQueries(
   );
 
   for (const language of config.languages) {
-    logger.startGroup(`Analyzing ${language}`);
-
     const queries = config.queries[language];
-    if (
-      queries === undefined ||
-      (queries.builtin.length === 0 && queries.custom.length === 0)
-    ) {
+    const packsWithVersion = config.packs[language] || [];
+
+    const hasBuiltinQueries = queries?.builtin.length > 0;
+    const hasCustomQueries = queries?.custom.length > 0;
+    const hasPackWithCustomQueries = packsWithVersion.length > 0;
+
+    if (!hasBuiltinQueries && !hasCustomQueries && !hasPackWithCustomQueries) {
       throw new Error(
         `Unable to analyse ${language} as no queries were selected for this language`
       );
     }
 
     try {
-      let analysisSummaryBuiltIn = "";
-      const customAnalysisSummaries: string[] = [];
+      if (hasPackWithCustomQueries) {
+        logger.startGroup(`Downloading custom packs for ${language}`);
+
+        const codeql = getCodeQL(config.codeQLCmd);
+        const results = await codeql.packDownload(packsWithVersion);
+        logger.info(
+          `Downloaded packs: ${results.packs
+            .map((r) => `${r.name}@${r.version || "latest"}`)
+            .join(", ")}`
+        );
+
+        logger.endGroup();
+      }
+
+      logger.startGroup(`Running queries for ${language}`);
+      const querySuitePaths: string[] = [];
       if (queries["builtin"].length > 0) {
         const startTimeBuiltIn = new Date().getTime();
-        const { sarifFile, stdout } = await runQueryGroup(
-          language,
-          "builtin",
-          queries["builtin"],
-          sarifFolder,
-          undefined
+        querySuitePaths.push(
+          await runQueryGroup(
+            language,
+            "builtin",
+            createQuerySuiteContents(queries["builtin"]),
+            undefined
+          )
         );
-        analysisSummaryBuiltIn = stdout;
-        await injectLinesOfCode(sarifFile, language, locPromise);
-
         statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
           new Date().getTime() - startTimeBuiltIn;
       }
       const startTimeCustom = new Date().getTime();
-      const temporarySarifDir = config.tempDir;
-      const temporarySarifFiles: string[] = [];
+      let ranCustom = false;
       for (let i = 0; i < queries["custom"].length; ++i) {
         if (queries["custom"][i].queries.length > 0) {
-          const { sarifFile, stdout } = await runQueryGroup(
-            language,
-            `custom-${i}`,
-            queries["custom"][i].queries,
-            temporarySarifDir,
-            queries["custom"][i].searchPath
+          querySuitePaths.push(
+            await runQueryGroup(
+              language,
+              `custom-${i}`,
+              createQuerySuiteContents(queries["custom"][i].queries),
+              queries["custom"][i].searchPath
+            )
           );
-          customAnalysisSummaries.push(stdout);
-          temporarySarifFiles.push(sarifFile);
+          ranCustom = true;
         }
       }
-      if (temporarySarifFiles.length > 0) {
-        const sarifFile = path.join(sarifFolder, `${language}-custom.sarif`);
-        fs.writeFileSync(sarifFile, combineSarifFiles(temporarySarifFiles));
-        await injectLinesOfCode(sarifFile, language, locPromise);
-
+      if (packsWithVersion.length > 0) {
+        querySuitePaths.push(
+          await runQueryGroup(
+            language,
+            "packs",
+            createPackSuiteContents(packsWithVersion),
+            undefined
+          )
+        );
+        ranCustom = true;
+      }
+      if (ranCustom) {
         statusReport[`analyze_custom_queries_${language}_duration_ms`] =
           new Date().getTime() - startTimeCustom;
       }
       logger.endGroup();
-
-      // Print the LoC baseline and the summary results from database analyze for the standard
-      // query suite and (if appropriate) each custom query suite.
-      logger.startGroup(`Analysis summary for ${language}`);
-
-      printLinesOfCodeSummary(logger, language, await locPromise);
-      logger.info(analysisSummaryBuiltIn);
-
-      for (const [i, customSummary] of customAnalysisSummaries.entries()) {
-        if (customSummary.trim() === "") {
-          continue;
-        }
-        const description =
-          customAnalysisSummaries.length === 1
-            ? "custom queries"
-            : `custom query suite ${i + 1}/${customAnalysisSummaries.length}`;
-        logger.info(`Analysis summary for ${description}:`);
-        logger.info("");
-        logger.info(customSummary);
-        logger.info("");
-      }
-
+      logger.startGroup(`Interpreting results for ${language}`);
+      const startTimeInterpretResults = new Date().getTime();
+      const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+      const analysisSummary = await runInterpretResults(
+        language,
+        querySuitePaths,
+        sarifFile
+      );
+      await injectLinesOfCode(sarifFile, language, locPromise);
+      statusReport[`interpret_results_${language}_duration_ms`] =
+        new Date().getTime() - startTimeInterpretResults;
       logger.endGroup();
+      logger.info(analysisSummary);
+      printLinesOfCodeSummary(logger, language, await locPromise);
     } catch (e) {
       logger.info(e);
+      logger.info(e.stack);
       statusReport.analyze_failure_language = language;
       throw new CodeQLAnalysisError(
         statusReport,
@@ -253,42 +277,70 @@ export async function runQueries(
 
   return statusReport;
 
-  async function runQueryGroup(
+  async function runInterpretResults(
     language: Language,
-    type: string,
     queries: string[],
-    destinationFolder: string,
-    searchPath: string | undefined
-  ): Promise<{ sarifFile: string; stdout: string }> {
+    sarifFile: string
+  ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
-    // Pass the queries to codeql using a file instead of using the command
-    // line to avoid command line length restrictions, particularly on windows.
-    const querySuitePath = `${databasePath}-queries-${type}.qls`;
-    const querySuiteContents = queries
-      .map((q: string) => `- query: ${q}`)
-      .join("\n");
-    fs.writeFileSync(querySuitePath, querySuiteContents);
-    logger.debug(`Query suite file for ${language}...\n${querySuiteContents}`);
-
-    const sarifFile = path.join(destinationFolder, `${language}-${type}.sarif`);
-
     const codeql = getCodeQL(config.codeQLCmd);
-    const databaseAnalyzeStdout = await codeql.databaseAnalyze(
+    return await codeql.databaseInterpretResults(
       databasePath,
+      queries,
       sarifFile,
-      searchPath,
-      querySuitePath,
-      memoryFlag,
       addSnippetsFlag,
       threadsFlag,
       automationDetailsId
     );
-
-    logger.debug(
-      `SARIF results for database ${language} created at "${sarifFile}"`
-    );
-    return { sarifFile, stdout: databaseAnalyzeStdout };
   }
+
+  async function runQueryGroup(
+    language: Language,
+    type: string,
+    querySuiteContents: string,
+    searchPath: string | undefined
+  ): Promise<string> {
+    const databasePath = util.getCodeQLDatabasePath(config, language);
+    // Pass the queries to codeql using a file instead of using the command
+    // line to avoid command line length restrictions, particularly on windows.
+    const querySuitePath = `${databasePath}-queries-${type}.qls`;
+    fs.writeFileSync(querySuitePath, querySuiteContents);
+    logger.debug(
+      `Query suite file for ${language}-${type}...\n${querySuiteContents}`
+    );
+
+    const codeql = getCodeQL(config.codeQLCmd);
+    await codeql.databaseRunQueries(
+      databasePath,
+      searchPath,
+      querySuitePath,
+      memoryFlag,
+      threadsFlag
+    );
+
+    logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
+    return querySuitePath;
+  }
+}
+
+function createQuerySuiteContents(queries: string[]) {
+  return queries.map((q: string) => `- query: ${q}`).join("\n");
+}
+
+function createPackSuiteContents(
+  packsWithVersion: configUtils.PackWithVersion[]
+) {
+  return packsWithVersion.map(packWithVersionToQuerySuiteEntry).join("\n");
+}
+
+function packWithVersionToQuerySuiteEntry(
+  pack: configUtils.PackWithVersion
+): string {
+  let text = `- qlpack: ${pack.packName}`;
+  if (pack.version) {
+    text += `${"\n"}  version: ${pack.version}`;
+  }
+  return text;
 }
 
 export async function runAnalyze(
@@ -305,10 +357,8 @@ export async function runAnalyze(
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  logger.info("Finalizing database creation");
   await finalizeDatabaseCreation(config, threadsFlag, logger);
 
-  logger.info("Analyzing database");
   const queriesStats = await runQueries(
     outputDir,
     memoryFlag,
@@ -320,6 +370,20 @@ export async function runAnalyze(
   );
 
   return { ...queriesStats };
+}
+
+export async function runCleanup(
+  config: configUtils.Config,
+  cleanupLevel: string,
+  logger: Logger
+): Promise<void> {
+  logger.startGroup("Cleaning up databases");
+  for (const language of config.languages) {
+    const codeql = getCodeQL(config.codeQLCmd);
+    const databasePath = util.getCodeQLDatabasePath(config, language);
+    await codeql.databaseCleanup(databasePath, cleanupLevel);
+  }
+  logger.endGroup();
 }
 
 async function injectLinesOfCode(
@@ -357,7 +421,7 @@ function printLinesOfCodeSummary(
 ) {
   if (language in lineCounts) {
     logger.info(
-      `Counted ${lineCounts[language]} lines of code for ${language} as a baseline.`
+      `Counted a baseline of ${lineCounts[language]} lines of code for ${language}.`
     );
   }
 }

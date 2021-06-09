@@ -1,6 +1,7 @@
 import * as path from "path";
 
 import * as githubUtils from "@actions/github/lib/utils";
+import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getRequiredInput } from "./actions-util";
@@ -33,7 +34,8 @@ export const getApiClient = function (
 ) {
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
-  return new githubUtils.GitHub(
+  const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+  return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: getApiUrl(apiDetails.url),
       userAgent: `CodeQL-${getMode()}/${pkg.version}`,

@@ -53,10 +53,16 @@ test("status report fields and search path setting", async (t) => {
     for (const language of Object.values(Language)) {
       setCodeQL({
         packDownload: async () => ({ packs: [] }),
-        databaseAnalyze: async (
-          _,
-          sarifFile: string,
+        databaseRunQueries: async (
+          _db: string,
           searchPath: string | undefined
+        ) => {
+          searchPathsUsed.push(searchPath);
+        },
+        databaseInterpretResults: async (
+          _db: string,
+          _queriesRun: string[],
+          sarifFile: string
         ) => {
           fs.writeFileSync(
             sarifFile,
@@ -92,7 +98,6 @@ test("status report fields and search path setting", async (t) => {
               ],
             })
           );
-          searchPathsUsed.push(searchPath);
           return "";
         },
       });
@@ -135,6 +140,9 @@ test("status report fields and search path setting", async (t) => {
       t.true(
         `analyze_builtin_queries_${language}_duration_ms` in builtinStatusReport
       );
+      t.true(
+        `interpret_results_${language}_duration_ms` in builtinStatusReport
+      );
 
       config.queries[language] = {
         builtin: [],
@@ -158,7 +166,7 @@ test("status report fields and search path setting", async (t) => {
         config,
         getRunnerLogger(true)
       );
-      t.deepEqual(Object.keys(customStatusReport).length, 1);
+      t.deepEqual(Object.keys(customStatusReport).length, 2);
       t.true(
         `analyze_custom_queries_${language}_duration_ms` in customStatusReport
       );
@@ -166,6 +174,7 @@ test("status report fields and search path setting", async (t) => {
         ? [undefined, undefined, "/1", "/2", undefined]
         : [undefined, "/1", "/2"];
       t.deepEqual(searchPathsUsed, expectedSearchPathsUsed);
+      t.true(`interpret_results_${language}_duration_ms` in customStatusReport);
     }
 
     verifyLineCounts(tmpDir);
@@ -177,12 +186,7 @@ test("status report fields and search path setting", async (t) => {
     Object.keys(Language).forEach((lang, i) => {
       verifyLineCountForFile(
         lang as Language,
-        path.join(tmpDir, `${lang}-builtin.sarif`),
-        i + 1
-      );
-      verifyLineCountForFile(
-        lang as Language,
-        path.join(tmpDir, `${lang}-custom.sarif`),
+        path.join(tmpDir, `${lang}.sarif`),
         i + 1
       );
     });

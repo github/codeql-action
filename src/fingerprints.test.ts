@@ -7,32 +7,41 @@ import test from "ava";
 import * as fingerprints from "./fingerprints";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
+import * as util from "./util";
 
 setupTests(test);
 
-function testHash(t: ava.Assertions, input: string, expectedHashes: string[]) {
-  let index = 0;
-  const callback = function (lineNumber: number, hash: string) {
-    t.is(lineNumber, index + 1);
-    t.is(hash, expectedHashes[index]);
-    index++;
-  };
-  fingerprints.hash(callback, input);
-  t.is(index, input.split(/\r\n|\r|\n/).length);
+async function testHash(
+  t: ava.Assertions,
+  input: string,
+  expectedHashes: string[]
+) {
+  await util.withTmpDir(async (tmpDir) => {
+    const tmpFile = path.resolve(tmpDir, "testfile");
+    fs.writeFileSync(tmpFile, input);
+    let index = 0;
+    const callback = function (lineNumber: number, hash: string) {
+      t.is(lineNumber, index + 1);
+      t.is(hash, expectedHashes[index]);
+      index++;
+    };
+    await fingerprints.hash(callback, tmpFile);
+    t.is(index, input.split(/\r\n|\r|\n/).length);
+  });
 }
 
-test("hash", (t: ava.Assertions) => {
+test("hash", async (t: ava.Assertions) => {
   // Try empty file
-  testHash(t, "", ["c129715d7a2bc9a3:1"]);
+  await testHash(t, "", ["c129715d7a2bc9a3:1"]);
 
   // Try various combinations of newline characters
-  testHash(t, " a\nb\n  \t\tc\n d", [
+  await testHash(t, " a\nb\n  \t\tc\n d", [
     "271789c17abda88f:1",
     "54703d4cd895b18:1",
     "180aee12dab6264:1",
     "a23a3dc5e078b07b:1",
   ]);
-  testHash(t, " hello; \t\nworld!!!\n\n\n  \t\tGreetings\n End", [
+  await testHash(t, " hello; \t\nworld!!!\n\n\n  \t\tGreetings\n End", [
     "8b7cf3e952e7aeb2:1",
     "b1ae1287ec4718d9:1",
     "bff680108adb0fcc:1",
@@ -40,7 +49,7 @@ test("hash", (t: ava.Assertions) => {
     "b86d3392aea1be30:1",
     "e6ceba753e1a442:1",
   ]);
-  testHash(t, " hello; \t\nworld!!!\n\n\n  \t\tGreetings\n End\n", [
+  await testHash(t, " hello; \t\nworld!!!\n\n\n  \t\tGreetings\n End\n", [
     "e9496ae3ebfced30:1",
     "fb7c023a8b9ccb3f:1",
     "ce8ba1a563dcdaca:1",
@@ -49,7 +58,7 @@ test("hash", (t: ava.Assertions) => {
     "c8e28b0b4002a3a0:1",
     "c129715d7a2bc9a3:1",
   ]);
-  testHash(t, " hello; \t\nworld!!!\r\r\r  \t\tGreetings\r End\r", [
+  await testHash(t, " hello; \t\nworld!!!\r\r\r  \t\tGreetings\r End\r", [
     "e9496ae3ebfced30:1",
     "fb7c023a8b9ccb3f:1",
     "ce8ba1a563dcdaca:1",
@@ -58,16 +67,20 @@ test("hash", (t: ava.Assertions) => {
     "c8e28b0b4002a3a0:1",
     "c129715d7a2bc9a3:1",
   ]);
-  testHash(t, " hello; \t\r\nworld!!!\r\n\r\n\r\n  \t\tGreetings\r\n End\r\n", [
-    "e9496ae3ebfced30:1",
-    "fb7c023a8b9ccb3f:1",
-    "ce8ba1a563dcdaca:1",
-    "e20e36e16fcb0cc8:1",
-    "b3edc88f2938467e:1",
-    "c8e28b0b4002a3a0:1",
-    "c129715d7a2bc9a3:1",
-  ]);
-  testHash(t, " hello; \t\nworld!!!\r\n\n\r  \t\tGreetings\r End\r\n", [
+  await testHash(
+    t,
+    " hello; \t\r\nworld!!!\r\n\r\n\r\n  \t\tGreetings\r\n End\r\n",
+    [
+      "e9496ae3ebfced30:1",
+      "fb7c023a8b9ccb3f:1",
+      "ce8ba1a563dcdaca:1",
+      "e20e36e16fcb0cc8:1",
+      "b3edc88f2938467e:1",
+      "c8e28b0b4002a3a0:1",
+      "c129715d7a2bc9a3:1",
+    ]
+  );
+  await testHash(t, " hello; \t\nworld!!!\r\n\n\r  \t\tGreetings\r End\r\n", [
     "e9496ae3ebfced30:1",
     "fb7c023a8b9ccb3f:1",
     "ce8ba1a563dcdaca:1",
@@ -78,7 +91,7 @@ test("hash", (t: ava.Assertions) => {
   ]);
 
   // Try repeating line that will generate identical hashes
-  testHash(t, "Lorem ipsum dolor sit amet.\n".repeat(10), [
+  await testHash(t, "Lorem ipsum dolor sit amet.\n".repeat(10), [
     "a7f2ff13bc495cf2:1",
     "a7f2ff13bc495cf2:2",
     "a7f2ff13bc495cf2:3",
@@ -92,16 +105,20 @@ test("hash", (t: ava.Assertions) => {
     "c129715d7a2bc9a3:1",
   ]);
 
-  testHash(t, "x = 2\nx = 1\nprint(x)\nx = 3\nprint(x)\nx = 4\nprint(x)\n", [
-    "e54938cc54b302f1:1",
-    "bb609acbe9138d60:1",
-    "1131fd5871777f34:1",
-    "5c482a0f8b35ea28:1",
-    "54517377da7028d2:1",
-    "2c644846cb18d53e:1",
-    "f1b89f20de0d133:1",
-    "c129715d7a2bc9a3:1",
-  ]);
+  await testHash(
+    t,
+    "x = 2\nx = 1\nprint(x)\nx = 3\nprint(x)\nx = 4\nprint(x)\n",
+    [
+      "e54938cc54b302f1:1",
+      "bb609acbe9138d60:1",
+      "1131fd5871777f34:1",
+      "5c482a0f8b35ea28:1",
+      "54517377da7028d2:1",
+      "2c644846cb18d53e:1",
+      "f1b89f20de0d133:1",
+      "c129715d7a2bc9a3:1",
+    ]
+  );
 });
 
 function testResolveUriToFile(uri: any, index: any, artifactsURIs: any[]) {
@@ -170,7 +187,7 @@ test("resolveUriToFile", (t) => {
   t.is(testResolveUriToFile(`file://${dirpath}`, undefined, []), undefined);
 });
 
-test("addFingerprints", (t) => {
+test("addFingerprints", async (t) => {
   // Run an end-to-end test on a test file
   let input = fs
     .readFileSync(`${__dirname}/../src/testdata/fingerprinting.input.sarif`)
@@ -187,12 +204,16 @@ test("addFingerprints", (t) => {
   const checkoutPath = path.normalize(`${__dirname}/../src/testdata`);
 
   t.deepEqual(
-    fingerprints.addFingerprints(input, checkoutPath, getRunnerLogger(true)),
+    await fingerprints.addFingerprints(
+      input,
+      checkoutPath,
+      getRunnerLogger(true)
+    ),
     expected
   );
 });
 
-test("missingRegions", (t) => {
+test("missingRegions", async (t) => {
   // Run an end-to-end test on a test file
   let input = fs
     .readFileSync(`${__dirname}/../src/testdata/fingerprinting2.input.sarif`)
@@ -209,7 +230,11 @@ test("missingRegions", (t) => {
   const checkoutPath = path.normalize(`${__dirname}/../src/testdata`);
 
   t.deepEqual(
-    fingerprints.addFingerprints(input, checkoutPath, getRunnerLogger(true)),
+    await fingerprints.addFingerprints(
+      input,
+      checkoutPath,
+      getRunnerLogger(true)
+    ),
     expected
   );
 });

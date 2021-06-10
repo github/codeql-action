@@ -10,8 +10,11 @@ import {
   QueriesStatusReport,
   runCleanup,
 } from "./analyze";
+import { getApiClient, GitHubApiDetails } from "./api-client";
+import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
-import { getActionsLogger } from "./logging";
+import { getActionsLogger, Logger } from "./logging";
+import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
 
@@ -47,6 +50,55 @@ async function sendStatusReport(
     ...(stats || {}),
   };
   await actionsUtil.sendStatusReport(statusReport);
+}
+
+async function uploadDatabases(
+  repositoryNwo: RepositoryNwo,
+  config: Config,
+  apiDetails: GitHubApiDetails,
+  logger: Logger
+): Promise<void> {
+  const client = getApiClient(apiDetails);
+
+  const optInResponse = await client.request(
+    "GET /repos/:owner/:repo/code-scanning/databases",
+    {
+      owner: repositoryNwo.owner,
+      repo: repositoryNwo.repo,
+    }
+  );
+  if (optInResponse.status !== 204) {
+    // Repository is not opted in to database uploads.
+    logger.debug(
+      "Repository is not opted in to database uploads. Skipping upload."
+    );
+    return;
+  }
+
+  const codeql = getCodeQL(config.codeQLCmd);
+  for (const language of config.languages) {
+    // Bundle the database up into a single zip file
+    const databasePath = util.getCodeQLDatabasePath(config, language);
+    const databaseBundlePath = `${databasePath}.zip`;
+    await codeql.databaseBundle(databasePath, databaseBundlePath);
+
+    // Upload the database bundle
+    const payload = fs.readFileSync(databaseBundlePath);
+    const uploadResponse = await client.request(
+      `PUT /repos/:owner/:repo/code-scanning/databases/${language}`,
+      {
+        owner: repositoryNwo.owner,
+        repo: repositoryNwo.repo,
+        data: payload,
+      }
+    );
+    if (uploadResponse.status !== 201) {
+      // Log a warning but don't fail the workflow
+      logger.warning(
+        `Failed to upload database for ${language}. ${uploadResponse.data}`
+      );
+    }
+  }
 }
 
 async function run() {
@@ -116,6 +168,11 @@ async function run() {
       logger.info("Not uploading results");
       stats = { ...queriesStats };
     }
+
+    const repositoryNwo = parseRepositoryNwo(
+      util.getRequiredEnvParam("GITHUB_REPOSITORY")
+    );
+    await uploadDatabases(repositoryNwo, config, apiDetails, logger);
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);

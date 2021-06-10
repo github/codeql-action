@@ -93,6 +93,10 @@ export interface CodeQL {
    */
   databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
   /**
+   * Run 'codeql database bundle'.
+   */
+  databaseBundle(databasePath: string, outputFilePath: string): Promise<void>;
+  /**
    * Run 'codeql database run-queries'.
    */
   databaseRunQueries(
@@ -493,6 +497,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
+    databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
     databaseRunQueries: resolveFunction(partialCodeql, "databaseRunQueries"),
     databaseInterpretResults: resolveFunction(
       partialCodeql,
@@ -788,6 +793,18 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "cleanup",
         databasePath,
         `--mode=${cleanupLevel}`,
+      ];
+      await new toolrunner.ToolRunner(cmd, args).exec();
+    },
+    async databaseBundle(
+      databasePath: string,
+      outputFilePath: string
+    ): Promise<void> {
+      const args = [
+        "database",
+        "cleanup",
+        databasePath,
+        `--output=${outputFilePath}`,
       ];
       await new toolrunner.ToolRunner(cmd, args).exec();
     },

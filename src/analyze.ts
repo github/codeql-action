@@ -191,6 +191,12 @@ export async function runQueries(
 
     try {
       if (hasPackWithCustomQueries) {
+        logger.info("*************");
+        logger.info(
+          "Performing analysis with custom QL Packs. QL Packs are an experimental feature."
+        );
+        logger.info("And should not be used in production yet.");
+        logger.info("*************");
         logger.startGroup(`Downloading custom packs for ${language}`);
 
         const codeql = getCodeQL(config.codeQLCmd);
@@ -338,7 +344,7 @@ function packWithVersionToQuerySuiteEntry(
 ): string {
   let text = `- qlpack: ${pack.packName}`;
   if (pack.version) {
-    text += `${"\n"}  version: ${pack.version}`;
+    text += `\n  version: ${pack.version}`;
   }
   return text;
 }

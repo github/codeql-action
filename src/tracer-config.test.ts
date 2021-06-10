@@ -28,7 +28,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     codeQLCmd: "",
     gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
     dbLocation: path.resolve(tmpDir, "codeql_databases"),
-    packs: {} as configUtils.Packs,
+    packs: {},
   };
 }
 

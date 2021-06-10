@@ -845,7 +845,7 @@ export async function getDefaultConfig(
     queries,
     pathsIgnore: [],
     paths: [],
-    packs: {} as Record<Language, PackWithVersion[]>,
+    packs: {},
     originalUserInput: {},
     tempDir,
     toolCacheDir,
@@ -942,10 +942,11 @@ async function loadConfig(
     shouldAddConfigFileQueries(queriesInput) &&
     QUERIES_PROPERTY in parsedYAML
   ) {
-    if (!Array.isArray(parsedYAML[QUERIES_PROPERTY])) {
+    const queriesArr = parsedYAML[QUERIES_PROPERTY];
+    if (!Array.isArray(queriesArr)) {
       throw new Error(getQueriesInvalid(configFile));
     }
-    for (const query of parsedYAML[QUERIES_PROPERTY]!) {
+    for (const query of queriesArr) {
       if (
         !(QUERIES_USES_PROPERTY in query) ||
         typeof query[QUERIES_USES_PROPERTY] !== "string"

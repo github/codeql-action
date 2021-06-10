@@ -802,7 +802,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
     ): Promise<void> {
       const args = [
         "database",
-        "cleanup",
+        "bundle",
         databasePath,
         `--output=${outputFilePath}`,
       ];

@@ -692,6 +692,18 @@ export function getRelativeScriptPath(): string {
   return path.relative(actionsDirectory, __filename);
 }
 
+// Reads the contents of GITHUB_EVENT_PATH as a JSON object
+function getWorkflowEvent(): any {
+  const eventJsonFile = getRequiredEnvParam("GITHUB_EVENT_PATH");
+  try {
+    return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));
+  } catch (e) {
+    throw new Error(
+      `Unable to read workflow event JSON from ${eventJsonFile}: ${e}`
+    );
+  }
+}
+
 // Is the version of the repository we are currently analyzing from the default branch,
 // or alternatively from another branch or a pull request.
 export async function isAnalyzingDefaultBranch(): Promise<boolean> {
@@ -701,9 +713,8 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
     ? currentRef.substr("refs/heads/".length)
     : currentRef;
 
-  const eventJson = JSON.parse(
-    fs.readFileSync(getRequiredEnvParam("GITHUB_EVENT_PATH"), "utf-8")
-  );
+  const event = getWorkflowEvent();
+  const defaultBranch = event?.repository?.default_branch;
 
-  return currentRef === eventJson?.repository?.default_branch;
+  return currentRef === defaultBranch;
 }

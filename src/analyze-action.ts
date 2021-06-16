@@ -58,8 +58,13 @@ async function uploadDatabases(
   apiDetails: GitHubApiDetails,
   logger: Logger
 ): Promise<void> {
-  const client = getApiClient(apiDetails);
+  if (!(await actionsUtil.isAnalyzingDefaultBranch())) {
+    // We only want to upload a database if we are analyzing the default branch.
+    logger.debug("Not analyzing default branch. Skipping upload.");
+    return;
+  }
 
+  const client = getApiClient(apiDetails);
   const optInResponse = await client.request(
     "GET /repos/:owner/:repo/code-scanning/databases",
     {
@@ -92,7 +97,9 @@ async function uploadDatabases(
         data: payload,
       }
     );
-    if (uploadResponse.status !== 201) {
+    if (uploadResponse.status === 201) {
+      logger.debug(`Successfully uploaded database for ${language}`);
+    } else {
       // Log a warning but don't fail the workflow
       logger.warning(
         `Failed to upload database for ${language}. ${uploadResponse.data}`

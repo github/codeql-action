@@ -691,3 +691,19 @@ export function getRelativeScriptPath(): string {
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);
 }
+
+// Is the version of the repository we are currently analyzing from the default branch,
+// or alternatively from another branch or a pull request.
+export async function isAnalyzingDefaultBranch(): Promise<boolean> {
+  // Get the current ref and trim and refs/heads/ prefix
+  let currentRef = await getRef();
+  currentRef = currentRef.startsWith("refs/heads/")
+    ? currentRef.substr("refs/heads/".length)
+    : currentRef;
+
+  const eventJson = JSON.parse(
+    fs.readFileSync(getRequiredEnvParam("GITHUB_EVENT_PATH"), "utf-8")
+  );
+
+  return currentRef === eventJson?.repository?.default_branch;
+}

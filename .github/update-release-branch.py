@@ -122,7 +122,7 @@ def get_commit_difference(repo):
 
 # Is the given commit the automatic merge commit from when merging a PR
 def is_pr_merge_commit(commit):
-  return commit.committer.login == 'web-flow' and len(commit.parents) > 1
+  return commit.committer is not None and commit.committer.login == 'web-flow' and len(commit.parents) > 1
 
 # Gets a copy of the commit message that should display nicely
 def get_truncated_commit_message(commit):

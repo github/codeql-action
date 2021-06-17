@@ -3,7 +3,7 @@ name: Pack testing in the CodeQL Action
 disable-default-queries: true
 packs:
   javascript:
-    - dsp-testing/codeql-pack1@0.0.3
+    - dsp-testing/codeql-pack1@0.0.4
     - dsp-testing/codeql-pack2 # latest
 paths-ignore:
   - tests

@@ -1,6 +1,6 @@
 # CodeQL Action and CodeQL Runner Changelog
 
-## [UNRELEASED]
+## 1.0.2 - 17 Jun 2021
 
 ## 1.0.1 - 07 Jun 2021
 

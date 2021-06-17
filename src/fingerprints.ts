@@ -8,6 +8,7 @@ const tab = "\t".charCodeAt(0);
 const space = " ".charCodeAt(0);
 const lf = "\n".charCodeAt(0);
 const cr = "\r".charCodeAt(0);
+const EOF = 65535;
 const BLOCK_SIZE = 100;
 const MOD = Long.fromInt(37); // L
 
@@ -34,9 +35,9 @@ type hashCallback = (lineNumber: number, hash: string) => void;
  * the hashes of the lines near the end of the file.
  *
  * @param callback function that is called with the line number (1-based) and hash for every line
- * @param input The file's contents
+ * @param filepath The path to the file to hash
  */
-export function hash(callback: hashCallback, input: string) {
+export async function hash(callback: hashCallback, filepath: string) {
   // A rolling view in to the input
   const window = Array(BLOCK_SIZE).fill(0);
 
@@ -87,12 +88,11 @@ export function hash(callback: hashCallback, input: string) {
   // as we go. Once we reach a point in the window again then we've processed
   // BLOCK_SIZE characters and if the last character at this point in the window
   // was the start of a line then we should output the hash for that line.
-  for (let i = 0, len = input.length; i <= len; i++) {
-    let current = i === len ? 65535 : input.charCodeAt(i);
+  const processCharacter = function (current: number) {
     // skip tabs, spaces, and line feeds that come directly after a carriage return
     if (current === space || current === tab || (prevCR && current === lf)) {
       prevCR = false;
-      continue;
+      return;
     }
     // replace CR with LF
     if (current === cr) {
@@ -113,7 +113,15 @@ export function hash(callback: hashCallback, input: string) {
       lineStart = true;
     }
     updateHash(current);
+  };
+
+  const readStream = fs.createReadStream(filepath, "utf8");
+  for await (const data of readStream) {
+    for (let i = 0; i < data.length; ++i) {
+      processCharacter(data.charCodeAt(i));
+    }
   }
+  processCharacter(EOF);
 
   // Flush the remaining lines
   for (let i = 0; i < BLOCK_SIZE; i++) {
@@ -237,11 +245,11 @@ export function resolveUriToFile(
 
 // Compute fingerprints for results in the given sarif file
 // and return an updated sarif file contents.
-export function addFingerprints(
+export async function addFingerprints(
   sarifContents: string,
   checkoutPath: string,
   logger: Logger
-): string {
+): Promise<string> {
   const sarif = JSON.parse(sarifContents);
 
   // Gather together results for the same file and construct
@@ -260,6 +268,11 @@ export function addFingerprints(
             primaryLocation
           )}`
         );
+        continue;
+      }
+
+      if (primaryLocation?.physicalLocation?.region?.startLine === undefined) {
+        // Locations without a line number are unlikely to be source files
         continue;
       }
 
@@ -289,8 +302,7 @@ export function addFingerprints(
         c(lineNumber, hashValue);
       }
     };
-    const fileContents = fs.readFileSync(filepath).toString();
-    hash(teeCallback, fileContents);
+    await hash(teeCallback, filepath);
   }
 
   return JSON.stringify(sarif);

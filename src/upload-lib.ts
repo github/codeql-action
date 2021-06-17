@@ -356,7 +356,7 @@ async function uploadFiles(
   }
 
   let sarifPayload = combineSarifFiles(sarifFiles);
-  sarifPayload = fingerprints.addFingerprints(
+  sarifPayload = await fingerprints.addFingerprints(
     sarifPayload,
     checkoutPath,
     logger

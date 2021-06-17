@@ -58,6 +58,12 @@ async function uploadDatabases(
   apiDetails: GitHubApiDetails,
   logger: Logger
 ): Promise<void> {
+  // Do nothing when not running against github.com
+  if (config.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
+    logger.debug("Not running against github.com. Skipping upload.");
+    return;
+  }
+
   if (!(await actionsUtil.isAnalyzingDefaultBranch())) {
     // We only want to upload a database if we are analyzing the default branch.
     logger.debug("Not analyzing default branch. Skipping upload.");

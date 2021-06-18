@@ -176,19 +176,41 @@ export async function runQueries(
   );
 
   for (const language of config.languages) {
-    logger.startGroup(`Running queries for ${language}`);
-
     const queries = config.queries[language];
-    if (
-      queries === undefined ||
-      (queries.builtin.length === 0 && queries.custom.length === 0)
-    ) {
+    const packsWithVersion = config.packs[language] || [];
+
+    const hasBuiltinQueries = queries?.builtin.length > 0;
+    const hasCustomQueries = queries?.custom.length > 0;
+    const hasPackWithCustomQueries = packsWithVersion.length > 0;
+
+    if (!hasBuiltinQueries && !hasCustomQueries && !hasPackWithCustomQueries) {
       throw new Error(
         `Unable to analyse ${language} as no queries were selected for this language`
       );
     }
 
     try {
+      if (hasPackWithCustomQueries) {
+        logger.info("*************");
+        logger.info(
+          "Performing analysis with custom QL Packs. QL Packs are an experimental feature."
+        );
+        logger.info("And should not be used in production yet.");
+        logger.info("*************");
+        logger.startGroup(`Downloading custom packs for ${language}`);
+
+        const codeql = getCodeQL(config.codeQLCmd);
+        const results = await codeql.packDownload(packsWithVersion);
+        logger.info(
+          `Downloaded packs: ${results.packs
+            .map((r) => `${r.name}@${r.version || "latest"}`)
+            .join(", ")}`
+        );
+
+        logger.endGroup();
+      }
+
+      logger.startGroup(`Running queries for ${language}`);
       const querySuitePaths: string[] = [];
       if (queries["builtin"].length > 0) {
         const startTimeBuiltIn = new Date().getTime();
@@ -196,7 +218,7 @@ export async function runQueries(
           await runQueryGroup(
             language,
             "builtin",
-            queries["builtin"],
+            createQuerySuiteContents(queries["builtin"]),
             undefined
           )
         );
@@ -211,12 +233,23 @@ export async function runQueries(
             await runQueryGroup(
               language,
               `custom-${i}`,
-              queries["custom"][i].queries,
+              createQuerySuiteContents(queries["custom"][i].queries),
               queries["custom"][i].searchPath
             )
           );
           ranCustom = true;
         }
+      }
+      if (packsWithVersion.length > 0) {
+        querySuitePaths.push(
+          await runQueryGroup(
+            language,
+            "packs",
+            createPackSuiteContents(packsWithVersion),
+            undefined
+          )
+        );
+        ranCustom = true;
       }
       if (ranCustom) {
         statusReport[`analyze_custom_queries_${language}_duration_ms`] =
@@ -239,6 +272,7 @@ export async function runQueries(
       printLinesOfCodeSummary(logger, language, await locPromise);
     } catch (e) {
       logger.info(e);
+      logger.info(e.stack);
       statusReport.analyze_failure_language = language;
       throw new CodeQLAnalysisError(
         statusReport,
@@ -269,18 +303,17 @@ export async function runQueries(
   async function runQueryGroup(
     language: Language,
     type: string,
-    queries: string[],
+    querySuiteContents: string,
     searchPath: string | undefined
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     // Pass the queries to codeql using a file instead of using the command
     // line to avoid command line length restrictions, particularly on windows.
     const querySuitePath = `${databasePath}-queries-${type}.qls`;
-    const querySuiteContents = queries
-      .map((q: string) => `- query: ${q}`)
-      .join("\n");
     fs.writeFileSync(querySuitePath, querySuiteContents);
-    logger.debug(`Query suite file for ${language}...\n${querySuiteContents}`);
+    logger.debug(
+      `Query suite file for ${language}-${type}...\n${querySuiteContents}`
+    );
 
     const codeql = getCodeQL(config.codeQLCmd);
     await codeql.databaseRunQueries(
@@ -294,6 +327,26 @@ export async function runQueries(
     logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
     return querySuitePath;
   }
+}
+
+function createQuerySuiteContents(queries: string[]) {
+  return queries.map((q: string) => `- query: ${q}`).join("\n");
+}
+
+function createPackSuiteContents(
+  packsWithVersion: configUtils.PackWithVersion[]
+) {
+  return packsWithVersion.map(packWithVersionToQuerySuiteEntry).join("\n");
+}
+
+function packWithVersionToQuerySuiteEntry(
+  pack: configUtils.PackWithVersion
+): string {
+  let text = `- qlpack: ${pack.packName}`;
+  if (pack.version) {
+    text += `\n  version: ${pack.version}`;
+  }
+  return text;
 }
 
 export async function runAnalyze(
@@ -310,10 +363,8 @@ export async function runAnalyze(
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  logger.info("Finalizing database creation");
   await finalizeDatabaseCreation(config, threadsFlag, logger);
 
-  logger.info("Analyzing database");
   const queriesStats = await runQueries(
     outputDir,
     memoryFlag,
@@ -376,7 +427,7 @@ function printLinesOfCodeSummary(
 ) {
   if (language in lineCounts) {
     logger.info(
-      `Counted ${lineCounts[language]} lines of code for ${language} as a baseline.`
+      `Counted a baseline of ${lineCounts[language]} lines of code for ${language}.`
     );
   }
 }

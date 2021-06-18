@@ -58,6 +58,11 @@ async function uploadDatabases(
   apiDetails: GitHubApiDetails,
   logger: Logger
 ): Promise<void> {
+  if (actionsUtil.getRequiredInput("upload-database") !== "true") {
+    logger.debug("Database upload disabled in workflow. Skipping upload.");
+    return;
+  }
+
   // Do nothing when not running against github.com
   if (config.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
     logger.debug("Not running against github.com. Skipping upload.");

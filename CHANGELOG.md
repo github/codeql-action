@@ -2,6 +2,12 @@
 
 ## [UNRELEASED]
 
+## 1.0.2 - 17 Jun 2021
+
+- Fix out of memory in hash computation. [#550](https://github.com/github/codeql-action/pull/550)
+- Clean up logging during analyze results. [#557](https://github.com/github/codeql-action/pull/557)
+- Add `--finalize-dataset` to `database finalize` call, freeing up some disk space after database creation. [#558](https://github.com/github/codeql-action/pull/558)
+
 ## 1.0.1 - 07 Jun 2021
 
 - Pass the `--sarif-group-rules-by-pack` argument to CodeQL CLI invocations that generate SARIF. This means the SARIF rule object for each query will now be found underneath its corresponding query pack in `runs[].tool.extensions`. [#546](https://github.com/github/codeql-action/pull/546)

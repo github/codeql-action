@@ -76,19 +76,23 @@ async function uploadDatabases(
   }
 
   const client = getApiClient(apiDetails);
-  const optInResponse = await client.request(
-    "GET /repos/:owner/:repo/code-scanning/databases",
-    {
+  try {
+    await client.request("GET /repos/:owner/:repo/code-scanning/databases", {
       owner: repositoryNwo.owner,
       repo: repositoryNwo.repo,
+    });
+  } catch (e) {
+    console.log(e);
+    if (util.isHTTPError(e)) {
+      if (e.status === 404) {
+        logger.debug(
+          "Repository is not opted in to database uploads. Skipping upload."
+        );
+      } else {
+        logger.debug(`Skipping database upload due to unknown error: ${e}`);
+      }
+      return;
     }
-  );
-  if (optInResponse.status !== 204) {
-    // Repository is not opted in to database uploads.
-    logger.debug(
-      "Repository is not opted in to database uploads. Skipping upload."
-    );
-    return;
   }
 
   const codeql = getCodeQL(config.codeQLCmd);
@@ -100,21 +104,20 @@ async function uploadDatabases(
 
     // Upload the database bundle
     const payload = fs.readFileSync(databaseBundlePath);
-    const uploadResponse = await client.request(
-      `PUT /repos/:owner/:repo/code-scanning/databases/${language}`,
-      {
-        owner: repositoryNwo.owner,
-        repo: repositoryNwo.repo,
-        data: payload,
-      }
-    );
-    if (uploadResponse.status === 201) {
-      logger.debug(`Successfully uploaded database for ${language}`);
-    } else {
-      // Log a warning but don't fail the workflow
-      logger.warning(
-        `Failed to upload database for ${language}. ${uploadResponse.data}`
+    try {
+      await client.request(
+        `PUT /repos/:owner/:repo/code-scanning/databases/${language}`,
+        {
+          owner: repositoryNwo.owner,
+          repo: repositoryNwo.repo,
+          data: payload,
+        }
       );
+      logger.debug(`Successfully uploaded database for ${language}`);
+    } catch (e) {
+      console.log(e);
+      // Log a warning but don't fail the workflow
+      logger.warning(`Failed to upload database for ${language}: ${e}`);
     }
   }
 }

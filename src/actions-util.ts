@@ -8,7 +8,7 @@ import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
-import { getRequiredEnvParam, GITHUB_DOTCOM_URL } from "./util";
+import { getRequiredEnvParam, GITHUB_DOTCOM_URL, isHTTPError } from "./util";
 
 /**
  * The utils in this module are meant to be run inside of the action only.
@@ -574,15 +574,6 @@ export async function createStatusReportBase(
   }
 
   return statusReport;
-}
-
-interface HTTPError {
-  status: number;
-  message?: string;
-}
-
-function isHTTPError(arg: any): arg is HTTPError {
-  return arg?.status !== undefined && Number.isInteger(arg.status);
 }
 
 const GENERIC_403_MSG =

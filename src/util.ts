@@ -478,3 +478,12 @@ export function getRequiredEnvParam(paramName: string): string {
   }
   return value;
 }
+
+export interface HTTPError {
+  status: number;
+  message?: string;
+}
+
+export function isHTTPError(arg: any): arg is HTTPError {
+  return arg?.status !== undefined && Number.isInteger(arg.status);
+}

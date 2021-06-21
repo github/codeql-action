@@ -34,10 +34,6 @@ inputs:
   category:
     description: String used by Code Scanning for matching the analyses
     required: false
-  upload-database:
-    description: Whether to upload the resulting CodeQL database
-    required: false
-    default: "true"
   token:
     default: ${{ github.token }}
   matrix:

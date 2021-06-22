@@ -2,6 +2,8 @@
 
 ## [UNRELEASED]
 
+No user facing changes.
+
 ## 1.0.2 - 17 Jun 2021
 
 - Fix out of memory in hash computation. [#550](https://github.com/github/codeql-action/pull/550)

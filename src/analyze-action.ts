@@ -11,7 +11,9 @@ import {
   runCleanup,
 } from "./analyze";
 import { Config, getConfig } from "./config-utils";
+import { uploadDatabases } from "./database-upload";
 import { getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import * as util from "./util";
 
@@ -116,6 +118,11 @@ async function run() {
       logger.info("Not uploading results");
       stats = { ...queriesStats };
     }
+
+    const repositoryNwo = parseRepositoryNwo(
+      util.getRequiredEnvParam("GITHUB_REPOSITORY")
+    );
+    await uploadDatabases(repositoryNwo, config, apiDetails, logger);
   } catch (error) {
     core.setFailed(error.message);
     console.log(error);

@@ -12,6 +12,8 @@ EMPTY_CHANGELOG = """# CodeQL Action and CodeQL Runner Changelog
 
 ## [UNRELEASED]
 
+No user facing changes.
+
 """
 
 # The branch being merged from.

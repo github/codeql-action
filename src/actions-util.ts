@@ -8,7 +8,7 @@ import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
-import { getRequiredEnvParam, GITHUB_DOTCOM_URL } from "./util";
+import { getRequiredEnvParam, GITHUB_DOTCOM_URL, isHTTPError } from "./util";
 
 /**
  * The utils in this module are meant to be run inside of the action only.
@@ -576,15 +576,6 @@ export async function createStatusReportBase(
   return statusReport;
 }
 
-interface HTTPError {
-  status: number;
-  message?: string;
-}
-
-function isHTTPError(arg: any): arg is HTTPError {
-  return arg?.status !== undefined && Number.isInteger(arg.status);
-}
-
 const GENERIC_403_MSG =
   "The repo on which this action is running is not opted-in to CodeQL code scanning.";
 const GENERIC_404_MSG =
@@ -690,4 +681,31 @@ export function getRelativeScriptPath(): string {
   const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);
+}
+
+// Reads the contents of GITHUB_EVENT_PATH as a JSON object
+function getWorkflowEvent(): any {
+  const eventJsonFile = getRequiredEnvParam("GITHUB_EVENT_PATH");
+  try {
+    return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));
+  } catch (e) {
+    throw new Error(
+      `Unable to read workflow event JSON from ${eventJsonFile}: ${e}`
+    );
+  }
+}
+
+// Is the version of the repository we are currently analyzing from the default branch,
+// or alternatively from another branch or a pull request.
+export async function isAnalyzingDefaultBranch(): Promise<boolean> {
+  // Get the current ref and trim and refs/heads/ prefix
+  let currentRef = await getRef();
+  currentRef = currentRef.startsWith("refs/heads/")
+    ? currentRef.substr("refs/heads/".length)
+    : currentRef;
+
+  const event = getWorkflowEvent();
+  const defaultBranch = event?.repository?.default_branch;
+
+  return currentRef === defaultBranch;
 }

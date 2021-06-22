@@ -1,10 +1,13 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import test from "ava";
 import * as yaml from "js-yaml";
 import sinon from "sinon";
 
 import * as actionsutil from "./actions-util";
 import { setupTests } from "./testing-utils";
-import { getMode, initializeEnvironment, Mode } from "./util";
+import { getMode, initializeEnvironment, Mode, withTmpDir } from "./util";
 
 function errorCodes(
   actual: actionsutil.CodedError[],
@@ -651,4 +654,29 @@ test("initializeEnvironment", (t) => {
   initializeEnvironment(Mode.runner, "4.5.6");
   t.deepEqual(getMode(), Mode.runner);
   t.deepEqual(process.env.CODEQL_ACTION_VERSION, "4.5.6");
+});
+
+test("isAnalyzingDefaultBranch()", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const envFile = path.join(tmpDir, "event.json");
+    fs.writeFileSync(
+      envFile,
+      JSON.stringify({
+        repository: {
+          default_branch: "main",
+        },
+      })
+    );
+    process.env["GITHUB_EVENT_PATH"] = envFile;
+
+    process.env["GITHUB_REF"] = "main";
+    process.env["GITHUB_SHA"] = "1234";
+    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
+
+    process.env["GITHUB_REF"] = "refs/heads/main";
+    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
+
+    process.env["GITHUB_REF"] = "feature";
+    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), false);
+  });
 });

@@ -27,7 +27,7 @@
     "@actions/github": "^4.0.0",
     "@actions/http-client": "^1.0.8",
     "@actions/io": "^1.1.0",
-    "@actions/tool-cache": "^1.5.5",
+    "@actions/tool-cache": "^1.7.1",
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^3.0.3",
     "@octokit/types": "^5.5.0",

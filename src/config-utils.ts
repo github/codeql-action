@@ -585,13 +585,15 @@ export function getPacksInvalid(configFile: string): string {
 
 export function getPacksStrInvalid(
   packStr: string,
-  configFile: string
+  configFile?: string
 ): string {
-  return getConfigFilePropertyError(
-    configFile,
-    PACKS_PROPERTY,
-    `"${packStr}" is not a valid pack`
-  );
+  return configFile
+    ? getConfigFilePropertyError(
+        configFile,
+        PACKS_PROPERTY,
+        `"${packStr}" is not a valid pack`
+      )
+    : `"${packStr}" is not a valid pack`;
 }
 
 export function getLocalPathOutsideOfRepository(
@@ -802,6 +804,7 @@ function shouldAddConfigFileQueries(queriesInput: string | undefined): boolean {
 export async function getDefaultConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
+  packsInput: string | undefined,
   dbLocation: string | undefined,
   repository: RepositoryNwo,
   tempDir: string,
@@ -840,12 +843,14 @@ export async function getDefaultConfig(
     );
   }
 
+  const packs = parsePacksInput(packsInput, languages) ?? {};
+
   return {
     languages,
     queries,
     pathsIgnore: [],
     paths: [],
-    packs: {},
+    packs,
     originalUserInput: {},
     tempDir,
     toolCacheDir,
@@ -861,6 +866,7 @@ export async function getDefaultConfig(
 async function loadConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
+  packsInput: string | undefined,
   configFile: string,
   dbLocation: string | undefined,
   repository: RepositoryNwo,
@@ -1002,6 +1008,7 @@ async function loadConfig(
 
   const packs = parsePacks(
     parsedYAML[PACKS_PROPERTY] ?? {},
+    packsInput,
     languages,
     configFile
   );
@@ -1033,7 +1040,7 @@ const PACK_IDENTIFIER_PATTERN = (function () {
 })();
 
 // Exported for testing
-export function parsePacks(
+export function parsePacksFromConfig(
   packsByLanguage: string[] | Record<string, string[]>,
   languages: Language[],
   configFile: string
@@ -1068,12 +1075,44 @@ export function parsePacks(
   return packs;
 }
 
-function toPackWithVersion(packStr, configFile: string): PackWithVersion {
+function parsePacksInput(
+  packsInput: string | undefined,
+  languages: Language[]
+): Packs | undefined {
+  if (!packsInput?.trim()) {
+    return undefined;
+  }
+
+  if (languages.length > 1) {
+    throw new Error(
+      "Cannot specify a 'packs' input in a multi-language analysis. Use a codeql-config.yml file instead and specify packs by library."
+    );
+  } else if (languages.length === 0) {
+    throw new Error("No languages specified. Cannot process the packs input.");
+  }
+
+  packsInput = packsInput.trim();
+  if (packsInput.startsWith("+")) {
+    packsInput = packsInput.substring(1).trim();
+    if (!packsInput) {
+      throw new Error("Remove the '+' from the packs input.");
+    }
+  }
+
+  return {
+    [languages[0]]: packsInput.split(",").reduce((packs, pack) => {
+      packs.push(toPackWithVersion(pack, ""));
+      return packs;
+    }, [] as PackWithVersion[]),
+  };
+}
+
+function toPackWithVersion(packStr, configFile?: string): PackWithVersion {
   if (typeof packStr !== "string") {
     throw new Error(getPacksStrInvalid(packStr, configFile));
   }
 
-  const nameWithVersion = packStr.split("@");
+  const nameWithVersion = packStr.trim().split("@");
   let version: string | undefined;
   if (
     nameWithVersion.length > 2 ||
@@ -1088,9 +1127,50 @@ function toPackWithVersion(packStr, configFile: string): PackWithVersion {
   }
 
   return {
-    packName: nameWithVersion[0],
+    packName: nameWithVersion[0].trim(),
     version,
   };
+}
+
+// exported for testing
+export function parsePacks(
+  rawPacksFromConfig: string[] | Record<string, string[]>,
+  rawPacksInput: string | undefined,
+  languages: Language[],
+  configFile: string
+) {
+  const packsFromInput = parsePacksInput(rawPacksInput, languages);
+  const packsFomConfig = parsePacksFromConfig(
+    rawPacksFromConfig,
+    languages,
+    configFile
+  );
+
+  if (!packsFromInput) {
+    return packsFomConfig;
+  }
+  if (!shouldCombinePacks(rawPacksInput)) {
+    return packsFromInput;
+  }
+
+  return combinePacks(packsFromInput, packsFomConfig);
+}
+
+function shouldCombinePacks(packsInput?: string): boolean {
+  return !!packsInput?.trim().startsWith("+");
+}
+
+function combinePacks(packs1: Packs, packs2: Packs): Packs {
+  const packs = {};
+  for (const lang of Object.keys(packs1)) {
+    packs[lang] = packs1[lang].concat(packs2[lang] || []);
+  }
+  for (const lang of Object.keys(packs2)) {
+    if (!packs[lang]) {
+      packs[lang] = packs2[lang];
+    }
+  }
+  return packs;
 }
 
 function dbLocationOrDefault(
@@ -1109,6 +1189,7 @@ function dbLocationOrDefault(
 export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
+  packsInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
   repository: RepositoryNwo,
@@ -1128,6 +1209,7 @@ export async function initConfig(
     config = await getDefaultConfig(
       languagesInput,
       queriesInput,
+      packsInput,
       dbLocation,
       repository,
       tempDir,
@@ -1142,6 +1224,7 @@ export async function initConfig(
     config = await loadConfig(
       languagesInput,
       queriesInput,
+      packsInput,
       configFile,
       dbLocation,
       repository,

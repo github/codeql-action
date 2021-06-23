@@ -12,6 +12,17 @@ interface ExtensionsTypes {
 export interface DetectorOptions {}
 
 /**
+ * The extension map can contain multiple languages with the same extension,
+ * but we only want a single one. For the moment, these clashes are resolved
+ * by the simple heuristic below listing high-priority languages. We may want
+ * to consider smarter heuristics to correctly identify languages in cases
+ * where the extension is ambiguous. The ordering of the list matters and
+ * languages earlier on will get a higher priority when resolving clashes.
+ */
+const importantLanguages = ["javascript", "typescript", "ruby", "python", "java", "c", "c++", "c#", "rust", "scala", "perl", "go"];
+
+
+/**
  * detecte program language through file extension
  *
  * @export
@@ -39,7 +50,20 @@ export class Languages {
       const languageMode = languageMap[language];
       const languageExtensions = (languageMode && languageMode.extensions) || [];
       languageExtensions.forEach((extension: string) => {
-        extensions[extension.toLowerCase()] = language.toLowerCase();
+        const lowerCaseExtension = extension.toLowerCase();
+        const lowerCaseLanguage = language.toLowerCase()
+        if (!extensions[lowerCaseExtension]) {
+          extensions[lowerCaseExtension] = lowerCaseLanguage;
+        } else {
+          const currentLanguagePriority = importantLanguages.indexOf(extensions[lowerCaseExtension]);
+          if (currentLanguagePriority === -1) {
+            extensions[lowerCaseExtension] = lowerCaseLanguage;
+          } else {
+            const otherPriority = importantLanguages.indexOf(lowerCaseLanguage);
+            if (otherPriority !== -1 && otherPriority < currentLanguagePriority)
+              extensions[lowerCaseExtension] = lowerCaseLanguage;
+          }
+        }
       });
     });
 

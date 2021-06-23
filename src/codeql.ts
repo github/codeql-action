@@ -1,15 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as stream from "stream";
-import * as globalutil from "util";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
-import * as http from "@actions/http-client";
 import { IHeaders } from "@actions/http-client/interfaces";
 import { default as deepEqual } from "fast-deep-equal";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
-import { v4 as uuidV4 } from "uuid";
 
 import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
@@ -297,29 +293,6 @@ async function getCodeQLBundleDownloadURL(
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${codeQLBundleName}`;
 }
 
-// We have to download CodeQL manually because the toolcache doesn't support Accept headers.
-// This can be removed once https://github.com/actions/toolkit/pull/530 is merged and released.
-async function toolcacheDownloadTool(
-  url: string,
-  headers: IHeaders | undefined,
-  tempDir: string,
-  logger: Logger
-): Promise<string> {
-  const client = new http.HttpClient("CodeQL Action");
-  const dest = path.join(tempDir, uuidV4());
-  const response: http.HttpClientResponse = await client.get(url, headers);
-  if (response.message.statusCode !== 200) {
-    logger.info(
-      `Failed to download from "${url}". Code(${response.message.statusCode}) Message(${response.message.statusMessage})`
-    );
-    throw new Error(`Unexpected HTTP response: ${response.message.statusCode}`);
-  }
-  const pipeline = globalutil.promisify(stream.pipeline);
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  await pipeline(response.message, fs.createWriteStream(dest));
-  return dest;
-}
-
 export async function setupCodeQL(
   codeqlURL: string | undefined,
   apiDetails: api.GitHubApiDetails,
@@ -404,11 +377,10 @@ export async function setupCodeQL(
       logger.info(
         `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`
       );
-      const codeqlPath = await toolcacheDownloadTool(
+      const codeqlPath = await toolcache.downloadTool(
         codeqlURL,
-        headers,
         tempDir,
-        logger
+        headers
       );
       logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 

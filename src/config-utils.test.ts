@@ -84,6 +84,7 @@ test("load empty config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -98,6 +99,7 @@ test("load empty config", async (t) => {
       config,
       await configUtils.getDefaultConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         { owner: "github", repo: "example " },
@@ -141,6 +143,7 @@ test("loading config saves config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       { owner: "github", repo: "example " },
       tmpDir,
       tmpDir,
@@ -164,6 +167,7 @@ test("load input outside of workspace", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         "../input",
@@ -200,6 +204,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
       await configUtils.initConfig(
         undefined,
         undefined,
+        undefined,
         configFile,
         undefined,
         { owner: "github", repo: "example " },
@@ -234,6 +239,7 @@ test("load non-existent input", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         configFile,
         undefined,
@@ -328,6 +334,7 @@ test("load non-empty input", async (t) => {
     const actualConfig = await configUtils.initConfig(
       languages,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       { owner: "github", repo: "example " },
@@ -389,6 +396,7 @@ test("Default queries are used", async (t) => {
 
     await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       configFilePath,
       undefined,
@@ -460,6 +468,7 @@ test("Queries can be specified in config file", async (t) => {
     const config = await configUtils.initConfig(
       languages,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       { owner: "github", repo: "example " },
@@ -524,6 +533,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
     const config = await configUtils.initConfig(
       languages,
       testQueries,
+      undefined,
       configFilePath,
       undefined,
       { owner: "github", repo: "example " },
@@ -586,6 +596,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
     const config = await configUtils.initConfig(
       languages,
       testQueries,
+      undefined,
       configFilePath,
       undefined,
       { owner: "github", repo: "example " },
@@ -641,6 +652,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const config = await configUtils.initConfig(
       languages,
       testQueries,
+      undefined,
       undefined,
       undefined,
       { owner: "github", repo: "example " },
@@ -717,6 +729,7 @@ test("Queries in workflow file can be added to the set of queries without overri
     const config = await configUtils.initConfig(
       languages,
       testQueries,
+      undefined,
       configFilePath,
       undefined,
       { owner: "github", repo: "example " },
@@ -785,6 +798,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         queries,
         undefined,
         undefined,
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -846,6 +860,7 @@ test("API client used when reading remote config", async (t) => {
     await configUtils.initConfig(
       languages,
       undefined,
+      undefined,
       configFile,
       undefined,
       { owner: "github", repo: "example " },
@@ -869,6 +884,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         repoReference,
@@ -902,6 +918,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         repoReference,
@@ -940,6 +957,7 @@ test("No detected languages", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         { owner: "github", repo: "example " },
         tmpDir,
         tmpDir,
@@ -963,6 +981,7 @@ test("Unknown languages", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1011,6 +1030,7 @@ test("Config specifies packages", async (t) => {
 
     const { packs } = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       configFile,
       undefined,
@@ -1068,6 +1088,7 @@ test("Config specifies packages for multiple languages", async (t) => {
 
     const { packs, queries } = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       configFile,
       undefined,
@@ -1141,6 +1162,7 @@ function doInvalidInputTest(
       try {
         await configUtils.initConfig(
           languages,
+          undefined,
           undefined,
           configFile,
           undefined,
@@ -1321,7 +1343,7 @@ function parsePacksMacro(
   expected
 ) {
   t.deepEqual(
-    configUtils.parsePacks(packsByLanguage, languages, "/a/b"),
+    configUtils.parsePacksFromConfig(packsByLanguage, languages, "/a/b"),
     expected
   );
 }
@@ -1339,7 +1361,7 @@ function parsePacksErrorMacro(
 ) {
   t.throws(
     () => {
-      configUtils.parsePacks(packsByLanguage, languages, "/a/b");
+      configUtils.parsePacksFromConfig(packsByLanguage, languages, "/a/b");
     },
     {
       message: expected,
@@ -1349,6 +1371,9 @@ function parsePacksErrorMacro(
 parsePacksErrorMacro.title = (providedTitle: string) =>
   `Parse Packs Error: ${providedTitle}`;
 
+/**
+ * Test macro for testing when the packs block is invalid
+ */
 function invalidPackNameMacro(t: ExecutionContext<unknown>, name: string) {
   parsePacksErrorMacro(
     t,
@@ -1369,6 +1394,18 @@ test("two packs", parsePacksMacro, ["a/b", "c/d@1.2.3"], [Language.cpp], {
     { packName: "c/d", version: clean("1.2.3") },
   ],
 });
+test(
+  "two packs with spaces",
+  parsePacksMacro,
+  [" a/b ", " c/d@1.2.3 "],
+  [Language.cpp],
+  {
+    [Language.cpp]: [
+      { packName: "a/b", version: undefined },
+      { packName: "c/d", version: clean("1.2.3") },
+    ],
+  }
+);
 test(
   "two packs with language",
   parsePacksMacro,
@@ -1416,3 +1453,160 @@ test(invalidPackNameMacro, "c-/d");
 test(invalidPackNameMacro, "-c/d");
 test(invalidPackNameMacro, "c/d_d");
 test(invalidPackNameMacro, "c/d@x");
+
+/**
+ * Test macro for testing the packs block and the packs input
+ */
+function parseInputAndConfigMacro(
+  t: ExecutionContext<unknown>,
+  packsFromConfig: string[] | Record<string, string[]>,
+  packsFromInput: string | undefined,
+  languages: Language[],
+  expected
+) {
+  t.deepEqual(
+    configUtils.parsePacks(packsFromConfig, packsFromInput, languages, "/a/b"),
+    expected
+  );
+}
+parseInputAndConfigMacro.title = (providedTitle: string) =>
+  `Parse Packs input and config: ${providedTitle}`;
+
+function parseInputAndConfigErrorMacro(
+  t: ExecutionContext<unknown>,
+  packsFromConfig: string[] | Record<string, string[]>,
+  packsFromInput: string | undefined,
+  languages: Language[],
+  expected: RegExp
+) {
+  t.throws(
+    () => {
+      configUtils.parsePacks(
+        packsFromConfig,
+        packsFromInput,
+        languages,
+        "/a/b"
+      );
+    },
+    {
+      message: expected,
+    }
+  );
+}
+parseInputAndConfigErrorMacro.title = (providedTitle: string) =>
+  `Parse Packs input and config Error: ${providedTitle}`;
+
+test("input only", parseInputAndConfigMacro, {}, " c/d ", [Language.cpp], {
+  [Language.cpp]: [{ packName: "c/d", version: undefined }],
+});
+
+test(
+  "input only with multiple",
+  parseInputAndConfigMacro,
+  {},
+  "a/b , c/d@1.2.3",
+  [Language.cpp],
+  {
+    [Language.cpp]: [
+      { packName: "a/b", version: undefined },
+      { packName: "c/d", version: "1.2.3" },
+    ],
+  }
+);
+
+test(
+  "input only with +",
+  parseInputAndConfigMacro,
+  {},
+  "  +  a/b , c/d@1.2.3 ",
+  [Language.cpp],
+  {
+    [Language.cpp]: [
+      { packName: "a/b", version: undefined },
+      { packName: "c/d", version: "1.2.3" },
+    ],
+  }
+);
+
+test(
+  "config only",
+  parseInputAndConfigMacro,
+  ["a/b", "c/d"],
+  "  ",
+  [Language.cpp],
+  {
+    [Language.cpp]: [
+      { packName: "a/b", version: undefined },
+      { packName: "c/d", version: undefined },
+    ],
+  }
+);
+
+test(
+  "input overrides",
+  parseInputAndConfigMacro,
+  ["a/b", "c/d"],
+  " e/f, g/h@1.2.3 ",
+  [Language.cpp],
+  {
+    [Language.cpp]: [
+      { packName: "e/f", version: undefined },
+      { packName: "g/h", version: "1.2.3" },
+    ],
+  }
+);
+
+test(
+  "input and config",
+  parseInputAndConfigMacro,
+  ["a/b", "c/d"],
+  " +e/f, g/h@1.2.3 ",
+  [Language.cpp],
+  {
+    [Language.cpp]: [
+      { packName: "e/f", version: undefined },
+      { packName: "g/h", version: "1.2.3" },
+      { packName: "a/b", version: undefined },
+      { packName: "c/d", version: undefined },
+    ],
+  }
+);
+
+test(
+  "input with no language",
+  parseInputAndConfigErrorMacro,
+  {},
+  "c/d",
+  [],
+  /No languages specified/
+);
+
+test(
+  "input with two languages",
+  parseInputAndConfigErrorMacro,
+  {},
+  "c/d",
+  [Language.cpp, Language.csharp],
+  /multi-language analysis/
+);
+
+test(
+  "input with + only",
+  parseInputAndConfigErrorMacro,
+  {},
+  " + ",
+  [Language.cpp],
+  /Remove the '\+'/
+);
+
+test(
+  "input with invalid pack name",
+  parseInputAndConfigErrorMacro,
+  {},
+  " xxx",
+  [Language.cpp],
+  /"xxx" is not a valid pack/
+);
+
+// errors
+// input w invalid pack name

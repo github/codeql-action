@@ -175,7 +175,7 @@ function getCodeQLBundleName(): string {
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
-  if (util.isActions()) {
+  if (!util.isActions()) {
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   } else {
     return getActionsCodeQLActionRepository(logger);

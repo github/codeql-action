@@ -374,21 +374,19 @@ test("getExtraOptions throws for bad content", (t) => {
 test("getCodeQLActionRepository", (t) => {
   const logger = getRunnerLogger(true);
 
-  process.env["RUNNER_TEMP"] = path.dirname(__dirname);
-
-  initializeEnvironment(Mode.actions, "1.2.3");
+  initializeEnvironment(Mode.runner, "1.2.3");
   const repoActions = codeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoActions, "github/codeql-action");
 
-  process.env["GITHUB_ACTION_REPOSITORY"] = "xxx/yyy";
-  const repoEnv = codeql.getCodeQLActionRepository(logger);
-  t.deepEqual(repoEnv, "xxx/yyy");
-
-  initializeEnvironment(Mode.runner, "1.2.3");
+  initializeEnvironment(Mode.actions, "1.2.3");
 
   // isRunningLocalAction() === true
   delete process.env["GITHUB_ACTION_REPOSITORY"];
   process.env["RUNNER_TEMP"] = path.dirname(__dirname);
   const repoLocalRunner = codeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoLocalRunner, "github/codeql-action");
+
+  process.env["GITHUB_ACTION_REPOSITORY"] = "xxx/yyy";
+  const repoEnv = codeql.getCodeQLActionRepository(logger);
+  t.deepEqual(repoEnv, "xxx/yyy");
 });

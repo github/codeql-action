@@ -24,6 +24,20 @@ test("ensure lines of code works for cpp and js", async (t) => {
   });
 });
 
+test("ensure lines of code works for csharp", async (t) => {
+  const results = await countLoc(
+    path.join(__dirname, "../tests/multi-language-repo"),
+    [],
+    [],
+    [Language.csharp],
+    getRunnerLogger(true)
+  );
+
+  t.deepEqual(results, {
+    csharp: 10,
+  });
+});
+
 test("ensure lines of code can handle undefined language", async (t) => {
   const results = await countLoc(
     path.join(__dirname, "../tests/multi-language-repo"),

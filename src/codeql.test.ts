@@ -374,11 +374,11 @@ test("getExtraOptions throws for bad content", (t) => {
 test("getCodeQLActionRepository", (t) => {
   const logger = getRunnerLogger(true);
 
-  initializeEnvironment(Mode.actions, "1.2.3");
+  initializeEnvironment(Mode.runner, "1.2.3");
   const repoActions = codeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoActions, "github/codeql-action");
 
-  initializeEnvironment(Mode.runner, "1.2.3");
+  initializeEnvironment(Mode.actions, "1.2.3");
 
   // isRunningLocalAction() === true
   delete process.env["GITHUB_ACTION_REPOSITORY"];

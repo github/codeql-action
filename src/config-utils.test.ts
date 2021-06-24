@@ -1596,7 +1596,7 @@ test(
   {},
   " + ",
   [Language.cpp],
-  /Remove the '\+'/
+  /remove the '\+'/
 );
 
 test(

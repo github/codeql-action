@@ -1,0 +1,9 @@
+name: Pack testing in the CodeQL Action
+
+disable-default-queries: true
+packs:
+  javascript:
+    - dsp-testing/codeql-pack2 # latest
+paths-ignore:
+  - tests
+  - lib

@@ -843,7 +843,7 @@ export async function getDefaultConfig(
     );
   }
 
-  const packs = parsePacksInput(packsInput, languages) ?? {};
+  const packs = parsePacksFromInput(packsInput, languages) ?? {};
 
   return {
     languages,
@@ -1075,7 +1075,7 @@ export function parsePacksFromConfig(
   return packs;
 }
 
-function parsePacksInput(
+function parsePacksFromInput(
   packsInput: string | undefined,
   languages: Language[]
 ): Packs | undefined {
@@ -1085,7 +1085,7 @@ function parsePacksInput(
 
   if (languages.length > 1) {
     throw new Error(
-      "Cannot specify a 'packs' input in a multi-language analysis. Use a codeql-config.yml file instead and specify packs by library."
+      "Cannot specify a 'packs' input in a multi-language analysis. Use a codeql-config.yml file instead and specify packs by language."
     );
   } else if (languages.length === 0) {
     throw new Error("No languages specified. Cannot process the packs input.");
@@ -1095,7 +1095,9 @@ function parsePacksInput(
   if (packsInput.startsWith("+")) {
     packsInput = packsInput.substring(1).trim();
     if (!packsInput) {
-      throw new Error("Remove the '+' from the packs input.");
+      throw new Error(
+        "A '+' was used in the 'packs' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs."
+      );
     }
   }
 
@@ -1139,7 +1141,7 @@ export function parsePacks(
   languages: Language[],
   configFile: string
 ) {
-  const packsFromInput = parsePacksInput(rawPacksInput, languages);
+  const packsFromInput = parsePacksFromInput(rawPacksInput, languages);
   const packsFomConfig = parsePacksFromConfig(
     rawPacksFromConfig,
     languages,

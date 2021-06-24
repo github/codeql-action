@@ -2,8 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
-
+- Fix `RUNNER_TEMP environment variable must be set` when using runner.
 ## 1.0.3 - 23 Jun 2021
 
 No user facing changes.

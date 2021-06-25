@@ -4,7 +4,9 @@ import * as configUtils from "./config-utils";
 import { Logger } from "./logging";
 
 function isInterpretedLanguage(language): boolean {
-  return language === "javascript" || language === "python";
+  return (
+    language === "javascript" || language === "python" || language === "ruby"
+  );
 }
 
 // Matches a string containing only characters that are legal to include in paths on windows.

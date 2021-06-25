@@ -39,6 +39,16 @@ interface ExtraOptions {
   };
 }
 
+export class CommandInvocationError extends Error {
+  constructor(cmd: string, args: string[], exitCode: number, error: string) {
+    super(
+      `Failure invoking ${cmd} with arguments ${args}.\n
+      Exit code ${exitCode} and error was:\n
+      ${error}`
+    );
+  }
+}
+
 export interface CodeQL {
   /**
    * Get the path of the CodeQL executable.
@@ -175,7 +185,7 @@ function getCodeQLBundleName(): string {
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
-  if (util.isActions()) {
+  if (!util.isActions()) {
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   } else {
     return getActionsCodeQLActionRepository(logger);
@@ -884,14 +894,32 @@ export function getExtraOptions(
   return all.concat(specific);
 }
 
+/*
+ * A constant defining the maximum number of characters we will keep from
+ * the programs stderr for logging. This serves two purposes:
+ * (1) It avoids an OOM if a program fails in a way that results it
+ *     printing many log lines.
+ * (2) It avoids us hitting the limit of how much data we can send in our
+ *     status reports on GitHub.com.
+ */
+const maxErrorSize = 20_000;
+
 async function runTool(cmd: string, args: string[] = []) {
   let output = "";
-  await new toolrunner.ToolRunner(cmd, args, {
+  let error = "";
+  const exitCode = await new toolrunner.ToolRunner(cmd, args, {
     listeners: {
       stdout: (data: Buffer) => {
         output += data.toString();
       },
+      stderr: (data: Buffer) => {
+        const toRead = Math.min(maxErrorSize - error.length, data.length);
+        error += data.toString("utf8", 0, toRead);
+      },
     },
+    ignoreReturnCode: true,
   }).exec();
+  if (exitCode !== 0)
+    throw new CommandInvocationError(cmd, args, exitCode, error);
   return output;
 }

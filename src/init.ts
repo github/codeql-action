@@ -38,6 +38,7 @@ export async function initCodeQL(
 export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
+  packsInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
   repository: RepositoryNwo,
@@ -53,6 +54,7 @@ export async function initConfig(
   const config = await configUtils.initConfig(
     languagesInput,
     queriesInput,
+    packsInput,
     configFile,
     dbLocation,
     repository,

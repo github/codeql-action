@@ -96,6 +96,7 @@ function parseTraceProcessLevel(): number | undefined {
 interface InitArgs {
   languages: string | undefined;
   queries: string | undefined;
+  packs: string | undefined;
   configFile: string | undefined;
   codeqlPath: string | undefined;
   tempDir: string | undefined;
@@ -128,6 +129,15 @@ program
   .option(
     "--queries <queries>",
     "Comma-separated list of additional queries to run. This overrides the same setting in a configuration file."
+  )
+  .option(
+    "--packs <packs>",
+    `[Experimental] Comma-separated list of packs to run. Reference a pack in the format scope/name[@version]. If version is not
+    specified, then the latest version of the pack is used. By default, this overrides the same setting in a
+    configuration file; prefix with "+" to use both sets of packs.
+
+    This option is only available in single-language analyses. To use packs in multi-language
+    analyses, you must specify packs in the codeql-config.yml file.`
   )
   .option("--config-file <file>", "Path to config file.")
   .option(
@@ -201,6 +211,7 @@ program
       const config = await initConfig(
         cmd.languages,
         cmd.queries,
+        cmd.packs,
         cmd.configFile,
         undefined,
         parseRepositoryNwo(cmd.repository),

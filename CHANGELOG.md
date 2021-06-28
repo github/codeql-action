@@ -1,6 +1,6 @@
 # CodeQL Action and CodeQL Runner Changelog
 
-## [UNRELEASED]
+## 1.0.4 - 28 Jun 2021
 
 - Fix `RUNNER_TEMP environment variable must be set` when using runner.
 ## 1.0.3 - 23 Jun 2021

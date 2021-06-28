@@ -153,6 +153,7 @@ async function run() {
     config = await initConfig(
       getOptionalInput("languages"),
       getOptionalInput("queries"),
+      getOptionalInput("packs"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
       parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),

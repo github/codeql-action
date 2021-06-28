@@ -267,22 +267,45 @@ jobs:
       with:
         tools: latest
         languages: javascript
-    - name: Compare default and latest CodeQL bundle versions
+    - name: Remove empty database
+      # allows us to run init a third time
+      run: |
+        rm -rf "$RUNNER_TEMP/codeql_databases"
+    - name: Get nightly release URL
+      id: get-url
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      shell: bash
+      # This workflow step gets an unstable testing version of the CodeQL CLI. It should not be used outside of these tests.
+      run: |
+        export LATEST=`gh release list --repo dsp-testing/codeql-cli-nightlies -L 1 | cut -f 3`
+        echo "::set-output name=nightly-url::https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$LATEST/codeql-bundle.tar.gz"
+    - name: Init with a CodeQL bundle from a nightly release
+      id: init-nightly
+      uses: ./../action/init
+      with:
+        tools: ${{ steps.get-url.outputs.nightly-url }}
+        languages: javascript
+    - name: Compare CodeQL bundle versions
       id: compare
       env:
         CODEQL_DEFAULT: ${{ steps.init-default.outputs.codeql-path }}
         CODEQL_LATEST: ${{ steps.init-latest.outputs.codeql-path }}
+        CODEQL_NIGHTLY: ${{ steps.init-nightly.outputs.codeql-path }}
+        NIGHTLY_URL: ${{ steps.get-url.outputs.nightly-url }}
       run: |
         CODEQL_VERSION_DEFAULT="$("$CODEQL_DEFAULT" version --format terse)"
         CODEQL_VERSION_LATEST="$("$CODEQL_LATEST" version --format terse)"
+        CODEQL_VERSION_NIGHTLY="$("$CODEQL_NIGHTLY" version --format terse)"
         echo "Default CodeQL bundle version is $CODEQL_VERSION_DEFAULT"
         echo "Latest CodeQL bundle version is $CODEQL_VERSION_LATEST"
+        echo "Nightly CodeQL bundle version is $CODEQL_VERSION_NIGHTLY"
         if [[ "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
-          # Just use `tools: null` to avoid duplication in the integration tests.
-          VERSIONS_JSON='[null]'
+          # Skip `tools: latest` since it would be the same as `tools: null`
+          VERSIONS_JSON="[null, \"$NIGHTLY_URL\"]"
         else
-          # Use both `tools: null` and `tools: latest` in the integration tests.
-          VERSIONS_JSON='[null, "latest"]'
+          # Run integration tests with all three bundles.
+          VERSIONS_JSON="[null, \"$NIGHTLY_URL\", \"latest\"]"
         fi
         # Output a JSON-encoded list with the distinct versions to test against.
         echo "Suggested matrix config for integration tests: $VERSIONS_JSON"

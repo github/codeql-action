@@ -122,7 +122,6 @@ jobs:
         languages: javascript
         # TODO: this can be removed when cli v2.5.6 is released and available in the tool cache
         tools: https://github.com/dsp-testing/aeisenberg-codeql-action-packaging/releases/download/codeql-bundle-20210615/codeql-bundle-linux64.tar.gz
-
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -235,6 +234,59 @@ jobs:
           exit 1
         fi
 
+  # Tests a split workflow where database construction and query execution happen in different steps 
+  test-split-workflow:
+    needs: [check-js, check-node-modules]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - uses: ./../action/init
+      with:
+        config-file: ".github/codeql/codeql-config-packaging3.yml"
+        packs: +dsp-testing/codeql-pack1@0.0.4
+        languages: javascript
+        tools: latest
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      with:
+        skip-queries: true
+        output: "${{ runner.temp }}/results"
+      env:
+        TEST_MODE: true
+    - name: Assert No Results
+      run: |
+        if [ "$(ls -A $RUNNER_TEMP/results)" ]; then
+          echo "Expected results directory to be empty after skipping query execution!"
+          exit 1
+        fi
+    - uses: ./../action/analyze
+      with:
+        output: "${{ runner.temp }}/results"
+      env:
+        TEST_MODE: true
+    - name: Assert Results
+      run: |
+        cd "$RUNNER_TEMP/results"
+        # We should have 3 hits from these rules
+        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+
+        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+        echo "Found matching rules '$RULES'"
+        if [ "$RULES" != "$EXPECTED_RULES" ]; then
+          echo "Did not match expected rules '$EXPECTED_RULES'."
+          exit 1
+        fi
 
   # Identify the CodeQL tool versions to integration test against.
   check-codeql-versions:

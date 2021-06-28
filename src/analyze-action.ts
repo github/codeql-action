@@ -5,16 +5,18 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import {
-  runAnalyze,
   CodeQLAnalysisError,
   QueriesStatusReport,
   runCleanup,
+  runQueries,
+  runFinalize,
 } from "./analyze";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
+import { UploadStatusReport } from "./upload-lib";
 import * as util from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -53,7 +55,8 @@ async function sendStatusReport(
 
 async function run() {
   const startedAt = new Date();
-  let stats: AnalysisStatusReport | undefined = undefined;
+  let uploadStats: UploadStatusReport | undefined = undefined;
+  let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
   util.initializeEnvironment(util.Mode.actions, pkg.version);
 
@@ -82,15 +85,22 @@ async function run() {
       url: util.getRequiredEnvParam("GITHUB_SERVER_URL"),
     };
     const outputDir = actionsUtil.getRequiredInput("output");
-    const queriesStats = await runAnalyze(
-      outputDir,
-      util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
-      util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
-      util.getThreadsFlag(actionsUtil.getOptionalInput("threads"), logger),
-      actionsUtil.getOptionalInput("category"),
-      config,
+    const threads = util.getThreadsFlag(
+      actionsUtil.getOptionalInput("threads"),
       logger
     );
+    await runFinalize(outputDir, threads, config, logger);
+    if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
+      runStats = await runQueries(
+        outputDir,
+        util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
+        util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
+        threads,
+        actionsUtil.getOptionalInput("category"),
+        config,
+        logger
+      );
+    }
 
     if (actionsUtil.getOptionalInput("cleanup-level") !== "none") {
       await runCleanup(
@@ -106,17 +116,15 @@ async function run() {
     }
     core.setOutput("db-locations", dbLocations);
 
-    if (actionsUtil.getRequiredInput("upload") === "true") {
-      const uploadStats = await upload_lib.uploadFromActions(
+    if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
+      uploadStats = await upload_lib.uploadFromActions(
         outputDir,
         config.gitHubVersion,
         apiDetails,
         logger
       );
-      stats = { ...queriesStats, ...uploadStats };
     } else {
       logger.info("Not uploading results");
-      stats = { ...queriesStats };
     }
 
     const repositoryNwo = parseRepositoryNwo(
@@ -128,10 +136,12 @@ async function run() {
     console.log(error);
 
     if (error instanceof CodeQLAnalysisError) {
-      stats = { ...error.queriesStatusReport };
+      const stats = { ...error.queriesStatusReport };
+      await sendStatusReport(startedAt, stats, error);
+    } else {
+      await sendStatusReport(startedAt, undefined, error);
     }
 
-    await sendStatusReport(startedAt, stats, error);
     return;
   } finally {
     if (core.isDebug() && config !== undefined) {
@@ -161,7 +171,13 @@ async function run() {
     }
   }
 
-  await sendStatusReport(startedAt, stats);
+  if (runStats && uploadStats) {
+    await sendStatusReport(startedAt, { ...runStats, ...uploadStats });
+  } else if (runStats) {
+    await sendStatusReport(startedAt, { ...runStats });
+  } else {
+    await sendStatusReport(startedAt, undefined);
+  }
 }
 
 async function runWrapper() {

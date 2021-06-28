@@ -24,6 +24,10 @@ inputs:
     description: Specify whether or not to add code snippets to the output sarif file.
     required: false
     default: "false"
+  skip-queries:
+    description: If this option is set, the CodeQL database will be built but no queries will be run on it. Thus, no results will be produced.
+    required: false
+    default: "false"
   threads:
     description: The number of threads to be used by CodeQL.
     required: false

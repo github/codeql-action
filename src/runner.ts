@@ -4,7 +4,7 @@ import * as path from "path";
 
 import { Command } from "commander";
 
-import { runAnalyze } from "./analyze";
+import { runFinalize, runQueries } from "./analyze";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import { CodeQL, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
@@ -431,11 +431,13 @@ program
 
       const outputDir =
         cmd.outputDir || path.join(config.tempDir, "codeql-sarif");
-      await runAnalyze(
+      const threads = getThreadsFlag(cmd.threads, logger);
+      await runFinalize(outputDir, threads, config, logger);
+      await runQueries(
         outputDir,
         getMemoryFlag(cmd.ram),
         getAddSnippetsFlag(cmd.addSnippets),
-        getThreadsFlag(cmd.threads, logger),
+        threads,
         cmd.category,
         config,
         logger

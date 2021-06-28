@@ -2,7 +2,13 @@
 
 ## [UNRELEASED]
 
-- Fix `RUNNER_TEMP environment variable must be set` when using runner.
+No user facing changes.
+
+## 1.0.4 - 28 Jun 2021
+
+- Fix `RUNNER_TEMP environment variable must be set` when using runner. [#594](https://github.com/github/codeql-action/pull/594)
+- Fix couting of lines of code for C# projects. [#586](https://github.com/github/codeql-action/pull/586)
+
 ## 1.0.3 - 23 Jun 2021
 
 No user facing changes.

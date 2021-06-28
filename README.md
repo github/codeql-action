@@ -128,3 +128,11 @@ By default, this will override any queries specified in a config file. If you wi
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).
+
+### Note on "missing analysis" message
+
+The very first time code scanning is run and if it is on a pull request, you will probably get a message mentioning a "missing analysis". This is expected.
+
+After code scanning has analyzed the code in a pull request, it needs to compare the analysis of the topic branch (the merge commit of the branch you used to create the pull request) with the analysis of the base branch (the branch into which you want to merge the pull request). This allows code scanning to compute which alerts are newly introduced by the pull request, which alerts were already present in the base branch, and whether any existing alerts are fixed by the changes in the pull request. Initially, if you use a pull request to add code scanning to a repository, the base branch has not yet been analyzed, so it's not possible to compute these details. In this case, when you click through from the results check on the pull request you will see the "Missing analysis for base commit SHA-HASH" message.
+
+For more information and other causes of this message, see [Reasons for the "missing analysis" message](https://docs.github.com/en/code-security/secure-coding/automatically-scanning-your-code-for-vulnerabilities-and-errors/setting-up-code-scanning-for-a-repository#reasons-for-the-missing-analysis-message)

@@ -312,23 +312,18 @@ export async function setupCodeQL(
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   try {
+    // We use the special value of 'latest' to prioritize the version in the
+    // defaults over any pinned cached version.
+    const forceLatest = codeqlURL === "latest";
+    if (forceLatest) {
+      codeqlURL = undefined;
+    }
     let codeqlFolder: string;
     let codeqlURLVersion: string;
-    if (codeqlURL?.startsWith("file://")) {
-      codeqlFolder = await toolcache.extractTar(
-        codeqlURL.substr(7),
-        tempDir,
-        logger
-      );
+    if (codeqlURL && !codeqlURL.startsWith("http")) {
+      codeqlFolder = await toolcache.extractTar(codeqlURL, tempDir, logger);
       codeqlURLVersion = "local";
     } else {
-      // We use the special value of 'latest' to prioritize the version in the
-      // defaults over any pinned cached version.
-      const forceLatest = codeqlURL === "latest";
-      if (forceLatest) {
-        codeqlURL = undefined;
-      }
-
       codeqlURLVersion = getCodeQLURLVersion(
         codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`
       );

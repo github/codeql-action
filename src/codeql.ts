@@ -312,102 +312,112 @@ export async function setupCodeQL(
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   try {
-    // We use the special value of 'latest' to prioritize the version in the
-    // defaults over any pinned cached version.
-    const forceLatest = codeqlURL === "latest";
-    if (forceLatest) {
-      codeqlURL = undefined;
-    }
-
-    const codeqlURLVersion = getCodeQLURLVersion(
-      codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`
-    );
-    const codeqlURLSemVer = convertToSemVer(codeqlURLVersion, logger);
-
-    // If we find the specified version, we always use that.
-    let codeqlFolder = toolcache.find(
-      "CodeQL",
-      codeqlURLSemVer,
-      toolCacheDir,
-      logger
-    );
-
-    // If we don't find the requested version, in some cases we may allow a
-    // different version to save download time if the version hasn't been
-    // specified explicitly (in which case we always honor it).
-    if (!codeqlFolder && !codeqlURL && !forceLatest) {
-      const codeqlVersions = toolcache.findAllVersions(
-        "CodeQL",
-        toolCacheDir,
+    let codeqlFolder: string;
+    let codeqlURLVersion: string;
+    if (codeqlURL?.startsWith("file://")) {
+      codeqlFolder = await toolcache.extractTar(
+        codeqlURL.substr(7),
+        tempDir,
         logger
       );
-      if (codeqlVersions.length === 1) {
-        const tmpCodeqlFolder = toolcache.find(
-          "CodeQL",
-          codeqlVersions[0],
-          toolCacheDir,
-          logger
-        );
-        if (fs.existsSync(path.join(tmpCodeqlFolder, "pinned-version"))) {
-          logger.debug(
-            `CodeQL in cache overriding the default ${CODEQL_BUNDLE_VERSION}`
-          );
-          codeqlFolder = tmpCodeqlFolder;
-        }
-      }
-    }
-
-    if (codeqlFolder) {
-      logger.debug(`CodeQL found in cache ${codeqlFolder}`);
+      codeqlURLVersion = "local";
     } else {
-      if (!codeqlURL) {
-        codeqlURL = await getCodeQLBundleDownloadURL(
-          apiDetails,
-          variant,
-          logger
-        );
+      // We use the special value of 'latest' to prioritize the version in the
+      // defaults over any pinned cached version.
+      const forceLatest = codeqlURL === "latest";
+      if (forceLatest) {
+        codeqlURL = undefined;
       }
 
-      const parsedCodeQLURL = new URL(codeqlURL);
-      const parsedQueryString = queryString.parse(parsedCodeQLURL.search);
-      const headers: IHeaders = { accept: "application/octet-stream" };
-      // We only want to provide an authorization header if we are downloading
-      // from the same GitHub instance the Action is running on.
-      // This avoids leaking Enterprise tokens to dotcom.
-      // We also don't want to send an authorization header if there's already a token provided in the URL.
-      if (
-        codeqlURL.startsWith(`${apiDetails.url}/`) &&
-        parsedQueryString["token"] === undefined
-      ) {
-        logger.debug("Downloading CodeQL bundle with token.");
-        headers.authorization = `token ${apiDetails.auth}`;
-      } else {
-        logger.debug("Downloading CodeQL bundle without token.");
-      }
-      logger.info(
-        `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`
+      codeqlURLVersion = getCodeQLURLVersion(
+        codeqlURL || `/${CODEQL_BUNDLE_VERSION}/`
       );
-      const codeqlPath = await toolcache.downloadTool(
-        codeqlURL,
-        tempDir,
-        headers
-      );
-      logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
+      const codeqlURLSemVer = convertToSemVer(codeqlURLVersion, logger);
 
-      const codeqlExtracted = await toolcache.extractTar(
-        codeqlPath,
-        tempDir,
-        logger
-      );
-      codeqlFolder = await toolcache.cacheDir(
-        codeqlExtracted,
+      // If we find the specified version, we always use that.
+      codeqlFolder = toolcache.find(
         "CodeQL",
         codeqlURLSemVer,
         toolCacheDir,
         logger
       );
-    }
 
+      // If we don't find the requested version, in some cases we may allow a
+      // different version to save download time if the version hasn't been
+      // specified explicitly (in which case we always honor it).
+      if (!codeqlFolder && !codeqlURL && !forceLatest) {
+        const codeqlVersions = toolcache.findAllVersions(
+          "CodeQL",
+          toolCacheDir,
+          logger
+        );
+        if (codeqlVersions.length === 1) {
+          const tmpCodeqlFolder = toolcache.find(
+            "CodeQL",
+            codeqlVersions[0],
+            toolCacheDir,
+            logger
+          );
+          if (fs.existsSync(path.join(tmpCodeqlFolder, "pinned-version"))) {
+            logger.debug(
+              `CodeQL in cache overriding the default ${CODEQL_BUNDLE_VERSION}`
+            );
+            codeqlFolder = tmpCodeqlFolder;
+          }
+        }
+      }
+
+      if (codeqlFolder) {
+        logger.debug(`CodeQL found in cache ${codeqlFolder}`);
+      } else {
+        if (!codeqlURL) {
+          codeqlURL = await getCodeQLBundleDownloadURL(
+            apiDetails,
+            variant,
+            logger
+          );
+        }
+
+        const parsedCodeQLURL = new URL(codeqlURL);
+        const parsedQueryString = queryString.parse(parsedCodeQLURL.search);
+        const headers: IHeaders = { accept: "application/octet-stream" };
+        // We only want to provide an authorization header if we are downloading
+        // from the same GitHub instance the Action is running on.
+        // This avoids leaking Enterprise tokens to dotcom.
+        // We also don't want to send an authorization header if there's already a token provided in the URL.
+        if (
+          codeqlURL.startsWith(`${apiDetails.url}/`) &&
+          parsedQueryString["token"] === undefined
+        ) {
+          logger.debug("Downloading CodeQL bundle with token.");
+          headers.authorization = `token ${apiDetails.auth}`;
+        } else {
+          logger.debug("Downloading CodeQL bundle without token.");
+        }
+        logger.info(
+          `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`
+        );
+        const codeqlPath = await toolcache.downloadTool(
+          codeqlURL,
+          tempDir,
+          headers
+        );
+        logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
+
+        const codeqlExtracted = await toolcache.extractTar(
+          codeqlPath,
+          tempDir,
+          logger
+        );
+        codeqlFolder = await toolcache.cacheDir(
+          codeqlExtracted,
+          "CodeQL",
+          codeqlURLSemVer,
+          toolCacheDir,
+          logger
+        );
+      }
+    }
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
     if (process.platform === "win32") {
       codeqlCmd += ".exe";

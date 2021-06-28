@@ -830,21 +830,21 @@ jobs:
         runner/dist/codeql-runner-linux upload --sarif-file src/testdata/empty-sarif.sarif --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
   multi-language-repo_test-local-codeql:
-    needs: [check-js, check-node-modules]
+    needs: [check-js, check-node-modules, check-codeql-versions]
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
     - name: Move codeql-action
       run: |
-        wget ${{ fromJson(needs.check-codeql-versions.outputs.nightly-url) }}
+        wget ${{ needs.check-codeql-versions.outputs.nightly-url }}
         mkdir ../action
         mv * .github ../action/
         mv ../action/tests/multi-language-repo/{*,.github} .
         mv ../action/.github/workflows .github
     - uses: ./../action/init
       with:
-        tools: "file://../action/codeql-bundle.tar.gz"
+        tools: ../action/codeql-bundle.tar.gz
     - name: Build code
       run: ./build.sh
     - uses: ./../action/analyze

@@ -120,14 +120,20 @@ async function createdDBForScannedLanguages(
     if (isScannedLanguage(language)) {
       logger.startGroup(`Extracting ${language}`);
 
-      if (language === Language.python) {
-        await setupPythonExtractor(logger);
-      }
+      let db = util.getCodeQLDatabasePath(config, language);
+      
+      if (fs.existsFileSync(db)){
+        console.log(`${db} exists already. I am assuming this is intentional...`);
+      else {
+        if (language === Language.python) {
+          await setupPythonExtractor(logger);
+        }
 
-      await codeql.extractScannedLanguage(
-        util.getCodeQLDatabasePath(config, language),
-        language
-      );
+        await codeql.extractScannedLanguage(
+          db,
+          language
+        );
+      }
       logger.endGroup();
     }
   }
@@ -143,10 +149,15 @@ async function finalizeDatabaseCreation(
   const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     logger.startGroup(`Finalizing ${language}`);
-    await codeql.finalizeDatabase(
-      util.getCodeQLDatabasePath(config, language),
-      threadsFlag
-    );
+    let db = util.getCodeQLDatabasePath(config, language);
+    if (codeql.hasBeenFinalized(db)){
+      console.log(`${db} has already been finalized. I am assuming this is intentional...`);
+    } else {
+      await codeql.finalizeDatabase(
+        db,
+        threadsFlag
+      );
+    }
     logger.endGroup();
   }
 }

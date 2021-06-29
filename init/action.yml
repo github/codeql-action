@@ -39,7 +39,7 @@ inputs:
     required: true
     default: 'true'
   source-root:
-    description: Path to the root source-code directory, relative to ${{ github.workspace }}.
+    description: Path to the root source-code directory, relative to the workspace.
     required: false
 outputs:
   codeql-path:

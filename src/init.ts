@@ -73,10 +73,9 @@ export async function initConfig(
 
 export async function runInit(
   codeql: CodeQL,
-  config: configUtils.Config
+  config: configUtils.Config,
+  sourceRoot: string
 ): Promise<TracerConfig | undefined> {
-  const sourceRoot = path.resolve();
-
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
   // TODO: replace this code once CodeQL supports multi-language tracing

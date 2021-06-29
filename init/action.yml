@@ -38,6 +38,10 @@ inputs:
     description: Try to auto-install your python dependencies
     required: true
     default: 'true'
+  source-root:
+    description: The root source-code directory.
+    required: true
+    default: ${{ github.workspace }}
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

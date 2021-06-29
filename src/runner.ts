@@ -171,6 +171,7 @@ program
     try {
       const tempDir = getTempDir(cmd.tempDir);
       const toolsDir = getToolsDir(cmd.toolsDir);
+      const checkoutPath = cmd.checkoutPath || process.cwd();
 
       // Wipe the temp dir
       logger.info(`Cleaning temp directory ${tempDir}`);
@@ -218,13 +219,13 @@ program
         tempDir,
         toolsDir,
         codeql,
-        cmd.checkoutPath || process.cwd(),
+        checkoutPath,
         gitHubVersion,
         apiDetails,
         logger
       );
 
-      const tracerConfig = await runInit(codeql, config);
+      const tracerConfig = await runInit(codeql, config, checkoutPath);
       if (tracerConfig === undefined) {
         return;
       }

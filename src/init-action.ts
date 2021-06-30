@@ -203,7 +203,7 @@ async function run() {
     const codeqlRam = process.env["CODEQL_RAM"] || "6500";
     core.exportVariable("CODEQL_RAM", codeqlRam);
 
-    const sourceRoot = path.join(
+    const sourceRoot = path.resolve(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       getOptionalInput("source-root") || ""
     );

@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-- The `init` step of the Action now supports a `source-root` input to be able to specify a path under the GitHub workspace to be the root source-code directory. [#607](https://github.com/github/codeql-action/pull/607)
+- The `init` step of the Action now supports a `source-root` input as a path to the root source-code directory. By default, the path is relative to $GITHUB_WORKSPACE. [#607](https://github.com/github/codeql-action/pull/607)
 - The `analyze` step of the Action now supports a `skip-queries` option to merely build the CodeQL database without analyzing. This functionality is not present in the runner. Additionally, the step will no longer fail if it encounters a finalized database, and will instead continue with query execution. [#602](https://github.com/github/codeql-action/pull/602)
 - Update the warning message when the baseline lines of code count is unavailable. [#608](https://github.com/github/codeql-action/pull/608)
 

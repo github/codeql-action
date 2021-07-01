@@ -910,7 +910,7 @@ jobs:
         mv ../action/.github/workflows .github
     - uses: ./../action/init
       with:
-        config-file: ".github/codeql/codeql-config-packaging2.yml"
+        config-file: ".github/codeql/codeql-config-packaging.yml"
         languages: javascript
         source-root: tests/multi-language-repo
     - name: Build code

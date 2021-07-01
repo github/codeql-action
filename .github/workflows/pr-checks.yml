@@ -901,22 +901,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
+    - uses: ./action/init
       with:
-        config-file: ".github/codeql/codeql-config-packaging.yml"
         languages: javascript
         source-root: tests/multi-language-repo
     - name: Build code
       shell: bash
       run: ./build.sh
-    - uses: ./../action/analyze
+    - uses: ./action/analyze
       with:
         output: "${{ runner.temp }}/results"
       env:

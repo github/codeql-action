@@ -894,3 +894,44 @@ jobs:
     - name: Build code
       run: ./build.sh
     - uses: ./../action/analyze
+
+  test-packaging-javascript-source-root:
+    needs: [check-js, check-node-modules]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - uses: ./../action/init
+      with:
+        config-file: ".github/codeql/codeql-config-packaging2.yml"
+        languages: javascript
+        source-root: tests/multi-language-repo
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      with:
+        output: "${{ runner.temp }}/results"
+      env:
+        TEST_MODE: true
+    - name: Assert Results
+      run: |
+        cd "$RUNNER_TEMP/results"
+        # We should have 3 hits from these rules
+        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+
+        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+        echo "Found matching rules '$RULES'"
+        if [ "$RULES" != "$EXPECTED_RULES" ]; then
+          echo "Did not match expected rules '$EXPECTED_RULES'."
+          exit 1
+        fi
+

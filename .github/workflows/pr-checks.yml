@@ -901,14 +901,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: ./action/init
+    - uses: ./init
       with:
         languages: javascript
         source-root: tests/multi-language-repo
     - name: Build code
       shell: bash
       run: ./build.sh
-    - uses: ./action/analyze
+    - uses: ./analyze
       with:
         output: "${{ runner.temp }}/results"
       env:

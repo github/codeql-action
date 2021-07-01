@@ -895,7 +895,7 @@ jobs:
       run: ./build.sh
     - uses: ./../action/analyze
 
-  test-packaging-javascript-source-root:
+  test-javascript-source-root:
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -926,4 +926,3 @@ jobs:
           echo "Did not match expected rules '$EXPECTED_RULES'."
           exit 1
         fi
-

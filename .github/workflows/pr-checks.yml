@@ -905,6 +905,10 @@ jobs:
       with:
         languages: javascript
         source-root: tests/multi-language-repo
+    - uses: ./analyze
+      with:
+        skip-queries: true
+        upload: false
     - name: Assert database exists
       run: |
         cd "$RUNNER_TEMP/codeql_databases"
@@ -912,4 +916,3 @@ jobs:
           echo "Did not find a JavaScript database"
           exit 1
         fi
-

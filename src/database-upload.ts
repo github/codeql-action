@@ -33,10 +33,13 @@ export async function uploadDatabases(
 
   const client = getApiClient(apiDetails);
   try {
-    await client.request("GET /repos/:owner/:repo/code-scanning/databases", {
-      owner: repositoryNwo.owner,
-      repo: repositoryNwo.repo,
-    });
+    await client.request(
+      "GET /repos/:owner/:repo/code-scanning/codeql/databases",
+      {
+        owner: repositoryNwo.owner,
+        repo: repositoryNwo.repo,
+      }
+    );
   } catch (e) {
     if (util.isHTTPError(e) && e.status === 404) {
       logger.debug(
@@ -60,7 +63,7 @@ export async function uploadDatabases(
     const payload = fs.readFileSync(databaseBundlePath);
     try {
       await client.request(
-        `PUT /repos/:owner/:repo/code-scanning/databases/${language}`,
+        `PUT /repos/:owner/:repo/code-scanning/codeql/databases/${language}`,
         {
           owner: repositoryNwo.owner,
           repo: repositoryNwo.repo,

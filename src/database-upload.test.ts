@@ -89,7 +89,7 @@ function mockHttpRequests(
   const requestSpy = sinon.stub(client, "request");
 
   const optInSpy = requestSpy.withArgs(
-    "GET /repos/:owner/:repo/code-scanning/databases"
+    "GET /repos/:owner/:repo/code-scanning/codeql/databases"
   );
   if (optInStatusCode < 300) {
     optInSpy.resolves(undefined);
@@ -99,7 +99,7 @@ function mockHttpRequests(
 
   if (databaseUploadStatusCode !== undefined) {
     const databaseUploadSpy = requestSpy.withArgs(
-      "PUT /repos/:owner/:repo/code-scanning/databases/javascript"
+      "PUT /repos/:owner/:repo/code-scanning/codeql/databases/javascript"
     );
     if (databaseUploadStatusCode < 300) {
       databaseUploadSpy.resolves(undefined);
@@ -234,6 +234,12 @@ test("Abort database upload if opt-in request returns 404", async (t) => {
 
     mockHttpRequests(404);
 
+    setCodeQL({
+      async databaseBundle() {
+        return;
+      },
+    });
+
     const loggedMessages = [];
     await uploadDatabases(
       testRepoName,
@@ -262,6 +268,12 @@ test("Abort database upload if opt-in request fails with something other than 40
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
 
     mockHttpRequests(500);
+
+    setCodeQL({
+      async databaseBundle() {
+        return;
+      },
+    });
 
     const loggedMessages = [] as LoggedMessage[];
     await uploadDatabases(

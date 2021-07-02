@@ -201,12 +201,12 @@ test("addFingerprints", async (t) => {
   expected = JSON.stringify(JSON.parse(expected));
 
   // The URIs in the SARIF files resolve to files in the testdata directory
-  const checkoutPath = path.normalize(`${__dirname}/../src/testdata`);
+  const sourceRoot = path.normalize(`${__dirname}/../src/testdata`);
 
   t.deepEqual(
     await fingerprints.addFingerprints(
       input,
-      checkoutPath,
+      sourceRoot,
       getRunnerLogger(true)
     ),
     expected
@@ -227,12 +227,12 @@ test("missingRegions", async (t) => {
   expected = JSON.stringify(JSON.parse(expected));
 
   // The URIs in the SARIF files resolve to files in the testdata directory
-  const checkoutPath = path.normalize(`${__dirname}/../src/testdata`);
+  const sourceRoot = path.normalize(`${__dirname}/../src/testdata`);
 
   t.deepEqual(
     await fingerprints.addFingerprints(
       input,
-      checkoutPath,
+      sourceRoot,
       getRunnerLogger(true)
     ),
     expected

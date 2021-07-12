@@ -7,6 +7,7 @@ on:
   push:
     branches: [main, v1]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   lint-js:
@@ -119,9 +120,6 @@ jobs:
       with:
         config-file: ".github/codeql/codeql-config-packaging.yml"
         languages: javascript
-        # TODO: this can be removed when cli v2.5.6 is released and available in the tool cache
-        tools: https://github.com/dsp-testing/aeisenberg-codeql-action-packaging/releases/download/codeql-bundle-20210615/codeql-bundle-linux64.tar.gz
-
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -164,8 +162,6 @@ jobs:
         config-file: ".github/codeql/codeql-config-packaging2.yml"
         languages: javascript
         packs: dsp-testing/codeql-pack1@0.0.4, dsp-testing/codeql-pack2
-        # TODO: this can be removed when cli v2.5.6 is released and available in the tool cache
-        tools: https://github.com/dsp-testing/aeisenberg-codeql-action-packaging/releases/download/codeql-bundle-20210615/codeql-bundle-linux64.tar.gz
 
     - name: Build code
       shell: bash
@@ -209,8 +205,6 @@ jobs:
         config-file: ".github/codeql/codeql-config-packaging3.yml"
         packs: +dsp-testing/codeql-pack1@0.0.4
         languages: javascript
-        # TODO: this can be removed when cli v2.5.6 is released and available in the tool cache
-        tools: https://github.com/dsp-testing/aeisenberg-codeql-action-packaging/releases/download/codeql-bundle-20210615/codeql-bundle-linux64.tar.gz
 
     - name: Build code
       shell: bash
@@ -234,6 +228,59 @@ jobs:
           exit 1
         fi
 
+  # Tests a split workflow where database construction and query execution happen in different steps
+  test-split-workflow:
+    needs: [check-js, check-node-modules]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - uses: ./../action/init
+      with:
+        config-file: ".github/codeql/codeql-config-packaging3.yml"
+        packs: +dsp-testing/codeql-pack1@0.0.4
+        languages: javascript
+        tools: latest
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      with:
+        skip-queries: true
+        output: "${{ runner.temp }}/results"
+      env:
+        TEST_MODE: true
+    - name: Assert No Results
+      run: |
+        if [ "$(ls -A $RUNNER_TEMP/results)" ]; then
+          echo "Expected results directory to be empty after skipping query execution!"
+          exit 1
+        fi
+    - uses: ./../action/analyze
+      with:
+        output: "${{ runner.temp }}/results"
+      env:
+        TEST_MODE: true
+    - name: Assert Results
+      run: |
+        cd "$RUNNER_TEMP/results"
+        # We should have 3 hits from these rules
+        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+
+        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+        echo "Found matching rules '$RULES'"
+        if [ "$RULES" != "$EXPECTED_RULES" ]; then
+          echo "Did not match expected rules '$EXPECTED_RULES'."
+          exit 1
+        fi
 
   # Identify the CodeQL tool versions to integration test against.
   check-codeql-versions:
@@ -241,6 +288,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.compare.outputs.versions }}
+      nightly-url: ${{ steps.get-url.outputs.nightly-url }}
 
     steps:
     - uses: actions/checkout@v2
@@ -266,22 +314,45 @@ jobs:
       with:
         tools: latest
         languages: javascript
-    - name: Compare default and latest CodeQL bundle versions
+    - name: Remove empty database
+      # allows us to run init a third time
+      run: |
+        rm -rf "$RUNNER_TEMP/codeql_databases"
+    - name: Get nightly release URL
+      id: get-url
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      shell: bash
+      # This workflow step gets an unstable testing version of the CodeQL CLI. It should not be used outside of these tests.
+      run: |
+        export LATEST=`gh release list --repo dsp-testing/codeql-cli-nightlies -L 1 | cut -f 3`
+        echo "::set-output name=nightly-url::https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$LATEST/codeql-bundle.tar.gz"
+    - name: Init with a CodeQL bundle from a nightly release
+      id: init-nightly
+      uses: ./../action/init
+      with:
+        tools: ${{ steps.get-url.outputs.nightly-url }}
+        languages: javascript
+    - name: Compare CodeQL bundle versions
       id: compare
       env:
         CODEQL_DEFAULT: ${{ steps.init-default.outputs.codeql-path }}
         CODEQL_LATEST: ${{ steps.init-latest.outputs.codeql-path }}
+        CODEQL_NIGHTLY: ${{ steps.init-nightly.outputs.codeql-path }}
+        NIGHTLY_URL: ${{ steps.get-url.outputs.nightly-url }}
       run: |
         CODEQL_VERSION_DEFAULT="$("$CODEQL_DEFAULT" version --format terse)"
         CODEQL_VERSION_LATEST="$("$CODEQL_LATEST" version --format terse)"
+        CODEQL_VERSION_NIGHTLY="$("$CODEQL_NIGHTLY" version --format terse)"
         echo "Default CodeQL bundle version is $CODEQL_VERSION_DEFAULT"
         echo "Latest CodeQL bundle version is $CODEQL_VERSION_LATEST"
+        echo "Nightly CodeQL bundle version is $CODEQL_VERSION_NIGHTLY"
         if [[ "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
-          # Just use `tools: null` to avoid duplication in the integration tests.
-          VERSIONS_JSON='[null]'
+          # Skip `tools: latest` since it would be the same as `tools: null`
+          VERSIONS_JSON="[null, \"$NIGHTLY_URL\"]"
         else
-          # Use both `tools: null` and `tools: latest` in the integration tests.
-          VERSIONS_JSON='[null, "latest"]'
+          # Run integration tests with all three bundles.
+          VERSIONS_JSON="[null, \"$NIGHTLY_URL\", \"latest\"]"
         fi
         # Output a JSON-encoded list with the distinct versions to test against.
         echo "Suggested matrix config for integration tests: $VERSIONS_JSON"
@@ -803,3 +874,23 @@ jobs:
         # Deliberately don't use TEST_MODE here. This is specifically testing
         # the compatibility with the API.
         runner/dist/codeql-runner-linux upload --sarif-file src/testdata/empty-sarif.sarif --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+  multi-language-repo_test-local-codeql:
+    needs: [check-js, check-node-modules, check-codeql-versions]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      run: |
+        wget ${{ needs.check-codeql-versions.outputs.nightly-url }}
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - uses: ./../action/init
+      with:
+        tools: ../action/codeql-bundle.tar.gz
+    - name: Build code
+      run: ./build.sh
+    - uses: ./../action/analyze

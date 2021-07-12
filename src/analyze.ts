@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as yaml from "js-yaml";
 
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
@@ -117,7 +118,10 @@ async function createdDBForScannedLanguages(
 
   const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
-    if (isScannedLanguage(language)) {
+    if (
+      isScannedLanguage(language) &&
+      !dbIsFinalized(config, language, logger)
+    ) {
       logger.startGroup(`Extracting ${language}`);
 
       if (language === Language.python) {
@@ -133,6 +137,25 @@ async function createdDBForScannedLanguages(
   }
 }
 
+function dbIsFinalized(
+  config: configUtils.Config,
+  language: Language,
+  logger: Logger
+) {
+  const dbPath = util.getCodeQLDatabasePath(config, language);
+  try {
+    const dbInfo = yaml.load(
+      fs.readFileSync(path.resolve(dbPath, "codeql-database.yml"), "utf8")
+    );
+    return !("inProgress" in dbInfo);
+  } catch (e) {
+    logger.warning(
+      `Could not check whether database for ${language} was finalized. Assuming it is not.`
+    );
+    return false;
+  }
+}
+
 async function finalizeDatabaseCreation(
   config: configUtils.Config,
   threadsFlag: string,
@@ -142,12 +165,18 @@ async function finalizeDatabaseCreation(
 
   const codeql = getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
-    logger.startGroup(`Finalizing ${language}`);
-    await codeql.finalizeDatabase(
-      util.getCodeQLDatabasePath(config, language),
-      threadsFlag
-    );
-    logger.endGroup();
+    if (dbIsFinalized(config, language, logger)) {
+      logger.info(
+        `There is already a finalized database for ${language} at the location where the CodeQL Action places databases, so we did not create one.`
+      );
+    } else {
+      logger.startGroup(`Finalizing ${language}`);
+      await codeql.finalizeDatabase(
+        util.getCodeQLDatabasePath(config, language),
+        threadsFlag
+      );
+      logger.endGroup();
+    }
   }
 }
 
@@ -349,33 +378,18 @@ function packWithVersionToQuerySuiteEntry(
   return text;
 }
 
-export async function runAnalyze(
+export async function runFinalize(
   outputDir: string,
-  memoryFlag: string,
-  addSnippetsFlag: string,
   threadsFlag: string,
-  automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger
-): Promise<QueriesStatusReport> {
+) {
   // Delete the tracer config env var to avoid tracing ourselves
   delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
 
   fs.mkdirSync(outputDir, { recursive: true });
 
   await finalizeDatabaseCreation(config, threadsFlag, logger);
-
-  const queriesStats = await runQueries(
-    outputDir,
-    memoryFlag,
-    addSnippetsFlag,
-    threadsFlag,
-    automationDetailsId,
-    config,
-    logger
-  );
-
-  return { ...queriesStats };
 }
 
 export async function runCleanup(

@@ -1,5 +1,10 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## 1.0.5 - 12 Jul 2021
+
+- The `analyze` step of the Action now supports a `skip-queries` option to merely build the CodeQL database without analyzing. This functionality is not present in the runner. Additionally, the step will no longer fail if it encounters a finalized database, and will instead continue with query execution. [#602](https://github.com/github/codeql-action/pull/602)
+- Update the warning message when the baseline lines of code count is unavailable. [#608](https://github.com/github/codeql-action/pull/608)
+
 ## 1.0.4 - 28 Jun 2021
 
 - Fix `RUNNER_TEMP environment variable must be set` when using runner. [#594](https://github.com/github/codeql-action/pull/594)

@@ -99,7 +99,7 @@ function mockHttpRequests(
 
   if (databaseUploadStatusCode !== undefined) {
     const databaseUploadSpy = requestSpy.withArgs(
-      "PUT /repos/:owner/:repo/code-scanning/codeql/databases/javascript"
+      "PUT /repos/:owner/:repo/code-scanning/codeql/databases/:language"
     );
     if (databaseUploadStatusCode < 300) {
       databaseUploadSpy.resolves(undefined);

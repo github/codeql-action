@@ -63,10 +63,11 @@ export async function uploadDatabases(
     const payload = fs.readFileSync(databaseBundlePath);
     try {
       await client.request(
-        `PUT /repos/:owner/:repo/code-scanning/codeql/databases/${language}`,
+        `PUT /repos/:owner/:repo/code-scanning/codeql/databases/:language`,
         {
           owner: repositoryNwo.owner,
           repo: repositoryNwo.repo,
+          language,
           data: payload,
         }
       );

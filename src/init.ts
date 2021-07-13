@@ -195,32 +195,16 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
 
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
 
-  // Setup tools on the GitHub hosted runners
-  if (process.env["ImageOS"] !== undefined) {
-    try {
-      if (process.platform === "win32") {
-        await new toolrunner.ToolRunner(
-          await safeWhich.safeWhich("powershell"),
-          [path.join(scriptsFolder, "install_tools.ps1")]
-        ).exec();
-      } else {
-        await new toolrunner.ToolRunner(
-          path.join(scriptsFolder, "install_tools.sh")
-        ).exec();
-      }
-    } catch (e) {
-      // This script tries to install some needed tools in the runner. It should not fail, but if it does
-      // we just abort the process without failing the action
-      logger.endGroup();
-      logger.warning(
-        "Unable to download and extract the tools needed for installing the python dependencies. You can call this action with 'setup-python-dependencies: false' to disable this process."
-      );
-      return;
-    }
-  }
-
-  // Install dependencies
   try {
+    if (process.platform === "win32") {
+      await new toolrunner.ToolRunner(await safeWhich.safeWhich("powershell"), [
+        path.join(scriptsFolder, "install_tools.ps1"),
+      ]).exec();
+    } else {
+      await new toolrunner.ToolRunner(
+        path.join(scriptsFolder, "install_tools.sh")
+      ).exec();
+    }
     const script = "auto_install_packages.py";
     if (process.platform === "win32") {
       await new toolrunner.ToolRunner(await safeWhich.safeWhich("py"), [
@@ -236,7 +220,10 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   } catch (e) {
     logger.endGroup();
     logger.warning(
-      "We were unable to install your python dependencies. You can call this action with 'setup-python-dependencies: false' to disable this process."
+      `An error occurred while trying to automatically install Python dependencies: ${e}\n` +
+        "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
+        "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
+        "dependency installation and avoid this warning."
     );
     return;
   }

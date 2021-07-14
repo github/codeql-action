@@ -276,12 +276,12 @@ async function addLocalQueries(
   codeQL: CodeQL,
   resultMap: Queries,
   localQueryPath: string,
-  checkoutPath: string,
+  workspacePath: string,
   configFile?: string
 ) {
   // Resolve the local path against the workspace so that when this is
   // passed to codeql it resolves to exactly the path we expect it to resolve to.
-  let absoluteQueryPath = path.join(checkoutPath, localQueryPath);
+  let absoluteQueryPath = path.join(workspacePath, localQueryPath);
 
   // Check the file exists
   if (!fs.existsSync(absoluteQueryPath)) {
@@ -294,7 +294,7 @@ async function addLocalQueries(
   // Check the local path doesn't jump outside the repo using '..' or symlinks
   if (
     !(absoluteQueryPath + path.sep).startsWith(
-      fs.realpathSync(checkoutPath) + path.sep
+      fs.realpathSync(workspacePath) + path.sep
     )
   ) {
     throw new Error(
@@ -302,7 +302,14 @@ async function addLocalQueries(
     );
   }
 
-  await runResolveQueries(codeQL, resultMap, [absoluteQueryPath], checkoutPath);
+  const extraSearchPath = workspacePath;
+
+  await runResolveQueries(
+    codeQL,
+    resultMap,
+    [absoluteQueryPath],
+    extraSearchPath
+  );
 }
 
 /**
@@ -368,7 +375,7 @@ async function parseQueryUses(
   resultMap: Queries,
   queryUses: string,
   tempDir: string,
-  checkoutPath: string,
+  workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
   logger: Logger,
   configFile?: string
@@ -384,7 +391,7 @@ async function parseQueryUses(
       codeQL,
       resultMap,
       queryUses.slice(2),
-      checkoutPath,
+      workspacePath,
       configFile
     );
     return;
@@ -764,7 +771,7 @@ async function addQueriesFromWorkflow(
   languages: string[],
   resultMap: Queries,
   tempDir: string,
-  checkoutPath: string,
+  workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
   logger: Logger
 ) {
@@ -779,7 +786,7 @@ async function addQueriesFromWorkflow(
       resultMap,
       query,
       tempDir,
-      checkoutPath,
+      workspacePath,
       apiDetails,
       logger
     );
@@ -810,7 +817,7 @@ export async function getDefaultConfig(
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
-  checkoutPath: string,
+  workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
   logger: Logger
@@ -837,7 +844,7 @@ export async function getDefaultConfig(
       languages,
       queries,
       tempDir,
-      checkoutPath,
+      workspacePath,
       apiDetails,
       logger
     );
@@ -873,7 +880,7 @@ async function loadConfig(
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
-  checkoutPath: string,
+  workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
   logger: Logger
@@ -882,8 +889,8 @@ async function loadConfig(
 
   if (isLocal(configFile)) {
     // Treat the config file as relative to the workspace
-    configFile = path.resolve(checkoutPath, configFile);
-    parsedYAML = getLocalConfig(configFile, checkoutPath);
+    configFile = path.resolve(workspacePath, configFile);
+    parsedYAML = getLocalConfig(configFile, workspacePath);
   } else {
     parsedYAML = await getRemoteConfig(configFile, apiDetails);
   }
@@ -939,7 +946,7 @@ async function loadConfig(
       languages,
       queries,
       tempDir,
-      checkoutPath,
+      workspacePath,
       apiDetails,
       logger
     );
@@ -965,7 +972,7 @@ async function loadConfig(
         queries,
         query[QUERIES_USES_PROPERTY],
         tempDir,
-        checkoutPath,
+        workspacePath,
         apiDetails,
         logger,
         configFile
@@ -1198,7 +1205,7 @@ export async function initConfig(
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
-  checkoutPath: string,
+  workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
   logger: Logger
@@ -1217,7 +1224,7 @@ export async function initConfig(
       tempDir,
       toolCacheDir,
       codeQL,
-      checkoutPath,
+      workspacePath,
       gitHubVersion,
       apiDetails,
       logger
@@ -1233,7 +1240,7 @@ export async function initConfig(
       tempDir,
       toolCacheDir,
       codeQL,
-      checkoutPath,
+      workspacePath,
       gitHubVersion,
       apiDetails,
       logger
@@ -1268,9 +1275,9 @@ function isLocal(configPath: string): boolean {
   return configPath.indexOf("@") === -1;
 }
 
-function getLocalConfig(configFile: string, checkoutPath: string): UserConfig {
+function getLocalConfig(configFile: string, workspacePath: string): UserConfig {
   // Error if the config file is now outside of the workspace
-  if (!(configFile + path.sep).startsWith(checkoutPath + path.sep)) {
+  if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
     throw new Error(getConfigFileOutsideWorkspaceErrorMessage(configFile));
   }
 

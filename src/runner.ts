@@ -208,7 +208,7 @@ program
           )
         ).codeql;
       }
-
+      const workspacePath = checkoutPath;
       const config = await initConfig(
         cmd.languages,
         cmd.queries,
@@ -219,13 +219,14 @@ program
         tempDir,
         toolsDir,
         codeql,
-        checkoutPath,
+        workspacePath,
         gitHubVersion,
         apiDetails,
         logger
       );
 
-      const tracerConfig = await runInit(codeql, config, checkoutPath);
+      const sourceRoot = checkoutPath;
+      const tracerConfig = await runInit(codeql, config, sourceRoot);
       if (tracerConfig === undefined) {
         return;
       }
@@ -448,14 +449,14 @@ program
         logger.info("Not uploading results");
         return;
       }
-
+      const sourceRoot = cmd.checkoutPath || process.cwd();
       await upload_lib.uploadFromRunner(
         outputDir,
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
         cmd.category,
-        cmd.checkoutPath || process.cwd(),
+        sourceRoot,
         config.gitHubVersion,
         apiDetails,
         logger
@@ -526,13 +527,14 @@ program
     };
     try {
       const gitHubVersion = await getGitHubVersion(apiDetails);
+      const sourceRoot = cmd.checkoutPath || process.cwd();
       await upload_lib.uploadFromRunner(
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
         cmd.commit,
         parseRef(cmd.ref),
         cmd.category,
-        cmd.checkoutPath || process.cwd(),
+        sourceRoot,
         gitHubVersion,
         apiDetails,
         logger

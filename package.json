@@ -71,5 +71,9 @@
     "removeNPMAbsolutePaths": "2.0.0",
     "sinon": "^9.0.2",
     "typescript": "^3.7.5"
+  },
+  "resolutions": {
+    "glob-parent": ">=5.1.2",
+    "normalize-url": ">=4.5.1"
   }
 }

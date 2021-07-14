@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - The `init` step of the Action now supports a `source-root` input as a path to the root source-code directory. By default, the path is relative to $GITHUB_WORKSPACE. [#607](https://github.com/github/codeql-action/pull/607)
+- The `init` step will now try to install a few Python tools needed by this Action when running on a self-hosted runner. [#616](https://github.com/github/codeql-action/pull/616)
 
 ## 1.0.5 - 12 Jul 2021
 

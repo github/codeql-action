@@ -45,7 +45,7 @@ export async function initConfig(
   tempDir: string,
   toolCacheDir: string,
   codeQL: CodeQL,
-  checkoutPath: string,
+  workspacePath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
   logger: Logger
@@ -61,7 +61,7 @@ export async function initConfig(
     tempDir,
     toolCacheDir,
     codeQL,
-    checkoutPath,
+    workspacePath,
     gitHubVersion,
     apiDetails,
     logger

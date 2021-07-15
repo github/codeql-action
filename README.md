@@ -21,8 +21,8 @@ To get code scanning results from CodeQL analysis on your repo you can use the f
 name: "Code Scanning - Action"
 
 on:
-  push:
-  pull_request:
+  push: [main]
+  pull_request: [main]
   schedule:
     #        ┌───────────── minute (0 - 59)
     #        │  ┌───────────── hour (0 - 23)

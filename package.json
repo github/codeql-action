@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -71,5 +71,9 @@
     "removeNPMAbsolutePaths": "2.0.0",
     "sinon": "^9.0.2",
     "typescript": "^3.7.5"
+  },
+  "resolutions": {
+    "glob-parent": ">=5.1.2",
+    "normalize-url": ">=4.5.1"
   }
 }

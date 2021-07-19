@@ -177,7 +177,7 @@ function locationUpdateCallback(
 export function resolveUriToFile(
   location: any,
   artifacts: any[],
-  checkoutPath: string,
+  sourceRoot: string,
   logger: Logger
 ): string | undefined {
   // This may be referencing an artifact
@@ -214,7 +214,7 @@ export function resolveUriToFile(
   }
 
   // Discard any absolute paths that aren't in the src root
-  const srcRootPrefix = `${checkoutPath}/`;
+  const srcRootPrefix = `${sourceRoot}/`;
   if (uri.startsWith("/") && !uri.startsWith(srcRootPrefix)) {
     logger.debug(
       `Ignoring location URI "${uri}" as it is outside of the src root`
@@ -247,7 +247,7 @@ export function resolveUriToFile(
 // and return an updated sarif file contents.
 export async function addFingerprints(
   sarifContents: string,
-  checkoutPath: string,
+  sourceRoot: string,
   logger: Logger
 ): Promise<string> {
   const sarif = JSON.parse(sarifContents);
@@ -279,7 +279,7 @@ export async function addFingerprints(
       const filepath = resolveUriToFile(
         primaryLocation.physicalLocation.artifactLocation,
         artifacts,
-        checkoutPath,
+        sourceRoot,
         logger
       );
       if (!filepath) {

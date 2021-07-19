@@ -174,7 +174,7 @@ export async function uploadFromRunner(
   commitOid: string,
   ref: string,
   category: string | undefined,
-  checkoutPath: string,
+  sourceRoot: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
@@ -188,7 +188,7 @@ export async function uploadFromRunner(
     category,
     undefined,
     undefined,
-    checkoutPath,
+    sourceRoot,
     undefined,
     gitHubVersion,
     apiDetails,
@@ -330,7 +330,7 @@ async function uploadFiles(
   category: string | undefined,
   analysisName: string | undefined,
   workflowRunID: number | undefined,
-  checkoutPath: string,
+  sourceRoot: string,
   environment: string | undefined,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
@@ -358,7 +358,7 @@ async function uploadFiles(
   let sarifPayload = combineSarifFiles(sarifFiles);
   sarifPayload = await fingerprints.addFingerprints(
     sarifPayload,
-    checkoutPath,
+    sourceRoot,
     logger
   );
   sarifPayload = populateRunAutomationDetails(
@@ -369,7 +369,7 @@ async function uploadFiles(
   );
 
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
-  const checkoutURI = fileUrl(checkoutPath);
+  const checkoutURI = fileUrl(sourceRoot);
 
   const toolNames = util.getToolNames(sarifPayload);
 

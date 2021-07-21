@@ -1,6 +1,6 @@
 {
   "name": "glob-parent",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "description": "Extract the non-magic parent path from a glob string.",
   "author": "Gulp Team <team@gulpjs.com> (https://gulpjs.com/)",
   "contributors": [

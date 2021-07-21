@@ -4,6 +4,13 @@
 
 - eliminate ReDoS ([#36](https://github.com/gulpjs/glob-parent/issues/36)) ([f923116](https://github.com/gulpjs/glob-parent/commit/f9231168b0041fea3f8f954b3cceb56269fc6366))
 
+### [6.0.1](https://www.github.com/gulpjs/glob-parent/compare/v6.0.0...v6.0.1) (2021-07-20)
+
+
+### Bug Fixes
+
+* Resolve ReDoS vulnerability from CVE-2021-35065 ([#49](https://www.github.com/gulpjs/glob-parent/issues/49)) ([3e9f04a](https://www.github.com/gulpjs/glob-parent/commit/3e9f04a3b4349db7e1962d87c9a7398cda51f339))
+
 ## [6.0.0](https://www.github.com/gulpjs/glob-parent/compare/v5.1.2...v6.0.0) (2021-05-03)
 
 ### ⚠ BREAKING CHANGES

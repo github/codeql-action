@@ -94,6 +94,35 @@ test("status report fields and search path setting", async (t) => {
                     ],
                   },
                 },
+                // variant 3 references a rule with the lines-of-code tag
+                {
+                  tool: {
+                    extensions: [
+                      {
+                        rules: [
+                          {
+                            properties: {
+                              tags: ["lines-of-code"],
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  properties: {
+                    metricResults: [
+                      {
+                        rule: {
+                          index: 0,
+                          toolComponent: {
+                            index: 0,
+                          },
+                        },
+                        value: 123,
+                      },
+                    ],
+                  },
+                },
                 {},
               ],
             })
@@ -233,8 +262,20 @@ test("status report fields and search path setting", async (t) => {
         baseline: lineCount,
       },
     ]);
+    t.deepEqual(sarif.runs[2].properties.metricResults, [
+      {
+        rule: {
+          index: 0,
+          toolComponent: {
+            index: 0,
+          },
+        },
+        value: 123,
+        baseline: lineCount,
+      },
+    ]);
     // when the rule doesn't exist, it should not be added
-    t.deepEqual(sarif.runs[2].properties.metricResults, []);
+    t.deepEqual(sarif.runs[3].properties.metricResults, []);
   }
 
   function verifyQuerySuites(tmpDir: string) {

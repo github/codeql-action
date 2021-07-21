@@ -415,8 +415,10 @@ async function injectLinesOfCode(
   const idPrefix = getIdPrefix(language);
   if (language in lineCounts) {
     const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
+
     if (Array.isArray(sarif.runs)) {
       for (const run of sarif.runs) {
+        // Old style: Baseline is inserted when rule ID has suffix /summary/lines-of-code
         const ruleId = `${idPrefix}/summary/lines-of-code`;
         run.properties = run.properties || {};
         run.properties.metricResults = run.properties.metricResults || [];
@@ -428,8 +430,22 @@ async function injectLinesOfCode(
         if (rule) {
           rule.baseline = lineCounts[language];
         }
+
+        // New style: Baseline is inserted when matching rule has tag lines-of-code
+        for (const metric of run.properties.metricResults) {
+          if (metric.rule && metric.rule.toolComponent) {
+            const matchingRule =
+              run.tool.extensions[metric.rule.toolComponent.index].rules[
+                metric.rule.index
+              ];
+            if (matchingRule.properties.tags?.includes("lines-of-code")) {
+              metric.baseline = lineCounts[language];
+            }
+          }
+        }
       }
     }
+
     fs.writeFileSync(sarifFile, JSON.stringify(sarif));
   }
 }

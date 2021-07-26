@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "thursday" # Gives us a working day to merge this before our typical release
+    labels:
+      - "Update dependencies"

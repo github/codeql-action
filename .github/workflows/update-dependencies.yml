@@ -1,0 +1,34 @@
+name: Update dependencies
+on:
+  pull_request:
+
+jobs:
+  update:
+    name: Update dependencies
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'Update dependencies')
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Update dependencies
+      run: |
+        npm ci
+        npm run removeNPMAbsolutePaths
+
+    - name: Remove PR label
+      env:
+        REPOSITORY: '${{ github.repository }}'
+        PR_NUMBER: '${{ github.event.pull_request.number }}'
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      run: |
+        gh api "repos/$REPOSITORY/issues/$PR_NUMBER/labels/Update%20dependencies" -X DELETE
+
+    - name: Push updated dependencies
+      run: |
+        git config --global user.email "github-actions@github.com"
+        git config --global user.name "github-actions[bot]"
+        git add node_modules
+        git commit -am "Update `node_modules` to match latest dependencies"
+        git push
+

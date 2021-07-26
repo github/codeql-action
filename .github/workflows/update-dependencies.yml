@@ -30,12 +30,10 @@ jobs:
         npm install
         npm ci
         npm run removeNPMAbsolutePaths
-        git config --global user.email "github-actions@github.com"
-        git config --global user.name "github-actions[bot]"
-        git add node_modules
-        if ! git commit -am "Update checked-in dependencies" ; then
-          echo "No changes detected, skipping pushing..."
-          exit 0
+        if [ ! -z "$(git status --porcelain)" ]; then
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions[bot]"
+          git add node_modules
+          git commit -am "Update checked-in dependencies"
+          git push origin "$BRANCH"
         fi
-        git push origin "$BRANCH"
-

@@ -22,7 +22,9 @@ name: "Code Scanning - Action"
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
   schedule:
     #        ┌───────────── minute (0 - 59)
     #        │  ┌───────────── hour (0 - 23)

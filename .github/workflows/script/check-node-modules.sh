@@ -7,6 +7,7 @@ if [ ! -z "$(git status --porcelain)" ]; then
     >&2 echo "Failed: Repo should be clean before testing!"
     exit 1
 fi
+sudo npm install --force -g npm@latest
 # Reinstall modules and then clean to remove absolute paths
 # Use 'npm ci' instead of 'npm install' as this is intended to be reproducible
 npm ci

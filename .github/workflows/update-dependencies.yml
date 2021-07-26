@@ -1,0 +1,37 @@
+name: Update dependencies
+on:
+  pull_request:
+
+jobs:
+  update:
+    name: Update dependencies
+    runs-on: macos-latest
+    if: contains(github.event.pull_request.labels.*.name, 'Update dependencies')
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Remove PR label
+      env:
+        REPOSITORY: '${{ github.repository }}'
+        PR_NUMBER: '${{ github.event.pull_request.number }}'
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      run: |
+        gh api "repos/$REPOSITORY/issues/$PR_NUMBER/labels/Update%20dependencies" -X DELETE
+
+    - name: Push updated dependencies
+      env:
+        BRANCH: '${{ github.head_ref }}'
+      run: |
+        git fetch
+        git checkout $BRANCH
+        sudo npm install --force -g npm@latest
+        npm install
+        npm ci
+        npm run removeNPMAbsolutePaths
+        git config --global user.email "github-actions@github.com"
+        git config --global user.name "github-actions[bot]"
+        git add node_modules
+        git commit -am "Update checked-in dependencies"
+        git push
+

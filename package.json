@@ -67,7 +67,7 @@
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "micromatch": "4.0.2",
-    "nock": "^12.0.3",
+    "nock": "^13.1.1",
     "removeNPMAbsolutePaths": "2.0.0",
     "sinon": "^9.0.2",
     "typescript": "^4.3.5"

@@ -324,7 +324,7 @@ test("status report fields and search path setting", async (t) => {
       );
       console.log(x);
 
-      return yaml.safeLoad(
+      return yaml.load(
         fs.readFileSync(path.join(tmpDir, "codeql_databases", name), "utf8")
       );
     }

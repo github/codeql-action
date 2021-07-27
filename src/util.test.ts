@@ -232,9 +232,9 @@ test("getGitHubVersion", async (t) => {
 
 test("getGitHubAuth", async (t) => {
   const msgs: string[] = [];
-  const mockLogger = ({
+  const mockLogger = {
     warning: (msg: string) => msgs.push(msg),
-  } as unknown) as Logger;
+  } as unknown as Logger;
 
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   t.throwsAsync(async () => util.getGitHubAuth(mockLogger, "abc", true));

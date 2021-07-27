@@ -193,7 +193,7 @@ test("getWorkflowErrors() when on.pull_requests is a string and correct", (t) =>
 
 test("getWorkflowErrors() when on.push is correct with empty objects", (t) => {
   const errors = actionsutil.getWorkflowErrors(
-    yaml.safeLoad(`
+    yaml.load(`
 on:
   push:
   pull_request:
@@ -363,7 +363,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
 
 test("getWorkflowErrors() when on.pull_request for every branch but push specifies branches", (t) => {
   const errors = actionsutil.getWorkflowErrors(
-    yaml.safeLoad(`
+    yaml.load(`
 name: "CodeQL"
 on:
   push:
@@ -480,7 +480,7 @@ test("patternIsSuperset()", (t) => {
 
 test("getWorkflowErrors() when branches contain dots", (t) => {
   const errors = actionsutil.getWorkflowErrors(
-    yaml.safeLoad(`
+    yaml.load(`
   on:
     push:
       branches: [4.1, master]
@@ -495,7 +495,7 @@ test("getWorkflowErrors() when branches contain dots", (t) => {
 
 test("getWorkflowErrors() when on.push has a trailing comma", (t) => {
   const errors = actionsutil.getWorkflowErrors(
-    yaml.safeLoad(`
+    yaml.load(`
 name: "CodeQL"
 on:
   push:
@@ -513,7 +513,7 @@ test("getWorkflowErrors() should only report the current job's CheckoutWrongHead
   process.env.GITHUB_JOB = "test";
 
   const errors = actionsutil.getWorkflowErrors(
-    yaml.safeLoad(`
+    yaml.load(`
 name: "CodeQL"
 on:
   push:
@@ -544,7 +544,7 @@ test("getWorkflowErrors() should not report a different job's CheckoutWrongHead"
   process.env.GITHUB_JOB = "test3";
 
   const errors = actionsutil.getWorkflowErrors(
-    yaml.safeLoad(`
+    yaml.load(`
 name: "CodeQL"
 on:
   push:
@@ -571,7 +571,7 @@ jobs:
 
 test("getWorkflowErrors() when on is missing", (t) => {
   const errors = actionsutil.getWorkflowErrors(
-    yaml.safeLoad(`
+    yaml.load(`
 name: "CodeQL"
 `)
   );
@@ -583,7 +583,7 @@ test("getWorkflowErrors() with a different on setup", (t) => {
   t.deepEqual(
     ...errorCodes(
       actionsutil.getWorkflowErrors(
-        yaml.safeLoad(`
+        yaml.load(`
 name: "CodeQL"
 on: "workflow_dispatch"
 `)
@@ -595,7 +595,7 @@ on: "workflow_dispatch"
   t.deepEqual(
     ...errorCodes(
       actionsutil.getWorkflowErrors(
-        yaml.safeLoad(`
+        yaml.load(`
 name: "CodeQL"
 on: [workflow_dispatch]
 `)
@@ -607,7 +607,7 @@ on: [workflow_dispatch]
   t.deepEqual(
     ...errorCodes(
       actionsutil.getWorkflowErrors(
-        yaml.safeLoad(`
+        yaml.load(`
 name: "CodeQL"
 on:
   workflow_dispatch: {}
@@ -622,7 +622,7 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
   t.deepEqual(
     ...errorCodes(
       actionsutil.getWorkflowErrors(
-        yaml.safeLoad(`
+        yaml.load(`
 name: "CodeQL"
 on:
   push:
@@ -636,7 +636,7 @@ on:
   t.deepEqual(
     ...errorCodes(
       actionsutil.getWorkflowErrors(
-        yaml.safeLoad(`
+        yaml.load(`
 name: "CodeQL"
 on: ["push"]
 `)

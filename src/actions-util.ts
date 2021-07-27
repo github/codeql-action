@@ -332,7 +332,7 @@ export async function getWorkflow(): Promise<Workflow> {
     relativePath
   );
 
-  return yaml.safeLoad(fs.readFileSync(absolutePath, "utf-8"));
+  return yaml.load(fs.readFileSync(absolutePath, "utf-8"));
 }
 
 /**

@@ -23,7 +23,7 @@
   "dependencies": {
     "@actions/artifact": "^0.5.1",
     "@actions/core": "^1.2.6",
-    "@actions/exec": "^1.0.1",
+    "@actions/exec": "^1.1.0",
     "@actions/github": "^4.0.0",
     "@actions/http-client": "^1.0.8",
     "@actions/io": "^1.1.0",

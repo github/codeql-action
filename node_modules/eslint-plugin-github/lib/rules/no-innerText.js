@@ -1,7 +1,12 @@
 module.exports = {
   meta: {
-    docs: {},
-    fixable: 'code'
+    type: 'problem',
+    docs: {
+      description: 'disallow `Element.prototype.innerText` in favor of `Element.prototype.textContent`',
+      url: require('../url')(module)
+    },
+    fixable: 'code',
+    schema: []
   },
 
   create(context) {

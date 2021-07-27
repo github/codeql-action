@@ -56,7 +56,7 @@
     "@types/jszip": "^3.1.6",
     "@types/long": "4.0.0",
     "@types/nock": "^11.1.0",
-    "@types/node": "^12.0.4",
+    "@types/node": "^16.4.3",
     "@types/semver": "^7.2.0",
     "@types/sinon": "^7.2.0",
     "@typescript-eslint/parser": "^4.1.0",

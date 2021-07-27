@@ -29,7 +29,7 @@
     "@actions/io": "^1.1.0",
     "@actions/tool-cache": "^1.7.1",
     "@chrisgavin/safe-which": "^1.0.2",
-    "@octokit/plugin-retry": "^3.0.3",
+    "@octokit/plugin-retry": "^3.0.9",
     "@octokit/types": "^6.21.1",
     "commander": "^8.0.0-1",
     "console-log-level": "^1.4.1",

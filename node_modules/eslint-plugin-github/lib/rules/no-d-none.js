@@ -1,4 +1,12 @@
 module.exports = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'disallow usage the `d-none` CSS class',
+      url: require('../url')(module)
+    },
+    schema: []
+  },
   create(context) {
     return {
       CallExpression(node) {

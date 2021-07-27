@@ -39,7 +39,7 @@
     "github-linguist": "^2.4.3",
     "glob": "^7.1.7",
     "js-yaml": "^4.1.0",
-    "jsonschema": "1.2.6",
+    "jsonschema": "1.4.0",
     "long": "^4.0.0",
     "md5": "^2.2.1",
     "path": "^0.12.7",

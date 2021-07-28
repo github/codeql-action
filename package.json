@@ -22,7 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "@actions/artifact": "^0.5.2",
-    "@actions/core": "^1.2.6",
+    "@actions/core": "^1.4.0",
     "@actions/exec": "^1.1.0",
     "@actions/github": "^4.0.0",
     "@actions/http-client": "^1.0.11",
@@ -66,7 +66,7 @@
     "eslint-plugin-github": "^4.1.5",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "micromatch": "4.0.2",
+    "micromatch": "4.0.4",
     "nock": "^13.1.1",
     "removeNPMAbsolutePaths": "2.0.0",
     "sinon": "^11.1.2",

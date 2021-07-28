@@ -1,30 +1,25 @@
-'use strict';
-const path = require('path');
+import path from 'path';
 
-module.exports = (filePath, options) => {
+export default function fileUrl(filePath, options = {}) {
 	if (typeof filePath !== 'string') {
 		throw new TypeError(`Expected a string, got ${typeof filePath}`);
 	}
 
-	options = {
-		resolve: true,
-		...options
-	};
+	const {resolve = true} = options;
 
 	let pathName = filePath;
-
-	if (options.resolve) {
+	if (resolve) {
 		pathName = path.resolve(filePath);
 	}
 
 	pathName = pathName.replace(/\\/g, '/');
 
-	// Windows drive letter must be prefixed with a slash
+	// Windows drive letter must be prefixed with a slash.
 	if (pathName[0] !== '/') {
 		pathName = `/${pathName}`;
 	}
 
-	// Escape required characters for path components
+	// Escape required characters for path components.
 	// See: https://tools.ietf.org/html/rfc3986#section-3.3
 	return encodeURI(`file://${pathName}`).replace(/[?#]/g, encodeURIComponent);
-};
+}

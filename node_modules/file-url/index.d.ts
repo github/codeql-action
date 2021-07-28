@@ -1,12 +1,10 @@
-declare namespace fileUrl {
-	interface Options {
-		/**
-		Passing `false` will make it not call `path.resolve()` on the path.
+export interface Options {
+	/**
+	Passing `false` will make it not call `path.resolve()` on the path.
 
-		@default true
-		*/
-		readonly resolve?: boolean;
-	}
+	@default true
+	*/
+	readonly resolve?: boolean;
 }
 
 /**
@@ -17,7 +15,7 @@ Convert a file path to a file URL.
 
 @example
 ```
-import fileUrl = require('file-url');
+import fileUrl from 'file-url';
 
 fileUrl('unicorn.jpg');
 //=> 'file:///Users/sindresorhus/dev/file-url/unicorn.jpg'
@@ -29,6 +27,4 @@ fileUrl('unicorn.jpg', {resolve: false});
 //=> 'file:///unicorn.jpg'
 ```
 */
-declare function fileUrl(filePath: string, options?: fileUrl.Options): string;
-
-export = fileUrl;
+export default function fileUrl(filePath: string, options?: Options): string;

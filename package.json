@@ -53,7 +53,7 @@
   ],
   "devDependencies": {
     "@ava/typescript": "1.1.1",
-    "@types/jszip": "^3.1.6",
+    "@types/jszip": "^3.4.1",
     "@types/long": "4.0.1",
     "@types/nock": "^11.1.0",
     "@types/node": "^16.4.3",

@@ -754,6 +754,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "interpret-results",
         threadsFlag,
         "--format=sarif-latest",
+        "--print-diagnostics-summary",
         "--print-metrics-summary",
         "--sarif-group-rules-by-pack",
         "-v",

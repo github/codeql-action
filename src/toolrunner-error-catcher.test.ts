@@ -33,7 +33,7 @@ test("regex matchers are applied to stdout for non-zero exit code", async (t) =>
 
   await t.throwsAsync(exec.exec("node", testArgs), {
     instanceOf: Error,
-    message: "The process 'node' failed with exit code 1",
+    message: /failed with exit code 1/,
   });
 
   await t.throwsAsync(toolrunnerErrorCatcher("node", testArgs, matchers), {
@@ -56,7 +56,7 @@ test("regex matchers are applied to stderr for non-zero exit code", async (t) =>
 
   await t.throwsAsync(exec.exec("node", testArgs), {
     instanceOf: Error,
-    message: "The process 'node' failed with exit code 1",
+    message: /failed with exit code 1/,
   });
 
   await t.throwsAsync(toolrunnerErrorCatcher("node", testArgs, matchers), {
@@ -81,7 +81,7 @@ test("matcher returns correct error message when multiple matchers defined", asy
 
   await t.throwsAsync(exec.exec("node", testArgs), {
     instanceOf: Error,
-    message: "The process 'node' failed with exit code 1",
+    message: /failed with exit code 1/,
   });
 
   await t.throwsAsync(toolrunnerErrorCatcher("node", testArgs, matchers), {
@@ -106,7 +106,7 @@ test("matcher returns first match to regex when multiple matches", async (t) => 
 
   await t.throwsAsync(exec.exec("node", testArgs), {
     instanceOf: Error,
-    message: "The process 'node' failed with exit code 1",
+    message: /failed with exit code 1/,
   });
 
   await t.throwsAsync(toolrunnerErrorCatcher("node", testArgs, matchers), {
@@ -133,7 +133,7 @@ test("exit code matchers are applied", async (t) => {
 
   await t.throwsAsync(exec.exec("node", testArgs), {
     instanceOf: Error,
-    message: "The process 'node' failed with exit code 123",
+    message: /failed with exit code 123/,
   });
 
   await t.throwsAsync(toolrunnerErrorCatcher("node", testArgs, matchers), {

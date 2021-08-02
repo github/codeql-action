@@ -7,3 +7,8 @@ updates:
       day: "thursday" # Gives us a working day to merge this before our typical release
     labels:
       - "Update dependencies"
+  - package-ecosystem: "npm"
+    directory: "/runner"
+    schedule:
+      interval: "weekly"
+      day: "thursday" # Gives us a working day to merge this before our typical release

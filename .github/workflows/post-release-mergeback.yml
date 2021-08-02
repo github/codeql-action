@@ -119,5 +119,6 @@ jobs:
             --head "$NEW_BRANCH" \
             --base "$BASE_BRANCH" \
             --title "$PR_TITLE" \
+            --label "Update dependencies" \
             --body "$PR_BODY" \
             ${DRAFT:+"$DRAFT"} # no quotes around $DRAFT. gh will error out if there is an empty ""

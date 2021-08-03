@@ -5,6 +5,9 @@ on:
     paths:
       - .github/workflows/check-expected-release-files.yml
       - src/defaults.json
+    # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
+    # by other workflows.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   check-expected-release-files:

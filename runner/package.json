@@ -1,6 +1,6 @@
 {
   "name": "codeql-runner",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "private": true,
   "description": "CodeQL runner",
   "scripts": {
@@ -11,7 +11,7 @@
   "devDependencies": {
     "pkg": "^5.3.1",
     "ts-loader": "9.2.4",
-    "webpack": "^5.47.0",
+    "webpack": "^5.47.1",
     "webpack-cli": "^4.7.2"
   }
 }

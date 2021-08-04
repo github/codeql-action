@@ -93,7 +93,9 @@ def open_pr(repo, all_commits, short_main_sha, branch_name):
   title = 'Merge ' + MAIN_BRANCH + ' into ' + LATEST_RELEASE_BRANCH
 
   # Create the pull request
-  pr = repo.create_pull(title=title, body='\n'.join(body), head=branch_name, base=LATEST_RELEASE_BRANCH)
+  # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft so that
+  # a maintainer can take the PR out of draft, thereby triggering the PR checks.
+  pr = repo.create_pull(title=title, body='\n'.join(body), head=branch_name, base=LATEST_RELEASE_BRANCH, draft=True)
   print('Created PR #' + str(pr.number))
 
   # Assign the conductor

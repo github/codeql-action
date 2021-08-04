@@ -106,19 +106,14 @@ jobs:
           git commit -m "Update changelog and version after $VERSION"
           npm version patch
 
-          # when running this workflow on a PR, this is just a test.
-          # so put into draft mode.
-          if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
-            DRAFT="--draft"
-          else
-            DRAFT=""
-          fi
-
           git push origin "$NEW_BRANCH"
+
+          # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft
+          # so that a maintainer can take the PR out of draft, thereby triggering the PR checks.
           gh pr create \
             --head "$NEW_BRANCH" \
             --base "$BASE_BRANCH" \
             --title "$PR_TITLE" \
             --label "Update dependencies" \
             --body "$PR_BODY" \
-            ${DRAFT:+"$DRAFT"} # no quotes around $DRAFT. gh will error out if there is an empty ""
+            --draft

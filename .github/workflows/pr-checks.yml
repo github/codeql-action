@@ -497,6 +497,47 @@ jobs:
           exit 1
         fi
 
+  # Ruby is in beta, so test it separately for now.
+  multi-language-repo_test-ruby:
+    needs: [check-js, check-node-modules, check-codeql-versions]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        tools:
+          - latest
+          # TODO: Uncomment when nightly builds also support Ruby in beta.
+          # - ${{ needs.check-codeql-versions.outputs.nightly-url }}
+    runs-on: ${{ matrix.os }}
+    env:
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES: true
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - uses: ./../action/init
+      with:
+        languages: ruby
+        tools: ${{ matrix.tools }}
+    - uses: ./../action/analyze
+      id: analysis
+      env:
+        TEST_MODE: true
+    - name: Check database
+      shell: bash
+      run: |
+        RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
+        if [[ ! -d "$RUBY_DB" ]]; then
+          echo "Did not create a database for Ruby."
+          exit 1
+        fi
+
   multi-language-repo_rubocop:
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest

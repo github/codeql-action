@@ -42,6 +42,14 @@ jobs:
     # CodeQL runs on ubuntu-latest, windows-latest, and macos-latest
     runs-on: ubuntu-latest
 
+    permissions:
+      # required for all workflows
+      security-events: write
+
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2

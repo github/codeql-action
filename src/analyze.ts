@@ -229,10 +229,12 @@ export async function runQueries(
         logger.startGroup(`Downloading custom packs for ${language}`);
 
         const codeql = getCodeQL(config.codeQLCmd);
-        const results = await codeql.packDownload(packsWithVersion);
+        const results = await codeql.packDownload(
+          packsWithVersion.map(packWithVersionToString)
+        );
         logger.info(
           `Downloaded packs: ${results.packs
-            .map((r) => `${r.name}@${r.version || "latest"}`)
+            .map((r) => `${r.name}@${r.version}`)
             .join(", ")}`
         );
 
@@ -444,4 +446,8 @@ function printLinesOfCodeSummary(
       `Counted a baseline of ${lineCounts[language]} lines of code for ${language}.`
     );
   }
+}
+
+function packWithVersionToString(pack: configUtils.PackWithVersion): string {
+  return pack.version ? `${pack.packName}@${pack.version}` : pack.packName;
 }

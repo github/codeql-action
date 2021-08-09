@@ -5,7 +5,11 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as api from "./api-client";
-import { CodeQL, ResolveQueriesOutput } from "./codeql";
+import {
+  CodeQL,
+  ResolveQueriesOutput,
+  supportsDownloadPacksFromSuites,
+} from "./codeql";
 import * as externalQueries from "./external-queries";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
@@ -202,6 +206,10 @@ async function runResolveQueries(
   toResolve: string[],
   extraSearchPath: string | undefined
 ) {
+  // before running resolve queries, must run download packs, if the CLI is new enough
+  if (await supportsDownloadPacksFromSuites(codeQL)) {
+    await codeQL.packDownload(toResolve, extraSearchPath);
+  }
   const resolvedQueries = await codeQL.resolveQueries(
     toResolve,
     extraSearchPath

@@ -9,7 +9,6 @@ import * as semver from "semver";
 
 import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
-import { PackWithVersion } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
 import { Language } from "./languages";
@@ -50,6 +49,11 @@ export class CommandInvocationError extends Error {
 }
 
 export interface CodeQL {
+  /**
+   * Gets the version of the CodeQL CLI.
+   */
+  getVersion(): Promise<string>;
+
   /**
    * Get the path of the CodeQL executable.
    */
@@ -99,7 +103,10 @@ export interface CodeQL {
   /**
    * Run 'codeql pack download'.
    */
-  packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput>;
+  packDownload(
+    packsOrSuites: string[],
+    extraSearchPath?: string
+  ): Promise<PackDownloadOutput>;
 
   /**
    * Run 'codeql database cleanup'.
@@ -489,6 +496,9 @@ function resolveFunction<T>(
  */
 export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
   cachedCodeQL = {
+    getVersion: resolveFunction(partialCodeql, "getVersion", () =>
+      Promise.resolve("0.0.0")
+    ),
     getPath: resolveFunction(partialCodeql, "getPath", () => "/tmp/dummy-path"),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
     getTracerEnv: resolveFunction(partialCodeql, "getTracerEnv"),
@@ -528,12 +538,27 @@ export function getCachedCodeQL(): CodeQL {
 }
 
 function getCodeQLForCmd(cmd: string): CodeQL {
+  let version: string;
   return {
+    async getVersion() {
+      if (!version) {
+        await this.printVersion();
+      }
+      return version;
+    },
     getPath() {
       return cmd;
     },
     async printVersion() {
-      await runTool(cmd, ["version", "--format=json"]);
+      const output = await runTool(cmd, ["version", "--format=json"]);
+      try {
+        version = JSON.parse(output).version;
+        if (!version) {
+          throw new Error("Missing version");
+        }
+      } catch (e) {
+        throw new Error(`Unexpected output from codeql version: ${e}`);
+      }
     },
     async getTracerEnv(databasePath: string) {
       // Write tracer-env.js to a temp location.
@@ -779,14 +804,21 @@ function getCodeQLForCmd(cmd: string): CodeQL {
      * downloaded. The check to determine what the latest version is is done
      * each time this package is requested.
      */
-    async packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput> {
+    async packDownload(
+      packsOrSuites: string[],
+      extraSearchPath?: string
+    ): Promise<PackDownloadOutput> {
       const codeqlArgs = [
         "pack",
         "download",
         "--format=json",
         ...getExtraOptionsFromEnv(["pack", "download"]),
-        ...packs.map(packWithVersionToString),
+        ...packsOrSuites,
       ];
+
+      if (extraSearchPath) {
+        codeqlArgs.push("--additional-packs", extraSearchPath);
+      }
 
       const output = await runTool(cmd, codeqlArgs);
 
@@ -794,10 +826,7 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         const parsedOutput: PackDownloadOutput = JSON.parse(output);
         if (
           Array.isArray(parsedOutput.packs) &&
-          // TODO PackDownloadOutput will not include the version if it is not specified
-          // in the input. The version is always the latest version available.
-          // It should be added to the output, but this requires a CLI change
-          parsedOutput.packs.every((p) => p.name /* && p.version */)
+          parsedOutput.packs.every((p) => p.name && p.version)
         ) {
           return parsedOutput;
         } else {
@@ -834,10 +863,6 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
-}
-
-function packWithVersionToString(pack: PackWithVersion): string {
-  return pack.version ? `${pack.packName}@${pack.version}` : pack.packName;
 }
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
@@ -897,6 +922,22 @@ export function getExtraOptions(
           pathInfo.concat(paths[0])
         );
   return all.concat(specific);
+}
+
+// TODO verify that this is the correct version.
+const CODEQL_MIN_VERSION_DOWNLOAD_PACKS_FROM_SUITES = ">=2.6.0";
+
+/**
+ * Determines if this codeql supports introspecting query suites to look for packages
+ * to download.
+ */
+export async function supportsDownloadPacksFromSuites(
+  codeQL: CodeQL
+): Promise<boolean> {
+  return semver.satisfies(
+    await codeQL.getVersion(),
+    CODEQL_MIN_VERSION_DOWNLOAD_PACKS_FROM_SUITES
+  );
 }
 
 /*

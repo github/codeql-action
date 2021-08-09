@@ -390,3 +390,17 @@ test("getCodeQLActionRepository", (t) => {
   const repoEnv = codeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoEnv, "xxx/yyy");
 });
+
+test("supportsDownloadPacksFromSuites", async (t) => {
+  const mockCodeQL = (mockVersion: string) => {
+    return {
+      async getVersion() {
+        return mockVersion;
+      },
+    } as codeql.CodeQL;
+  };
+
+  t.true(await codeql.supportsDownloadPacksFromSuites(mockCodeQL("2.6.0")));
+  t.true(await codeql.supportsDownloadPacksFromSuites(mockCodeQL("2.6.1")));
+  t.false(await codeql.supportsDownloadPacksFromSuites(mockCodeQL("2.5.999")));
+});

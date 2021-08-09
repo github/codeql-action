@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -39,7 +39,7 @@
     "github-linguist": "^2.4.3",
     "glob": "^7.1.7",
     "js-yaml": "^4.1.0",
-    "jsonschema": "1.4.0",
+    "jsonschema": "1.2.6",
     "long": "^4.0.0",
     "md5": "^2.3.0",
     "path": "^0.12.7",
@@ -59,7 +59,7 @@
     "@types/node": "^16.4.6",
     "@types/semver": "^7.3.8",
     "@types/sinon": "^10.0.2",
-    "@typescript-eslint/parser": "^4.1.0",
+    "@typescript-eslint/parser": "^4.29.0",
     "ava": "3.8.1",
     "eslint": "^7.32.0",
     "eslint-plugin-filenames": "^1.3.2",

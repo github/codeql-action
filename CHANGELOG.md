@@ -1,5 +1,9 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## 1.0.11 - 09 Aug 2021
+
+- Update default CodeQL bundle version to 2.5.9. [#687](https://github.com/github/codeql-action/pull/687)
+
 ## 1.0.10 - 03 Aug 2021
 
 - Fix an issue where a summary of diagnostics information from CodeQL was not output to the logs of the `analyze` step of the Action. [#672](https://github.com/github/codeql-action/pull/672)

@@ -120,8 +120,38 @@ export default function normalizeUrl(urlString, options) {
 	}
 
 	// Remove duplicate slashes if not preceded by a protocol
+	// NOTE: This could be implemented using a single negative lookbehind
+	// regex, but we avoid that to maintain compatibility with older js engines
+	// which do not have support for that feature.
 	if (urlObject.pathname) {
-		urlObject.pathname = urlObject.pathname.replace(/(?<!\b[a-z][a-z\d+\-.]{1,50}:)\/{2,}/g, '/');
+		// TODO: Replace everything below with `urlObject.pathname = urlObject.pathname.replace(/(?<!\b[a-z][a-z\d+\-.]{1,50}:)\/{2,}/g, '/');` when Safari supports negative lookbehind.
+
+		// Split the string by occurrences of this protocol regex, and perform
+		// duplicate-slash replacement on the strings between those occurrences
+		// (if any).
+		const protocolRegex = /\b[a-z][a-z\d+\-.]{1,50}:\/\//g;
+
+		let lastIndex = 0;
+		let result = '';
+		for (;;) {
+			const match = protocolRegex.exec(urlObject.pathname);
+			if (!match) {
+				break;
+			}
+
+			const protocol = match[0];
+			const protocolAtIndex = match.index;
+			const intermediate = urlObject.pathname.slice(lastIndex, protocolAtIndex);
+
+			result += intermediate.replace(/\/{2,}/g, '/');
+			result += protocol;
+			lastIndex = protocolAtIndex + protocol.length;
+		}
+
+		const remnant = urlObject.pathname.slice(lastIndex, urlObject.pathname.length);
+		result += remnant.replace(/\/{2,}/g, '/');
+
+		urlObject.pathname = result;
 	}
 
 	// Decode URI octets

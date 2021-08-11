@@ -2,7 +2,11 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Update README to include a sample permissions block. [#689](https://github.com/github/codeql-action/pull/689)
+
+## 1.0.11 - 09 Aug 2021
+
+- Update default CodeQL bundle version to 2.5.9. [#687](https://github.com/github/codeql-action/pull/687)
 
 ## 1.0.10 - 03 Aug 2021
 

@@ -3,7 +3,7 @@ import * as path from "path";
 
 import test from "ava";
 import * as yaml from "js-yaml";
-import sinon from "sinon";
+import * as sinon from "sinon";
 
 import * as actionsutil from "./actions-util";
 import { setupTests } from "./testing-utils";

@@ -58,6 +58,12 @@ Here are a few things you can do that will increase the likelihood of your pull 
 - Keep your change as focused as possible. If there are multiple changes you would like to make that are not dependent upon each other, consider submitting them as separate pull requests.
 - Write a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
+## Releasing (write access required)
+
+1. Trigger a run of the "Update release branch" workflow using [workflow dispatch](https://github.com/github/codeql-action/actions/workflows/update-release-branch.yml).
+1. The workflow run will open a pull request titled "Merge main into v1". [Mark](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request#marking-a-pull-request-as-ready-for-review) the pull request as ready for review to trigger the PR checks.
+1. Review the checklist items in the pull request description. Once the mergeback PR is merged back into main, the release is complete.
+
 ## Resources
 
 - [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)

@@ -4,7 +4,7 @@ import * as stream from "stream";
 
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
-import sinon from "sinon";
+import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { getRunnerLogger, Logger } from "./logging";

@@ -14,11 +14,14 @@
     ],
     "rules": {
         "filenames/match-regex": ["error", "^[a-z0-9-]+(\\.test)?$"],
+        "i18n-text/no-en": "off",
         "import/extensions": "error",
         "import/no-amd": "error",
         "import/no-commonjs": "error",
         "import/no-dynamic-require": "error",
-        "import/no-extraneous-dependencies": ["error"],
+        // Disable the rule that checks that devDependencies aren't imported since we use a single
+        // linting configuration file for both source and test code.
+        "import/no-extraneous-dependencies": ["error", {"devDependencies": true}],
         "import/no-namespace": "off",
         "import/no-unresolved": "error",
         "import/no-webpack-loader-syntax": "error",
@@ -48,7 +51,8 @@
             "@typescript-eslint/prefer-regexp-exec": "off",
             "@typescript-eslint/require-await": "off",
             "@typescript-eslint/restrict-template-expressions": "off",
-            "func-style": "off"
+            "func-style": "off",
+            "sort-imports": "off"
         }
     }]
 }

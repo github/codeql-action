@@ -4,7 +4,7 @@ import * as path from "path";
 import test from "ava";
 import * as yaml from "js-yaml";
 import { clean } from "semver";
-import sinon from "sinon";
+import * as sinon from "sinon";
 
 import { runQueries } from "./analyze";
 import { setCodeQL } from "./codeql";

@@ -17,8 +17,6 @@ jobs:
       versions: ${{ steps.compare.outputs.versions }}
 
     permissions:
-      actions: read
-      contents: read
       security-events: write
 
     steps:
@@ -68,8 +66,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     permissions:
-      actions: read
-      contents: read
       security-events: write
 
     steps:

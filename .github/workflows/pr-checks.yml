@@ -350,13 +350,12 @@ jobs:
         echo "Default CodeQL bundle version is $CODEQL_VERSION_DEFAULT"
         echo "Latest CodeQL bundle version is $CODEQL_VERSION_LATEST"
         echo "Nightly CodeQL bundle version is $CODEQL_VERSION_NIGHTLY"
-        if [[ "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
-          # Skip `tools: latest` since it would be the same as `tools: null`
-          VERSIONS_JSON="[null, \"$NIGHTLY_URL\"]"
-        else
-          # Run integration tests with all three bundles.
-          VERSIONS_JSON="[null, \"$NIGHTLY_URL\", \"latest\"]"
-        fi
+
+        # Run integration tests with all three bundles, even if `tools: latest` would be the same as
+        # `tools: null`. This allows us to make all three kinds of integration tests required status
+        # checks on PRs.
+        VERSIONS_JSON="[null, \"$NIGHTLY_URL\", \"latest\"]"
+
         # Output a JSON-encoded list with the distinct versions to test against.
         echo "Suggested matrix config for integration tests: $VERSIONS_JSON"
         echo "::set-output name=versions::${VERSIONS_JSON}"

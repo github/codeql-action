@@ -1,5 +1,5 @@
 import { TestInterface } from "ava";
-import sinon from "sinon";
+import * as sinon from "sinon";
 
 import * as CodeQL from "./codeql";
 

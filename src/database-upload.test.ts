@@ -2,7 +2,7 @@ import * as fs from "fs";
 
 import * as github from "@actions/github";
 import test from "ava";
-import sinon from "sinon";
+import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";

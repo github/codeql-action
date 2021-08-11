@@ -4,7 +4,7 @@ import * as path from "path";
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
 import { clean } from "semver";
-import sinon from "sinon";
+import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { getCachedCodeQL, setCodeQL } from "./codeql";

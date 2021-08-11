@@ -1,6 +1,6 @@
 import * as githubUtils from "@actions/github/lib/utils";
 import test, { ExecutionContext } from "ava";
-import sinon from "sinon";
+import * as sinon from "sinon";
 
 import { getApiClient } from "./api-client";
 import { setupTests } from "./testing-utils";

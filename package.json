@@ -16,7 +16,8 @@
     "typescript": {
       "rewritePaths": {
         "src/": "lib/"
-      }
+      },
+      "compile": false
     }
   },
   "license": "MIT",

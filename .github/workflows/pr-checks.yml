@@ -351,10 +351,17 @@ jobs:
         echo "Latest CodeQL bundle version is $CODEQL_VERSION_LATEST"
         echo "Nightly CodeQL bundle version is $CODEQL_VERSION_NIGHTLY"
 
-        # Run integration tests with all three bundles, even if `tools: latest` would be the same as
-        # `tools: null`. This allows us to make all three kinds of integration tests required status
-        # checks on PRs.
-        VERSIONS_JSON="[null, \"$NIGHTLY_URL\", \"latest\"]"
+        # If we're running on a pull request, run each integration test with all three bundles, even
+        # if `tools: latest` would be the same as `tools: null`. This allows us to make the
+        # integration test job for each of the three bundles a required status check.
+        #
+        # If we're running on push, then we can skip running with `tools: latest` when it would be
+        # the same as running with `tools: null`.
+        if [[ "$GITHUB_EVENT_NAME" == "pull_request" && "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
+          VERSIONS_JSON="[null, \"$NIGHTLY_URL\"]"
+        else
+          VERSIONS_JSON="[null, \"$NIGHTLY_URL\", \"latest\"]"
+        fi
 
         # Output a JSON-encoded list with the distinct versions to test against.
         echo "Suggested matrix config for integration tests: $VERSIONS_JSON"

@@ -159,6 +159,7 @@ function dbIsFinalized(
 async function finalizeDatabaseCreation(
   config: configUtils.Config,
   threadsFlag: string,
+  memoryFlag: string,
   logger: Logger
 ) {
   await createdDBForScannedLanguages(config, logger);
@@ -173,7 +174,8 @@ async function finalizeDatabaseCreation(
       logger.startGroup(`Finalizing ${language}`);
       await codeql.finalizeDatabase(
         util.getCodeQLDatabasePath(config, language),
-        threadsFlag
+        threadsFlag,
+        memoryFlag
       );
       logger.endGroup();
     }
@@ -381,6 +383,7 @@ function packWithVersionToQuerySuiteEntry(
 export async function runFinalize(
   outputDir: string,
   threadsFlag: string,
+  memoryFlag: string,
   config: configUtils.Config,
   logger: Logger
 ) {
@@ -389,7 +392,7 @@ export async function runFinalize(
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  await finalizeDatabaseCreation(config, threadsFlag, logger);
+  await finalizeDatabaseCreation(config, threadsFlag, memoryFlag, logger);
 }
 
 export async function runCleanup(

@@ -434,10 +434,11 @@ program
       const outputDir =
         cmd.outputDir || path.join(config.tempDir, "codeql-sarif");
       const threads = getThreadsFlag(cmd.threads, logger);
-      await runFinalize(outputDir, threads, config, logger);
+      const memory = getMemoryFlag(cmd.ram);
+      await runFinalize(outputDir, threads, memory, config, logger);
       await runQueries(
         outputDir,
-        getMemoryFlag(cmd.ram),
+        memory,
         getAddSnippetsFlag(cmd.addSnippets),
         threads,
         cmd.category,

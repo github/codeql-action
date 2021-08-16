@@ -1,5 +1,9 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 1.0.12 - 16 Aug 2021
 
 - Update README to include a sample permissions block. [#689](https://github.com/github/codeql-action/pull/689)

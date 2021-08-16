@@ -55,6 +55,10 @@ export interface CodeQL {
    */
   getPath(): string;
   /**
+   * Get a string containing the semver version of the CodeQL executable.
+   */
+  getVersion(): Promise<string>;
+  /**
    * Print version information about CodeQL.
    */
   printVersion(): Promise<void>;
@@ -83,7 +87,11 @@ export interface CodeQL {
   /**
    * Finalize a database using 'codeql database finalize'.
    */
-  finalizeDatabase(databasePath: string, threadsFlag: string): Promise<void>;
+  finalizeDatabase(
+    databasePath: string,
+    threadsFlag: string,
+    memoryFlag: string
+  ): Promise<void>;
   /**
    * Run 'codeql resolve languages'.
    */
@@ -169,6 +177,8 @@ let cachedCodeQL: CodeQL | undefined = undefined;
 
 const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+
+const CODEQL_VERSION_RAM_FINALIZE = "2.5.8";
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -490,6 +500,11 @@ function resolveFunction<T>(
 export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
   cachedCodeQL = {
     getPath: resolveFunction(partialCodeql, "getPath", () => "/tmp/dummy-path"),
+    getVersion: resolveFunction(
+      partialCodeql,
+      "getVersion",
+      () => new Promise((resolve) => resolve("1.0.0"))
+    ),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
     getTracerEnv: resolveFunction(partialCodeql, "getTracerEnv"),
     databaseInit: resolveFunction(partialCodeql, "databaseInit"),
@@ -531,6 +546,9 @@ function getCodeQLForCmd(cmd: string): CodeQL {
   return {
     getPath() {
       return cmd;
+    },
+    async getVersion() {
+      return await runTool(cmd, ["version", "--format=terse"]);
     },
     async printVersion() {
       await runTool(cmd, ["version", "--format=json"]);
@@ -670,19 +688,22 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         errorMatchers
       );
     },
-    async finalizeDatabase(databasePath: string, threadsFlag: string) {
-      await toolrunnerErrorCatcher(
-        cmd,
-        [
-          "database",
-          "finalize",
-          "--finalize-dataset",
-          threadsFlag,
-          ...getExtraOptionsFromEnv(["database", "finalize"]),
-          databasePath,
-        ],
-        errorMatchers
-      );
+    async finalizeDatabase(
+      databasePath: string,
+      threadsFlag: string,
+      memoryFlag: string
+    ) {
+      const args = [
+        "database",
+        "finalize",
+        "--finalize-dataset",
+        threadsFlag,
+        ...getExtraOptionsFromEnv(["database", "finalize"]),
+        databasePath,
+      ];
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_RAM_FINALIZE))
+        args.push(memoryFlag);
+      await toolrunnerErrorCatcher(cmd, args, errorMatchers);
     },
     async resolveLanguages() {
       const codeqlArgs = ["resolve", "languages", "--format=json"];

@@ -1,0 +1,36 @@
+{
+  "name": "eslint-plugin-no-only-tests",
+  "version": "2.6.0",
+  "description": "ESLint rule for .only blocks in mocha tests",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "mocha",
+    "rule",
+    "only",
+    "describe",
+    "it",
+    "fixture"
+  ],
+  "author": "Levi Buzolic",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests.js"
+  },
+  "devDependencies": {
+    "eslint": ">=3.0.0"
+  },
+  "engines": {
+    "node": ">=4.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:levibuzolic/eslint-plugin-no-only-tests.git"
+  },
+  "bugs": {
+    "url": "https://github.com/levibuzolic/no-only-tests/issues"
+  },
+  "homepage": "https://github.com/levibuzolic/no-only-tests#readme"
+}

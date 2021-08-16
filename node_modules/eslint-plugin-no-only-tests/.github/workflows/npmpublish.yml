@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+      - uses: borales/actions-yarn@v2.0.0
+        with:
+          cmd: install
+      - run: npm test
+
+  publish-npm:
+    name: Publish NPM
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+          registry-url: https://registry.npmjs.org/
+      - uses: borales/actions-yarn@v2.0.0
+        with:
+          cmd: install
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+
+  publish-gpr:
+    name: Publish GPR
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+          registry-url: https://npm.pkg.github.com/
+          scope: '@levibuzolic'
+      - uses: borales/actions-yarn@v2.0.0
+        with:
+          cmd: install
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

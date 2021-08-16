@@ -89,11 +89,12 @@ async function run() {
       actionsUtil.getOptionalInput("threads"),
       logger
     );
-    await runFinalize(outputDir, threads, config, logger);
+    const memory = util.getMemoryFlag(actionsUtil.getOptionalInput("ram"));
+    await runFinalize(outputDir, threads, memory, config, logger);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
         outputDir,
-        util.getMemoryFlag(actionsUtil.getOptionalInput("ram")),
+        memory,
         util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
         threads,
         actionsUtil.getOptionalInput("category"),

@@ -8,6 +8,7 @@ import * as semver from "semver";
 
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
+import { CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
@@ -490,4 +491,11 @@ export class HTTPError extends Error {
 
 export function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
+}
+
+export async function codeQlVersionAbove(
+  codeql: CodeQL,
+  requiredVersion: string
+): Promise<boolean> {
+  return semver.gte(await codeql.getVersion(), requiredVersion);
 }

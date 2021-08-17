@@ -74,8 +74,8 @@ jobs:
       #    project uses a compiled language
 
       #- run: |
-      #   make bootstrap
-      #   make release
+      #     make bootstrap
+      #     make release
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v1

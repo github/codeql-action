@@ -178,7 +178,14 @@ let cachedCodeQL: CodeQL | undefined = undefined;
 const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
+/**
+ * Versions of CodeQL that version-flag certain functionality in the Action.
+ * For convenience, please keep these in descending order.
+ */
 const CODEQL_VERSION_RAM_FINALIZE = "2.5.8";
+const CODEQL_VERSION_DIAGNOSTICS = "2.5.6";
+const CODEQL_VERSION_METRICS = "2.5.5";
+const CODEQL_VERSION_GROUP_RULES = "2.5.1";
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -778,14 +785,17 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "interpret-results",
         threadsFlag,
         "--format=sarif-latest",
-        "--print-diagnostics-summary",
-        "--print-metrics-summary",
-        "--sarif-group-rules-by-pack",
         "-v",
         `--output=${sarifFile}`,
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_DIAGNOSTICS))
+        codeqlArgs.push("--print-diagnostics-summary");
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_METRICS))
+        codeqlArgs.push("--print-metrics-summary");
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_GROUP_RULES))
+        codeqlArgs.push("--sarif-group-rules-by-pack");
       if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }

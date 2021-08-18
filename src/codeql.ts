@@ -543,12 +543,15 @@ export function getCachedCodeQL(): CodeQL {
 }
 
 function getCodeQLForCmd(cmd: string): CodeQL {
+  let cachedVersion: undefined | Promise<string> = undefined;
   return {
     getPath() {
       return cmd;
     },
     async getVersion() {
-      return await runTool(cmd, ["version", "--format=terse"]);
+      if (cachedVersion === undefined)
+        cachedVersion = runTool(cmd, ["version", "--format=terse"]);
+      return await cachedVersion;
     },
     async printVersion() {
       await runTool(cmd, ["version", "--format=json"]);

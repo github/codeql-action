@@ -196,7 +196,8 @@ const CODEQL_MINIMUM_VERSION = "2.3.1";
 const CODEQL_VERSION_RAM_FINALIZE = "2.5.8";
 const CODEQL_VERSION_DIAGNOSTICS = "2.5.6";
 const CODEQL_VERSION_METRICS = "2.5.5";
-const CODEQL_VERSION_GROUP_RULES = "2.5.1";
+const CODEQL_VERSION_GROUP_RULES = "2.5.5";
+const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -811,7 +812,10 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--print-metrics-summary");
       if (await util.codeQlVersionAbove(this, CODEQL_VERSION_GROUP_RULES))
         codeqlArgs.push("--sarif-group-rules-by-pack");
-      if (automationDetailsId !== undefined) {
+      if (
+        automationDetailsId !== undefined &&
+        (await util.codeQlVersionAbove(this, CODEQL_VERSION_SARIF_GROUP))
+      ) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       codeqlArgs.push(databasePath, ...querySuitePaths);

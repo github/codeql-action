@@ -28,7 +28,8 @@ export async function initCodeQL(
     tempDir,
     toolCacheDir,
     variant,
-    logger
+    logger,
+    true
   );
   await codeql.printVersion();
   logger.endGroup();

@@ -116,7 +116,7 @@ async function createdDBForScannedLanguages(
   // we extract any scanned languages.
   analysisPaths.includeAndExcludeAnalysisPaths(config);
 
-  const codeql = getCodeQL(config.codeQLCmd);
+  const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (
       isScannedLanguage(language) &&
@@ -164,7 +164,7 @@ async function finalizeDatabaseCreation(
 ) {
   await createdDBForScannedLanguages(config, logger);
 
-  const codeql = getCodeQL(config.codeQLCmd);
+  const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
       logger.info(
@@ -230,7 +230,7 @@ export async function runQueries(
         logger.info("*************");
         logger.startGroup(`Downloading custom packs for ${language}`);
 
-        const codeql = getCodeQL(config.codeQLCmd);
+        const codeql = await getCodeQL(config.codeQLCmd);
         const results = await codeql.packDownload(packsWithVersion);
         logger.info(
           `Downloaded packs: ${results.packs
@@ -320,7 +320,7 @@ export async function runQueries(
     sarifFile: string
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
-    const codeql = getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(config.codeQLCmd);
     return await codeql.databaseInterpretResults(
       databasePath,
       queries,
@@ -346,7 +346,7 @@ export async function runQueries(
       `Query suite file for ${language}-${type}...\n${querySuiteContents}`
     );
 
-    const codeql = getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(config.codeQLCmd);
     await codeql.databaseRunQueries(
       databasePath,
       searchPath,
@@ -402,7 +402,7 @@ export async function runCleanup(
 ): Promise<void> {
   logger.startGroup("Cleaning up databases");
   for (const language of config.languages) {
-    const codeql = getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(config.codeQLCmd);
     const databasePath = util.getCodeQLDatabasePath(config, language);
     await codeql.databaseCleanup(databasePath, cleanupLevel);
   }

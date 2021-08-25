@@ -13,7 +13,7 @@ program
   .description('count lines of code in a file')
   .action(async (pathPattern) => {
     try {
-      const info = await (new LocFile(pathPattern).getFileInfo());
+      const info = await new LocFile(pathPattern).getFileInfo();
       // eslint-disable-next-line no-console
       console.log(
         chalk.cyan(`
@@ -52,9 +52,9 @@ const formatInfo = (
 
 program.arguments('<cmd> [env]').action(async (cmd) => {
   try {
-    const { info, languages } = await (new LocDir({
-      include: cmd
-    }).loadInfo());
+    const { info, languages } = await new LocDir({
+      include: cmd,
+    }).loadInfo();
     // eslint-disable-next-line no-console
     console.log(chalk.cyan(formatInfo(info, languages)));
   } catch (e) {

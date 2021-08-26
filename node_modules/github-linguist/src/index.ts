@@ -1,4 +1,3 @@
-// @ts-ignore
 import slash from 'slash2';
 import fs from 'fs-extra';
 
@@ -8,9 +7,7 @@ import { LocFile } from './file';
 export { LocDir, LocDirOptions } from './directory';
 export { LocFile, LineInfo } from './file';
 
-const loc = async (
-  fileOrDir: string,
-): Promise<LocResult> => {
+const loc = async (fileOrDir: string): Promise<LocResult> => {
   const stat = await fs.stat(slash(fileOrDir));
   if (stat.isFile()) {
     const locFile = new LocFile(slash(fileOrDir));

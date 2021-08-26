@@ -7,7 +7,7 @@ import * as yaml from "js-yaml";
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { countLoc, getIdPrefix } from "./count-loc";
+import { countLoc } from "./count-loc";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
@@ -415,27 +415,15 @@ async function injectLinesOfCode(
   locPromise: Promise<Partial<Record<Language, number>>>
 ) {
   const lineCounts = await locPromise;
-  const idPrefix = getIdPrefix(language);
   if (language in lineCounts) {
     const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
 
     if (Array.isArray(sarif.runs)) {
       for (const run of sarif.runs) {
-        // Old style: Baseline is inserted when rule ID has suffix /summary/lines-of-code
-        const ruleId = `${idPrefix}/summary/lines-of-code`;
         run.properties = run.properties || {};
         run.properties.metricResults = run.properties.metricResults || [];
-        const rule = run.properties.metricResults.find(
-          // the rule id can be in either of two places
-          (r) => r.ruleId === ruleId || r.rule?.id === ruleId
-        );
-        // only add the baseline value if the rule already exists
-        if (rule) {
-          rule.baseline = lineCounts[language];
-        }
-
-        // New style: Baseline is inserted when matching rule has tag lines-of-code
         for (const metric of run.properties.metricResults) {
+          // Baseline is inserted when matching rule has tag lines-of-code
           if (metric.rule && metric.rule.toolComponent) {
             const matchingRule =
               run.tool.extensions[metric.rule.toolComponent.index].rules[

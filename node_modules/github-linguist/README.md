@@ -63,7 +63,7 @@ const dir = new LocDir({
   include: // string or string[] containing path patterns to include (default include all)
   exclude: // string or string[] containing path patterns to exclude (default exclude none)
 });
-const { info } = dir.getInfo();
+const { info } = dir.loadInfo();
 ```
 
 ## License

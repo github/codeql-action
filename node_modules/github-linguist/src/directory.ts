@@ -1,7 +1,6 @@
 import globby from 'globby';
 import fs from 'fs-extra';
 import path from 'path';
-// @ts-ignore
 import slash from 'slash2';
 
 import { LineInfo, LocFile } from './file';
@@ -41,18 +40,18 @@ const defaultExclude = [
 
   // java
   '**/target',
-  "**/*.class",
-  "**/*.o",
-  "**/bin",
-  "**/*.map",
+  '**/*.class',
+  '**/*.o',
+  '**/bin',
+  '**/*.map',
 
   // python
-  "**/*.pyc",
-  "**/*.pyo",
+  '**/*.pyc',
+  '**/*.pyo',
 
   // other
-  "**/*.dil",
-  "**/*.ra",
+  '**/*.dil',
+  '**/*.ra',
 
   // images
   '**/*.png',
@@ -122,29 +121,39 @@ const defaultExclude = [
   '**/*.tgz',
 ];
 
+function ensureArray(arr?: string[] | string, dfault?: string) {
+  if (!arr) {
+    return dfault ? [dfault] : [];
+  }
+  return Array.isArray(arr) ? arr : [arr];
+}
+
 /**
  * Collect the info of a directory.
  */
 export class LocDir {
   private cwd: string;
+
   private include: string[];
+
   private exclude: string[];
+
   private analysisLanguages?: string[];
+
   private allLanguages = new Languages();
 
   constructor(options: LocDirOptions) {
-
     // ensure all excludes are globstar. Note that '**/*.ts/**' matches files
     // that end in .ts because the globstar indicates 0 or more directory paths.
     this.exclude = ensureArray(options.exclude)
       .concat(defaultExclude)
-      .map(item => item.endsWith('**') ? item : `${item}/**`);
+      .map((item) => (item.endsWith('**') ? item : `${item}/**`));
 
     // remove all leading './' since this messes up globstar matches in the
     // excludes.
     this.include = ensureArray(options.include, '**')
-      .map(item => item.startsWith('./') ? item.substring(2) : item)
-      .map(item => item.endsWith('**') ? item : `${item}/**`);
+      .map((item) => (item.startsWith('./') ? item.substring(2) : item))
+      .map((item) => (item.endsWith('**') ? item : `${item}/**`));
     this.cwd = options.cwd || process.cwd();
     this.analysisLanguages = options.analysisLanguages;
   }
@@ -156,7 +165,7 @@ export class LocDir {
     const paths = await globby(this.include, {
       cwd: this.cwd,
       ignore: this.exclude,
-      nodir: true
+      nodir: true,
     });
     const files: string[] = [];
     const info: LineInfo = { ...defaultInfo };
@@ -168,6 +177,7 @@ export class LocDir {
 
     // We _could_ use Promise.all to count the files in parallel, but that
     // would lead to out of memory errors when there are many files.
+    // eslint-disable-next-line no-restricted-syntax
     for (const pathItem of paths) {
       const fullPath = slash(path.join(this.cwd, pathItem));
       if (
@@ -178,6 +188,7 @@ export class LocDir {
       ) {
         continue;
       }
+
       const file = new LocFile(fullPath);
       const fileLineInfo = await file.getFileInfo();
       const { lines } = fileLineInfo;
@@ -208,15 +219,9 @@ export class LocDir {
    * and this language is not one of them.
    */
   private ignoreLanguage(pathItem: string): boolean {
-    return this.analysisLanguages && !this.analysisLanguages.includes(this.allLanguages.getType(pathItem));
+    return (
+      this.analysisLanguages &&
+      !this.analysisLanguages.includes(this.allLanguages.getType(pathItem))
+    );
   }
-}
-
-function ensureArray(arr?: string[] | string, dfault?: string) {
-  if (!arr) {
-    return dfault ? [dfault] : [];
-  }
-  return Array.isArray(arr)
-    ? arr
-    : [arr];
 }

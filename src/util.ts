@@ -123,7 +123,7 @@ export function getAddSnippetsFlag(
 
 /**
  * Get the codeql `--threads` value specified for the `threads` input.
- * If not value was specified, all available threads will be used.
+ * If no value was specified, all available threads will be used.
  *
  * The value will be capped to the number of available CPUs.
  *

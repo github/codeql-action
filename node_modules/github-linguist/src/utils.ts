@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-// @ts-ignore
 import slash from 'slash2';
 
 const packagePath = slash(path.join(__dirname, '../', 'package.json'));

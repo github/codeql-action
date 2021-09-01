@@ -9,7 +9,6 @@ import * as sinon from "sinon";
 import { runQueries } from "./analyze";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { getIdPrefix } from "./count-loc";
 import * as count from "./count-loc";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -68,33 +67,7 @@ test("status report fields and search path setting", async (t) => {
             sarifFile,
             JSON.stringify({
               runs: [
-                // variant 1 uses ruleId
-                {
-                  properties: {
-                    metricResults: [
-                      {
-                        ruleId: `${getIdPrefix(
-                          language
-                        )}/summary/lines-of-code`,
-                        value: 123,
-                      },
-                    ],
-                  },
-                },
-                // variant 2 uses rule.id
-                {
-                  properties: {
-                    metricResults: [
-                      {
-                        rule: {
-                          id: `${getIdPrefix(language)}/summary/lines-of-code`,
-                        },
-                        value: 123,
-                      },
-                    ],
-                  },
-                },
-                // variant 3 references a rule with the lines-of-code tag
+                // references a rule with the lines-of-code tag, so baseline should be injected
                 {
                   tool: {
                     extensions: [
@@ -231,38 +204,13 @@ test("status report fields and search path setting", async (t) => {
   function verifyLineCounts(tmpDir: string) {
     // eslint-disable-next-line github/array-foreach
     Object.keys(Language).forEach((lang, i) => {
-      verifyLineCountForFile(
-        lang as Language,
-        path.join(tmpDir, `${lang}.sarif`),
-        i + 1
-      );
+      verifyLineCountForFile(path.join(tmpDir, `${lang}.sarif`), i + 1);
     });
   }
 
-  function verifyLineCountForFile(
-    lang: Language,
-    filePath: string,
-    lineCount: number
-  ) {
-    const idPrefix = getIdPrefix(lang);
+  function verifyLineCountForFile(filePath: string, lineCount: number) {
     const sarif = JSON.parse(fs.readFileSync(filePath, "utf8"));
     t.deepEqual(sarif.runs[0].properties.metricResults, [
-      {
-        ruleId: `${idPrefix}/summary/lines-of-code`,
-        value: 123,
-        baseline: lineCount,
-      },
-    ]);
-    t.deepEqual(sarif.runs[1].properties.metricResults, [
-      {
-        rule: {
-          id: `${idPrefix}/summary/lines-of-code`,
-        },
-        value: 123,
-        baseline: lineCount,
-      },
-    ]);
-    t.deepEqual(sarif.runs[2].properties.metricResults, [
       {
         rule: {
           index: 0,
@@ -275,7 +223,7 @@ test("status report fields and search path setting", async (t) => {
       },
     ]);
     // when the rule doesn't exist, it should not be added
-    t.deepEqual(sarif.runs[3].properties.metricResults, []);
+    t.deepEqual(sarif.runs[1].properties.metricResults, []);
   }
 
   function verifyQuerySuites(tmpDir: string) {

@@ -7,7 +7,7 @@ import * as yaml from "js-yaml";
 import * as analysisPaths from "./analysis-paths";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { countLoc, getIdPrefix } from "./count-loc";
+import { countLoc } from "./count-loc";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
@@ -116,7 +116,7 @@ async function createdDBForScannedLanguages(
   // we extract any scanned languages.
   analysisPaths.includeAndExcludeAnalysisPaths(config);
 
-  const codeql = getCodeQL(config.codeQLCmd);
+  const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (
       isScannedLanguage(language) &&
@@ -164,7 +164,7 @@ async function finalizeDatabaseCreation(
 ) {
   await createdDBForScannedLanguages(config, logger);
 
-  const codeql = getCodeQL(config.codeQLCmd);
+  const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
       logger.info(
@@ -230,7 +230,7 @@ export async function runQueries(
         logger.info("*************");
         logger.startGroup(`Downloading custom packs for ${language}`);
 
-        const codeql = getCodeQL(config.codeQLCmd);
+        const codeql = await getCodeQL(config.codeQLCmd);
         const results = await codeql.packDownload(packsWithVersion);
         logger.info(
           `Downloaded packs: ${results.packs
@@ -320,7 +320,7 @@ export async function runQueries(
     sarifFile: string
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
-    const codeql = getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(config.codeQLCmd);
     return await codeql.databaseInterpretResults(
       databasePath,
       queries,
@@ -346,7 +346,7 @@ export async function runQueries(
       `Query suite file for ${language}-${type}...\n${querySuiteContents}`
     );
 
-    const codeql = getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(config.codeQLCmd);
     await codeql.databaseRunQueries(
       databasePath,
       searchPath,
@@ -402,7 +402,7 @@ export async function runCleanup(
 ): Promise<void> {
   logger.startGroup("Cleaning up databases");
   for (const language of config.languages) {
-    const codeql = getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(config.codeQLCmd);
     const databasePath = util.getCodeQLDatabasePath(config, language);
     await codeql.databaseCleanup(databasePath, cleanupLevel);
   }
@@ -415,27 +415,15 @@ async function injectLinesOfCode(
   locPromise: Promise<Partial<Record<Language, number>>>
 ) {
   const lineCounts = await locPromise;
-  const idPrefix = getIdPrefix(language);
   if (language in lineCounts) {
     const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
 
     if (Array.isArray(sarif.runs)) {
       for (const run of sarif.runs) {
-        // Old style: Baseline is inserted when rule ID has suffix /summary/lines-of-code
-        const ruleId = `${idPrefix}/summary/lines-of-code`;
         run.properties = run.properties || {};
         run.properties.metricResults = run.properties.metricResults || [];
-        const rule = run.properties.metricResults.find(
-          // the rule id can be in either of two places
-          (r) => r.ruleId === ruleId || r.rule?.id === ruleId
-        );
-        // only add the baseline value if the rule already exists
-        if (rule) {
-          rule.baseline = lineCounts[language];
-        }
-
-        // New style: Baseline is inserted when matching rule has tag lines-of-code
         for (const metric of run.properties.metricResults) {
+          // Baseline is inserted when matching rule has tag lines-of-code
           if (metric.rule && metric.rule.toolComponent) {
             const matchingRule =
               run.tool.extensions[metric.rule.toolComponent.index].rules[

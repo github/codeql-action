@@ -40,7 +40,7 @@ export async function runAutobuild(
   logger: Logger
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
-  const codeQL = getCodeQL(config.codeQLCmd);
+  const codeQL = await getCodeQL(config.codeQLCmd);
   await codeQL.runAutobuild(language);
   logger.endGroup();
 }

@@ -49,7 +49,8 @@ test("download codeql bundle cache", async (t) => {
         tmpDir,
         tmpDir,
         util.GitHubVariant.DOTCOM,
-        getRunnerLogger(true)
+        getRunnerLogger(true),
+        false
       );
 
       t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
@@ -78,7 +79,8 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
@@ -96,7 +98,8 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
@@ -120,7 +123,8 @@ test("don't download codeql bundle cache with pinned different version cached", 
       tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
@@ -131,7 +135,8 @@ test("don't download codeql bundle cache with pinned different version cached", 
       tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
@@ -157,7 +162,8 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
@@ -183,7 +189,8 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
@@ -209,7 +216,8 @@ test('download codeql bundle cache with pinned different version cached if "late
       tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
@@ -236,7 +244,8 @@ test('download codeql bundle cache with pinned different version cached if "late
       tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
@@ -290,7 +299,8 @@ test("download codeql bundle from github ae endpoint", async (t) => {
       tmpDir,
       tmpDir,
       util.GitHubVariant.GHAE,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
+      false
     );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");

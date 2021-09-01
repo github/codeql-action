@@ -1,4 +1,4 @@
-name: "PR checks"
+name: PR checks
 
 env:
   GO111MODULE: auto

@@ -2,10 +2,6 @@ import { LocDir } from "github-linguist";
 
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { assertNever } from "./util";
-
-// Language IDs used by codeql when specifying its metrics.
-export type IdPrefix = "cpp" | "cs" | "go" | "java" | "js" | "py" | "rb";
 
 // Map from linguist language names to language prefixes used in the action and codeql
 const linguistToMetrics: Record<string, Language> = {
@@ -30,28 +26,6 @@ const nameToLinguist = Object.entries(linguistToMetrics).reduce(
   },
   {} as Record<Language, string[]>
 );
-
-export function getIdPrefix(language: Language): IdPrefix {
-  switch (language) {
-    case Language.cpp:
-      return "cpp";
-    case Language.csharp:
-      return "cs";
-    case Language.go:
-      return "go";
-    case Language.java:
-      return "java";
-    case Language.javascript:
-      return "js";
-    case Language.python:
-      return "py";
-    case Language.ruby:
-      return "rb";
-
-    default:
-      assertNever(language);
-  }
-}
 
 /**
  * Count the lines of code of the specified language using the include

@@ -1,4 +1,4 @@
-name: "PR checks"
+name: PR checks
 
 env:
   GO111MODULE: auto
@@ -14,6 +14,7 @@ on:
 
 jobs:
   lint-js:
+    name: Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -26,10 +27,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Check generated JavaScript
+    - name: Check generated JS
       run: .github/workflows/script/check-js.sh
 
   check-node-modules:
+    name: Check modules up to date
     runs-on: macos-latest
 
     steps:
@@ -38,6 +40,7 @@ jobs:
       run: .github/workflows/script/check-node-modules.sh
 
   npm-test:
+    name: Unit Test
     needs: [check-js, check-node-modules]
     strategy:
       matrix:
@@ -50,6 +53,7 @@ jobs:
       run: npm run-script test
 
   multi-language-repo_test-autodetect-languages:
+    name: Autodetect language (multi)
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -107,6 +111,7 @@ jobs:
   # Packaging test that runs against a javascript database
   # Specifying packs in the config file.
   test-packaging-javascript-config:
+    name: Packaging Config JS
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -150,6 +155,7 @@ jobs:
   # Packaging test that runs against a javascript database
   # Specifying packs as an input.
   test-packaging-javascript-inputs:
+    name: Packaging Inputs JS
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -195,6 +201,7 @@ jobs:
   # Packaging test that runs against a javascript database
   # Specifying packs in the config file and inputs.
   test-packaging-javascript-config-and-inputs:
+    name: Packaging Inputs and Config JS
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -239,6 +246,7 @@ jobs:
 
   # Tests a split workflow where database construction and query execution happen in different steps
   test-split-workflow:
+    name: Split workflow
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -294,6 +302,7 @@ jobs:
 
   # Identify the CodeQL tool versions to integration test against.
   check-codeql-versions:
+    name: Check CodeQL Versions
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
     outputs:
@@ -391,6 +400,7 @@ jobs:
         echo "::set-output name=versions::${VERSIONS_JSON}"
 
   multi-language-repo_test-custom-queries-and-remote-config:
+    name: Remote Config Custom Queries multi-language repo
     needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
@@ -422,6 +432,7 @@ jobs:
 
   # Currently is not possible to analyze Go in conjunction with other languages in macos
   multi-language-repo_test-go-custom-queries:
+    name: Go custom queries multi-language repo
     needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
@@ -456,6 +467,7 @@ jobs:
         TEST_MODE: true
 
   go-custom-tracing:
+    name: Go custom tracing
     needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
@@ -491,6 +503,7 @@ jobs:
         TEST_MODE: true
 
   go-custom-tracing-autobuild:
+    name: Go autobuild custom tracing
     needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
@@ -528,6 +541,7 @@ jobs:
 
   # Ruby is in beta, so test it separately for now.
   multi-language-repo_test-ruby:
+    name: Ruby multi-language
     needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
@@ -568,6 +582,7 @@ jobs:
         fi
 
   multi-language-repo_rubocop:
+    name: Rubocop multi-language
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -601,6 +616,7 @@ jobs:
         TEST_MODE: true
 
   test-proxy:
+    name: Proxy
     needs: [check-js, check-node-modules, check-codeql-versions]
     strategy:
       fail-fast: false
@@ -635,6 +651,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-javascript-ubuntu:
+    name: Runner ubuntu JS analyze
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -662,6 +679,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-javascript-windows:
+    name: Runner windows JS analyze
     needs: [check-js, check-node-modules]
     runs-on: windows-latest
 
@@ -685,6 +703,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-javascript-macos:
+    name: Runner macos JS analyze
     needs: [check-js, check-node-modules]
     runs-on: macos-latest
 
@@ -708,6 +727,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-ubuntu:
+    name: Runner ubuntu C# analyze
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -744,6 +764,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-windows:
+    name: Runner windows C# analyze
     needs: [check-js, check-node-modules]
     runs-on: windows-latest
 
@@ -783,6 +804,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-macos:
+    name: Runner macos C# analyze
     needs: [check-js, check-node-modules]
     runs-on: macos-latest
 
@@ -821,6 +843,7 @@ jobs:
 
 
   runner-analyze-csharp-autobuild-ubuntu:
+    name: Runner ubuntu autobuild C# analyze
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -856,6 +879,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-autobuild-windows:
+    name: Runner windows autobuild C# analyze
     needs: [check-js, check-node-modules]
     runs-on: windows-latest
 
@@ -892,6 +916,7 @@ jobs:
         TEST_MODE: true
 
   runner-analyze-csharp-autobuild-macos:
+    name: Runner macos autobuild C# analyze
     needs: [check-js, check-node-modules]
     runs-on: macos-latest
 
@@ -928,6 +953,7 @@ jobs:
         TEST_MODE: true
 
   runner-upload-sarif:
+    name: Runner upload sarif
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -949,6 +975,7 @@ jobs:
         runner/dist/codeql-runner-linux upload --sarif-file src/testdata/empty-sarif.sarif --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
   multi-language-repo_test-local-codeql:
+    name: Local codeql multi-language repo
     needs: [check-js, check-node-modules, check-codeql-versions]
     runs-on: ubuntu-latest
 
@@ -969,6 +996,7 @@ jobs:
     - uses: ./../action/analyze
 
   test-javascript-source-root:
+    name: JS source root
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 

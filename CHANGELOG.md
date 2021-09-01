@@ -2,7 +2,9 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Update default CodeQL bundle version to 2.6.0. [#712](https://github.com/github/codeql-action/pull/712)
+- Update baseline lines of code counter for python. All multi-line strings are counted as code. [#714](https://github.com/github/codeql-action/pull/714)
+- Remove old baseline LoC injection [#715](https://github.com/github/codeql-action/pull/715)
 
 ## 1.0.12 - 16 Aug 2021
 

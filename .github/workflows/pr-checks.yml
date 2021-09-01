@@ -123,6 +123,8 @@ jobs:
       with:
         config-file: ".github/codeql/codeql-config-packaging.yml"
         languages: javascript
+        # This version is known to worl with 0.1.0
+        tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20210831-manual/codeql-bundle.tar.gz
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -164,7 +166,9 @@ jobs:
       with:
         config-file: ".github/codeql/codeql-config-packaging2.yml"
         languages: javascript
-        packs: dsp-testing/codeql-pack1@0.0.5, dsp-testing/codeql-pack2
+        packs: dsp-testing/codeql-pack1@0.1.0, dsp-testing/codeql-pack2
+        # This version is known to worl with 0.1.0
+        tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20210831-manual/codeql-bundle.tar.gz
 
     - name: Build code
       shell: bash
@@ -206,8 +210,10 @@ jobs:
     - uses: ./../action/init
       with:
         config-file: ".github/codeql/codeql-config-packaging3.yml"
-        packs: +dsp-testing/codeql-pack1@0.0.5
+        packs: +dsp-testing/codeql-pack1@0.1.0
         languages: javascript
+        # This version is known to worl with 0.1.0
+        tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20210831-manual/codeql-bundle.tar.gz
 
     - name: Build code
       shell: bash
@@ -248,9 +254,10 @@ jobs:
     - uses: ./../action/init
       with:
         config-file: ".github/codeql/codeql-config-packaging3.yml"
-        packs: +dsp-testing/codeql-pack1@0.0.5
+        packs: +dsp-testing/codeql-pack1@0.1.0
         languages: javascript
-        tools: latest
+        # This version is known to worl with 0.1.0
+        tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20210831-manual/codeql-bundle.tar.gz
     - name: Build code
       shell: bash
       run: ./build.sh

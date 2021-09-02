@@ -1,0 +1,14 @@
+name: "Remote config file"
+description: "Checks that specifying packages using only a config file works"
+steps:
+  - uses: ./../action/init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+      languages: cpp,csharp,java,javascript,python
+      config-file: github/codeql-action/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    env:
+      TEST_MODE: true

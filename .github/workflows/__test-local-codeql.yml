@@ -1,0 +1,52 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Local CodeQL bundle
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - v1
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  test-local-codeql:
+    strategy:
+      matrix:
+        version: [nightly-latest]
+        os: [ubuntu-latest]
+    name: Local CodeQL bundle
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - name: Fetch a CodeQL bundle
+      shell: bash
+      env:
+        CODEQL_URL: ${{ steps.prepare-test.outputs.tools-url }}
+      run: |
+        wget "$CODEQL_URL"
+    - uses: ./../action/init
+      with:
+        tools: ./codeql-bundle.tar.gz
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      env:
+        TEST_MODE: true

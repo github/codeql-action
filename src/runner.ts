@@ -195,7 +195,7 @@ program
 
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
-        codeql = getCodeQL(cmd.codeqlPath);
+        codeql = await getCodeQL(cmd.codeqlPath);
       } else {
         codeql = (
           await initCodeQL(

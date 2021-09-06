@@ -74,8 +74,8 @@ jobs:
       #    project uses a compiled language
 
       #- run: |
-      #   make bootstrap
-      #   make release
+      #     make bootstrap
+      #     make release
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v1
@@ -91,8 +91,8 @@ If you prefer to integrate this within an existing CI workflow, it should end up
 
 # Here is where you build your code
 - run: |
-  make bootstrap
-  make release
+    make bootstrap
+    make release
 
 - name: Perform CodeQL Analysis
   uses: github/codeql-action/analyze@v1

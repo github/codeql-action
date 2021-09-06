@@ -52,7 +52,7 @@ export async function uploadDatabases(
     return;
   }
 
-  const codeql = getCodeQL(config.codeQLCmd);
+  const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     // Bundle the database up into a single zip file
     const databasePath = util.getCodeQLDatabasePath(config, language);

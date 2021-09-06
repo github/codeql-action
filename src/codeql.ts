@@ -178,7 +178,26 @@ let cachedCodeQL: CodeQL | undefined = undefined;
 const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
 const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
+/**
+ * The oldest version of CodeQL that the Action will run with. This should be
+ * at least three minor versions behind the current version. The version flags
+ * below can be used to conditionally enable certain features on versions newer
+ * than this. Please record the reason we cannot support an older version.
+ *
+ * Reason: Changes to how the tracing environment is set up.
+ */
+const CODEQL_MINIMUM_VERSION = "2.3.1";
+
+/**
+ * Versions of CodeQL that version-flag certain functionality in the Action.
+ * For convenience, please keep these in descending order. Once a version
+ * flag is older than the oldest supported version above, it may be removed.
+ */
 const CODEQL_VERSION_RAM_FINALIZE = "2.5.8";
+const CODEQL_VERSION_DIAGNOSTICS = "2.5.6";
+const CODEQL_VERSION_METRICS = "2.5.5";
+const CODEQL_VERSION_GROUP_RULES = "2.5.5";
+const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -319,7 +338,8 @@ export async function setupCodeQL(
   tempDir: string,
   toolCacheDir: string,
   variant: util.GitHubVariant,
-  logger: Logger
+  logger: Logger,
+  checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   try {
     // We use the special value of 'latest' to prioritize the version in the
@@ -430,7 +450,7 @@ export async function setupCodeQL(
       throw new Error(`Unsupported platform: ${process.platform}`);
     }
 
-    cachedCodeQL = getCodeQLForCmd(codeqlCmd);
+    cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
     return { codeql: cachedCodeQL, toolsVersion: codeqlURLVersion };
   } catch (e) {
     logger.error(e);
@@ -467,9 +487,9 @@ export function convertToSemVer(version: string, logger: Logger): string {
 /**
  * Use the CodeQL executable located at the given path.
  */
-export function getCodeQL(cmd: string): CodeQL {
+export async function getCodeQL(cmd: string): Promise<CodeQL> {
   if (cachedCodeQL === undefined) {
-    cachedCodeQL = getCodeQLForCmd(cmd);
+    cachedCodeQL = await getCodeQLForCmd(cmd, true);
   }
   return cachedCodeQL;
 }
@@ -542,13 +562,19 @@ export function getCachedCodeQL(): CodeQL {
   return cachedCodeQL;
 }
 
-function getCodeQLForCmd(cmd: string): CodeQL {
-  return {
+async function getCodeQLForCmd(
+  cmd: string,
+  checkVersion: boolean
+): Promise<CodeQL> {
+  let cachedVersion: undefined | Promise<string> = undefined;
+  const codeql = {
     getPath() {
       return cmd;
     },
     async getVersion() {
-      return await runTool(cmd, ["version", "--format=terse"]);
+      if (cachedVersion === undefined)
+        cachedVersion = runTool(cmd, ["version", "--format=terse"]);
+      return await cachedVersion;
     },
     async printVersion() {
       await runTool(cmd, ["version", "--format=json"]);
@@ -775,15 +801,21 @@ function getCodeQLForCmd(cmd: string): CodeQL {
         "interpret-results",
         threadsFlag,
         "--format=sarif-latest",
-        "--print-diagnostics-summary",
-        "--print-metrics-summary",
-        "--sarif-group-rules-by-pack",
         "-v",
         `--output=${sarifFile}`,
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
-      if (automationDetailsId !== undefined) {
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_DIAGNOSTICS))
+        codeqlArgs.push("--print-diagnostics-summary");
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_METRICS))
+        codeqlArgs.push("--print-metrics-summary");
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_GROUP_RULES))
+        codeqlArgs.push("--sarif-group-rules-by-pack");
+      if (
+        automationDetailsId !== undefined &&
+        (await util.codeQlVersionAbove(this, CODEQL_VERSION_SARIF_GROUP))
+      ) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       codeqlArgs.push(databasePath, ...querySuitePaths);
@@ -856,6 +888,15 @@ function getCodeQLForCmd(cmd: string): CodeQL {
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
+  if (
+    checkVersion &&
+    !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))
+  ) {
+    throw new Error(
+      `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${await codeql.getVersion()}`
+    );
+  }
+  return codeql;
 }
 
 function packWithVersionToString(pack: PackWithVersion): string {

@@ -1,6 +1,6 @@
 # CodeQL Action and CodeQL Runner Changelog
 
-## [UNRELEASED]
+## 1.0.13 - 06 Sep 2021
 
 - Update default CodeQL bundle version to 2.6.0. [#712](https://github.com/github/codeql-action/pull/712)
 - Update baseline lines of code counter for python. All multi-line strings are counted as code. [#714](https://github.com/github/codeql-action/pull/714)

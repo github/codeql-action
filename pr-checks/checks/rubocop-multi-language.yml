@@ -1,0 +1,26 @@
+name: "RuboCop multi-language"
+description: "Tests using RuboCop to analyze a multi-language repository and then using the CodeQL Action to upload the resulting SARIF"
+os: ["ubuntu-latest"]
+steps:
+  - name: Set up Ruby
+    uses: ruby/setup-ruby@v1
+    with:
+      ruby-version: 2.6
+  - name: Install Code Scanning integration
+    shell: bash
+    run: bundle add code-scanning-rubocop --version 0.3.0 --skip-install
+  - name: Install dependencies
+    shell: bash
+    run: bundle install
+  - name: RuboCop run
+    shell: bash
+    run: |
+      bash -c "
+        bundle exec rubocop --require code_scanning --format CodeScanning::SarifFormatter -o rubocop.sarif
+        [[ $? -ne 2 ]]
+      "
+  - uses: ./../action/upload-sarif
+    with:
+      sarif_file: rubocop.sarif
+    env:
+      TEST_MODE: true

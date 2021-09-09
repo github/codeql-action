@@ -1,0 +1,20 @@
+name: "Local CodeQL bundle"
+description: "Tests using a CodeQL bundle from a local file rather than a URL"
+versions: ["nightly-latest"]
+os: ["ubuntu-latest"]
+steps:
+  - name: Fetch a CodeQL bundle
+    shell: bash
+    env:
+      CODEQL_URL: ${{ steps.prepare-test.outputs.tools-url }}
+    run: |
+      wget "$CODEQL_URL"
+  - uses: ./../action/init
+    with:
+      tools: ./codeql-bundle.tar.gz
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    env:
+      TEST_MODE: true

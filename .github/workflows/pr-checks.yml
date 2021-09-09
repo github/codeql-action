@@ -1,7 +1,4 @@
-name: PR checks
-
-env:
-  GO111MODULE: auto
+name: PR Checks (Basic Checks and Runner)
 
 on:
   push:
@@ -18,637 +15,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Run Lint
-      run: npm run-script lint
+      - uses: actions/checkout@v2
+      - name: Run Lint
+        run: npm run-script lint
 
   check-js:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Check generated JS
-      run: .github/workflows/script/check-js.sh
+      - uses: actions/checkout@v2
+      - name: Check generated JS
+        run: .github/workflows/script/check-js.sh
 
   check-node-modules:
     name: Check modules up to date
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Check node modules up to date
-      run: .github/workflows/script/check-node-modules.sh
+      - uses: actions/checkout@v2
+      - name: Check node modules up to date
+        run: .github/workflows/script/check-node-modules.sh
+
+  verify-pr-checks:
+    name: Verify PR checks up to date
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml
+      - name: Verify PR checks up to date
+        run: .github/workflows/script/verify-pr-checks.sh
 
   npm-test:
     name: Unit Test
     needs: [check-js, check-node-modules]
     strategy:
       matrix:
-        os: [ubuntu-latest,macos-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
-    - name: npm run-script test
-      run: npm run-script test
-
-  multi-language-repo_test-autodetect-languages:
-    name: Autodetect language (multi)
-    needs: [check-js, check-node-modules]
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        db-location: "${{ runner.temp }}/customDbLocation"
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      id: analysis
-      env:
-        TEST_MODE: true
-    - run: |
-        CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
-        if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for CPP, or created it in the wrong location."
-          exit 1
-        fi
-        CSHARP_DB=${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
-        if [[ ! -d $CSHARP_DB ]] || [[ ! $CSHARP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for C Sharp, or created it in the wrong location."
-          exit 1
-        fi
-        GO_DB=${{ fromJson(steps.analysis.outputs.db-locations).go }}
-        if [[ ! -d $GO_DB ]] || [[ ! $GO_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Go, or created it in the wrong location."
-          exit 1
-        fi
-        JAVA_DB=${{ fromJson(steps.analysis.outputs.db-locations).java }}
-        if [[ ! -d $JAVA_DB ]] || [[ ! $JAVA_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Java, or created it in the wrong location."
-          exit 1
-        fi
-        JAVASCRIPT_DB=${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
-        if [[ ! -d $JAVASCRIPT_DB ]] || [[ ! $JAVASCRIPT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Javascript, or created it in the wrong location."
-          exit 1
-        fi
-        PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
-        if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Python, or created it in the wrong location."
-          exit 1
-        fi
-
-  # Packaging test that runs against a javascript database
-  # Specifying packs in the config file.
-  test-packaging-javascript-config:
-    name: Packaging Config JS
-    needs: [check-js, check-node-modules]
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        config-file: ".github/codeql/codeql-config-packaging.yml"
-        languages: javascript
-        # This version is known to worl with 0.1.0
-        tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20210831-manual/codeql-bundle.tar.gz
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      with:
-        output: "${{ runner.temp }}/results"
-      env:
-        TEST_MODE: true
-    - name: Assert Results
-      run: |
-        cd "$RUNNER_TEMP/results"
-        # We should have 3 hits from these rules
-        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
-
-        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
-        echo "Found matching rules '$RULES'"
-        if [ "$RULES" != "$EXPECTED_RULES" ]; then
-          echo "Did not match expected rules '$EXPECTED_RULES'."
-          exit 1
-        fi
-
-  # Packaging test that runs against a javascript database
-  # Specifying packs as an input.
-  test-packaging-javascript-inputs:
-    name: Packaging Inputs JS
-    needs: [check-js, check-node-modules]
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        config-file: ".github/codeql/codeql-config-packaging2.yml"
-        languages: javascript
-        packs: dsp-testing/codeql-pack1@0.1.0, dsp-testing/codeql-pack2
-        # This version is known to worl with 0.1.0
-        tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20210831-manual/codeql-bundle.tar.gz
-
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      with:
-        output: "${{ runner.temp }}/results"
-      env:
-        TEST_MODE: true
-    - name: Assert Results
-      run: |
-        cd "$RUNNER_TEMP/results"
-        # We should have 3 hits from these rules
-        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
-
-        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
-        echo "Found matching rules '$RULES'"
-        if [ "$RULES" != "$EXPECTED_RULES" ]; then
-          echo "Did not match expected rules '$EXPECTED_RULES'."
-          exit 1
-        fi
-
-  # Packaging test that runs against a javascript database
-  # Specifying packs in the config file and inputs.
-  test-packaging-javascript-config-and-inputs:
-    name: Packaging Inputs and Config JS
-    needs: [check-js, check-node-modules]
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        config-file: ".github/codeql/codeql-config-packaging3.yml"
-        packs: +dsp-testing/codeql-pack1@0.1.0
-        languages: javascript
-        # This version is known to worl with 0.1.0
-        tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20210831-manual/codeql-bundle.tar.gz
-
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      with:
-        output: "${{ runner.temp }}/results"
-      env:
-        TEST_MODE: true
-    - name: Assert Results
-      run: |
-        cd "$RUNNER_TEMP/results"
-        # We should have 3 hits from these rules
-        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
-
-        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
-        echo "Found matching rules '$RULES'"
-        if [ "$RULES" != "$EXPECTED_RULES" ]; then
-          echo "Did not match expected rules '$EXPECTED_RULES'."
-          exit 1
-        fi
-
-  # Tests a split workflow where database construction and query execution happen in different steps
-  test-split-workflow:
-    name: Split workflow
-    needs: [check-js, check-node-modules]
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        config-file: ".github/codeql/codeql-config-packaging3.yml"
-        packs: +dsp-testing/codeql-pack1@0.1.0
-        languages: javascript
-        # This version is known to worl with 0.1.0
-        tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20210831-manual/codeql-bundle.tar.gz
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      with:
-        skip-queries: true
-        output: "${{ runner.temp }}/results"
-      env:
-        TEST_MODE: true
-    - name: Assert No Results
-      run: |
-        if [ "$(ls -A $RUNNER_TEMP/results)" ]; then
-          echo "Expected results directory to be empty after skipping query execution!"
-          exit 1
-        fi
-    - uses: ./../action/analyze
-      with:
-        output: "${{ runner.temp }}/results"
-      env:
-        TEST_MODE: true
-    - name: Assert Results
-      run: |
-        cd "$RUNNER_TEMP/results"
-        # We should have 3 hits from these rules
-        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
-
-        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
-        echo "Found matching rules '$RULES'"
-        if [ "$RULES" != "$EXPECTED_RULES" ]; then
-          echo "Did not match expected rules '$EXPECTED_RULES'."
-          exit 1
-        fi
-
-  # Identify the CodeQL tool versions to integration test against.
-  check-codeql-versions:
-    name: Check CodeQL Versions
-    needs: [check-js, check-node-modules]
-    runs-on: ubuntu-latest
-    outputs:
-      versions: ${{ steps.compare.outputs.versions }}
-      nightly-url: ${{ steps.get-url.outputs.nightly-url }}
-    env:
-      # URL of the oldest release that we support, if this is being bumped then the constant
-      # CODEQL_MINIMUM_VERSION in the file codeql.ts should also be bumped to match this.
-      OLDEST_URL: https://github.com/github/codeql-action/releases/download/codeql-bundle-20201028/codeql-bundle.tar.gz
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - name: Init with default CodeQL bundle from the VM image
-      id: init-default
-      uses: ./../action/init
-      with:
-        languages: javascript
-    - name: Remove empty database
-      # allows us to run init a second time
-      run: |
-        rm -rf "$RUNNER_TEMP/codeql_databases"
-    - name: Init with latest CodeQL bundle
-      id: init-latest
-      uses: ./../action/init
-      with:
-        tools: latest
-        languages: javascript
-    - name: Remove empty database
-      # allows us to run init a third time
-      run: |
-        rm -rf "$RUNNER_TEMP/codeql_databases"
-    - name: Get nightly release URL
-      id: get-url
-      env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-      shell: bash
-      # This workflow step gets an unstable testing version of the CodeQL CLI. It should not be used outside of these tests.
-      run: |
-        export LATEST=`gh release list --repo dsp-testing/codeql-cli-nightlies -L 1 | cut -f 3`
-        echo "::set-output name=nightly-url::https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$LATEST/codeql-bundle.tar.gz"
-    - name: Init with a CodeQL bundle from a nightly release
-      id: init-nightly
-      uses: ./../action/init
-      with:
-        tools: ${{ steps.get-url.outputs.nightly-url }}
-        languages: javascript
-    - name: Remove empty database
-      # allows us to run init a fourth time
-      run: |
-        rm -rf "$RUNNER_TEMP/codeql_databases"
-    - name: Init with a CodeQL bundle from the oldest supported release
-      id: init-oldest
-      uses: ./../action/init
-      with:
-        tools: ${{ env.OLDEST_URL }}
-        languages: javascript
-    - name: Compare CodeQL bundle versions
-      id: compare
-      env:
-        CODEQL_DEFAULT: ${{ steps.init-default.outputs.codeql-path }}
-        CODEQL_LATEST: ${{ steps.init-latest.outputs.codeql-path }}
-        CODEQL_NIGHTLY: ${{ steps.init-nightly.outputs.codeql-path }}
-        CODEQL_OLDEST: ${{ steps.init-oldest.outputs.codeql-path }}
-        NIGHTLY_URL: ${{ steps.get-url.outputs.nightly-url }}
-      run: |
-        CODEQL_VERSION_DEFAULT="$("$CODEQL_DEFAULT" version --format terse)"
-        CODEQL_VERSION_LATEST="$("$CODEQL_LATEST" version --format terse)"
-        CODEQL_VERSION_NIGHTLY="$("$CODEQL_NIGHTLY" version --format terse)"
-        CODEQL_VERSION_OLDEST="$("$CODEQL_OLDEST" version --format terse)"
-        echo "Default CodeQL bundle version is $CODEQL_VERSION_DEFAULT"
-        echo "Latest CodeQL bundle version is $CODEQL_VERSION_LATEST"
-        echo "Nightly CodeQL bundle version is $CODEQL_VERSION_NIGHTLY"
-        echo "Oldest supported CodeQL bundle version is $CODEQL_VERSION_OLDEST"
-
-        # If we're running on a pull request, run each integration test with all four bundles, even
-        # if `tools: latest` would be the same as `tools: null`. This allows us to make the
-        # integration test job for each of the four bundles a required status check.
-        #
-        # If we're running on push, then we can skip running with `tools: latest` when it would be
-        # the same as running with `tools: null`.
-        if [[ "$GITHUB_EVENT_NAME" != "pull_request" && "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
-          VERSIONS_JSON="[null, \"$NIGHTLY_URL\", \"$OLDEST_URL\"]"
-        else
-          VERSIONS_JSON="[null, \"$NIGHTLY_URL\", \"$OLDEST_URL\", \"latest\"]"
-        fi
-
-        # Output a JSON-encoded list with the distinct versions to test against.
-        echo "Suggested matrix config for integration tests: $VERSIONS_JSON"
-        echo "::set-output name=versions::${VERSIONS_JSON}"
-
-  multi-language-repo_test-custom-queries-and-remote-config:
-    name: Remote Config Custom Queries multi-language repo
-    needs: [check-js, check-node-modules, check-codeql-versions]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
-    runs-on: ${{ matrix.os }}
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        tools: ${{ matrix.tools }}
-        languages: cpp,csharp,java,javascript,python
-        config-file: github/codeql-action/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
-
-  # Currently is not possible to analyze Go in conjunction with other languages in macos
-  multi-language-repo_test-go-custom-queries:
-    name: Go custom queries multi-language repo
-    needs: [check-js, check-node-modules, check-codeql-versions]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
-    runs-on: ${{ matrix.os }}
-
-    steps:
-    - uses: actions/setup-go@v2
-      if: ${{ matrix.os ==  'macos-latest' }}
-      with:
-        go-version: '^1.13.1'
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        languages: go
-        config-file: ./.github/codeql/custom-queries.yml
-        tools: ${{ matrix.tools }}
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
-
-  go-custom-tracing:
-    name: Go custom tracing
-    needs: [check-js, check-node-modules, check-codeql-versions]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
-    runs-on: ${{ matrix.os }}
-    env:
-      CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
-
-    steps:
-    - uses: actions/setup-go@v2
-      if: ${{ matrix.os ==  'macos-latest' }}
-      with:
-        go-version: '^1.13.1'
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        languages: go
-        tools: ${{ matrix.tools }}
-    - name: Build code
-      shell: bash
-      run: go build main.go
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
-
-  go-custom-tracing-autobuild:
-    name: Go autobuild custom tracing
-    needs: [check-js, check-node-modules, check-codeql-versions]
-    strategy:
-      fail-fast: false
-      matrix:
-        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
-    # No need to test Go autobuild on multiple OSes since
-    # we're testing Go custom tracing with a manual build on all OSes.
-    runs-on: ubuntu-latest
-    env:
-      CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        languages: go
-        tools: ${{ matrix.tools }}
-    - uses: ./../action/autobuild
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
-    - run: |
-        cd "$RUNNER_TEMP/codeql_databases"
-        if [[ ! -d go ]]; then
-          echo "Did not find a Go database"
-          exit 1
-        fi
-
-  # Ruby is in beta, so test it separately for now.
-  multi-language-repo_test-ruby:
-    name: Ruby multi-language
-    needs: [check-js, check-node-modules, check-codeql-versions]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        tools:
-          - latest
-          # TODO: Uncomment when nightly builds also support Ruby in beta.
-          # - ${{ needs.check-codeql-versions.outputs.nightly-url }}
-    runs-on: ${{ matrix.os }}
-    env:
-      CODEQL_ENABLE_EXPERIMENTAL_FEATURES: true
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        languages: ruby
-        tools: ${{ matrix.tools }}
-    - uses: ./../action/analyze
-      id: analysis
-      env:
-        TEST_MODE: true
-    - name: Check database
-      shell: bash
-      run: |
-        RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
-        if [[ ! -d "$RUBY_DB" ]]; then
-          echo "Did not create a database for Ruby."
-          exit 1
-        fi
-
-  multi-language-repo_rubocop:
-    name: Rubocop multi-language
-    needs: [check-js, check-node-modules]
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.6
-    - name: Install Code Scanning integration
-      run: bundle add code-scanning-rubocop --version 0.3.0 --skip-install
-    - name: Install dependencies
-      run: bundle install
-    - name: Rubocop run
-      run: |
-        bash -c "
-          bundle exec rubocop --require code_scanning --format CodeScanning::SarifFormatter -o rubocop.sarif
-          [[ $? -ne 2 ]]
-        "
-    - uses: ./../action/upload-sarif
-      with:
-        sarif_file: rubocop.sarif
-      env:
-        TEST_MODE: true
-
-  test-proxy:
-    name: Proxy
-    needs: [check-js, check-node-modules, check-codeql-versions]
-    strategy:
-      fail-fast: false
-      matrix:
-        tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:18.04
-      options: --dns 127.0.0.1
-    services:
-      squid-proxy:
-        image: datadog/squid:latest
-        ports:
-          - 3128:3128
-    env:
-      https_proxy: http://squid-proxy:3128
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        languages: javascript
-        tools: ${{ matrix.tools }}
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
+      - uses: actions/checkout@v2
+      - name: npm run-script test
+        run: npm run-script test
 
   runner-analyze-javascript-ubuntu:
     name: Runner ubuntu JS analyze
@@ -656,27 +72,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Build runner
-      run: |
-        cd runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        # Pass --config-file here, but not for other jobs in this workflow.
-        # This means we're testing the config file parsing in the runner
-        # but not slowing down all jobs unnecessarily as it doesn't add much
-        # testing the parsing on different operating systems and languages.
-        runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          # Pass --config-file here, but not for other jobs in this workflow.
+          # This means we're testing the config file parsing in the runner
+          # but not slowing down all jobs unnecessarily as it doesn't add much
+          # testing the parsing on different operating systems and languages.
+          runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Run analyze
-      run: |
-        runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
+      - name: Run analyze
+        run: |
+          runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-analyze-javascript-windows:
     name: Runner windows JS analyze
@@ -684,23 +100,23 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Build runner
-      run: |
-        cd runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages javascript --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages javascript --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Run analyze
-      run: |
-        runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
+      - name: Run analyze
+        run: |
+          runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-analyze-javascript-macos:
     name: Runner macos JS analyze
@@ -708,23 +124,23 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Build runner
-      run: |
-        cd runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Run analyze
-      run: |
-        runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
+      - name: Run analyze
+        run: |
+          runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-analyze-csharp-ubuntu:
     name: Runner ubuntu C# analyze
@@ -732,36 +148,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
 
-    - name: Build runner
-      run: |
-        cd ../action/runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        ../action/runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Build code
-      run: |
-        . ./codeql-runner/codeql-env.sh
-        $CODEQL_RUNNER dotnet build
+      - name: Build code
+        run: |
+          . ./codeql-runner/codeql-env.sh
+          $CODEQL_RUNNER dotnet build
 
-    - name: Run analyze
-      run: |
-        ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-analyze-csharp-windows:
     name: Runner windows C# analyze
@@ -769,39 +185,39 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
 
-    - name: Build runner
-      run: |
-        cd ../action/runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        ../action/runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages csharp --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages csharp --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Build code
-      shell: powershell
-      # Note we want to make sure that the .win32env file is read correctly, so we unset the CODEQL_EXTRACTOR_CSHARP_ROOT from the .sh file.
-      run: |
-        cat ./codeql-runner/codeql-env.sh | Invoke-Expression
-        $Env:CODEQL_EXTRACTOR_CSHARP_ROOT = ""
-        & $Env:CODEQL_RUNNER dotnet build
+      - name: Build code
+        shell: powershell
+        # Note we want to make sure that the .win32env file is read correctly, so we unset the CODEQL_EXTRACTOR_CSHARP_ROOT from the .sh file.
+        run: |
+          cat ./codeql-runner/codeql-env.sh | Invoke-Expression
+          $Env:CODEQL_EXTRACTOR_CSHARP_ROOT = ""
+          & $Env:CODEQL_RUNNER dotnet build
 
-    - name: Run analyze
-      run: |
-        ../action/runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-analyze-csharp-macos:
     name: Runner macos C# analyze
@@ -809,38 +225,37 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
 
-    - name: Build runner
-      run: |
-        cd ../action/runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Build code
-      shell: bash
-      run: |
-        . ./codeql-runner/codeql-env.sh
-        $CODEQL_RUNNER dotnet build
+      - name: Build code
+        shell: bash
+        run: |
+          . ./codeql-runner/codeql-env.sh
+          $CODEQL_RUNNER dotnet build
 
-    - name: Run analyze
-      run: |
-        ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
-
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-analyze-csharp-autobuild-ubuntu:
     name: Runner ubuntu autobuild C# analyze
@@ -848,35 +263,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
 
-    - name: Build runner
-      run: |
-        cd ../action/runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        ../action/runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Build code
-      run: |
-        ../action/runner/dist/codeql-runner-linux autobuild
+      - name: Build code
+        run: |
+          ../action/runner/dist/codeql-runner-linux autobuild
 
-    - name: Run analyze
-      run: |
-        ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-analyze-csharp-autobuild-windows:
     name: Runner windows autobuild C# analyze
@@ -884,36 +299,36 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
 
-    - name: Build runner
-      run: |
-        cd ../action/runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        ../action/runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages csharp --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages csharp --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Build code
-      shell: powershell
-      run: |
-        ../action/runner/dist/codeql-runner-win.exe autobuild
+      - name: Build code
+        shell: powershell
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe autobuild
 
-    - name: Run analyze
-      run: |
-        ../action/runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-analyze-csharp-autobuild-macos:
     name: Runner macos autobuild C# analyze
@@ -921,36 +336,36 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Move codeql-action
-      shell: bash
-      run: |
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
 
-    - name: Build runner
-      run: |
-        cd ../action/runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
 
-    - name: Run init
-      run: |
-        ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-    - name: Build code
-      shell: bash
-      run: |
-        ../action/runner/dist/codeql-runner-macos autobuild
+      - name: Build code
+        shell: bash
+        run: |
+          ../action/runner/dist/codeql-runner-macos autobuild
 
-    - name: Run analyze
-      run: |
-        ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-      env:
-        TEST_MODE: true
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
 
   runner-upload-sarif:
     name: Runner upload sarif
@@ -960,60 +375,16 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id }}
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Build runner
-      run: |
-        cd runner
-        npm install
-        npm run build-runner
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
 
-    - name: Upload with runner
-      run: |
-        # Deliberately don't use TEST_MODE here. This is specifically testing
-        # the compatibility with the API.
-        runner/dist/codeql-runner-linux upload --sarif-file src/testdata/empty-sarif.sarif --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-
-  multi-language-repo_test-local-codeql:
-    name: Local codeql multi-language repo
-    needs: [check-js, check-node-modules, check-codeql-versions]
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Move codeql-action
-      run: |
-        wget ${{ needs.check-codeql-versions.outputs.nightly-url }}
-        mkdir ../action
-        mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
-        mv ../action/.github/workflows .github
-    - uses: ./../action/init
-      with:
-        tools: ../action/codeql-bundle.tar.gz
-    - name: Build code
-      run: ./build.sh
-    - uses: ./../action/analyze
-
-  test-javascript-source-root:
-    name: JS source root
-    needs: [check-js, check-node-modules]
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - uses: ./init
-      with:
-        languages: javascript
-        source-root: tests/multi-language-repo
-    - uses: ./analyze
-      with:
-        skip-queries: true
-        upload: false
-    - name: Assert database exists
-      run: |
-        cd "$RUNNER_TEMP/codeql_databases"
-        if [[ ! -d javascript ]]; then
-          echo "Did not find a JavaScript database"
-          exit 1
-        fi
+      - name: Upload with runner
+        run: |
+          # Deliberately don't use TEST_MODE here. This is specifically testing
+          # the compatibility with the API.
+          runner/dist/codeql-runner-linux upload --sarif-file src/testdata/empty-sarif.sarif --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}

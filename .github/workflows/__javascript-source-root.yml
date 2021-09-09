@@ -1,0 +1,59 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Custom source root
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - v1
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  javascript-source-root:
+    strategy:
+      matrix:
+        version: [latest, cached, nightly-latest] # This feature is not compatible with old CLIs
+        os: [ubuntu-latest]
+    name: Custom source root
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../new-source-root
+        mv * ../new-source-root
+    - uses: ./../action/init
+      with:
+        languages: javascript
+        source-root: ../new-source-root
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/analyze
+      with:
+        skip-queries: true
+        upload: false
+    - name: Assert database exists
+      shell: bash
+      run: |
+        cd "$RUNNER_TEMP/codeql_databases"
+        if [[ ! -d javascript ]]; then
+          echo "Did not find a JavaScript database"
+          exit 1
+        fi

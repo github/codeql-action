@@ -1,0 +1,47 @@
+name: "Multi-language repository"
+description: "An end-to-end integration test of a multi-language repository using automatic language detection"
+os: ["ubuntu-latest", "macos-latest"]
+steps:
+  - uses: ./../action/init
+    with:
+      db-location: "${{ runner.temp }}/customDbLocation"
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    id: analysis
+    env:
+      TEST_MODE: true
+  - shell: bash
+    run: |
+      CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
+      if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+        echo "Did not create a database for CPP, or created it in the wrong location."
+        exit 1
+      fi
+      CSHARP_DB=${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
+      if [[ ! -d $CSHARP_DB ]] || [[ ! $CSHARP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+        echo "Did not create a database for C Sharp, or created it in the wrong location."
+        exit 1
+      fi
+      GO_DB=${{ fromJson(steps.analysis.outputs.db-locations).go }}
+      if [[ ! -d $GO_DB ]] || [[ ! $GO_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+        echo "Did not create a database for Go, or created it in the wrong location."
+        exit 1
+      fi
+      JAVA_DB=${{ fromJson(steps.analysis.outputs.db-locations).java }}
+      if [[ ! -d $JAVA_DB ]] || [[ ! $JAVA_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+        echo "Did not create a database for Java, or created it in the wrong location."
+        exit 1
+      fi
+      JAVASCRIPT_DB=${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
+      if [[ ! -d $JAVASCRIPT_DB ]] || [[ ! $JAVASCRIPT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+        echo "Did not create a database for Javascript, or created it in the wrong location."
+        exit 1
+      fi
+      PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
+      if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+        echo "Did not create a database for Python, or created it in the wrong location."
+        exit 1
+      fi

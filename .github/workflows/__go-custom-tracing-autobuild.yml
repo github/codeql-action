@@ -1,0 +1,63 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: 'PR Check - Go: Autobuild custom tracing'
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - v1
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  go-custom-tracing-autobuild:
+    strategy:
+      matrix:
+        version:
+        - stable-20201028
+        - stable-20210319
+        - stable-20210809
+        - cached
+        - latest
+        - nightly-latest
+        os: [ubuntu-latest, macos-latest]
+    name: 'Go: Autobuild custom tracing'
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13.1
+    - uses: ./../action/init
+      with:
+        languages: go
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/autobuild
+    - uses: ./../action/analyze
+      env:
+        TEST_MODE: true
+    - shell: bash
+      run: |
+        cd "$RUNNER_TEMP/codeql_databases"
+        if [[ ! -d go ]]; then
+          echo "Did not find a Go database"
+          exit 1
+        fi
+    env:
+      CODEQL_EXTRACTOR_GO_BUILD_TRACING: 'true'

@@ -1,0 +1,58 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Remote config file
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - v1
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  remote-config:
+    strategy:
+      matrix:
+        version:
+        - stable-20201028
+        - stable-20210319
+        - stable-20210809
+        - cached
+        - latest
+        - nightly-latest
+        os:
+        - ubuntu-latest
+        - macos-latest
+        - windows-latest
+    name: Remote config file
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: ./../action/init
+      with:
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+        languages: cpp,csharp,java,javascript,python
+        config-file: github/codeql-action/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
+          github.sha }}
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      env:
+        TEST_MODE: true

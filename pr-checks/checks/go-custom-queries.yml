@@ -1,0 +1,17 @@
+name: "Go: Custom queries"
+description: "Checks that Go works in conjunction with a config file specifying custom queries"
+steps:
+  - uses: actions/setup-go@v2
+    with:
+      go-version: "^1.13.1"
+  - uses: ./../action/init
+    with:
+      languages: go
+      config-file: ./.github/codeql/custom-queries.yml
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    env:
+      TEST_MODE: true

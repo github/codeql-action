@@ -1,0 +1,22 @@
+name: "Proxy test"
+description: "Tests using a proxy specified by the https_proxy environment variable"
+versions: ["latest"]
+os: ["ubuntu-latest"]
+container:
+  image: ubuntu:18.04
+  options: --dns 127.0.0.1
+services:
+  squid-proxy:
+    image: datadog/squid:latest
+    ports:
+      - 3128:3128
+env:
+  https_proxy: http://squid-proxy:3128
+steps:
+  - uses: ./../action/init
+    with:
+      languages: javascript
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    env:
+      TEST_MODE: true

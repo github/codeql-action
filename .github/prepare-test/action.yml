@@ -1,0 +1,39 @@
+name: "Prepare test"
+description: Performs some preparation to run tests
+inputs:
+  version:
+    required: true
+outputs:
+  tools-url:
+    value: ${{ steps.get-url.outputs.tools-url }}
+runs:
+  using: composite
+  steps:
+    - name: Move codeql-action
+      shell: bash
+      run: |
+        mkdir ../action
+        mv * .github ../action/
+        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/.github/workflows .github
+    - id: get-url
+      name: Determine URL
+      shell: bash
+      run: |
+        if [[ ${{ inputs.version }} == "nightly-latest" ]]; then
+          export LATEST=`gh release list --repo dsp-testing/codeql-cli-nightlies -L 1 | cut -f 3`
+          echo "::set-output name=tools-url::https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$LATEST/codeql-bundle.tar.gz"
+        elif [[ ${{ inputs.version }} == *"nightly"* ]]; then
+          export VERSION=`echo ${{ inputs.version }} | sed -e 's/^.*\-//'`
+          echo "::set-output name=tools-url::https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-$VERSION-manual/codeql-bundle.tar.gz"
+        elif [[ ${{ inputs.version }} == *"stable"* ]]; then
+          export VERSION=`echo ${{ inputs.version }} | sed -e 's/^.*\-//'`
+          echo "Hello $VERSION"
+          echo "::set-output name=tools-url::https://github.com/github/codeql-action/releases/download/codeql-bundle-$VERSION/codeql-bundle.tar.gz"
+        elif [[ ${{ inputs.version }} == "latest" ]]; then
+          echo "::set-output name=tools-url::latest"
+        elif [[ ${{ inputs.version }} == "cached" ]]; then
+          echo "::set-output name=tools-url::"
+        else
+          echo "::error Unrecognized version specified!"
+        fi

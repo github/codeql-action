@@ -284,7 +284,7 @@ program
       }
     } catch (e) {
       logger.error("Init failed");
-      logger.error(e);
+      logger.error(e instanceof Error ? e : new Error(String(e)));
       process.exitCode = 1;
     }
   });
@@ -337,7 +337,7 @@ program
       }
     } catch (e) {
       logger.error("Autobuild failed");
-      logger.error(e);
+      logger.error(e instanceof Error ? e : new Error(String(e)));
       process.exitCode = 1;
     }
   });
@@ -464,7 +464,7 @@ program
       );
     } catch (e) {
       logger.error("Analyze failed");
-      logger.error(e);
+      logger.error(e instanceof Error ? e : new Error(String(e)));
       process.exitCode = 1;
     }
   });
@@ -542,7 +542,7 @@ program
       );
     } catch (e) {
       logger.error("Upload failed");
-      logger.error(e);
+      logger.error(e instanceof Error ? e : new Error(String(e)));
       process.exitCode = 1;
     }
   });

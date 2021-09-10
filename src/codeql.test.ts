@@ -335,7 +335,7 @@ test("convert to semver", (t) => {
       );
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
-      t.fail(e.message);
+      t.fail(e instanceof Error ? e.message : String(e));
     }
   }
 });

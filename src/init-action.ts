@@ -175,16 +175,18 @@ async function run() {
       try {
         await installPythonDeps(codeql, logger);
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         logger.warning(
-          `${err.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
+          `${message} You can call this action with 'setup-python-dependencies: false' to disable this process`
         );
       }
     }
   } catch (e) {
-    core.setFailed(e.message);
+    const message = e instanceof Error ? e.message : String(e);
+    core.setFailed(message);
     console.log(e);
     await sendStatusReport(
-      await createStatusReportBase("init", "aborted", startedAt, e.message)
+      await createStatusReportBase("init", "aborted", startedAt, message)
     );
     return;
   }
@@ -227,15 +229,16 @@ async function run() {
 
     core.setOutput("codeql-path", config.codeQLCmd);
   } catch (error) {
-    core.setFailed(error.message);
+    core.setFailed(String(error));
+
     console.log(error);
     await sendStatusReport(
       await createStatusReportBase(
         "init",
         "failure",
         startedAt,
-        error.message,
-        error.stack
+        String(error),
+        error instanceof Error ? error.stack : undefined
       )
     );
     return;

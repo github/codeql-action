@@ -64,15 +64,17 @@ async function run() {
     );
     await sendSuccessStatusReport(startedAt, uploadStats);
   } catch (error) {
-    core.setFailed(error.message);
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : String(error);
+    core.setFailed(message);
     console.log(error);
     await actionsUtil.sendStatusReport(
       await actionsUtil.createStatusReportBase(
         "upload-sarif",
         "failure",
         startedAt,
-        error.message,
-        error.stack
+        message,
+        stack
       )
     );
     return;

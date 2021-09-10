@@ -220,7 +220,11 @@ export function countResultsInSarif(sarif: string): number {
   try {
     parsedSarif = JSON.parse(sarif);
   } catch (e) {
-    throw new Error(`Invalid SARIF. JSON syntax error: ${e.message}`);
+    throw new Error(
+      `Invalid SARIF. JSON syntax error: ${
+        e instanceof Error ? e.message : String(e)
+      }`
+    );
   }
   if (!Array.isArray(parsedSarif.runs)) {
     throw new Error("Invalid SARIF. Missing 'runs' array.");

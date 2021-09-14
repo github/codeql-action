@@ -8,13 +8,13 @@ updates:
     labels:
       - "Update dependencies"
     ignore:
-      dependency-name: "*"
-      update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
   - package-ecosystem: "npm"
     directory: "/runner"
     schedule:
       interval: "weekly"
       day: "thursday" # Gives us a working day to merge this before our typical release
     ignore:
-      dependency-name: "*"
-      update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]

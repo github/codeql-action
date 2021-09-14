@@ -288,13 +288,13 @@ export async function validateWorkflow(): Promise<undefined | string> {
   try {
     workflow = await getWorkflow();
   } catch (e) {
-    return `error: getWorkflow() failed: ${e.toString()}`;
+    return `error: getWorkflow() failed: ${String(e)}`;
   }
   let workflowErrors: CodedError[];
   try {
     workflowErrors = getWorkflowErrors(workflow);
   } catch (e) {
-    return `error: getWorkflowErrors() failed: ${e.toString()}`;
+    return `error: getWorkflowErrors() failed: ${String(e)}`;
   }
 
   if (workflowErrors.length > 0) {
@@ -302,7 +302,7 @@ export async function validateWorkflow(): Promise<undefined | string> {
     try {
       message = formatWorkflowErrors(workflowErrors);
     } catch (e) {
-      return `error: formatWorkflowErrors() failed: ${e.toString()}`;
+      return `error: formatWorkflowErrors() failed: ${String(e)}`;
     }
     core.warning(message);
   }

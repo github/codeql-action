@@ -77,14 +77,16 @@ async function run() {
     }
   } catch (error) {
     core.setFailed(
-      `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps.  ${error.message}`
+      `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps.  ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     console.log(error);
     await sendCompletedStatusReport(
       startedAt,
       language ? [language] : [],
       language,
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
     return;
   }

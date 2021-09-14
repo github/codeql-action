@@ -1,0 +1,27 @@
+name: "Custom source root"
+description: "Checks that the argument specifying a non-default source root works"
+versions: ["latest", "cached", "nightly-latest"] # This feature is not compatible with old CLIs
+os: ["ubuntu-latest"]
+steps:
+  - name: Move codeql-action
+    shell: bash
+    run: |
+      mkdir ../new-source-root
+      mv * ../new-source-root
+  - uses: ./../action/init
+    with:
+      languages: javascript
+      source-root: ../new-source-root
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    with:
+      skip-queries: true
+      upload: false
+  - name: Assert database exists
+    shell: bash
+    run: |
+      cd "$RUNNER_TEMP/codeql_databases"
+      if [[ ! -d javascript ]]; then
+        echo "Did not find a JavaScript database"
+        exit 1
+      fi

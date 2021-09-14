@@ -226,7 +226,7 @@ export interface Options {
 	//=> 'http://sindresorhus.com/foo'
 	```
 	*/
-	readonly removeDirectoryIndex?: ReadonlyArray<RegExp | string>;
+	readonly removeDirectoryIndex?: boolean | ReadonlyArray<RegExp | string>;
 
 	/**
 	Sorts the query parameters alphabetically by key.

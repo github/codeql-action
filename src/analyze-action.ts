@@ -132,7 +132,9 @@ async function run() {
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
     );
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
-  } catch (error) {
+  } catch (origError) {
+    const error =
+      origError instanceof Error ? origError : new Error(String(origError));
     core.setFailed(error.message);
     console.log(error);
 

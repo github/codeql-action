@@ -7,6 +7,7 @@ const { Argument, humanReadableArgName } = require('./argument.js');
 const { CommanderError } = require('./error.js');
 const { Help } = require('./help.js');
 const { Option, splitOptionFlags } = require('./option.js');
+const { suggestSimilar } = require('./suggestSimilar');
 
 // @ts-check
 
@@ -35,6 +36,7 @@ class Command extends EventEmitter {
     this._scriptPath = null;
     this._name = name || '';
     this._optionValues = {};
+    this._optionValueSources = {}; // default < env < cli
     this._storeOptionsAsProperties = false;
     this._actionHandler = null;
     this._executableHandler = false;
@@ -50,6 +52,7 @@ class Command extends EventEmitter {
     this._lifeCycleHooks = {}; // a hash of arrays
     /** @type {boolean | string} */
     this._showHelpAfterError = false;
+    this._showSuggestionAfterError = false;
 
     // see .configureOutput() for docs
     this._outputConfiguration = {
@@ -98,6 +101,7 @@ class Command extends EventEmitter {
     this._allowExcessArguments = sourceCommand._allowExcessArguments;
     this._enablePositionalOptions = sourceCommand._enablePositionalOptions;
     this._showHelpAfterError = sourceCommand._showHelpAfterError;
+    this._showSuggestionAfterError = sourceCommand._showSuggestionAfterError;
 
     return this;
   }
@@ -229,6 +233,17 @@ class Command extends EventEmitter {
   showHelpAfterError(displayHelp = true) {
     if (typeof displayHelp !== 'string') displayHelp = !!displayHelp;
     this._showHelpAfterError = displayHelp;
+    return this;
+  }
+
+  /**
+   * Display suggestion of similar commands for unknown commands, or options for unknown options.
+   *
+   * @param {boolean} [displaySuggestion]
+   * @return {Command} `this` command for chaining
+   */
+  showSuggestionAfterError(displaySuggestion = true) {
+    this._showSuggestionAfterError = !!displaySuggestion;
     return this;
   }
 
@@ -512,16 +527,16 @@ Expecting one of '${allowedValues.join("', '")}'`);
       }
       // preassign only if we have a default
       if (defaultValue !== undefined) {
-        this.setOptionValue(name, defaultValue);
+        this._setOptionValueWithSource(name, defaultValue, 'default');
       }
     }
 
     // register the option
     this.options.push(option);
 
-    // when it's passed assign the value
-    // and conditionally invoke the callback
-    this.on('option:' + oname, (val) => {
+    // handler for cli and env supplied values
+    const handleOptionValue = (val, invalidValueMessage, valueSource) => {
+      // Note: using closure to access lots of lexical scoped variables.
       const oldValue = this.getOptionValue(name);
 
       // custom processing
@@ -530,7 +545,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           val = option.parseArg(val, oldValue === undefined ? defaultValue : oldValue);
         } catch (err) {
           if (err.code === 'commander.invalidArgument') {
-            const message = `error: option '${option.flags}' argument '${val}' is invalid. ${err.message}`;
+            const message = `${invalidValueMessage} ${err.message}`;
             this._displayError(err.exitCode, err.code, message);
           }
           throw err;
@@ -543,17 +558,27 @@ Expecting one of '${allowedValues.join("', '")}'`);
       if (typeof oldValue === 'boolean' || typeof oldValue === 'undefined') {
         // if no value, negate false, and we have a default, then use it!
         if (val == null) {
-          this.setOptionValue(name, option.negate
-            ? false
-            : defaultValue || true);
+          this._setOptionValueWithSource(name, option.negate ? false : defaultValue || true, valueSource);
         } else {
-          this.setOptionValue(name, val);
+          this._setOptionValueWithSource(name, val, valueSource);
         }
       } else if (val !== null) {
         // reassign
-        this.setOptionValue(name, option.negate ? false : val);
+        this._setOptionValueWithSource(name, option.negate ? false : val, valueSource);
       }
+    };
+
+    this.on('option:' + oname, (val) => {
+      const invalidValueMessage = `error: option '${option.flags}' argument '${val}' is invalid.`;
+      handleOptionValue(val, invalidValueMessage, 'cli');
     });
+
+    if (option.envVar) {
+      this.on('optionEnv:' + oname, (val) => {
+        const invalidValueMessage = `error: option '${option.flags}' value '${val}' from env '${option.envVar}' is invalid.`;
+        handleOptionValue(val, invalidValueMessage, 'env');
+      });
+    }
 
     return this;
   }
@@ -766,6 +791,14 @@ Expecting one of '${allowedValues.join("', '")}'`);
     }
     return this;
   };
+
+  /**
+   * @api private
+   */
+  _setOptionValueWithSource(key, value, source) {
+    this.setOptionValue(key, value);
+    this._optionValueSources[key] = source;
+  }
 
   /**
    * Get user arguments implied or explicit arguments.
@@ -1131,6 +1164,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 
   _parseCommand(operands, unknown) {
     const parsed = this.parseOptions(unknown);
+    this._parseOptionsEnv(); // after cli, so parseArg not called on both cli and env
     operands = operands.concat(parsed.operands);
     unknown = parsed.unknown;
     this.args = operands.concat(unknown);
@@ -1193,6 +1227,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
         this._processArguments();
       }
     } else if (this.commands.length) {
+      checkForUnknownOptions();
       // This command has subcommands and nothing hooked up at this level, so display help (and exit).
       this.help({ error: true });
     } else {
@@ -1412,6 +1447,30 @@ Expecting one of '${allowedValues.join("', '")}'`);
   }
 
   /**
+   * Apply any option related environment variables, if option does
+   * not have a value from cli or client code.
+   *
+   * @api private
+   */
+  _parseOptionsEnv() {
+    this.options.forEach((option) => {
+      if (option.envVar && option.envVar in process.env) {
+        const optionKey = option.attributeName();
+        // env is second lowest priority source, above default
+        if (this.getOptionValue(optionKey) === undefined || this._optionValueSources[optionKey] === 'default') {
+          if (option.required || option.optional) { // option can take a value
+            // keep very simple, optional always takes value
+            this.emit(`optionEnv:${option.name()}`, process.env[option.envVar]);
+          } else { // boolean
+            // keep very simple, only care that envVar defined and not the value
+            this.emit(`optionEnv:${option.name()}`);
+          }
+        }
+      }
+    });
+  }
+
+  /**
    * Argument `name` is missing.
    *
    * @param {string} name
@@ -1456,7 +1515,23 @@ Expecting one of '${allowedValues.join("', '")}'`);
 
   unknownOption(flag) {
     if (this._allowUnknownOption) return;
-    const message = `error: unknown option '${flag}'`;
+    let suggestion = '';
+
+    if (flag.startsWith('--') && this._showSuggestionAfterError) {
+      // Looping to pick up the global options too
+      let candidateFlags = [];
+      let command = this;
+      do {
+        const moreFlags = command.createHelp().visibleOptions(command)
+          .filter(option => option.long)
+          .map(option => option.long);
+        candidateFlags = candidateFlags.concat(moreFlags);
+        command = command.parent;
+      } while (command && !command._enablePositionalOptions);
+      suggestion = suggestSimilar(flag, candidateFlags);
+    }
+
+    const message = `error: unknown option '${flag}'${suggestion}`;
     this._displayError(1, 'commander.unknownOption', message);
   };
 
@@ -1484,7 +1559,20 @@ Expecting one of '${allowedValues.join("', '")}'`);
    */
 
   unknownCommand() {
-    const message = `error: unknown command '${this.args[0]}'`;
+    const unknownName = this.args[0];
+    let suggestion = '';
+
+    if (this._showSuggestionAfterError) {
+      const candidateNames = [];
+      this.createHelp().visibleCommands(this).forEach((command) => {
+        candidateNames.push(command.name());
+        // just visible alias
+        if (command.alias()) candidateNames.push(command.alias());
+      });
+      suggestion = suggestSimilar(unknownName, candidateNames);
+    }
+
+    const message = `error: unknown command '${unknownName}'${suggestion}`;
     this._displayError(1, 'commander.unknownCommand', message);
   };
 

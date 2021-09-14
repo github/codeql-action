@@ -52,7 +52,7 @@ function getTestConfig(tmpDir: string): Config {
 
 interface LoggedMessage {
   type: "debug" | "info" | "warning" | "error";
-  message: string;
+  message: string | Error;
 }
 
 function getRecordingLogger(messages: LoggedMessage[]): Logger {
@@ -65,11 +65,11 @@ function getRecordingLogger(messages: LoggedMessage[]): Logger {
       messages.push({ type: "info", message });
       console.info(message);
     },
-    warning: (message: string) => {
+    warning: (message: string | Error) => {
       messages.push({ type: "warning", message });
       console.warn(message);
     },
-    error: (message: string) => {
+    error: (message: string | Error) => {
       messages.push({ type: "error", message });
       console.error(message);
     },

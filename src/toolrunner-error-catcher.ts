@@ -58,7 +58,7 @@ export async function toolrunnerErrorCatcher(
       }
     ).exec();
   } catch (e) {
-    returnState = e;
+    returnState = e instanceof Error ? e : new Error(String(e));
   }
 
   // if there is a zero return code then we do not apply the matchers

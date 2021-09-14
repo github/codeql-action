@@ -30,8 +30,9 @@ export function getExtraOptionsEnvParam(): object {
   try {
     return JSON.parse(raw);
   } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
     throw new Error(
-      `${varName} environment variable is set, but does not contain valid JSON: ${e.message}`
+      `${varName} environment variable is set, but does not contain valid JSON: ${message}`
     );
   }
 }

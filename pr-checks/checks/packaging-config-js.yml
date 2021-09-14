@@ -1,0 +1,32 @@
+name: "Packaging: Config file"
+description: "Checks that specifying packages using only a config file works"
+versions: ["nightly-20210831"] # This CLI version is known to work with package used in this test
+os: ["ubuntu-latest", "macos-latest"]
+steps:
+  - uses: ./../action/init
+    with:
+      config-file: ".github/codeql/codeql-config-packaging.yml"
+      languages: javascript
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+    env:
+      TEST_MODE: true
+  - name: Assert Results
+    shell: bash
+    run: |
+      cd "$RUNNER_TEMP/results"
+      # We should have 3 hits from these rules
+      EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+
+      # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+      RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+      echo "Found matching rules '$RULES'"
+      if [ "$RULES" != "$EXPECTED_RULES" ]; then
+        echo "Did not match expected rules '$EXPECTED_RULES'."
+        exit 1
+      fi

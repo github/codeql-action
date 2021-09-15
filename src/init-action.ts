@@ -12,7 +12,7 @@ import {
   StatusReportBase,
   validateWorkflow,
 } from "./actions-util";
-import { CodeQL } from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
 import {
   initCodeQL,
@@ -30,6 +30,8 @@ import {
   Mode,
   checkGitHubVersionInRange,
   getGitHubVersion,
+  codeQlVersionAbove,
+  enrichEnvironment,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -151,6 +153,7 @@ async function run() {
     );
     codeql = initCodeQLResult.codeql;
     toolsVersion = initCodeQLResult.toolsVersion;
+    await enrichEnvironment(Mode.actions, codeql);
 
     config = await initConfig(
       getOptionalInput("languages"),
@@ -210,13 +213,22 @@ async function run() {
       getOptionalInput("source-root") || ""
     );
 
-    const tracerConfig = await runInit(codeql, config, sourceRoot);
+    const tracerConfig = await runInit(
+      codeql,
+      config,
+      sourceRoot,
+      "Runner.Worker.exe",
+      undefined
+    );
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
         core.exportVariable(key, value);
       }
 
-      if (process.platform === "win32") {
+      if (
+        process.platform === "win32" &&
+        !(await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING))
+      ) {
         await injectWindowsTracer(
           "Runner.Worker.exe",
           undefined,

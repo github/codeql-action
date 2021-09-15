@@ -6,12 +6,13 @@ import * as safeWhich from "@chrisgavin/safe-which";
 
 import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
-import { CodeQL, setupCodeQL } from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
+import { codeQlVersionAbove } from "./util";
 
 export async function initCodeQL(
   codeqlURL: string | undefined,
@@ -75,18 +76,30 @@ export async function initConfig(
 export async function runInit(
   codeql: CodeQL,
   config: configUtils.Config,
-  sourceRoot: string
+  sourceRoot: string,
+  processName: string | undefined,
+  processLevel: number | undefined
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
-  // TODO: replace this code once CodeQL supports multi-language tracing
-  for (const language of config.languages) {
-    // Init language database
-    await codeql.databaseInit(
-      util.getCodeQLDatabasePath(config, language),
-      language,
-      sourceRoot
+  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    // Init a database cluster
+    await codeql.databaseInitCluster(
+      config.dbLocation,
+      config.languages,
+      sourceRoot,
+      processName,
+      processLevel
     );
+  } else {
+    for (const language of config.languages) {
+      // Init language database
+      await codeql.databaseInit(
+        util.getCodeQLDatabasePath(config, language),
+        language,
+        sourceRoot
+      );
+    }
   }
 
   return await getCombinedTracerConfig(config, codeql);

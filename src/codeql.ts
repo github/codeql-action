@@ -12,7 +12,7 @@ import * as api from "./api-client";
 import { PackWithVersion } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
-import { Language } from "./languages";
+import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as toolcache from "./toolcache";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
@@ -74,6 +74,16 @@ export interface CodeQL {
     databasePath: string,
     language: Language,
     sourceRoot: string
+  ): Promise<void>;
+  /**
+   * Run 'codeql database init --db-cluster'.
+   */
+  databaseInitCluster(
+    databasePath: string,
+    languages: Language[],
+    sourceRoot: string,
+    processName: string | undefined,
+    processLevel: number | undefined
   ): Promise<void>;
   /**
    * Runs the autobuilder for the given language.
@@ -198,6 +208,7 @@ const CODEQL_VERSION_DIAGNOSTICS = "2.5.6";
 const CODEQL_VERSION_METRICS = "2.5.5";
 const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
+export const CODEQL_VERSION_NEW_TRACING = "2.6.0"; // Use multi-language (>= 2.5.6) and indirect (>= 2.6.0) tracing.
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -528,6 +539,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     printVersion: resolveFunction(partialCodeql, "printVersion"),
     getTracerEnv: resolveFunction(partialCodeql, "getTracerEnv"),
     databaseInit: resolveFunction(partialCodeql, "databaseInit"),
+    databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
     runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
     extractScannedLanguage: resolveFunction(
       partialCodeql,
@@ -640,6 +652,32 @@ async function getCodeQLForCmd(
         databasePath,
         `--language=${language}`,
         `--source-root=${sourceRoot}`,
+        ...getExtraOptionsFromEnv(["database", "init"]),
+      ]);
+    },
+    async databaseInitCluster(
+      databasePath: string,
+      languages: Language[],
+      sourceRoot: string,
+      processName: string | undefined,
+      processLevel: number | undefined
+    ) {
+      const extraArgs = languages.map((language) => `--language=${language}`);
+      if (languages.filter(isTracedLanguage).length > 0) {
+        extraArgs.push("--begin-tracing");
+        if (processName !== undefined) {
+          extraArgs.push(`--trace-process-name=${processName}`);
+        } else {
+          extraArgs.push(`--trace-process-level=${processLevel || 3}`);
+        }
+      }
+      await runTool(cmd, [
+        "database",
+        "init",
+        "--db-cluster",
+        databasePath,
+        `--source-root=${sourceRoot}`,
+        ...extraArgs,
         ...getExtraOptionsFromEnv(["database", "init"]),
       ]);
     },

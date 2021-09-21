@@ -213,6 +213,12 @@ jobs:
           $Env:CODEQL_EXTRACTOR_CSHARP_ROOT = ""
           & $Env:CODEQL_RUNNER dotnet build
 
+      - name: Upload tracer logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: tracer-logs
+          path: ./codeql-runner
+
       - name: Run analyze
         run: |
           ../action/runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}

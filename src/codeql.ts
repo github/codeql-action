@@ -453,7 +453,7 @@ export async function setupCodeQL(
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
     return { codeql: cachedCodeQL, toolsVersion: codeqlURLVersion };
   } catch (e) {
-    logger.error(e);
+    logger.error(e instanceof Error ? e : new Error(String(e)));
     throw new Error("Unable to download and extract CodeQL CLI");
   }
 }

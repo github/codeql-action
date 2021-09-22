@@ -171,7 +171,7 @@ jobs:
       - name: Build code
         run: |
           . ./codeql-runner/codeql-env.sh
-          $CODEQL_RUNNER dotnet build
+          $CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
 
       - name: Run analyze
         run: |
@@ -211,7 +211,13 @@ jobs:
         run: |
           cat ./codeql-runner/codeql-env.sh | Invoke-Expression
           $Env:CODEQL_EXTRACTOR_CSHARP_ROOT = ""
-          & $Env:CODEQL_RUNNER dotnet build
+          & $Env:CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
+
+      - name: Upload tracer logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: tracer-logs
+          path: ./codeql-runner/compound-build-tracer.log
 
       - name: Run analyze
         run: |
@@ -249,7 +255,7 @@ jobs:
         shell: bash
         run: |
           . ./codeql-runner/codeql-env.sh
-          $CODEQL_RUNNER dotnet build
+          $CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
 
       - name: Run analyze
         run: |

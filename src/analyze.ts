@@ -302,8 +302,10 @@ export async function runQueries(
       logger.info(analysisSummary);
       printLinesOfCodeSummary(logger, language, await locPromise);
     } catch (e) {
-      logger.info(e);
-      logger.info(e.stack);
+      logger.info(String(e));
+      if (e instanceof Error) {
+        logger.info(e.stack!);
+      }
       statusReport.analyze_failure_language = language;
       throw new CodeQLAnalysisError(
         statusReport,

@@ -6,7 +6,7 @@ import { Command } from "commander";
 
 import { runFinalize, runQueries } from "./analyze";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
-import { CodeQL, getCodeQL } from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
 import { Language, parseLanguage } from "./languages";
@@ -23,6 +23,8 @@ import {
   getGitHubAuth,
   initializeEnvironment,
   Mode,
+  codeQlVersionAbove,
+  enrichEnvironment,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -208,6 +210,7 @@ program
           )
         ).codeql;
       }
+      await enrichEnvironment(Mode.runner, codeql);
       const workspacePath = checkoutPath;
       const config = await initConfig(
         cmd.languages,
@@ -226,12 +229,21 @@ program
       );
 
       const sourceRoot = checkoutPath;
-      const tracerConfig = await runInit(codeql, config, sourceRoot);
+      const tracerConfig = await runInit(
+        codeql,
+        config,
+        sourceRoot,
+        parseTraceProcessName(),
+        parseTraceProcessLevel()
+      );
       if (tracerConfig === undefined) {
         return;
       }
 
-      if (process.platform === "win32") {
+      if (
+        process.platform === "win32" &&
+        !(await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING))
+      ) {
         await injectWindowsTracer(
           parseTraceProcessName(),
           parseTraceProcessLevel(),
@@ -317,6 +329,7 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
+      await enrichEnvironment(Mode.runner, await getCodeQL(config.codeQLCmd));
       importTracerEnvironment(config);
       let language: Language | undefined = undefined;
       if (cmd.language !== undefined) {
@@ -419,6 +432,7 @@ program
             "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
+      await enrichEnvironment(Mode.runner, await getCodeQL(config.codeQLCmd));
 
       const auth = await getGitHubAuth(
         logger,

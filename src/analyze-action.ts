@@ -11,6 +11,7 @@ import {
   runQueries,
   runFinalize,
 } from "./analyze";
+import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { getActionsLogger } from "./logging";
@@ -79,6 +80,10 @@ async function run() {
         "Config file could not be found at expected location. Has the 'init' action been called?"
       );
     }
+    await util.enrichEnvironment(
+      util.Mode.actions,
+      await getCodeQL(config.codeQLCmd)
+    );
 
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),

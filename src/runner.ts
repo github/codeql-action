@@ -177,7 +177,7 @@ program
 
       // Wipe the temp dir
       logger.info(`Cleaning temp directory ${tempDir}`);
-      fs.rmdirSync(tempDir, { recursive: true });
+      fs.rmSync(tempDir, { recursive: true, force: true });
       fs.mkdirSync(tempDir, { recursive: true });
 
       const auth = await getGitHubAuth(

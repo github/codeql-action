@@ -68,7 +68,7 @@ export async function withTmpDir<T>(
   const symlinkSubdir = path.join(tmpDir, "symlink");
   fs.symlinkSync(realSubdir, symlinkSubdir, "dir");
   const result = await body(symlinkSubdir);
-  fs.rmdirSync(tmpDir, { recursive: true });
+  fs.rmSync(tmpDir, { recursive: true, force: true });
   return result;
 }
 

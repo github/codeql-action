@@ -268,8 +268,8 @@ function createToolPath(
   );
   logger.debug(`destination ${folderPath}`);
   const markerPath = `${folderPath}.complete`;
-  fs.rmdirSync(folderPath, { recursive: true });
-  fs.rmdirSync(markerPath, { recursive: true });
+  fs.rmSync(folderPath, { recursive: true, force: true });
+  fs.rmSync(markerPath, { recursive: true, force: true });
   fs.mkdirSync(folderPath, { recursive: true });
   return folderPath;
 }

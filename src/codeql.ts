@@ -148,6 +148,10 @@ export interface CodeQL {
     threadsFlag: string,
     automationDetailsId: string | undefined
   ): Promise<string>;
+  /**
+   * Run 'codeql database print-baseline'.
+   */
+  databasePrintBaseline(databasePath: string): Promise<string>;
 }
 
 export interface ResolveLanguagesOutput {
@@ -209,6 +213,7 @@ const CODEQL_VERSION_METRICS = "2.5.5";
 const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_NEW_TRACING = "2.6.0"; // Use multi-language (>= 2.5.6) and indirect (>= 2.6.0) tracing.
+export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -556,6 +561,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "databaseInterpretResults"
     ),
+    databasePrintBaseline: resolveFunction(
+      partialCodeql,
+      "databasePrintBaseline"
+    ),
   };
   return cachedCodeQL;
 }
@@ -858,6 +867,15 @@ async function getCodeQLForCmd(
       }
       codeqlArgs.push(databasePath, ...querySuitePaths);
       // capture stdout, which contains analysis summaries
+      return await runTool(cmd, codeqlArgs);
+    },
+    async databasePrintBaseline(databasePath: string): Promise<string> {
+      const codeqlArgs = [
+        "database",
+        "print-baseline",
+        ...getExtraOptionsFromEnv(["database", "print-baseline"]),
+        databasePath,
+      ];
       return await runTool(cmd, codeqlArgs);
     },
 

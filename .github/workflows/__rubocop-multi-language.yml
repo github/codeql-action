@@ -63,3 +63,5 @@ jobs:
         sarif_file: rubocop.sarif
       env:
         TEST_MODE: true
+    env:
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

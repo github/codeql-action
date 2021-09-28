@@ -79,6 +79,8 @@ for file in os.listdir('checks'):
         if key in checkSpecification:
             checkJob[key] = checkSpecification[key]
 
+    checkJob['env'] = checkJob.get('env', {})
+    checkJob['env']['INTERNAL_CODEQL_ACTION_DEBUG_LOC'] = True
     checkName = file[:len(file) - 4]
 
     with open(f"../.github/workflows/__{checkName}.yml", 'w') as output_stream:

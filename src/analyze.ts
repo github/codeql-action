@@ -5,7 +5,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
 import * as analysisPaths from "./analysis-paths";
-import { getCodeQL } from "./codeql";
+import { CODEQL_VERSION_COUNTS_LINES, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { countLoc } from "./count-loc";
 import { isScannedLanguage, Language } from "./languages";
@@ -194,17 +194,27 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
-  // count the number of lines in the background
-  const locPromise = countLoc(
-    path.resolve(),
-    // config.paths specifies external directories. the current
-    // directory is included in the analysis by default. Replicate
-    // that here.
-    config.paths,
-    config.pathsIgnore,
-    config.languages,
-    logger
+  let locPromise: Promise<Partial<Record<Language, number>>> = Promise.resolve(
+    {}
   );
+  const cliCanCountBaseline = await cliCanCountLoC();
+  const debugMode =
+    process.env["INTERNAL_CODEQL_ACTION_DEBUG_LOC"] ||
+    process.env["ACTIONS_RUNNER_DEBUG"] ||
+    process.env["ACTIONS_STEP_DEBUG"];
+  if (!cliCanCountBaseline || debugMode) {
+    // count the number of lines in the background
+    locPromise = countLoc(
+      path.resolve(),
+      // config.paths specifies external directories. the current
+      // directory is included in the analysis by default. Replicate
+      // that here.
+      config.paths,
+      config.pathsIgnore,
+      config.languages,
+      logger
+    );
+  }
 
   for (const language of config.languages) {
     const queries = config.queries[language];
@@ -295,12 +305,15 @@ export async function runQueries(
         querySuitePaths,
         sarifFile
       );
-      await injectLinesOfCode(sarifFile, language, locPromise);
+      if (!cliCanCountBaseline)
+        await injectLinesOfCode(sarifFile, language, locPromise);
       statusReport[`interpret_results_${language}_duration_ms`] =
         new Date().getTime() - startTimeInterpretResults;
       logger.endGroup();
       logger.info(analysisSummary);
-      printLinesOfCodeSummary(logger, language, await locPromise);
+      if (!cliCanCountBaseline || debugMode)
+        printLinesOfCodeSummary(logger, language, await locPromise);
+      if (cliCanCountBaseline) logger.info(await runPrintLinesOfCode(language));
     } catch (e) {
       logger.info(String(e));
       if (e instanceof Error) {
@@ -333,6 +346,19 @@ export async function runQueries(
     );
   }
 
+  async function cliCanCountLoC() {
+    return await util.codeQlVersionAbove(
+      await getCodeQL(config.codeQLCmd),
+      CODEQL_VERSION_COUNTS_LINES
+    );
+  }
+
+  async function runPrintLinesOfCode(language: Language): Promise<string> {
+    const databasePath = util.getCodeQLDatabasePath(config, language);
+    const codeql = await getCodeQL(config.codeQLCmd);
+    return await codeql.databasePrintBaseline(databasePath);
+  }
+
   async function runQueryGroup(
     language: Language,
     type: string,
@@ -361,7 +387,6 @@ export async function runQueries(
     return querySuitePath;
   }
 }
-
 function createQuerySuiteContents(queries: string[]) {
   return queries.map((q: string) => `- query: ${q}`).join("\n");
 }

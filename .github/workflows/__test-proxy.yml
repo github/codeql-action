@@ -44,6 +44,7 @@ jobs:
         TEST_MODE: true
     env:
       https_proxy: http://squid-proxy:3128
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
     container:
       image: ubuntu:18.04
       options: --dns 127.0.0.1

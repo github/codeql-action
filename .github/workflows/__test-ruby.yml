@@ -53,3 +53,4 @@ jobs:
         fi
     env:
       CODEQL_ENABLE_EXPERIMENTAL_FEATURES: 'true'
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

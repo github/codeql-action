@@ -8,7 +8,7 @@ import * as semver from "semver";
 
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import { CodeQL } from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
@@ -68,7 +68,7 @@ export async function withTmpDir<T>(
   const symlinkSubdir = path.join(tmpDir, "symlink");
   fs.symlinkSync(realSubdir, symlinkSubdir, "dir");
   const result = await body(symlinkSubdir);
-  fs.rmdirSync(tmpDir, { recursive: true });
+  fs.rmSync(tmpDir, { recursive: true, force: true });
   return result;
 }
 
@@ -437,21 +437,37 @@ enum EnvVar {
   FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
 }
 
-export function initializeEnvironment(mode: Mode, version: string) {
-  const exportVar = (name: string, value: string) => {
-    if (mode === Mode.actions) {
-      core.exportVariable(name, value);
-    } else {
-      process.env[name] = value;
-    }
-  };
+const exportVar = (mode: Mode, name: string, value: string) => {
+  if (mode === Mode.actions) {
+    core.exportVariable(name, value);
+  } else {
+    process.env[name] = value;
+  }
+};
 
-  exportVar(EnvVar.RUN_MODE, mode);
-  exportVar(EnvVar.VERSION, version);
-  exportVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  exportVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  exportVar(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
-  exportVar(EnvVar.FEATURE_SANDWICH, "true");
+/**
+ * Set some initial environment variables that we can set even without
+ * knowing what version of CodeQL we're running.
+ */
+export function initializeEnvironment(mode: Mode, version: string) {
+  exportVar(mode, EnvVar.RUN_MODE, mode);
+  exportVar(mode, EnvVar.VERSION, version);
+  exportVar(mode, EnvVar.FEATURE_SARIF_COMBINE, "true");
+  exportVar(mode, EnvVar.FEATURE_WILL_UPLOAD, "true");
+}
+
+/**
+ * Enrich the environment variables with further flags that we cannot
+ * know the value of until we know what version of CodeQL we're running.
+ */
+export async function enrichEnvironment(mode: Mode, codeql: CodeQL) {
+  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    exportVar(mode, EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+    exportVar(mode, EnvVar.FEATURE_SANDWICH, "false");
+  } else {
+    exportVar(mode, EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+    exportVar(mode, EnvVar.FEATURE_SANDWICH, "true");
+  }
 }
 
 export function getMode(): Mode {

@@ -62,3 +62,5 @@ jobs:
           echo "Did not match expected rules '$EXPECTED_RULES'."
           exit 1
         fi
+    env:
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

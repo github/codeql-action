@@ -57,3 +57,5 @@ jobs:
           echo "Did not find a JavaScript database"
           exit 1
         fi
+    env:
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

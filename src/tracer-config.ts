@@ -1,10 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { CodeQL } from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language, isTracedLanguage } from "./languages";
 import * as util from "./util";
+import { codeQlVersionAbove } from "./util";
 
 export type TracerConfig = {
   spec: string;
@@ -18,6 +19,24 @@ const CRITICAL_TRACER_VARS = new Set([
   "SEMMLE_DEPTRACE_SOCKET",
   "SEMMLE_JAVA_TOOL_OPTIONS",
 ]);
+
+export async function getTracerConfigForCluster(
+  config: configUtils.Config
+): Promise<TracerConfig> {
+  const tracingEnvVariables = JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        config.dbLocation,
+        "temp/tracingEnvironment/start-tracing.json"
+      ),
+      "utf8"
+    )
+  );
+  return {
+    spec: tracingEnvVariables["ODASA_TRACER_CONFIGURATION"],
+    env: tracingEnvVariables,
+  };
+}
 
 export async function getTracerConfigForLanguage(
   codeql: CodeQL,
@@ -179,16 +198,21 @@ export async function getCombinedTracerConfig(
     return undefined;
   }
 
-  // Get all the tracer configs and combine them together
-  const tracedLanguageConfigs: { [lang: string]: TracerConfig } = {};
-  for (const language of tracedLanguages) {
-    tracedLanguageConfigs[language] = await getTracerConfigForLanguage(
-      codeql,
-      config,
-      language
-    );
+  let mainTracerConfig: TracerConfig;
+  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    mainTracerConfig = await getTracerConfigForCluster(config);
+  } else {
+    // Get all the tracer configs and combine them together
+    const tracedLanguageConfigs: { [lang: string]: TracerConfig } = {};
+    for (const language of tracedLanguages) {
+      tracedLanguageConfigs[language] = await getTracerConfigForLanguage(
+        codeql,
+        config,
+        language
+      );
+    }
+    mainTracerConfig = concatTracerConfigs(tracedLanguageConfigs, config);
   }
-  const mainTracerConfig = concatTracerConfigs(tracedLanguageConfigs, config);
 
   // Add a couple more variables
   mainTracerConfig.env["ODASA_TRACER_CONFIGURATION"] = mainTracerConfig.spec;

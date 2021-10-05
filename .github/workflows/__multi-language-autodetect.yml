@@ -84,3 +84,5 @@ jobs:
           echo "Did not create a database for Python, or created it in the wrong location."
           exit 1
         fi
+    env:
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Fixed a bug where some builds were no longer being traced correctly. [#766](https://github.com/github/codeql-action/pull/766)
 
 ## 1.0.17 - 07 Oct 2021
 

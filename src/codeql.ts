@@ -212,8 +212,24 @@ const CODEQL_VERSION_DIAGNOSTICS = "2.5.6";
 const CODEQL_VERSION_METRICS = "2.5.5";
 const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
-export const CODEQL_VERSION_NEW_TRACING = "2.6.0"; // Use multi-language (>= 2.5.6) and indirect (>= 2.6.0) tracing.
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
+
+/**
+ * Version above which we use the CLI's indirect build tracing and
+ * multi-language tracing features.
+ *
+ * There are currently three blockers on the CLI's side to enabling this:
+ * (1) The logs directory should be created for a DB cluster, as some
+ *     autobuilders expect it to be present.
+ * (2) The SEMMLE_PRELOAD_libtrace{32,64}? env variables need to be set.
+ * (3) The .environment and .win32env files need to be created next to
+ *     the DB spec.
+ *
+ * Once _all_ of these are fixed, we can enable this by setting the
+ * version flag below to the earliest version of the CLI that resolved
+ * the above issues.
+ */
+export const CODEQL_VERSION_NEW_TRACING = "99.99.99";
 
 function getCodeQLBundleName(): string {
   let platform: string;

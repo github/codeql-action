@@ -6,6 +6,6 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-requests = "*"
+requests = "2.26.0"
 
 [requires]

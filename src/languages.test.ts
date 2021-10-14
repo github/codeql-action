@@ -1,7 +1,7 @@
 import test from "ava";
 
 import {
-  Language,
+  KnownLanguage,
   isScannedLanguage,
   isTracedLanguage,
   parseLanguage,
@@ -12,18 +12,18 @@ setupTests(test);
 
 test("parseLanguage", async (t) => {
   // Exact matches
-  t.deepEqual(parseLanguage("csharp"), Language.csharp);
-  t.deepEqual(parseLanguage("cpp"), Language.cpp);
-  t.deepEqual(parseLanguage("go"), Language.go);
-  t.deepEqual(parseLanguage("java"), Language.java);
-  t.deepEqual(parseLanguage("javascript"), Language.javascript);
-  t.deepEqual(parseLanguage("python"), Language.python);
+  t.deepEqual(parseLanguage("csharp"), KnownLanguage.csharp);
+  t.deepEqual(parseLanguage("cpp"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("go"), KnownLanguage.go);
+  t.deepEqual(parseLanguage("java"), KnownLanguage.java);
+  t.deepEqual(parseLanguage("javascript"), KnownLanguage.javascript);
+  t.deepEqual(parseLanguage("python"), KnownLanguage.python);
 
   // Aliases
-  t.deepEqual(parseLanguage("c"), Language.cpp);
-  t.deepEqual(parseLanguage("c++"), Language.cpp);
-  t.deepEqual(parseLanguage("c#"), Language.csharp);
-  t.deepEqual(parseLanguage("typescript"), Language.javascript);
+  t.deepEqual(parseLanguage("c"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("c++"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("c#"), KnownLanguage.csharp);
+  t.deepEqual(parseLanguage("typescript"), KnownLanguage.javascript);
 
   // Not matches
   t.deepEqual(parseLanguage("foo"), undefined);
@@ -32,21 +32,21 @@ test("parseLanguage", async (t) => {
 });
 
 test("isTracedLanguage", async (t) => {
-  t.true(isTracedLanguage(Language.cpp));
-  t.true(isTracedLanguage(Language.java));
-  t.true(isTracedLanguage(Language.csharp));
+  t.true(isTracedLanguage(KnownLanguage.cpp));
+  t.true(isTracedLanguage(KnownLanguage.java));
+  t.true(isTracedLanguage(KnownLanguage.csharp));
 
-  t.false(isTracedLanguage(Language.go));
-  t.false(isTracedLanguage(Language.javascript));
-  t.false(isTracedLanguage(Language.python));
+  t.false(isTracedLanguage(KnownLanguage.go));
+  t.false(isTracedLanguage(KnownLanguage.javascript));
+  t.false(isTracedLanguage(KnownLanguage.python));
 });
 
 test("isScannedLanguage", async (t) => {
-  t.false(isScannedLanguage(Language.cpp));
-  t.false(isScannedLanguage(Language.java));
-  t.false(isScannedLanguage(Language.csharp));
+  t.false(isScannedLanguage(KnownLanguage.cpp));
+  t.false(isScannedLanguage(KnownLanguage.java));
+  t.false(isScannedLanguage(KnownLanguage.csharp));
 
-  t.true(isScannedLanguage(Language.go));
-  t.true(isScannedLanguage(Language.javascript));
-  t.true(isScannedLanguage(Language.python));
+  t.true(isScannedLanguage(KnownLanguage.go));
+  t.true(isScannedLanguage(KnownLanguage.javascript));
+  t.true(isScannedLanguage(KnownLanguage.python));
 });

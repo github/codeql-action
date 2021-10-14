@@ -1,19 +1,19 @@
 import { LocDir } from "github-linguist";
 
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 
 // Map from linguist language names to language prefixes used in the action and codeql
-const linguistToMetrics: Record<string, Language> = {
-  c: Language.cpp,
-  "c++": Language.cpp,
-  "c#": Language.csharp,
-  go: Language.go,
-  java: Language.java,
-  javascript: Language.javascript,
-  python: Language.python,
-  ruby: Language.ruby,
-  typescript: Language.javascript,
+const linguistToMetrics: Record<string, KnownLanguage> = {
+  c: KnownLanguage.cpp,
+  "c++": KnownLanguage.cpp,
+  "c#": KnownLanguage.csharp,
+  go: KnownLanguage.go,
+  java: KnownLanguage.java,
+  javascript: KnownLanguage.javascript,
+  python: KnownLanguage.python,
+  ruby: KnownLanguage.ruby,
+  typescript: KnownLanguage.javascript,
 };
 
 const nameToLinguist = Object.entries(linguistToMetrics).reduce(
@@ -24,7 +24,7 @@ const nameToLinguist = Object.entries(linguistToMetrics).reduce(
     obj[name].push(key);
     return obj;
   },
-  {} as Record<Language, string[]>
+  {} as Record<KnownLanguage, string[]>
 );
 
 /**

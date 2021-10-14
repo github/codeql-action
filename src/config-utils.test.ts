@@ -9,7 +9,7 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { getCachedCodeQL, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -299,7 +299,7 @@ test("load non-empty input", async (t) => {
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
-      languages: [Language.javascript],
+      languages: [KnownLanguage.javascript],
       queries: {
         javascript: {
           builtin: [],
@@ -998,7 +998,7 @@ test("Unknown languages", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(configUtils.getUnknownLanguagesError(["rubbish", "english"]))
+        new Error(configUtils.getUnsupportedLanguagesError(["rubbish", "english"]))
       );
     }
   });
@@ -1044,7 +1044,7 @@ test("Config specifies packages", async (t) => {
       getRunnerLogger(true)
     );
     t.deepEqual(packs as unknown, {
-      [Language.javascript]: [
+      [KnownLanguage.javascript]: [
         {
           packName: "a/b",
           version: clean("1.2.3"),
@@ -1102,13 +1102,13 @@ test("Config specifies packages for multiple languages", async (t) => {
       getRunnerLogger(true)
     );
     t.deepEqual(packs as unknown, {
-      [Language.javascript]: [
+      [KnownLanguage.javascript]: [
         {
           packName: "a/b",
           version: clean("1.2.3"),
         },
       ],
-      [Language.python]: [
+      [KnownLanguage.python]: [
         {
           packName: "c/d",
           version: clean("1.2.3"),
@@ -1377,8 +1377,8 @@ parsePacksErrorMacro.title = (providedTitle: string) =>
 function invalidPackNameMacro(t: ExecutionContext<unknown>, name: string) {
   parsePacksErrorMacro(
     t,
-    { [Language.cpp]: [name] },
-    [Language.cpp],
+    { [KnownLanguage.cpp]: [name] },
+    [KnownLanguage.cpp],
     new RegExp(
       `The configuration file "/a/b" is invalid: property "packs" "${name}" is not a valid pack`
     )
@@ -1388,8 +1388,8 @@ invalidPackNameMacro.title = (_: string, arg: string) =>
   `Invalid pack string: ${arg}`;
 
 test("no packs", parsePacksMacro, {}, [], {});
-test("two packs", parsePacksMacro, ["a/b", "c/d@1.2.3"], [Language.cpp], {
-  [Language.cpp]: [
+test("two packs", parsePacksMacro, ["a/b", "c/d@1.2.3"], [KnownLanguage.cpp], {
+  [KnownLanguage.cpp]: [
     { packName: "a/b", version: undefined },
     { packName: "c/d", version: clean("1.2.3") },
   ],
@@ -1398,9 +1398,9 @@ test(
   "two packs with spaces",
   parsePacksMacro,
   [" a/b ", " c/d@1.2.3 "],
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       { packName: "a/b", version: undefined },
       { packName: "c/d", version: clean("1.2.3") },
     ],
@@ -1410,16 +1410,16 @@ test(
   "two packs with language",
   parsePacksMacro,
   {
-    [Language.cpp]: ["a/b", "c/d@1.2.3"],
-    [Language.java]: ["d/e", "f/g@1.2.3"],
+    [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
+    [KnownLanguage.java]: ["d/e", "f/g@1.2.3"],
   },
-  [Language.cpp, Language.java, Language.csharp],
+  [KnownLanguage.cpp, KnownLanguage.java, KnownLanguage.csharp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       { packName: "a/b", version: undefined },
       { packName: "c/d", version: clean("1.2.3") },
     ],
-    [Language.java]: [
+    [KnownLanguage.java]: [
       { packName: "d/e", version: undefined },
       { packName: "f/g", version: clean("1.2.3") },
     ],
@@ -1430,21 +1430,21 @@ test(
   "no language",
   parsePacksErrorMacro,
   ["a/b@1.2.3"],
-  [Language.java, Language.python],
+  [KnownLanguage.java, KnownLanguage.python],
   /The configuration file "\/a\/b" is invalid: property "packs" must split packages by language/
 );
 test(
   "invalid language",
   parsePacksErrorMacro,
-  { [Language.java]: ["c/d"] },
-  [Language.cpp],
+  { [KnownLanguage.java]: ["c/d"] },
+  [KnownLanguage.cpp],
   /The configuration file "\/a\/b" is invalid: property "packs" has "java", but it is not one of the languages to analyze/
 );
 test(
   "not an array",
   parsePacksErrorMacro,
-  { [Language.cpp]: "c/d" },
-  [Language.cpp],
+  { [KnownLanguage.cpp]: "c/d" },
+  [KnownLanguage.cpp],
   /The configuration file "\/a\/b" is invalid: property "packs" must be an array of non-empty strings/
 );
 
@@ -1496,8 +1496,8 @@ function parseInputAndConfigErrorMacro(
 parseInputAndConfigErrorMacro.title = (providedTitle: string) =>
   `Parse Packs input and config Error: ${providedTitle}`;
 
-test("input only", parseInputAndConfigMacro, {}, " c/d ", [Language.cpp], {
-  [Language.cpp]: [{ packName: "c/d", version: undefined }],
+test("input only", parseInputAndConfigMacro, {}, " c/d ", [KnownLanguage.cpp], {
+  [KnownLanguage.cpp]: [{ packName: "c/d", version: undefined }],
 });
 
 test(
@@ -1505,9 +1505,9 @@ test(
   parseInputAndConfigMacro,
   {},
   "a/b , c/d@1.2.3",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       { packName: "a/b", version: undefined },
       { packName: "c/d", version: "1.2.3" },
     ],
@@ -1519,9 +1519,9 @@ test(
   parseInputAndConfigMacro,
   {},
   "  +  a/b , c/d@1.2.3 ",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       { packName: "a/b", version: undefined },
       { packName: "c/d", version: "1.2.3" },
     ],
@@ -1533,9 +1533,9 @@ test(
   parseInputAndConfigMacro,
   ["a/b", "c/d"],
   "  ",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       { packName: "a/b", version: undefined },
       { packName: "c/d", version: undefined },
     ],
@@ -1547,9 +1547,9 @@ test(
   parseInputAndConfigMacro,
   ["a/b", "c/d"],
   " e/f, g/h@1.2.3 ",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       { packName: "e/f", version: undefined },
       { packName: "g/h", version: "1.2.3" },
     ],
@@ -1561,9 +1561,9 @@ test(
   parseInputAndConfigMacro,
   ["a/b", "c/d"],
   " +e/f, g/h@1.2.3 ",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       { packName: "e/f", version: undefined },
       { packName: "g/h", version: "1.2.3" },
       { packName: "a/b", version: undefined },
@@ -1586,7 +1586,7 @@ test(
   parseInputAndConfigErrorMacro,
   {},
   "c/d",
-  [Language.cpp, Language.csharp],
+  [KnownLanguage.cpp, KnownLanguage.csharp],
   /multi-language analysis/
 );
 
@@ -1595,7 +1595,7 @@ test(
   parseInputAndConfigErrorMacro,
   {},
   " + ",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   /remove the '\+'/
 );
 
@@ -1604,7 +1604,7 @@ test(
   parseInputAndConfigErrorMacro,
   {},
   " xxx",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   /"xxx" is not a valid pack/
 );
 

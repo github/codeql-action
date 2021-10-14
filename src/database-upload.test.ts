@@ -10,7 +10,7 @@ import * as apiClient from "./api-client";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { setupActionsVars, setupTests } from "./testing-utils";
@@ -36,7 +36,7 @@ const testApiDetails: GitHubApiDetails = {
 
 function getTestConfig(tmpDir: string): Config {
   return {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     queries: {},
     pathsIgnore: [],
     paths: [],

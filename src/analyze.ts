@@ -8,7 +8,7 @@ import * as analysisPaths from "./analysis-paths";
 import { CODEQL_VERSION_COUNTS_LINES, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { countLoc } from "./count-loc";
-import { isScannedLanguage, Language } from "./languages";
+import { isScannedLanguage, KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
 import * as util from "./util";
@@ -124,7 +124,7 @@ async function createdDBForScannedLanguages(
     ) {
       logger.startGroup(`Extracting ${language}`);
 
-      if (language === Language.python) {
+      if (language === KnownLanguage.python) {
         await setupPythonExtractor(logger);
       }
 

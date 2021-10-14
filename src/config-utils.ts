@@ -673,8 +673,8 @@ export function getNoLanguagesError(): string {
   );
 }
 
-export function getUnknownLanguagesError(languages: string[]): string {
-  return `Did not recognise the following languages: ${languages.join(", ")}`;
+export function getUnsupportedLanguagesError(languages: string[]): string {
+  return `Does not support the following languages: ${languages.join(", ")}`;
 }
 
 /**
@@ -714,8 +714,10 @@ async function getLanguagesInRepo(
  * has been set, otherwise it is deduced as all languages in the repo that
  * can be analysed.
  *
- * If no languages could be detected from either the workflow or the repository
+ * If no supported languages could be detected from either the workflow or the repository
  * then throw an error.
+ * 
+ * The set of supported languages is defined by the `codeql resolve languages` command.
  */
 async function getLanguages(
   codeQL: CodeQL,
@@ -731,11 +733,11 @@ async function getLanguages(
     .filter((x) => x.length > 0);
   logger.info(`Languages from configuration: ${JSON.stringify(languages)}`);
 
+  const allSupportedLanguages = new Set(Object.keys(await codeQL.resolveLanguages()));
   if (languages.length === 0) {
     // Obtain languages as all languages in the repo that can be analysed
     languages = await getLanguagesInRepo(repository, apiDetails, logger);
-    const availableLanguages = await codeQL.resolveLanguages();
-    languages = languages.filter((value) => value in availableLanguages);
+    languages = languages.filter((value) => allSupportedLanguages.has(value));
     logger.info(
       `Automatically detected languages: ${JSON.stringify(languages)}`
     );
@@ -748,21 +750,21 @@ async function getLanguages(
   }
 
   // Make sure they are supported
-  const parsedLanguages: Language[] = [];
-  const unknownLanguages: string[] = [];
+  const supportedLanguages: Language[] = [];
+  const unsupportedLanguages: Language[] = [];
   for (const language of languages) {
     const parsedLanguage = parseLanguage(language);
-    if (parsedLanguage === undefined) {
-      unknownLanguages.push(language);
-    } else if (parsedLanguages.indexOf(parsedLanguage) === -1) {
-      parsedLanguages.push(parsedLanguage);
+    if (!allSupportedLanguages.has(parsedLanguage)) {
+      unsupportedLanguages.push(language);
+    } else if (supportedLanguages.indexOf(parsedLanguage) === -1) {
+      supportedLanguages.push(parsedLanguage);
     }
   }
-  if (unknownLanguages.length > 0) {
-    throw new Error(getUnknownLanguagesError(unknownLanguages));
+  if (unsupportedLanguages.length > 0) {
+    throw new Error(getUnsupportedLanguagesError(unsupportedLanguages));
   }
 
-  return parsedLanguages;
+  return supportedLanguages;
 }
 
 async function addQueriesFromWorkflow(
@@ -1071,7 +1073,7 @@ export function parsePacksFromConfig(
     if (!Array.isArray(packsArr)) {
       throw new Error(getPacksInvalid(configFile));
     }
-    if (!languages.includes(lang as Language)) {
+    if (!languages.includes(lang)) {
       throw new Error(getPacksRequireLanguage(lang, configFile));
     }
     packs[lang] = [];

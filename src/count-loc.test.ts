@@ -3,7 +3,7 @@ import * as path from "path";
 import test from "ava";
 
 import { countLoc } from "./count-loc";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 
@@ -14,7 +14,7 @@ test("ensure lines of code works for cpp and js", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     [],
     [],
-    [Language.cpp, Language.javascript],
+    [KnownLanguage.cpp, KnownLanguage.javascript],
     getRunnerLogger(true)
   );
 
@@ -29,7 +29,7 @@ test("ensure lines of code works for csharp", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     [],
     [],
-    [Language.csharp],
+    [KnownLanguage.csharp],
     getRunnerLogger(true)
   );
 
@@ -43,7 +43,7 @@ test("ensure lines of code can handle undefined language", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     [],
     [],
-    [Language.javascript, Language.python, "hucairz" as Language],
+    [KnownLanguage.javascript, KnownLanguage.python, "hucairz" as KnownLanguage],
     getRunnerLogger(true)
   );
 
@@ -72,7 +72,7 @@ test("ensure lines of code can handle includes", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     ["../../src/testdata"],
     [],
-    [Language.javascript],
+    [KnownLanguage.javascript],
     getRunnerLogger(true)
   );
 
@@ -88,7 +88,7 @@ test("ensure lines of code can handle empty includes", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     ["idontexist"],
     [],
-    [Language.javascript],
+    [KnownLanguage.javascript],
     getRunnerLogger(true)
   );
 
@@ -102,7 +102,7 @@ test("ensure lines of code can handle exclude", async (t) => {
     path.join(__dirname, "../tests/multi-language-repo"),
     [],
     ["**/*.py"],
-    [Language.javascript, Language.python],
+    [KnownLanguage.javascript, KnownLanguage.python],
     getRunnerLogger(true)
   );
 

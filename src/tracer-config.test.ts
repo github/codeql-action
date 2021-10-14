@@ -5,7 +5,7 @@ import test from "ava";
 
 import { setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { setupTests } from "./testing-utils";
 import {
   concatTracerConfigs,
@@ -18,7 +18,7 @@ setupTests(test);
 
 function getTestConfig(tmpDir: string): configUtils.Config {
   return {
-    languages: [Language.java],
+    languages: [KnownLanguage.java],
     queries: {},
     pathsIgnore: [],
     paths: [],
@@ -49,7 +49,7 @@ test("getTracerConfigForLanguage - minimal setup", async (t) => {
     const result = await getTracerConfigForLanguage(
       codeQL,
       config,
-      Language.javascript
+      KnownLanguage.javascript
     );
     t.deepEqual(result, { spec: "abc", env: { foo: "bar" } });
   });
@@ -89,7 +89,7 @@ test("getTracerConfigForLanguage - existing / critical vars", async (t) => {
     const result = await getTracerConfigForLanguage(
       codeQL,
       config,
-      Language.javascript
+      KnownLanguage.javascript
     );
     t.deepEqual(result, {
       spec: "abc",
@@ -309,7 +309,7 @@ test("getCombinedTracerConfig - return undefined when no languages are traced la
   await util.withTmpDir(async (tmpDir) => {
     const config = getTestConfig(tmpDir);
     // No traced languages
-    config.languages = [Language.javascript, Language.python];
+    config.languages = [KnownLanguage.javascript, KnownLanguage.python];
 
     const codeQL = setCodeQL({
       async getTracerEnv() {

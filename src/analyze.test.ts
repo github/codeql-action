@@ -10,7 +10,7 @@ import { runQueries } from "./analyze";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import * as count from "./count-loc";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars } from "./testing-utils";
 import * as util from "./util";
@@ -21,8 +21,8 @@ setupTests(test);
 // and correct case of builtin or custom. Also checks the correct search
 // paths are set in the database analyze invocation.
 test("status report fields and search path setting", async (t) => {
-  const mockLinesOfCode = Object.values(Language).reduce((obj, lang, i) => {
-    // use a different line count for each language
+  const mockLinesOfCode = Object.values(KnownLanguage).reduce((obj, lang, i) => {
+    // use a different line count for each KnownLanguage
     obj[lang] = i + 1;
     return obj;
   }, {});
@@ -35,13 +35,13 @@ test("status report fields and search path setting", async (t) => {
     const addSnippetsFlag = "";
     const threadsFlag = "";
     const packs = {
-      [Language.cpp]: [
+      [KnownLanguage.cpp]: [
         {
           packName: "a/b",
           version: clean("1.0.0")!,
         },
       ],
-      [Language.java]: [
+      [KnownLanguage.java]: [
         {
           packName: "c/d",
           version: clean("2.0.0")!,
@@ -49,7 +49,7 @@ test("status report fields and search path setting", async (t) => {
       ],
     };
 
-    for (const language of Object.values(Language)) {
+    for (const language of Object.values(KnownLanguage)) {
       setCodeQL({
         packDownload: async () => ({ packs: [] }),
         databaseRunQueries: async (
@@ -203,7 +203,7 @@ test("status report fields and search path setting", async (t) => {
 
   function verifyLineCounts(tmpDir: string) {
     // eslint-disable-next-line github/array-foreach
-    Object.keys(Language).forEach((lang, i) => {
+    Object.keys(KnownLanguage).forEach((lang, i) => {
       verifyLineCountForFile(path.join(tmpDir, `${lang}.sarif`), i + 1);
     });
   }
@@ -249,14 +249,14 @@ test("status report fields and search path setting", async (t) => {
         version: "2.0.0",
       },
     ];
-    for (const lang of Object.values(Language)) {
+    for (const lang of Object.values(KnownLanguage)) {
       t.deepEqual(readContents(`${lang}-queries-builtin.qls`), qlsContent);
       t.deepEqual(readContents(`${lang}-queries-custom-0.qls`), qlsContent);
       t.deepEqual(readContents(`${lang}-queries-custom-1.qls`), qlsContent2);
       const packSuiteName = `${lang}-queries-packs.qls`;
-      if (lang === Language.cpp) {
+      if (lang === KnownLanguage.cpp) {
         t.deepEqual(readContents(packSuiteName), qlsPackContentCpp);
-      } else if (lang === Language.java) {
+      } else if (lang === KnownLanguage.java) {
         t.deepEqual(readContents(packSuiteName), qlsPackContentJava);
       } else {
         t.false(

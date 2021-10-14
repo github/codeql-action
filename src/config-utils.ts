@@ -1174,7 +1174,7 @@ function shouldCombinePacks(packsInput?: string): boolean {
 function combinePacks(packs1: Packs, packs2: Packs): Packs {
   const packs = {};
   for (const lang of Object.keys(packs1)) {
-    packs[lang] = packs1[lang].concat(packs2[lang] || []);
+    packs[lang] = packs1[lang]?.concat(packs2[lang] || []);
   }
   for (const lang of Object.keys(packs2)) {
     if (!packs[lang]) {

@@ -20,6 +20,9 @@ inputs:
   category:
     description: String used by Code Scanning for matching the analyses
     required: false
+  wait-for-processing:
+    description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
+    required: false
 runs:
   using: 'node12'
   main: '../lib/upload-sarif-action.js'

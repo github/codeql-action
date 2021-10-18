@@ -564,3 +564,7 @@ export async function bundleDb(
   }
   return databaseBundlePath;
 }
+
+export async function delay(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}

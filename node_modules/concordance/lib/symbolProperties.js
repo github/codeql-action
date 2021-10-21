@@ -74,7 +74,7 @@ class Comparable {
     }
     expected.ordered = ordered.concat(missingProperties)
 
-    return {mustRecurse: true}
+    return { mustRecurse: true }
   }
 }
 Object.defineProperty(Comparable.prototype, 'isSymbolPropertiesComparable', { value: true })

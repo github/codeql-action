@@ -80,9 +80,10 @@ Status of the test.
 
 ##### error
 
-Type: `Error`
+Type: `Error` `object`
 
-If test has failed (`passed` is `false`), `error` is an instance of an actual error.
+If test has failed (`passed` is `false`), `error` should be an instance of an actual error.
+It can also be an object, which fields will be included in the output (e.g. `name`, `message`, `actual`, `expected`).
 
 ```js
 supertest.test('failing', {

@@ -1,11 +1,11 @@
 'use strict'
 
-const flattenDeep = require('lodash.flattendeep')
+const flattenDeep = require('lodash/flattenDeep')
 
 // Indexes are hexadecimal to make reading the binary output easier.
 const valueTypes = {
   zero: 0x00,
-  int8: 0x01,  // Note that the hex value equals the number of bytes required
+  int8: 0x01, // Note that the hex value equals the number of bytes required
   int16: 0x02, // to store the integer.
   int24: 0x03,
   int32: 0x04,
@@ -24,7 +24,7 @@ const valueTypes = {
   utf8: 0x11,
   bytes: 0x12,
   list: 0x13,
-  descriptor: 0x14
+  descriptor: 0x14,
 }
 
 const descriptorSymbol = Symbol('descriptor')
@@ -83,7 +83,7 @@ function encodeValue (value) {
     return [
       value[descriptorSymbol] === true ? valueTypes.descriptor : valueTypes.list,
       encodeValue(value.length),
-      value.map(encodeValue)
+      value.map(x => encodeValue(x)),
     ]
   }
 
@@ -170,15 +170,15 @@ function buildBuffer (numberOrArray) {
   const array = flattenDeep(numberOrArray)
   const buffers = new Array(array.length)
   let byteLength = 0
-  for (let index = 0; index < array.length; index++) {
-    if (typeof array[index] === 'number') {
+  for (const [index, element] of array.entries()) {
+    if (typeof element === 'number') {
       byteLength += 1
       const byte = Buffer.alloc(1)
-      byte.writeUInt8(array[index])
+      byte.writeUInt8(element)
       buffers[index] = byte
     } else {
-      byteLength += array[index].byteLength
-      buffers[index] = array[index]
+      byteLength += element.byteLength
+      buffers[index] = element
     }
   }
   return Buffer.concat(buffers, byteLength)
@@ -205,7 +205,7 @@ function encode (serializerVersion, rootRecord, usedPlugins) {
     const plugin = usedPlugins.get(name)
     const record = buildBuffer([
       encodeValue(name),
-      encodeValue(plugin.serializerVersion)
+      encodeValue(plugin.serializerVersion),
     ])
     buffers.push(record)
     byteOffset += record.byteLength
@@ -220,7 +220,7 @@ function encode (serializerVersion, rootRecord, usedPlugins) {
     const recordHeader = buildBuffer([
       encodeValue(record.pluginIndex),
       encodeValue(record.id),
-      encodeValue(record.children.length)
+      encodeValue(record.children.length),
     ])
     buffers.push(recordHeader)
     byteOffset += recordHeader.byteLength
@@ -258,7 +258,7 @@ function decodePlugins (buffer) {
     byteOffset = $name.byteOffset
 
     const serializerVersion = decodeValue(buffer, byteOffset).value
-    usedPlugins.set(index, {name, serializerVersion})
+    usedPlugins.set(index, { name, serializerVersion })
   }
 
   return usedPlugins
@@ -285,7 +285,7 @@ function decodeRecord (buffer, byteOffset) {
   }
 
   const state = decodeValue(buffer, byteOffset).value
-  return {id, pluginIndex, state, pointerAddresses}
+  return { id, pluginIndex, state, pointerAddresses }
 }
 exports.decodeRecord = decodeRecord
 
@@ -298,6 +298,6 @@ function decode (buffer) {
   const rootOffset = buffer.readUInt32LE(2)
   const pluginBuffer = buffer.slice(6, rootOffset)
   const rootRecord = decodeRecord(buffer, rootOffset)
-  return {pluginBuffer, rootRecord}
+  return { pluginBuffer, rootRecord }
 }
 exports.decode = decode

@@ -21,7 +21,9 @@ module.exports = function () {
     options = arguments[0]
   }
   options = options || {}
-  options.npmrc = options.npmrc || require('rc')('npm', { registry: 'https://registry.npmjs.org/' })
+  options.npmrc = options.npmrc || require('rc')('npm', { registry: 'https://registry.npmjs.org/' }, {
+    config: process.env.npm_config_userconfig || process.env.NPM_CONFIG_USERCONFIG
+  })
   checkUrl = checkUrl || options.npmrc.registry
   return getRegistryAuthInfo(checkUrl, options) || getLegacyAuthInfo(options.npmrc)
 }

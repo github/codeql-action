@@ -1,7 +1,11 @@
 name: Update dependencies
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
+
+permissions:
+  issues: write
+  contents: write
 
 jobs:
   update:

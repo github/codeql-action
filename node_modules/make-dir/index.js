@@ -23,7 +23,7 @@ const checkPath = pth => {
 const processOptions = options => {
 	// https://github.com/sindresorhus/make-dir/issues/18
 	const defaults = {
-		mode: 0o777 & (~process.umask()),
+		mode: 0o777,
 		fs
 	};
 

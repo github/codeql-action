@@ -22,7 +22,7 @@ function describe (value) {
 
   return new SymbolValue({
     stringCompare,
-    value
+    value,
   })
 }
 exports.describe = describe
@@ -34,7 +34,7 @@ function deserialize (state) {
   return new DeserializedSymbolValue({
     string,
     stringCompare,
-    value: null
+    value: null,
   })
 }
 exports.deserialize = deserialize

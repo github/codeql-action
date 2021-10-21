@@ -9,7 +9,7 @@ module.exports = (() => {
 			isPathInside(__dirname, globalDirs.yarn.packages) ||
 			isPathInside(__dirname, fs.realpathSync(globalDirs.npm.packages))
 		);
-	} catch (_) {
+	} catch {
 		return false;
 	}
 })();

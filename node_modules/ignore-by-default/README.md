@@ -12,7 +12,7 @@ It's used by [AVA](https://www.npmjs.com/package/ava) and
 ## Installation
 
 ```
-npm install --save ignore-by-default
+npm install ignore-by-default
 ```
 
 ## Usage
@@ -22,5 +22,5 @@ return an array of directory names. These are the ones you should ignore.
 
 ```js
 // ['.git', '.sass_cache', …]
-var ignoredDirectories = require('ignore-by-default').directories()
+const ignoredDirectories = require('ignore-by-default').directories()
 ```

@@ -3,10 +3,10 @@
 const semver = require('semver')
 
 const pkg = require('../package.json')
-const constants = require('./constants')
 const object = require('./complexValues/object')
-const lineBuilder = require('./lineBuilder')
+const constants = require('./constants')
 const formatUtils = require('./formatUtils')
+const lineBuilder = require('./lineBuilder')
 const itemDescriptor = require('./metaDescriptors/item')
 const propertyDescriptor = require('./metaDescriptors/property')
 const stringDescriptor = require('./primitiveValues/string')
@@ -94,7 +94,7 @@ const publicDescriptorTags = Object.freeze({
   complexItem: itemDescriptor.complexTag,
   primitiveItem: itemDescriptor.primitiveTag,
   primitiveProperty: propertyDescriptor.primitiveTag,
-  string: stringDescriptor.tag
+  string: stringDescriptor.tag,
 })
 
 // Don't expose `setDefaultGutter()`.
@@ -109,15 +109,15 @@ const publicLineBuilder = Object.freeze({
     first: lineBuilder.actual.first,
     last: lineBuilder.actual.last,
     line: lineBuilder.actual.line,
-    single: lineBuilder.actual.single
+    single: lineBuilder.actual.single,
   }),
   expected: Object.freeze({
     buffer: lineBuilder.expected.buffer,
     first: lineBuilder.expected.first,
     last: lineBuilder.expected.last,
     line: lineBuilder.expected.line,
-    single: lineBuilder.expected.single
-  })
+    single: lineBuilder.expected.single,
+  }),
 })
 
 function modifyTheme (descriptor, modifier) {
@@ -158,7 +158,7 @@ function add (plugin) {
     lineBuilder: publicLineBuilder,
     mapRecursor: recursorUtils.map,
     modifyTheme,
-    wrapFromTheme: formatUtils.wrap
+    wrapFromTheme: formatUtils.wrap,
   })
 
   const registered = {
@@ -167,7 +167,7 @@ function add (plugin) {
     name,
     tag2id,
     theme: plugin.theme || {},
-    tryDescribeValue
+    tryDescribeValue,
   }
 
   registry.set(name, registered)
@@ -185,7 +185,7 @@ function getDeserializers (plugins) {
     return {
       id2deserialize: registered.id2deserialize,
       name: registered.name,
-      serializerVersion: registered.serializerVersion
+      serializerVersion: registered.serializerVersion,
     }
   })
 }
@@ -196,7 +196,7 @@ function getThemes (plugins) {
     const registered = add(plugin)
     return {
       name: registered.name,
-      theme: registered.theme
+      theme: registered.theme,
     }
   })
 }
@@ -215,8 +215,8 @@ function resolveDescriptorRef (tag) {
     id: registered.tag2id.get(tag),
     name: registered.name,
     serialization: {
-      serializerVersion: registered.serializerVersion
-    }
+      serializerVersion: registered.serializerVersion,
+    },
   }
 }
 exports.resolveDescriptorRef = resolveDescriptorRef

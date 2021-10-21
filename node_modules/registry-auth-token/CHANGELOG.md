@@ -2,6 +2,12 @@
 
 All notable changes will be documented in this file.
 
+## [4.2.0] - 2020-07-13
+
+### Changes
+
+- Add support for `NPM_CONFIG_USERCONFIG` environment variable (Ben Sorohan)
+
 ## [4.1.0] - 2020-01-17
 
 ### Changes

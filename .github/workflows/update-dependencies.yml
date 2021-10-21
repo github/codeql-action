@@ -4,10 +4,27 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
 
 jobs:
+  check:
+    name: Check for relevance
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'Update dependencies') &&
+      (github.actor == 'dependabot[bot]' || github.actor == 'github-actions[bot]') &&
+      github.repository == 'github/codeql-action' &&
+      github.head.repo.full_name == 'github/codeql-action' &&
+      github.base.repo.full_name == 'github/codeql-action'
+    env:
+      ACTOR: '${{ github.actor }}'
+
+    steps:
+      - name: Check Actor
+        run: echo "This PR should run the Update Dependencies workflow because the actor is $ACTOR, there is no fork involved, and the 'Update dependencies' label exists."
+
   update:
+    needs: check
+    environment: Update dependencies
     name: Update dependencies
     runs-on: macos-latest
-    if: contains(github.event.pull_request.labels.*.name, 'Update dependencies')
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2

@@ -7,7 +7,7 @@ jobs:
   update:
     name: Update dependencies
     runs-on: macos-latest
-    if: contains(github.event.pull_request.labels.*.name, 'Update dependencies') && ${{ github.event.pull_request.head.repo.full_name == 'github/codeql-action' }}
+    if: contains(github.event.pull_request.labels.*.name, 'Update dependencies') && (github.event.pull_request.head.repo.full_name == 'github/codeql-action')
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2

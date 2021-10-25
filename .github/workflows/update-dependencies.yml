@@ -7,7 +7,7 @@ jobs:
   update:
     name: Update dependencies
     runs-on: macos-latest
-    if: contains(github.event.pull_request.labels.*.name, 'Update dependencies')
+    if: contains(github.event.pull_request.labels.*.name, 'Update dependencies') && (github.event.pull_request.head.repo.full_name == 'github/codeql-action')
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -24,8 +24,8 @@ jobs:
       env:
         BRANCH: '${{ github.head_ref }}'
       run: |
-        git fetch
-        git checkout $BRANCH
+        git fetch origin "$BRANCH" --depth=1
+        git checkout "origin/$BRANCH"
         sudo npm install --force -g npm@latest
         npm install
         npm ci

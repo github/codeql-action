@@ -28,6 +28,7 @@ steps:
   - uses: ./../action/analyze
     with:
       output: "${{ runner.temp }}/results"
+      upload-database: false
     env:
       TEST_MODE: true
   - name: Assert Results

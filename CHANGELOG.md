@@ -4,6 +4,10 @@
 
 No user facing changes.
 
+## 1.0.20 - 25 Oct 2021
+
+No user facing changes.
+
 ## 1.0.19 - 18 Oct 2021
 
 No user facing changes.

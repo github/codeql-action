@@ -35,5 +35,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git add node_modules
           git commit -am "Update checked-in dependencies"
-          git push origin "$BRANCH"
+          git push origin "HEAD:$BRANCH"
         fi

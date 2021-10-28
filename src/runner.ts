@@ -249,6 +249,7 @@ program
         cmd.packs,
         cmd.configFile,
         undefined,
+        false,
         parseRepositoryNwo(cmd.repository),
         tempDir,
         toolsDir,

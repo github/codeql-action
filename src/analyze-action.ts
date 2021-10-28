@@ -31,7 +31,7 @@ interface FinishStatusReport
   extends actionsUtil.StatusReportBase,
     AnalysisStatusReport {}
 
-async function sendStatusReport(
+export async function sendStatusReport(
   startedAt: Date,
   stats: AnalysisStatusReport | undefined,
   error?: Error
@@ -91,10 +91,12 @@ async function run() {
     };
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(
-      actionsUtil.getOptionalInput("threads"),
+      actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger
     );
-    const memory = util.getMemoryFlag(actionsUtil.getOptionalInput("ram"));
+    const memory = util.getMemoryFlag(
+      actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"]
+    );
     await runFinalize(outputDir, threads, memory, config, logger);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
@@ -188,9 +190,11 @@ async function run() {
   }
 }
 
+export const runPromise = run();
+
 async function runWrapper() {
   try {
-    await run();
+    await runPromise;
   } catch (error) {
     core.setFailed(`analyze action failed: ${error}`);
     console.log(error);

@@ -25,6 +25,8 @@ import {
   Mode,
   codeQlVersionAbove,
   enrichEnvironment,
+  getMemoryFlagValue,
+  getThreadsFlagValue,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -53,11 +55,15 @@ function getToolsDir(userInput: string | undefined): string {
 
 const codeqlEnvJsonFilename = "codeql-env.json";
 
+function loadTracerEnvironment(config: Config): { [name: string]: string } {
+  const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
+  return JSON.parse(fs.readFileSync(jsonEnvFile).toString("utf-8"));
+}
+
 // Imports the environment from codeqlEnvJsonFilename if not already present
 function importTracerEnvironment(config: Config) {
   if (!("ODASA_TRACER_CONFIGURATION" in process.env)) {
-    const jsonEnvFile = path.join(config.tempDir, codeqlEnvJsonFilename);
-    const env = JSON.parse(fs.readFileSync(jsonEnvFile).toString("utf-8"));
+    const env = loadTracerEnvironment(config);
     for (const key of Object.keys(env)) {
       process.env[key] = env[key];
     }
@@ -109,6 +115,8 @@ interface InitArgs {
   githubAuth: string;
   githubAuthStdin: boolean;
   debug: boolean;
+  ram: string | undefined;
+  threads: string | undefined;
 }
 
 program
@@ -167,6 +175,18 @@ program
     "--trace-process-level <number>",
     "(Advanced, windows-only) Inject a windows tracer of this process into a parent process <number> levels up."
   )
+  .option(
+    "--ram <number>",
+    "The amount of memory in MB that can be used by CodeQL extractors. " +
+      "By default, CodeQL extractors will use most of the memory available in the system. " +
+      'This input also sets the amount of memory that can later be used by the "analyze" command.'
+  )
+  .option(
+    "--threads <number>",
+    "The number of threads that can be used by CodeQL extractors. " +
+      "By default, CodeQL extractors will use all the hardware threads available in the system. " +
+      'This input also sets the number of threads that can later be used by the "analyze" command.'
+  )
   .action(async (cmd: InitArgs) => {
     const logger = getRunnerLogger(cmd.debug);
 
@@ -194,6 +214,17 @@ program
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
       checkGitHubVersionInRange(gitHubVersion, logger, Mode.runner);
+
+      // Limit RAM and threads for extractors. When running extractors, the CodeQL CLI obeys the
+      // CODEQL_RAM and CODEQL_THREADS environment variables to decide how much RAM and how many
+      // threads it would ask extractors to use. See help text for the "--ram" and "--threads"
+      // options at https://codeql.github.com/docs/codeql-cli/manual/database-trace-command/
+      // for details.
+      process.env["CODEQL_RAM"] = getMemoryFlagValue(cmd.ram).toString();
+      process.env["CODEQL_THREADS"] = getThreadsFlagValue(
+        cmd.threads,
+        logger
+      ).toString();
 
       let codeql: CodeQL;
       if (cmd.codeqlPath !== undefined) {
@@ -402,7 +433,10 @@ program
   )
   .option(
     "--ram <ram>",
-    "Amount of memory to use when running queries. Default is to use all available memory."
+    "The amount of memory in MB that can be used by CodeQL for database finalization and query execution. " +
+      'By default, this command will use the same amount of memory as previously set in the "init" command. ' +
+      'If the "init" command also does not have an explicit "ram" flag, this command will use most of the ' +
+      "memory available in the system."
   )
   .option(
     "--no-add-snippets",
@@ -410,8 +444,10 @@ program
   )
   .option(
     "--threads <threads>",
-    "Number of threads to use when running queries. " +
-      "Default is to use all available cores."
+    "The number of threads that can be used by CodeQL for database finalization and query execution. " +
+      'By default, this command will use the same number of threads as previously set in the "init" command. ' +
+      'If the "init" command also does not have an explicit "threads" flag, this command will use all the ' +
+      "hardware threads available in the system."
   )
   .option(
     "--temp-dir <dir>",
@@ -447,8 +483,17 @@ program
 
       const outputDir =
         cmd.outputDir || path.join(config.tempDir, "codeql-sarif");
-      const threads = getThreadsFlag(cmd.threads, logger);
-      const memory = getMemoryFlag(cmd.ram);
+      let initEnv: { [name: string]: string } = {};
+      try {
+        initEnv = loadTracerEnvironment(config);
+      } catch (err) {
+        // The init command did not generate a tracer environment file
+      }
+      const threads = getThreadsFlag(
+        cmd.threads || initEnv["CODEQL_THREADS"],
+        logger
+      );
+      const memory = getMemoryFlag(cmd.ram || initEnv["CODEQL_RAM"]);
       await runFinalize(outputDir, threads, memory, config, logger);
       await runQueries(
         outputDir,

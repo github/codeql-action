@@ -974,7 +974,7 @@ test("No detected languages", async (t) => {
   });
 });
 
-test("Unknown languages", async (t) => {
+test("Unknown, unsupported languages", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     const languages = "rubbish,english";
 
@@ -998,7 +998,77 @@ test("Unknown languages", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(configUtils.getUnsupportedLanguagesError(["rubbish", "english"]))
+        new Error(
+          configUtils.getUnsupportedLanguagesError(["rubbish", "english"])
+        )
+      );
+    }
+  });
+});
+
+test("Unknown, supported languages", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const languages = "ql";
+
+    const codeQL = setCodeQL({
+      async resolveLanguages() {
+        return {
+          ql: ["/tmp/ql-for-ql-pack"],
+        };
+      },
+    });
+
+    let config: configUtils.Config = await configUtils.initConfig(
+      languages,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { owner: "github", repo: "example " },
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      gitHubVersion,
+      sampleApiDetails,
+      getRunnerLogger(true)
+    );
+    t.deepEqual(config.languages, ["ql"]);
+  });
+});
+
+test("Partially supported languages", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const languages = "rubbish,ql";
+
+    const codeQL = setCodeQL({
+      async resolveLanguages() {
+        return {
+          ql: ["/tmp/ql-for-ql-pack"],
+        };
+      },
+    });
+    try {
+      await configUtils.initConfig(
+        languages,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { owner: "github", repo: "example " },
+        tmpDir,
+        tmpDir,
+        codeQL,
+        tmpDir,
+        gitHubVersion,
+        sampleApiDetails,
+        getRunnerLogger(true)
+      );
+      throw new Error("initConfig did not throw error");
+    } catch (err) {
+      t.deepEqual(
+        err,
+        new Error(configUtils.getUnsupportedLanguagesError(["rubbish"]))
       );
     }
   });

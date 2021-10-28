@@ -55,6 +55,10 @@ inputs:
       (which for GitHub-hosted runners is 2 for Linux and Windows and 3 for macOS).
       This input also sets the number of threads that can later be used by the "analyze" action.
     required: false
+  debug:
+    description: Enable debugging mode. This will result in more output being produced which may be useful when debugging certain issues.
+    required: false
+    default: 'false'
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

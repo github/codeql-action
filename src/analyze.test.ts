@@ -119,6 +119,7 @@ test("status report fields and search path setting", async (t) => {
         } as util.GitHubVersion,
         dbLocation: path.resolve(tmpDir, "codeql_databases"),
         packs,
+        debugMode: false,
       };
       fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
         recursive: true,

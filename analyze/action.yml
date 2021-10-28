@@ -18,7 +18,12 @@ inputs:
     required: false
     default: "brutal"
   ram:
-    description: Override the amount of memory in MB to be used by CodeQL. By default, almost all the memory of the machine is used.
+    description: >-
+      The amount of memory in MB that can be used by CodeQL for database finalization and query execution.
+      By default, this action will use the same amount of memory as previously set in the "init" action.
+      If the "init" action also does not have an explicit "ram" input, this action will use most of the
+      memory available in the system (which for GitHub-hosted runners is 6GB for Linux, 5.5GB for Windows,
+      and 13GB for macOS).
     required: false
   add-snippets:
     description: Specify whether or not to add code snippets to the output sarif file.
@@ -29,7 +34,12 @@ inputs:
     required: false
     default: "false"
   threads:
-    description: The number of threads to be used by CodeQL.
+    description: >-
+      The number of threads that can be used by CodeQL for database finalization and query execution.
+      By default, this action will use the same number of threads as previously set in the "init" action.
+      If the "init" action also does not have an explicit "threads" input, this action will use all the
+      hardware threads available in the system (which for GitHub-hosted runners is 2 for Linux and Windows
+      and 3 for macOS).
     required: false
   checkout_path:
     description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."

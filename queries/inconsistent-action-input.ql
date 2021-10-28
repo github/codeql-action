@@ -47,5 +47,7 @@ predicate areNotEquivalent(YAMLValue x, YAMLValue y) {
 from ActionDeclaration actionA, ActionDeclaration actionB, string inputName
 where actionA.getName() < actionB.getName() // prevent duplicates which are permutations of the names
   and areNotEquivalent(actionA.getInput(inputName), actionB.getInput(inputName))
+  // ram and threads inputs in different actions are supposed to have different description
+  and inputName != "ram" and inputName != "threads"
 select actionA, "Action $@ and action $@ both declare input $@, however their definitions are not identical. This may be confusing to users.",
   actionA, actionA.getName(), actionB, actionB.getName(), inputName, inputName

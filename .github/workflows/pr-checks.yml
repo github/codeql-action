@@ -393,3 +393,42 @@ jobs:
           # Deliberately don't use TEST_MODE here. This is specifically testing
           # the compatibility with the API.
           runner/dist/codeql-runner-linux upload --sarif-file src/testdata/empty-sarif.sarif --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+  runner-extractor-ram-threads-options:
+    name: Runner ubuntu extractor RAM and threads options
+    needs: [check-js, check-node-modules]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          runner/dist/codeql-runner-linux init --ram=230 --threads=1 --repository $GITHUB_REPOSITORY --languages java --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Assert Results
+        shell: bash
+        run: |
+          . ./codeql-runner/codeql-env.sh
+          if [ "${CODEQL_RAM}" != "230" ]; then
+            echo "CODEQL_RAM is '${CODEQL_RAM}' instead of 230"
+            exit 1
+          fi
+          if [ "${CODEQL_EXTRACTOR_JAVA_RAM}" != "230" ]; then
+            echo "CODEQL_EXTRACTOR_JAVA_RAM is '${CODEQL_EXTRACTOR_JAVA_RAM}' instead of 230"
+            exit 1
+          fi
+          if [ "${CODEQL_THREADS}" != "1" ]; then
+            echo "CODEQL_THREADS is '${CODEQL_THREADS}' instead of 1"
+            exit 1
+          fi
+          if [ "${CODEQL_EXTRACTOR_JAVA_THREADS}" != "1" ]; then
+            echo "CODEQL_EXTRACTOR_JAVA_THREADS is '${CODEQL_EXTRACTOR_JAVA_THREADS}' instead of 1"
+            exit 1
+          fi

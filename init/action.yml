@@ -41,6 +41,20 @@ inputs:
   source-root:
     description: Path of the root source code directory, relative to $GITHUB_WORKSPACE.
     required: false
+  ram:
+    description: >-
+      The amount of memory in MB that can be used by CodeQL extractors.
+      By default, CodeQL extractors will use most of the memory available in the system
+      (which for GitHub-hosted runners is 6GB for Linux, 5.5GB for Windows, and 13GB for macOS).
+      This input also sets the amount of memory that can later be used by the "analyze" action.
+    required: false
+  threads:
+    description: >-
+      The number of threads that can be used by CodeQL extractors.
+      By default, CodeQL extractors will use all the hardware threads available in the system
+      (which for GitHub-hosted runners is 2 for Linux and Windows and 3 for macOS).
+      This input also sets the number of threads that can later be used by the "analyze" action.
+    required: false
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

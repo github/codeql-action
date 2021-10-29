@@ -85,6 +85,7 @@ export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
     core.info(
       `Failed to call git to get current commit. Continuing with data from environment: ${e}`
     );
+    core.info((e as Error).stack || "NO STACK");
     return getRequiredEnvParam("GITHUB_SHA");
   }
 };

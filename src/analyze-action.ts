@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as artifact from "@actions/artifact";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -11,7 +12,7 @@ import {
   runQueries,
   runFinalize,
 } from "./analyze";
-import { getCodeQL } from "./codeql";
+import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { getActionsLogger } from "./logging";
@@ -19,6 +20,7 @@ import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import { UploadStatusReport } from "./upload-lib";
 import * as util from "./util";
+import { bundleDb, codeQlVersionAbove, DEBUG_ARTIFACT_NAME } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -108,6 +110,42 @@ async function run() {
         config,
         logger
       );
+
+      if (config.debugMode) {
+        // Upload the SARIF files as an Actions artifact for debugging
+        await uploadDebugArtifacts(
+          config.languages.map((lang) =>
+            path.resolve(outputDir, `${lang}.sarif`)
+          ),
+          outputDir
+        );
+      }
+    }
+
+    const codeql = await getCodeQL(config.codeQLCmd);
+
+    if (config.debugMode) {
+      // Upload the logs as an Actions artifact for debugging
+      const toUpload: string[] = [];
+      for (const language of config.languages) {
+        toUpload.push(
+          ...listFolder(
+            path.resolve(util.getCodeQLDatabasePath(config, language), "log")
+          )
+        );
+      }
+      if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+        // Multilanguage tracing: there are additional logs in the root of the cluster
+        toUpload.push(...listFolder(path.resolve(config.dbLocation, "log")));
+      }
+      await uploadDebugArtifacts(toUpload, config.dbLocation);
+      if (!(await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING))) {
+        // Before multi-language tracing, we wrote a compound-build-tracer.log in the temp dir
+        await uploadDebugArtifacts(
+          [path.resolve(config.tempDir, "compound-build-tracer.log")],
+          config.tempDir
+        );
+      }
     }
 
     if (actionsUtil.getOptionalInput("cleanup-level") !== "none") {
@@ -138,7 +176,15 @@ async function run() {
     const repositoryNwo = parseRepositoryNwo(
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
     );
-    await uploadDatabases(repositoryNwo, config, apiDetails, logger);
+    await uploadDatabases(repositoryNwo, config, apiDetails, logger); // Possibly upload the database bundles for remote queries
+
+    if (config.debugMode) {
+      // Upload the database bundles as an Actions artifact for debugging
+      const toUpload: string[] = [];
+      for (const language of config.languages)
+        toUpload.push(await bundleDb(config, language, codeql));
+      await uploadDebugArtifacts(toUpload, config.dbLocation);
+    }
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
@@ -188,6 +234,27 @@ async function run() {
   } else {
     await sendStatusReport(startedAt, undefined);
   }
+}
+
+async function uploadDebugArtifacts(toUpload: string[], rootDir: string) {
+  await artifact.create().uploadArtifact(
+    DEBUG_ARTIFACT_NAME,
+    toUpload.map((file) => path.normalize(file)),
+    path.normalize(rootDir)
+  );
+}
+
+function listFolder(dir: string): string[] {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    if (entry.isFile()) {
+      files.push(path.resolve(dir, entry.name));
+    } else if (entry.isDirectory()) {
+      files.push(...listFolder(path.resolve(dir, entry.name)));
+    }
+  }
+  return files;
 }
 
 export const runPromise = run();

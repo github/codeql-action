@@ -29,6 +29,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
     dbLocation: path.resolve(tmpDir, "codeql_databases"),
     packs: {},
+    debugMode: false,
   };
 }
 

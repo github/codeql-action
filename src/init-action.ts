@@ -163,6 +163,7 @@ async function run() {
       getOptionalInput("packs"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
+      getOptionalInput("debug") === "true",
       parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
       getTemporaryDirectory(),
       getRequiredEnvParam("RUNNER_TOOL_CACHE"),

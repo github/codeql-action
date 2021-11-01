@@ -19,6 +19,11 @@ import { Logger } from "./logging";
 export const GITHUB_DOTCOM_URL = "https://github.com";
 
 /**
+ * Name of the debugging artifact.
+ */
+export const DEBUG_ARTIFACT_NAME = "debug-artifacts";
+
+/**
  * Get the extra options for the codeql commands.
  */
 export function getExtraOptionsEnvParam(): object {
@@ -541,4 +546,21 @@ export async function codeQlVersionAbove(
   requiredVersion: string
 ): Promise<boolean> {
   return semver.gte(await codeql.getVersion(), requiredVersion);
+}
+
+// Create a bundle for the given DB, if it doesn't already exist
+export async function bundleDb(
+  config: Config,
+  language: Language,
+  codeql: CodeQL
+) {
+  const databasePath = getCodeQLDatabasePath(config, language);
+  const databaseBundlePath = path.resolve(
+    config.dbLocation,
+    `${databasePath}.zip`
+  );
+  if (!fs.existsSync(databaseBundlePath)) {
+    await codeql.databaseBundle(databasePath, databaseBundlePath);
+  }
+  return databaseBundlePath;
 }

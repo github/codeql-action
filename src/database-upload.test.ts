@@ -47,6 +47,7 @@ function getTestConfig(tmpDir: string): Config {
     gitHubVersion: { type: GitHubVariant.DOTCOM },
     dbLocation: tmpDir,
     packs: {},
+    debugMode: false,
   };
 }
 

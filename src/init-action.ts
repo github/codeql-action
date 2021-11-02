@@ -32,6 +32,8 @@ import {
   getGitHubVersion,
   codeQlVersionAbove,
   enrichEnvironment,
+  getMemoryFlagValue,
+  getThreadsFlagValue,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -161,6 +163,7 @@ async function run() {
       getOptionalInput("packs"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
+      getOptionalInput("debug") === "true",
       parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
       getTemporaryDirectory(),
       getRequiredEnvParam("RUNNER_TOOL_CACHE"),
@@ -204,9 +207,20 @@ async function run() {
       );
     }
 
-    // Setup CODEQL_RAM flag (todo improve this https://github.com/github/dsp-code-scanning/issues/935)
-    const codeqlRam = process.env["CODEQL_RAM"] || "6500";
-    core.exportVariable("CODEQL_RAM", codeqlRam);
+    // Limit RAM and threads for extractors. When running extractors, the CodeQL CLI obeys the
+    // CODEQL_RAM and CODEQL_THREADS environment variables to decide how much RAM and how many
+    // threads it would ask extractors to use. See help text for the "--ram" and "--threads"
+    // options at https://codeql.github.com/docs/codeql-cli/manual/database-trace-command/
+    // for details.
+    core.exportVariable(
+      "CODEQL_RAM",
+      process.env["CODEQL_RAM"] ||
+        getMemoryFlagValue(getOptionalInput("ram")).toString()
+    );
+    core.exportVariable(
+      "CODEQL_THREADS",
+      getThreadsFlagValue(getOptionalInput("threads"), logger).toString()
+    );
 
     const sourceRoot = path.resolve(
       getRequiredEnvParam("GITHUB_WORKSPACE"),

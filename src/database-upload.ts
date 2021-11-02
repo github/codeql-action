@@ -7,6 +7,7 @@ import { Config } from "./config-utils";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
+import { bundleDb } from "./util";
 
 export async function uploadDatabases(
   repositoryNwo: RepositoryNwo,
@@ -54,13 +55,8 @@ export async function uploadDatabases(
 
   const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
-    // Bundle the database up into a single zip file
-    const databasePath = util.getCodeQLDatabasePath(config, language);
-    const databaseBundlePath = `${databasePath}.zip`;
-    await codeql.databaseBundle(databasePath, databaseBundlePath);
-
     // Upload the database bundle
-    const payload = fs.readFileSync(databaseBundlePath);
+    const payload = fs.readFileSync(await bundleDb(config, language, codeql));
     try {
       await client.request(
         `PUT /repos/:owner/:repo/code-scanning/codeql/databases/:language`,

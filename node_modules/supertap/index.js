@@ -1,29 +1,27 @@
 'use strict';
 
-const serializeErr = require('serialize-error');
+const {serializeError} = require('serialize-error');
 const indentString = require('indent-string');
 const stripAnsi = require('strip-ansi');
 const arrify = require('arrify');
 const yaml = require('js-yaml');
 
-const serializeError = err => {
-	const obj = serializeErr(err);
-	obj.at = obj.stack
+const serializeErrorForTap = err => {
+	const object = serializeError(err);
+	object.at = object.stack
 		.split('\n')
 		.slice(1, 2)
 		.map(line => line.replace(/at/, '').trim())
 		.shift();
-
-	delete obj.stack;
-
-	return obj;
+	delete object.stack;
+	return object;
 };
 
 exports.start = () => 'TAP version 13';
 
 exports.test = (title, options) => {
-	const error = options.error;
-	let passed = options.passed;
+	const {error} = options;
+	let {passed} = options;
 	let directive = '';
 
 	if (!error) {
@@ -37,21 +35,20 @@ exports.test = (title, options) => {
 	}
 
 	const comment = arrify(options.comment)
-		.map(line => indentString(line, 4).replace(/^ {4}/, '  * '))
+		.map(line => indentString(line, 4).replace(/^ {4}/gm, '#   '))
 		.join('\n');
 
 	const output = [
-		`# ${stripAnsi(title)}`,
-		`${passed ? 'ok' : 'not ok'} ${options.index} - ${title} ${directive}`.trim(),
+		`${passed ? 'ok' : 'not ok'} ${options.index} - ${stripAnsi(title)} ${directive}`.trim(),
 		comment
 	];
 
 	if (error) {
-		const obj = error instanceof Error ? serializeError(error) : error;
+		const object = error instanceof Error ? serializeErrorForTap(error) : error;
 
 		output.push([
 			'  ---',
-			indentString(yaml.safeDump(obj).trim(), 4),
+			indentString(yaml.safeDump(object).trim(), 4),
 			'  ...'
 		].join('\n'));
 	}

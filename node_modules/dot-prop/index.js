@@ -93,7 +93,7 @@ module.exports = {
 
 	delete(object, path) {
 		if (!isObj(object) || typeof path !== 'string') {
-			return;
+			return false;
 		}
 
 		const pathArray = getPathSegments(path);
@@ -103,13 +103,13 @@ module.exports = {
 
 			if (i === pathArray.length - 1) {
 				delete object[p];
-				return;
+				return true;
 			}
 
 			object = object[p];
 
 			if (!isObj(object)) {
-				return;
+				return false;
 			}
 		}
 	},

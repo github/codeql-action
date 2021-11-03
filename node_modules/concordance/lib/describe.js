@@ -1,5 +1,6 @@
 'use strict'
 
+const Registry = require('./Registry')
 const argumentsValue = require('./complexValues/arguments')
 const arrayBufferValue = require('./complexValues/arrayBuffer')
 const boxedValue = require('./complexValues/boxed')
@@ -15,22 +16,20 @@ const regexpValue = require('./complexValues/regexp')
 const setValue = require('./complexValues/set')
 const typedArrayValue = require('./complexValues/typedArray')
 
+const getCtor = require('./getCtor')
+const getStringTag = require('./getStringTag')
 const itemDescriptor = require('./metaDescriptors/item')
 const mapEntryDescriptor = require('./metaDescriptors/mapEntry')
 const propertyDescriptor = require('./metaDescriptors/property')
 
-const booleanValue = require('./primitiveValues/boolean')
+const pluginRegistry = require('./pluginRegistry')
 const bigIntValue = require('./primitiveValues/bigInt')
+const booleanValue = require('./primitiveValues/boolean')
 const nullValue = require('./primitiveValues/null')
 const numberValue = require('./primitiveValues/number')
 const stringValue = require('./primitiveValues/string')
 const symbolValue = require('./primitiveValues/symbol')
 const undefinedValue = require('./primitiveValues/undefined')
-
-const getCtor = require('./getCtor')
-const getStringTag = require('./getStringTag')
-const pluginRegistry = require('./pluginRegistry')
-const Registry = require('./Registry')
 
 const SpecializedComplexes = new Map([
   ['Arguments', argumentsValue.describe],
@@ -53,7 +52,7 @@ const SpecializedComplexes = new Map([
   ['Uint16Array', typedArrayValue.describe],
   ['Uint32Array', typedArrayValue.describe],
   ['Uint8Array', typedArrayValue.describe],
-  ['Uint8ClampedArray', typedArrayValue.describe]
+  ['Uint8ClampedArray', typedArrayValue.describe],
 ])
 
 function describePrimitive (value) {
@@ -127,10 +126,20 @@ function describeComplex (value, registry, tryPlugins, describeAny, describeItem
     pointer: pointer.index,
     stringTag,
     unboxed,
-    value
+    value,
   })
   pointer.descriptor = descriptor
   return descriptor
+}
+
+const describeItem = (index, valueDescriptor) => {
+  return valueDescriptor.isPrimitive === true
+    ? itemDescriptor.describePrimitive(index, valueDescriptor)
+    : itemDescriptor.describeComplex(index, valueDescriptor)
+}
+
+const describeMapEntry = (keyDescriptor, valueDescriptor) => {
+  return mapEntryDescriptor.describe(keyDescriptor, valueDescriptor)
 }
 
 function describe (value, options) {
@@ -148,16 +157,6 @@ function describe (value, options) {
     return descriptor !== null
       ? descriptor
       : curriedComplex(any)
-  }
-
-  const describeItem = (index, valueDescriptor) => {
-    return valueDescriptor.isPrimitive === true
-      ? itemDescriptor.describePrimitive(index, valueDescriptor)
-      : itemDescriptor.describeComplex(index, valueDescriptor)
-  }
-
-  const describeMapEntry = (keyDescriptor, valueDescriptor) => {
-    return mapEntryDescriptor.describe(keyDescriptor, valueDescriptor)
   }
 
   const describeProperty = (key, valueDescriptor) => {

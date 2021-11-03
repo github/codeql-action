@@ -9,12 +9,14 @@ const isWindows = process.platform === 'win32';
 const readRc = filePath => {
 	try {
 		return ini.parse(fs.readFileSync(filePath, 'utf8')).prefix;
-	} catch (_) {}
+	} catch {}
 };
 
 const getEnvNpmPrefix = () => {
+	// TODO: Remove the `.reduce` call.
+	// eslint-disable-next-line unicorn/no-array-reduce
 	return Object.keys(process.env).reduce((prefix, name) => {
-		return (/^npm_config_prefix$/i).test(name) ? process.env[name] : prefix;
+		return /^npm_config_prefix$/i.test(name) ? process.env[name] : prefix;
 	}, undefined);
 };
 

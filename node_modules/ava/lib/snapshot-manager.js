@@ -104,13 +104,32 @@ function combineEntries(entries) {
 	const buffers = [];
 	let byteLength = 0;
 
-	const sortedKeys = [...entries.keys()].sort();
+	const sortedKeys = [...entries.keys()].sort((keyA, keyB) => {
+		const [a, b] = [entries.get(keyA), entries.get(keyB)];
+		const taskDifference = a.taskIndex - b.taskIndex;
+
+		if (taskDifference !== 0) {
+			return taskDifference;
+		}
+
+		const [assocA, assocB] = [a.associatedTaskIndex, b.associatedTaskIndex];
+		if (assocA !== undefined && assocB !== undefined) {
+			const assocDifference = assocA - assocB;
+
+			if (assocDifference !== 0) {
+				return assocDifference;
+			}
+		}
+
+		return a.snapIndex - b.snapIndex;
+	});
+
 	for (const key of sortedKeys) {
 		const keyBuffer = Buffer.from(`\n\n## ${key}\n\n`, 'utf8');
 		buffers.push(keyBuffer);
 		byteLength += keyBuffer.byteLength;
 
-		const formattedEntries = entries.get(key);
+		const formattedEntries = entries.get(key).buffers;
 		const last = formattedEntries[formattedEntries.length - 1];
 		for (const entry of formattedEntries) {
 			buffers.push(entry);
@@ -176,10 +195,11 @@ function encodeSnapshots(buffersByHash) {
 	byteOffset += 2;
 
 	const entries = [];
-	for (const pair of buffersByHash) {
-		const hash = pair[0];
-		const snapshotBuffers = pair[1];
-
+	// Maps can't have duplicate keys, so all items in [...buffersByHash.keys()]
+	// are unique, so sortedHashes should be deterministic.
+	const sortedHashes = [...buffersByHash.keys()].sort();
+	const sortedBuffersByHash = [...sortedHashes.map(hash => [hash, buffersByHash.get(hash)])];
+	for (const [hash, snapshotBuffers] of sortedBuffersByHash) {
 		buffers.push(Buffer.from(hash, 'hex'));
 		byteOffset += MD5_HASH_LENGTH;
 
@@ -332,6 +352,7 @@ class Manager {
 		const descriptor = concordance.describe(options.expected, concordanceOptions);
 		const snapshot = concordance.serialize(descriptor);
 		const entry = formatEntry(options.label, descriptor);
+		const {taskIndex, snapIndex, associatedTaskIndex} = options;
 
 		return () => { // Must be called in order!
 			this.hasChanges = true;
@@ -353,9 +374,9 @@ class Manager {
 			snapshots.push(snapshot);
 
 			if (this.reportEntries.has(options.belongsTo)) {
-				this.reportEntries.get(options.belongsTo).push(entry);
+				this.reportEntries.get(options.belongsTo).buffers.push(entry);
 			} else {
-				this.reportEntries.set(options.belongsTo, [entry]);
+				this.reportEntries.set(options.belongsTo, {buffers: [entry], taskIndex, snapIndex, associatedTaskIndex});
 			}
 		};
 	}
@@ -428,12 +449,49 @@ const determineSnapshotDir = mem(({file, fixedLocation, projectDir}) => {
 
 exports.determineSnapshotDir = determineSnapshotDir;
 
-function load({file, fixedLocation, projectDir, recordNewSnapshots, updating}) {
+function determineSnapshotPaths({file, fixedLocation, projectDir}) {
 	const dir = determineSnapshotDir({file, fixedLocation, projectDir});
 	const relFile = path.relative(projectDir, resolveSourceFile(file));
 	const name = path.basename(relFile);
 	const reportFile = `${name}.md`;
 	const snapFile = `${name}.snap`;
+
+	return {
+		dir,
+		relFile,
+		snapFile,
+		reportFile
+	};
+}
+
+function cleanFile(file) {
+	try {
+		fs.unlinkSync(file);
+		return [file];
+	} catch (error) {
+		if (error.code === 'ENOENT') {
+			return [];
+		}
+
+		throw error;
+	}
+}
+
+// Remove snapshot and report if they exist. Returns an array containing the
+// paths of the touched files.
+function cleanSnapshots({file, fixedLocation, projectDir}) {
+	const {dir, snapFile, reportFile} = determineSnapshotPaths({file, fixedLocation, projectDir});
+
+	return [
+		...cleanFile(path.join(dir, snapFile)),
+		...cleanFile(path.join(dir, reportFile))
+	];
+}
+
+exports.cleanSnapshots = cleanSnapshots;
+
+function load({file, fixedLocation, projectDir, recordNewSnapshots, updating}) {
+	const {dir, relFile, snapFile, reportFile} = determineSnapshotPaths({file, fixedLocation, projectDir});
 	const snapPath = path.join(dir, snapFile);
 
 	let appendOnly = !updating;

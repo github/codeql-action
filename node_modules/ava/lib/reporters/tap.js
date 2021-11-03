@@ -30,7 +30,7 @@ function dumpError(error) {
 		}
 
 		if (error.values.length > 0) {
-			object.values = error.values.reduce((acc, value) => {
+			object.values = error.values.reduce((acc, value) => { // eslint-disable-line unicorn/no-reduce
 				acc[value.label] = stripAnsi(value.formatted);
 				return acc;
 			}, {});
@@ -125,8 +125,18 @@ class TapReporter {
 		this.reportStream.write(`# ${stripAnsi(title)}${os.EOL}`);
 		if (evt.logs) {
 			for (const log of evt.logs) {
-				const logLines = indentString(log, 4).replace(/^ {4}/, '  # ');
+				const logLines = indentString(log, 4).replace(/^ {4}/gm, '#   ');
 				this.reportStream.write(`${logLines}${os.EOL}`);
+			}
+		}
+	}
+
+	writeTimeout(evt) {
+		const err = new Error(`Exited because no new tests completed within the last ${evt.period}ms of inactivity`);
+
+		for (const [testFile, tests] of evt.pendingTests) {
+			for (const title of tests) {
+				this.writeTest({testFile, title, err}, {passed: false, todo: false, skip: false});
 			}
 		}
 	}
@@ -159,6 +169,9 @@ class TapReporter {
 				}
 
 				break;
+			case 'snapshot-error':
+				this.writeComment(evt, {title: 'Could not update snapshots'});
+				break;
 			case 'stats':
 				this.stats = evt.stats;
 				break;
@@ -169,7 +182,7 @@ class TapReporter {
 				this.writeTest(evt, {passed: true, todo: false, skip: false});
 				break;
 			case 'timeout':
-				this.writeCrash(evt, `Exited because no new tests completed within the last ${evt.period}ms of inactivity`);
+				this.writeTimeout(evt);
 				break;
 			case 'uncaught-exception':
 				this.writeCrash(evt);

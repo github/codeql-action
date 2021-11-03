@@ -1,11 +1,11 @@
 'use strict'
 
+const Circular = require('./Circular')
 const constants = require('./constants')
 const describe = require('./describe')
 const recursorUtils = require('./recursorUtils')
 const shouldCompareDeep = require('./shouldCompareDeep')
 const symbolProperties = require('./symbolProperties')
-const Circular = require('./Circular')
 
 const AMBIGUOUS = constants.AMBIGUOUS
 const DEEP_EQUAL = constants.DEEP_EQUAL

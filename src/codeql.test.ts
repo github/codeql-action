@@ -1,8 +1,10 @@
 import * as path from "path";
 
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import test from "ava";
 import nock from "nock";
+import * as sinon from "sinon";
 
 import * as codeql from "./codeql";
 import * as defaults from "./defaults.json";
@@ -400,3 +402,36 @@ test("getCodeQLActionRepository", (t) => {
   const repoEnv = codeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoEnv, "xxx/yyy");
 });
+
+test("databaseInterpretResults() does not set --sarif-add-query-help for 2.7.0", async (t) => {
+  const runnerConstructorStub = stubToolRunnerConstructor();
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.7.0");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "");
+  t.false(
+    runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
+    "--sarif-add-query-help should be absent, but it is present"
+  );
+});
+
+test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (t) => {
+  const runnerConstructorStub = stubToolRunnerConstructor();
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.7.1");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "");
+  t.true(
+    runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
+    "--sarif-add-query-help should be present, but it is absent"
+  );
+});
+
+function stubToolRunnerConstructor(): sinon.SinonStub<
+  any[],
+  toolrunner.ToolRunner
+> {
+  const runnerObjectStub = sinon.createStubInstance(toolrunner.ToolRunner);
+  runnerObjectStub.exec.resolves(0);
+  const runnerConstructorStub = sinon.stub(toolrunner, "ToolRunner");
+  runnerConstructorStub.returns(runnerObjectStub);
+  return runnerConstructorStub;
+}

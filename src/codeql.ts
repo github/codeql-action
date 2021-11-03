@@ -213,6 +213,7 @@ const CODEQL_VERSION_METRICS = "2.5.5";
 const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
+const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 
 /**
  * Version above which we use the CLI's indirect build tracing and
@@ -599,6 +600,15 @@ export function getCachedCodeQL(): CodeQL {
   return cachedCodeQL;
 }
 
+/**
+ * Get a real, newly created CodeQL instance for testing. The instance refers to
+ * a non-existent placeholder codeql command, so tests that use this function
+ * should also stub the toolrunner.ToolRunner constructor.
+ */
+export async function getCodeQLForTesting(): Promise<CodeQL> {
+  return getCodeQLForCmd("codeql-for-testing", false);
+}
+
 async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean
@@ -875,6 +885,8 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--print-metrics-summary");
       if (await util.codeQlVersionAbove(this, CODEQL_VERSION_GROUP_RULES))
         codeqlArgs.push("--sarif-group-rules-by-pack");
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_CUSTOM_QUERY_HELP))
+        codeqlArgs.push("--sarif-add-query-help");
       if (
         automationDetailsId !== undefined &&
         (await util.codeQlVersionAbove(this, CODEQL_VERSION_SARIF_GROUP))

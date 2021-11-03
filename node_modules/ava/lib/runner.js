@@ -23,13 +23,17 @@ class Runner extends Emittery {
 		this.recordNewSnapshots = options.recordNewSnapshots === true;
 		this.runOnlyExclusive = options.runOnlyExclusive === true;
 		this.serial = options.serial === true;
+		this.skippingTests = false;
 		this.snapshotDir = options.snapshotDir;
 		this.updateSnapshots = options.updateSnapshots;
 
 		this.activeRunnables = new Set();
 		this.boundCompareTestSnapshot = this.compareTestSnapshot.bind(this);
+		this.skippedSnapshots = false;
+		this.boundSkipSnapshot = this.skipSnapshot.bind(this);
 		this.interrupted = false;
 		this.snapshots = null;
+		this.nextTaskIndex = 0;
 		this.tasks = {
 			after: [],
 			afterAlways: [],
@@ -41,6 +45,7 @@ class Runner extends Emittery {
 			serial: [],
 			todo: []
 		};
+		this.waitForReady = [];
 
 		const uniqueTestTitles = new Set();
 		this.registerUniqueTitle = title => {
@@ -73,6 +78,8 @@ class Runner extends Emittery {
 					this.start();
 				});
 			}
+
+			metadata.taskIndex = this.nextTaskIndex++;
 
 			const {args, buildTitle, implementations, rawTitle} = parseTestArgs(testArgs);
 
@@ -147,6 +154,10 @@ class Runner extends Emittery {
 							task.metadata.exclusive = matcher([title], this.match).length === 1;
 						}
 
+						if (task.metadata.skipped) {
+							this.skippingTests = true;
+						}
+
 						if (task.metadata.exclusive) {
 							this.runOnlyExclusive = true;
 						}
@@ -182,7 +193,7 @@ class Runner extends Emittery {
 				fixedLocation: this.snapshotDir,
 				projectDir: this.projectDir,
 				recordNewSnapshots: this.recordNewSnapshots,
-				updating: this.updateSnapshots
+				updating: this.updateSnapshots && !this.runOnlyExclusive && !this.skippingTests
 			});
 			this.emit('dependency', this.snapshots.snapPath);
 		}
@@ -190,18 +201,35 @@ class Runner extends Emittery {
 		return this.snapshots.compare(options);
 	}
 
+	skipSnapshot() {
+		this.skippedSnapshots = true;
+	}
+
 	saveSnapshotState() {
+		if (
+			this.updateSnapshots &&
+			(
+				this.runOnlyExclusive ||
+				this.skippingTests ||
+				this.skippedSnapshots
+			)
+		) {
+			return {cannotSave: true};
+		}
+
 		if (this.snapshots) {
-			return this.snapshots.save();
+			return {touchedFiles: this.snapshots.save()};
 		}
 
 		if (this.updateSnapshots) {
-			// TODO: There may be unused snapshot files if no test caused the
-			// snapshots to be loaded. Prune them. But not if tests (including hooks!)
-			// were skipped. Perhaps emit a warning if this occurs?
+			return {touchedFiles: snapshotManager.cleanSnapshots({
+				file: this.file,
+				fixedLocation: this.snapshotDir,
+				projectDir: this.projectDir
+			})};
 		}
 
-		return null;
+		return {};
 	}
 
 	onRun(runnable) {
@@ -241,7 +269,7 @@ class Runner extends Emittery {
 		};
 
 		let waitForSerial = Promise.resolve();
-		await runnables.reduce((previous, runnable) => {
+		await runnables.reduce((previous, runnable) => { // eslint-disable-line unicorn/no-reduce
 			if (runnable.metadata.serial || this.serial) {
 				waitForSerial = previous.then(() => {
 					// Serial runnables run as long as there was no previous failure, unless
@@ -275,7 +303,7 @@ class Runner extends Emittery {
 		return result;
 	}
 
-	async runHooks(tasks, contextRef, titleSuffix, testPassed) {
+	async runHooks(tasks, contextRef, {titleSuffix, testPassed, associatedTaskIndex} = {}) {
 		const hooks = tasks.map(task => new Runnable({
 			contextRef,
 			experiments: this.experiments,
@@ -284,8 +312,9 @@ class Runner extends Emittery {
 				task.implementation :
 				t => task.implementation.apply(null, [t].concat(task.args)),
 			compareTestSnapshot: this.boundCompareTestSnapshot,
+			skipSnapshot: this.boundSkipSnapshot,
 			updateSnapshots: this.updateSnapshots,
-			metadata: task.metadata,
+			metadata: {...task.metadata, associatedTaskIndex},
 			powerAssert: this.powerAssert,
 			title: `${task.title}${titleSuffix || ''}`,
 			isHook: true,
@@ -316,7 +345,14 @@ class Runner extends Emittery {
 
 	async runTest(task, contextRef) {
 		const hookSuffix = ` for ${task.title}`;
-		let hooksOk = await this.runHooks(this.tasks.beforeEach, contextRef, hookSuffix);
+		let hooksOk = await this.runHooks(
+			this.tasks.beforeEach,
+			contextRef,
+			{
+				titleSuffix: hookSuffix,
+				associatedTaskIndex: task.metadata.taskIndex
+			}
+		);
 
 		let testOk = false;
 		if (hooksOk) {
@@ -329,6 +365,7 @@ class Runner extends Emittery {
 					task.implementation :
 					t => task.implementation.apply(null, [t].concat(task.args)),
 				compareTestSnapshot: this.boundCompareTestSnapshot,
+				skipSnapshot: this.boundSkipSnapshot,
 				updateSnapshots: this.updateSnapshots,
 				metadata: task.metadata,
 				powerAssert: this.powerAssert,
@@ -348,7 +385,14 @@ class Runner extends Emittery {
 					logs: result.logs
 				});
 
-				hooksOk = await this.runHooks(this.tasks.afterEach, contextRef, hookSuffix, testOk);
+				hooksOk = await this.runHooks(
+					this.tasks.afterEach,
+					contextRef,
+					{
+						titleSuffix: hookSuffix,
+						testPassed: testOk,
+						associatedTaskIndex: task.metadata.taskIndex
+					});
 			} else {
 				this.emit('stateChange', {
 					type: 'test-failed',
@@ -362,7 +406,14 @@ class Runner extends Emittery {
 			}
 		}
 
-		const alwaysOk = await this.runHooks(this.tasks.afterEachAlways, contextRef, hookSuffix, testOk);
+		const alwaysOk = await this.runHooks(
+			this.tasks.afterEachAlways,
+			contextRef,
+			{
+				titleSuffix: hookSuffix,
+				testPassed: testOk,
+				associatedTaskIndex: task.metadata.taskIndex
+			});
 		return alwaysOk && hooksOk && testOk;
 	}
 
@@ -435,6 +486,8 @@ class Runner extends Emittery {
 			});
 		}
 
+		await Promise.all(this.waitForReady);
+
 		if (concurrentTests.length === 0 && serialTests.length === 0) {
 			this.emit('finish');
 			// Don't run any hooks if there are no tests to run.
@@ -451,7 +504,7 @@ class Runner extends Emittery {
 				return false;
 			}
 
-			return serialTests.reduce(async (previous, task) => {
+			return serialTests.reduce(async (previous, task) => { // eslint-disable-line unicorn/no-reduce
 				const previousOk = await previous;
 				// Don't start tests after an interrupt.
 				if (this.interrupted) {

@@ -1,4 +1,4 @@
-# is-path-inside [![Build Status](https://travis-ci.org/sindresorhus/is-path-inside.svg?branch=master)](https://travis-ci.org/sindresorhus/is-path-inside)
+# is-path-inside
 
 > Check if a path is inside another path
 

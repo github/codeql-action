@@ -1,8 +1,8 @@
 'use strict'
 
 const constants = require('../constants')
-const isEnumerable = require('../isEnumerable')
 const formatUtils = require('../formatUtils')
+const isEnumerable = require('../isEnumerable')
 const lineBuilder = require('../lineBuilder')
 const NOOP_RECURSOR = require('../recursorUtils').NOOP_RECURSOR
 const object = require('./object')
@@ -14,7 +14,7 @@ function describe (props) {
   const fn = props.value
   return new DescribedFunctionValue(Object.assign({
     nameIsEnumerable: isEnumerable(fn, 'name'),
-    name: typeof fn.name === 'string' ? fn.name : null
+    name: typeof fn.name === 'string' ? fn.name : null,
   }, props))
 }
 exports.describe = describe
@@ -43,13 +43,13 @@ class FunctionValue extends object.ObjectValue {
         return innerLines.isEmpty
           ? lineBuilder.single(string + theme.object.closeBracket)
           : lineBuilder.first(string)
-              .concat(innerLines.withFirstPrefixed(indent.increase()).stripFlags())
-              .append(lineBuilder.last(indent + theme.object.closeBracket))
+            .concat(innerLines.withFirstPrefixed(indent.increase()).stripFlags())
+            .append(lineBuilder.last(indent + theme.object.closeBracket))
       },
 
       maxDepth () {
         return lineBuilder.single(string + ' ' + theme.maxDepth + ' ' + theme.object.closeBracket)
-      }
+      },
     })
   }
 }

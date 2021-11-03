@@ -35,6 +35,7 @@ declare const dotProp: {
 	@param object - Object to set the `path` value.
 	@param path - Path of the property in the object, using `.` to separate each nested key. Use `\\.` if you have a `.` in the key.
 	@param value - Value to set at `path`.
+	@returns The object.
 
 	@example
 	```
@@ -77,6 +78,7 @@ declare const dotProp: {
 	/**
 	@param object - Object to delete the `path` value.
 	@param path - Path of the property in the object, using `.` to separate each nested key. Use `\\.` if you have a `.` in the key.
+	@returns A boolean of whether the property existed before being deleted.
 
 	@example
 	```
@@ -93,7 +95,7 @@ declare const dotProp: {
 	//=> {foo: {bar: {y: 'x'}}}
 	```
 	*/
-	delete(object: {[key: string]: any}, path: string): void;
+	delete(object: {[key: string]: any}, path: string): boolean;
 };
 
 export = dotProp;

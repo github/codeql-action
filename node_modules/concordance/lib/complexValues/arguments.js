@@ -10,7 +10,7 @@ function describe (props) {
   return new DescribedArgumentsValue(Object.assign({
     // Treat as an array, to allow comparisons with arrays
     isArray: true,
-    isList: true
+    isList: true,
   }, props, { ctor: 'Arguments' }))
 }
 exports.describe = describe

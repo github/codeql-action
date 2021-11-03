@@ -17,6 +17,7 @@ const RunStatus = require('./run-status');
 const fork = require('./fork');
 const serializeError = require('./serialize-error');
 const {getApplicableLineNumbers} = require('./line-numbers');
+const sharedWorkers = require('./plugin-support/shared-workers');
 
 function resolveModules(modules) {
 	return arrify(modules).map(name => {
@@ -110,21 +111,15 @@ class Api extends Emittery {
 			}
 		};
 
-		let cacheDir;
 		let testFiles;
 		try {
-			cacheDir = this._createCacheDir();
 			testFiles = await globs.findTests({cwd: this.options.projectDir, ...apiOptions.globs});
 			if (selectedFiles.length === 0) {
-				if (filter.length === 0) {
-					selectedFiles = testFiles;
-				} else {
-					selectedFiles = globs.applyTestFileFilter({
-						cwd: this.options.projectDir,
-						filter: filter.map(({pattern}) => pattern),
-						testFiles
-					});
-				}
+				selectedFiles = filter.length === 0 ? testFiles : globs.applyTestFileFilter({
+					cwd: this.options.projectDir,
+					filter: filter.map(({pattern}) => pattern),
+					testFiles
+				});
 			}
 		} catch (error) {
 			selectedFiles = [];
@@ -147,7 +142,7 @@ class Api extends Emittery {
 				runStatus = new RunStatus(selectedFiles.length, null);
 			}
 
-			const debugWithoutSpecificFile = Boolean(this.options.debug) && selectedFiles.length !== 1;
+			const debugWithoutSpecificFile = Boolean(this.options.debug) && !this.options.debug.active && selectedFiles.length !== 1;
 
 			await this.emit('run', {
 				bailWithoutReporting: debugWithoutSpecificFile,
@@ -192,7 +187,7 @@ class Api extends Emittery {
 
 			const {providers = []} = this.options;
 			const providerStates = (await Promise.all(providers.map(async ({type, main}) => {
-				const state = await main.compile({cacheDir, files: testFiles});
+				const state = await main.compile({cacheDir: this._createCacheDir(), files: testFiles});
 				return state === null ? null : {type, state};
 			}))).filter(state => state !== null);
 
@@ -205,6 +200,8 @@ class Api extends Emittery {
 			if (apiOptions.serial) {
 				concurrency = 1;
 			}
+
+			const deregisteredSharedWorkers = [];
 
 			// Try and run each file, limited by `concurrency`.
 			await pMap(selectedFiles, async file => {
@@ -231,6 +228,7 @@ class Api extends Emittery {
 
 				const worker = fork(file, options, apiOptions.nodeArguments);
 				runStatus.observeWorker(worker, file, {selectingLines: lineNumbers.length > 0});
+				deregisteredSharedWorkers.push(sharedWorkers.observeWorkerProcess(worker, runStatus));
 
 				pendingWorkers.add(worker);
 				worker.promise.then(() => {
@@ -238,8 +236,11 @@ class Api extends Emittery {
 				});
 				restartTimer();
 
-				return worker.promise;
+				await worker.promise;
 			}, {concurrency, stopOnError: false});
+
+			// Allow shared workers to clean up before the run ends.
+			await Promise.all(deregisteredSharedWorkers);
 		} catch (error) {
 			if (error && error.name === 'AggregateError') {
 				for (const err of error) {

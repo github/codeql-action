@@ -1,11 +1,11 @@
 'use strict'
 
 const constants = require('../constants')
-const getObjectKeys = require('../getObjectKeys')
 const ObjectFormatter = require('../formatUtils').ObjectFormatter
+const getObjectKeys = require('../getObjectKeys')
 const hasLength = require('../hasLength')
-const recursorUtils = require('../recursorUtils')
 const stats = require('../metaDescriptors/stats')
+const recursorUtils = require('../recursorUtils')
 
 const DEEP_EQUAL = constants.DEEP_EQUAL
 const SHALLOW_EQUAL = constants.SHALLOW_EQUAL
@@ -17,7 +17,7 @@ function describe (props) {
   return new DescribedObjectValue(Object.assign({
     isArray,
     isIterable: object[Symbol.iterator] !== undefined,
-    isList: isArray || hasLength(object)
+    isList: isArray || hasLength(object),
   }, props))
 }
 exports.describe = describe
@@ -58,7 +58,7 @@ class ObjectValue {
   serialize () {
     return [
       this.ctor, this.pointer, this.stringTag,
-      this.isArray, this.isIterable, this.isList
+      this.isArray, this.isIterable, this.isList,
     ]
   }
 }
@@ -231,7 +231,7 @@ function DeserializedMixin (base) {
         stringTag: state[2],
         isArray: state[3],
         isIterable: state[4],
-        isList: state[5]
+        isList: state[5],
       })
 
       this.deserializedRecursor = recursor

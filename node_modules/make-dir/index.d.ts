@@ -6,7 +6,7 @@ declare namespace makeDir {
 		/**
 		Directory [permissions](https://x-team.com/blog/file-system-permissions-umask-node-js/).
 
-		@default 0o777 & (~process.umask())
+		@default 0o777
 		*/
 		readonly mode?: number;
 

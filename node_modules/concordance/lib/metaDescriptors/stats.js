@@ -75,7 +75,7 @@ class Stats {
         lhsRecursor: recursorUtils.unshift(lhsRecursor, this),
         // Use original `rhsRecursor`, not `rhsFork`, since the consumed
         // descriptors are returned with the `missing` array.
-        rhsRecursor: recursorUtils.unshift(rhsRecursor, expected)
+        rhsRecursor: recursorUtils.unshift(rhsRecursor, expected),
       }
     }
 
@@ -95,7 +95,7 @@ class Stats {
         // Use original `lhsRecursor`, not `lhsFork`, since the consumed
         // descriptors are returned with the `extraneous` array.
         lhsRecursor: recursorUtils.unshift(lhsRecursor, actual),
-        rhsRecursor: recursorUtils.unshift(rhsFork.recursor, initialExpected)
+        rhsRecursor: recursorUtils.unshift(rhsFork.recursor, initialExpected),
       }
     }
 

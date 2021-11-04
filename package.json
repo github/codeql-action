@@ -53,7 +53,7 @@
     "micromatch is an unspecified dependency of ava"
   ],
   "devDependencies": {
-    "@ava/typescript": "2.0.0",
+    "@ava/typescript": "3.0.0",
     "@types/jszip": "^3.4.1",
     "@types/long": "4.0.1",
     "@types/nock": "^11.1.0",

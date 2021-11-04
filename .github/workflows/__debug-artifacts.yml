@@ -52,7 +52,7 @@ jobs:
       id: analysis
     - uses: actions/download-artifact@v2
       with:
-        name: debug-artifacts
+        name: debug-artifacts-${{ matrix.os }}-${{ matrix.version }}
     - shell: bash
       run: |
         LANGUAGES="cpp csharp go java javascript python"

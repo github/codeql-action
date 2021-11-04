@@ -237,8 +237,14 @@ async function run() {
 }
 
 async function uploadDebugArtifacts(toUpload: string[], rootDir: string) {
+  let suffix = "";
+  const matrix = actionsUtil.getRequiredInput("matrix");
+  if (matrix !== undefined && matrix !== "null") {
+    for (const entry of Object.entries(JSON.parse(matrix)).sort())
+      suffix += `-${entry[1]}`;
+  }
   await artifact.create().uploadArtifact(
-    DEBUG_ARTIFACT_NAME,
+    `${DEBUG_ARTIFACT_NAME}${suffix}`,
     toUpload.map((file) => path.normalize(file)),
     path.normalize(rootDir)
   );

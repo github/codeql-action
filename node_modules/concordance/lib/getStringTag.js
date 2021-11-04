@@ -12,7 +12,7 @@ const isPromise = value => {
 
   try {
     return fts.call(value.constructor) === promiseCtorString
-  } catch (err) {
+  } catch {
     return false
   }
 }

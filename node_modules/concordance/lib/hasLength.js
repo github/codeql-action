@@ -1,6 +1,6 @@
 'use strict'
 
-const isLength = require('lodash.islength')
+const isLength = require('lodash/isLength')
 
 const hop = Object.prototype.hasOwnProperty
 

@@ -1,8 +1,8 @@
 'use strict'
 
 const constants = require('../constants')
-const isEnumerable = require('../isEnumerable')
 const formatUtils = require('../formatUtils')
+const isEnumerable = require('../isEnumerable')
 const lineBuilder = require('../lineBuilder')
 const NOOP_RECURSOR = require('../recursorUtils').NOOP_RECURSOR
 const object = require('./object')
@@ -15,7 +15,7 @@ function describe (props) {
     nameIsEnumerable: isEnumerable(error, 'name'),
     name: error.name,
     messageIsEnumerable: isEnumerable(error, 'message'),
-    message: error.message
+    message: error.message,
   }, props))
 }
 exports.describe = describe
@@ -59,13 +59,13 @@ class ErrorValue extends object.ObjectValue {
         return innerLines.isEmpty
           ? lineBuilder.single(string + theme.object.closeBracket)
           : lineBuilder.first(string)
-              .concat(innerLines.withFirstPrefixed(indent.increase()).stripFlags())
-              .append(lineBuilder.last(indent + theme.object.closeBracket))
+            .concat(innerLines.withFirstPrefixed(indent.increase()).stripFlags())
+            .append(lineBuilder.last(indent + theme.object.closeBracket))
       },
 
       maxDepth () {
         return lineBuilder.single(string + ' ' + theme.maxDepth + ' ' + theme.object.closeBracket)
-      }
+      },
     })
   }
 

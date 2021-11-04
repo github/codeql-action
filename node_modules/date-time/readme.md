@@ -6,7 +6,7 @@
 ## Install
 
 ```
-$ npm install --save date-time
+$ npm install date-time
 ```
 
 

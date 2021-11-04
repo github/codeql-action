@@ -55,6 +55,6 @@ declare const globalDirectories: {
 	```
 	*/
 	readonly yarn: globalDirectories.GlobalDirectories;
-}
+};
 
 export = globalDirectories;

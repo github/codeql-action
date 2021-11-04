@@ -39,7 +39,9 @@ class ExecutionContext extends assert.Assertions {
 			compareWithSnapshot: options => {
 				return test.compareWithSnapshot(options);
 			},
-			powerAssert: test.powerAssert
+			powerAssert: test.powerAssert,
+			experiments: test.experiments,
+			disableSnapshots: test.isHook === true
 		});
 		testMap.set(this, test);
 
@@ -64,8 +66,8 @@ class ExecutionContext extends assert.Assertions {
 
 		this.plan.skip = () => {};
 
-		this.timeout = ms => {
-			test.timeout(ms);
+		this.timeout = (ms, message) => {
+			test.timeout(ms, message);
 		};
 
 		this.teardown = callback => {
@@ -73,6 +75,12 @@ class ExecutionContext extends assert.Assertions {
 		};
 
 		this.try = async (...attemptArgs) => {
+			if (test.isHook) {
+				const error = new Error('`t.try()` can only be used in tests');
+				test.saveFirstError(error);
+				throw error;
+			}
+
 			const {args, buildTitle, implementations, receivedImplementationArray} = parseTestArgs(attemptArgs);
 
 			if (implementations.length === 0) {
@@ -179,7 +187,8 @@ class ExecutionContext extends assert.Assertions {
 	}
 
 	get passed() {
-		return testMap.get(this).testPassed;
+		const test = testMap.get(this);
+		return test.isHook ? test.testPassed : !test.assertError;
 	}
 
 	_throwsArgStart(assertion, file, line) {
@@ -221,7 +230,17 @@ class Test {
 			const index = id ? 0 : this.nextSnapshotIndex++;
 			const label = id ? '' : message || `Snapshot ${index + 1}`; // Human-readable labels start counting at 1.
 
-			const {record, ...result} = options.compareTestSnapshot({belongsTo, deferRecording, expected, index, label});
+			const {taskIndex, associatedTaskIndex} = this.metadata;
+			const {record, ...result} = options.compareTestSnapshot({
+				belongsTo,
+				deferRecording,
+				expected,
+				index,
+				label,
+				taskIndex,
+				snapIndex: this.snapshotCount,
+				associatedTaskIndex
+			});
 			if (record) {
 				this.deferredSnapshotRecordings.push(record);
 			}
@@ -230,6 +249,10 @@ class Test {
 		};
 
 		this.skipSnapshot = () => {
+			if (typeof options.skipSnapshot === 'function') {
+				options.skipSnapshot();
+			}
+
 			if (options.updateSnapshots) {
 				this.addFailedAssertion(new Error('Snapshot assertions cannot be skipped when updating snapshots'));
 			} else {
@@ -289,11 +312,8 @@ class Test {
 			};
 		}
 
-		if (this.metadata.inline) {
-			throw new Error('`t.end()` is not supported inside `t.try()`');
-		} else {
-			throw new Error('`t.end()` is not supported in this context. To use `t.end()` as a callback, you must use "callback mode" via `test.cb(testName, fn)`');
-		}
+		const error_ = this.metadata.inline ? new Error('`t.end()` is not supported inside `t.try()`') : new Error('`t.end()` is not supported in this context. To use `t.end()` as a callback, you must use "callback mode" via `test.cb(testName, fn)`');
+		throw error_;
 	}
 
 	endCallback(error, savedError) {
@@ -430,7 +450,14 @@ class Test {
 		this.planError = planError;
 	}
 
-	timeout(ms) {
+	timeout(ms, message) {
+		const result = assert.checkAssertionMessage('timeout', message);
+		if (result !== true) {
+			this.saveFirstError(result);
+			// Allow the timeout to be set even when the message is invalid.
+			message = '';
+		}
+
 		if (this.finishing) {
 			return;
 		}
@@ -438,7 +465,7 @@ class Test {
 		this.clearTimeout();
 		this.timeoutMs = ms;
 		this.timeoutTimer = nowAndTimers.setTimeout(() => {
-			this.saveFirstError(new Error('Test timeout exceeded'));
+			this.saveFirstError(new Error(message || 'Test timeout exceeded'));
 
 			if (this.finishDueToTimeout) {
 				this.finishDueToTimeout();
@@ -482,7 +509,13 @@ class Test {
 	}
 
 	async runTeardowns() {
-		for (const teardown of this.teardowns) {
+		const teardowns = [...this.teardowns];
+
+		if (this.experiments.reverseTeardowns) {
+			teardowns.reverse();
+		}
+
+		for (const teardown of teardowns) {
 			try {
 				await teardown(); // eslint-disable-line no-await-in-loop
 			} catch (error) {
@@ -714,11 +747,7 @@ class Test {
 		if (this.metadata.failing) {
 			passed = !passed;
 
-			if (passed) {
-				error = null;
-			} else {
-				error = new Error('Test was expected to fail, but succeeded, you should stop marking the test as failing');
-			}
+			error = passed ? null : new Error('Test was expected to fail, but succeeded, you should stop marking the test as failing');
 		}
 
 		return {

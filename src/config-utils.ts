@@ -125,6 +125,11 @@ export interface Config {
    * List of packages, separated by language to download before any analysis.
    */
   packs: Packs;
+  /**
+   * Specifies whether we are debugging mode and should try to produce extra
+   * output for debugging purposes when possible.
+   */
+  debugMode: boolean;
 }
 
 export type Packs = Partial<Record<Language, PackWithVersion[]>>;
@@ -813,6 +818,7 @@ export async function getDefaultConfig(
   queriesInput: string | undefined,
   packsInput: string | undefined,
   dbLocation: string | undefined,
+  debugMode: boolean,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -864,6 +870,7 @@ export async function getDefaultConfig(
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
+    debugMode,
   };
 }
 
@@ -876,6 +883,7 @@ async function loadConfig(
   packsInput: string | undefined,
   configFile: string,
   dbLocation: string | undefined,
+  debugMode: boolean,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -1032,6 +1040,7 @@ async function loadConfig(
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
+    debugMode,
   };
 }
 
@@ -1201,6 +1210,7 @@ export async function initConfig(
   packsInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  debugMode: boolean,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -1220,6 +1230,7 @@ export async function initConfig(
       queriesInput,
       packsInput,
       dbLocation,
+      debugMode,
       repository,
       tempDir,
       toolCacheDir,
@@ -1236,6 +1247,7 @@ export async function initConfig(
       packsInput,
       configFile,
       dbLocation,
+      debugMode,
       repository,
       tempDir,
       toolCacheDir,

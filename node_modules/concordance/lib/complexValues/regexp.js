@@ -11,7 +11,7 @@ function describe (props) {
   const regexp = props.value
   return new DescribedRegexpValue(Object.assign({
     flags: getSortedFlags(regexp),
-    source: regexp.source
+    source: regexp.source,
   }, props))
 }
 exports.describe = describe
@@ -69,7 +69,7 @@ class RegexpValue extends object.ObjectValue {
           regexp + ' ' +
           theme.maxDepth + ' ' +
           theme.object.closeBracket)
-      }
+      },
     })
   }
 

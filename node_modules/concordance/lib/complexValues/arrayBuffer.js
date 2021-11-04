@@ -7,7 +7,7 @@ function describe (props) {
     buffer: Buffer.from(props.value),
     // Set isArray and isList so the property recursor excludes the byte accessors
     isArray: true,
-    isList: true
+    isList: true,
   }, props))
 }
 exports.describe = describe

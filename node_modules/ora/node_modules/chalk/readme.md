@@ -9,10 +9,57 @@
 
 > Terminal string styling done right
 
-[![Build Status](https://travis-ci.org/chalk/chalk.svg?branch=master)](https://travis-ci.org/chalk/chalk) [![Coverage Status](https://coveralls.io/repos/github/chalk/chalk/badge.svg?branch=master)](https://coveralls.io/github/chalk/chalk?branch=master) [![npm dependents](https://badgen.net/npm/dependents/chalk)](https://www.npmjs.com/package/chalk?activeTab=dependents) [![Downloads](https://badgen.net/npm/dt/chalk)](https://www.npmjs.com/package/chalk) [![](https://img.shields.io/badge/unicorn-approved-ff69b4.svg)](https://www.youtube.com/watch?v=9auOCbH5Ns4) [![XO code style](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/xojs/xo) ![TypeScript-ready](https://img.shields.io/npm/types/chalk.svg)
+[![Build Status](https://travis-ci.org/chalk/chalk.svg?branch=master)](https://travis-ci.org/chalk/chalk) [![Coverage Status](https://coveralls.io/repos/github/chalk/chalk/badge.svg?branch=master)](https://coveralls.io/github/chalk/chalk?branch=master) [![npm dependents](https://badgen.net/npm/dependents/chalk)](https://www.npmjs.com/package/chalk?activeTab=dependents) [![Downloads](https://badgen.net/npm/dt/chalk)](https://www.npmjs.com/package/chalk) [![](https://img.shields.io/badge/unicorn-approved-ff69b4.svg)](https://www.youtube.com/watch?v=9auOCbH5Ns4) [![XO code style](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/xojs/xo) ![TypeScript-ready](https://img.shields.io/npm/types/chalk.svg) [![run on repl.it](https://repl.it/badge/github/chalk/chalk)](https://repl.it/github/chalk/chalk)
 
 <img src="https://cdn.jsdelivr.net/gh/chalk/ansi-styles@8261697c95bf34b6c7767e2cbe9941a851d59385/screenshot.svg" width="900">
 
+<br>
+
+---
+
+<div align="center">
+	<p>
+		<p>
+			<sup>
+				Sindre Sorhus' open source work is supported by the community on <a href="https://github.com/sponsors/sindresorhus">GitHub Sponsors</a> and <a href="https://stakes.social/0x44d871aebF0126Bf646753E2C976Aa7e68A66c15">Dev</a>
+			</sup>
+		</p>
+		<sup>Special thanks to:</sup>
+		<br>
+		<br>
+		<a href="https://standardresume.co/tech">
+			<img src="https://sindresorhus.com/assets/thanks/standard-resume-logo.svg" width="160"/>
+		</a>
+		<br>
+		<br>
+		<a href="https://retool.com/?utm_campaign=sindresorhus">
+			<img src="https://sindresorhus.com/assets/thanks/retool-logo.svg" width="230"/>
+		</a>
+		<br>
+		<br>
+		<a href="https://doppler.com/?utm_campaign=github_repo&utm_medium=referral&utm_content=chalk&utm_source=github">
+			<div>
+				<img src="https://dashboard.doppler.com/imgs/logo-long.svg" width="240" alt="Doppler">
+			</div>
+			<b>All your environment variables, in one place</b>
+			<div>
+				<span>Stop struggling with scattered API keys, hacking together home-brewed tools,</span>
+				<br>
+				<span>and avoiding access controls. Keep your team and servers in sync with Doppler.</span>
+			</div>
+		</a>
+		<br>
+		<a href="https://uibakery.io/?utm_source=chalk&utm_medium=sponsor&utm_campaign=github">
+			<div>
+				<img src="https://sindresorhus.com/assets/thanks/uibakery-logo.jpg" width="270" alt="UI Bakery">
+			</div>
+		</a>
+	</p>
+</div>
+
+---
+
+<br>
 
 ## Highlights
 
@@ -24,15 +71,13 @@
 - Doesn't extend `String.prototype`
 - Clean and focused
 - Actively maintained
-- [Used by ~46,000 packages](https://www.npmjs.com/browse/depended/chalk) as of October 1, 2019
-
+- [Used by ~50,000 packages](https://www.npmjs.com/browse/depended/chalk) as of January 1, 2020
 
 ## Install
 
 ```console
 $ npm install chalk
 ```
-
 
 ## Usage
 
@@ -107,7 +152,6 @@ console.log(chalk.green('Hello %s'), name);
 //=> 'Hello Sindre'
 ```
 
-
 ## API
 
 ### chalk.`<style>[.<style>...](string, [string...])`
@@ -148,7 +192,6 @@ Explicit 256/Truecolor mode can be enabled using the `--color=256` and `--color=
 ### chalk.stderr and chalk.stderr.supportsColor
 
 `chalk.stderr` contains a separate instance configured with color support detected for `stderr` stream instead of `stdout`. Override rules from `chalk.supportsColor` apply to this too. `chalk.stderr.supportsColor` is exposed for convenience.
-
 
 ## Styles
 
@@ -202,10 +245,9 @@ Explicit 256/Truecolor mode can be enabled using the `--color=256` and `--color=
 - `bgCyanBright`
 - `bgWhiteBright`
 
-
 ## Tagged template literal
 
-Chalk can be used as a [tagged template literal](http://exploringjs.com/es6/ch_template-literals.html#_tagged-template-literals).
+Chalk can be used as a [tagged template literal](https://exploringjs.com/es6/ch_template-literals.html#_tagged-template-literals).
 
 ```js
 const chalk = require('chalk');
@@ -221,17 +263,17 @@ console.log(chalk`
 
 Blocks are delimited by an opening curly brace (`{`), a style, some content, and a closing curly brace (`}`).
 
-Template styles are chained exactly like normal Chalk styles. The following two statements are equivalent:
+Template styles are chained exactly like normal Chalk styles. The following three statements are equivalent:
 
 ```js
 console.log(chalk.bold.rgb(10, 100, 200)('Hello!'));
+console.log(chalk.bold.rgb(10, 100, 200)`Hello!`);
 console.log(chalk`{bold.rgb(10,100,200) Hello!}`);
 ```
 
 Note that function styles (`rgb()`, `hsl()`, `keyword()`, etc.) may not contain spaces between parameters.
 
 All interpolated values (`` chalk`${foo}` ``) are converted to strings via the `.toString()` method. All curly braces (`{` and `}`) in interpolated value strings are escaped.
-
 
 ## 256 and Truecolor color support
 
@@ -262,23 +304,19 @@ The following color models can be used:
 - [`ansi`](https://en.wikipedia.org/wiki/ANSI_escape_code#3/4_bit) - Example: `chalk.ansi(31).bgAnsi(93)('red on yellowBright')`
 - [`ansi256`](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) - Example: `chalk.bgAnsi256(194)('Honeydew, more or less')`
 
-
 ## Windows
 
 If you're on Windows, do yourself a favor and use [Windows Terminal](https://github.com/microsoft/terminal) instead of `cmd.exe`.
 
-
 ## Origin story
 
 [colors.js](https://github.com/Marak/colors.js) used to be the most popular string styling module, but it has serious deficiencies like extending `String.prototype` which causes all kinds of [problems](https://github.com/yeoman/yo/issues/68) and the package is unmaintained. Although there are other packages, they either do too much or not enough. Chalk is a clean and focused alternative.
-
 
 ## chalk for enterprise
 
 Available as part of the Tidelift Subscription.
 
 The maintainers of chalk and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/npm-chalk?utm_source=npm-chalk&utm_medium=referral&utm_campaign=enterprise&utm_term=repo)
-
 
 ## Related
 
@@ -296,7 +334,6 @@ The maintainers of chalk and thousands of other packages are working with Tideli
 - [gradient-string](https://github.com/bokub/gradient-string) - Apply color gradients to strings
 - [chalk-pipe](https://github.com/LitoMore/chalk-pipe) - Create chalk style schemes with simpler style strings
 - [terminal-link](https://github.com/sindresorhus/terminal-link) - Create clickable links in the terminal
-
 
 ## Maintainers
 

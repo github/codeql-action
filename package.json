@@ -41,7 +41,7 @@
     "glob": "^7.1.7",
     "js-yaml": "^4.1.0",
     "jsonschema": "1.2.6",
-    "long": "^5.0.0",
+    "long": "^5.1.0",
     "md5": "^2.3.0",
     "path": "^0.12.7",
     "query-string": "^7.0.1",
@@ -55,7 +55,6 @@
   "devDependencies": {
     "@ava/typescript": "2.0.0",
     "@types/jszip": "^3.4.1",
-    "@types/long": "4.0.1",
     "@types/nock": "^11.1.0",
     "@types/node": "^16.4.6",
     "@types/semver": "^7.3.8",

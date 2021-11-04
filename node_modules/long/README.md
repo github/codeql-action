@@ -27,9 +27,9 @@ In some use cases, however, it is required to be able to reliably work with and 
 Usage
 -----
 
-The class is compatible with CommonJS and AMD loaders and is exposed globally as `Long` if neither is available.
+The package exports an ECMAScript module with an UMD fallback.
 
-```javascript
+```js
 import Long from "long";
 
 var longVal = new Long(0xFFFFFFFF, 0x7FFFFFFF);
@@ -37,6 +37,8 @@ var longVal = new Long(0xFFFFFFFF, 0x7FFFFFFF);
 console.log(longVal.toString());
 ...
 ```
+
+Note that mixing ESM and CommonJS is not recommended as it yield different classes with the same functionality.
 
 API
 ---

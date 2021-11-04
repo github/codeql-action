@@ -423,4 +423,4 @@ declare class Long {
   xor(other: Long | number | string): Long;
 }
 
-export default Long;
+export = Long; // compatible with `import Long from "long"`

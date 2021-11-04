@@ -213,23 +213,18 @@ const CODEQL_VERSION_METRICS = "2.5.5";
 const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
+const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 
 /**
- * Version above which we use the CLI's indirect build tracing and
- * multi-language tracing features.
+ * This variable controls using the new style of tracing from the CodeQL
+ * CLI. In particular, with versions above this we will use both indirect
+ * tracing, and multi-language tracing together with database clusters.
  *
- * There are currently three blockers on the CLI's side to enabling this:
- * (1) The logs directory should be created for a DB cluster, as some
- *     autobuilders expect it to be present.
- * (2) The SEMMLE_PRELOAD_libtrace{32,64}? env variables need to be set.
- * (3) The .environment and .win32env files need to be created next to
- *     the DB spec.
- *
- * Once _all_ of these are fixed, we can enable this by setting the
- * version flag below to the earliest version of the CLI that resolved
- * the above issues.
+ * Note that there were bugs in both of these features that were fixed in
+ * release 2.7.0 of the CodeQL CLI, therefore this flag is only enabled for
+ * versions above that.
  */
-export const CODEQL_VERSION_NEW_TRACING = "99.99.99";
+export const CODEQL_VERSION_NEW_TRACING = "2.7.0";
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -599,6 +594,15 @@ export function getCachedCodeQL(): CodeQL {
   return cachedCodeQL;
 }
 
+/**
+ * Get a real, newly created CodeQL instance for testing. The instance refers to
+ * a non-existent placeholder codeql command, so tests that use this function
+ * should also stub the toolrunner.ToolRunner constructor.
+ */
+export async function getCodeQLForTesting(): Promise<CodeQL> {
+  return getCodeQLForCmd("codeql-for-testing", false);
+}
+
 async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean
@@ -875,6 +879,8 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--print-metrics-summary");
       if (await util.codeQlVersionAbove(this, CODEQL_VERSION_GROUP_RULES))
         codeqlArgs.push("--sarif-group-rules-by-pack");
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_CUSTOM_QUERY_HELP))
+        codeqlArgs.push("--sarif-add-query-help");
       if (
         automationDetailsId !== undefined &&
         (await util.codeQlVersionAbove(this, CODEQL_VERSION_SARIF_GROUP))

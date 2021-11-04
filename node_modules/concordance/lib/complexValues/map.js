@@ -9,7 +9,7 @@ const UNEQUAL = constants.UNEQUAL
 
 function describe (props) {
   return new DescribedMapValue(Object.assign({
-    size: props.value.size
+    size: props.value.size,
   }, props))
 }
 exports.describe = describe
@@ -39,7 +39,7 @@ class MapValue extends object.ObjectValue {
 
   prepareDiff (expected) {
     // Maps should be compared, even if they have a different number of entries.
-    return {compareResult: super.compare(expected)}
+    return { compareResult: super.compare(expected) }
   }
 
   serialize () {

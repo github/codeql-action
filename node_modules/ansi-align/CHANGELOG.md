@@ -1,6 +1,13 @@
-# Change Log
+# Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [3.0.1](https://github.com/nexdrew/ansi-align/compare/v3.0.0...v3.0.1) (2021-09-27)
+
+
+### Bug Fixes
+
+* **package:** update string-width to version 4.1.0 ([#52](https://github.com/nexdrew/ansi-align/issues/52)) ([ab5b733](https://github.com/nexdrew/ansi-align/commit/ab5b733b1c30eef87b75e15459f2216db28d7ed3))
 
 <a name="3.0.0"></a>
 # [3.0.0](https://github.com/nexdrew/ansi-align/compare/v2.0.0...v3.0.0) (2018-12-17)

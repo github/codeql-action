@@ -9,5 +9,5 @@ module.exports = {
   AMBIGUOUS,
   DEEP_EQUAL,
   SHALLOW_EQUAL,
-  UNEQUAL
+  UNEQUAL,
 }

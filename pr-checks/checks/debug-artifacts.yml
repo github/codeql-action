@@ -1,0 +1,34 @@
+name: "Debug artifact upload"
+description: "Checks that debugging artifacts are correctly uploaded"
+os: ["ubuntu-latest", "macos-latest"]
+steps:
+  - uses: ./../action/init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+      debug: true
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    id: analysis
+  - uses: actions/download-artifact@v2
+    with:
+      name: debug-artifacts
+  - shell: bash
+    run: |
+      LANGUAGES="cpp csharp go java javascript python"
+      for language in $LANGUAGES; do
+        echo "Checking $language"
+        if [[ ! -f "$language.sarif" ]] ; then
+          echo "Missing a SARIF file for $language"
+          exit 1
+        fi
+        if [[ ! -f "$language.zip" ]] ; then
+          echo "Missing a database bundle for $language"
+          exit 1
+        fi
+        if [[ ! -d "$language/log" ]] ; then
+          echo "Missing logs for $language"
+          exit 1
+        fi
+      done

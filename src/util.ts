@@ -19,6 +19,11 @@ import { Logger } from "./logging";
 export const GITHUB_DOTCOM_URL = "https://github.com";
 
 /**
+ * Name of the debugging artifact.
+ */
+export const DEBUG_ARTIFACT_NAME = "debug-artifacts";
+
+/**
  * Get the extra options for the codeql commands.
  */
 export function getExtraOptionsEnvParam(): object {
@@ -85,13 +90,13 @@ function getSystemReservedMemoryMegaBytes(): number {
 }
 
 /**
- * Get the codeql `--ram` flag as configured by the `ram` input. If no value was
- * specified, the total available memory will be used minus a threshold
- * reserved for the OS.
+ * Get the value of the codeql `--ram` flag as configured by the `ram` input.
+ * If no value was specified, the total available memory will be used minus a
+ * threshold reserved for the OS.
  *
- * @returns string
+ * @returns {number} the amount of RAM to use, in megabytes
  */
-export function getMemoryFlag(userInput: string | undefined): string {
+export function getMemoryFlagValue(userInput: string | undefined): number {
   let memoryToUseMegaBytes: number;
   if (userInput) {
     memoryToUseMegaBytes = Number(userInput);
@@ -104,7 +109,18 @@ export function getMemoryFlag(userInput: string | undefined): string {
     const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes();
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
-  return `--ram=${Math.floor(memoryToUseMegaBytes)}`;
+  return Math.floor(memoryToUseMegaBytes);
+}
+
+/**
+ * Get the codeql `--ram` flag as configured by the `ram` input. If no value was
+ * specified, the total available memory will be used minus a threshold
+ * reserved for the OS.
+ *
+ * @returns string
+ */
+export function getMemoryFlag(userInput: string | undefined): string {
+  return `--ram=${getMemoryFlagValue(userInput)}`;
 }
 
 /**
@@ -123,17 +139,17 @@ export function getAddSnippetsFlag(
 }
 
 /**
- * Get the codeql `--threads` value specified for the `threads` input.
- * If no value was specified, all available threads will be used.
+ * Get the value of the codeql `--threads` flag specified for the `threads`
+ * input. If no value was specified, all available threads will be used.
  *
  * The value will be capped to the number of available CPUs.
  *
- * @returns string
+ * @returns {number}
  */
-export function getThreadsFlag(
+export function getThreadsFlagValue(
   userInput: string | undefined,
   logger: Logger
-): string {
+): number {
   let numThreads: number;
   const maxThreads = os.cpus().length;
   if (userInput) {
@@ -158,7 +174,22 @@ export function getThreadsFlag(
     // Default to using all threads
     numThreads = maxThreads;
   }
-  return `--threads=${numThreads}`;
+  return numThreads;
+}
+
+/**
+ * Get the codeql `--threads` flag specified for the `threads` input.
+ * If no value was specified, all available threads will be used.
+ *
+ * The value will be capped to the number of available CPUs.
+ *
+ * @returns string
+ */
+export function getThreadsFlag(
+  userInput: string | undefined,
+  logger: Logger
+): string {
+  return `--threads=${getThreadsFlagValue(userInput, logger)}`;
 }
 
 /**
@@ -515,4 +546,21 @@ export async function codeQlVersionAbove(
   requiredVersion: string
 ): Promise<boolean> {
   return semver.gte(await codeql.getVersion(), requiredVersion);
+}
+
+// Create a bundle for the given DB, if it doesn't already exist
+export async function bundleDb(
+  config: Config,
+  language: Language,
+  codeql: CodeQL
+) {
+  const databasePath = getCodeQLDatabasePath(config, language);
+  const databaseBundlePath = path.resolve(
+    config.dbLocation,
+    `${databasePath}.zip`
+  );
+  if (!fs.existsSync(databaseBundlePath)) {
+    await codeql.databaseBundle(databasePath, databaseBundlePath);
+  }
+  return databaseBundlePath;
 }

@@ -16,7 +16,7 @@ class Registry {
 
   alloc (value) {
     const index = ++this.counter
-    const pointer = {descriptor: null, index}
+    const pointer = { descriptor: null, index }
     this.map.set(value, pointer)
     return pointer
   }

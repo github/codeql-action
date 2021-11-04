@@ -1,0 +1,29 @@
+name: "Extractor ram and threads options test"
+description: "Tests passing RAM and threads limits to extractors"
+versions: ["latest"]
+os: ["ubuntu-latest"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: java
+      ram: 230
+      threads: 1
+  - name: Assert Results
+    shell: bash
+    run: |
+      if [ "${CODEQL_RAM}" != "230" ]; then
+        echo "CODEQL_RAM is '${CODEQL_RAM}' instead of 230"
+        exit 1
+      fi
+      if [ "${CODEQL_EXTRACTOR_JAVA_RAM}" != "230" ]; then
+        echo "CODEQL_EXTRACTOR_JAVA_RAM is '${CODEQL_EXTRACTOR_JAVA_RAM}' instead of 230"
+        exit 1
+      fi
+      if [ "${CODEQL_THREADS}" != "1" ]; then
+        echo "CODEQL_THREADS is '${CODEQL_THREADS}' instead of 1"
+        exit 1
+      fi
+      if [ "${CODEQL_EXTRACTOR_JAVA_THREADS}" != "1" ]; then
+        echo "CODEQL_EXTRACTOR_JAVA_THREADS is '${CODEQL_EXTRACTOR_JAVA_THREADS}' instead of 1"
+        exit 1
+      fi

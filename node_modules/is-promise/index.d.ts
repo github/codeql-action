@@ -1,2 +1,2 @@
-declare function isPromise<T, S>(obj: Promise<T> | S): obj is Promise<T>;
+declare function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T>;
 export default isPromise;

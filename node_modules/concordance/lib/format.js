@@ -1,10 +1,10 @@
 'use strict'
 
+const Circular = require('./Circular')
+const Indenter = require('./Indenter')
 const describe = require('./describe')
 const lineBuilder = require('./lineBuilder')
 const themeUtils = require('./themeUtils')
-const Circular = require('./Circular')
-const Indenter = require('./Indenter')
 
 const alwaysFormat = () => true
 const fixedIndent = new Indenter(0, '  ')
@@ -13,7 +13,7 @@ function formatDescriptor (subject, options) {
   const theme = themeUtils.normalize(options)
   if (subject.isPrimitive === true) {
     const formatted = subject.formatDeep(themeUtils.applyModifiers(subject, theme), fixedIndent)
-    return formatted.toString({diff: false})
+    return formatted.toString({ diff: false })
   }
 
   const circular = new Circular()
@@ -58,7 +58,7 @@ function formatDescriptor (subject, options) {
             recursor,
             decreaseIndent: formatter.increaseIndent,
             shouldFormat: formatter.shouldFormat || alwaysFormat,
-            subject
+            subject,
           })
           topIndex++
 
@@ -91,7 +91,7 @@ function formatDescriptor (subject, options) {
     }
   } while (topIndex >= 0)
 
-  return buffer.toString({diff: false})
+  return buffer.toString({ diff: false })
 }
 exports.formatDescriptor = formatDescriptor
 

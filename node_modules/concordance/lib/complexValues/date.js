@@ -13,7 +13,7 @@ const UNEQUAL = constants.UNEQUAL
 function describe (props) {
   const date = props.value
   const invalid = isNaN(date.valueOf())
-  return new DescribedDateValue(Object.assign({}, props, {invalid}))
+  return new DescribedDateValue(Object.assign({}, props, { invalid }))
 }
 exports.describe = describe
 
@@ -32,7 +32,7 @@ function formatDate (date) {
     date,
     local: false,
     showTimeZone: true,
-    showMilliseconds: true
+    showMilliseconds: true,
   })
 }
 
@@ -61,13 +61,13 @@ class DateValue extends object.ObjectValue {
         return innerLines.isEmpty
           ? lineBuilder.single(string + theme.object.closeBracket)
           : lineBuilder.first(string)
-              .concat(innerLines.withFirstPrefixed(indent.increase()).stripFlags())
-              .append(lineBuilder.last(indent + theme.object.closeBracket))
+            .concat(innerLines.withFirstPrefixed(indent.increase()).stripFlags())
+            .append(lineBuilder.last(indent + theme.object.closeBracket))
       },
 
       maxDepth () {
         return lineBuilder.single(string + ' ' + theme.maxDepth + ' ' + theme.object.closeBracket)
-      }
+      },
     })
   }
 

@@ -86,7 +86,7 @@ class Line {
       .decompose()
   }
 }
-Object.defineProperty(Line.prototype, 'isLine', {value: true})
+Object.defineProperty(Line.prototype, 'isLine', { value: true })
 
 class Collection {
   constructor () {
@@ -206,8 +206,8 @@ class Collection {
   }
 
   decompose () {
-    const first = {actual: new Collection(), expected: new Collection()}
-    const last = {actual: new Collection(), expected: new Collection()}
+    const first = { actual: new Collection(), expected: new Collection() }
+    const last = { actual: new Collection(), expected: new Collection() }
     const remaining = new Collection()
 
     for (const line of this) {
@@ -224,10 +224,10 @@ class Collection {
       }
     }
 
-    return {first, last, remaining}
+    return { first, last, remaining }
   }
 }
-Object.defineProperty(Collection.prototype, 'isCollection', {value: true})
+Object.defineProperty(Collection.prototype, 'isCollection', { value: true })
 
 function setDefaultGutter (iterable, gutter) {
   return new Collection()
@@ -282,7 +282,7 @@ module.exports = {
 
     setDefaultGutter (lineOrCollection) {
       return setDefaultGutter(lineOrCollection, ACTUAL)
-    }
+    },
   },
 
   expected: {
@@ -304,6 +304,6 @@ module.exports = {
 
     setDefaultGutter (lineOrCollection) {
       return setDefaultGutter(lineOrCollection, EXPECTED)
-    }
-  }
+    },
+  },
 }

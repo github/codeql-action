@@ -1,7 +1,7 @@
 'use strict'
 
-const recursorUtils = require('../recursorUtils')
 const stringPrimitive = require('../primitiveValues/string').tag
+const recursorUtils = require('../recursorUtils')
 const object = require('./object')
 
 function describe (props) {
@@ -18,7 +18,7 @@ const tag = Symbol('BoxedValue')
 exports.tag = tag
 
 class BoxedValue extends object.ObjectValue {}
-Object.defineProperty(BoxedValue.prototype, 'tag', {value: tag})
+Object.defineProperty(BoxedValue.prototype, 'tag', { value: tag })
 
 class DescribedBoxedValue extends object.DescribedMixin(BoxedValue) {
   constructor (props) {

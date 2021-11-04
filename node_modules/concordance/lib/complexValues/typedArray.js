@@ -3,8 +3,8 @@
 const constants = require('../constants')
 const formatUtils = require('../formatUtils')
 const lineBuilder = require('../lineBuilder')
-const recursorUtils = require('../recursorUtils')
 const propertyStatsTag = require('../metaDescriptors/stats').propertyTag
+const recursorUtils = require('../recursorUtils')
 const object = require('./object')
 
 const DEEP_EQUAL = constants.DEEP_EQUAL
@@ -23,7 +23,7 @@ function describe (props) {
     buffer: getBuffer(props.value),
     // Set isArray and isList so the property recursor excludes the byte accessors
     isArray: true,
-    isList: true
+    isList: true,
   }, props))
 }
 exports.describe = describe
@@ -103,7 +103,7 @@ class TypedArrayValue extends object.ObjectValue {
         if (subject.isProperty === true) return subject.key.value !== 'byteLength'
         if (subject.tag === bytesTag) return subject.buffer.byteLength > 0
         return true
-      }
+      },
     })
   }
 }

@@ -709,3 +709,7 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
 
   return currentRef === defaultBranch;
 }
+
+export function sanitizeArifactName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
+}

@@ -244,7 +244,7 @@ async function uploadDebugArtifacts(toUpload: string[], rootDir: string) {
       suffix += `-${entry[1]}`;
   }
   await artifact.create().uploadArtifact(
-    `${DEBUG_ARTIFACT_NAME}${suffix}`,
+    actionsUtil.sanitizeArifactName(`${DEBUG_ARTIFACT_NAME}${suffix}`),
     toUpload.map((file) => path.normalize(file)),
     path.normalize(rootDir)
   );

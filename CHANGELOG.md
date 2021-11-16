@@ -1,5 +1,9 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 1.0.23 - 16 Nov 2021
 
 - The `upload-sarif` action now allows multiple uploads in a single job, as long as they have different categories. [#801](https://github.com/github/codeql-action/pull/801)

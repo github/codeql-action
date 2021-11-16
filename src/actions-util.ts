@@ -85,6 +85,7 @@ export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
     core.info(
       `Failed to call git to get current commit. Continuing with data from environment: ${e}`
     );
+    core.info((e as Error).stack || "NO STACK");
     return getRequiredEnvParam("GITHUB_SHA");
   }
 };
@@ -708,4 +709,8 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   const defaultBranch = event?.repository?.default_branch;
 
   return currentRef === defaultBranch;
+}
+
+export function sanitizeArifactName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
 }

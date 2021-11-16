@@ -1,6 +1,6 @@
 # CodeQL Action and CodeQL Runner Changelog
 
-## [UNRELEASED]
+## 1.0.23 - 16 Nov 2021
 
 - Update default CodeQL bundle version to 2.7.1.
 

@@ -1,5 +1,10 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## 1.0.23 - 16 Nov 2021
+
+- The `upload-sarif` action now allows multiple uploads in a single job, as long as they have different categories. [#801](https://github.com/github/codeql-action/pull/801)
+- Update default CodeQL bundle version to 2.7.1. [#816](https://github.com/github/codeql-action/pull/816)
+
 ## 1.0.22 - 04 Nov 2021
 
 - The `init` step of the Action now supports `ram` and `threads` inputs to limit resource use of CodeQL extractors. These inputs also serve as defaults to the subsequent `analyze` step, which finalizes the database and executes queries. [#738](https://github.com/github/codeql-action/pull/738)

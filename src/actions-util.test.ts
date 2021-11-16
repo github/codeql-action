@@ -680,3 +680,13 @@ test("isAnalyzingDefaultBranch()", async (t) => {
     t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), false);
   });
 });
+
+test("sanitizeArifactName", (t) => {
+  t.deepEqual(actionsutil.sanitizeArifactName("hello-world_"), "hello-world_");
+  t.deepEqual(actionsutil.sanitizeArifactName("hello`world`"), "helloworld");
+  t.deepEqual(actionsutil.sanitizeArifactName("hello===123"), "hello123");
+  t.deepEqual(
+    actionsutil.sanitizeArifactName("*m)a&n^y%i££n+v!a:l[i]d"),
+    "manyinvalid"
+  );
+});

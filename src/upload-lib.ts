@@ -466,7 +466,7 @@ export async function waitForProcessing(
         switch (e.status) {
           case 404:
             logger.debug("Analysis is not found yet...");
-            break;
+            break; // Note this breaks from the case statement, not the outer loop.
           default:
             throw e;
         }

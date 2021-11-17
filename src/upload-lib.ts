@@ -123,6 +123,11 @@ export interface UploadStatusReport {
   num_results_in_sarif?: number;
 }
 
+export interface UploadResult {
+  statusReport: UploadStatusReport;
+  sarifID: string;
+}
+
 // Recursively walks a directory and returns all SARIF files it finds.
 // Does not follow symlinks.
 export function findSarifFilesInDir(sarifPath: string): string[] {
@@ -149,7 +154,7 @@ export async function uploadFromActions(
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
-): Promise<UploadStatusReport> {
+): Promise<UploadResult> {
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
     parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
@@ -161,7 +166,6 @@ export async function uploadFromActions(
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
     actionsUtil.getRequiredInput("matrix"),
-    actionsUtil.getRequiredInput("wait-for-processing") === "true",
     gitHubVersion,
     apiDetails,
     logger
@@ -181,7 +185,7 @@ export async function uploadFromRunner(
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
-): Promise<UploadStatusReport> {
+): Promise<UploadResult> {
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
     repositoryNwo,
@@ -193,7 +197,6 @@ export async function uploadFromRunner(
     undefined,
     sourceRoot,
     undefined,
-    false,
     gitHubVersion,
     apiDetails,
     logger
@@ -327,9 +330,6 @@ export function buildPayload(
   }
 }
 
-const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;
-const STATUS_CHECK_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
-
 // Uploads the given set of sarif files.
 // Returns true iff the upload occurred and succeeded
 async function uploadFiles(
@@ -343,11 +343,10 @@ async function uploadFiles(
   workflowRunID: number | undefined,
   sourceRoot: string,
   environment: string | undefined,
-  waitForProcessing: boolean,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
   logger: Logger
-): Promise<UploadStatusReport> {
+): Promise<UploadResult> {
   logger.startGroup("Uploading results");
   logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
 
@@ -407,66 +406,78 @@ async function uploadFiles(
 
   logger.endGroup();
 
-  if (waitForProcessing) {
-    logger.startGroup("Waiting for processing to finish");
-    const client = api.getApiClient(apiDetails);
+  return {
+    statusReport: {
+      raw_upload_size_bytes: rawUploadSizeBytes,
+      zipped_upload_size_bytes: zippedUploadSizeBytes,
+      num_results_in_sarif: numResultInSarif,
+    },
+    sarifID,
+  };
+}
 
-    const statusCheckingStarted = Date.now();
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      if (
-        Date.now() >
-        statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
-      ) {
-        // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
-        // It's possible the analysis will eventually finish processing, but it's not worth spending more Actions time waiting.
-        logger.warning(
-          "Timed out waiting for analysis to finish processing. Continuing."
-        );
+const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;
+const STATUS_CHECK_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
+
+// Waits until either the analysis is successfully processed, a processing error is reported, or STATUS_CHECK_TIMEOUT_MILLISECONDS elapses.
+export async function waitForProcessing(
+  repositoryNwo: RepositoryNwo,
+  sarifID: string,
+  apiDetails: api.GitHubApiDetails,
+  logger: Logger
+): Promise<void> {
+  logger.startGroup("Waiting for processing to finish");
+  const client = api.getApiClient(apiDetails);
+
+  const statusCheckingStarted = Date.now();
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    if (
+      Date.now() >
+      statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
+    ) {
+      // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
+      // It's possible the analysis will eventually finish processing, but it's not worth spending more Actions time waiting.
+      logger.warning(
+        "Timed out waiting for analysis to finish processing. Continuing."
+      );
+      break;
+    }
+    // We put the delay at the start of the loop, since it's unlikely that the analysis will have succeeded immediately. We might as well wait preemptively.
+    await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
+    try {
+      const response = await client.request(
+        "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
+        {
+          owner: repositoryNwo.owner,
+          repo: repositoryNwo.repo,
+          sarif_id: sarifID,
+        }
+      );
+      const status = response.data.processing_status;
+      logger.info(`Analysis upload status is ${status}.`);
+      if (status === "complete") {
         break;
-      }
-      // We put the delay at the start of the loop, since it's unlikely that the analysis will have succeeded immediately. We might as well wait preemptively.
-      await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
-      try {
-        const response = await client.request(
-          "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
-          {
-            owner: repositoryNwo.owner,
-            repo: repositoryNwo.repo,
-            sarif_id: sarifID,
-          }
+      } else if (status === "failed") {
+        throw new Error(
+          `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
         );
-        const status = response.data.processing_status;
-        logger.info(`Analysis upload status is ${status}.`);
-        if (status === "complete") {
-          break;
-        } else if (status === "failed") {
-          throw new Error(
-            `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
-          );
+      }
+    } catch (e) {
+      if (util.isHTTPError(e)) {
+        switch (e.status) {
+          case 404:
+            logger.debug("Analysis is not found yet...");
+            break;
+          default:
+            throw e;
         }
-      } catch (e) {
-        if (util.isHTTPError(e)) {
-          switch (e.status) {
-            case 404:
-              logger.debug("Analysis is not found yet...");
-              break;
-            default:
-              throw e;
-          }
-        } else {
-          throw e;
-        }
+      } else {
+        throw e;
       }
     }
-    logger.endGroup();
   }
-
-  return {
-    raw_upload_size_bytes: rawUploadSizeBytes,
-    zipped_upload_size_bytes: zippedUploadSizeBytes,
-    num_results_in_sarif: numResultInSarif,
-  };
+  logger.endGroup();
 }
 
 export function validateUniqueCategory(category: string | undefined) {

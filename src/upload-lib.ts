@@ -437,7 +437,7 @@ async function uploadFiles(
           }
         );
         const status = response.data.processing_status;
-        logger.info(`Status is ${status}.`);
+        logger.info(`Analysis upload status is ${status}.`);
         if (status === "complete") {
           break;
         }

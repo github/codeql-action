@@ -440,6 +440,10 @@ async function uploadFiles(
         logger.info(`Analysis upload status is ${status}.`);
         if (status === "complete") {
           break;
+        } else if (status === "failed") {
+          throw new Error(
+            `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
+          );
         }
       } catch (e) {
         if (util.isHTTPError(e)) {

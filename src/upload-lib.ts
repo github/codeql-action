@@ -443,8 +443,6 @@ export async function waitForProcessing(
       );
       break;
     }
-    // We put the delay at the start of the loop, since it's unlikely that the analysis will have succeeded immediately. We might as well wait preemptively.
-    await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
     try {
       const response = await client.request(
         "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
@@ -476,6 +474,7 @@ export async function waitForProcessing(
         throw e;
       }
     }
+    await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
   }
   logger.endGroup();
 }

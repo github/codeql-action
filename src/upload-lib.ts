@@ -161,7 +161,7 @@ export async function uploadFromActions(
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
     actionsUtil.getRequiredInput("matrix"),
-    actionsUtil.getOptionalInput("wait-for-processing") === "true",
+    actionsUtil.getRequiredInput("wait-for-processing") === "true",
     gitHubVersion,
     apiDetails,
     logger

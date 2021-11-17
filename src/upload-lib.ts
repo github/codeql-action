@@ -445,7 +445,7 @@ async function uploadFiles(
         if (util.isHTTPError(e)) {
           switch (e.status) {
             case 404:
-              logger.info("Analysis is not found yet...");
+              logger.debug("Analysis is not found yet...");
               break;
             default:
               throw e;

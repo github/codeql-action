@@ -18,7 +18,7 @@ import { uploadDatabases } from "./database-upload";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
-import { UploadStatusReport } from "./upload-lib";
+import { UploadResult } from "./upload-lib";
 import * as util from "./util";
 import { bundleDb, codeQlVersionAbove, DEBUG_ARTIFACT_NAME } from "./util";
 
@@ -58,7 +58,7 @@ export async function sendStatusReport(
 
 async function run() {
   const startedAt = new Date();
-  let uploadStats: UploadStatusReport | undefined = undefined;
+  let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
   util.initializeEnvironment(util.Mode.actions, pkg.version);
@@ -163,7 +163,7 @@ async function run() {
     core.setOutput("db-locations", dbLocations);
 
     if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
-      uploadStats = await upload_lib.uploadFromActions(
+      uploadResult = await upload_lib.uploadFromActions(
         outputDir,
         config.gitHubVersion,
         apiDetails,
@@ -177,6 +177,18 @@ async function run() {
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
     );
     await uploadDatabases(repositoryNwo, config, apiDetails, logger); // Possibly upload the database bundles for remote queries
+
+    if (
+      uploadResult !== undefined &&
+      actionsUtil.getRequiredInput("wait-for-processing") === "true"
+    ) {
+      await upload_lib.waitForProcessing(
+        parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
+        uploadResult.sarifID,
+        apiDetails,
+        getActionsLogger()
+      );
+    }
 
     if (config.debugMode) {
       // Upload the database bundles as an Actions artifact for debugging
@@ -227,8 +239,11 @@ async function run() {
     }
   }
 
-  if (runStats && uploadStats) {
-    await sendStatusReport(startedAt, { ...runStats, ...uploadStats });
+  if (runStats && uploadResult) {
+    await sendStatusReport(startedAt, {
+      ...runStats,
+      ...uploadResult.statusReport,
+    });
   } else if (runStats) {
     await sendStatusReport(startedAt, { ...runStats });
   } else {

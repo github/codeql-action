@@ -6,7 +6,7 @@ inputs:
     description: |
       The SARIF file or directory of SARIF files to be uploaded to GitHub code scanning.
       See https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/uploading-a-sarif-file-to-github#uploading-a-code-scanning-analysis-with-github-actions
-      for information on the maximum number of results and maximum file size supported by code scanning. 
+      for information on the maximum number of results and maximum file size supported by code scanning.
     required: false
     default: '../results'
   checkout_path:
@@ -20,6 +20,10 @@ inputs:
   category:
     description: String used by Code Scanning for matching the analyses
     required: false
+  wait-for-processing:
+    description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
+    required: true
+    default: "false"
 runs:
   using: 'node12'
   main: '../lib/upload-sarif-action.js'

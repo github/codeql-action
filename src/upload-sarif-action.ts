@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import {
   getGitHubVersion,
@@ -56,13 +57,21 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion(apiDetails);
 
-    const uploadStats = await upload_lib.uploadFromActions(
+    const uploadResult = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
       gitHubVersion,
       apiDetails,
       getActionsLogger()
     );
-    await sendSuccessStatusReport(startedAt, uploadStats);
+    if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
+      await upload_lib.waitForProcessing(
+        parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
+        uploadResult.sarifID,
+        apiDetails,
+        getActionsLogger()
+      );
+    }
+    await sendSuccessStatusReport(startedAt, uploadResult.statusReport);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : String(error);

@@ -1,5 +1,9 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## 1.0.24 - 23 Nov 2021
+
+- Update default CodeQL bundle version to 2.7.2. [#827](https://github.com/github/codeql-action/pull/827)
+
 ## 1.0.23 - 16 Nov 2021
 
 - The `upload-sarif` action now allows multiple uploads in a single job, as long as they have different categories. [#801](https://github.com/github/codeql-action/pull/801)

@@ -52,6 +52,10 @@ inputs:
     description: Whether to upload the resulting CodeQL database
     required: false
     default: "true"
+  wait-for-processing:
+    description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
+    required: true
+    default: "false"
   token:
     default: ${{ github.token }}
   matrix:

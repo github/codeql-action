@@ -559,9 +559,15 @@ export async function bundleDb(
     config.dbLocation,
     `${databasePath}.zip`
   );
-  if (!fs.existsSync(databaseBundlePath)) {
-    await codeql.databaseBundle(databasePath, databaseBundlePath);
+  // For a tiny bit of added safety, delete the file if it exists.
+  // The file is probably from an earlier call to this function, either
+  // as part of this action step or a previous one, but it could also be
+  // from somewhere else or someone trying to make the action upload a
+  // non-database file.
+  if (fs.existsSync(databaseBundlePath)) {
+    fs.rmSync(databaseBundlePath, { recursive: true });
   }
+  await codeql.databaseBundle(databasePath, databaseBundlePath);
   return databaseBundlePath;
 }
 

@@ -82,6 +82,7 @@ function getRecordingLogger(messages: LoggedMessage[]): Logger {
 
 function mockHttpRequests(
   optInStatusCode: number,
+  useUploadDomain?: boolean,
   databaseUploadStatusCode?: number
 ) {
   // Passing an auth token is required, so we just use a dummy value
@@ -93,15 +94,23 @@ function mockHttpRequests(
     "GET /repos/:owner/:repo/code-scanning/codeql/databases"
   );
   if (optInStatusCode < 300) {
-    optInSpy.resolves(undefined);
+    optInSpy.resolves({
+      status: optInStatusCode,
+      data: {
+        useUploadDomain,
+      },
+      headers: {},
+      url: "GET /repos/:owner/:repo/code-scanning/codeql/databases",
+    });
   } else {
     optInSpy.throws(new HTTPError("some error message", optInStatusCode));
   }
 
   if (databaseUploadStatusCode !== undefined) {
-    const databaseUploadSpy = requestSpy.withArgs(
-      "PUT /repos/:owner/:repo/code-scanning/codeql/databases/:language"
-    );
+    const url = useUploadDomain
+      ? "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name"
+      : "PUT /repos/:owner/:repo/code-scanning/codeql/databases/:language";
+    const databaseUploadSpy = requestSpy.withArgs(url);
     if (databaseUploadStatusCode < 300) {
       databaseUploadSpy.resolves(undefined);
     } else {
@@ -303,7 +312,7 @@ test("Don't crash if uploading a database fails", async (t) => {
       .returns("true");
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
 
-    mockHttpRequests(204, 500);
+    mockHttpRequests(200, false, 500);
 
     setCodeQL({
       async databaseBundle(_: string, outputFilePath: string) {
@@ -329,7 +338,7 @@ test("Don't crash if uploading a database fails", async (t) => {
   });
 });
 
-test("Successfully uploading a database", async (t) => {
+test("Successfully uploading a database to api.github.com", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     sinon
@@ -338,7 +347,41 @@ test("Successfully uploading a database", async (t) => {
       .returns("true");
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
 
-    mockHttpRequests(204, 201);
+    mockHttpRequests(200, false, 201);
+
+    setCodeQL({
+      async databaseBundle(_: string, outputFilePath: string) {
+        fs.writeFileSync(outputFilePath, "");
+      },
+    });
+
+    const loggedMessages = [] as LoggedMessage[];
+    await uploadDatabases(
+      testRepoName,
+      getTestConfig(tmpDir),
+      testApiDetails,
+      getRecordingLogger(loggedMessages)
+    );
+    t.assert(
+      loggedMessages.find(
+        (v) =>
+          v.type === "debug" &&
+          v.message === "Successfully uploaded database for javascript"
+      ) !== undefined
+    );
+  });
+});
+
+test("Successfully uploading a database to uploads.github.com", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    sinon
+      .stub(actionsUtil, "getRequiredInput")
+      .withArgs("upload-database")
+      .returns("true");
+    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+
+    mockHttpRequests(200, true, 201);
 
     setCodeQL({
       async databaseBundle(_: string, outputFilePath: string) {

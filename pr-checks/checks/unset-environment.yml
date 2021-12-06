@@ -2,6 +2,8 @@ name: "Test unsetting environment variables"
 description: "An end-to-end integration test that unsets some environment variables"
 os: ["ubuntu-latest"]
 steps:
+  - name: Initialize dotnet
+    run: dotnet restore
   - uses: ./../action/init
     with:
       db-location: "${{ runner.temp }}/customDbLocation"

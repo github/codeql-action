@@ -2,6 +2,8 @@ name: "Debug artifact upload"
 description: "Checks that debugging artifacts are correctly uploaded"
 os: ["ubuntu-latest", "macos-latest"]
 steps:
+  - name: Initialize dotnet
+    run: dotnet restore
   - uses: ./../action/init
     with:
       tools: ${{ steps.prepare-test.outputs.tools-url }}

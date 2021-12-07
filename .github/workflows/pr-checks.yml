@@ -34,12 +34,18 @@ jobs:
         run: |
           ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
+      - name: Create extractor directory
+        run: |
+          mkdir -p /Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases/csharp/log
+          echo ""
+
       - name: Check env
         run: env
 
       - name: Build code
         shell: bash
         run: |
+          export CODEQL_EXTRACTOR_CSHARP_LOG_DIR="/Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases/csharp/log"
           ../action/runner/dist/codeql-runner-macos autobuild
 
       - name: Check env

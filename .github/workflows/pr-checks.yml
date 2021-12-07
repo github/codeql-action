@@ -41,6 +41,7 @@ jobs:
       - name: Build code
         shell: bash
         run: |
+          rm build.sh
           ../action/runner/dist/codeql-runner-macos autobuild
 
       - name: Run analyze
@@ -48,3 +49,11 @@ jobs:
           ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
         env:
           TEST_MODE: true
+
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: my-artifact
+          path: |
+            bin
+            obj

@@ -52,6 +52,12 @@ jobs:
         if: always()
         run: env
 
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          path: /Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases/csharp
+
       - name: Run analyze
         run: |
           ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}

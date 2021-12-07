@@ -4,27 +4,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-js:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Check generated JS
-        run: .github/workflows/script/check-js.sh
-
-  check-node-modules:
-    name: Check modules up to date
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Check node modules up to date
-        run: .github/workflows/script/check-node-modules.sh
-
   runner-analyze-csharp-autobuild-macos:
     name: Runner macos autobuild C# analyze
-    needs: [check-js, check-node-modules]
-    strategy:
     runs-on: macos-latest
 
     env:

@@ -1,8 +1,6 @@
 name: PR Checks (Basic Checks and Runner)
 
 on:
-  push:
-    branches: [main, v1]
   workflow_dispatch:
 
 jobs:
@@ -26,7 +24,10 @@ jobs:
   runner-analyze-csharp-autobuild-macos:
     name: Runner macos autobuild C# analyze
     needs: [check-js, check-node-modules]
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: ['macos-10.15', 'macos-11']
+    runs-on: ${{ matrix.os }}
 
     env:
       ACTIONS_RUNNER_DEBUG: 1

@@ -46,6 +46,8 @@ jobs:
         shell: bash
         run: |
           export CODEQL_EXTRACTOR_CSHARP_LOG_DIR="/Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases/csharp/log"
+          mkdir -p "$CODEQL_EXTRACTOR_CSHARP_LOG_DIR"
+          touch "$CODEQL_EXTRACTOR_CSHARP_LOG_DIR/csharp.log"
           ../action/runner/dist/codeql-runner-macos autobuild
 
       - name: Check env

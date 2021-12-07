@@ -25,10 +25,7 @@ jobs:
     name: Runner macos autobuild C# analyze
     needs: [check-js, check-node-modules]
     strategy:
-      matrix:
-        os: ['macos-10.15', 'macos-11']
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
 
     env:
       ACTIONS_RUNNER_DEBUG: 1
@@ -56,10 +53,17 @@ jobs:
         run: |
           ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
+      - name: Check env
+        run: env
+
       - name: Build code
         shell: bash
         run: |
           ../action/runner/dist/codeql-runner-macos autobuild
+
+      - name: Check env
+        if: always()
+        run: env
 
       - name: Run analyze
         run: |

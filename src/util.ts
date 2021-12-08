@@ -566,7 +566,7 @@ export async function bundleDb(
   // from somewhere else or someone trying to make the action upload a
   // non-database file.
   if (fs.existsSync(databaseBundlePath)) {
-    await del(databaseBundlePath);
+    await del(databaseBundlePath, { force: true });
   }
   await codeql.databaseBundle(databasePath, databaseBundlePath);
   return databaseBundlePath;

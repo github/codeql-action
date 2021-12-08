@@ -3,6 +3,7 @@ import * as os from "os";
 import * as path from "path";
 
 import { Command } from "commander";
+import del from "del";
 
 import { runFinalize, runQueries } from "./analyze";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
@@ -197,7 +198,7 @@ program
 
       // Wipe the temp dir
       logger.info(`Cleaning temp directory ${tempDir}`);
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      await del(tempDir, { force: true });
       fs.mkdirSync(tempDir, { recursive: true });
 
       const auth = await getGitHubAuth(

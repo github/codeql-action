@@ -732,17 +732,7 @@ async function getCodeQLForCmd(
         "-Dmaven.wagon.http.pool=false",
       ].join(" ");
 
-      const runnerExecutable = process.env["CODEQL_RUNNER"] || "";
-      // On Mac, prefixing with the runner executable is required to handle System Integrity Protection.
-      if (runnerExecutable) {
-        // Earlier steps (init) are expected to have written the runner executable path
-        // to the tracing environment, and the current step is expected to have
-        // correctly loaded that environment.
-        await runTool(runnerExecutable, [autobuildCmd]);
-      } else {
-        // Fallback in case CODEQL_RUNNER wasn't correctly set or loaded.
-        await runTool(autobuildCmd);
-      }
+      await runTool(autobuildCmd);
     },
     async extractScannedLanguage(databasePath: string, language: Language) {
       // Get extractor location

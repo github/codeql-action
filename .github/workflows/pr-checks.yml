@@ -370,9 +370,6 @@ jobs:
         run: |
           ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
-      - name: Initialize dotnet
-        run: dotnet restore
-
       - name: Build code
         shell: bash
         run: |

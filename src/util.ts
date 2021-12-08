@@ -4,6 +4,7 @@ import * as path from "path";
 import { Readable } from "stream";
 
 import * as core from "@actions/core";
+import del from "del";
 import * as semver from "semver";
 
 import { getApiClient, GitHubApiDetails } from "./api-client";
@@ -73,7 +74,7 @@ export async function withTmpDir<T>(
   const symlinkSubdir = path.join(tmpDir, "symlink");
   fs.symlinkSync(realSubdir, symlinkSubdir, "dir");
   const result = await body(symlinkSubdir);
-  fs.rmSync(tmpDir, { recursive: true, force: true });
+  await del(tmpDir, { force: true });
   return result;
 }
 
@@ -565,7 +566,7 @@ export async function bundleDb(
   // from somewhere else or someone trying to make the action upload a
   // non-database file.
   if (fs.existsSync(databaseBundlePath)) {
-    fs.rmSync(databaseBundlePath, { recursive: true });
+    await del(databaseBundlePath);
   }
   await codeql.databaseBundle(databasePath, databaseBundlePath);
   return databaseBundlePath;

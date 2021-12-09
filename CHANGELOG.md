@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.7.3. [#842](https://github.com/github/codeql-action/pull/842)
+- The `analyze` and `upload-sarif` actions will now wait up to 2 minutes for processing to complete so they can report any processing errors that occurred. This behavior can be disabled by setting the `wait-for-processing` action input to `"false"`.
 
 ## 1.0.25 - 06 Dec 2021
 

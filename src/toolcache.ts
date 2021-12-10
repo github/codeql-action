@@ -7,6 +7,7 @@ import { IHeaders } from "@actions/http-client/interfaces";
 import * as io from "@actions/io";
 import * as actionsToolcache from "@actions/tool-cache";
 import * as safeWhich from "@chrisgavin/safe-which";
+import del from "del";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
@@ -121,7 +122,13 @@ export async function cacheDir(
       throw new Error("sourceDir is not a directory");
     }
     // Create the tool dir
-    const destPath = createToolPath(tool, version, arch, toolCacheDir, logger);
+    const destPath = await createToolPath(
+      tool,
+      version,
+      arch,
+      toolCacheDir,
+      logger
+    );
     // copy each child item. do not move. move can fail on Windows
     // due to anti-virus software having an open handle on a file.
     for (const itemName of fs.readdirSync(sourceDir)) {
@@ -253,13 +260,13 @@ function createExtractFolder(tempDir: string): string {
   return dest;
 }
 
-function createToolPath(
+async function createToolPath(
   tool: string,
   version: string,
   arch: string,
   toolCacheDir: string,
   logger: Logger
-): string {
+): Promise<string> {
   const folderPath = path.join(
     toolCacheDir,
     tool,
@@ -268,8 +275,8 @@ function createToolPath(
   );
   logger.debug(`destination ${folderPath}`);
   const markerPath = `${folderPath}.complete`;
-  fs.rmSync(folderPath, { recursive: true, force: true });
-  fs.rmSync(markerPath, { recursive: true, force: true });
+  await del(folderPath, { force: true });
+  await del(markerPath, { force: true });
   fs.mkdirSync(folderPath, { recursive: true });
   return folderPath;
 }

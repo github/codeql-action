@@ -4,6 +4,7 @@ import * as path from "path";
 import { Readable } from "stream";
 
 import * as core from "@actions/core";
+import del from "del";
 import * as semver from "semver";
 
 import { getApiClient, GitHubApiDetails } from "./api-client";
@@ -12,6 +13,12 @@ import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+
+/**
+ * Specifies bundle versions that are known to be broken
+ * and will not be used if found in the toolcache.
+ */
+const BROKEN_VERSIONS = ["0.0.0-20211207"];
 
 /**
  * The URL for github.com.
@@ -73,7 +80,7 @@ export async function withTmpDir<T>(
   const symlinkSubdir = path.join(tmpDir, "symlink");
   fs.symlinkSync(realSubdir, symlinkSubdir, "dir");
   const result = await body(symlinkSubdir);
-  fs.rmSync(tmpDir, { recursive: true, force: true });
+  await del(tmpDir, { force: true });
   return result;
 }
 
@@ -565,7 +572,7 @@ export async function bundleDb(
   // from somewhere else or someone trying to make the action upload a
   // non-database file.
   if (fs.existsSync(databaseBundlePath)) {
-    fs.rmSync(databaseBundlePath, { recursive: true });
+    await del(databaseBundlePath, { force: true });
   }
   await codeql.databaseBundle(databasePath, databaseBundlePath);
   return databaseBundlePath;
@@ -573,4 +580,8 @@ export async function bundleDb(
 
 export async function delay(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+export function isGoodVersion(versionSpec: string) {
+  return !BROKEN_VERSIONS.includes(versionSpec);
 }

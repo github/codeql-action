@@ -1,8 +1,6 @@
 name: "Go: Custom queries"
 description: "Checks that Go works in conjunction with a config file specifying custom queries"
 steps:
-  - name: Initialize dotnet
-    run: dotnet restore
   - uses: actions/setup-go@v2
     with:
       go-version: "^1.13.1"

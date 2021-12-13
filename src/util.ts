@@ -15,6 +15,12 @@ import { Language } from "./languages";
 import { Logger } from "./logging";
 
 /**
+ * Specifies bundle versions that are known to be broken
+ * and will not be used if found in the toolcache.
+ */
+const BROKEN_VERSIONS = ["0.0.0-20211207"];
+
+/**
  * The URL for github.com.
  */
 export const GITHUB_DOTCOM_URL = "https://github.com";
@@ -574,4 +580,8 @@ export async function bundleDb(
 
 export async function delay(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+export function isGoodVersion(versionSpec: string) {
+  return !BROKEN_VERSIONS.includes(versionSpec);
 }

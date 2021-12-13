@@ -17,6 +17,7 @@ import { Logger } from "./logging";
 import * as toolcache from "./toolcache";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
+import { isGoodVersion } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -403,7 +404,7 @@ export async function setupCodeQL(
           toolCacheDir,
           logger
         );
-        if (codeqlVersions.length === 1) {
+        if (codeqlVersions.length === 1 && isGoodVersion(codeqlVersions[0])) {
           const tmpCodeqlFolder = toolcache.find(
             "CodeQL",
             codeqlVersions[0],

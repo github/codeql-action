@@ -29,18 +29,12 @@ export async function toolrunnerErrorCatcher(
       stdout += data.toString();
       if (options?.listeners?.stdout !== undefined) {
         options.listeners.stdout(data);
-      } else {
-        // if no stdout listener was originally defined then we match default behavior of Toolrunner
-        process.stdout.write(data);
       }
     },
     stderr: (data: Buffer) => {
       stderr += data.toString();
       if (options?.listeners?.stderr !== undefined) {
         options.listeners.stderr(data);
-      } else {
-        // if no stderr listener was originally defined then we match default behavior of Toolrunner
-        process.stderr.write(data);
       }
     },
   };

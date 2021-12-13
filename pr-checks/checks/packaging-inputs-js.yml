@@ -3,8 +3,6 @@ description: "Checks that specifying packages using the input to the Action work
 versions: ["nightly-20210831"] # This CLI version is known to work with package used in this test
 os: ["ubuntu-latest", "macos-latest"]
 steps:
-  - name: Initialize dotnet
-    run: dotnet restore
   - uses: ./../action/init
     with:
       config-file: ".github/codeql/codeql-config-packaging2.yml"

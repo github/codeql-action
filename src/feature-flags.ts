@@ -3,7 +3,7 @@ import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as util from "./util";
 
-interface FeatureFlags {
+export interface FeatureFlags {
   getDatabaseUploadsEnabled(): Promise<boolean>;
   getMlPoweredQueriesEnabled(): Promise<boolean>;
   getUploadsDomainEnabled(): Promise<boolean>;
@@ -87,4 +87,30 @@ export class GitHubFeatureFlags implements FeatureFlags {
     this.cachedApiResponse = apiResponse;
     return apiResponse;
   }
+}
+
+type FeatureFlagName =
+  | "database_uploads_enabled"
+  | "ml_powered_queries_enabled"
+  | "uploads_domain_enabled";
+
+/**
+ * Create a feature flags instance with the specified set of enabled flags.
+ *
+ * This should be only used within tests.
+ */
+export function createFeatureFlags(
+  enabledFlags: FeatureFlagName[]
+): FeatureFlags {
+  return {
+    getDatabaseUploadsEnabled: async () => {
+      return enabledFlags.includes("database_uploads_enabled");
+    },
+    getMlPoweredQueriesEnabled: async () => {
+      return enabledFlags.includes("ml_powered_queries_enabled");
+    },
+    getUploadsDomainEnabled: async () => {
+      return enabledFlags.includes("uploads_domain_enabled");
+    },
+  };
 }

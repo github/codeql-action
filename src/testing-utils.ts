@@ -2,6 +2,7 @@ import { TestInterface } from "ava";
 import * as sinon from "sinon";
 
 import * as CodeQL from "./codeql";
+import { Logger } from "./logging";
 
 type TestContext = {
   stdoutWrite: any;
@@ -88,4 +89,33 @@ export function setupTests(test: TestInterface<any>) {
 export function setupActionsVars(tempDir: string, toolsDir: string) {
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
+}
+
+export interface LoggedMessage {
+  type: "debug" | "info" | "warning" | "error";
+  message: string | Error;
+}
+
+export function getRecordingLogger(messages: LoggedMessage[]): Logger {
+  return {
+    debug: (message: string) => {
+      messages.push({ type: "debug", message });
+      console.debug(message);
+    },
+    info: (message: string) => {
+      messages.push({ type: "info", message });
+      console.info(message);
+    },
+    warning: (message: string | Error) => {
+      messages.push({ type: "warning", message });
+      console.warn(message);
+    },
+    error: (message: string | Error) => {
+      messages.push({ type: "error", message });
+      console.error(message);
+    },
+    isDebug: () => true,
+    startGroup: () => undefined,
+    endGroup: () => undefined,
+  };
 }

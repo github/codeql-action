@@ -11,9 +11,13 @@ import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { Language } from "./languages";
-import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { setupActionsVars, setupTests } from "./testing-utils";
+import {
+  getRecordingLogger,
+  LoggedMessage,
+  setupActionsVars,
+  setupTests,
+} from "./testing-utils";
 import {
   GitHubVariant,
   HTTPError,
@@ -48,35 +52,6 @@ function getTestConfig(tmpDir: string): Config {
     dbLocation: tmpDir,
     packs: {},
     debugMode: false,
-  };
-}
-
-interface LoggedMessage {
-  type: "debug" | "info" | "warning" | "error";
-  message: string | Error;
-}
-
-function getRecordingLogger(messages: LoggedMessage[]): Logger {
-  return {
-    debug: (message: string) => {
-      messages.push({ type: "debug", message });
-      console.debug(message);
-    },
-    info: (message: string) => {
-      messages.push({ type: "info", message });
-      console.info(message);
-    },
-    warning: (message: string | Error) => {
-      messages.push({ type: "warning", message });
-      console.warn(message);
-    },
-    error: (message: string | Error) => {
-      messages.push({ type: "error", message });
-      console.error(message);
-    },
-    isDebug: () => true,
-    startGroup: () => undefined,
-    endGroup: () => undefined,
   };
 }
 

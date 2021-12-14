@@ -25,6 +25,8 @@ test("analyze action with RAM & threads from environment variables", async (t) =
       .resolves({} as actionsUtil.StatusReportBase);
     sinon.stub(actionsUtil, "sendStatusReport").resolves(true);
     sinon.stub(configUtils, "getConfig").resolves({
+      // Use GHES so we don't try to call the feature flags API endpoint
+      gitHubVersion: { type: util.GitHubVariant.GHES, version: "3.0.0" },
       languages: [],
     } as unknown as configUtils.Config);
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");

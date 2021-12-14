@@ -3,8 +3,6 @@ description: "Tests a split-up workflow in which we first build a database and l
 versions: ["nightly-20210831"] # This CLI version is known to work with package used in this test
 os: ["ubuntu-latest", "macos-latest"]
 steps:
-  - name: Initialize dotnet
-    run: dotnet restore
   - uses: ./../action/init
     with:
       config-file: ".github/codeql/codeql-config-packaging3.yml"

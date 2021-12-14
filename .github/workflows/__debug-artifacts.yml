@@ -41,8 +41,6 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - name: Initialize dotnet
-      run: dotnet restore
     - uses: ./../action/init
       with:
         tools: ${{ steps.prepare-test.outputs.tools-url }}

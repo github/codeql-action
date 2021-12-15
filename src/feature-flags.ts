@@ -1,6 +1,6 @@
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import { Logger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 
 export interface FeatureFlags {
@@ -23,6 +23,7 @@ export class GitHubFeatureFlags implements FeatureFlags {
   constructor(
     private gitHubVersion: util.GitHubVersion,
     private apiDetails: GitHubApiDetails,
+    private repositoryNwo: RepositoryNwo,
     private logger: Logger
   ) {}
 
@@ -62,15 +63,12 @@ export class GitHubFeatureFlags implements FeatureFlags {
         return {};
       }
       const client = getApiClient(this.apiDetails);
-      const repositoryNwo = parseRepositoryNwo(
-        util.getRequiredEnvParam("GITHUB_REPOSITORY")
-      );
       try {
         const response = await client.request(
           "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
           {
-            owner: repositoryNwo.owner,
-            repo: repositoryNwo.repo,
+            owner: this.repositoryNwo.owner,
+            repo: this.repositoryNwo.repo,
           }
         );
         return response.data;

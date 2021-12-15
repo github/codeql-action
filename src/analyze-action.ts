@@ -101,9 +101,14 @@ async function run() {
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"]
     );
 
+    const repositoryNwo = parseRepositoryNwo(
+      util.getRequiredEnvParam("GITHUB_REPOSITORY")
+    );
+
     const featureFlags = new GitHubFeatureFlags(
       config.gitHubVersion,
       apiDetails,
+      repositoryNwo,
       logger
     );
     void featureFlags.preloadFeatureFlags();
@@ -182,9 +187,6 @@ async function run() {
       logger.info("Not uploading results");
     }
 
-    const repositoryNwo = parseRepositoryNwo(
-      util.getRequiredEnvParam("GITHUB_REPOSITORY")
-    );
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(
       repositoryNwo,

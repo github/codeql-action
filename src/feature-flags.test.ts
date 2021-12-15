@@ -6,6 +6,7 @@ import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import { GitHubFeatureFlags } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
 import {
   getRecordingLogger,
   LoggedMessage,
@@ -25,17 +26,14 @@ setupTests(test);
 
 test.beforeEach(() => {
   initializeEnvironment(Mode.actions, "1.2.3");
-
-  sinon
-    .stub(util, "getRequiredEnvParam")
-    .withArgs("GITHUB_REPOSITORY")
-    .returns("github/example");
 });
 
 const testApiDetails: GitHubApiDetails = {
   auth: "1234",
   url: "https://github.com",
 };
+
+const testRepositoryNwo = parseRepositoryNwo("github/example");
 
 function mockHttpRequests(
   responseStatusCode: number,
@@ -83,6 +81,7 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
       const featureFlags = new GitHubFeatureFlags(
         variant.gitHubVersion,
         testApiDetails,
+        testRepositoryNwo,
         getRecordingLogger(loggedMessages)
       );
 
@@ -110,6 +109,7 @@ test("Feature flags are disabled if they're not returned in API response", async
     const featureFlags = new GitHubFeatureFlags(
       { type: GitHubVariant.DOTCOM },
       testApiDetails,
+      testRepositoryNwo,
       getRecordingLogger(loggedMessages)
     );
 
@@ -143,6 +143,7 @@ test("Feature flags exception is propagated if the API request errors", async (t
     const featureFlags = new GitHubFeatureFlags(
       { type: GitHubVariant.DOTCOM },
       testApiDetails,
+      testRepositoryNwo,
       getRunnerLogger(true)
     );
 
@@ -169,6 +170,7 @@ for (const featureFlag of FEATURE_FLAGS) {
       const featureFlags = new GitHubFeatureFlags(
         { type: GitHubVariant.DOTCOM },
         testApiDetails,
+        testRepositoryNwo,
         getRunnerLogger(true)
       );
 

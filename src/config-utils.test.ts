@@ -9,6 +9,7 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { getCachedCodeQL, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { createFeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
@@ -93,6 +94,7 @@ test("load empty config", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       logger
     );
 
@@ -111,6 +113,7 @@ test("load empty config", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         logger
       )
     );
@@ -154,6 +157,7 @@ test("loading config saves config", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       logger
     );
 
@@ -183,6 +187,7 @@ test("load input outside of workspace", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -219,6 +224,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -256,6 +262,7 @@ test("load non-existent input", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -352,6 +359,7 @@ test("load non-empty input", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
 
@@ -416,6 +424,7 @@ test("Default queries are used", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
 
@@ -488,6 +497,7 @@ test("Queries can be specified in config file", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
 
@@ -554,6 +564,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
 
@@ -618,6 +629,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
 
@@ -675,6 +687,7 @@ test("Multiple queries can be specified in workflow file, no config file require
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
 
@@ -753,6 +766,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
 
@@ -821,6 +835,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         getRunnerLogger(true)
       );
       t.fail("initConfig did not throw error");
@@ -886,6 +901,7 @@ test("API client used when reading remote config", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
     t.assert(spyGetContents.called);
@@ -913,6 +929,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -948,6 +965,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -984,6 +1002,7 @@ test("No detected languages", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -1012,6 +1031,7 @@ test("Unknown languages", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
+        createFeatureFlags([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -1062,6 +1082,7 @@ test("Config specifies packages", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
     t.deepEqual(packs as unknown, {
@@ -1121,6 +1142,7 @@ test("Config specifies packages for multiple languages", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
+      createFeatureFlags([]),
       getRunnerLogger(true)
     );
     t.deepEqual(packs as unknown, {
@@ -1196,6 +1218,7 @@ function doInvalidInputTest(
           tmpDir,
           gitHubVersion,
           sampleApiDetails,
+          createFeatureFlags([]),
           getRunnerLogger(true)
         );
         throw new Error("initConfig did not throw error");

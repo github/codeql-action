@@ -9,6 +9,7 @@ import { runFinalize, runQueries } from "./analyze";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
+import { createFeatureFlags } from "./feature-flags";
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
 import { Language, parseLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -258,6 +259,7 @@ program
         workspacePath,
         gitHubVersion,
         apiDetails,
+        createFeatureFlags([]),
         logger
       );
 

@@ -5,6 +5,7 @@ import * as sinon from "sinon";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import { GitHubFeatureFlags } from "./feature-flags";
+import { getRunnerLogger } from "./logging";
 import {
   getRecordingLogger,
   LoggedMessage,
@@ -135,31 +136,22 @@ test("Feature flags are disabled if they're not returned in API response", async
   });
 });
 
-test("All feature flags are disabled if the API request errors", async (t) => {
+test("Feature flags exception is propagated if the API request errors", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    const loggedMessages = [];
     const featureFlags = new GitHubFeatureFlags(
       { type: GitHubVariant.DOTCOM },
       testApiDetails,
-      getRecordingLogger(loggedMessages)
+      getRunnerLogger(true)
     );
 
     mockHttpRequests(500, {});
 
-    t.assert((await featureFlags.getDatabaseUploadsEnabled()) === false);
-    t.assert((await featureFlags.getMlPoweredQueriesEnabled()) === false);
-    t.assert((await featureFlags.getUploadsDomainEnabled()) === false);
-
-    t.assert(
-      loggedMessages.find(
-        (v: LoggedMessage) =>
-          v.type === "info" &&
-          v.message ===
-            "Disabling all feature flags due to unknown error: Error: some error message"
-      ) !== undefined
-    );
+    await t.throwsAsync(async () => featureFlags.preloadFeatureFlags(), {
+      message:
+        "Encountered an error while trying to load feature flags: Error: some error message",
+    });
   });
 });
 
@@ -174,11 +166,10 @@ for (const featureFlag of FEATURE_FLAGS) {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
 
-      const loggedMessages = [];
       const featureFlags = new GitHubFeatureFlags(
         { type: GitHubVariant.DOTCOM },
         testApiDetails,
-        getRecordingLogger(loggedMessages)
+        getRunnerLogger(true)
       );
 
       const expectedFeatureFlags = {};

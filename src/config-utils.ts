@@ -7,7 +7,7 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import { CodeQL, ResolveQueriesOutput } from "./codeql";
 import * as externalQueries from "./external-queries";
-import { FeatureFlags } from "./feature-flags";
+import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -279,7 +279,7 @@ async function addBuiltinSuiteQueries(
   if (
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
-    (await featureFlags.getMlPoweredQueriesEnabled())
+    (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled))
   ) {
     if (!packs.javascript) {
       packs.javascript = [];

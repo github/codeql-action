@@ -1780,8 +1780,8 @@ mlPoweredQueriesMacro.title = (
 };
 
 // macro, isMlPoweredQueriesFlagEnabled, queriesInput, shouldRunMlPoweredQueries
-test(mlPoweredQueriesMacro, "2.7.4", true, "security-extended", false);
-test(mlPoweredQueriesMacro, "2.7.5", false, "security-extended", false);
+test(mlPoweredQueriesMacro, "2.7.4", true, "security-extended", true);
+test(mlPoweredQueriesMacro, "2.7.5", false, "security-extended", true);
 test(mlPoweredQueriesMacro, "2.7.5", true, undefined, false);
 test(mlPoweredQueriesMacro, "2.7.5", true, "security-extended", true);
 test(mlPoweredQueriesMacro, "2.7.5", true, "security-and-quality", true);

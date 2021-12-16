@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
-import { GitHubFeatureFlags } from "./feature-flags";
+import { FeatureFlag, GitHubFeatureFlags } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -85,9 +85,9 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
         getRecordingLogger(loggedMessages)
       );
 
-      t.assert((await featureFlags.getDatabaseUploadsEnabled()) === false);
-      t.assert((await featureFlags.getMlPoweredQueriesEnabled()) === false);
-      t.assert((await featureFlags.getUploadsDomainEnabled()) === false);
+      for (const flag of Object.values(FeatureFlag)) {
+        t.assert((await featureFlags.getValue(flag)) === false);
+      }
 
       t.assert(
         loggedMessages.find(
@@ -115,9 +115,9 @@ test("Feature flags are disabled if they're not returned in API response", async
 
     mockHttpRequests(200, {});
 
-    t.assert((await featureFlags.getDatabaseUploadsEnabled()) === false);
-    t.assert((await featureFlags.getMlPoweredQueriesEnabled()) === false);
-    t.assert((await featureFlags.getUploadsDomainEnabled()) === false);
+    for (const flag of Object.values(FeatureFlag)) {
+      t.assert((await featureFlags.getValue(flag)) === false);
+    }
 
     for (const featureFlag of [
       "database_uploads_enabled",
@@ -182,11 +182,15 @@ for (const featureFlag of FEATURE_FLAGS) {
       mockHttpRequests(200, expectedFeatureFlags);
 
       const actualFeatureFlags = {
-        database_uploads_enabled:
-          await featureFlags.getDatabaseUploadsEnabled(),
-        ml_powered_queries_enabled:
-          await featureFlags.getMlPoweredQueriesEnabled(),
-        uploads_domain_enabled: await featureFlags.getUploadsDomainEnabled(),
+        database_uploads_enabled: await featureFlags.getValue(
+          FeatureFlag.DatabaseUploadsEnabled
+        ),
+        ml_powered_queries_enabled: await featureFlags.getValue(
+          FeatureFlag.MlPoweredQueriesEnabled
+        ),
+        uploads_domain_enabled: await featureFlags.getValue(
+          FeatureFlag.UploadsDomainEnabled
+        ),
       };
 
       t.deepEqual(actualFeatureFlags, expectedFeatureFlags);

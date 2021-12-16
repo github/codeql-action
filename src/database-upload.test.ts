@@ -10,7 +10,7 @@ import * as apiClient from "./api-client";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { createFeatureFlags, FeatureFlags } from "./feature-flags";
+import { createFeatureFlags, FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
@@ -34,8 +34,8 @@ test.beforeEach(() => {
 });
 
 const uploadToUploadsDomainFlags = createFeatureFlags([
-  "database_uploads_enabled",
-  "uploads_domain_enabled",
+  FeatureFlag.DatabaseUploadsEnabled,
+  FeatureFlag.UploadsDomainEnabled,
 ]);
 
 const testRepoName: RepositoryNwo = { owner: "github", repo: "example" };
@@ -70,7 +70,7 @@ async function mockHttpRequests(
 
   const requestSpy = sinon.stub(client, "request");
 
-  const url = (await featureFlags.getUploadsDomainEnabled())
+  const url = (await featureFlags.getValue(FeatureFlag.UploadsDomainEnabled))
     ? "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name"
     : "PUT /repos/:owner/:repo/code-scanning/codeql/databases/:language";
   const databaseUploadSpy = requestSpy.withArgs(url);
@@ -218,7 +218,7 @@ test("Abort database upload if feature flag is disabled", async (t) => {
     await uploadDatabases(
       testRepoName,
       getTestConfig(tmpDir),
-      createFeatureFlags(["uploads_domain_enabled"]),
+      createFeatureFlags([FeatureFlag.UploadsDomainEnabled]),
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
@@ -242,7 +242,9 @@ test("Don't crash if uploading a database fails", async (t) => {
       .returns("true");
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
 
-    const featureFlags = createFeatureFlags(["database_uploads_enabled"]);
+    const featureFlags = createFeatureFlags([
+      FeatureFlag.DatabaseUploadsEnabled,
+    ]);
 
     await mockHttpRequests(featureFlags, 500);
 
@@ -260,8 +262,6 @@ test("Don't crash if uploading a database fails", async (t) => {
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
-
-    console.log(loggedMessages);
 
     t.assert(
       loggedMessages.find(

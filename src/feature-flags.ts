@@ -4,9 +4,13 @@ import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 
 export interface FeatureFlags {
-  getDatabaseUploadsEnabled(): Promise<boolean>;
-  getMlPoweredQueriesEnabled(): Promise<boolean>;
-  getUploadsDomainEnabled(): Promise<boolean>;
+  getValue(flag: FeatureFlag): Promise<boolean>;
+}
+
+export enum FeatureFlag {
+  DatabaseUploadsEnabled = "database_uploads_enabled",
+  MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
+  UploadsDomainEnabled = "uploads_domain_enabled",
 }
 
 /**
@@ -15,7 +19,7 @@ export interface FeatureFlags {
  *
  * It maps feature flags to whether they are enabled or not.
  */
-type FeatureFlagsApiResponse = { [flagName: string]: boolean };
+type FeatureFlagsApiResponse = Partial<Record<FeatureFlag, boolean>>;
 
 export class GitHubFeatureFlags implements FeatureFlags {
   private cachedApiResponse: FeatureFlagsApiResponse | undefined;
@@ -27,30 +31,19 @@ export class GitHubFeatureFlags implements FeatureFlags {
     private logger: Logger
   ) {}
 
-  getDatabaseUploadsEnabled(): Promise<boolean> {
-    return this.getFeatureFlag("database_uploads_enabled");
-  }
-
-  getMlPoweredQueriesEnabled(): Promise<boolean> {
-    return this.getFeatureFlag("ml_powered_queries_enabled");
-  }
-
-  getUploadsDomainEnabled(): Promise<boolean> {
-    return this.getFeatureFlag("uploads_domain_enabled");
+  async getValue(flag: FeatureFlag): Promise<boolean> {
+    const response = (await this.getApiResponse())[flag];
+    if (response === undefined) {
+      this.logger.debug(
+        `Feature flag '${flag}' undefined in API response, considering it disabled.`
+      );
+      return false;
+    }
+    return response;
   }
 
   async preloadFeatureFlags(): Promise<void> {
     await this.getApiResponse();
-  }
-
-  private async getFeatureFlag(name: string): Promise<boolean> {
-    const response = (await this.getApiResponse())[name];
-    if (response === undefined) {
-      this.logger.debug(
-        `Feature flag '${name}' undefined in API response, considering it disabled.`
-      );
-    }
-    return response || false;
   }
 
   private async getApiResponse(): Promise<FeatureFlagsApiResponse> {
@@ -89,28 +82,15 @@ export class GitHubFeatureFlags implements FeatureFlags {
   }
 }
 
-type FeatureFlagName =
-  | "database_uploads_enabled"
-  | "ml_powered_queries_enabled"
-  | "uploads_domain_enabled";
-
 /**
  * Create a feature flags instance with the specified set of enabled flags.
  *
  * This should be only used within tests.
  */
-export function createFeatureFlags(
-  enabledFlags: FeatureFlagName[]
-): FeatureFlags {
+export function createFeatureFlags(enabledFlags: FeatureFlag[]): FeatureFlags {
   return {
-    getDatabaseUploadsEnabled: async () => {
-      return enabledFlags.includes("database_uploads_enabled");
-    },
-    getMlPoweredQueriesEnabled: async () => {
-      return enabledFlags.includes("ml_powered_queries_enabled");
-    },
-    getUploadsDomainEnabled: async () => {
-      return enabledFlags.includes("uploads_domain_enabled");
+    getValue: async (flag) => {
+      return enabledFlags.includes(flag);
     },
   };
 }

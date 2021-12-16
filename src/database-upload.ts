@@ -4,7 +4,7 @@ import * as actionsUtil from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { FeatureFlags } from "./feature-flags";
+import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
@@ -34,7 +34,7 @@ export async function uploadDatabases(
     return;
   }
 
-  if (!(await featureFlags.getDatabaseUploadsEnabled())) {
+  if (!(await featureFlags.getValue(FeatureFlag.DatabaseUploadsEnabled))) {
     logger.debug(
       "Repository is not opted in to database uploads. Skipping upload."
     );
@@ -43,7 +43,9 @@ export async function uploadDatabases(
 
   const client = getApiClient(apiDetails);
   const codeql = await getCodeQL(config.codeQLCmd);
-  const useUploadDomain = await featureFlags.getUploadsDomainEnabled();
+  const useUploadDomain = await featureFlags.getValue(
+    FeatureFlag.UploadsDomainEnabled
+  );
 
   for (const language of config.languages) {
     // Upload the database bundle.

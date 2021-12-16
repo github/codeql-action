@@ -9,7 +9,7 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { getCachedCodeQL, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { createFeatureFlags } from "./feature-flags";
+import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
@@ -1654,5 +1654,80 @@ test(
   /"xxx" is not a valid pack/
 );
 
-// errors
-// input w invalid pack name
+async function mlPoweredQueriesMacro(
+  t: ExecutionContext,
+  isMlPoweredQueriesFlagEnabled: boolean,
+  queriesInput: string | undefined,
+  shouldRunMlPoweredQueries: boolean
+) {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeQL = setCodeQL({
+      async resolveQueries() {
+        return {
+          byLanguage: {
+            javascript: { "fake-query.ql": {} },
+          },
+          noDeclaredLanguage: {},
+          multipleDeclaredLanguages: {},
+        };
+      },
+    });
+
+    const { packs } = await configUtils.initConfig(
+      "javascript",
+      queriesInput,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      { owner: "github", repo: "example " },
+      tmpDir,
+      tmpDir,
+      codeQL,
+      tmpDir,
+      gitHubVersion,
+      sampleApiDetails,
+      createFeatureFlags(
+        isMlPoweredQueriesFlagEnabled
+          ? [FeatureFlag.MlPoweredQueriesEnabled]
+          : []
+      ),
+      getRunnerLogger(true)
+    );
+    if (shouldRunMlPoweredQueries) {
+      t.deepEqual(packs as unknown, {
+        [Language.javascript]: [
+          {
+            packName: "codeql/javascript-experimental-atm-queries",
+            version: clean("0.0.1"),
+          },
+        ],
+      });
+    } else {
+      t.deepEqual(packs as unknown, {});
+    }
+  });
+}
+
+mlPoweredQueriesMacro.title = (
+  _providedTitle: string,
+  isMlPoweredQueriesFlagEnabled: boolean,
+  queriesInput: string | undefined,
+  shouldRunMlPoweredQueries: boolean
+) => {
+  const queriesInputDescription = queriesInput
+    ? `'queries: ${queriesInput}'`
+    : "default config";
+
+  return `ML-powered queries ${
+    shouldRunMlPoweredQueries ? "are" : "aren't"
+  } loaded for ${queriesInputDescription} when feature flag is ${
+    isMlPoweredQueriesFlagEnabled ? "enabled" : "disabled"
+  }`;
+};
+
+// macro, isMlPoweredQueriesFlagEnabled, queriesInput, shouldRunMlPoweredQueries
+test(mlPoweredQueriesMacro, false, "security-extended", false);
+test(mlPoweredQueriesMacro, true, undefined, false);
+test(mlPoweredQueriesMacro, true, "security-extended", true);
+test(mlPoweredQueriesMacro, true, "security-and-quality", true);

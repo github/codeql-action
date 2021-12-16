@@ -4,6 +4,7 @@ import * as actionsUtil from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
@@ -12,6 +13,7 @@ import { bundleDb } from "./util";
 export async function uploadDatabases(
   repositoryNwo: RepositoryNwo,
   config: Config,
+  featureFlags: FeatureFlags,
   apiDetails: GitHubApiDetails,
   logger: Logger
 ): Promise<void> {
@@ -32,30 +34,19 @@ export async function uploadDatabases(
     return;
   }
 
-  const client = getApiClient(apiDetails);
-  let useUploadDomain: boolean;
-  try {
-    const response = await client.request(
-      "GET /repos/:owner/:repo/code-scanning/codeql/databases",
-      {
-        owner: repositoryNwo.owner,
-        repo: repositoryNwo.repo,
-      }
+  if (!(await featureFlags.getValue(FeatureFlag.DatabaseUploadsEnabled))) {
+    logger.debug(
+      "Repository is not opted in to database uploads. Skipping upload."
     );
-    useUploadDomain = response.data["uploads_domain_enabled"];
-  } catch (e) {
-    if (util.isHTTPError(e) && e.status === 404) {
-      logger.debug(
-        "Repository is not opted in to database uploads. Skipping upload."
-      );
-    } else {
-      console.log(e);
-      logger.info(`Skipping database upload due to unknown error: ${e}`);
-    }
     return;
   }
 
+  const client = getApiClient(apiDetails);
   const codeql = await getCodeQL(config.codeQLCmd);
+  const useUploadDomain = await featureFlags.getValue(
+    FeatureFlag.UploadsDomainEnabled
+  );
+
   for (const language of config.languages) {
     // Upload the database bundle.
     // Although we are uploading arbitrary file contents to the API, it's worth

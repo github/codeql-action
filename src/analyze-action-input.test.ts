@@ -4,7 +4,11 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as analyze from "./analyze";
 import * as configUtils from "./config-utils";
-import { setupTests, setupActionsVars } from "./testing-utils";
+import {
+  setupTests,
+  setupActionsVars,
+  mockFeatureFlagApiEndpoint,
+} from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -25,6 +29,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
       .resolves({} as actionsUtil.StatusReportBase);
     sinon.stub(actionsUtil, "sendStatusReport").resolves(true);
     sinon.stub(configUtils, "getConfig").resolves({
+      gitHubVersion: { type: util.GitHubVariant.DOTCOM },
       languages: [],
     } as unknown as configUtils.Config);
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
@@ -33,6 +38,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     optionalInputStub.withArgs("cleanup-level").returns("none");
     setupActionsVars(tmpDir, tmpDir);
+    mockFeatureFlagApiEndpoint(200, {});
 
     process.env["CODEQL_THREADS"] = "1";
     process.env["CODEQL_RAM"] = "4992";

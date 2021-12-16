@@ -1,8 +1,5 @@
-import * as github from "@actions/github";
 import test from "ava";
-import * as sinon from "sinon";
 
-import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import { FeatureFlag, GitHubFeatureFlags } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
@@ -10,17 +7,12 @@ import { parseRepositoryNwo } from "./repository";
 import {
   getRecordingLogger,
   LoggedMessage,
+  mockFeatureFlagApiEndpoint,
   setupActionsVars,
   setupTests,
 } from "./testing-utils";
 import * as util from "./util";
-import {
-  GitHubVariant,
-  HTTPError,
-  initializeEnvironment,
-  Mode,
-  withTmpDir,
-} from "./util";
+import { GitHubVariant, initializeEnvironment, Mode, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -34,32 +26,6 @@ const testApiDetails: GitHubApiDetails = {
 };
 
 const testRepositoryNwo = parseRepositoryNwo("github/example");
-
-function mockHttpRequests(
-  responseStatusCode: number,
-  flags: { [flagName: string]: boolean }
-) {
-  // Passing an auth token is required, so we just use a dummy value
-  const client = github.getOctokit("123");
-
-  const requestSpy = sinon.stub(client, "request");
-
-  const optInSpy = requestSpy.withArgs(
-    "GET /repos/:owner/:repo/code-scanning/codeql-action/features"
-  );
-  if (responseStatusCode < 300) {
-    optInSpy.resolves({
-      status: responseStatusCode,
-      data: flags,
-      headers: {},
-      url: "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
-    });
-  } else {
-    optInSpy.throws(new HTTPError("some error message", responseStatusCode));
-  }
-
-  sinon.stub(apiClient, "getApiClient").value(() => client);
-}
 
 const ALL_FEATURE_FLAGS_DISABLED_VARIANTS: Array<{
   description: string;
@@ -113,7 +79,7 @@ test("Feature flags are disabled if they're not returned in API response", async
       getRecordingLogger(loggedMessages)
     );
 
-    mockHttpRequests(200, {});
+    mockFeatureFlagApiEndpoint(200, {});
 
     for (const flag of Object.values(FeatureFlag)) {
       t.assert((await featureFlags.getValue(flag)) === false);
@@ -147,7 +113,7 @@ test("Feature flags exception is propagated if the API request errors", async (t
       getRunnerLogger(true)
     );
 
-    mockHttpRequests(500, {});
+    mockFeatureFlagApiEndpoint(500, {});
 
     await t.throwsAsync(async () => featureFlags.preloadFeatureFlags(), {
       message:
@@ -179,7 +145,7 @@ for (const featureFlag of FEATURE_FLAGS) {
         expectedFeatureFlags[f] = false;
       }
       expectedFeatureFlags[featureFlag] = true;
-      mockHttpRequests(200, expectedFeatureFlags);
+      mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
 
       const actualFeatureFlags = {
         database_uploads_enabled: await featureFlags.getValue(

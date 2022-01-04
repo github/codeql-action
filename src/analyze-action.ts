@@ -207,14 +207,6 @@ async function run() {
         getActionsLogger()
       );
     }
-
-    if (config.debugMode) {
-      // Upload the database bundles as an Actions artifact for debugging
-      const toUpload: string[] = [];
-      for (const language of config.languages)
-        toUpload.push(await bundleDb(config, language, codeql));
-      await uploadDebugArtifacts(toUpload, config.dbLocation);
-    }
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
@@ -230,6 +222,21 @@ async function run() {
 
     return;
   } finally {
+    if (config !== undefined && config.debugMode) {
+      try {
+        // Upload the database bundles as an Actions artifact for debugging
+        const toUpload: string[] = [];
+        for (const language of config.languages) {
+          toUpload.push(
+            await bundleDb(config, language, await getCodeQL(config.codeQLCmd))
+          );
+        }
+        await uploadDebugArtifacts(toUpload, config.dbLocation);
+      } catch (error) {
+        console.log(`Failed to upload database debug bundles: ${error}`);
+      }
+    }
+
     if (core.isDebug() && config !== undefined) {
       core.info("Debug mode is on. Printing CodeQL debug logs...");
       for (const language of config.languages) {

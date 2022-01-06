@@ -1656,12 +1656,16 @@ test(
 
 async function mlPoweredQueriesMacro(
   t: ExecutionContext,
+  codeQLVersion: string,
   isMlPoweredQueriesFlagEnabled: boolean,
   queriesInput: string | undefined,
   shouldRunMlPoweredQueries: boolean
 ) {
   return await util.withTmpDir(async (tmpDir) => {
     const codeQL = setCodeQL({
+      async getVersion() {
+        return codeQLVersion;
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -1711,6 +1715,7 @@ async function mlPoweredQueriesMacro(
 
 mlPoweredQueriesMacro.title = (
   _providedTitle: string,
+  codeQLVersion: string,
   isMlPoweredQueriesFlagEnabled: boolean,
   queriesInput: string | undefined,
   shouldRunMlPoweredQueries: boolean
@@ -1721,13 +1726,14 @@ mlPoweredQueriesMacro.title = (
 
   return `ML-powered queries ${
     shouldRunMlPoweredQueries ? "are" : "aren't"
-  } loaded for ${queriesInputDescription} when feature flag is ${
+  } loaded for ${queriesInputDescription} using CLI v${codeQLVersion} when feature flag is ${
     isMlPoweredQueriesFlagEnabled ? "enabled" : "disabled"
   }`;
 };
 
 // macro, isMlPoweredQueriesFlagEnabled, queriesInput, shouldRunMlPoweredQueries
-test(mlPoweredQueriesMacro, false, "security-extended", false);
-test(mlPoweredQueriesMacro, true, undefined, false);
-test(mlPoweredQueriesMacro, true, "security-extended", true);
-test(mlPoweredQueriesMacro, true, "security-and-quality", true);
+test(mlPoweredQueriesMacro, "2.7.4", true, "security-extended", false);
+test(mlPoweredQueriesMacro, "2.7.5", false, "security-extended", false);
+test(mlPoweredQueriesMacro, "2.7.5", true, undefined, false);
+test(mlPoweredQueriesMacro, "2.7.5", true, "security-extended", true);
+test(mlPoweredQueriesMacro, "2.7.5", true, "security-and-quality", true);

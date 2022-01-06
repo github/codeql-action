@@ -5,13 +5,17 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as api from "./api-client";
-import { CodeQL, ResolveQueriesOutput } from "./codeql";
+import {
+  CodeQL,
+  CODEQL_VERSION_ML_POWERED_QUERIES,
+  ResolveQueriesOutput,
+} from "./codeql";
 import * as externalQueries from "./external-queries";
 import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { GitHubVersion } from "./util";
+import { codeQlVersionAbove, GitHubVersion } from "./util";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -279,7 +283,8 @@ async function addBuiltinSuiteQueries(
   if (
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
-    (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled))
+    (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
+    (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
   ) {
     if (!packs.javascript) {
       packs.javascript = [];

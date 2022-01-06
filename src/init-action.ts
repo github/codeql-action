@@ -14,6 +14,7 @@ import {
 } from "./actions-util";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
+import { GitHubFeatureFlags } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -129,6 +130,18 @@ async function run() {
   const gitHubVersion = await getGitHubVersion(apiDetails);
   checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY")
+  );
+
+  const featureFlags = new GitHubFeatureFlags(
+    gitHubVersion,
+    apiDetails,
+    repositoryNwo,
+    logger
+  );
+  void featureFlags.preloadFeatureFlags();
+
   try {
     const workflowErrors = await validateWorkflow();
 
@@ -164,13 +177,14 @@ async function run() {
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
       getOptionalInput("debug") === "true",
-      parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
+      repositoryNwo,
       getTemporaryDirectory(),
       getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       gitHubVersion,
       apiDetails,
+      featureFlags,
       logger
     );
 

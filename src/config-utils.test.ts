@@ -1703,7 +1703,7 @@ async function mlPoweredQueriesMacro(
         [Language.javascript]: [
           {
             packName: "codeql/javascript-experimental-atm-queries",
-            version: clean("0.0.2"),
+            version: "~0.0.2",
           },
         ],
       });

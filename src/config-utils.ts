@@ -291,7 +291,7 @@ async function addBuiltinSuiteQueries(
     }
     packs.javascript.push({
       packName: "codeql/javascript-experimental-atm-queries",
-      version: "0.0.2",
+      version: "~0.0.2",
     });
   }
 

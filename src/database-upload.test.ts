@@ -20,6 +20,8 @@ import {
   setupTests,
 } from "./testing-utils";
 import {
+  DEFAULT_DEBUG_ARTIFACT_NAME,
+  DEFAULT_DEBUG_DATABASE_NAME,
   GitHubVariant,
   HTTPError,
   initializeEnvironment,
@@ -58,6 +60,8 @@ function getTestConfig(tmpDir: string): Config {
     dbLocation: tmpDir,
     packs: {},
     debugMode: false,
+    debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
+    debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
   };
 }
 

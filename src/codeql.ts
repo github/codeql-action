@@ -127,7 +127,11 @@ export interface CodeQL {
   /**
    * Run 'codeql database bundle'.
    */
-  databaseBundle(databasePath: string, outputFilePath: string): Promise<void>;
+  databaseBundle(
+    databasePath: string,
+    outputFilePath: string,
+    dbName: string
+  ): Promise<void>;
   /**
    * Run 'codeql database run-queries'.
    */
@@ -957,13 +961,15 @@ async function getCodeQLForCmd(
     },
     async databaseBundle(
       databasePath: string,
-      outputFilePath: string
+      outputFilePath: string,
+      databaseName: string
     ): Promise<void> {
       const args = [
         "database",
         "bundle",
         databasePath,
         `--output=${outputFilePath}`,
+        `--name=${databaseName}`,
       ];
       await new toolrunner.ToolRunner(cmd, args).exec();
     },

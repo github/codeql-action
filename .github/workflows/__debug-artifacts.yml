@@ -45,6 +45,8 @@ jobs:
       with:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
         debug: true
+        debug-artifact-name: my-debug-artifacts
+        debug-database-name: my-db
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -52,7 +54,7 @@ jobs:
       id: analysis
     - uses: actions/download-artifact@v2
       with:
-        name: debug-artifacts-${{ matrix.os }}-${{ matrix.version }}
+        name: my-debug-artifacts-${{ matrix.os }}-${{ matrix.version }}
     - shell: bash
       run: |
         LANGUAGES="cpp csharp go java javascript python"
@@ -62,7 +64,7 @@ jobs:
             echo "Missing a SARIF file for $language"
             exit 1
           fi
-          if [[ ! -f "$language.zip" ]] ; then
+          if [[ ! -f "my-db-$language.zip" ]] ; then
             echo "Missing a database bundle for $language"
             exit 1
           fi

@@ -26,9 +26,14 @@ const BROKEN_VERSIONS = ["0.0.0-20211207"];
 export const GITHUB_DOTCOM_URL = "https://github.com";
 
 /**
- * Name of the debugging artifact.
+ * Default name of the debugging artifact.
  */
-export const DEBUG_ARTIFACT_NAME = "debug-artifacts";
+export const DEFAULT_DEBUG_ARTIFACT_NAME = "debug-artifacts";
+
+/**
+ * Default name of the database in the debugging artifact.
+ */
+export const DEFAULT_DEBUG_DATABASE_NAME = "db";
 
 /**
  * Get the extra options for the codeql commands.
@@ -559,13 +564,11 @@ export async function codeQlVersionAbove(
 export async function bundleDb(
   config: Config,
   language: Language,
-  codeql: CodeQL
+  codeql: CodeQL,
+  dbName: string
 ) {
   const databasePath = getCodeQLDatabasePath(config, language);
-  const databaseBundlePath = path.resolve(
-    config.dbLocation,
-    `${databasePath}.zip`
-  );
+  const databaseBundlePath = path.resolve(config.dbLocation, `${dbName}.zip`);
   // For a tiny bit of added safety, delete the file if it exists.
   // The file is probably from an earlier call to this function, either
   // as part of this action step or a previous one, but it could also be
@@ -574,7 +577,7 @@ export async function bundleDb(
   if (fs.existsSync(databaseBundlePath)) {
     await del(databaseBundlePath, { force: true });
   }
-  await codeql.databaseBundle(databasePath, databaseBundlePath);
+  await codeql.databaseBundle(databasePath, databaseBundlePath, dbName);
   return databaseBundlePath;
 }
 

@@ -35,6 +35,8 @@ import {
   enrichEnvironment,
   getMemoryFlagValue,
   getThreadsFlagValue,
+  DEFAULT_DEBUG_ARTIFACT_NAME,
+  DEFAULT_DEBUG_DATABASE_NAME,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -177,6 +179,8 @@ async function run() {
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
       getOptionalInput("debug") === "true",
+      getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
+      getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
       repositoryNwo,
       getTemporaryDirectory(),
       getRequiredEnvParam("RUNNER_TOOL_CACHE"),

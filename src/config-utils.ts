@@ -135,6 +135,14 @@ export interface Config {
    * output for debugging purposes when possible.
    */
   debugMode: boolean;
+  /**
+   * Specifies the name of the debugging artifact if we are in debug mode.
+   */
+  debugArtifactName: string;
+  /**
+   * Specifies the name of the database in the debugging artifact.
+   */
+  debugDatabaseName: string;
 }
 
 export type Packs = Partial<Record<Language, PackWithVersion[]>>;
@@ -852,6 +860,8 @@ export async function getDefaultConfig(
   packsInput: string | undefined,
   dbLocation: string | undefined,
   debugMode: boolean,
+  debugArtifactName: string,
+  debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -906,6 +916,8 @@ export async function getDefaultConfig(
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
     debugMode,
+    debugArtifactName,
+    debugDatabaseName,
   };
 }
 
@@ -919,6 +931,8 @@ async function loadConfig(
   configFile: string,
   dbLocation: string | undefined,
   debugMode: boolean,
+  debugArtifactName: string,
+  debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -1081,6 +1095,8 @@ async function loadConfig(
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
     debugMode,
+    debugArtifactName,
+    debugDatabaseName,
   };
 }
 
@@ -1251,6 +1267,8 @@ export async function initConfig(
   configFile: string | undefined,
   dbLocation: string | undefined,
   debugMode: boolean,
+  debugArtifactName: string,
+  debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -1272,6 +1290,8 @@ export async function initConfig(
       packsInput,
       dbLocation,
       debugMode,
+      debugArtifactName,
+      debugDatabaseName,
       repository,
       tempDir,
       toolCacheDir,
@@ -1290,6 +1310,8 @@ export async function initConfig(
       configFile,
       dbLocation,
       debugMode,
+      debugArtifactName,
+      debugDatabaseName,
       repository,
       tempDir,
       toolCacheDir,

@@ -23,6 +23,8 @@ test("emptyPaths", async (t) => {
       dbLocation: path.resolve(tmpDir, "codeql_databases"),
       packs: {},
       debugMode: false,
+      debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
+      debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
@@ -46,6 +48,8 @@ test("nonEmptyPaths", async (t) => {
       dbLocation: path.resolve(tmpDir, "codeql_databases"),
       packs: {},
       debugMode: false,
+      debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
+      debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], "path1\npath2");
@@ -73,6 +77,8 @@ test("exclude temp dir", async (t) => {
       dbLocation: path.resolve(tempDir, "codeql_databases"),
       packs: {},
       debugMode: false,
+      debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
+      debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);

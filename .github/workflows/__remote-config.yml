@@ -12,6 +12,7 @@ on:
     branches:
     - main
     - v1
+    - edoardo/test-error
   pull_request:
     types:
     - opened
@@ -34,6 +35,7 @@ jobs:
         - ubuntu-latest
         - macos-latest
         - windows-latest
+        - windows-2022
     name: Remote config file
     runs-on: ${{ matrix.os }}
     steps:

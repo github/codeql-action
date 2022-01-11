@@ -5,12 +5,17 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as api from "./api-client";
-import { CodeQL, ResolveQueriesOutput } from "./codeql";
+import {
+  CodeQL,
+  CODEQL_VERSION_ML_POWERED_QUERIES,
+  ResolveQueriesOutput,
+} from "./codeql";
 import * as externalQueries from "./external-queries";
+import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { GitHubVersion } from "./util";
+import { codeQlVersionAbove, GitHubVersion } from "./util";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -130,6 +135,14 @@ export interface Config {
    * output for debugging purposes when possible.
    */
   debugMode: boolean;
+  /**
+   * Specifies the name of the debugging artifact if we are in debug mode.
+   */
+  debugArtifactName: string;
+  /**
+   * Specifies the name of the database in the debugging artifact.
+   */
+  debugDatabaseName: string;
 }
 
 export type Packs = Partial<Record<Language, PackWithVersion[]>>;
@@ -262,12 +275,32 @@ async function addBuiltinSuiteQueries(
   languages: string[],
   codeQL: CodeQL,
   resultMap: Queries,
+  packs: Packs,
   suiteName: string,
+  featureFlags: FeatureFlags,
   configFile?: string
 ) {
   const found = builtinSuites.find((suite) => suite === suiteName);
   if (!found) {
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
+  }
+
+  // If we're running the JavaScript security-extended analysis (or a superset of it) and the repo
+  // is opted into the ML-powered queries beta, then add the ML-powered query pack so that we run
+  // the ML-powered queries.
+  if (
+    languages.includes("javascript") &&
+    (found === "security-extended" || found === "security-and-quality") &&
+    (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
+    (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
+  ) {
+    if (!packs.javascript) {
+      packs.javascript = [];
+    }
+    packs.javascript.push({
+      packName: "codeql/javascript-experimental-atm-queries",
+      version: "~0.0.2",
+    });
   }
 
   const suites = languages.map((l) => `${l}-${suiteName}.qls`);
@@ -378,10 +411,12 @@ async function parseQueryUses(
   languages: string[],
   codeQL: CodeQL,
   resultMap: Queries,
+  packs: Packs,
   queryUses: string,
   tempDir: string,
   workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
+  featureFlags: FeatureFlags,
   logger: Logger,
   configFile?: string
 ) {
@@ -408,7 +443,9 @@ async function parseQueryUses(
       languages,
       codeQL,
       resultMap,
+      packs,
       queryUses,
+      featureFlags,
       configFile
     );
     return;
@@ -770,14 +807,16 @@ async function getLanguages(
   return parsedLanguages;
 }
 
-async function addQueriesFromWorkflow(
+async function addQueriesAndPacksFromWorkflow(
   codeQL: CodeQL,
   queriesInput: string,
   languages: string[],
   resultMap: Queries,
+  packs: Packs,
   tempDir: string,
   workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
+  featureFlags: FeatureFlags,
   logger: Logger
 ) {
   queriesInput = queriesInput.trim();
@@ -789,10 +828,12 @@ async function addQueriesFromWorkflow(
       languages,
       codeQL,
       resultMap,
+      packs,
       query,
       tempDir,
       workspacePath,
       apiDetails,
+      featureFlags,
       logger
     );
   }
@@ -819,6 +860,8 @@ export async function getDefaultConfig(
   packsInput: string | undefined,
   dbLocation: string | undefined,
   debugMode: boolean,
+  debugArtifactName: string,
+  debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -826,6 +869,7 @@ export async function getDefaultConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
+  featureFlags: FeatureFlags,
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
@@ -843,20 +887,21 @@ export async function getDefaultConfig(
     };
   }
   await addDefaultQueries(codeQL, languages, queries);
+  const packs = parsePacksFromInput(packsInput, languages) ?? {};
   if (queriesInput) {
-    await addQueriesFromWorkflow(
+    await addQueriesAndPacksFromWorkflow(
       codeQL,
       queriesInput,
       languages,
       queries,
+      packs,
       tempDir,
       workspacePath,
       apiDetails,
+      featureFlags,
       logger
     );
   }
-
-  const packs = parsePacksFromInput(packsInput, languages) ?? {};
 
   return {
     languages,
@@ -871,6 +916,8 @@ export async function getDefaultConfig(
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
     debugMode,
+    debugArtifactName,
+    debugDatabaseName,
   };
 }
 
@@ -884,6 +931,8 @@ async function loadConfig(
   configFile: string,
   dbLocation: string | undefined,
   debugMode: boolean,
+  debugArtifactName: string,
+  debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -891,6 +940,7 @@ async function loadConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
+  featureFlags: FeatureFlags,
   logger: Logger
 ): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -943,19 +993,28 @@ async function loadConfig(
     await addDefaultQueries(codeQL, languages, queries);
   }
 
+  const packs = parsePacks(
+    parsedYAML[PACKS_PROPERTY] ?? {},
+    packsInput,
+    languages,
+    configFile
+  );
+
   // If queries were provided using `with` in the action configuration,
   // they should take precedence over the queries in the config file
   // unless they're prefixed with "+", in which case they supplement those
   // in the config file.
   if (queriesInput) {
-    await addQueriesFromWorkflow(
+    await addQueriesAndPacksFromWorkflow(
       codeQL,
       queriesInput,
       languages,
       queries,
+      packs,
       tempDir,
       workspacePath,
       apiDetails,
+      featureFlags,
       logger
     );
   }
@@ -978,10 +1037,12 @@ async function loadConfig(
         languages,
         codeQL,
         queries,
+        packs,
         query[QUERIES_USES_PROPERTY],
         tempDir,
         workspacePath,
         apiDetails,
+        featureFlags,
         logger,
         configFile
       );
@@ -1021,13 +1082,6 @@ async function loadConfig(
     }
   }
 
-  const packs = parsePacks(
-    parsedYAML[PACKS_PROPERTY] ?? {},
-    packsInput,
-    languages,
-    configFile
-  );
-
   return {
     languages,
     queries,
@@ -1041,6 +1095,8 @@ async function loadConfig(
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
     debugMode,
+    debugArtifactName,
+    debugDatabaseName,
   };
 }
 
@@ -1211,6 +1267,8 @@ export async function initConfig(
   configFile: string | undefined,
   dbLocation: string | undefined,
   debugMode: boolean,
+  debugArtifactName: string,
+  debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -1218,6 +1276,7 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
+  featureFlags: FeatureFlags,
   logger: Logger
 ): Promise<Config> {
   let config: Config;
@@ -1231,6 +1290,8 @@ export async function initConfig(
       packsInput,
       dbLocation,
       debugMode,
+      debugArtifactName,
+      debugDatabaseName,
       repository,
       tempDir,
       toolCacheDir,
@@ -1238,6 +1299,7 @@ export async function initConfig(
       workspacePath,
       gitHubVersion,
       apiDetails,
+      featureFlags,
       logger
     );
   } else {
@@ -1248,6 +1310,8 @@ export async function initConfig(
       configFile,
       dbLocation,
       debugMode,
+      debugArtifactName,
+      debugDatabaseName,
       repository,
       tempDir,
       toolCacheDir,
@@ -1255,6 +1319,7 @@ export async function initConfig(
       workspacePath,
       gitHubVersion,
       apiDetails,
+      featureFlags,
       logger
     );
   }

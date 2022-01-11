@@ -3,8 +3,6 @@ description: "Tests using a CodeQL bundle from a local file rather than a URL"
 versions: ["nightly-latest"]
 os: ["ubuntu-latest"]
 steps:
-  - name: Initialize dotnet
-    run: dotnet restore
   - name: Fetch a CodeQL bundle
     shell: bash
     env:

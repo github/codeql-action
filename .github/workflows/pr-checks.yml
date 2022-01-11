@@ -163,9 +163,6 @@ jobs:
           cd ../action/runner
           npm install
           npm run build-runner
-      
-      - name: Initialize dotnet
-        run: dotnet restore
 
       - name: Run init
         run: |
@@ -203,9 +200,6 @@ jobs:
           cd ../action/runner
           npm install
           npm run build-runner
-      
-      - name: Initialize dotnet
-        run: dotnet restore
 
       - name: Run init
         run: |
@@ -251,9 +245,6 @@ jobs:
           cd ../action/runner
           npm install
           npm run build-runner
-
-      - name: Initialize dotnet
-        run: dotnet restore
 
       - name: Run init
         run: |

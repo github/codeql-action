@@ -15,12 +15,13 @@ import {
 import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { GitHubFeatureFlags } from "./feature-flags";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
-import { bundleDb, codeQlVersionAbove, DEBUG_ARTIFACT_NAME } from "./util";
+import { bundleDb, codeQlVersionAbove } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -99,6 +100,23 @@ async function run() {
     const memory = util.getMemoryFlag(
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"]
     );
+
+    const repositoryNwo = parseRepositoryNwo(
+      util.getRequiredEnvParam("GITHUB_REPOSITORY")
+    );
+
+    const featureFlags = new GitHubFeatureFlags(
+      config.gitHubVersion,
+      apiDetails,
+      repositoryNwo,
+      logger
+    );
+    // We currently perform an API request in both the `init` and `analyze` Actions to determine
+    // what feature flags are enabled. At the time of writing, this redundant API call is acceptable
+    // to us, but if we wanted to avoid it, we could do so by serializing the feature flags as part
+    // of the config file.
+    void featureFlags.preloadFeatureFlags();
+
     await runFinalize(outputDir, threads, memory, config, logger);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
@@ -117,7 +135,8 @@ async function run() {
           config.languages.map((lang) =>
             path.resolve(outputDir, `${lang}.sarif`)
           ),
-          outputDir
+          outputDir,
+          config.debugArtifactName
         );
       }
     }
@@ -138,12 +157,17 @@ async function run() {
         // Multilanguage tracing: there are additional logs in the root of the cluster
         toUpload.push(...listFolder(path.resolve(config.dbLocation, "log")));
       }
-      await uploadDebugArtifacts(toUpload, config.dbLocation);
+      await uploadDebugArtifacts(
+        toUpload,
+        config.dbLocation,
+        config.debugArtifactName
+      );
       if (!(await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING))) {
         // Before multi-language tracing, we wrote a compound-build-tracer.log in the temp dir
         await uploadDebugArtifacts(
           [path.resolve(config.tempDir, "compound-build-tracer.log")],
-          config.tempDir
+          config.tempDir,
+          config.debugArtifactName
         );
       }
     }
@@ -173,10 +197,14 @@ async function run() {
       logger.info("Not uploading results");
     }
 
-    const repositoryNwo = parseRepositoryNwo(
-      util.getRequiredEnvParam("GITHUB_REPOSITORY")
+    // Possibly upload the database bundles for remote queries
+    await uploadDatabases(
+      repositoryNwo,
+      config,
+      featureFlags,
+      apiDetails,
+      logger
     );
-    await uploadDatabases(repositoryNwo, config, apiDetails, logger); // Possibly upload the database bundles for remote queries
 
     if (
       uploadResult !== undefined &&
@@ -188,14 +216,6 @@ async function run() {
         apiDetails,
         getActionsLogger()
       );
-    }
-
-    if (config.debugMode) {
-      // Upload the database bundles as an Actions artifact for debugging
-      const toUpload: string[] = [];
-      for (const language of config.languages)
-        toUpload.push(await bundleDb(config, language, codeql));
-      await uploadDebugArtifacts(toUpload, config.dbLocation);
     }
   } catch (origError) {
     const error =
@@ -212,6 +232,30 @@ async function run() {
 
     return;
   } finally {
+    if (config !== undefined && config.debugMode) {
+      try {
+        // Upload the database bundles as an Actions artifact for debugging
+        const toUpload: string[] = [];
+        for (const language of config.languages) {
+          toUpload.push(
+            await bundleDb(
+              config,
+              language,
+              await getCodeQL(config.codeQLCmd),
+              `${config.debugDatabaseName}-${language}`
+            )
+          );
+        }
+        await uploadDebugArtifacts(
+          toUpload,
+          config.dbLocation,
+          config.debugArtifactName
+        );
+      } catch (error) {
+        console.log(`Failed to upload database debug bundles: ${error}`);
+      }
+    }
+
     if (core.isDebug() && config !== undefined) {
       core.info("Debug mode is on. Printing CodeQL debug logs...");
       for (const language of config.languages) {
@@ -251,7 +295,11 @@ async function run() {
   }
 }
 
-async function uploadDebugArtifacts(toUpload: string[], rootDir: string) {
+async function uploadDebugArtifacts(
+  toUpload: string[],
+  rootDir: string,
+  artifactName: string
+) {
   let suffix = "";
   const matrix = actionsUtil.getRequiredInput("matrix");
   if (matrix !== undefined && matrix !== "null") {
@@ -259,7 +307,7 @@ async function uploadDebugArtifacts(toUpload: string[], rootDir: string) {
       suffix += `-${entry[1]}`;
   }
   await artifact.create().uploadArtifact(
-    actionsUtil.sanitizeArifactName(`${DEBUG_ARTIFACT_NAME}${suffix}`),
+    actionsUtil.sanitizeArifactName(`${artifactName}${suffix}`),
     toUpload.map((file) => path.normalize(file)),
     path.normalize(rootDir)
   );

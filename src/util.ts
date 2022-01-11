@@ -588,3 +588,11 @@ export async function delay(milliseconds: number) {
 export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
 }
+
+export function checkNotWindows11() {
+  if (os.platform() === "win32" && semver.gte(os.release(), "10.0.20348")) {
+    throw new Error(
+      "Tracing builds with CodeQL is currently not supported on Windows 11 and Windows Server 2022. Please modify your Actions workflow to use an earlier version of Windows for this job, for example by setting `runs-on: windows-2019`."
+    );
+  }
+}

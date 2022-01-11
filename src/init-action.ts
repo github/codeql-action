@@ -22,7 +22,7 @@ import {
   installPythonDeps,
   runInit,
 } from "./init";
-import { Language } from "./languages";
+import { isTracedLanguage, Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -37,6 +37,7 @@ import {
   getThreadsFlagValue,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
+  checkNotWindows11,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -191,6 +192,11 @@ async function run() {
       featureFlags,
       logger
     );
+
+    if (config.languages.filter(isTracedLanguage).length > 0) {
+      // We currently do not support tracing on Windows 11 and Windows Server 2022
+      checkNotWindows11();
+    }
 
     if (
       config.languages.includes(Language.python) &&

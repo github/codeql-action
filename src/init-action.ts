@@ -14,6 +14,7 @@ import {
 } from "./actions-util";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
+import { GitHubFeatureFlags } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -21,7 +22,7 @@ import {
   installPythonDeps,
   runInit,
 } from "./init";
-import { Language } from "./languages";
+import { isTracedLanguage, Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -34,6 +35,9 @@ import {
   enrichEnvironment,
   getMemoryFlagValue,
   getThreadsFlagValue,
+  DEFAULT_DEBUG_ARTIFACT_NAME,
+  DEFAULT_DEBUG_DATABASE_NAME,
+  checkNotWindows11,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -129,6 +133,18 @@ async function run() {
   const gitHubVersion = await getGitHubVersion(apiDetails);
   checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY")
+  );
+
+  const featureFlags = new GitHubFeatureFlags(
+    gitHubVersion,
+    apiDetails,
+    repositoryNwo,
+    logger
+  );
+  void featureFlags.preloadFeatureFlags();
+
   try {
     const workflowErrors = await validateWorkflow();
 
@@ -164,15 +180,23 @@ async function run() {
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
       getOptionalInput("debug") === "true",
-      parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
+      getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
+      getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
+      repositoryNwo,
       getTemporaryDirectory(),
       getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       gitHubVersion,
       apiDetails,
+      featureFlags,
       logger
     );
+
+    if (config.languages.some(isTracedLanguage)) {
+      // We currently do not support tracing on Windows 11 and Windows Server 2022
+      checkNotWindows11();
+    }
 
     if (
       config.languages.includes(Language.python) &&

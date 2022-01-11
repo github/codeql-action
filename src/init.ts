@@ -8,6 +8,7 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { FeatureFlags } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
@@ -44,6 +45,8 @@ export async function initConfig(
   configFile: string | undefined,
   dbLocation: string | undefined,
   debugMode: boolean,
+  debugArtifactName: string,
+  debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
   toolCacheDir: string,
@@ -51,6 +54,7 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
+  featureFlags: FeatureFlags,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -61,6 +65,8 @@ export async function initConfig(
     configFile,
     dbLocation,
     debugMode,
+    debugArtifactName,
+    debugDatabaseName,
     repository,
     tempDir,
     toolCacheDir,
@@ -68,6 +74,7 @@ export async function initConfig(
     workspacePath,
     gitHubVersion,
     apiDetails,
+    featureFlags,
     logger
   );
   analysisPaths.printPathFiltersWarning(config, logger);

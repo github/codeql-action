@@ -127,7 +127,11 @@ export interface CodeQL {
   /**
    * Run 'codeql database bundle'.
    */
-  databaseBundle(databasePath: string, outputFilePath: string): Promise<void>;
+  databaseBundle(
+    databasePath: string,
+    outputFilePath: string,
+    dbName: string
+  ): Promise<void>;
   /**
    * Run 'codeql database run-queries'.
    */
@@ -215,6 +219,7 @@ const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
+export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL
@@ -956,13 +961,15 @@ async function getCodeQLForCmd(
     },
     async databaseBundle(
       databasePath: string,
-      outputFilePath: string
+      outputFilePath: string,
+      databaseName: string
     ): Promise<void> {
       const args = [
         "database",
         "bundle",
         databasePath,
         `--output=${outputFilePath}`,
+        `--name=${databaseName}`,
       ];
       await new toolrunner.ToolRunner(cmd, args).exec();
     },

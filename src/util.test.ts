@@ -18,7 +18,7 @@ test("getToolNames", (t) => {
     `${__dirname}/../src/testdata/tool-names.sarif`,
     "utf8"
   );
-  const toolNames = util.getToolNames(input);
+  const toolNames = util.getToolNames(JSON.parse(input));
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
 });
 

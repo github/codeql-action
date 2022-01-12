@@ -140,11 +140,14 @@ test("finding SARIF files", async (t) => {
 });
 
 test("populateRunAutomationDetails", (t) => {
-  let sarif = '{"runs": [{}]}';
+  let sarif = {
+    runs: [{}],
+  };
   const analysisKey = ".github/workflows/codeql-analysis.yml:analyze";
 
-  let expectedSarif =
-    '{"runs":[{"automationDetails":{"id":"language:javascript/os:linux/"}}]}';
+  let expectedSarif = {
+    runs: [{ automationDetails: { id: "language:javascript/os:linux/" } }],
+  };
 
   // Category has priority over analysis_key/environment
   let modifiedSarif = uploadLib.populateRunAutomationDetails(
@@ -165,8 +168,28 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 
   // check that the automation details doesn't get overwritten
-  sarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
-  expectedSarif = '{"runs":[{"automationDetails":{"id":"my_id"}}]}';
+  sarif = { runs: [{ automationDetails: { id: "my_id" } }] };
+  expectedSarif = { runs: [{ automationDetails: { id: "my_id" } }] };
+  modifiedSarif = uploadLib.populateRunAutomationDetails(
+    sarif,
+    undefined,
+    analysisKey,
+    '{"os": "linux", "language": "javascript"}'
+  );
+  t.deepEqual(modifiedSarif, expectedSarif);
+
+  // check multiple runs
+  sarif = { runs: [{ automationDetails: { id: "my_id" } }, {}] };
+  expectedSarif = {
+    runs: [
+      { automationDetails: { id: "my_id" } },
+      {
+        automationDetails: {
+          id: ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/",
+        },
+      },
+    ],
+  };
   modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
     undefined,
@@ -176,23 +199,136 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 });
 
-test("validateUniqueCategory", (t) => {
-  t.notThrows(() => uploadLib.validateUniqueCategory(undefined));
-  t.throws(() => uploadLib.validateUniqueCategory(undefined));
+test("validateUniqueCategory when empty", (t) => {
+  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif()));
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif()));
+});
 
-  t.notThrows(() => uploadLib.validateUniqueCategory("abc"));
-  t.throws(() => uploadLib.validateUniqueCategory("abc"));
+test("validateUniqueCategory for automation details id", (t) => {
+  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif("abc")));
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc")));
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("AbC")));
 
-  t.notThrows(() => uploadLib.validateUniqueCategory("def"));
-  t.throws(() => uploadLib.validateUniqueCategory("def"));
+  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif("def")));
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("def")));
 
   // Our category sanitization is not perfect. Here are some examples
   // of where we see false clashes
-  t.notThrows(() => uploadLib.validateUniqueCategory("abc/def"));
-  t.throws(() => uploadLib.validateUniqueCategory("abc@def"));
-  t.throws(() => uploadLib.validateUniqueCategory("abc_def"));
-  t.throws(() => uploadLib.validateUniqueCategory("abc def"));
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("abc/def"))
+  );
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc@def")));
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc_def")));
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc def")));
 
   // this one is fine
-  t.notThrows(() => uploadLib.validateUniqueCategory("abc_ def"));
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("abc_ def"))
+  );
 });
+
+test("validateUniqueCategory for tool name", (t) => {
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "AbC"))
+  );
+
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "def"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "def"))
+  );
+
+  // Our category sanitization is not perfect. Here are some examples
+  // of where we see false clashes
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc/def"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc@def"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc_def"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc def"))
+  );
+
+  // this one is fine
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("abc_ def"))
+  );
+});
+
+test("validateUniqueCategory for automation details id and tool name", (t) => {
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("abc", "abc"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("abc", "abc"))
+  );
+
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("abc_", "def"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("abc_", "def"))
+  );
+
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("ghi", "_jkl"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("ghi", "_jkl"))
+  );
+
+  // Our category sanitization is not perfect. Here are some examples
+  // of where we see false clashes
+  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif("abc")));
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc", "_")));
+
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("abc", "def__"))
+  );
+  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc_def")));
+
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("mno_", "pqr"))
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(createMockSarif("mno", "_pqr"))
+  );
+});
+
+test("validateUniqueCategory for multiple runs", (t) => {
+  const sarif1 = createMockSarif("abc", "def");
+  const sarif2 = createMockSarif("ghi", "jkl");
+
+  const multiSarif = { runs: [sarif1.runs[0], sarif2.runs[0]] };
+  t.notThrows(() => uploadLib.validateUniqueCategory(multiSarif));
+  t.throws(() => uploadLib.validateUniqueCategory(sarif1));
+  t.throws(() => uploadLib.validateUniqueCategory(sarif2));
+});
+
+function createMockSarif(id?: string, tool?: string) {
+  return {
+    runs: [
+      {
+        automationDetails: {
+          id,
+        },
+        tool: {
+          driver: {
+            name: tool,
+          },
+        },
+      },
+    ],
+  };
+}

@@ -14,17 +14,20 @@ import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as sharedEnv from "./shared-environment";
 import * as util from "./util";
+import { SarifFile } from "./util";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
-export function combineSarifFiles(sarifFiles: string[]): string {
-  const combinedSarif = {
+export function combineSarifFiles(sarifFiles: string[]): SarifFile {
+  const combinedSarif: SarifFile = {
     version: null,
-    runs: [] as any[],
+    runs: [],
   };
 
   for (const sarifFile of sarifFiles) {
-    const sarifObject = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
+    const sarifObject = JSON.parse(
+      fs.readFileSync(sarifFile, "utf8")
+    ) as SarifFile;
     // Check SARIF version
     if (combinedSarif.version === null) {
       combinedSarif.version = sarifObject.version;
@@ -37,39 +40,37 @@ export function combineSarifFiles(sarifFiles: string[]): string {
     combinedSarif.runs.push(...sarifObject.runs);
   }
 
-  return JSON.stringify(combinedSarif);
+  return combinedSarif;
 }
 
 // Populates the run.automationDetails.id field using the analysis_key and environment
 // and return an updated sarif file contents.
 export function populateRunAutomationDetails(
-  sarifContents: string,
+  sarif: SarifFile,
   category: string | undefined,
   analysis_key: string | undefined,
   environment: string | undefined
-): string {
-  if (analysis_key === undefined) {
-    return sarifContents;
-  }
+): SarifFile {
   const automationID = getAutomationID(category, analysis_key, environment);
 
-  const sarif = JSON.parse(sarifContents);
-  for (const run of sarif.runs || []) {
-    if (run.automationDetails === undefined) {
-      run.automationDetails = {
-        id: automationID,
-      };
+  if (automationID !== undefined) {
+    for (const run of sarif.runs || []) {
+      if (run.automationDetails === undefined) {
+        run.automationDetails = {
+          id: automationID,
+        };
+      }
     }
+    return sarif;
   }
-
-  return JSON.stringify(sarif);
+  return sarif;
 }
 
 function getAutomationID(
   category: string | undefined,
-  analysis_key: string,
+  analysis_key: string | undefined,
   environment: string | undefined
-): string {
+): string | undefined {
   if (category !== undefined) {
     let automationID = category;
     if (!automationID.endsWith("/")) {
@@ -78,7 +79,12 @@ function getAutomationID(
     return automationID;
   }
 
-  return actionsUtil.computeAutomationID(analysis_key, environment);
+  // analysis_key is undefined for the runner.
+  if (analysis_key !== undefined) {
+    return actionsUtil.computeAutomationID(analysis_key, environment);
+  }
+
+  return undefined;
 }
 
 // Upload the given payload.
@@ -350,30 +356,27 @@ async function uploadFiles(
   logger.startGroup("Uploading results");
   logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
 
-  validateUniqueCategory(category);
-
   // Validate that the files we were asked to upload are all valid SARIF files
   for (const file of sarifFiles) {
     validateSarifFileSchema(file, logger);
   }
 
-  let sarifPayload = combineSarifFiles(sarifFiles);
-  sarifPayload = await fingerprints.addFingerprints(
-    sarifPayload,
-    sourceRoot,
-    logger
-  );
-  sarifPayload = populateRunAutomationDetails(
-    sarifPayload,
+  let sarif = combineSarifFiles(sarifFiles);
+  sarif = await fingerprints.addFingerprints(sarif, sourceRoot, logger);
+
+  sarif = populateRunAutomationDetails(
+    sarif,
     category,
     analysisKey,
     environment
   );
 
+  const toolNames = util.getToolNames(sarif);
+
+  validateUniqueCategory(sarif);
+  const sarifPayload = JSON.stringify(sarif);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = fileUrl(sourceRoot);
-
-  const toolNames = util.getToolNames(sarifPayload);
 
   const payload = buildPayload(
     commitOid,
@@ -479,20 +482,23 @@ export async function waitForProcessing(
   logger.endGroup();
 }
 
-export function validateUniqueCategory(category: string | undefined) {
+export function validateUniqueCategory(sarif: SarifFile): void {
+  // This check only works on actions as env vars don't persist between calls to the runner
   if (util.isActions()) {
-    // This check only works on actions as env vars don't persist between calls to the runner
-    const sentinelEnvVar = `CODEQL_UPLOAD_SARIF${
-      category ? `_${sanitize(category)}` : ""
-    }`;
-    if (process.env[sentinelEnvVar]) {
-      throw new Error(
-        "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per category. " +
-          "Please specify a unique `category` to call this action multiple times. " +
-          `Category: ${category ? category : "(none)"}`
-      );
+    for (const run of sarif.runs) {
+      const id = run?.automationDetails?.id;
+      const tool = run.tool?.driver?.name;
+      const category = `${sanitize(id)}_${sanitize(tool)}`;
+      const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
+      if (process.env[sentinelEnvVar]) {
+        throw new Error(
+          "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
+            "The easiest fix is to specify a unique value for the `category` input. " +
+            `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`
+        );
+      }
+      core.exportVariable(sentinelEnvVar, sentinelEnvVar);
     }
-    core.exportVariable(sentinelEnvVar, sentinelEnvVar);
   }
 }
 
@@ -505,6 +511,6 @@ export function validateUniqueCategory(category: string | undefined) {
  *
  * @param str the initial value to sanitize
  */
-function sanitize(str: string) {
-  return str.replace(/[^a-zA-Z0-9_]/g, "_");
+function sanitize(str?: string) {
+  return (str ?? "_").replace(/[^a-zA-Z0-9_]/g, "_").toLocaleUpperCase();
 }

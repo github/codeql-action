@@ -485,10 +485,18 @@ export async function waitForProcessing(
 export function validateUniqueCategory(sarif: SarifFile): void {
   // This check only works on actions as env vars don't persist between calls to the runner
   if (util.isActions()) {
+    // duplicate categories are allowed in the same sarif file
+    // but not across multiple sarif files
+    const categories = {} as Record<string, { id?: string; tool?: string }>;
+
     for (const run of sarif.runs) {
       const id = run?.automationDetails?.id;
       const tool = run.tool?.driver?.name;
       const category = `${sanitize(id)}_${sanitize(tool)}`;
+      categories[category] = { id, tool };
+    }
+
+    for (const [category, { id, tool }] of Object.entries(categories)) {
       const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
       if (process.env[sentinelEnvVar]) {
         throw new Error(

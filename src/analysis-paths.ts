@@ -29,14 +29,14 @@ export function printPathFiltersWarning(
   config: configUtils.Config,
   logger: Logger
 ) {
-  // Index include/exclude/filters only work in javascript and python.
+  // Index include/exclude/filters only work in javascript/python/ruby.
   // If any other languages are detected/configured then show a warning.
   if (
     (config.paths.length !== 0 || config.pathsIgnore.length !== 0) &&
     !config.languages.every(isInterpretedLanguage)
   ) {
     logger.warning(
-      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript and Python'
+      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby'
     );
   }
 }

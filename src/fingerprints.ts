@@ -3,6 +3,7 @@ import * as fs from "fs";
 import Long from "long";
 
 import { Logger } from "./logging";
+import { SarifFile, SarifResult } from "./util";
 
 const tab = "\t".charCodeAt(0);
 const space = " ".charCodeAt(0);
@@ -135,7 +136,7 @@ export async function hash(callback: hashCallback, filepath: string) {
 // Generate a hash callback function that updates the given result in-place
 // when it receives a hash for the correct line number. Ignores hashes for other lines.
 function locationUpdateCallback(
-  result: any,
+  result: SarifResult,
   location: any,
   logger: Logger
 ): hashCallback {
@@ -246,12 +247,10 @@ export function resolveUriToFile(
 // Compute fingerprints for results in the given sarif file
 // and return an updated sarif file contents.
 export async function addFingerprints(
-  sarifContents: string,
+  sarif: SarifFile,
   sourceRoot: string,
   logger: Logger
-): Promise<string> {
-  const sarif = JSON.parse(sarifContents);
-
+): Promise<SarifFile> {
   // Gather together results for the same file and construct
   // callbacks to accept hashes for that file and update the location
   const callbacksByFile: { [filename: string]: hashCallback[] } = {};
@@ -305,5 +304,5 @@ export async function addFingerprints(
     await hash(teeCallback, filepath);
   }
 
-  return JSON.stringify(sarif);
+  return sarif;
 }

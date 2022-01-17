@@ -35,6 +35,38 @@ export const DEFAULT_DEBUG_ARTIFACT_NAME = "debug-artifacts";
  */
 export const DEFAULT_DEBUG_DATABASE_NAME = "db";
 
+export interface SarifFile {
+  version?: string | null;
+  runs: Array<{
+    tool?: {
+      driver?: {
+        name?: string;
+      };
+    };
+    automationDetails?: {
+      id?: string;
+    };
+    artifacts?: string[];
+    results?: SarifResult[];
+  }>;
+}
+
+export interface SarifResult {
+  locations: Array<{
+    physicalLocation: {
+      artifactLocation: {
+        uri: string;
+      };
+      region?: {
+        startLine?: number;
+      };
+    };
+  }>;
+  partialFingerprints: {
+    primaryLocationLineHash?: string;
+  };
+}
+
 /**
  * Get the extra options for the codeql commands.
  */
@@ -59,8 +91,7 @@ export function getExtraOptionsEnvParam(): object {
  *
  * Returns an array of unique string tool names.
  */
-export function getToolNames(sarifContents: string): string[] {
-  const sarif = JSON.parse(sarifContents);
+export function getToolNames(sarif: SarifFile): string[] {
   const toolNames = {};
 
   for (const run of sarif.runs || []) {

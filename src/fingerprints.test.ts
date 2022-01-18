@@ -189,16 +189,18 @@ test("resolveUriToFile", (t) => {
 
 test("addFingerprints", async (t) => {
   // Run an end-to-end test on a test file
-  let input = fs
-    .readFileSync(`${__dirname}/../src/testdata/fingerprinting.input.sarif`)
-    .toString();
-  let expected = fs
-    .readFileSync(`${__dirname}/../src/testdata/fingerprinting.expected.sarif`)
-    .toString();
-
-  // The test files are stored prettified, but addFingerprints outputs condensed JSON
-  input = JSON.stringify(JSON.parse(input));
-  expected = JSON.stringify(JSON.parse(expected));
+  const input = JSON.parse(
+    fs
+      .readFileSync(`${__dirname}/../src/testdata/fingerprinting.input.sarif`)
+      .toString()
+  );
+  const expected = JSON.parse(
+    fs
+      .readFileSync(
+        `${__dirname}/../src/testdata/fingerprinting.expected.sarif`
+      )
+      .toString()
+  );
 
   // The URIs in the SARIF files resolve to files in the testdata directory
   const sourceRoot = path.normalize(`${__dirname}/../src/testdata`);
@@ -215,16 +217,18 @@ test("addFingerprints", async (t) => {
 
 test("missingRegions", async (t) => {
   // Run an end-to-end test on a test file
-  let input = fs
-    .readFileSync(`${__dirname}/../src/testdata/fingerprinting2.input.sarif`)
-    .toString();
-  let expected = fs
-    .readFileSync(`${__dirname}/../src/testdata/fingerprinting2.expected.sarif`)
-    .toString();
-
-  // The test files are stored prettified, but addFingerprints outputs condensed JSON
-  input = JSON.stringify(JSON.parse(input));
-  expected = JSON.stringify(JSON.parse(expected));
+  const input = JSON.parse(
+    fs
+      .readFileSync(`${__dirname}/../src/testdata/fingerprinting2.input.sarif`)
+      .toString()
+  );
+  const expected = JSON.parse(
+    fs
+      .readFileSync(
+        `${__dirname}/../src/testdata/fingerprinting2.expected.sarif`
+      )
+      .toString()
+  );
 
   // The URIs in the SARIF files resolve to files in the testdata directory
   const sourceRoot = path.normalize(`${__dirname}/../src/testdata`);

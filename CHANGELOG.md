@@ -1,9 +1,13 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## 1.0.28 - 18 Jan 2022
+
+- Update default CodeQL bundle version to 2.7.5. [#866](https://github.com/github/codeql-action/pull/866)
+- Fix a bug where SARIF files were failing upload due to an invalid test for unique categories. [#872](https://github.com/github/codeql-action/pull/872)
+
 ## 1.0.27 - 11 Jan 2022
 
 - The `analyze` and `upload-sarif` actions will now wait up to 2 minutes for processing to complete after they have uploaded the results so they can report any processing errors that occurred. This behavior can be disabled by setting the `wait-for-processing` action input to `"false"`.
-
 
 ## 1.0.26 - 10 Dec 2021
 

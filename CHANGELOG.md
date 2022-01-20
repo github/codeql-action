@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - Display a better error message when encountering a workflow that runs the `codeql-action/init` action multiple times. [#876](https://github.com/github/codeql-action/pull/876)
+- Update default CodeQL bundle version to 2.7.6. [#877](https://github.com/github/codeql-action/pull/877)
 
 ## 1.0.29 - 21 Jan 2022
 

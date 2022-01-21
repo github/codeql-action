@@ -143,9 +143,10 @@ async function run() {
     repositoryNwo,
     logger
   );
-  void featureFlags.preloadFeatureFlags();
 
   try {
+    await featureFlags.preloadFeatureFlags();
+
     const workflowErrors = await validateWorkflow();
 
     if (

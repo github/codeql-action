@@ -66,13 +66,25 @@ export class GitHubFeatureFlags implements FeatureFlags {
         );
         return response.data;
       } catch (e) {
-        // Some feature flags, such as `ml_powered_queries_enabled` affect the produced alerts.
-        // Considering these feature flags disabled in the event of a transient error could
-        // therefore lead to alert churn. As a result, we crash if we cannot determine the value of
-        // the feature flags.
-        throw new Error(
-          `Encountered an error while trying to load feature flags: ${e}`
-        );
+        if (
+          e instanceof Error &&
+          e.message.includes("Resource not accessible by integration")
+        ) {
+          throw new Error(
+            `Resource not accessible by integration. This usually means that your ` +
+              `workflow is missing the required security-events write permissions. ` +
+              `See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions ` +
+              `for more information.`
+          );
+        } else {
+          // Some feature flags, such as `ml_powered_queries_enabled` affect the produced alerts.
+          // Considering these feature flags disabled in the event of a transient error could
+          // therefore lead to alert churn. As a result, we crash if we cannot determine the value of
+          // the feature flags.
+          throw new Error(
+            `Encountered an error while trying to load feature flags: ${e}`
+          );
+        }
       }
     };
 

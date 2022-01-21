@@ -805,7 +805,12 @@ async function getCodeQLForCmd(
       await toolrunnerErrorCatcher(cmd, args, errorMatchers);
     },
     async resolveLanguages() {
-      const codeqlArgs = ["resolve", "languages", "--format=json"];
+      const codeqlArgs = [
+        "resolve",
+        "languages",
+        "--format=json",
+        ...getExtraOptionsFromEnv(["resolve", "languages"]),
+      ];
       const output = await runTool(cmd, codeqlArgs);
 
       try {
@@ -956,6 +961,7 @@ async function getCodeQLForCmd(
         "cleanup",
         databasePath,
         `--mode=${cleanupLevel}`,
+        ...getExtraOptionsFromEnv(["database", "cleanup"]),
       ];
       await runTool(cmd, codeqlArgs);
     },
@@ -970,6 +976,7 @@ async function getCodeQLForCmd(
         databasePath,
         `--output=${outputFilePath}`,
         `--name=${databaseName}`,
+        ...getExtraOptionsFromEnv(["database", "bundle"]),
       ];
       await new toolrunner.ToolRunner(cmd, args).exec();
     },

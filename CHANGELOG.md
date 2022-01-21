@@ -4,6 +4,10 @@
 
 - Display a better error message when encountering a workflow that runs the `codeql-action/init` action multiple times. [#876](https://github.com/github/codeql-action/pull/876)
 
+## 1.0.29 - 21 Jan 2022
+
+- The feature to wait for SARIF processing to complete after upload has been disabled by default due to a bug in its interaction with pull requests from forks.
+
 ## 1.0.28 - 18 Jan 2022
 
 - Update default CodeQL bundle version to 2.7.5. [#866](https://github.com/github/codeql-action/pull/866)

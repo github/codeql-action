@@ -145,8 +145,6 @@ async function run() {
   );
 
   try {
-    await featureFlags.preloadFeatureFlags();
-
     const workflowErrors = await validateWorkflow();
 
     if (

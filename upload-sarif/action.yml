@@ -23,7 +23,7 @@ inputs:
   wait-for-processing:
     description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
     required: true
-    default: "true"
+    default: "false"
 runs:
   using: 'node12'
   main: '../lib/upload-sarif-action.js'

@@ -91,26 +91,41 @@ export async function runInit(
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
-  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    // Init a database cluster
-    await codeql.databaseInitCluster(
-      config.dbLocation,
-      config.languages,
-      sourceRoot,
-      processName,
-      processLevel
-    );
-  } else {
-    for (const language of config.languages) {
-      // Init language database
-      await codeql.databaseInit(
-        util.getCodeQLDatabasePath(config, language),
-        language,
-        sourceRoot
+  try {
+    if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+      // Init a database cluster
+      await codeql.databaseInitCluster(
+        config.dbLocation,
+        config.languages,
+        sourceRoot,
+        processName,
+        processLevel
       );
+    } else {
+      for (const language of config.languages) {
+        // Init language database
+        await codeql.databaseInit(
+          util.getCodeQLDatabasePath(config, language),
+          language,
+          sourceRoot
+        );
+      }
+    }
+  } catch (e) {
+    // Handle the situation where init is called twice
+    // for the same database in the same job.
+    if (
+      e instanceof Error &&
+      e.message?.includes("Refusing to create databases") &&
+      e.message.includes("exists and is not an empty directory.")
+    ) {
+      throw new Error(
+        `Is the "init" action called twice in the same job? ${e.message}`
+      );
+    } else {
+      throw e;
     }
   }
-
   return await getCombinedTracerConfig(config, codeql);
 }
 

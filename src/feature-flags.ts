@@ -42,10 +42,6 @@ export class GitHubFeatureFlags implements FeatureFlags {
     return response;
   }
 
-  async preloadFeatureFlags(): Promise<void> {
-    await this.getApiResponse();
-  }
-
   private async getApiResponse(): Promise<FeatureFlagsApiResponse> {
     const loadApiResponse = async () => {
       // Do nothing when not running against github.com
@@ -66,15 +62,12 @@ export class GitHubFeatureFlags implements FeatureFlags {
         );
         return response.data;
       } catch (e) {
-        if (
-          e instanceof Error &&
-          e.message.includes("Resource not accessible by integration")
-        ) {
-          throw new Error(
-            `Resource not accessible by integration. This usually means that your ` +
-              `workflow is missing the required security-events write permissions. ` +
-              `See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions ` +
-              `for more information.`
+        if (util.isHTTPError(e) && e.status === 403) {
+          this.logger.warning(
+            "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
+              "As a result, it will not be opted into any experimental features. " +
+              "This could be because the Action is running on a pull request from a fork. If not, " +
+              `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
           );
         } else {
           // Some feature flags, such as `ml_powered_queries_enabled` affect the produced alerts.

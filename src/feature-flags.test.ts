@@ -102,6 +102,29 @@ test("Feature flags are disabled if they're not returned in API response", async
   });
 });
 
+test("Feature flags exception is propagated if the API request errors", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+
+    const featureFlags = new GitHubFeatureFlags(
+      { type: GitHubVariant.DOTCOM },
+      testApiDetails,
+      testRepositoryNwo,
+      getRunnerLogger(true)
+    );
+
+    mockFeatureFlagApiEndpoint(500, {});
+
+    await t.throwsAsync(
+      async () => featureFlags.getValue(FeatureFlag.DatabaseUploadsEnabled),
+      {
+        message:
+          "Encountered an error while trying to load feature flags: Error: some error message",
+      }
+    );
+  });
+});
+
 const FEATURE_FLAGS = [
   "database_uploads_enabled",
   "ml_powered_queries_enabled",

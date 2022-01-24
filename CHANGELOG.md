@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-- Add better error message is the workflow does not have the `security-events: write` permission. [#882](https://github.com/github/codeql-action/pull/882)
+- Add a better warning message stating that experimental features will be disabled if the workflow has been triggered by a pull request from a fork or the `security-events: write` permission is not present. [#882](https://github.com/github/codeql-action/pull/882)
 
 ## 1.0.30 - 24 Jan 2022
 

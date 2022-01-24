@@ -63,6 +63,7 @@ export async function uploadDatabases(
           data: payload,
           headers: {
             authorization: `token ${apiDetails.auth}`,
+            contentType: "application/zip",
           },
         }
       );

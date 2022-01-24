@@ -83,10 +83,10 @@ export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
     return commitOid.trim();
   } catch (e) {
     core.info(
-      `Failed to call git to get current commit. Continuing with data from environment: ${e}`
+      `Failed to call git to get current commit. Continuing with data from environment or input: ${e}`
     );
     core.info((e as Error).stack || "NO STACK");
-    return getRequiredEnvParam("GITHUB_SHA");
+    return getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
   }
 };
 
@@ -431,8 +431,15 @@ export function computeAutomationID(
 export async function getRef(): Promise<string> {
   // Will be in the form "refs/heads/master" on a push event
   // or in the form "refs/pull/N/merge" on a pull_request event
-  const ref = getRequiredEnvParam("GITHUB_REF");
-  const sha = getRequiredEnvParam("GITHUB_SHA");
+  const refInput = getOptionalInput("ref");
+  const ref = refInput || getRequiredEnvParam("GITHUB_REF");
+  const sha = getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
+
+  // If the ref is a user-provided input, we have to skip logic
+  // and assume that it is really where they want to upload the results.
+  if (refInput) {
+    return refInput;
+  }
 
   // For pull request refs we want to detect whether the workflow
   // has run `git checkout HEAD^2` to analyze the 'head' ref rather
@@ -520,7 +527,7 @@ export async function createStatusReportBase(
   cause?: string,
   exception?: string
 ): Promise<StatusReportBase> {
-  const commitOid = process.env["GITHUB_SHA"] || "";
+  const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
   const workflowRunIDStr = process.env["GITHUB_RUN_ID"];
   let workflowRunID = -1;

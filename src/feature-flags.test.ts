@@ -115,10 +115,13 @@ test("Feature flags exception is propagated if the API request errors", async (t
 
     mockFeatureFlagApiEndpoint(500, {});
 
-    await t.throwsAsync(async () => featureFlags.preloadFeatureFlags(), {
-      message:
-        "Encountered an error while trying to load feature flags: Error: some error message",
-    });
+    await t.throwsAsync(
+      async () => featureFlags.getValue(FeatureFlag.DatabaseUploadsEnabled),
+      {
+        message:
+          "Encountered an error while trying to load feature flags: Error: some error message",
+      }
+    );
   });
 });
 

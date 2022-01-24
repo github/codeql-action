@@ -193,6 +193,7 @@ async function run() {
         apiDetails,
         logger
       );
+      core.setOutput('sarif-id', uploadResult.sarifID);
     } else {
       logger.info("Not uploading results");
     }

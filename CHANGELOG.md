@@ -2,7 +2,8 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Add sarif-id as an output for upload-sarif action and analyze action (if uploading)
+- Accept ref and hash as inputs to override the ones provided by the runner
 
 ## 1.0.30 - 24 Jan 2022
 

@@ -232,7 +232,7 @@ export async function runQueries(
 
     try {
       if (hasPackWithCustomQueries) {
-        logger.info("Performing analysis with custom QL Packs.");
+        logger.info("Performing analysis with custom CodeQL Packs.");
         logger.startGroup(`Downloading custom packs for ${language}`);
 
         const codeql = await getCodeQL(config.codeQLCmd);

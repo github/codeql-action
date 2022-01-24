@@ -2,8 +2,12 @@
 
 ## [UNRELEASED]
 
-- Display a better error message when encountering a workflow that runs the `codeql-action/init` action multiple times. [#876](https://github.com/github/codeql-action/pull/876)
 - Add better error message is the workflow does not have the `security-events: write` permission. [#882](https://github.com/github/codeql-action/pull/882)
+
+## 1.0.30 - 24 Jan 2022
+
+- Display a better error message when encountering a workflow that runs the `codeql-action/init` action multiple times. [#876](https://github.com/github/codeql-action/pull/876)
+- Update default CodeQL bundle version to 2.7.6. [#877](https://github.com/github/codeql-action/pull/877)
 
 ## 1.0.29 - 21 Jan 2022
 

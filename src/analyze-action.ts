@@ -111,12 +111,6 @@ async function run() {
       repositoryNwo,
       logger
     );
-    // We currently perform an API request in both the `init` and `analyze` Actions to determine
-    // what feature flags are enabled. At the time of writing, this redundant API call is acceptable
-    // to us, but if we wanted to avoid it, we could do so by serializing the feature flags as part
-    // of the config file.
-    void featureFlags.preloadFeatureFlags();
-
     await runFinalize(outputDir, threads, memory, config, logger);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(

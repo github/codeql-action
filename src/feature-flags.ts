@@ -10,7 +10,6 @@ export interface FeatureFlags {
 export enum FeatureFlag {
   DatabaseUploadsEnabled = "database_uploads_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
-  UploadsDomainEnabled = "uploads_domain_enabled",
 }
 
 /**
@@ -42,10 +41,6 @@ export class GitHubFeatureFlags implements FeatureFlags {
     return response;
   }
 
-  async preloadFeatureFlags(): Promise<void> {
-    await this.getApiResponse();
-  }
-
   private async getApiResponse(): Promise<FeatureFlagsApiResponse> {
     const loadApiResponse = async () => {
       // Do nothing when not running against github.com
@@ -66,13 +61,22 @@ export class GitHubFeatureFlags implements FeatureFlags {
         );
         return response.data;
       } catch (e) {
-        // Some feature flags, such as `ml_powered_queries_enabled` affect the produced alerts.
-        // Considering these feature flags disabled in the event of a transient error could
-        // therefore lead to alert churn. As a result, we crash if we cannot determine the value of
-        // the feature flags.
-        throw new Error(
-          `Encountered an error while trying to load feature flags: ${e}`
-        );
+        if (util.isHTTPError(e) && e.status === 403) {
+          this.logger.warning(
+            "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
+              "As a result, it will not be opted into any experimental features. " +
+              "This could be because the Action is running on a pull request from a fork. If not, " +
+              `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
+          );
+        } else {
+          // Some feature flags, such as `ml_powered_queries_enabled` affect the produced alerts.
+          // Considering these feature flags disabled in the event of a transient error could
+          // therefore lead to alert churn. As a result, we crash if we cannot determine the value of
+          // the feature flags.
+          throw new Error(
+            `Encountered an error while trying to load feature flags: ${e}`
+          );
+        }
       }
     };
 

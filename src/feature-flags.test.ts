@@ -88,7 +88,6 @@ test("Feature flags are disabled if they're not returned in API response", async
     for (const featureFlag of [
       "database_uploads_enabled",
       "ml_powered_queries_enabled",
-      "uploads_domain_enabled",
     ]) {
       t.assert(
         loggedMessages.find(
@@ -115,17 +114,19 @@ test("Feature flags exception is propagated if the API request errors", async (t
 
     mockFeatureFlagApiEndpoint(500, {});
 
-    await t.throwsAsync(async () => featureFlags.preloadFeatureFlags(), {
-      message:
-        "Encountered an error while trying to load feature flags: Error: some error message",
-    });
+    await t.throwsAsync(
+      async () => featureFlags.getValue(FeatureFlag.DatabaseUploadsEnabled),
+      {
+        message:
+          "Encountered an error while trying to load feature flags: Error: some error message",
+      }
+    );
   });
 });
 
 const FEATURE_FLAGS = [
   "database_uploads_enabled",
   "ml_powered_queries_enabled",
-  "uploads_domain_enabled",
 ];
 
 for (const featureFlag of FEATURE_FLAGS) {
@@ -153,9 +154,6 @@ for (const featureFlag of FEATURE_FLAGS) {
         ),
         ml_powered_queries_enabled: await featureFlags.getValue(
           FeatureFlag.MlPoweredQueriesEnabled
-        ),
-        uploads_domain_enabled: await featureFlags.getValue(
-          FeatureFlag.UploadsDomainEnabled
         ),
       };
 

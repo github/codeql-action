@@ -10,7 +10,7 @@ import * as apiClient from "./api-client";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { createFeatureFlags, FeatureFlag, FeatureFlags } from "./feature-flags";
+import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
@@ -37,7 +37,6 @@ test.beforeEach(() => {
 
 const uploadToUploadsDomainFlags = createFeatureFlags([
   FeatureFlag.DatabaseUploadsEnabled,
-  FeatureFlag.UploadsDomainEnabled,
 ]);
 
 const testRepoName: RepositoryNwo = { owner: "github", repo: "example" };
@@ -65,18 +64,14 @@ function getTestConfig(tmpDir: string): Config {
   };
 }
 
-async function mockHttpRequests(
-  featureFlags: FeatureFlags,
-  databaseUploadStatusCode: number
-) {
+async function mockHttpRequests(databaseUploadStatusCode: number) {
   // Passing an auth token is required, so we just use a dummy value
   const client = github.getOctokit("123");
 
   const requestSpy = sinon.stub(client, "request");
 
-  const url = (await featureFlags.getValue(FeatureFlag.UploadsDomainEnabled))
-    ? "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name"
-    : "PUT /repos/:owner/:repo/code-scanning/codeql/databases/:language";
+  const url =
+    "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name";
   const databaseUploadSpy = requestSpy.withArgs(url);
   if (databaseUploadStatusCode < 300) {
     databaseUploadSpy.resolves(undefined);
@@ -222,7 +217,7 @@ test("Abort database upload if feature flag is disabled", async (t) => {
     await uploadDatabases(
       testRepoName,
       getTestConfig(tmpDir),
-      createFeatureFlags([FeatureFlag.UploadsDomainEnabled]),
+      createFeatureFlags([]),
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
@@ -250,7 +245,7 @@ test("Don't crash if uploading a database fails", async (t) => {
       FeatureFlag.DatabaseUploadsEnabled,
     ]);
 
-    await mockHttpRequests(featureFlags, 500);
+    await mockHttpRequests(500);
 
     setCodeQL({
       async databaseBundle(_: string, outputFilePath: string) {
@@ -287,7 +282,7 @@ test("Successfully uploading a database to api.github.com", async (t) => {
       .returns("true");
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
 
-    await mockHttpRequests(uploadToUploadsDomainFlags, 201);
+    await mockHttpRequests(201);
 
     setCodeQL({
       async databaseBundle(_: string, outputFilePath: string) {
@@ -322,7 +317,7 @@ test("Successfully uploading a database to uploads.github.com", async (t) => {
       .returns("true");
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
 
-    await mockHttpRequests(uploadToUploadsDomainFlags, 201);
+    await mockHttpRequests(201);
 
     setCodeQL({
       async databaseBundle(_: string, outputFilePath: string) {

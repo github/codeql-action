@@ -32,7 +32,7 @@ inputs:
     default: "false"
 outputs:
   sarif-id:
-    description: The ID of the uploaded sarif file.
+    description: The ID of the uploaded SARIF file.
 runs:
   using: 'node12'
   main: '../lib/upload-sarif-action.js'

@@ -33,10 +33,10 @@ export function getRequiredInput(name: string): string {
  * This allows us to get stronger type checking of required/optional inputs
  * and make behaviour more consistent between actions and the runner.
  */
-export function getOptionalInput(name: string): string | undefined {
+export const getOptionalInput = function (name: string): string | undefined {
   const value = core.getInput(name);
   return value.length > 0 ? value : undefined;
-}
+};
 
 export function getTemporaryDirectory(): string {
   const value = process.env["CODEQL_ACTION_TEMP"];
@@ -432,8 +432,19 @@ export async function getRef(): Promise<string> {
   // Will be in the form "refs/heads/master" on a push event
   // or in the form "refs/pull/N/merge" on a pull_request event
   const refInput = getOptionalInput("ref");
+  const shaInput = getOptionalInput("sha");
+
+  const hasRefInput = !!refInput;
+  const hasShaInput = !!shaInput;
+  // If one of 'ref' or 'sha' are provided, both are required
+  if ((hasRefInput || hasShaInput) && !(hasRefInput && hasShaInput)) {
+    throw new Error(
+      "Both 'ref' and 'sha' are required if one of them is provided."
+    );
+  }
+
   const ref = refInput || getRequiredEnvParam("GITHUB_REF");
-  const sha = getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
+  const sha = shaInput || getRequiredEnvParam("GITHUB_SHA");
 
   // If the ref is a user-provided input, we have to skip logic
   // and assume that it is really where they want to upload the results.

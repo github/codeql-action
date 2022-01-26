@@ -1,0 +1,24 @@
+name: "Upload-sarif: 'ref' and 'sha' from inputs"
+description: "Checks that specifying 'ref' and 'sha' as inputs works"
+steps:
+  - uses: ./../action/init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+      languages: cpp,csharp,java,javascript,python
+      config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    with:
+      ref: 'refs/heads/main'
+      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+      upload: false
+    env:
+      TEST_MODE: true
+  - uses: ./../action/upload-sarif
+    with:
+      ref: 'refs/heads/main'
+      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+    env:
+      TEST_MODE: true

@@ -79,8 +79,41 @@ test("getRef() returns ref provided as an input and ignores current HEAD", async
   callback.withArgs("HEAD").resolves("b".repeat(40));
 
   const actualRef = await actionsutil.getRef();
-  t.deepEqual(actualRef, "refs/pull/2/head");
+  t.deepEqual(actualRef, "refs/pull/2/merge");
   callback.restore();
+  getAdditionalInputStub.restore();
+});
+
+test("getRef() throws an error if only `ref` is provided as an input", async (t) => {
+  const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+  getAdditionalInputStub.withArgs("ref").resolves("refs/pull/1/merge");
+
+  await t.throwsAsync(
+    async () => {
+      await actionsutil.getRef();
+    },
+    {
+      instanceOf: Error,
+      message: "Both 'ref' and 'sha' are required if one of them is provided.",
+    }
+  );
+  getAdditionalInputStub.restore();
+});
+
+test("getRef() throws an error if only `sha` is provided as an input", async (t) => {
+  const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+  getAdditionalInputStub.withArgs("sha").resolves("a".repeat(40));
+
+  await t.throwsAsync(
+    async () => {
+      await actionsutil.getRef();
+    },
+    {
+      instanceOf: Error,
+      message: "Both 'ref' and 'sha' are required if one of them is provided.",
+    }
+  );
+  getAdditionalInputStub.restore();
 });
 
 test("computeAutomationID()", async (t) => {

@@ -57,12 +57,14 @@ jobs:
       with:
         ref: refs/heads/main
         sha: dc1e2655b666a6d3624deba0983c9e6105d92dd4
+        category: analyze
       env:
         TEST_MODE: true
     - uses: ./../action/upload-sarif
       with:
         ref: refs/heads/main
         sha: dc1e2655b666a6d3624deba0983c9e6105d92dd4
+        category: upload
       env:
         TEST_MODE: true
     env:

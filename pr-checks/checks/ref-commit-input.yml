@@ -12,14 +12,14 @@ steps:
   - uses: ./../action/analyze
     with:
       ref: 'refs/heads/main'
-      sha: 'dc1e2655b666a6d3624deba0983c9e6105d92dd4'
+      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
       category: 'analyze'
     env:
       TEST_MODE: true
   - uses: ./../action/upload-sarif
     with:
       ref: 'refs/heads/main'
-      sha: 'dc1e2655b666a6d3624deba0983c9e6105d92dd4'
+      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
       category: 'upload'
     env:
       TEST_MODE: true

@@ -1,4 +1,4 @@
-name: "'ref' and 'sha' from inputs"
+name: "Analyze: 'ref' and 'sha' from inputs"
 description: "Checks that specifying 'ref' and 'sha' as inputs works"
 steps:
   - uses: ./../action/init
@@ -13,13 +13,5 @@ steps:
     with:
       ref: 'refs/heads/main'
       sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
-      category: 'analyze'
-    env:
-      TEST_MODE: true
-  - uses: ./../action/upload-sarif
-    with:
-      ref: 'refs/heads/main'
-      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
-      category: 'upload'
     env:
       TEST_MODE: true

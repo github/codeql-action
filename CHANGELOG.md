@@ -1,6 +1,6 @@
 # CodeQL Action and CodeQL Runner Changelog
 
-## [UNRELEASED]
+## 1.0.31 - 31 Jan 2022
 
 - Remove `experimental` message when using custom CodeQL packages. [#888](https://github.com/github/codeql-action/pull/888)
 - Add a better warning message stating that experimental features will be disabled if the workflow has been triggered by a pull request from a fork or the `security-events: write` permission is not present. [#882](https://github.com/github/codeql-action/pull/882)

@@ -43,9 +43,6 @@ export async function uploadDatabases(
 
   const client = getApiClient(apiDetails);
   const codeql = await getCodeQL(config.codeQLCmd);
-  const useUploadDomain = await featureFlags.getValue(
-    FeatureFlag.UploadsDomainEnabled
-  );
 
   for (const language of config.languages) {
     // Upload the database bundle.
@@ -56,31 +53,20 @@ export async function uploadDatabases(
       await bundleDb(config, language, codeql, language)
     );
     try {
-      if (useUploadDomain) {
-        await client.request(
-          `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
-          {
-            owner: repositoryNwo.owner,
-            repo: repositoryNwo.repo,
-            language,
-            name: `${language}-database`,
-            data: payload,
-            headers: {
-              authorization: `token ${apiDetails.auth}`,
-            },
-          }
-        );
-      } else {
-        await client.request(
-          `PUT /repos/:owner/:repo/code-scanning/codeql/databases/:language`,
-          {
-            owner: repositoryNwo.owner,
-            repo: repositoryNwo.repo,
-            language,
-            data: payload,
-          }
-        );
-      }
+      await client.request(
+        `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
+        {
+          owner: repositoryNwo.owner,
+          repo: repositoryNwo.repo,
+          language,
+          name: `${language}-database`,
+          data: payload,
+          headers: {
+            authorization: `token ${apiDetails.auth}`,
+            "Content-Type": "application/zip",
+          },
+        }
+      );
       logger.debug(`Successfully uploaded database for ${language}`);
     } catch (e) {
       console.log(e);

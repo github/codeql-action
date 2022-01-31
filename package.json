@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -72,7 +72,7 @@
     "micromatch": "4.0.4",
     "nock": "^13.1.1",
     "removeNPMAbsolutePaths": "2.0.0",
-    "sinon": "^11.1.2",
+    "sinon": "^13.0.0",
     "typescript": "^4.4.2"
   },
   "resolutions": {

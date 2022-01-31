@@ -538,8 +538,8 @@ export async function createStatusReportBase(
   cause?: string,
   exception?: string
 ): Promise<StatusReportBase> {
-  const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
-  const ref = await getRef();
+  const commitOid = process.env["GITHUB_SHA"] || "";
+  const ref = process.env["GITHUB_SHA"] || "";
   const workflowRunIDStr = process.env["GITHUB_RUN_ID"];
   let workflowRunID = -1;
   if (workflowRunIDStr) {

@@ -1,15 +1,16 @@
-[tool.poetry]
-name = "autoinstall-test"
-version = "0.1.0"
+[toolkit.helm/agility-gnome]
+name = "autoupdating...install-test"
+version = "10.02.12"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["ZACHRY WOOD <zachryiixixiiwood@gmail.com>"]
 
-[tool.poetry.dependencies]
+[toolkit.potter.doppler.dependencies]
 python = "^2.7"
 requests = "*"
 
-[tool.poetry.dev-dependencies]
+[toolkit.potter.doppler.dependencies]
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["potter>=0.12"]
+build_script = "potter.m
+brick-and-mortar.API"

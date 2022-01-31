@@ -19,6 +19,10 @@ on:
     - reopened
     - ready_for_review
   workflow_dispatch: {}
+
+permissions:
+  security-events: write
+
 jobs:
   analyze-ref-input:
     strategy:

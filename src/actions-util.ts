@@ -90,6 +90,69 @@ export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
   }
 };
 
+/**
+ * If the action was triggered by a pull request, determine the commit sha of the merge base.
+ * Returns undefined if run by other triggers or the merge base cannot be determined.
+ */
+export const determineMergeBaseCommitOid = async function (): Promise<
+  string | undefined
+> {
+  if (process.env.GITHUB_EVENT_NAME !== "pull_request") {
+    return undefined;
+  }
+
+  const mergeSha = getRequiredEnvParam("GITHUB_SHA");
+
+  try {
+    let commitOid = "";
+    let baseOid = "";
+    let headOid = "";
+
+    await new toolrunner.ToolRunner(
+      await safeWhich.safeWhich("git"),
+      ["show", "-s", "--format=raw", mergeSha],
+      {
+        silent: true,
+        listeners: {
+          stdline: (data) => {
+            if (data.startsWith("commit ") && commitOid === "") {
+              commitOid = data.substring(7);
+            } else if (data.startsWith("parent ")) {
+              if (baseOid === "") {
+                baseOid = data.substring(7);
+              } else if (headOid === "") {
+                headOid = data.substring(7);
+              }
+            }
+          },
+          stderr: (data) => {
+            process.stderr.write(data);
+          },
+        },
+      }
+    ).exec();
+
+    core.info("commitOid="+commitOid+" baseOid="+baseOid+" headOid="+headOid); //TODO remove debug line
+
+    // Let's confirm our assumptions: We had a merge commit and the parsed parent data looks correct
+    if (
+      commitOid === mergeSha &&
+      headOid.length === 40 &&
+      baseOid.length === 40
+    ) {
+      core.info("Returning " + baseOid); // TODO remove debug line
+      return baseOid;
+    }
+    return undefined;
+  } catch (e) {
+    core.info(
+      `Failed to call git to determine merge base. Continuing with data from environment: ${e}`
+    );
+    core.info((e as Error).stack || "NO STACK");
+    return undefined;
+  }
+};
+
 interface WorkflowJobStep {
   run: any;
 }

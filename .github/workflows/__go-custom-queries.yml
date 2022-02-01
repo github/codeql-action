@@ -35,6 +35,8 @@ jobs:
         - macos-latest
         - windows-latest
     name: 'Go: Custom queries'
+    permissions:
+      security-events: write
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

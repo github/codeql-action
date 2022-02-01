@@ -1,62 +1,55 @@
-'use strict';
-const path = require('path');
-const findUp = require('find-up');
-const loadJsonFile = require('load-json-file');
+import path from 'node:path';
+import {findUp, findUpSync} from 'find-up';
+import {loadJsonFile, loadJsonFileSync} from 'load-json-file';
 
-const filepaths = new WeakMap();
-const filepath = conf => filepaths.get(conf);
+const filePaths = new WeakMap();
 const findNextCwd = pkgPath => path.resolve(path.dirname(pkgPath), '..');
 
 const addFilePath = (object, filePath) => {
-	filepaths.set(object, filePath);
+	filePaths.set(object, filePath);
 	return object;
 };
 
-const pkgConf = (namespace, options = {}) => {
-	if (!namespace) {
-		return Promise.reject(new TypeError('Expected a namespace'));
-	}
-
-	return findUp('package.json', options.cwd ? {cwd: options.cwd} : {})
-		.then(filePath => {
-			if (!filePath) {
-				return addFilePath(Object.assign({}, options.defaults), filePath);
-			}
-
-			return loadJsonFile(filePath).then(package_ => {
-				if (options.skipOnFalse && package_[namespace] === false) {
-					const newOptions = Object.assign({}, options, {cwd: findNextCwd(filePath)});
-					return pkgConf(namespace, newOptions);
-				}
-
-				return addFilePath(Object.assign({}, options.defaults, package_[namespace]), filePath);
-			});
-		});
-};
-
-const sync = (namespace, options = {}) => {
+export async function packageConfig(namespace, options = {}) {
 	if (!namespace) {
 		throw new TypeError('Expected a namespace');
 	}
 
-	const filePath = findUp.sync('package.json', options.cwd ? {cwd: options.cwd} : {});
+	const filePath = await findUp('package.json', options.cwd ? {cwd: options.cwd} : {});
 
 	if (!filePath) {
-		return addFilePath(Object.assign({}, options.defaults), filePath);
+		return addFilePath({...options.defaults}, filePath);
 	}
 
-	const package_ = loadJsonFile.sync(filePath);
+	const packageJson = await loadJsonFile(filePath);
 
-	if (options.skipOnFalse && package_[namespace] === false) {
-		const newOptions = Object.assign({}, options, {cwd: findNextCwd(filePath)});
-		return sync(namespace, newOptions);
+	if (options.skipOnFalse && packageJson[namespace] === false) {
+		return packageConfig(namespace, {...options, cwd: findNextCwd(filePath)});
 	}
 
-	return addFilePath(Object.assign({}, options.defaults, package_[namespace]), filePath);
-};
+	return addFilePath({...options.defaults, ...packageJson[namespace]}, filePath);
+}
 
-module.exports = pkgConf;
-// TODO: Remove this for the next major release
-module.exports.default = pkgConf;
-module.exports.filepath = filepath;
-module.exports.sync = sync;
+export function packageConfigSync(namespace, options = {}) {
+	if (!namespace) {
+		throw new TypeError('Expected a namespace');
+	}
+
+	const filePath = findUpSync('package.json', options.cwd ? {cwd: options.cwd} : {});
+
+	if (!filePath) {
+		return addFilePath({...options.defaults}, filePath);
+	}
+
+	const packageJson = loadJsonFileSync(filePath);
+
+	if (options.skipOnFalse && packageJson[namespace] === false) {
+		return packageConfigSync(namespace, {...options, cwd: findNextCwd(filePath)});
+	}
+
+	return addFilePath({...options.defaults, ...packageJson[namespace]}, filePath);
+}
+
+export function packageJsonPath(config) {
+	return filePaths.get(config);
+}

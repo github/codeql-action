@@ -1,3 +1,27 @@
+## 8.7.0 (2021-12-27)
+
+### New features
+
+Support quoted export names.
+
+Upgrade to Unicode 14.
+
+Add support for Unicode 13 properties in regular expressions.
+
+### Bug fixes
+
+Use a loop to find line breaks, because the existing regexp search would overrun the end of the searched range and waste a lot of time in minified code.
+
+## 8.6.0 (2021-11-18)
+
+### Bug fixes
+
+Fix a bug where an object literal with multiple `__proto__` properties would incorrectly be accepted if a later property value held an assigment.
+
+### New features
+
+Support class private fields with the `in` operator.
+
 ## 8.5.0 (2021-09-06)
 
 ### Bug fixes
@@ -36,7 +60,7 @@ A new option, `allowSuperOutsideMethod`, can be used to suppress the error when 
 
 Default `allowAwaitOutsideFunction` to true for ECMAScript 2022 an higher.
 
-Add support for the `p` ([indices](https://github.com/tc39/proposal-regexp-match-indices)) regexp flag.
+Add support for the `d` ([indices](https://github.com/tc39/proposal-regexp-match-indices)) regexp flag.
 
 ## 8.2.4 (2021-05-04)
 

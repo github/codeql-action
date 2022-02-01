@@ -600,6 +600,12 @@ export async function sendStatusReport<S extends StatusReportBase>(
 ): Promise<boolean> {
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
+  // If in test mode we don't want to upload the results
+  const testMode = process.env["TEST_MODE"] === "true" || false;
+  if (testMode) {
+    core.debug("In test mode. Status reports are not uploaded.");
+    return true;
+  }
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");

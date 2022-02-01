@@ -338,8 +338,6 @@ export function buildPayload(
         }
       }
     }
-    core.info("Using base ref: " + payloadObj.base_ref);
-    core.info("USing base sha: " + payloadObj.base_sha);
     return payloadObj;
   } else {
     return {

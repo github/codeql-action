@@ -4,7 +4,7 @@ long.js
 A Long class for representing a 64 bit two's-complement integer value derived from the [Closure Library](https://github.com/google/closure-library)
 for stand-alone use and extended with unsigned support.
 
-[![Build Status](https://travis-ci.org/dcodeIO/long.js.svg)](https://travis-ci.org/dcodeIO/long.js)
+[![Build Status](https://img.shields.io/github/workflow/status/dcodeIO/long.js/Test/main?label=test&logo=github)](https://github.com/dcodeIO/long.js/actions?query=workflow%3ATest) [![Publish Status](https://img.shields.io/github/workflow/status/dcodeIO/long.js/Publish/main?label=publish&logo=github)](https://github.com/dcodeIO/long.js/actions?query=workflow%3APublish) [![npm](https://img.shields.io/npm/v/long.svg?label=npm&color=007acc&logo=npm)](https://www.npmjs.com/package/long)
 
 Background
 ----------
@@ -27,23 +27,41 @@ In some use cases, however, it is required to be able to reliably work with and 
 Usage
 -----
 
-The class is compatible with CommonJS and AMD loaders and is exposed globally as `Long` if neither is available.
+The package exports an ECMAScript module with an UMD fallback.
 
-```javascript
-var Long = require("long");
+```
+$> npm install long
+```
 
-var longVal = new Long(0xFFFFFFFF, 0x7FFFFFFF);
+```js
+import Long from "long";
 
-console.log(longVal.toString());
+var value = new Long(0xFFFFFFFF, 0x7FFFFFFF);
+console.log(value.toString());
 ...
 ```
+
+Note that mixing ESM and CommonJS is not recommended as it yields different classes, albeit with the same functionality.
+
+### Usage with a CDN
+
+  * From GitHub via [jsDelivr](https://www.jsdelivr.com):<br />
+    `https://cdn.jsdelivr.net/gh/dcodeIO/long.js@TAG/index.js` (ESM)
+  * From npm via [jsDelivr](https://www.jsdelivr.com):<br />
+    `https://cdn.jsdelivr.net/npm/long@VERSION/index.js` (ESM)<br />
+    `https://cdn.jsdelivr.net/npm/long@VERSION/umd/index.js` (UMD)
+  * From npm via [unpkg](https://unpkg.com):<br />
+    `https://unpkg.com/long@VERSION/index.js` (ESM)<br />
+    `https://unpkg.com/long@VERSION/umd/index.js` (UMD)
+
+  Replace `TAG` respectively `VERSION` with a [specific version](https://github.com/dcodeIO/long.js/releases) or omit it (not recommended in production) to use main/latest.
 
 API
 ---
 
 ### Constructor
 
-* new **Long**(low: `number`, high: `number`, unsigned?: `boolean`)<br />
+* new **Long**(low: `number`, high?: `number`, unsigned?: `boolean`)<br />
   Constructs a 64 bit two's-complement integer, given its low and high 32 bit values as *signed* integers. See the from* functions below for more convenient ways of constructing Longs.
 
 ### Fields
@@ -161,7 +179,7 @@ API
   Tests if this Long's value is odd.
 
 * Long#**isPositive**(): `boolean`<br />
-  Tests if this Long's value is positive.
+  Tests if this Long's value is positive or zero.
 
 * Long#**isZero**/**eqz**(): `boolean`<br />
   Tests if this Long's value equals zero.
@@ -184,6 +202,12 @@ API
 * Long#**not**(): `Long`<br />
   Returns the bitwise NOT of this Long.
 
+* Long#**countLeadingZeros**/**clz**(): `number`<br />
+  Returns count leading zeros of this Long.
+
+* Long#**countTrailingZeros**/**ctz**(): `number`<br />
+  Returns count trailing zeros of this Long.
+
 * Long#**notEquals**/**neq**/**ne**(other: `Long | number | string`): `boolean`<br />
   Tests if this Long's value differs from the specified's.
 
@@ -198,6 +222,12 @@ API
 
 * Long#**shiftRightUnsigned**/**shru**/**shr_u**(numBits: `Long | number | string`): `Long`<br />
   Returns this Long with bits logically shifted to the right by the given amount.
+
+* Long#**rotateLeft**/**rotl**(numBits: `Long | number | string`): `Long`<br />
+  Returns this Long with bits rotated to the left by the given amount.
+
+* Long#**rotateRight**/**rotr**(numBits: `Long | number | string`): `Long`<br />
+  Returns this Long with bits rotated to the right by the given amount.
 
 * Long#**subtract**/**sub**(subtrahend: `Long | number | string`): `Long`<br />
   Returns the difference of this and the specified Long.
@@ -229,13 +259,17 @@ API
 * Long#**xor**(other: `Long | number | string`): `Long`<br />
   Returns the bitwise XOR of this Long and the given one.
 
+WebAssembly support
+-------------------
+
+[WebAssembly](http://webassembly.org) supports 64-bit integer arithmetic out of the box, hence a [tiny WebAssembly module](./wasm.wat) is used to compute operations like multiplication, division and remainder more efficiently (slow operations like division are around twice as fast), falling back to floating point based computations in JavaScript where WebAssembly is not yet supported, e.g., in older versions of node.
+
 Building
 --------
 
-To build an UMD bundle to `dist/long.js`, run:
+Building the UMD fallback:
 
 ```
-$> npm install
 $> npm run build
 ```
 

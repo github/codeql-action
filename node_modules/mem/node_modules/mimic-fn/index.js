@@ -1,5 +1,3 @@
-'use strict';
-
 const copyProperty = (to, from, property, ignoreNonConfigurable) => {
 	// `Function#length` should reflect the parameters of `to` not `from` since we keep its body.
 	// `Function#prototype` is non-writable and non-configurable so can never be modified.
@@ -23,8 +21,8 @@ const copyProperty = (to, from, property, ignoreNonConfigurable) => {
 };
 
 // `Object.defineProperty()` throws if the property exists, is not configurable and either:
-//  - one its descriptors is changed
-//  - it is non-writable and its value is changed
+// - one its descriptors is changed
+// - it is non-writable and its value is changed
 const canCopyProperty = function (toDescriptor, fromDescriptor) {
 	return toDescriptor === undefined || toDescriptor.configurable || (
 		toDescriptor.writable === fromDescriptor.writable &&
@@ -59,7 +57,7 @@ const changeToString = (to, from, name) => {
 	Object.defineProperty(to, 'toString', {...toStringDescriptor, value: newToString});
 };
 
-const mimicFn = (to, from, {ignoreNonConfigurable = false} = {}) => {
+export default function mimicFunction(to, from, {ignoreNonConfigurable = false} = {}) {
 	const {name} = to;
 
 	for (const property of Reflect.ownKeys(from)) {
@@ -70,6 +68,4 @@ const mimicFn = (to, from, {ignoreNonConfigurable = false} = {}) => {
 	changeToString(to, from, name);
 
 	return to;
-};
-
-module.exports = mimicFn;
+}

@@ -333,7 +333,9 @@ fg.sync('**', { onlyFiles: false, cwd: 'dir', deep: 2 }); // ['one', 'one/two']
 * Type: `boolean`
 * Default: `true`
 
-Indicates whether to traverse descendants of symbolic link directories.
+Indicates whether to traverse descendants of symbolic link directories when expanding `**` patterns.
+
+> :book: Note that this option does not affect the base directory of the pattern. For example, if `./a` is a symlink to directory `./b` and you specified `['./a**', './b/**']` patterns, then directory `./a` will still be read.
 
 > :book: If the [`stats`](#stats) option is specified, the information about the symbolic link (`fs.lstat`) will be replaced with information about the entry (`fs.stat`) behind it.
 
@@ -415,8 +417,8 @@ fg.sync('*.js', { absolute: true });  // ['/home/user/index.js']
 Mark the directory path with the final slash.
 
 ```js
-fs.sync('*', { onlyFiles: false, markDirectories: false }); // ['index.js', 'controllers']
-fs.sync('*', { onlyFiles: false, markDirectories: true });  // ['index.js', 'controllers/']
+fg.sync('*', { onlyFiles: false, markDirectories: false }); // ['index.js', 'controllers']
+fg.sync('*', { onlyFiles: false, markDirectories: true });  // ['index.js', 'controllers/']
 ```
 
 #### objectMode
@@ -435,7 +437,7 @@ The object has the following fields:
 
 * name (`string`) — the last part of the path (basename)
 * path (`string`) — full path relative to the pattern base directory
-* dirent ([`fs.Dirent`][node_js_fs_class_fs_dirent]) — instance of `fs.Direct`
+* dirent ([`fs.Dirent`][node_js_fs_class_fs_dirent]) — instance of `fs.Dirent`
 
 > :book: An object is an internal representation of entry, so getting it does not affect performance.
 

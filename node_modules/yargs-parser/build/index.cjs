@@ -1,8 +1,8 @@
 'use strict';
 
 var util = require('util');
-var fs = require('fs');
 var path = require('path');
+var fs = require('fs');
 
 function camelCase(str) {
     const isCamelCase = str !== str.toLowerCase() && str !== str.toUpperCase();
@@ -125,6 +125,7 @@ class YargsParser {
             key: undefined
         }, options);
         const args = tokenizeArgString(argsInput);
+        const inputIsString = typeof argsInput === 'string';
         const aliases = combineAliases(Object.assign(Object.create(null), opts.alias));
         const configuration = Object.assign({
             'boolean-negation': true,
@@ -272,7 +273,7 @@ class YargsParser {
                         i = eatNargs(i, m[1], args, m[2]);
                     }
                     else {
-                        setArg(m[1], m[2]);
+                        setArg(m[1], m[2], true);
                     }
                 }
             }
@@ -509,7 +510,7 @@ class YargsParser {
             }
             else {
                 if (!isUndefined(argAfterEqualSign)) {
-                    argsToSet.push(processValue(key, argAfterEqualSign));
+                    argsToSet.push(processValue(key, argAfterEqualSign, true));
                 }
                 for (let ii = i + 1; ii < args.length; ii++) {
                     if ((!configuration['greedy-arrays'] && argsToSet.length > 0) ||
@@ -519,7 +520,7 @@ class YargsParser {
                     if (/^-/.test(next) && !negative.test(next) && !isUnknownOptionAsArg(next))
                         break;
                     i = ii;
-                    argsToSet.push(processValue(key, next));
+                    argsToSet.push(processValue(key, next, inputIsString));
                 }
             }
             if (typeof nargsCount === 'number' && ((nargsCount && argsToSet.length < nargsCount) ||
@@ -529,14 +530,14 @@ class YargsParser {
             setArg(key, argsToSet);
             return i;
         }
-        function setArg(key, val) {
+        function setArg(key, val, shouldStripQuotes = inputIsString) {
             if (/-/.test(key) && configuration['camel-case-expansion']) {
                 const alias = key.split('.').map(function (prop) {
                     return camelCase(prop);
                 }).join('.');
                 addNewAlias(key, alias);
             }
-            const value = processValue(key, val);
+            const value = processValue(key, val, shouldStripQuotes);
             const splitKey = key.split('.');
             setKey(argv, splitKey, value);
             if (flags.aliases[key]) {
@@ -580,11 +581,9 @@ class YargsParser {
                 addNewAlias(alias, key);
             }
         }
-        function processValue(key, val) {
-            if (typeof val === 'string' &&
-                (val[0] === "'" || val[0] === '"') &&
-                val[val.length - 1] === val[0]) {
-                val = val.substring(1, val.length - 1);
+        function processValue(key, val, shouldStripQuotes) {
+            if (shouldStripQuotes) {
+                val = stripQuotes(val);
             }
             if (checkAllAliases(key, flags.bools) || checkAllAliases(key, flags.counts)) {
                 if (typeof val === 'string')
@@ -997,10 +996,17 @@ function sanitizeKey(key) {
         return '___proto___';
     return key;
 }
+function stripQuotes(val) {
+    return (typeof val === 'string' &&
+        (val[0] === "'" || val[0] === '"') &&
+        val[val.length - 1] === val[0])
+        ? val.substring(1, val.length - 1)
+        : val;
+}
 
 const minNodeVersion = (process && process.env && process.env.YARGS_MIN_NODE_VERSION)
     ? Number(process.env.YARGS_MIN_NODE_VERSION)
-    : 10;
+    : 12;
 if (process && process.version) {
     const major = Number(process.version.match(/v([^.]+)/)[1]);
     if (major < minNodeVersion) {
@@ -1021,7 +1027,7 @@ const parser = new YargsParser({
             return require(path);
         }
         else if (path.match(/\.json$/)) {
-            return fs.readFileSync(path, 'utf8');
+            return JSON.parse(fs.readFileSync(path, 'utf8'));
         }
         else {
             throw Error('only .json config files are supported in ESM');

@@ -26,7 +26,7 @@ test("getMemoryFlag() should return the correct --ram flag", (t) => {
   const totalMem = Math.floor(os.totalmem() / (1024 * 1024));
   const expectedThreshold = process.platform === "win32" ? 1536 : 1024;
 
-  const tests = [
+  const tests: Array<[string | undefined, string]> = [
     [undefined, `--ram=${totalMem - expectedThreshold}`],
     ["", `--ram=${totalMem - expectedThreshold}`],
     ["512", "--ram=512"],
@@ -57,7 +57,7 @@ test("getAddSnippetsFlag() should return the correct flag", (t) => {
 test("getThreadsFlag() should return the correct --threads flag", (t) => {
   const numCpus = os.cpus().length;
 
-  const tests = [
+  const tests: Array<[string | undefined, string]> = [
     ["0", "--threads=0"],
     ["1", "--threads=1"],
     [undefined, `--threads=${numCpus}`],
@@ -213,7 +213,10 @@ test("getGitHubVersion", async (t) => {
     auth: "",
     url: "https://ghe.example.com",
   });
-  t.deepEqual({ type: util.GitHubVariant.GHES, version: "2.0" }, v2);
+  t.deepEqual(
+    { type: util.GitHubVariant.GHES, version: "2.0" } as util.GitHubVersion,
+    v2
+  );
 
   mockGetMetaVersionHeader("GitHub AE");
   const ghae = await util.getGitHubVersion({

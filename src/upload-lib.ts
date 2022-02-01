@@ -290,7 +290,8 @@ export function buildPayload(
   checkoutURI: string,
   environment: string | undefined,
   toolNames: string[],
-  gitHubVersion: util.GitHubVersion
+  gitHubVersion: util.GitHubVersion,
+  mergeBaseCommitOid: string | undefined
 ) {
   if (util.isActions()) {
     const payloadObj = {
@@ -313,17 +314,32 @@ export function buildPayload(
       gitHubVersion.type !== util.GitHubVariant.GHES ||
       semver.satisfies(gitHubVersion.version, `>=3.1`)
     ) {
-      if (
-        process.env.GITHUB_EVENT_NAME === "pull_request" &&
-        process.env.GITHUB_EVENT_PATH
-      ) {
-        const githubEvent = JSON.parse(
-          fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
-        );
-        payloadObj.base_ref = `refs/heads/${githubEvent.pull_request.base.ref}`;
-        payloadObj.base_sha = githubEvent.pull_request.base.sha;
+      if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+        if (
+          commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
+          mergeBaseCommitOid
+        ) {
+          // We're uploading results for the merge commit
+          // and were able to determine the merge base.
+          // So we use that as the most accurate base.
+          payloadObj.base_ref = `refs/heads/${util.getRequiredEnvParam(
+            "GITHUB_BASE_REF"
+          )}`;
+          payloadObj.base_sha = mergeBaseCommitOid;
+        } else if (process.env.GITHUB_EVENT_PATH) {
+          // Either we're not uploading results for the merge commit
+          // or we could not determine the merge base.
+          // Using the PR base is the only option here
+          const githubEvent = JSON.parse(
+            fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
+          );
+          payloadObj.base_ref = `refs/heads/${githubEvent.pull_request.base.ref}`;
+          payloadObj.base_sha = githubEvent.pull_request.base.sha;
+        }
       }
     }
+    core.info("Using base ref: " + payloadObj.base_ref);
+    core.info("USing base sha: " + payloadObj.base_sha);
     return payloadObj;
   } else {
     return {
@@ -388,7 +404,8 @@ async function uploadFiles(
     checkoutURI,
     environment,
     toolNames,
-    gitHubVersion
+    gitHubVersion,
+    await actionsUtil.determineMergeBaseCommitOid()
   );
 
   // Log some useful debug info about the info

@@ -132,15 +132,12 @@ export const determineMergeBaseCommitOid = async function (): Promise<
       }
     ).exec();
 
-    core.info("commitOid="+commitOid+" baseOid="+baseOid+" headOid="+headOid); //TODO remove debug line
-
     // Let's confirm our assumptions: We had a merge commit and the parsed parent data looks correct
     if (
       commitOid === mergeSha &&
       headOid.length === 40 &&
       baseOid.length === 40
     ) {
-      core.info("Returning " + baseOid); // TODO remove debug line
       return baseOid;
     }
     return undefined;

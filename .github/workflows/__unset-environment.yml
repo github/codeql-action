@@ -32,6 +32,8 @@ jobs:
         - nightly-latest
         os: [ubuntu-latest]
     name: Test unsetting environment variables
+    permissions:
+      security-events: write
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

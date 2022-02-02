@@ -70,9 +70,6 @@ for file in os.listdir('checks'):
             }
         },
         'name': checkSpecification['name'],
-        'permissions': {
-            'security-events': 'write'
-        },
         'runs-on': '${{ matrix.os }}',
         'steps': steps
     }

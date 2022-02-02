@@ -35,8 +35,6 @@ jobs:
         - macos-latest
         - windows-latest
     name: "Analyze: 'ref' and 'sha' from inputs"
-    permissions:
-      security-events: write
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

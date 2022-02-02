@@ -65,6 +65,57 @@ test("getRef() returns head PR ref if GITHUB_REF no longer checked out", async (
   callback.restore();
 });
 
+test("getRef() returns ref provided as an input and ignores current HEAD", async (t) => {
+  const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+  getAdditionalInputStub.withArgs("ref").resolves("refs/pull/2/merge");
+  getAdditionalInputStub.withArgs("sha").resolves("b".repeat(40));
+
+  // These values are be ignored
+  process.env["GITHUB_REF"] = "refs/pull/1/merge";
+  process.env["GITHUB_SHA"] = "a".repeat(40);
+
+  const callback = sinon.stub(actionsutil, "getCommitOid");
+  callback.withArgs("refs/pull/1/merge").resolves("b".repeat(40));
+  callback.withArgs("HEAD").resolves("b".repeat(40));
+
+  const actualRef = await actionsutil.getRef();
+  t.deepEqual(actualRef, "refs/pull/2/merge");
+  callback.restore();
+  getAdditionalInputStub.restore();
+});
+
+test("getRef() throws an error if only `ref` is provided as an input", async (t) => {
+  const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+  getAdditionalInputStub.withArgs("ref").resolves("refs/pull/1/merge");
+
+  await t.throwsAsync(
+    async () => {
+      await actionsutil.getRef();
+    },
+    {
+      instanceOf: Error,
+      message: "Both 'ref' and 'sha' are required if one of them is provided.",
+    }
+  );
+  getAdditionalInputStub.restore();
+});
+
+test("getRef() throws an error if only `sha` is provided as an input", async (t) => {
+  const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+  getAdditionalInputStub.withArgs("sha").resolves("a".repeat(40));
+
+  await t.throwsAsync(
+    async () => {
+      await actionsutil.getRef();
+    },
+    {
+      instanceOf: Error,
+      message: "Both 'ref' and 'sha' are required if one of them is provided.",
+    }
+  );
+  getAdditionalInputStub.restore();
+});
+
 test("computeAutomationID()", async (t) => {
   let actualAutomationID = actionsutil.computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",

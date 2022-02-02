@@ -33,6 +33,9 @@ export class YargsParser {
         // allow a string argument to be passed in rather
         // than an argv array.
         const args = tokenizeArgString(argsInput);
+        // tokenizeArgString adds extra quotes to args if argsInput is a string
+        // only strip those extra quotes in processValue if argsInput is a string
+        const inputIsString = typeof argsInput === 'string';
         // aliases might have transitive relationships, normalize this.
         const aliases = combineAliases(Object.assign(Object.create(null), opts.alias));
         const configuration = Object.assign({
@@ -200,7 +203,7 @@ export class YargsParser {
                         i = eatNargs(i, m[1], args, m[2]);
                     }
                     else {
-                        setArg(m[1], m[2]);
+                        setArg(m[1], m[2], true);
                     }
                 }
             }
@@ -474,7 +477,7 @@ export class YargsParser {
             else {
                 // value in --option=value is eaten as is
                 if (!isUndefined(argAfterEqualSign)) {
-                    argsToSet.push(processValue(key, argAfterEqualSign));
+                    argsToSet.push(processValue(key, argAfterEqualSign, true));
                 }
                 for (let ii = i + 1; ii < args.length; ii++) {
                     if ((!configuration['greedy-arrays'] && argsToSet.length > 0) ||
@@ -484,7 +487,7 @@ export class YargsParser {
                     if (/^-/.test(next) && !negative.test(next) && !isUnknownOptionAsArg(next))
                         break;
                     i = ii;
-                    argsToSet.push(processValue(key, next));
+                    argsToSet.push(processValue(key, next, inputIsString));
                 }
             }
             // If both array and nargs are configured, create an error if less than
@@ -497,14 +500,14 @@ export class YargsParser {
             setArg(key, argsToSet);
             return i;
         }
-        function setArg(key, val) {
+        function setArg(key, val, shouldStripQuotes = inputIsString) {
             if (/-/.test(key) && configuration['camel-case-expansion']) {
                 const alias = key.split('.').map(function (prop) {
                     return camelCase(prop);
                 }).join('.');
                 addNewAlias(key, alias);
             }
-            const value = processValue(key, val);
+            const value = processValue(key, val, shouldStripQuotes);
             const splitKey = key.split('.');
             setKey(argv, splitKey, value);
             // handle populating aliases of the full key
@@ -555,12 +558,10 @@ export class YargsParser {
                 addNewAlias(alias, key);
             }
         }
-        function processValue(key, val) {
+        function processValue(key, val, shouldStripQuotes) {
             // strings may be quoted, clean this up as we assign values.
-            if (typeof val === 'string' &&
-                (val[0] === "'" || val[0] === '"') &&
-                val[val.length - 1] === val[0]) {
-                val = val.substring(1, val.length - 1);
+            if (shouldStripQuotes) {
+                val = stripQuotes(val);
             }
             // handle parsing boolean arguments --foo=true --bar false.
             if (checkAllAliases(key, flags.bools) || checkAllAliases(key, flags.counts)) {
@@ -1034,4 +1035,11 @@ function sanitizeKey(key) {
     if (key === '__proto__')
         return '___proto___';
     return key;
+}
+function stripQuotes(val) {
+    return (typeof val === 'string' &&
+        (val[0] === "'" || val[0] === '"') &&
+        val[val.length - 1] === val[0])
+        ? val.substring(1, val.length - 1)
+        : val;
 }

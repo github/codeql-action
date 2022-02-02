@@ -15,7 +15,7 @@ $ npm install is-unicode-supported
 ## Usage
 
 ```js
-const isUnicodeSupported = require('is-unicode-supported');
+import isUnicodeSupported from 'is-unicode-supported';
 
 isUnicodeSupported();
 //=> true

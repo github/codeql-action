@@ -1,5 +1,5 @@
 import * as github from "@actions/github";
-import { TestInterface } from "ava";
+import { TestFn } from "ava";
 import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
@@ -46,8 +46,8 @@ function wrapOutput(context: TestContext) {
   };
 }
 
-export function setupTests(test: TestInterface<any>) {
-  const typedTest = test as TestInterface<TestContext>;
+export function setupTests(test: TestFn<any>) {
+  const typedTest = test as TestFn<TestContext>;
 
   typedTest.beforeEach((t) => {
     // Set an empty CodeQL object so that all method calls will fail

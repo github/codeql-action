@@ -1,28 +1,31 @@
-declare const pathExists: {
-	/**
-	Check if a path exists.
+/**
+Check if a path exists.
 
-	@returns Whether the path exists.
+@returns Whether the path exists.
 
-	@example
-	```
-	// foo.ts
-	import pathExists = require('path-exists');
+@example
+```
+// foo.ts
+import {pathExists} from 'path-exists';
 
-	(async () => {
-		console.log(await pathExists('foo.ts'));
-		//=> true
-	})();
-	```
-	*/
-	(path: string): Promise<boolean>;
+console.log(await pathExists('foo.ts'));
+//=> true
+```
+*/
+export function pathExists(path: string): Promise<boolean>;
 
-	/**
-	Synchronously check if a path exists.
+/**
+Synchronously check if a path exists.
 
-	@returns Whether the path exists.
-	*/
-	sync(path: string): boolean;
-};
+@returns Whether the path exists.
 
-export = pathExists;
+@example
+```
+// foo.ts
+import {pathExistsSync} from 'path-exists';
+
+console.log(pathExistsSync('foo.ts'));
+//=> true
+```
+*/
+export function pathExistsSync(path: string): boolean;

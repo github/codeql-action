@@ -187,10 +187,13 @@ test("concatTracerConfigs - conflicting env vars", async (t) => {
         config
       )
     );
-    t.deepEqual(
-      e.message,
-      "Incompatible values in environment parameter b: b and c"
-    );
+    // If e is undefined, then the previous assertion will fail.
+    if (e !== undefined) {
+      t.deepEqual(
+        e.message,
+        "Incompatible values in environment parameter b: b and c"
+      );
+    }
   });
 });
 

@@ -1,8 +1,8 @@
 'use strict'
 
-var vendors = require('./vendors.json')
+const vendors = require('./vendors.json')
 
-var env = process.env
+const env = process.env
 
 // Used for testing only
 Object.defineProperty(exports, '_vendors', {
@@ -13,8 +13,8 @@ exports.name = null
 exports.isPR = null
 
 vendors.forEach(function (vendor) {
-  var envs = Array.isArray(vendor.env) ? vendor.env : [vendor.env]
-  var isCI = envs.every(function (obj) {
+  const envs = Array.isArray(vendor.env) ? vendor.env : [vendor.env]
+  const isCI = envs.every(function (obj) {
     return checkEnv(obj)
   })
 

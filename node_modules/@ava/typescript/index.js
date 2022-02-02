@@ -1,9 +1,10 @@
-'use strict';
-const path = require('path');
-const escapeStringRegexp = require('escape-string-regexp');
-const execa = require('execa');
-const pkg = require('./package.json');
+import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import escapeStringRegexp from 'escape-string-regexp';
+import execa from 'execa';
 
+const pkg = JSON.parse(fs.readFileSync(new URL('package.json', import.meta.url)));
 const help = `See https://github.com/avajs/typescript/blob/v${pkg.version}/README.md`;
 
 function isPlainObject(x) {
@@ -44,7 +45,7 @@ const configProperties = {
 		required: true,
 		isValid(compile) {
 			return compile === false || compile === 'tsc';
-		}
+		},
 	},
 	rewritePaths: {
 		required: true,
@@ -53,23 +54,21 @@ const configProperties = {
 				return false;
 			}
 
-			return Object.entries(rewritePaths).every(([from, to]) => {
-				return from.endsWith('/') && typeof to === 'string' && to.endsWith('/');
-			});
-		}
+			return Object.entries(rewritePaths).every(([from, to]) => from.endsWith('/') && typeof to === 'string' && to.endsWith('/'));
+		},
 	},
 	extensions: {
 		required: false,
 		isValid(extensions) {
-			return Array.isArray(extensions) &&
-				extensions.length > 0 &&
-				extensions.every(ext => typeof ext === 'string' && ext !== '') &&
-				new Set(extensions).size === extensions.length;
-		}
-	}
+			return Array.isArray(extensions)
+				&& extensions.length > 0
+				&& extensions.every(ext => typeof ext === 'string' && ext !== '')
+				&& new Set(extensions).size === extensions.length;
+		},
+	},
 };
 
-module.exports = ({negotiateProtocol}) => {
+export default function typescriptProvider({negotiateProtocol}) {
 	const protocol = negotiateProtocol(['ava-3.2'], {version: pkg.version});
 	if (protocol === null) {
 		return;
@@ -86,12 +85,12 @@ module.exports = ({negotiateProtocol}) => {
 			const {
 				extensions = ['ts'],
 				rewritePaths: relativeRewritePaths,
-				compile
+				compile,
 			} = config;
 
 			const rewritePaths = Object.entries(relativeRewritePaths).map(([from, to]) => [
 				path.join(protocol.projectDir, from),
-				path.join(protocol.projectDir, to)
+				path.join(protocol.projectDir, to),
 			]);
 			const testFileExtension = new RegExp(`\\.(${extensions.map(ext => escapeStringRegexp(ext)).join('|')})$`);
 
@@ -102,13 +101,13 @@ module.exports = ({negotiateProtocol}) => {
 					}
 
 					return {
-						extensions: extensions.slice(),
-						rewritePaths: rewritePaths.slice()
+						extensions: [...extensions],
+						rewritePaths: [...rewritePaths],
 					};
 				},
 
 				get extensions() {
-					return extensions.slice();
+					return [...extensions];
 				},
 
 				ignoreChange(filePath) {
@@ -139,18 +138,19 @@ module.exports = ({negotiateProtocol}) => {
 						filePatterns: [
 							...filePatterns,
 							'!**/*.d.ts',
-							...Object.values(relativeRewritePaths).map(to => `!${to}**`)
+							...Object.values(relativeRewritePaths).map(to => `!${to}**`),
 						],
 						ignoredByWatcherPatterns: [
 							...ignoredByWatcherPatterns,
-							...Object.values(relativeRewritePaths).map(to => `${to}**/*.js.map`)
-						]
+							...Object.values(relativeRewritePaths).map(to => `${to}**/*.js.map`),
+						],
 					};
-				}
+				},
 			};
 		},
 
 		worker({extensionsToLoadAsModules, state: {extensions, rewritePaths}}) {
+			const useImport = extensionsToLoadAsModules.includes('js');
 			const testFileExtension = new RegExp(`\\.(${extensions.map(ext => escapeStringRegexp(ext)).join('|')})$`);
 
 			return {
@@ -159,18 +159,12 @@ module.exports = ({negotiateProtocol}) => {
 				},
 
 				async load(ref, {requireFn}) {
-					for (const extension of extensionsToLoadAsModules) {
-						if (ref.endsWith(`.${extension}`)) {
-							throw new Error('@ava/typescript cannot yet load ESM files');
-						}
-					}
-
 					const [from, to] = rewritePaths.find(([from]) => ref.startsWith(from));
 					// TODO: Support JSX preserve mode — https://www.typescriptlang.org/docs/handbook/jsx.html
 					const rewritten = `${to}${ref.slice(from.length)}`.replace(testFileExtension, '.js');
-					return requireFn(rewritten);
-				}
+					return useImport ? import(pathToFileURL(rewritten)) : requireFn(rewritten); // eslint-disable-line node/no-unsupported-features/es-syntax
+				},
 			};
-		}
+		},
 	};
-};
+}

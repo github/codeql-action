@@ -1,7 +1,4 @@
-'use strict';
-const pTimeout = require('p-timeout');
-
-const symbolAsyncIterator = Symbol.asyncIterator || '@@asyncIterator';
+import pTimeout from 'p-timeout';
 
 const normalizeEmitter = emitter => {
 	const addListener = emitter.on || emitter.addListener || emitter.addEventListener;
@@ -13,35 +10,34 @@ const normalizeEmitter = emitter => {
 
 	return {
 		addListener: addListener.bind(emitter),
-		removeListener: removeListener.bind(emitter)
+		removeListener: removeListener.bind(emitter),
 	};
 };
 
-const toArray = value => Array.isArray(value) ? value : [value];
-
-const multiple = (emitter, event, options) => {
+export function pEventMultiple(emitter, event, options) {
 	let cancel;
-	const ret = new Promise((resolve, reject) => {
+	const returnValue = new Promise((resolve, reject) => {
 		options = {
 			rejectionEvents: ['error'],
 			multiArgs: false,
 			resolveImmediately: false,
-			...options
+			...options,
 		};
 
-		if (!(options.count >= 0 && (options.count === Infinity || Number.isInteger(options.count)))) {
+		if (!(options.count >= 0 && (options.count === Number.POSITIVE_INFINITY || Number.isInteger(options.count)))) {
 			throw new TypeError('The `count` option should be at least 0 or more');
 		}
 
 		// Allow multiple events
-		const events = toArray(event);
+		const events = [event].flat();
 
 		const items = [];
 		const {addListener, removeListener} = normalizeEmitter(emitter);
 
-		const onItem = (...args) => {
-			const value = options.multiArgs ? args : args[0];
+		const onItem = (...arguments_) => {
+			const value = options.multiArgs ? arguments_ : arguments_[0];
 
+			// eslint-disable-next-line unicorn/no-array-callback-reference
 			if (options.filter && !options.filter(value)) {
 				return;
 			}
@@ -82,18 +78,18 @@ const multiple = (emitter, event, options) => {
 		}
 	});
 
-	ret.cancel = cancel;
+	returnValue.cancel = cancel;
 
 	if (typeof options.timeout === 'number') {
-		const timeout = pTimeout(ret, options.timeout);
+		const timeout = pTimeout(returnValue, options.timeout);
 		timeout.cancel = cancel;
 		return timeout;
 	}
 
-	return ret;
-};
+	return returnValue;
+}
 
-const pEvent = (emitter, event, options) => {
+export function pEvent(emitter, event, options) {
 	if (typeof options === 'function') {
 		options = {filter: options};
 	}
@@ -101,40 +97,34 @@ const pEvent = (emitter, event, options) => {
 	options = {
 		...options,
 		count: 1,
-		resolveImmediately: false
+		resolveImmediately: false,
 	};
 
-	const arrayPromise = multiple(emitter, event, options);
+	const arrayPromise = pEventMultiple(emitter, event, options);
 	const promise = arrayPromise.then(array => array[0]); // eslint-disable-line promise/prefer-await-to-then
 	promise.cancel = arrayPromise.cancel;
 
 	return promise;
-};
+}
 
-module.exports = pEvent;
-// TODO: Remove this for the next major release
-module.exports.default = pEvent;
-
-module.exports.multiple = multiple;
-
-module.exports.iterator = (emitter, event, options) => {
+export function pEventIterator(emitter, event, options) {
 	if (typeof options === 'function') {
 		options = {filter: options};
 	}
 
 	// Allow multiple events
-	const events = toArray(event);
+	const events = [event].flat();
 
 	options = {
 		rejectionEvents: ['error'],
 		resolutionEvents: [],
-		limit: Infinity,
+		limit: Number.POSITIVE_INFINITY,
 		multiArgs: false,
-		...options
+		...options,
 	};
 
 	const {limit} = options;
-	const isValidLimit = limit >= 0 && (limit === Infinity || Number.isInteger(limit));
+	const isValidLimit = limit >= 0 && (limit === Number.POSITIVE_INFINITY || Number.isInteger(limit));
 	if (!isValidLimit) {
 		throw new TypeError('The `limit` option should be a non-negative integer or Infinity');
 	}
@@ -148,9 +138,9 @@ module.exports.iterator = (emitter, event, options) => {
 			async next() {
 				return {
 					done: true,
-					value: undefined
+					value: undefined,
 				};
-			}
+			},
 		};
 	}
 
@@ -164,11 +154,11 @@ module.exports.iterator = (emitter, event, options) => {
 	let eventCount = 0;
 	let isLimitReached = false;
 
-	const valueHandler = (...args) => {
+	const valueHandler = (...arguments_) => {
 		eventCount++;
 		isLimitReached = eventCount === limit;
 
-		const value = options.multiArgs ? args : args[0];
+		const value = options.multiArgs ? arguments_ : arguments_[0];
 
 		if (nextQueue.length > 0) {
 			const {resolve} = nextQueue.shift();
@@ -191,6 +181,7 @@ module.exports.iterator = (emitter, event, options) => {
 
 	const cancel = () => {
 		isDone = true;
+
 		for (const event of events) {
 			removeListener(event, valueHandler);
 		}
@@ -209,8 +200,8 @@ module.exports.iterator = (emitter, event, options) => {
 		}
 	};
 
-	const rejectHandler = (...args) => {
-		error = options.multiArgs ? args : args[0];
+	const rejectHandler = (...arguments_) => {
+		error = options.multiArgs ? arguments_ : arguments_[0];
 
 		if (nextQueue.length > 0) {
 			const {reject} = nextQueue.shift();
@@ -222,9 +213,10 @@ module.exports.iterator = (emitter, event, options) => {
 		cancel();
 	};
 
-	const resolveHandler = (...args) => {
-		const value = options.multiArgs ? args : args[0];
+	const resolveHandler = (...arguments_) => {
+		const value = options.multiArgs ? arguments_ : arguments_[0];
 
+		// eslint-disable-next-line unicorn/no-array-callback-reference
 		if (options.filter && !options.filter(value)) {
 			return;
 		}
@@ -252,7 +244,7 @@ module.exports.iterator = (emitter, event, options) => {
 	}
 
 	return {
-		[symbolAsyncIterator]() {
+		[Symbol.asyncIterator]() {
 			return this;
 		},
 		async next() {
@@ -260,7 +252,7 @@ module.exports.iterator = (emitter, event, options) => {
 				const value = valueQueue.shift();
 				return {
 					done: isDone && valueQueue.length === 0 && !isLimitReached,
-					value
+					value,
 				};
 			}
 
@@ -272,20 +264,22 @@ module.exports.iterator = (emitter, event, options) => {
 			if (isDone) {
 				return {
 					done: true,
-					value: undefined
+					value: undefined,
 				};
 			}
 
-			return new Promise((resolve, reject) => nextQueue.push({resolve, reject}));
+			return new Promise((resolve, reject) => {
+				nextQueue.push({resolve, reject});
+			});
 		},
 		async return(value) {
 			cancel();
 			return {
 				done: isDone,
-				value
+				value,
 			};
-		}
+		},
 	};
-};
+}
 
-module.exports.TimeoutError = pTimeout.TimeoutError;
+export {TimeoutError} from 'p-timeout';

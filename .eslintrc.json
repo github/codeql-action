@@ -10,7 +10,8 @@
         "plugin:@typescript-eslint/recommended",
         "plugin:@typescript-eslint/recommended-requiring-type-checking",
         "plugin:github/recommended",
-        "plugin:github/typescript"
+        "plugin:github/typescript",
+        "plugin:import/typescript"
     ],
     "rules": {
         "filenames/match-regex": ["error", "^[a-z0-9-]+(\\.test)?$"],

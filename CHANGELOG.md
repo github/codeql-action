@@ -2,7 +2,8 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Add `sarif-id` as an output for the `upload-sarif` and `analyze` actions. [#889](https://github.com/github/codeql-action/pull/889)
+- Add `ref` and `sha` inputs to the `analyze` action, which override the defaults provided by the GitHub Action context. [#889](https://github.com/github/codeql-action/pull/889)
 
 ## 1.0.31 - 31 Jan 2022
 

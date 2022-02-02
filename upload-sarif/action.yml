@@ -13,6 +13,12 @@ inputs:
     description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
     required: false
     default: ${{ github.workspace }}
+  ref:
+    description: "The ref where results will be uploaded. If not provided, the Action will use the GITHUB_REF environment variable. If provided, the sha input must be provided as well. This input is not available in pull requests from forks."
+    required: false
+  sha:
+    description: "The sha of the HEAD of the ref where results will be uploaded. If not provided, the Action will use the GITHUB_SHA environment variable. If provided, the ref input must be provided as well. This input is not available in pull requests from forks."
+    required: false
   token:
     default: ${{ github.token }}
   matrix:
@@ -24,6 +30,9 @@ inputs:
     description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
     required: true
     default: "false"
+outputs:
+  sarif-id:
+    description: The ID of the uploaded SARIF file.
 runs:
   using: 'node12'
   main: '../lib/upload-sarif-action.js'

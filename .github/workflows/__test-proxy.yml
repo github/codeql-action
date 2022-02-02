@@ -26,6 +26,8 @@ jobs:
         version: [latest]
         os: [ubuntu-latest]
     name: Proxy test
+    permissions:
+      security-events: write
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

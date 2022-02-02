@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: PR Check - Remote config file
+name: "PR Check - Analyze: 'ref' and 'sha' from inputs"
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -20,7 +20,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  remote-config:
+  analyze-ref-input:
     strategy:
       matrix:
         version:
@@ -34,7 +34,7 @@ jobs:
         - ubuntu-latest
         - macos-latest
         - windows-latest
-    name: Remote config file
+    name: "Analyze: 'ref' and 'sha' from inputs"
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
@@ -54,6 +54,9 @@ jobs:
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
+      with:
+        ref: refs/heads/main
+        sha: 5e235361806c361d4d3f8859e3c897658025a9a2
       env:
         TEST_MODE: true
     env:

@@ -63,6 +63,7 @@ async function run() {
       apiDetails,
       getActionsLogger()
     );
+    core.setOutput("sarif-id", uploadResult.sarifID);
     if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),

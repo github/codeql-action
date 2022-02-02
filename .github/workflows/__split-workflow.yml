@@ -26,6 +26,8 @@ jobs:
         version: [nightly-20210831] # This CLI version is known to work with package used in this test
         os: [ubuntu-latest, macos-latest]
     name: Split workflow
+    permissions:
+      security-events: write
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

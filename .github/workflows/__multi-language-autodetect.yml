@@ -32,6 +32,8 @@ jobs:
         - nightly-latest
         os: [ubuntu-latest, macos-latest]
     name: Multi-language repository
+    permissions:
+      security-events: write
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

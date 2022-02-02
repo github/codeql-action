@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Go: Autobuild custom tracing'
+name: "PR Check - Analyze: 'ref' and 'sha' from inputs"
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -20,7 +20,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-custom-tracing-autobuild:
+  analyze-ref-input:
     strategy:
       matrix:
         version:
@@ -30,8 +30,11 @@ jobs:
         - cached
         - latest
         - nightly-latest
-        os: [ubuntu-latest, macos-latest]
-    name: 'Go: Autobuild custom tracing'
+        os:
+        - ubuntu-latest
+        - macos-latest
+        - windows-latest
+    name: "Analyze: 'ref' and 'sha' from inputs"
     permissions:
       security-events: write
     runs-on: ${{ matrix.os }}
@@ -43,24 +46,20 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - uses: actions/setup-go@v2
-      with:
-        go-version: ^1.13.1
     - uses: ./../action/init
       with:
-        languages: go
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/autobuild
+        languages: cpp,csharp,java,javascript,python
+        config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
+          github.sha }}
+    - name: Build code
+      shell: bash
+      run: ./build.sh
     - uses: ./../action/analyze
+      with:
+        ref: refs/heads/main
+        sha: 5e235361806c361d4d3f8859e3c897658025a9a2
       env:
         TEST_MODE: true
-    - shell: bash
-      run: |
-        cd "$RUNNER_TEMP/codeql_databases"
-        if [[ ! -d go ]]; then
-          echo "Did not find a Go database"
-          exit 1
-        fi
     env:
-      CODEQL_EXTRACTOR_GO_BUILD_TRACING: 'true'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

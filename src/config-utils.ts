@@ -15,7 +15,11 @@ import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { codeQlVersionAbove, GitHubVersion } from "./util";
+import {
+  codeQlVersionAbove,
+  GitHubVersion,
+  ML_POWERED_JS_QUERIES_PACK_NAME,
+} from "./util";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -298,7 +302,7 @@ async function addBuiltinSuiteQueries(
       packs.javascript = [];
     }
     packs.javascript.push({
-      packName: "codeql/javascript-experimental-atm-queries",
+      packName: ML_POWERED_JS_QUERIES_PACK_NAME,
       version: "~0.0.2",
     });
   }

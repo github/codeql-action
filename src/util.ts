@@ -627,3 +627,28 @@ export function checkNotWindows11() {
     );
   }
 }
+
+export const ML_POWERED_JS_QUERIES_PACK_NAME =
+  "codeql/javascript-experimental-atm-queries";
+
+/** Get information about ML-powered JS queries to populate status reports with.
+ *
+ * This will be:
+ *
+ * - The version string if the analysis will use a specific version of the pack
+ * - "latest" if the analysis will use the latest version of the pack
+ * - "false" if the analysis won't run any ML-powered JS queries, or if the analysis will run
+ *   multiple ML-powered JS query packs
+ *
+ * This function lives here rather than in `init-action.ts` so it's easier to test, since tests for
+ * `init-action.ts` would each need to live in their own file. See `analyze-action-env.ts` for an
+ * explanation as to why this is.
+ */
+export function getMlPoweredJsQueriesStatus(config: Config) {
+  const mlPoweredJsQueryPacks = (config.packs.javascript || []).filter(
+    (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
+  );
+  return mlPoweredJsQueryPacks.length === 1
+    ? mlPoweredJsQueryPacks[0].version || "latest"
+    : "false";
+}

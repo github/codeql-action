@@ -38,6 +38,7 @@ import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   checkNotWindows11,
+  getMlPoweredJsQueriesStatus,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -52,6 +53,12 @@ interface InitSuccessStatusReport extends StatusReportBase {
    * This may be from the workflow file or may be calculated from repository contents
    */
   languages: string;
+  /**
+   * Information about the enablement of the ML-powered JS query pack.
+   *
+   * @see {@link getMlPoweredJsQueriesStatus}
+   */
+  ml_powered_js_queries: string;
   /** Comma-separated list of paths, from the 'paths' config field. */
   paths: string;
   /** Comma-separated list of paths, from the 'paths-ignore' config field. */
@@ -107,6 +114,7 @@ async function sendSuccessStatusReport(
     ...statusReportBase,
     disable_default_queries: disableDefaultQueries,
     languages,
+    ml_powered_js_queries: getMlPoweredJsQueriesStatus(config),
     paths,
     paths_ignore: pathsIgnore,
     queries: queries.join(","),

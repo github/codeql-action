@@ -7,6 +7,7 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
+import { Config, PackWithVersion } from "./config-utils";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -290,4 +291,52 @@ async function mockStdInForAuthExpectError(
   await t.throwsAsync(async () =>
     util.getGitHubAuth(mockLogger, undefined, true, stdin)
   );
+}
+
+const ML_POWERED_JS_STATUS_TESTS: Array<[PackWithVersion[], string]> = [
+  [[], "false"],
+  [[{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME }], "latest"],
+  [
+    [{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.2" }],
+    "0.0.2",
+  ],
+  [
+    [
+      { packName: "someOtherPack" },
+      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME },
+    ],
+    "latest",
+  ],
+];
+
+for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
+  const packDescriptions = `[${packs
+    .map((pack) => JSON.stringify(pack))
+    .join(", ")}]`;
+  test(`ML-powered JS queries status report is "${expectedStatus}" for packs = ${packDescriptions}`, (t) => {
+    return util.withTmpDir(async (tmpDir) => {
+      const config: Config = {
+        languages: [],
+        queries: {},
+        paths: [],
+        pathsIgnore: [],
+        originalUserInput: {},
+        tempDir: tmpDir,
+        toolCacheDir: tmpDir,
+        codeQLCmd: "",
+        gitHubVersion: {
+          type: util.GitHubVariant.DOTCOM,
+        } as util.GitHubVersion,
+        dbLocation: "",
+        packs: {
+          javascript: packs,
+        },
+        debugMode: false,
+        debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
+        debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
+      };
+
+      t.is(util.getMlPoweredJsQueriesStatus(config), expectedStatus);
+    });
+  });
 }

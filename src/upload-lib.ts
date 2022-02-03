@@ -122,11 +122,11 @@ async function uploadPayload(
 }
 
 export interface UploadStatusReport {
-  // Size in bytes of unzipped SARIF upload
+  /** Size in bytes of unzipped SARIF upload. */
   raw_upload_size_bytes?: number;
-  // Size in bytes of actual SARIF upload
+  /** Size in bytes of actual SARIF upload. */
   zipped_upload_size_bytes?: number;
-  // Number of results in the SARIF upload
+  /** Number of results in the SARIF upload. */
   num_results_in_sarif?: number;
 }
 

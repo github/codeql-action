@@ -488,37 +488,37 @@ type ActionName = "init" | "autobuild" | "finish" | "upload-sarif";
 type ActionStatus = "starting" | "aborted" | "success" | "failure";
 
 export interface StatusReportBase {
-  // ID of the workflow run containing the action run
+  /** ID of the workflow run containing the action run. */
   workflow_run_id: number;
-  // Workflow name. Converted to analysis_name further down the pipeline.
+  /** Workflow name. Converted to analysis_name further down the pipeline.. */
   workflow_name: string;
-  // Job name from the workflow
+  /** Job name from the workflow. */
   job_name: string;
-  // Analysis key, normally composed from the workflow path and job name
+  /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
-  // Value of the matrix for this instantiation of the job
+  /** Value of the matrix for this instantiation of the job. */
   matrix_vars?: string;
-  // Commit oid that the workflow was triggered on
+  /** Commit oid that the workflow was triggered on. */
   commit_oid: string;
-  // Ref that the workflow was triggered on
+  /** Ref that the workflow was triggered on. */
   ref: string;
-  // Name of the action being executed
+  /** Name of the action being executed. */
   action_name: ActionName;
-  // Version of the action being executed, as a ref
+  /** Version of the action being executed, as a ref. */
   action_ref?: string;
-  // Version of the action being executed, as a commit oid
+  /** Version of the action being executed, as a commit oid. */
   action_oid: string;
-  // Time the first action started. Normally the init action
+  /** Time the first action started. Normally the init action. */
   started_at: string;
-  // Time this action started
+  /** Time this action started. */
   action_started_at: string;
-  // Time this action completed, or undefined if not yet completed
+  /** Time this action completed, or undefined if not yet completed. */
   completed_at?: string;
-  // State this action is currently in
+  /** State this action is currently in. */
   status: ActionStatus;
-  // Cause of the failure (or undefined if status is not failure)
+  /** Cause of the failure (or undefined if status is not failure). */
   cause?: string;
-  // Stack trace of the failure (or undefined if status is not failure)
+  /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
 }
 

@@ -49,7 +49,7 @@ class Argument {
 
   name() {
     return this._name;
-  };
+  }
 
   /**
    * @api private
@@ -75,7 +75,7 @@ class Argument {
     this.defaultValue = value;
     this.defaultValueDescription = description;
     return this;
-  };
+  }
 
   /**
    * Set the custom handler for processing CLI command arguments into argument values.
@@ -87,20 +87,20 @@ class Argument {
   argParser(fn) {
     this.parseArg = fn;
     return this;
-  };
+  }
 
   /**
-   * Only allow option value to be one of choices.
+   * Only allow argument value to be one of choices.
    *
    * @param {string[]} values
    * @return {Argument}
    */
 
   choices(values) {
-    this.argChoices = values;
+    this.argChoices = values.slice();
     this.parseArg = (arg, previous) => {
-      if (!values.includes(arg)) {
-        throw new InvalidArgumentError(`Allowed choices are ${values.join(', ')}.`);
+      if (!this.argChoices.includes(arg)) {
+        throw new InvalidArgumentError(`Allowed choices are ${this.argChoices.join(', ')}.`);
       }
       if (this.variadic) {
         return this._concatValue(arg, previous);
@@ -108,10 +108,10 @@ class Argument {
       return arg;
     };
     return this;
-  };
+  }
 
   /**
-   * Make option-argument required.
+   * Make argument required.
    */
   argRequired() {
     this.required = true;
@@ -119,7 +119,7 @@ class Argument {
   }
 
   /**
-   * Make option-argument optional.
+   * Make argument optional.
    */
   argOptional() {
     this.required = false;

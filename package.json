@@ -55,10 +55,7 @@
   ],
   "devDependencies": {
     "@ava/typescript": "3.0.1",
-    "@types/del": "^4.0.0",
-    "@types/jszip": "^3.4.1",
     "@types/long": "4.0.1",
-    "@types/nock": "^11.1.0",
     "@types/node": "16.11.22",
     "@types/semver": "^7.3.8",
     "@types/sinon": "^10.0.2",

@@ -57,7 +57,8 @@ test("validate correct payload used per version", async (t) => {
       "/opt/src",
       undefined,
       ["CodeQL", "eslint"],
-      version
+      version,
+      "mergeBaseCommit"
     );
     // Not triggered by a pull request
     t.falsy(payload.base_ref);
@@ -65,6 +66,8 @@ test("validate correct payload used per version", async (t) => {
   }
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
+  process.env["GITHUB_SHA"] = "commit";
+  process.env["GITHUB_BASE_REF"] = "master";
   process.env[
     "GITHUB_EVENT_PATH"
   ] = `${__dirname}/../src/testdata/pull_request.json`;
@@ -79,8 +82,29 @@ test("validate correct payload used per version", async (t) => {
       "/opt/src",
       undefined,
       ["CodeQL", "eslint"],
-      version
+      version,
+      "mergeBaseCommit"
     );
+    // Uploads for a merge commit use the merge base
+    t.deepEqual(payload.base_ref, "refs/heads/master");
+    t.deepEqual(payload.base_sha, "mergeBaseCommit");
+  }
+
+  for (const version of newVersions) {
+    const payload: any = uploadLib.buildPayload(
+      "headCommit",
+      "refs/pull/123/head",
+      "key",
+      undefined,
+      "",
+      undefined,
+      "/opt/src",
+      undefined,
+      ["CodeQL", "eslint"],
+      version,
+      "mergeBaseCommit"
+    );
+    // Uploads for the head use the PR base
     t.deepEqual(payload.base_ref, "refs/heads/master");
     t.deepEqual(payload.base_sha, "f95f852bd8fca8fcc58a9a2d6c842781e32a215e");
   }
@@ -96,7 +120,8 @@ test("validate correct payload used per version", async (t) => {
       "/opt/src",
       undefined,
       ["CodeQL", "eslint"],
-      version
+      version,
+      "mergeBaseCommit"
     );
     // These older versions won't expect these values
     t.falsy(payload.base_ref);

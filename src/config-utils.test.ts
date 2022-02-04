@@ -1713,8 +1713,9 @@ const mlPoweredQueriesMacro = test.macro({
     t: ExecutionContext,
     codeQLVersion: string,
     isMlPoweredQueriesFlagEnabled: boolean,
+    packsInput: string | undefined,
     queriesInput: string | undefined,
-    shouldRunMlPoweredQueries: boolean
+    expectedVersionString: string | undefined
   ) => {
     return await util.withTmpDir(async (tmpDir) => {
       const codeQL = setCodeQL({
@@ -1735,7 +1736,7 @@ const mlPoweredQueriesMacro = test.macro({
       const { packs } = await configUtils.initConfig(
         "javascript",
         queriesInput,
-        undefined,
+        packsInput,
         undefined,
         undefined,
         false,
@@ -1755,12 +1756,12 @@ const mlPoweredQueriesMacro = test.macro({
         ),
         getRunnerLogger(true)
       );
-      if (shouldRunMlPoweredQueries) {
+      if (expectedVersionString !== undefined) {
         t.deepEqual(packs as unknown, {
           [Language.javascript]: [
             {
               packName: "codeql/javascript-experimental-atm-queries",
-              version: "~0.0.2",
+              version: expectedVersionString,
             },
           ],
         });
@@ -1773,24 +1774,58 @@ const mlPoweredQueriesMacro = test.macro({
     _providedTitle: string | undefined,
     codeQLVersion: string,
     isMlPoweredQueriesFlagEnabled: boolean,
+    packsInput: string | undefined,
     queriesInput: string | undefined,
-    shouldRunMlPoweredQueries: boolean
-  ) => {
-    const queriesInputDescription = queriesInput
-      ? `'queries: ${queriesInput}'`
-      : "default config";
-
-    return `ML-powered queries ${
-      shouldRunMlPoweredQueries ? "are" : "aren't"
-    } loaded for ${queriesInputDescription} using CLI v${codeQLVersion} when feature flag is ${
+    expectedVersionString: string | undefined
+  ) =>
+    `ML-powered queries ${
+      expectedVersionString !== undefined
+        ? `${expectedVersionString} are`
+        : "aren't"
+    } loaded for packs: ${packsInput}, queries: ${queriesInput} using CLI v${codeQLVersion} when feature flag is ${
       isMlPoweredQueriesFlagEnabled ? "enabled" : "disabled"
-    }`;
-  },
+    }`,
 });
 
-// macro, isMlPoweredQueriesFlagEnabled, queriesInput, shouldRunMlPoweredQueries
-test(mlPoweredQueriesMacro, "2.7.4", true, "security-extended", false);
-test(mlPoweredQueriesMacro, "2.7.5", false, "security-extended", false);
-test(mlPoweredQueriesMacro, "2.7.5", true, undefined, false);
-test(mlPoweredQueriesMacro, "2.7.5", true, "security-extended", true);
-test(mlPoweredQueriesMacro, "2.7.5", true, "security-and-quality", true);
+// macro, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, versionString
+test(
+  mlPoweredQueriesMacro,
+  "2.7.4",
+  true,
+  undefined,
+  "security-extended",
+  undefined
+);
+test(
+  mlPoweredQueriesMacro,
+  "2.7.5",
+  false,
+  undefined,
+  "security-extended",
+  undefined
+);
+test(mlPoweredQueriesMacro, "2.7.5", true, undefined, undefined, undefined);
+test(
+  mlPoweredQueriesMacro,
+  "2.7.5",
+  true,
+  undefined,
+  "security-extended",
+  "~0.0.2"
+);
+test(
+  mlPoweredQueriesMacro,
+  "2.7.5",
+  true,
+  undefined,
+  "security-and-quality",
+  "~0.0.2"
+);
+test(
+  mlPoweredQueriesMacro,
+  "2.7.5",
+  true,
+  "codeql/javascript-experimental-atm-queries@0.0.1",
+  "security-and-quality",
+  "0.0.1"
+);

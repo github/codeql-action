@@ -289,12 +289,18 @@ async function addBuiltinSuiteQueries(
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
   }
 
-  // If we're running the JavaScript security-extended analysis (or a superset of it) and the repo
-  // is opted into the ML-powered queries beta, then add the ML-powered query pack so that we run
-  // the ML-powered queries.
+  // If we're running the JavaScript security-extended analysis (or a superset of it), the repo is
+  // opted into the ML-powered queries beta, and a user hasn't already added the ML-powered query
+  // pack, then add the ML-powered query pack so that we run ML-powered queries.
   if (
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
+    !(
+      packs.javascript &&
+      packs.javascript.some(
+        (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
+      )
+    ) &&
     (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
     (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
   ) {

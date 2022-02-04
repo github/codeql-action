@@ -644,11 +644,16 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
  * `init-action.ts` would each need to live in their own file. See `analyze-action-env.ts` for an
  * explanation as to why this is.
  */
-export function getMlPoweredJsQueriesStatus(config: Config) {
+export function getMlPoweredJsQueriesStatus(config: Config): string {
   const mlPoweredJsQueryPacks = (config.packs.javascript || []).filter(
     (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
   );
-  return mlPoweredJsQueryPacks.length === 1
-    ? mlPoweredJsQueryPacks[0].version || "latest"
-    : "false";
+  switch (mlPoweredJsQueryPacks.length) {
+    case 1:
+      return mlPoweredJsQueryPacks[0].version || "latest";
+    case 0:
+      return "false";
+    default:
+      return "multiple";
+  }
 }

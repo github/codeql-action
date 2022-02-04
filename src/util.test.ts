@@ -297,8 +297,15 @@ const ML_POWERED_JS_STATUS_TESTS: Array<[PackWithVersion[], string]> = [
   [[], "false"],
   [[{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME }], "latest"],
   [
-    [{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.2" }],
-    "0.0.2",
+    [{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.0.2" }],
+    "~0.0.2",
+  ],
+  [
+    [
+      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.1" },
+      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.2" },
+    ],
+    "multiple",
   ],
   [
     [

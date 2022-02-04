@@ -658,7 +658,7 @@ export async function createStatusReportBase(
 const GENERIC_403_MSG =
   "The repo on which this action is running is not opted-in to CodeQL code scanning.";
 const GENERIC_404_MSG =
-  "Not authorized to used the CodeQL code scanning feature on this repo.";
+  "Not authorized to use the CodeQL code scanning feature on this repo.";
 const OUT_OF_DATE_MSG =
   "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action.";
 const INCOMPATIBLE_MSG =

@@ -10,7 +10,7 @@ import * as semver from "semver";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
-import { Config } from "./config-utils";
+import { Config, PackWithVersion } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -628,27 +628,38 @@ export function checkNotWindows11() {
   }
 }
 
-export const ML_POWERED_JS_QUERIES_PACK_NAME =
-  "codeql/javascript-experimental-atm-queries";
-
 /**
- * Set containing version strings of the ML-powered JS query pack that are reportable.
- *
- * We restrict the set of version strings we report to limit the cardinality of the ML-powered JS
- * queries status report field, since some platforms that ingest this status report charge based on
- * the cardinality of the fields.
+ * The ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
+ * queries beta.
  */
-export const ML_POWERED_JS_QUERIES_REPORTABLE_VERSIONS = new Set(["~0.0.2"]);
+export const ML_POWERED_JS_QUERIES_PACK: PackWithVersion = {
+  packName: "codeql/javascript-experimental-atm-queries",
+  version: "~0.0.2",
+};
 
 /**
  * Get information about ML-powered JS queries to populate status reports with.
  *
  * This will be:
  *
- * - The version string if the analysis will use a specific version of the pack and that version
- *   string is within {@link ML_POWERED_JS_QUERIES_REPORTABLE_VERSIONS}.
+ * - The version string if the analysis is using the ML-powered query pack that will be added to the
+ *   analysis if the repo is opted into the ML-powered queries beta, i.e.
+ *   {@link ML_POWERED_JS_QUERIES_PACK.version}. If the version string
+ *   {@link ML_POWERED_JS_QUERIES_PACK.version} is undefined, then the status report string will be
+ *   "latest", however this shouldn't occur in practice (see comment below).
  * - "false" if the analysis won't run any ML-powered JS queries.
  * - "other" in all other cases.
+ *
+ * Our goal of the status report here is to allow us to compare the occurrence of timeouts and other
+ * errors with ML-powered queries turned on and off. We also want to be able to compare minor
+ * version bumps caused by us bumping the version range of `ML_POWERED_JS_QUERIES_PACK` in a new
+ * version of the CodeQL Action. For instance, we might want to compare the `~0.1.0` and `~0.0.2`
+ * version strings.
+ *
+ * We restrict the set of strings we report here by excluding other version strings and combinations
+ * of version strings. We do this to limit the cardinality of the ML-powered JS queries status
+ * report field, since some platforms that ingest this status report bill based on the cardinality
+ * of its fields.
  *
  * This function lives here rather than in `init-action.ts` so it's easier to test, since tests for
  * `init-action.ts` would each need to live in their own file. See `analyze-action-env.ts` for an
@@ -656,7 +667,7 @@ export const ML_POWERED_JS_QUERIES_REPORTABLE_VERSIONS = new Set(["~0.0.2"]);
  */
 export function getMlPoweredJsQueriesStatus(config: Config): string {
   const mlPoweredJsQueryPacks = (config.packs.javascript || []).filter(
-    (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
+    (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK.packName
   );
   if (mlPoweredJsQueryPacks.length === 0) {
     return "false";
@@ -664,10 +675,13 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
   const firstVersionString = mlPoweredJsQueryPacks[0].version;
   if (
     mlPoweredJsQueryPacks.length === 1 &&
-    firstVersionString &&
-    ML_POWERED_JS_QUERIES_REPORTABLE_VERSIONS.has(firstVersionString)
+    ML_POWERED_JS_QUERIES_PACK.version === firstVersionString
   ) {
-    return firstVersionString;
+    // We should always specify an explicit version string in `ML_POWERED_JS_QUERIES_PACK`,
+    // otherwise we won't be able to make changes to the pack unless those changes are compatible
+    // with each version of the CodeQL Action. Therefore in practice, we should never hit the
+    // `latest` case here.
+    return ML_POWERED_JS_QUERIES_PACK.version || "latest";
   }
   return "other";
 }

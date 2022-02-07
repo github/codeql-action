@@ -295,24 +295,36 @@ async function mockStdInForAuthExpectError(
 
 const ML_POWERED_JS_STATUS_TESTS: Array<[PackWithVersion[], string]> = [
   [[], "false"],
-  [[{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME }], "latest"],
+  [[{ packName: "someOtherPack" }], "false"],
+  [
+    [
+      { packName: "someOtherPack" },
+      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.0.2" },
+    ],
+    "~0.0.2",
+  ],
   [
     [{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.0.2" }],
     "~0.0.2",
+  ],
+  [[{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME }], "other"],
+  [
+    [{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.0.1" }],
+    "other",
   ],
   [
     [
       { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.1" },
       { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.2" },
     ],
-    "multiple",
+    "other",
   ],
   [
     [
       { packName: "someOtherPack" },
       { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME },
     ],
-    "latest",
+    "other",
   ],
 ];
 

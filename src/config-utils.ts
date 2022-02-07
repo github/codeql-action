@@ -15,7 +15,11 @@ import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { codeQlVersionAbove, GitHubVersion } from "./util";
+import {
+  codeQlVersionAbove,
+  GitHubVersion,
+  ML_POWERED_JS_QUERIES_PACK,
+} from "./util";
 
 // Property names from the user-supplied config file.
 const NAME_PROPERTY = "name";
@@ -285,22 +289,22 @@ async function addBuiltinSuiteQueries(
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
   }
 
-  // If we're running the JavaScript security-extended analysis (or a superset of it) and the repo
-  // is opted into the ML-powered queries beta, then add the ML-powered query pack so that we run
-  // the ML-powered queries.
+  // If we're running the JavaScript security-extended analysis (or a superset of it), the repo is
+  // opted into the ML-powered queries beta, and a user hasn't already added the ML-powered query
+  // pack, then add the ML-powered query pack so that we run ML-powered queries.
   if (
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
+    !packs.javascript?.some(
+      (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK.packName
+    ) &&
     (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
     (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
   ) {
     if (!packs.javascript) {
       packs.javascript = [];
     }
-    packs.javascript.push({
-      packName: "codeql/javascript-experimental-atm-queries",
-      version: "~0.0.2",
-    });
+    packs.javascript.push(ML_POWERED_JS_QUERIES_PACK);
   }
 
   const suites = languages.map((l) => `${l}-${suiteName}.qls`);

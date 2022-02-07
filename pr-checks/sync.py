@@ -23,7 +23,6 @@ header = """# Warning: This file is generated automatically, and should not be m
 
 """
 
-
 class NonAliasingRTRepresenter(ruamel.yaml.representer.RoundTripRepresenter):
     def ignore_aliases(self, data):
         return True

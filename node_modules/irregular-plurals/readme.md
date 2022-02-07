@@ -1,7 +1,6 @@
-# irregular-plurals [![Build Status](https://travis-ci.org/sindresorhus/irregular-plurals.svg?branch=master)](https://travis-ci.org/sindresorhus/irregular-plurals)
+# irregular-plurals
 
 > Map of nouns to their irregular plural form
-
 
 > An irregular plural in this library is defined as a noun that cannot be made plural by applying these rules:
 > - If the noun ends in an "s", "x", "z", "ch" or "sh", add "es"
@@ -10,13 +9,11 @@
 
 The list is just a [JSON file](irregular-plurals.json) and can be used anywhere.
 
-
 ## Install
 
 ```
 $ npm install irregular-plurals
 ```
-
 
 ## Usage
 
@@ -36,12 +33,6 @@ Map {
 */
 ```
 
-
 ## Related
 
 - [plur](https://github.com/sindresorhus/plur) - Pluralize a word
-
-
-## License
-
-MIT © [Sindre Sorhus](https://sindresorhus.com)

@@ -1,12 +1,12 @@
 {
   "name": "codeql",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
     "build": "tsc --build",
-    "test": "ava src/** --serial --verbose",
-    "test-debug": "ava src/** --serial --verbose --timeout=20m",
+    "test": "ava src/**.test.ts --serial --verbose",
+    "test-debug": "ava src/**.test.ts --serial --verbose --timeout=20m",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --ext .js,.ts --fix",
     "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force",
@@ -42,7 +42,7 @@
     "glob": "^7.1.7",
     "js-yaml": "^4.1.0",
     "jsonschema": "1.2.6",
-    "long": "^4.0.0",
+    "long": "^5.2.0",
     "md5": "^2.3.0",
     "path": "^0.12.7",
     "query-string": "^7.0.1",
@@ -54,7 +54,7 @@
     "micromatch is an unspecified dependency of ava"
   ],
   "devDependencies": {
-    "@ava/typescript": "2.0.0",
+    "@ava/typescript": "3.0.1",
     "@types/del": "^4.0.0",
     "@types/jszip": "^3.4.1",
     "@types/long": "4.0.1",
@@ -63,7 +63,7 @@
     "@types/semver": "^7.3.8",
     "@types/sinon": "^10.0.2",
     "@typescript-eslint/parser": "^5.0.0",
-    "ava": "^3.15.0",
+    "ava": "^4.0.1",
     "eslint": "^7.32.0",
     "eslint-plugin-filenames": "^1.3.2",
     "eslint-plugin-github": "^4.2.0",

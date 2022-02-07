@@ -172,7 +172,10 @@ test("loading config saves config", async (t) => {
 
     // And that same newly-initialised config should now be returned by getConfig
     const config2 = await configUtils.getConfig(tmpDir, logger);
-    t.deepEqual(config1, config2);
+    t.not(config2, undefined);
+    if (config2 !== undefined) {
+      t.deepEqual(config1, config2);
+    }
   });
 });
 
@@ -1428,62 +1431,67 @@ test("path sanitisation", (t) => {
 /**
  * Test macro for ensuring the packs block is valid
  */
-function parsePacksMacro(
-  t: ExecutionContext<unknown>,
-  packsByLanguage: string[] | Record<string, string[]>,
-  languages: Language[],
-  expected
-) {
-  t.deepEqual(
-    configUtils.parsePacksFromConfig(packsByLanguage, languages, "/a/b"),
-    expected
-  );
-}
-parsePacksMacro.title = (providedTitle: string) =>
-  `Parse Packs: ${providedTitle}`;
+const parsePacksMacro = test.macro({
+  exec: (
+    t: ExecutionContext<unknown>,
+    packsByLanguage: string[] | Record<string, string[]>,
+    languages: Language[],
+    expected: Partial<Record<Language, configUtils.PackWithVersion[]>>
+  ) =>
+    t.deepEqual(
+      configUtils.parsePacksFromConfig(packsByLanguage, languages, "/a/b"),
+      expected
+    ),
+
+  title: (providedTitle = "") => `Parse Packs: ${providedTitle}`,
+});
 
 /**
  * Test macro for testing when the packs block is invalid
  */
-function parsePacksErrorMacro(
-  t: ExecutionContext<unknown>,
-  packsByLanguage,
-  languages: Language[],
-  expected: RegExp
-) {
-  t.throws(
-    () => {
-      configUtils.parsePacksFromConfig(packsByLanguage, languages, "/a/b");
-    },
-    {
-      message: expected,
-    }
-  );
-}
-parsePacksErrorMacro.title = (providedTitle: string) =>
-  `Parse Packs Error: ${providedTitle}`;
+const parsePacksErrorMacro = test.macro({
+  exec: (
+    t: ExecutionContext<unknown>,
+    packsByLanguage: unknown,
+    languages: Language[],
+    expected: RegExp
+  ) =>
+    t.throws(
+      () =>
+        configUtils.parsePacksFromConfig(
+          packsByLanguage as string[] | Record<string, string[]>,
+          languages,
+          "/a/b"
+        ),
+      {
+        message: expected,
+      }
+    ),
+  title: (providedTitle = "") => `Parse Packs Error: ${providedTitle}`,
+});
 
 /**
  * Test macro for testing when the packs block is invalid
  */
-function invalidPackNameMacro(t: ExecutionContext<unknown>, name: string) {
-  parsePacksErrorMacro(
-    t,
-    { [Language.cpp]: [name] },
-    [Language.cpp],
-    new RegExp(
-      `The configuration file "/a/b" is invalid: property "packs" "${name}" is not a valid pack`
-    )
-  );
-}
-invalidPackNameMacro.title = (_: string, arg: string) =>
-  `Invalid pack string: ${arg}`;
+const invalidPackNameMacro = test.macro({
+  exec: (t: ExecutionContext, name: string) =>
+    parsePacksErrorMacro.exec(
+      t,
+      { [Language.cpp]: [name] },
+      [Language.cpp],
+      new RegExp(
+        `The configuration file "/a/b" is invalid: property "packs" "${name}" is not a valid pack`
+      )
+    ),
+  title: (_providedTitle: string | undefined, arg: string | undefined) =>
+    `Invalid pack string: ${arg}`,
+});
 
 test("no packs", parsePacksMacro, {}, [], {});
 test("two packs", parsePacksMacro, ["a/b", "c/d@1.2.3"], [Language.cpp], {
   [Language.cpp]: [
     { packName: "a/b", version: undefined },
-    { packName: "c/d", version: clean("1.2.3") },
+    { packName: "c/d", version: clean("1.2.3") as string },
   ],
 });
 test(
@@ -1494,7 +1502,7 @@ test(
   {
     [Language.cpp]: [
       { packName: "a/b", version: undefined },
-      { packName: "c/d", version: clean("1.2.3") },
+      { packName: "c/d", version: clean("1.2.3") as string },
     ],
   }
 );
@@ -1509,11 +1517,11 @@ test(
   {
     [Language.cpp]: [
       { packName: "a/b", version: undefined },
-      { packName: "c/d", version: clean("1.2.3") },
+      { packName: "c/d", version: clean("1.2.3") as string },
     ],
     [Language.java]: [
       { packName: "d/e", version: undefined },
-      { packName: "f/g", version: clean("1.2.3") },
+      { packName: "f/g", version: clean("1.2.3") as string },
     ],
   }
 );
@@ -1700,88 +1708,124 @@ test(
   /"xxx" is not a valid pack/
 );
 
-async function mlPoweredQueriesMacro(
-  t: ExecutionContext,
-  codeQLVersion: string,
-  isMlPoweredQueriesFlagEnabled: boolean,
-  queriesInput: string | undefined,
-  shouldRunMlPoweredQueries: boolean
-) {
-  return await util.withTmpDir(async (tmpDir) => {
-    const codeQL = setCodeQL({
-      async getVersion() {
-        return codeQLVersion;
-      },
-      async resolveQueries() {
-        return {
-          byLanguage: {
-            javascript: { "fake-query.ql": {} },
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
-      },
-    });
-
-    const { packs } = await configUtils.initConfig(
-      "javascript",
-      queriesInput,
-      undefined,
-      undefined,
-      undefined,
-      false,
-      "",
-      "",
-      { owner: "github", repo: "example " },
-      tmpDir,
-      tmpDir,
-      codeQL,
-      tmpDir,
-      gitHubVersion,
-      sampleApiDetails,
-      createFeatureFlags(
-        isMlPoweredQueriesFlagEnabled
-          ? [FeatureFlag.MlPoweredQueriesEnabled]
-          : []
-      ),
-      getRunnerLogger(true)
-    );
-    if (shouldRunMlPoweredQueries) {
-      t.deepEqual(packs as unknown, {
-        [Language.javascript]: [
-          {
-            packName: "codeql/javascript-experimental-atm-queries",
-            version: "~0.0.2",
-          },
-        ],
+const mlPoweredQueriesMacro = test.macro({
+  exec: async (
+    t: ExecutionContext,
+    codeQLVersion: string,
+    isMlPoweredQueriesFlagEnabled: boolean,
+    packsInput: string | undefined,
+    queriesInput: string | undefined,
+    expectedVersionString: string | undefined
+  ) => {
+    return await util.withTmpDir(async (tmpDir) => {
+      const codeQL = setCodeQL({
+        async getVersion() {
+          return codeQLVersion;
+        },
+        async resolveQueries() {
+          return {
+            byLanguage: {
+              javascript: { "fake-query.ql": {} },
+            },
+            noDeclaredLanguage: {},
+            multipleDeclaredLanguages: {},
+          };
+        },
       });
-    } else {
-      t.deepEqual(packs as unknown, {});
-    }
-  });
-}
 
-mlPoweredQueriesMacro.title = (
-  _providedTitle: string,
-  codeQLVersion: string,
-  isMlPoweredQueriesFlagEnabled: boolean,
-  queriesInput: string | undefined,
-  shouldRunMlPoweredQueries: boolean
-) => {
-  const queriesInputDescription = queriesInput
-    ? `'queries: ${queriesInput}'`
-    : "default config";
+      const { packs } = await configUtils.initConfig(
+        "javascript",
+        queriesInput,
+        packsInput,
+        undefined,
+        undefined,
+        false,
+        "",
+        "",
+        { owner: "github", repo: "example " },
+        tmpDir,
+        tmpDir,
+        codeQL,
+        tmpDir,
+        gitHubVersion,
+        sampleApiDetails,
+        createFeatureFlags(
+          isMlPoweredQueriesFlagEnabled
+            ? [FeatureFlag.MlPoweredQueriesEnabled]
+            : []
+        ),
+        getRunnerLogger(true)
+      );
+      if (expectedVersionString !== undefined) {
+        t.deepEqual(packs as unknown, {
+          [Language.javascript]: [
+            {
+              packName: "codeql/javascript-experimental-atm-queries",
+              version: expectedVersionString,
+            },
+          ],
+        });
+      } else {
+        t.deepEqual(packs as unknown, {});
+      }
+    });
+  },
+  title: (
+    _providedTitle: string | undefined,
+    codeQLVersion: string,
+    isMlPoweredQueriesFlagEnabled: boolean,
+    packsInput: string | undefined,
+    queriesInput: string | undefined,
+    expectedVersionString: string | undefined
+  ) =>
+    `ML-powered queries ${
+      expectedVersionString !== undefined
+        ? `${expectedVersionString} are`
+        : "aren't"
+    } loaded for packs: ${packsInput}, queries: ${queriesInput} using CLI v${codeQLVersion} when feature flag is ${
+      isMlPoweredQueriesFlagEnabled ? "enabled" : "disabled"
+    }`,
+});
 
-  return `ML-powered queries ${
-    shouldRunMlPoweredQueries ? "are" : "aren't"
-  } loaded for ${queriesInputDescription} using CLI v${codeQLVersion} when feature flag is ${
-    isMlPoweredQueriesFlagEnabled ? "enabled" : "disabled"
-  }`;
-};
-
-// macro, isMlPoweredQueriesFlagEnabled, queriesInput, shouldRunMlPoweredQueries
-test(mlPoweredQueriesMacro, "2.7.4", true, "security-extended", false);
-test(mlPoweredQueriesMacro, "2.7.5", false, "security-extended", false);
-test(mlPoweredQueriesMacro, "2.7.5", true, undefined, false);
-test(mlPoweredQueriesMacro, "2.7.5", true, "security-extended", true);
-test(mlPoweredQueriesMacro, "2.7.5", true, "security-and-quality", true);
+// macro, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, versionString
+test(
+  mlPoweredQueriesMacro,
+  "2.7.4",
+  true,
+  undefined,
+  "security-extended",
+  undefined
+);
+test(
+  mlPoweredQueriesMacro,
+  "2.7.5",
+  false,
+  undefined,
+  "security-extended",
+  undefined
+);
+test(mlPoweredQueriesMacro, "2.7.5", true, undefined, undefined, undefined);
+test(
+  mlPoweredQueriesMacro,
+  "2.7.5",
+  true,
+  undefined,
+  "security-extended",
+  "~0.0.2"
+);
+test(
+  mlPoweredQueriesMacro,
+  "2.7.5",
+  true,
+  undefined,
+  "security-and-quality",
+  "~0.0.2"
+);
+test(
+  mlPoweredQueriesMacro,
+  "2.7.5",
+  true,
+  "codeql/javascript-experimental-atm-queries@0.0.1",
+  "security-and-quality",
+  "0.0.1"
+);

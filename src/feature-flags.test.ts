@@ -141,14 +141,14 @@ for (const featureFlag of FEATURE_FLAGS) {
         getRunnerLogger(true)
       );
 
-      const expectedFeatureFlags = {};
+      const expectedFeatureFlags: { [flag: string]: boolean } = {};
       for (const f of FEATURE_FLAGS) {
         expectedFeatureFlags[f] = false;
       }
       expectedFeatureFlags[featureFlag] = true;
       mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
 
-      const actualFeatureFlags = {
+      const actualFeatureFlags: { [flag: string]: boolean } = {
         database_uploads_enabled: await featureFlags.getValue(
           FeatureFlag.DatabaseUploadsEnabled
         ),

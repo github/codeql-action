@@ -16,9 +16,9 @@ import { initializeEnvironment, Mode } from "./util";
 const pkg = require("../package.json");
 
 interface AutobuildStatusReport extends StatusReportBase {
-  // Comma-separated set of languages being auto-built
+  /** Comma-separated set of languages being auto-built. */
   autobuild_languages: string;
-  // Language that failed autobuilding (or undefined if all languages succeeded).
+  /** Language that failed autobuilding (or undefined if all languages succeeded). */
   autobuild_failure?: string;
 }
 

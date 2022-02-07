@@ -33,10 +33,10 @@ export function getRequiredInput(name: string): string {
  * This allows us to get stronger type checking of required/optional inputs
  * and make behaviour more consistent between actions and the runner.
  */
-export function getOptionalInput(name: string): string | undefined {
+export const getOptionalInput = function (name: string): string | undefined {
   const value = core.getInput(name);
   return value.length > 0 ? value : undefined;
-}
+};
 
 export function getTemporaryDirectory(): string {
   const value = process.env["CODEQL_ACTION_TEMP"];
@@ -83,10 +83,70 @@ export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
     return commitOid.trim();
   } catch (e) {
     core.info(
-      `Failed to call git to get current commit. Continuing with data from environment: ${e}`
+      `Failed to call git to get current commit. Continuing with data from environment or input: ${e}`
     );
     core.info((e as Error).stack || "NO STACK");
-    return getRequiredEnvParam("GITHUB_SHA");
+    return getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
+  }
+};
+
+/**
+ * If the action was triggered by a pull request, determine the commit sha of the merge base.
+ * Returns undefined if run by other triggers or the merge base cannot be determined.
+ */
+export const determineMergeBaseCommitOid = async function (): Promise<
+  string | undefined
+> {
+  if (process.env.GITHUB_EVENT_NAME !== "pull_request") {
+    return undefined;
+  }
+
+  const mergeSha = getRequiredEnvParam("GITHUB_SHA");
+
+  try {
+    let commitOid = "";
+    let baseOid = "";
+    let headOid = "";
+
+    await new toolrunner.ToolRunner(
+      await safeWhich.safeWhich("git"),
+      ["show", "-s", "--format=raw", mergeSha],
+      {
+        silent: true,
+        listeners: {
+          stdline: (data) => {
+            if (data.startsWith("commit ") && commitOid === "") {
+              commitOid = data.substring(7);
+            } else if (data.startsWith("parent ")) {
+              if (baseOid === "") {
+                baseOid = data.substring(7);
+              } else if (headOid === "") {
+                headOid = data.substring(7);
+              }
+            }
+          },
+          stderr: (data) => {
+            process.stderr.write(data);
+          },
+        },
+      }
+    ).exec();
+
+    // Let's confirm our assumptions: We had a merge commit and the parsed parent data looks correct
+    if (
+      commitOid === mergeSha &&
+      headOid.length === 40 &&
+      baseOid.length === 40
+    ) {
+      return baseOid;
+    }
+    return undefined;
+  } catch (e) {
+    core.info(
+      `Failed to call git to determine merge base. Continuing with data from environment: ${e}`
+    );
+    core.info((e as Error).stack || "NO STACK");
+    return undefined;
   }
 };
 
@@ -431,8 +491,26 @@ export function computeAutomationID(
 export async function getRef(): Promise<string> {
   // Will be in the form "refs/heads/master" on a push event
   // or in the form "refs/pull/N/merge" on a pull_request event
-  const ref = getRequiredEnvParam("GITHUB_REF");
-  const sha = getRequiredEnvParam("GITHUB_SHA");
+  const refInput = getOptionalInput("ref");
+  const shaInput = getOptionalInput("sha");
+
+  const hasRefInput = !!refInput;
+  const hasShaInput = !!shaInput;
+  // If one of 'ref' or 'sha' are provided, both are required
+  if ((hasRefInput || hasShaInput) && !(hasRefInput && hasShaInput)) {
+    throw new Error(
+      "Both 'ref' and 'sha' are required if one of them is provided."
+    );
+  }
+
+  const ref = refInput || getRequiredEnvParam("GITHUB_REF");
+  const sha = shaInput || getRequiredEnvParam("GITHUB_SHA");
+
+  // If the ref is a user-provided input, we have to skip logic
+  // and assume that it is really where they want to upload the results.
+  if (refInput) {
+    return refInput;
+  }
 
   // For pull request refs we want to detect whether the workflow
   // has run `git checkout HEAD^2` to analyze the 'head' ref rather
@@ -470,37 +548,37 @@ type ActionName = "init" | "autobuild" | "finish" | "upload-sarif";
 type ActionStatus = "starting" | "aborted" | "success" | "failure";
 
 export interface StatusReportBase {
-  // ID of the workflow run containing the action run
+  /** ID of the workflow run containing the action run. */
   workflow_run_id: number;
-  // Workflow name. Converted to analysis_name further down the pipeline.
+  /** Workflow name. Converted to analysis_name further down the pipeline.. */
   workflow_name: string;
-  // Job name from the workflow
+  /** Job name from the workflow. */
   job_name: string;
-  // Analysis key, normally composed from the workflow path and job name
+  /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
-  // Value of the matrix for this instantiation of the job
+  /** Value of the matrix for this instantiation of the job. */
   matrix_vars?: string;
-  // Commit oid that the workflow was triggered on
+  /** Commit oid that the workflow was triggered on. */
   commit_oid: string;
-  // Ref that the workflow was triggered on
+  /** Ref that the workflow was triggered on. */
   ref: string;
-  // Name of the action being executed
+  /** Name of the action being executed. */
   action_name: ActionName;
-  // Version of the action being executed, as a ref
+  /** Version of the action being executed, as a ref. */
   action_ref?: string;
-  // Version of the action being executed, as a commit oid
+  /** Version of the action being executed, as a commit oid. */
   action_oid: string;
-  // Time the first action started. Normally the init action
+  /** Time the first action started. Normally the init action. */
   started_at: string;
-  // Time this action started
+  /** Time this action started. */
   action_started_at: string;
-  // Time this action completed, or undefined if not yet completed
+  /** Time this action completed, or undefined if not yet completed. */
   completed_at?: string;
-  // State this action is currently in
+  /** State this action is currently in. */
   status: ActionStatus;
-  // Cause of the failure (or undefined if status is not failure)
+  /** Cause of the failure (or undefined if status is not failure). */
   cause?: string;
-  // Stack trace of the failure (or undefined if status is not failure)
+  /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
 }
 
@@ -520,7 +598,7 @@ export async function createStatusReportBase(
   cause?: string,
   exception?: string
 ): Promise<StatusReportBase> {
-  const commitOid = process.env["GITHUB_SHA"] || "";
+  const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
   const workflowRunIDStr = process.env["GITHUB_RUN_ID"];
   let workflowRunID = -1;
@@ -580,7 +658,7 @@ export async function createStatusReportBase(
 const GENERIC_403_MSG =
   "The repo on which this action is running is not opted-in to CodeQL code scanning.";
 const GENERIC_404_MSG =
-  "Not authorized to used the CodeQL code scanning feature on this repo.";
+  "Not authorized to use the CodeQL code scanning feature on this repo.";
 const OUT_OF_DATE_MSG =
   "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action.";
 const INCOMPATIBLE_MSG =
@@ -600,6 +678,12 @@ export async function sendStatusReport<S extends StatusReportBase>(
 ): Promise<boolean> {
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
+  // If in test mode we don't want to upload the results
+  const testMode = process.env["TEST_MODE"] === "true" || false;
+  if (testMode) {
+    core.debug("In test mode. Status reports are not uploaded.");
+    return true;
+  }
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");

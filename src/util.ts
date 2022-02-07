@@ -632,15 +632,23 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
   "codeql/javascript-experimental-atm-queries";
 
 /**
+ * Set containing version strings of the ML-powered JS query pack that are reportable.
+ *
+ * We restrict the set of version strings we report to limit the cardinality of the ML-powered JS
+ * queries status report field, since some platforms that ingest this status report charge based on
+ * the cardinality of the fields.
+ */
+export const ML_POWERED_JS_QUERIES_REPORTABLE_VERSIONS = new Set(["~0.0.2"]);
+
+/**
  * Get information about ML-powered JS queries to populate status reports with.
  *
  * This will be:
  *
- * - The version string if the analysis will use a specific version of the pack
- * - "latest" if the analysis will use the latest version of the pack
- * - "false" if the analysis won't run any ML-powered JS queries
- * - "multiple" if the analysis will run multiple ML-powered JS query packs (this is an unsupported
- *   scenario)
+ * - The version string if the analysis will use a specific version of the pack and that version
+ *   string is within {@link ML_POWERED_JS_QUERIES_REPORTABLE_VERSIONS}.
+ * - "false" if the analysis won't run any ML-powered JS queries.
+ * - "other" in all other cases.
  *
  * This function lives here rather than in `init-action.ts` so it's easier to test, since tests for
  * `init-action.ts` would each need to live in their own file. See `analyze-action-env.ts` for an
@@ -650,12 +658,16 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
   const mlPoweredJsQueryPacks = (config.packs.javascript || []).filter(
     (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
   );
-  switch (mlPoweredJsQueryPacks.length) {
-    case 1:
-      return mlPoweredJsQueryPacks[0].version || "latest";
-    case 0:
-      return "false";
-    default:
-      return "multiple";
+  if (mlPoweredJsQueryPacks.length === 0) {
+    return "false";
   }
+  const firstVersionString = mlPoweredJsQueryPacks[0].version;
+  if (
+    mlPoweredJsQueryPacks.length === 1 &&
+    firstVersionString &&
+    ML_POWERED_JS_QUERIES_REPORTABLE_VERSIONS.has(firstVersionString)
+  ) {
+    return firstVersionString;
+  }
+  return "other";
 }

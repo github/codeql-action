@@ -38,29 +38,39 @@ import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   checkNotWindows11,
+  getMlPoweredJsQueriesStatus,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
 
 interface InitSuccessStatusReport extends StatusReportBase {
-  // Comma-separated list of languages that analysis was run for
-  // This may be from the workflow file or may be calculated from repository contents
-  languages: string;
-  // Comma-separated list of languages specified explicitly in the workflow file
-  workflow_languages: string;
-  // Comma-separated list of paths, from the 'paths' config field
-  paths: string;
-  // Comma-separated list of paths, from the 'paths-ignore' config field
-  paths_ignore: string;
-  // Commas-separated list of languages where the default queries are disabled
+  /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
-  // Comma-separated list of queries sources, from the 'queries' config field or workflow input
+  /**
+   * Comma-separated list of languages that analysis was run for.
+   *
+   * This may be from the workflow file or may be calculated from repository contents
+   */
+  languages: string;
+  /**
+   * Information about the enablement of the ML-powered JS query pack.
+   *
+   * @see {@link getMlPoweredJsQueriesStatus}
+   */
+  ml_powered_js_queries: string;
+  /** Comma-separated list of paths, from the 'paths' config field. */
+  paths: string;
+  /** Comma-separated list of paths, from the 'paths-ignore' config field. */
+  paths_ignore: string;
+  /** Comma-separated list of queries sources, from the 'queries' config field or workflow input. */
   queries: string;
-  // Value given by the user as the "tools" input
+  /** Value given by the user as the "tools" input. */
   tools_input: string;
-  // Version of the bundle used
+  /** Version of the bundle used. */
   tools_resolved_version: string;
+  /** Comma-separated list of languages specified explicitly in the workflow file. */
+  workflow_languages: string;
 }
 
 async function sendSuccessStatusReport(
@@ -102,14 +112,15 @@ async function sendSuccessStatusReport(
 
   const statusReport: InitSuccessStatusReport = {
     ...statusReportBase,
+    disable_default_queries: disableDefaultQueries,
     languages,
-    workflow_languages: workflowLanguages || "",
+    ml_powered_js_queries: getMlPoweredJsQueriesStatus(config),
     paths,
     paths_ignore: pathsIgnore,
-    disable_default_queries: disableDefaultQueries,
     queries: queries.join(","),
     tools_input: getOptionalInput("tools") || "",
     tools_resolved_version: toolsVersion,
+    workflow_languages: workflowLanguages || "",
   };
 
   await sendStatusReport(statusReport);

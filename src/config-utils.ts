@@ -295,11 +295,8 @@ async function addBuiltinSuiteQueries(
   if (
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
-    !(
-      packs.javascript &&
-      packs.javascript.some(
-        (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
-      )
+    !packs.javascript?.some(
+      (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
     ) &&
     (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
     (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))

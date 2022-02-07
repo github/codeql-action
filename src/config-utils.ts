@@ -18,7 +18,7 @@ import { RepositoryNwo } from "./repository";
 import {
   codeQlVersionAbove,
   GitHubVersion,
-  ML_POWERED_JS_QUERIES_PACK_NAME,
+  ML_POWERED_JS_QUERIES_PACK,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -296,7 +296,7 @@ async function addBuiltinSuiteQueries(
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
     !packs.javascript?.some(
-      (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
+      (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK.packName
     ) &&
     (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
     (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
@@ -304,10 +304,7 @@ async function addBuiltinSuiteQueries(
     if (!packs.javascript) {
       packs.javascript = [];
     }
-    packs.javascript.push({
-      packName: ML_POWERED_JS_QUERIES_PACK_NAME,
-      version: "~0.0.2",
-    });
+    packs.javascript.push(ML_POWERED_JS_QUERIES_PACK);
   }
 
   const suites = languages.map((l) => `${l}-${suiteName}.qls`);

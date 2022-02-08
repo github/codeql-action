@@ -73,5 +73,5 @@ outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis
 runs:
-  using: 'node12'
+  using: 'node16'
   main: '../lib/init-action.js'

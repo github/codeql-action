@@ -39,7 +39,8 @@ on:
 
 jobs:
   CodeQL-Build:
-    # CodeQL runs on ubuntu-latest, windows-latest, and macos-latest
+    # If you're only analyzing JavaScript or Python, CodeQL runs on ubuntu-latest, windows-latest, and macos-latest.
+    # If you're analyzing C/C++, C#, Go, or Java, CodeQL runs on ubuntu-latest, windows-2019, and macos-latest.
     runs-on: ubuntu-latest
 
     permissions:

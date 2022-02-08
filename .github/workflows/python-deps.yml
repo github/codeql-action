@@ -125,7 +125,7 @@ jobs:
 
     - uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ matrix.python_version }}
 
     - name: Initialize CodeQL
       uses: ./init

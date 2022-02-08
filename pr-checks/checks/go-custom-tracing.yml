@@ -1,5 +1,8 @@
 name: "Go: Custom tracing"
 description: "Checks that Go tracing works"
+# Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
+# `windows-latest`.
+os: [ubuntu-latest, macos-latest, windows-2019]
 env:
   CODEQL_EXTRACTOR_GO_BUILD_TRACING: "true"
 steps:

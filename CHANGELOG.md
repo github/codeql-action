@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - The CodeQL Action now uses Node.js v16. [#909](https://github.com/github/codeql-action/pull/909)
+- Beware that the CodeQL build tracer in this release (and in all earlier releases) is incompatible with Windows 11 and Windows Server 2022. This incompatibility affects database extraction for compiled languages: cpp, csharp, go, and java. As a result, analyzing these languages with the `windows-latest` or `windows-2022` Actions virtual environments is currently unsupported. If you use any of these languages, please use the `windows-2019` Actions virtual environment or otherwise avoid these specific Windows versions until a new release fixes this incompatibility.
 
 ## 1.0.32 - 07 Feb 2022
 

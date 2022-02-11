@@ -182,7 +182,9 @@ jobs:
   runner-analyze-csharp-windows:
     name: Runner windows C# analyze
     needs: [check-js, check-node-modules]
-    runs-on: windows-latest
+    # Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
+    # `windows-latest`.
+    runs-on: windows-2019
 
     steps:
       - uses: actions/checkout@v2
@@ -301,7 +303,9 @@ jobs:
   runner-analyze-csharp-autobuild-windows:
     name: Runner windows autobuild C# analyze
     needs: [check-js, check-node-modules]
-    runs-on: windows-latest
+    # Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
+    # `windows-latest`.
+    runs-on: windows-2019
 
     steps:
       - uses: actions/checkout@v2

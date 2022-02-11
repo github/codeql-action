@@ -58,7 +58,7 @@ interface InitSuccessStatusReport extends StatusReportBase {
    *
    * @see {@link getMlPoweredJsQueriesStatus}
    */
-  ml_powered_js_queries: string;
+  ml_powered_javascript_queries: string;
   /** Comma-separated list of paths, from the 'paths' config field. */
   paths: string;
   /** Comma-separated list of paths, from the 'paths-ignore' config field. */
@@ -114,7 +114,7 @@ async function sendSuccessStatusReport(
     ...statusReportBase,
     disable_default_queries: disableDefaultQueries,
     languages,
-    ml_powered_js_queries: getMlPoweredJsQueriesStatus(config),
+    ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
     paths,
     paths_ignore: pathsIgnore,
     queries: queries.join(","),

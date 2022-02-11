@@ -1,5 +1,8 @@
 name: "Go: Custom queries"
 description: "Checks that Go works in conjunction with a config file specifying custom queries"
+# Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
+# `windows-latest`.
+os: [ubuntu-latest, macos-latest, windows-2019]
 steps:
   - uses: actions/setup-go@v2
     with:

@@ -8,7 +8,6 @@ export interface FeatureFlags {
 }
 
 export enum FeatureFlag {
-  DatabaseUploadsEnabled = "database_uploads_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
 }
 

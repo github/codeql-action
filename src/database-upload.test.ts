@@ -10,7 +10,6 @@ import * as apiClient from "./api-client";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
@@ -34,10 +33,6 @@ setupTests(test);
 test.beforeEach(() => {
   initializeEnvironment(Mode.actions, "1.2.3");
 });
-
-const uploadToUploadsDomainFlags = createFeatureFlags([
-  FeatureFlag.DatabaseUploadsEnabled,
-]);
 
 const testRepoName: RepositoryNwo = { owner: "github", repo: "example" };
 const testApiDetails: GitHubApiDetails = {
@@ -97,7 +92,6 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
     await uploadDatabases(
       testRepoName,
       getTestConfig(tmpDir),
-      uploadToUploadsDomainFlags,
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
@@ -127,7 +121,6 @@ test("Abort database upload if running against GHES", async (t) => {
     await uploadDatabases(
       testRepoName,
       config,
-      createFeatureFlags([]),
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
@@ -157,7 +150,6 @@ test("Abort database upload if running against GHAE", async (t) => {
     await uploadDatabases(
       testRepoName,
       config,
-      createFeatureFlags([]),
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
@@ -184,7 +176,6 @@ test("Abort database upload if not analyzing default branch", async (t) => {
     await uploadDatabases(
       testRepoName,
       getTestConfig(tmpDir),
-      uploadToUploadsDomainFlags,
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
@@ -193,40 +184,6 @@ test("Abort database upload if not analyzing default branch", async (t) => {
         (v: LoggedMessage) =>
           v.type === "debug" &&
           v.message === "Not analyzing default branch. Skipping upload."
-      ) !== undefined
-    );
-  });
-});
-
-test("Abort database upload if feature flag is disabled", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    sinon
-      .stub(actionsUtil, "getRequiredInput")
-      .withArgs("upload-database")
-      .returns("true");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
-
-    setCodeQL({
-      async databaseBundle() {
-        return;
-      },
-    });
-
-    const loggedMessages = [];
-    await uploadDatabases(
-      testRepoName,
-      getTestConfig(tmpDir),
-      createFeatureFlags([]),
-      testApiDetails,
-      getRecordingLogger(loggedMessages)
-    );
-    t.assert(
-      loggedMessages.find(
-        (v: LoggedMessage) =>
-          v.type === "debug" &&
-          v.message ===
-            "Repository is not opted in to database uploads. Skipping upload."
       ) !== undefined
     );
   });
@@ -241,10 +198,6 @@ test("Don't crash if uploading a database fails", async (t) => {
       .returns("true");
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
 
-    const featureFlags = createFeatureFlags([
-      FeatureFlag.DatabaseUploadsEnabled,
-    ]);
-
     await mockHttpRequests(500);
 
     setCodeQL({
@@ -257,7 +210,6 @@ test("Don't crash if uploading a database fails", async (t) => {
     await uploadDatabases(
       testRepoName,
       getTestConfig(tmpDir),
-      featureFlags,
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
@@ -294,7 +246,6 @@ test("Successfully uploading a database to api.github.com", async (t) => {
     await uploadDatabases(
       testRepoName,
       getTestConfig(tmpDir),
-      uploadToUploadsDomainFlags,
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );
@@ -329,7 +280,6 @@ test("Successfully uploading a database to uploads.github.com", async (t) => {
     await uploadDatabases(
       testRepoName,
       getTestConfig(tmpDir),
-      uploadToUploadsDomainFlags,
       testApiDetails,
       getRecordingLogger(loggedMessages)
     );

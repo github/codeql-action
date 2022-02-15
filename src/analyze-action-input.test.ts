@@ -31,6 +31,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     sinon.stub(configUtils, "getConfig").resolves({
       gitHubVersion: { type: util.GitHubVariant.DOTCOM },
       languages: [],
+      packs: [],
     } as unknown as configUtils.Config);
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub.withArgs("token").returns("fake-token");

@@ -576,6 +576,12 @@ export interface StatusReportBase {
   completed_at?: string;
   /** State this action is currently in. */
   status: ActionStatus;
+  /**
+   * Information about the enablement of the ML-powered JS query pack.
+   *
+   * @see {@link util.getMlPoweredJsQueriesStatus}
+   */
+  ml_powered_javascript_queries?: string;
   /** Cause of the failure (or undefined if status is not failure). */
   cause?: string;
   /** Stack trace of the failure (or undefined if status is not failure). */

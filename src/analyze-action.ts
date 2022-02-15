@@ -36,6 +36,7 @@ interface FinishStatusReport
 
 export async function sendStatusReport(
   startedAt: Date,
+  config: Config | undefined,
   stats: AnalysisStatusReport | undefined,
   error?: Error
 ) {
@@ -52,6 +53,12 @@ export async function sendStatusReport(
   );
   const statusReport: FinishStatusReport = {
     ...statusReportBase,
+    ...(config
+      ? {
+          ml_powered_javascript_queries:
+            util.getMlPoweredJsQueriesStatus(config),
+        }
+      : {}),
     ...(stats || {}),
   };
   await actionsUtil.sendStatusReport(statusReport);
@@ -220,9 +227,9 @@ async function run() {
 
     if (error instanceof CodeQLAnalysisError) {
       const stats = { ...error.queriesStatusReport };
-      await sendStatusReport(startedAt, stats, error);
+      await sendStatusReport(startedAt, config, stats, error);
     } else {
-      await sendStatusReport(startedAt, undefined, error);
+      await sendStatusReport(startedAt, config, undefined, error);
     }
 
     return;
@@ -279,14 +286,14 @@ async function run() {
   }
 
   if (runStats && uploadResult) {
-    await sendStatusReport(startedAt, {
+    await sendStatusReport(startedAt, config, {
       ...runStats,
       ...uploadResult.statusReport,
     });
   } else if (runStats) {
-    await sendStatusReport(startedAt, { ...runStats });
+    await sendStatusReport(startedAt, config, { ...runStats });
   } else {
-    await sendStatusReport(startedAt, undefined);
+    await sendStatusReport(startedAt, config, undefined);
   }
 }
 

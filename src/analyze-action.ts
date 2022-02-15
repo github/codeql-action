@@ -15,7 +15,6 @@ import {
 import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { GitHubFeatureFlags } from "./feature-flags";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -105,12 +104,6 @@ async function run() {
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
     );
 
-    const featureFlags = new GitHubFeatureFlags(
-      config.gitHubVersion,
-      apiDetails,
-      repositoryNwo,
-      logger
-    );
     await runFinalize(outputDir, threads, memory, config, logger);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
@@ -193,13 +186,7 @@ async function run() {
     }
 
     // Possibly upload the database bundles for remote queries
-    await uploadDatabases(
-      repositoryNwo,
-      config,
-      featureFlags,
-      apiDetails,
-      logger
-    );
+    await uploadDatabases(repositoryNwo, config, apiDetails, logger);
 
     if (
       uploadResult !== undefined &&

@@ -27,6 +27,8 @@ jobs:
         - stable-20210308
         - stable-20210319
         - stable-20210809
+        - stable-20211005
+        - stable-20220120
         - cached
         - latest
         - nightly-latest

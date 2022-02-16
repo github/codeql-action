@@ -8,6 +8,10 @@ defaultTestVersions = [
     "stable-20210319",
     # The last CodeQL release in the 2.5 series: 2.5.9.
     "stable-20210809",
+    # The last CodeQL release in the 2.6 series: 2.6.3.
+    "stable-20211005",
+    # The last CodeQL release in the 2.7 series: 2.7.6.
+    "stable-20220120",
     # The version of CodeQL currently in the toolcache. Typically either the latest release or the one before.
     "cached",
     # The latest release of CodeQL.

@@ -40,5 +40,6 @@ jobs:
           body: ""
           author: GitHub <noreply@github.com>
           branch: update-supported-enterprise-server-versions
+          draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

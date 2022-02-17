@@ -2,6 +2,7 @@
 
 ## [UNRELEASED]
 
+- Due to potential issues for GHES 3.1–3.3 customers who are using recent versions of the CodeQL Action via GHES Connect, the CodeQL Action now uses Node.js v12 rather than Node.js v16. [#937](https://github.com/github/codeql-action/pull/937)
 - The CodeQL CLI versions up to and including version 2.4.4 are not compatible with the CodeQL Action 1.1.1 and later. The Action will emit an error if it detects that it is being used by an incompatible version of the CLI. [#931](https://github.com/github/codeql-action/pull/931)
 - Update default CodeQL bundle version to 2.8.1. [#925](https://github.com/github/codeql-action/pull/925)
 

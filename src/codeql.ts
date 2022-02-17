@@ -4,13 +4,12 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import { IHeaders } from "@actions/http-client/interfaces";
 import { default as deepEqual } from "fast-deep-equal";
-import * as yaml from "js-yaml";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
 
 import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
-import { Config, PackWithVersion } from "./config-utils";
+import { PackWithVersion } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
 import { isTracedLanguage, Language } from "./languages";
@@ -81,7 +80,8 @@ export interface CodeQL {
    * Run 'codeql database init --db-cluster'.
    */
   databaseInitCluster(
-    config: Config,
+    databasePath: string,
+    languages: Language[],
     sourceRoot: string,
     processName: string | undefined,
     processLevel: number | undefined
@@ -220,7 +220,6 @@ const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
-const CODEQL_VERSION_CONFIG_FILES = "2.7.3";
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 
 /**
@@ -693,35 +692,26 @@ async function getCodeQLForCmd(
       ]);
     },
     async databaseInitCluster(
-      config: Config,
+      databasePath: string,
+      languages: Language[],
       sourceRoot: string,
       processName: string | undefined,
       processLevel: number | undefined
     ) {
-      const extraArgs = config.languages.map(
-        (language) => `--language=${language}`
-      );
-      if (config.languages.filter(isTracedLanguage).length > 0) {
+      const extraArgs = languages.map((language) => `--language=${language}`);
+      if (languages.filter(isTracedLanguage).length > 0) {
         extraArgs.push("--begin-tracing");
         if (processName !== undefined) {
           extraArgs.push(`--trace-process-name=${processName}`);
         } else {
-          // We default to 3 if no other arguments are provided since this was the default
-          // behaviour of the Runner. Note this path never happens in the CodeQL Action
-          // because that always passes in a process name.
           extraArgs.push(`--trace-process-level=${processLevel || 3}`);
         }
-      }
-      if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES)) {
-        const configLocation = path.resolve(config.tempDir, "user-config.yaml");
-        fs.writeFileSync(configLocation, yaml.dump(config.originalUserInput));
-        extraArgs.push(`--codescanning-config=${configLocation}`);
       }
       await runTool(cmd, [
         "database",
         "init",
         "--db-cluster",
-        config.dbLocation,
+        databasePath,
         `--source-root=${sourceRoot}`,
         ...extraArgs,
         ...getExtraOptionsFromEnv(["database", "init"]),
@@ -874,9 +864,7 @@ async function getCodeQLForCmd(
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      if (!(await util.codeQlVersionAbove(this, CODEQL_VERSION_CONFIG_FILES))) {
-        codeqlArgs.push(querySuitePath);
-      }
+      codeqlArgs.push(querySuitePath);
       await runTool(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
@@ -911,10 +899,7 @@ async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
-      codeqlArgs.push(databasePath);
-      if (!(await util.codeQlVersionAbove(this, CODEQL_VERSION_CONFIG_FILES))) {
-        codeqlArgs.push(...querySuitePaths);
-      }
+      codeqlArgs.push(databasePath, ...querySuitePaths);
       // capture stdout, which contains analysis summaries
       return await runTool(cmd, codeqlArgs);
     },

@@ -53,12 +53,6 @@ interface InitSuccessStatusReport extends StatusReportBase {
    * This may be from the workflow file or may be calculated from repository contents
    */
   languages: string;
-  /**
-   * Information about the enablement of the ML-powered JS query pack.
-   *
-   * @see {@link getMlPoweredJsQueriesStatus}
-   */
-  ml_powered_javascript_queries: string;
   /** Comma-separated list of paths, from the 'paths' config field. */
   paths: string;
   /** Comma-separated list of paths, from the 'paths-ignore' config field. */

@@ -4,7 +4,6 @@ import * as actionsUtil from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
@@ -13,7 +12,6 @@ import { bundleDb } from "./util";
 export async function uploadDatabases(
   repositoryNwo: RepositoryNwo,
   config: Config,
-  featureFlags: FeatureFlags,
   apiDetails: GitHubApiDetails,
   logger: Logger
 ): Promise<void> {
@@ -31,13 +29,6 @@ export async function uploadDatabases(
   if (!(await actionsUtil.isAnalyzingDefaultBranch())) {
     // We only want to upload a database if we are analyzing the default branch.
     logger.debug("Not analyzing default branch. Skipping upload.");
-    return;
-  }
-
-  if (!(await featureFlags.getValue(FeatureFlag.DatabaseUploadsEnabled))) {
-    logger.debug(
-      "Repository is not opted in to database uploads. Skipping upload."
-    );
     return;
   }
 

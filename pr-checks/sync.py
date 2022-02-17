@@ -2,8 +2,8 @@ import ruamel.yaml
 import os
 
 defaultTestVersions = [
-    # The oldest supported CodeQL version: 2.3.1. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-20201028",
+    # The oldest supported CodeQL version: 2.4.5. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
+    "stable-20210308",
     # The last CodeQL release in the 2.4 series: 2.4.6.
     "stable-20210319",
     # The last CodeQL release in the 2.5 series: 2.5.9.

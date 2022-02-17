@@ -4,6 +4,7 @@ import * as core from "@actions/core";
 
 import {
   createStatusReportBase,
+  getActionsStatus,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
@@ -289,7 +290,7 @@ async function run() {
     await sendStatusReport(
       await createStatusReportBase(
         "init",
-        "failure",
+        getActionsStatus(error),
         startedAt,
         String(error),
         error instanceof Error ? error.stack : undefined

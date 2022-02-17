@@ -95,7 +95,8 @@ export async function runInit(
     if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
       // Init a database cluster
       await codeql.databaseInitCluster(
-        config,
+        config.dbLocation,
+        config.languages,
         sourceRoot,
         processName,
         processLevel

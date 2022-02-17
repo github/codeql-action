@@ -7,5 +7,5 @@ inputs:
   matrix:
     default: ${{ toJson(matrix) }}
 runs:
-  using: 'node16'
+  using: 'node12'
   main: '../lib/autobuild-action.js'

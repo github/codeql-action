@@ -34,5 +34,5 @@ outputs:
   sarif-id:
     description: The ID of the uploaded SARIF file.
 runs:
-  using: 'node16'
+  using: 'node12'
   main: '../lib/upload-sarif-action.js'

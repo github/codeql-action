@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import {
   createStatusReportBase,
+  getActionsStatus,
   getTemporaryDirectory,
   sendStatusReport,
   StatusReportBase,
@@ -30,10 +31,7 @@ async function sendCompletedStatusReport(
 ) {
   initializeEnvironment(Mode.actions, pkg.version);
 
-  const status =
-    failingLanguage !== undefined || cause !== undefined
-      ? "failure"
-      : "success";
+  const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
     "autobuild",
     status,

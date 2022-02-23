@@ -39,10 +39,10 @@ export async function sendStatusReport(
   stats: AnalysisStatusReport | undefined,
   error?: Error
 ) {
-  const status =
-    stats?.analyze_failure_language !== undefined || error !== undefined
-      ? "failure"
-      : "success";
+  const status = actionsUtil.getActionsStatus(
+    error,
+    stats?.analyze_failure_language
+  );
   const statusReportBase = await actionsUtil.createStatusReportBase(
     "finish",
     status,

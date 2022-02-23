@@ -20,6 +20,39 @@ const CRITICAL_TRACER_VARS = new Set([
   "SEMMLE_JAVA_TOOL_OPTIONS",
 ]);
 
+export async function endTracingForCluster(
+  config: configUtils.Config
+): Promise<void> {
+  // If there are no traced languages, we don't need to do anything.
+  if (!config.languages.some(isTracedLanguage)) return;
+
+  const envVariablesFile = path.resolve(
+    config.dbLocation,
+    "temp/tracingEnvironment/end-tracing.json"
+  );
+  if (!fs.existsSync(envVariablesFile)) {
+    throw new Error(
+      `Environment file for ending tracing not found: ${envVariablesFile}`
+    );
+  }
+  try {
+    const endTracingEnvVariables: Map<string, string | null> = JSON.parse(
+      fs.readFileSync(envVariablesFile, "utf8")
+    );
+    for (const [key, value] of Object.entries(endTracingEnvVariables)) {
+      if (value !== null) {
+        process.env[key] = value;
+      } else {
+        delete process.env[key];
+      }
+    }
+  } catch (e) {
+    throw new Error(
+      `Failed to parse file containing end tracing environment variables: ${e}`
+    );
+  }
+}
+
 export async function getTracerConfigForCluster(
   config: configUtils.Config
 ): Promise<TracerConfig> {

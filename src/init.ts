@@ -119,9 +119,14 @@ export async function runInit(
       e.message?.includes("Refusing to create databases") &&
       e.message.includes("exists and is not an empty directory.")
     ) {
-      throw new Error(
+      throw new util.UserError(
         `Is the "init" action called twice in the same job? ${e.message}`
       );
+    } else if (
+      e instanceof Error &&
+      e.message?.includes("is not compatible with this CodeQL CLI")
+    ) {
+      throw new util.UserError(e.message);
     } else {
       throw e;
     }

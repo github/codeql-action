@@ -1,5 +1,9 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 1.1.3 - 23 Feb 2022
 
 - Fix bug where the CLR traces can continue tracing even after tracing should be stopped. [#938](https://github.com/github/codeql-action/pull/938)

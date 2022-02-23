@@ -872,13 +872,13 @@ async function getCodeQLForCmd(
       querySuitePaths: string[],
       sarifFile: string,
       addSnippetsFlag: string,
-      threadsFlag: string,
+      _threadsFlag: string,
       automationDetailsId: string | undefined
     ): Promise<string> {
       const codeqlArgs = [
         "database",
         "interpret-results",
-        threadsFlag,
+        "--threads=1",
         "--format=sarif-latest",
         "-v",
         `--output=${sarifFile}`,

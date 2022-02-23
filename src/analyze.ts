@@ -5,12 +5,17 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
 import * as analysisPaths from "./analysis-paths";
-import { CODEQL_VERSION_COUNTS_LINES, getCodeQL } from "./codeql";
+import {
+  CODEQL_VERSION_COUNTS_LINES,
+  CODEQL_VERSION_NEW_TRACING,
+  getCodeQL,
+} from "./codeql";
 import * as configUtils from "./config-utils";
 import { countLoc } from "./count-loc";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
+import { endTracingForCluster } from "./tracer-config";
 import * as util from "./util";
 
 export class CodeQLAnalysisError extends Error {
@@ -409,8 +414,14 @@ export async function runFinalize(
   config: configUtils.Config,
   logger: Logger
 ) {
-  // Delete the tracer config env var to avoid tracing ourselves
-  delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
+  const codeql = await getCodeQL(config.codeQLCmd);
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    // Delete variables as specified by the end-tracing script
+    await endTracingForCluster(config);
+  } else {
+    // Delete the tracer config env var to avoid tracing ourselves
+    delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
+  }
 
   fs.mkdirSync(outputDir, { recursive: true });
 

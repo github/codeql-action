@@ -8,7 +8,12 @@ import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
-import { getRequiredEnvParam, GITHUB_DOTCOM_URL, isHTTPError } from "./util";
+import {
+  getRequiredEnvParam,
+  GITHUB_DOTCOM_URL,
+  isHTTPError,
+  UserError,
+} from "./util";
 
 /**
  * The utils in this module are meant to be run inside of the action only.
@@ -545,7 +550,12 @@ export async function getRef(): Promise<string> {
 }
 
 type ActionName = "init" | "autobuild" | "finish" | "upload-sarif";
-type ActionStatus = "starting" | "aborted" | "success" | "failure";
+type ActionStatus =
+  | "starting"
+  | "aborted"
+  | "success"
+  | "failure"
+  | "user-error";
 
 export interface StatusReportBase {
   /** ID of the workflow run containing the action run. */
@@ -586,6 +596,17 @@ export interface StatusReportBase {
   cause?: string;
   /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
+}
+
+export function getActionsStatus(
+  error?: unknown,
+  otherFailureCause?: string
+): ActionStatus {
+  if (error || otherFailureCause) {
+    return error instanceof UserError ? "user-error" : "failure";
+  } else {
+    return "success";
+  }
 }
 
 /**
@@ -650,7 +671,12 @@ export async function createStatusReportBase(
   if (exception) {
     statusReport.exception = exception;
   }
-  if (status === "success" || status === "failure" || status === "aborted") {
+  if (
+    status === "success" ||
+    status === "failure" ||
+    status === "aborted" ||
+    status === "user-error"
+  ) {
     statusReport.completed_at = new Date().toISOString();
   }
   const matrix = getRequiredInput("matrix");

@@ -1,5 +1,9 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## 1.1.3 - 23 Feb 2022
+
+- Fix bug where the CLR traces can continue tracing even after tracing should be stopped. [#938](https://github.com/github/codeql-action/pull/938)
+
 ## 1.1.2 - 17 Feb 2022
 
 - Due to potential issues for GHES 3.1–3.3 customers who are using recent versions of the CodeQL Action via GHES Connect, the CodeQL Action now uses Node.js v12 rather than Node.js v16. [#937](https://github.com/github/codeql-action/pull/937)

@@ -580,6 +580,16 @@ export class HTTPError extends Error {
   }
 }
 
+/**
+ * An Error class that indicates an error that occurred due to
+ * a misconfiguration of the action or the CodeQL CLI.
+ */
+export class UserError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 export function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }

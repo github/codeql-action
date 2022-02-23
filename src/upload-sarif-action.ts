@@ -81,7 +81,7 @@ async function run() {
     await actionsUtil.sendStatusReport(
       await actionsUtil.createStatusReportBase(
         "upload-sarif",
-        "failure",
+        actionsUtil.getActionsStatus(error),
         startedAt,
         message,
         stack

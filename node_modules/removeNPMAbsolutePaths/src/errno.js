@@ -303,8 +303,7 @@ const all = [
   },
 ];
 
-module.exports = {};
-
-all.forEach((error) => {
-  module.exports[error.errno] = error.description;
-});
+module.exports = all.reduce((obj, error) => ({
+  ...obj,
+  [error.errno]: error.description,
+}));

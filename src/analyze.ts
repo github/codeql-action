@@ -425,7 +425,11 @@ export async function runFinalize(
 
   // After switching to Node16, this entire block can be replaced with `await fs.promises.rm(outputDir, { recursive: true, force: true });`.
   try {
-    await fs.promises.rmdir(outputDir, { recursive: true, maxRetries: 5 });
+    await fs.promises.rmdir(outputDir, {
+      recursive: true,
+      maxRetries: 5,
+      retryDelay: 2000,
+    } as any);
   } catch (error: any) {
     if (error?.code !== "ENOENT") {
       throw error;

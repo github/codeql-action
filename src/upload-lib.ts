@@ -100,7 +100,15 @@ async function uploadPayload(
   // If in test mode we don't want to upload the results
   const testMode = process.env["TEST_MODE"] === "true" || false;
   if (testMode) {
-    logger.debug("In test mode. Results are not uploaded.");
+    const payloadSaveFile = path.join(
+      actionsUtil.getTemporaryDirectory(),
+      "payload.json"
+    );
+    logger.info(
+      `In test mode. Results are not uploaded. Saving to ${payloadSaveFile}`
+    );
+    logger.info(`Payload: ${JSON.stringify(payload, null, 2)}`);
+    fs.writeFileSync(payloadSaveFile, JSON.stringify(payload, null, 2));
     return;
   }
 
@@ -165,7 +173,9 @@ export async function uploadFromActions(
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
     parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    await actionsUtil.getCommitOid(),
+    await actionsUtil.getCommitOid(
+      actionsUtil.getRequiredInput("checkout_path")
+    ),
     await actionsUtil.getRef(),
     await actionsUtil.getAnalysisKey(),
     actionsUtil.getOptionalInput("category"),

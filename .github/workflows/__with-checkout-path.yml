@@ -1,0 +1,137 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Use a custom `checkout_path`
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - v1
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  with-checkout-path:
+    strategy:
+      matrix:
+        version:
+        - stable-20210308
+        - stable-20210319
+        - stable-20210809
+        - cached
+        - latest
+        - nightly-latest
+        os: [ubuntu-latest, macos-latest, windows-2019]
+    name: Use a custom `checkout_path`
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: actions/checkout@v2
+      with:
+        ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
+        path: x/y/z/some-path
+    - uses: ./../action/init
+      with:
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+      # it's enough to test one compiled language and one interpreted language
+        languages: java,javascript
+        source-path: x/y/z/some-path/tests/multi-language-repo
+        debug: true
+
+    - name: Build code
+      shell: bash
+      run: x/y/z/some-path/tests/multi-language-repo/build.sh
+    - uses: ./../action/analyze
+      with:
+        checkout_path: x/y/z/some-path/tests/multi-language-repo
+        ref: v1.1.0
+        sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
+        upload: false
+      env:
+        TEST_MODE: true
+
+    - name: Verify SARIF after analyze
+      shell: bash
+      run: |
+        EXPECTED_COMMIT_OID="474bbf07f9247ffe1856c6a0f94aeeb10e7afee6"
+        EXPECTED_REF="v1.1.0"
+        EXPECTED_CHECKOUT_URI_SUFFIX="/x/y/z/some-path/tests/multi-language-repo"
+
+        ACTUAL_COMMIT_OID="$(cat "$RUNNER_TEMP/payload.json" | jq -r .commit_oid)"
+        ACTUAL_REF="$(cat "$RUNNER_TEMP/payload.json" | jq -r .ref)"
+        ACTUAL_CHECKOUT_URI="$(cat "$RUNNER_TEMP/payload.json" | jq -r .checkout_uri)"
+
+        if [[ "$EXPECTED_COMMIT_OID" != "$ACTUAL_COMMIT_OID" ]]; then
+          echo "::error Invalid commit oid. Expected: $EXPECTED_COMMIT_OID Actual: $ACTUAL_COMMIT_OID"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
+
+        if [[ "$EXPECTED_REF" != "$ACTUAL_REF" ]]; then
+          echo "::error Invalid ref. Expected: '$EXPECTED_REF' Actual: '$ACTUAL_REF'"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
+
+        if [[ "$ACTUAL_CHECKOUT_URI" != *$EXPECTED_CHECKOUT_URI_SUFFIX ]]; then
+          echo "::error Invalid checkout URI suffix. Expected suffix: $EXPECTED_CHECKOUT_URI_SUFFIX Actual uri: $ACTUAL_CHECKOUT_URI"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
+
+        # payload.json will be recreated in the next step.
+        rm -f "$RUNNER_TEMP/payload.json"
+
+    - uses: ./../action/upload-sarif
+      with:
+        ref: v1.1.0
+        sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
+        checkout_path: x/y/z/some-path/tests/multi-language-repo
+      env:
+        TEST_MODE: true
+
+    - name: Verify SARIF after upload
+      shell: bash
+      run: |
+        EXPECTED_COMMIT_OID="474bbf07f9247ffe1856c6a0f94aeeb10e7afee6"
+        EXPECTED_REF="v1.1.0"
+        EXPECTED_CHECKOUT_URI_SUFFIX="/x/y/z/some-path/tests/multi-language-repo"
+
+        ACTUAL_COMMIT_OID="$(cat "$RUNNER_TEMP/payload.json" | jq -r .commit_oid)"
+        ACTUAL_REF="$(cat "$RUNNER_TEMP/payload.json" | jq -r .ref)"
+        ACTUAL_CHECKOUT_URI="$(cat "$RUNNER_TEMP/payload.json" | jq -r .checkout_uri)"
+
+        if [[ "$EXPECTED_COMMIT_OID" != "$ACTUAL_COMMIT_OID" ]]; then
+          echo "::error Invalid commit oid. Expected: $EXPECTED_COMMIT_OID Actual: $ACTUAL_COMMIT_OID"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
+
+        if [[ "$EXPECTED_REF" != "$ACTUAL_REF" ]]; then
+          echo "::error Invalid ref. Expected: '$EXPECTED_REF' Actual: '$ACTUAL_REF'"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
+
+        if [[ "$ACTUAL_CHECKOUT_URI" != *$EXPECTED_CHECKOUT_URI_SUFFIX ]]; then
+          echo "::error Invalid checkout URI suffix. Expected suffix: $EXPECTED_CHECKOUT_URI_SUFFIX Actual uri: $ACTUAL_CHECKOUT_URI"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
+    env:
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

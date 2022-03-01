@@ -23,8 +23,13 @@ jobs:
   javascript-source-root:
     strategy:
       matrix:
-        version: [latest, cached, nightly-latest] # This feature is not compatible with old CLIs
-        os: [ubuntu-latest]
+        include:
+        - os: ubuntu-latest
+          version: latest
+        - os: ubuntu-latest
+          version: cached
+        - os: ubuntu-latest
+          version: nightly-latest
     name: Custom source root
     runs-on: ${{ matrix.os }}
     steps:

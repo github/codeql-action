@@ -23,14 +23,47 @@ jobs:
   with-checkout-path:
     strategy:
       matrix:
-        version:
-        - stable-20210308
-        - stable-20210319
-        - stable-20210809
-        - cached
-        - latest
-        - nightly-latest
-        os: [ubuntu-latest, macos-latest, windows-2019]
+        include:
+        - os: ubuntu-latest
+          version: stable-20210308
+        - os: macos-latest
+          version: stable-20210308
+        - os: windows-2019
+          version: stable-20210308
+        - os: ubuntu-latest
+          version: stable-20210319
+        - os: macos-latest
+          version: stable-20210319
+        - os: windows-2019
+          version: stable-20210319
+        - os: ubuntu-latest
+          version: stable-20210809
+        - os: macos-latest
+          version: stable-20210809
+        - os: windows-2019
+          version: stable-20210809
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: windows-2019
+          version: cached
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: windows-2019
+          version: latest
+        - os: windows-2022
+          version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+        - os: windows-2019
+          version: nightly-latest
+        - os: windows-2022
+          version: nightly-latest
     name: Use a custom `checkout_path`
     runs-on: ${{ matrix.os }}
     steps:
@@ -49,13 +82,19 @@ jobs:
       with:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       # it's enough to test one compiled language and one interpreted language
-        languages: java,javascript
+        languages: csharp,javascript
         source-path: x/y/z/some-path/tests/multi-language-repo
         debug: true
-
-    - name: Build code
+    - name: Build code (non-windows)
       shell: bash
-      run: x/y/z/some-path/tests/multi-language-repo/build.sh
+      if: ${{ runner.os != 'Windows' }}
+      run: |
+        $CODEQL_RUNNER x/y/z/some-path/tests/multi-language-repo/build.sh
+    - name: Build code (windows)
+      shell: bash
+      if: ${{ runner.os == 'Windows' }}
+      run: |
+        x/y/z/some-path/tests/multi-language-repo/build.sh
     - uses: ./../action/analyze
       with:
         checkout_path: x/y/z/some-path/tests/multi-language-repo
@@ -64,38 +103,6 @@ jobs:
         upload: false
       env:
         TEST_MODE: true
-
-    - name: Verify SARIF after analyze
-      shell: bash
-      run: |
-        EXPECTED_COMMIT_OID="474bbf07f9247ffe1856c6a0f94aeeb10e7afee6"
-        EXPECTED_REF="v1.1.0"
-        EXPECTED_CHECKOUT_URI_SUFFIX="/x/y/z/some-path/tests/multi-language-repo"
-
-        ACTUAL_COMMIT_OID="$(cat "$RUNNER_TEMP/payload.json" | jq -r .commit_oid)"
-        ACTUAL_REF="$(cat "$RUNNER_TEMP/payload.json" | jq -r .ref)"
-        ACTUAL_CHECKOUT_URI="$(cat "$RUNNER_TEMP/payload.json" | jq -r .checkout_uri)"
-
-        if [[ "$EXPECTED_COMMIT_OID" != "$ACTUAL_COMMIT_OID" ]]; then
-          echo "::error Invalid commit oid. Expected: $EXPECTED_COMMIT_OID Actual: $ACTUAL_COMMIT_OID"
-          echo "$RUNNER_TEMP/payload.json"
-          exit 1
-        fi
-
-        if [[ "$EXPECTED_REF" != "$ACTUAL_REF" ]]; then
-          echo "::error Invalid ref. Expected: '$EXPECTED_REF' Actual: '$ACTUAL_REF'"
-          echo "$RUNNER_TEMP/payload.json"
-          exit 1
-        fi
-
-        if [[ "$ACTUAL_CHECKOUT_URI" != *$EXPECTED_CHECKOUT_URI_SUFFIX ]]; then
-          echo "::error Invalid checkout URI suffix. Expected suffix: $EXPECTED_CHECKOUT_URI_SUFFIX Actual uri: $ACTUAL_CHECKOUT_URI"
-          echo "$RUNNER_TEMP/payload.json"
-          exit 1
-        fi
-
-        # payload.json will be recreated in the next step.
-        rm -f "$RUNNER_TEMP/payload.json"
 
     - uses: ./../action/upload-sarif
       with:

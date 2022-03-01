@@ -111,7 +111,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
   }
 
   const mergeSha = getRequiredEnvParam("GITHUB_SHA");
-  const checkoutPath = getRequiredInput("checkout_path");
+  const checkoutPath = getOptionalInput("checkout_path");
 
   try {
     let commitOid = "";

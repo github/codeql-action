@@ -423,7 +423,19 @@ export async function runFinalize(
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
   }
 
-  fs.mkdirSync(outputDir, { recursive: true });
+  // After switching to Node16, this entire block can be replaced with `await fs.promises.rm(outputDir, { recursive: true, force: true });`.
+  try {
+    await fs.promises.rmdir(outputDir, {
+      recursive: true,
+      maxRetries: 5,
+      retryDelay: 2000,
+    } as any);
+  } catch (error: any) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+  await fs.promises.mkdir(outputDir, { recursive: true });
 
   await finalizeDatabaseCreation(config, threadsFlag, memoryFlag, logger);
 }

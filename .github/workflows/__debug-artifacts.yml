@@ -23,14 +23,31 @@ jobs:
   debug-artifacts:
     strategy:
       matrix:
-        version:
-        - stable-20210308
-        - stable-20210319
-        - stable-20210809
-        - cached
-        - latest
-        - nightly-latest
-        os: [ubuntu-latest, macos-latest]
+        include:
+        - os: ubuntu-latest
+          version: stable-20210308
+        - os: macos-latest
+          version: stable-20210308
+        - os: ubuntu-latest
+          version: stable-20210319
+        - os: macos-latest
+          version: stable-20210319
+        - os: ubuntu-latest
+          version: stable-20210809
+        - os: macos-latest
+          version: stable-20210809
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
     name: Debug artifact upload
     runs-on: ${{ matrix.os }}
     steps:

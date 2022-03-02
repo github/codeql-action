@@ -647,8 +647,8 @@ export async function createStatusReportBase(
       workflowStartedAt
     );
   }
-  const runnerOs = process.env["RUNNER_OS"] || "";
-  const runnerArch = process.env["RUNNER_ARCH"] || "";
+  const runnerOs = getRequiredEnvParam("RUNNER_OS");
+  const runnerArch = getRequiredEnvParam("RUNNER_ARCH");
 
   // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
   // See https://github.com/actions/runner/issues/803

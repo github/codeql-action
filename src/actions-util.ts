@@ -596,6 +596,10 @@ export interface StatusReportBase {
   cause?: string;
   /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
+  /** Action runner operating system (context runner.os). */
+  runner_os: string;
+  /** Action runner hardware architecture (context runner.arch). */
+  runner_arch: string;
 }
 
 export function getActionsStatus(
@@ -643,6 +647,9 @@ export async function createStatusReportBase(
       workflowStartedAt
     );
   }
+  const runnerOs = process.env["RUNNER_OS"] || "";
+  const runnerArch = process.env["RUNNER_ARCH"] || "";
+
   // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
   // See https://github.com/actions/runner/issues/803
   const actionRef = isRunningLocalAction()
@@ -662,6 +669,8 @@ export async function createStatusReportBase(
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),
     status,
+    runner_os: runnerOs,
+    runner_arch: runnerArch,
   };
 
   // Add optional parameters

@@ -1,4 +1,6 @@
-const {promisify} = require("util");
+'use strict';
+
+const { promisify } = require("util");
 const tmp = require("tmp");
 
 // file

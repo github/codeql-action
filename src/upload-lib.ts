@@ -160,6 +160,7 @@ export async function uploadFromActions(
   sarifPath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
+  resultsLimit: number,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
@@ -175,6 +176,7 @@ export async function uploadFromActions(
     actionsUtil.getRequiredInput("matrix"),
     gitHubVersion,
     apiDetails,
+    resultsLimit,
     logger
   );
 }
@@ -191,6 +193,7 @@ export async function uploadFromRunner(
   sourceRoot: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
+  resultsLimit: number,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
@@ -206,6 +209,7 @@ export async function uploadFromRunner(
     undefined,
     gitHubVersion,
     apiDetails,
+    resultsLimit,
     logger
   );
 }
@@ -366,6 +370,7 @@ async function uploadFiles(
   environment: string | undefined,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
+  resultsLimit: number,
   logger: Logger
 ): Promise<UploadResult> {
   logger.startGroup("Uploading results");
@@ -389,6 +394,7 @@ async function uploadFiles(
   const toolNames = util.getToolNames(sarif);
 
   validateUniqueCategory(sarif);
+  validateResultsLimit(sarif, resultsLimit);
   const sarifPayload = JSON.stringify(sarif);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = fileUrl(sourceRoot);
@@ -525,6 +531,19 @@ export function validateUniqueCategory(sarif: SarifFile): void {
     }
   }
 }
+
+export function validateResultsLimit(sarif: SarifFile, resultsLimit: number): void {
+  let totalResults = 0;
+  for (const run of sarif.runs) {
+    totalResults += run.results?.length || 0;
+  }
+
+  if (totalResults > resultsLimit) {
+      throw new Error(
+        "Aborting upload: trying to upload " + totalResults + " but limit is set to " + resultsLimit);
+  }
+}
+
 
 /**
  * Santizes a string to be used as an environment variable name.

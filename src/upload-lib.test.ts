@@ -344,6 +344,24 @@ test("validateUniqueCategory for multiple runs", (t) => {
   t.throws(() => uploadLib.validateUniqueCategory(sarif2));
 });
 
+test("validateResultsLimit when empty", (t) => {
+  t.notThrows(() => uploadLib.validateResultsLimit(createMockSarif(), 0));
+  t.throws(() => uploadLib.validateResultsLimit(createMockSarif(), -1));
+});
+
+test("validateResultsLimit with multiple results", (t) => {
+  const sarif1: any = createMockSarif("abc", "def");
+  const sarif2: any = createMockSarif("ghi", "jkl");
+
+  sarif1.runs.results = [1, 2, 3];
+  sarif2.runs.results = [1, 2];
+
+  const multiSarif = { runs: [sarif1.runs[0], sarif1.runs[0], sarif2.runs[0]] };
+
+  t.notThrows(() => uploadLib.validateResultsLimit(multiSarif, 5));
+  t.throws(() => uploadLib.validateResultsLimit(multiSarif, 6));
+});
+
 function createMockSarif(id?: string, tool?: string) {
   return {
     runs: [

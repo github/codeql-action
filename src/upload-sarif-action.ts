@@ -57,10 +57,14 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion(apiDetails);
 
+    const optResultLimit = actionsUtil.getOptionalInput("results-limit") || process.env["CODEQL_RESULTS_LIMIT"]
+    const resultsLimit = (optResultLimit) ? Number(optResultLimit) : Number.MAX_SAFE_INTEGER;
+
     const uploadResult = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
       gitHubVersion,
       apiDetails,
+      resultsLimit,
       getActionsLogger()
     );
     core.setOutput("sarif-id", uploadResult.sarifID);

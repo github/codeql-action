@@ -4,6 +4,7 @@
 
 - Update default CodeQL bundle version to 2.8.2.
 - Fix a bug where old results can be uploaded if the languages in a repository change when using a non-ephemeral self-hosted runner.
+- Introduce `results-limit` to fail instead of ignoring excessive results.
 
 ## 1.1.3 - 23 Feb 2022
 

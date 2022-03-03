@@ -407,6 +407,7 @@ interface AnalyzeArgs {
   addSnippets: boolean;
   threads: string | undefined;
   tempDir: string | undefined;
+  resultsLimit: string | undefined;
   debug: boolean;
 }
 
@@ -433,6 +434,10 @@ program
     "Checkout path. Default is the current working directory."
   )
   .option("--no-upload", "Do not upload results after analysis.")
+  .option(
+    "--results-limit <resultsLimit>",
+    "The maximum amount of results to be uploaded."
+  )
   .option(
     "--output-dir <dir>",
     "Directory to output SARIF files to. Default is in the temp directory."
@@ -516,6 +521,7 @@ program
         return;
       }
       const sourceRoot = cmd.checkoutPath || process.cwd();
+      const resultsLimit = Number(cmd.resultsLimit) || Number.MAX_SAFE_INTEGER;
       await upload_lib.uploadFromRunner(
         outputDir,
         parseRepositoryNwo(cmd.repository),
@@ -525,6 +531,7 @@ program
         sourceRoot,
         config.gitHubVersion,
         apiDetails,
+        resultsLimit,
         logger
       );
     } catch (e) {
@@ -544,6 +551,7 @@ interface UploadArgs {
   githubAuthStdin: boolean;
   githubAuth: string;
   checkoutPath: string | undefined;
+  resultsLimit: string | undefined;
   debug: boolean;
 }
 
@@ -579,6 +587,10 @@ program
     "--category <category>",
     "String used by Code Scanning for matching the analyses."
   )
+  .option(
+    "--results-limit <resultsLimit>",
+    "The maximum amount of results to be uploaded."
+  )
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -594,6 +606,7 @@ program
     try {
       const gitHubVersion = await getGitHubVersion(apiDetails);
       const sourceRoot = cmd.checkoutPath || process.cwd();
+      const resultsLimit = Number(cmd.resultsLimit) || Number.MAX_SAFE_INTEGER;
       await upload_lib.uploadFromRunner(
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
@@ -603,6 +616,7 @@ program
         sourceRoot,
         gitHubVersion,
         apiDetails,
+        resultsLimit,
         logger
       );
     } catch (e) {

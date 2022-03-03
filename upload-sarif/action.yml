@@ -30,6 +30,9 @@ inputs:
     description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
     required: true
     default: "false"
+  results-limit:
+    description: Then maximum number of results to be uploaded. If provided the Action will fail instead of letting the server ignore the results over this limit.
+    required: false
 outputs:
   sarif-id:
     description: The ID of the uploaded SARIF file.

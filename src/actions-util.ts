@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 
 import * as core from "@actions/core";
@@ -600,6 +601,8 @@ export interface StatusReportBase {
   runner_os: string;
   /** Action runner hardware architecture (context runner.arch). */
   runner_arch: string;
+  /** Action runner operating system release (x.y.z from os.release()). */
+  runner_os_release?: string;
 }
 
 export function getActionsStatus(
@@ -691,6 +694,9 @@ export async function createStatusReportBase(
   const matrix = getRequiredInput("matrix");
   if (matrix) {
     statusReport.matrix_vars = matrix;
+  }
+  if (runnerOs === "Windows" || runnerOs === "macOS") {
+    statusReport.runner_os_release = os.release();
   }
 
   return statusReport;

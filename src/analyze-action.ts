@@ -106,8 +106,7 @@ async function run() {
     const memory = util.getMemoryFlag(
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"]
     );
-    const optResultLimit = actionsUtil.getOptionalInput("results-limit") || process.env["CODEQL_RESULTS_LIMIT"]
-    const resultsLimit = (optResultLimit) ? Number(optResultLimit) : Number.MAX_SAFE_INTEGER;
+    const resultsLimit = (actionsUtil.getOptionalInput("results-limit") === "true") ? true : false;
 
     const repositoryNwo = parseRepositoryNwo(
       util.getRequiredEnvParam("GITHUB_REPOSITORY")

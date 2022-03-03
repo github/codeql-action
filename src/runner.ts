@@ -407,7 +407,7 @@ interface AnalyzeArgs {
   addSnippets: boolean;
   threads: string | undefined;
   tempDir: string | undefined;
-  resultsLimit: string | undefined;
+  resultsLimit: boolean;
   debug: boolean;
 }
 
@@ -434,10 +434,7 @@ program
     "Checkout path. Default is the current working directory."
   )
   .option("--no-upload", "Do not upload results after analysis.")
-  .option(
-    "--results-limit <resultsLimit>",
-    "The maximum amount of results to be uploaded."
-  )
+  .option("--results-limit", "Fail if the number of results to upload is > 5000.")
   .option(
     "--output-dir <dir>",
     "Directory to output SARIF files to. Default is in the temp directory."
@@ -521,7 +518,6 @@ program
         return;
       }
       const sourceRoot = cmd.checkoutPath || process.cwd();
-      const resultsLimit = Number(cmd.resultsLimit) || Number.MAX_SAFE_INTEGER;
       await upload_lib.uploadFromRunner(
         outputDir,
         parseRepositoryNwo(cmd.repository),
@@ -531,7 +527,7 @@ program
         sourceRoot,
         config.gitHubVersion,
         apiDetails,
-        resultsLimit,
+        cmd.resultsLimit,
         logger
       );
     } catch (e) {
@@ -551,7 +547,7 @@ interface UploadArgs {
   githubAuthStdin: boolean;
   githubAuth: string;
   checkoutPath: string | undefined;
-  resultsLimit: string | undefined;
+  resultsLimit: boolean;
   debug: boolean;
 }
 
@@ -587,10 +583,7 @@ program
     "--category <category>",
     "String used by Code Scanning for matching the analyses."
   )
-  .option(
-    "--results-limit <resultsLimit>",
-    "The maximum amount of results to be uploaded."
-  )
+  .option("--results-limit", "Fail if the number of results is > 5000.")
   .option("--debug", "Print more verbose output", false)
   .action(async (cmd: UploadArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -606,7 +599,6 @@ program
     try {
       const gitHubVersion = await getGitHubVersion(apiDetails);
       const sourceRoot = cmd.checkoutPath || process.cwd();
-      const resultsLimit = Number(cmd.resultsLimit) || Number.MAX_SAFE_INTEGER;
       await upload_lib.uploadFromRunner(
         cmd.sarifFile,
         parseRepositoryNwo(cmd.repository),
@@ -616,7 +608,7 @@ program
         sourceRoot,
         gitHubVersion,
         apiDetails,
-        resultsLimit,
+        cmd.resultsLimit,
         logger
       );
     } catch (e) {

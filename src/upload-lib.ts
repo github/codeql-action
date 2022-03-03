@@ -160,7 +160,7 @@ export async function uploadFromActions(
   sarifPath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
-  resultsLimit: number,
+  resultsLimit: boolean,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
@@ -193,7 +193,7 @@ export async function uploadFromRunner(
   sourceRoot: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
-  resultsLimit: number,
+  resultsLimit: boolean,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
@@ -370,7 +370,7 @@ async function uploadFiles(
   environment: string | undefined,
   gitHubVersion: util.GitHubVersion,
   apiDetails: api.GitHubApiDetails,
-  resultsLimit: number,
+  resultsLimit: boolean,
   logger: Logger
 ): Promise<UploadResult> {
   logger.startGroup("Uploading results");
@@ -394,7 +394,9 @@ async function uploadFiles(
   const toolNames = util.getToolNames(sarif);
 
   validateUniqueCategory(sarif);
-  validateResultsLimit(sarif, resultsLimit);
+  if (resultsLimit) {
+    validateResultsLimit(sarif);
+  }
   const sarifPayload = JSON.stringify(sarif);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = fileUrl(sourceRoot);
@@ -532,15 +534,15 @@ export function validateUniqueCategory(sarif: SarifFile): void {
   }
 }
 
-export function validateResultsLimit(sarif: SarifFile, resultsLimit: number): void {
+export function validateResultsLimit(sarif: SarifFile): void {
   let totalResults = 0;
   for (const run of sarif.runs) {
     totalResults += run.results?.length || 0;
   }
 
-  if (totalResults > resultsLimit) {
+  if (totalResults > 5000) {
       throw new Error(
-        "Aborting upload: trying to upload " + totalResults + " but limit is set to " + resultsLimit);
+        "Aborting upload: trying to upload " + totalResults + " but the limit of results is 5000");
   }
 }
 

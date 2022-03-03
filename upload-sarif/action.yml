@@ -31,7 +31,7 @@ inputs:
     required: true
     default: "false"
   results-limit:
-    description: Then maximum number of results to be uploaded. If provided the Action will fail instead of letting the server ignore the results over this limit.
+    description: If true, the Action will fail instead of letting the server ignore the results over the 5000 limit.
     required: false
 outputs:
   sarif-id:

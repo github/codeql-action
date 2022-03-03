@@ -57,8 +57,7 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion(apiDetails);
 
-    const optResultLimit = actionsUtil.getOptionalInput("results-limit") || process.env["CODEQL_RESULTS_LIMIT"]
-    const resultsLimit = (optResultLimit) ? Number(optResultLimit) : Number.MAX_SAFE_INTEGER;
+    const resultsLimit = (actionsUtil.getOptionalInput("results-limit") === "true") ? true : false;
 
     const uploadResult = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),

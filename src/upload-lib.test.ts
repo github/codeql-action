@@ -345,21 +345,30 @@ test("validateUniqueCategory for multiple runs", (t) => {
 });
 
 test("validateResultsLimit when empty", (t) => {
-  t.notThrows(() => uploadLib.validateResultsLimit(createMockSarif(), 0));
-  t.throws(() => uploadLib.validateResultsLimit(createMockSarif(), -1));
+  t.notThrows(() => uploadLib.validateResultsLimit(createMockSarif()));
 });
 
-test("validateResultsLimit with multiple results", (t) => {
+test("validateResultsLimit with <= 5000 results should pass", (t) => {
   const sarif1: any = createMockSarif("abc", "def");
   const sarif2: any = createMockSarif("ghi", "jkl");
 
-  sarif1.runs.results = [1, 2, 3];
-  sarif2.runs.results = [1, 2];
+  sarif1.runs[0].results = Array.from(Array(0).keys());
+  sarif2.runs[0].results = Array.from(Array(5000).keys());
 
-  const multiSarif = { runs: [sarif1.runs[0], sarif1.runs[0], sarif2.runs[0]] };
+  t.notThrows(() => uploadLib.validateResultsLimit(sarif1));
+  t.notThrows(() => uploadLib.validateResultsLimit(sarif2));
+});
 
-  t.notThrows(() => uploadLib.validateResultsLimit(multiSarif, 5));
-  t.throws(() => uploadLib.validateResultsLimit(multiSarif, 6));
+test("validateResultsLimit with > 5000 results should fail", (t) => {
+  const sarif1: any = createMockSarif("abc", "def");
+  const sarif2: any = createMockSarif("ghi", "jkl");
+
+  sarif1.runs[0].results = Array.from(Array(2500).keys());
+  sarif2.runs[0].results = Array.from(Array(2501).keys());
+
+  const multiSarif = { runs: [sarif1.runs[0], sarif2.runs[0]] };
+
+  t.throws(() => uploadLib.validateResultsLimit(multiSarif));
 });
 
 function createMockSarif(id?: string, tool?: string) {

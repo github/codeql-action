@@ -3,7 +3,7 @@ import { FileOptions, DirOptions, TmpNameOptions } from "tmp";
 
 export interface DirectoryResult {
   path: string;
-  cleanup(): Promise<void>;
+  cleanup: () => Promise<void>;
 }
 
 export interface FileResult extends DirectoryResult {

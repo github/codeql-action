@@ -1,5 +1,9 @@
 # CodeQL Action and CodeQL Runner Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 1.1.4 - 07 Mar 2022
 
 - Update default CodeQL bundle version to 2.8.2. [#950](https://github.com/github/codeql-action/pull/950)

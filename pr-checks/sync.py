@@ -15,7 +15,7 @@ defaultTestVersions = [
     # A nightly build directly from the our private repo, built in the last 24 hours.
     "nightly-latest"
 ]
-defaultOperatingSystems = ["ubuntu-latest", "macos-latest", "windows-latest"]
+defaultOperatingSystems = ["ubuntu-latest", "macos-latest", "windows-2019"]
 header = """# Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
 #     pip install ruamel.yaml && python3 sync.py
@@ -62,11 +62,26 @@ for file in os.listdir('checks'):
     ]
     steps.extend(checkSpecification['steps'])
 
+    matrix = []
+    for version in versions:
+        for os in operatingSystems:
+            matrix.append({
+                'os': os,
+                'version': version
+            })
+            if (version == 'latest' or version == 'nightly-latest') and os == 'windows-2019':
+                # New versions of the CLI should also work with Windows Server 2022.
+                # Once all versions of the CLI that we test against work with Windows Server 2022,
+                # we should remove this logic and instead just add windows-2022 to the test matrix.
+                matrix.append({
+                    'os': 'windows-2022',
+                    'version': version
+                })
+
     checkJob = {
         'strategy': {
             'matrix': {
-                'version': versions,
-                'os': operatingSystems
+                'include': matrix
             }
         },
         'name': checkSpecification['name'],

@@ -23,8 +23,11 @@ jobs:
   split-workflow:
     strategy:
       matrix:
-        version: [nightly-20210831] # This CLI version is known to work with package used in this test
-        os: [ubuntu-latest, macos-latest]
+        include:
+        - os: ubuntu-latest
+          version: nightly-20210831
+        - os: macos-latest
+          version: nightly-20210831
     name: Split workflow
     runs-on: ${{ matrix.os }}
     steps:

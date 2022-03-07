@@ -1,8 +1,5 @@
 name: "Upload-sarif: 'ref' and 'sha' from inputs"
 description: "Checks that specifying 'ref' and 'sha' as inputs works"
-# Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
-# `windows-latest`.
-os: [ubuntu-latest, macos-latest, windows-2019]
 steps:
   - uses: ./../action/init
     with:

@@ -4,6 +4,7 @@
 
 - Update default CodeQL bundle version to 2.8.2. [#950](https://github.com/github/codeql-action/pull/950)
 - Fix a bug where old results can be uploaded if the languages in a repository change when using a non-ephemeral self-hosted runner. [#955](https://github.com/github/codeql-action/pull/955)
+- Fail with a meaningful error message for Windows 11 and Windows Server 2022 which are currently unsupported. [#869](https://github.com/github/codeql-action/pull/869)
 
 ## 1.1.3 - 23 Feb 2022
 

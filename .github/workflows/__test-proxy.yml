@@ -27,6 +27,7 @@ jobs:
         - os: ubuntu-latest
           version: latest
     name: Proxy test
+    timeout-minutes: 30
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

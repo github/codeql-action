@@ -63,7 +63,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 1. The first step of releasing a new version of the `codeql-action` is running the "Update release branch" workflow.
     This workflow goes through the pull requests that have been merged to `main` since the last release, creates a changelog, then opens a pull request to merge the changes since the last release into the `v1` release branch.
 
-    A release is automatically started every Monday via a scheduled run of this workflow, however you can start a release manually by triggering a run via [workflow dispatch](https://github.com/github/codeql-action/actions/workflows/update-release-branch.yml). 
+    A release is automatically started every Monday via a scheduled run of this workflow, however you can start a release manually by triggering a run via [workflow dispatch](https://github.com/github/codeql-action/actions/workflows/update-release-branch.yml).
 1. The workflow run will open a pull request titled "Merge main into v1". Mark the pull request as [ready for review](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request#marking-a-pull-request-as-ready-for-review) to trigger the PR checks.
 1. Review the checklist items in the pull request description.
     Once you've checked off all but the last of these, approve the PR and automerge it.
@@ -71,6 +71,26 @@ Here are a few things you can do that will increase the likelihood of your pull 
     This mergeback incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into v1" pull request, and bumps the patch version of the CodeQL Action.
 
     Approve the mergeback PR and automerge it. Once the mergeback has been merged into main, the release is complete.
+
+## Keeping the PR checks up to date (requires admin access)
+
+Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred jobs that need to pass in order for a PR to turn green. Managing these PR checks manually is time consuming and complex. Here is a semi-automated approach.
+
+To regenerate the PR jobs for the action:
+
+1. From a terminal, run the following commands (replace `SHA` with the sha of the commit whose checks you want to use, typically this should be the latest from `main`):
+
+    ```sh
+    SHA= ####
+    CHECKS="$(gh api repos/github/codeql-action/commits/${SHA}/check-runs --paginate | jq --compact-output --raw-output '[.["check_runs"] | .[].name | select(contains("https://") or . == "CodeQL" or . == "LGTM.com" or . == "Update dependencies" | not)]')"
+    CHECKS="$(echo $CHECKS  | sed -E 's|\].*\[|,|g')" # Because the gh command is paginated, the results are multiple arrays
+    echo "{\"contexts\": ${CHECKS}}" > checks.json
+    gh api -X "PATCH" repos/github/codeql-action/branches/main/protection/required_status_checks --input checks.json
+    gh api -X "PATCH" repos/github/codeql-action/branches/v1/protection/required_status_checks --input checks.json
+    ````
+
+2. Go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules have been updated.
+
 
 ## Resources
 

@@ -85,6 +85,7 @@ for file in os.listdir('checks'):
             }
         },
         'name': checkSpecification['name'],
+        'timeout-minutes': 30,
         'runs-on': '${{ matrix.os }}',
         'steps': steps
     }

@@ -65,6 +65,7 @@ jobs:
         - os: windows-2022
           version: nightly-latest
     name: 'Go: Custom queries'
+    timeout-minutes: 30
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

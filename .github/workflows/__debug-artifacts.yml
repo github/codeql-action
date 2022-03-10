@@ -49,6 +49,7 @@ jobs:
         - os: macos-latest
           version: nightly-latest
     name: Debug artifact upload
+    timeout-minutes: 30
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

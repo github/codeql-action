@@ -37,6 +37,7 @@ jobs:
         - os: ubuntu-latest
           version: nightly-latest
     name: Test unsetting environment variables
+    timeout-minutes: 30
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

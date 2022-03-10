@@ -1,0 +1,91 @@
+name: "Use a custom `checkout_path`"
+description: "Checks that a custom `checkout_path` will find the proper commit_oid"
+# Build tracing currqently does not support Windows 2022, so use `windows-2019` instead of
+# `windows-latest`.
+# Must test on all three platforms since this test does path manipulation
+os: [macos-latest]
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+steps:
+  # Check out the actions repo again, but at a different location.
+  # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
+  - uses: actions/checkout@v2
+    with:
+      ref: 60fea345af0fabecd52ae06ab0eff6744a0a9d52
+      path: x/y/z/some-path
+  - uses: ./../action/init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+      # it's enough to test one compiled language and one interpreted language
+      languages: java,javascript
+      source-path: x/y/z/some-path/tests/multi-language-repo
+      debug: true
+  - name: Build code (non-windows)
+    shell: bash
+    if: ${{ runner.os != 'Windows' }}
+    run: |
+      set -x
+      echo $CODEQL_RUNNER
+
+      $CODEQL_RUNNER x/y/z/some-path/tests/multi-language-repo/build.sh &
+      PID=$!
+      sleep 300
+
+      ps -ef
+
+      echo "killing $PID"
+      set +e
+      kill -9 $PID
+
+      # exit happily
+      exit 0
+  - name: Build code (windows)
+    shell: bash
+    if: ${{ runner.os == 'Windows' }}
+    run: |
+      x/y/z/some-path/tests/multi-language-repo/build.sh
+  - uses: ./../action/analyze
+    with:
+      checkout_path: x/y/z/some-path/tests/multi-language-repo
+      ref: v1.1.0
+      sha: 60fea345af0fabecd52ae06ab0eff6744a0a9d52
+      upload: false
+    env:
+      TEST_MODE: true
+
+  - uses: ./../action/upload-sarif
+    with:
+      ref: v1.1.0
+      sha: 60fea345af0fabecd52ae06ab0eff6744a0a9d52
+      checkout_path: x/y/z/some-path/tests/multi-language-repo
+    env:
+      TEST_MODE: true
+
+  - name: Verify SARIF after upload
+    shell: bash
+    run: |
+      EXPECTED_COMMIT_OID="60fea345af0fabecd52ae06ab0eff6744a0a9d52"
+      EXPECTED_REF="v1.1.0"
+      EXPECTED_CHECKOUT_URI_SUFFIX="/x/y/z/some-path/tests/multi-language-repo"
+
+      ACTUAL_COMMIT_OID="$(cat "$RUNNER_TEMP/payload.json" | jq -r .commit_oid)"
+      ACTUAL_REF="$(cat "$RUNNER_TEMP/payload.json" | jq -r .ref)"
+      ACTUAL_CHECKOUT_URI="$(cat "$RUNNER_TEMP/payload.json" | jq -r .checkout_uri)"
+
+      if [[ "$EXPECTED_COMMIT_OID" != "$ACTUAL_COMMIT_OID" ]]; then
+        echo "::error Invalid commit oid. Expected: $EXPECTED_COMMIT_OID Actual: $ACTUAL_COMMIT_OID"
+        echo "$RUNNER_TEMP/payload.json"
+        exit 1
+      fi
+
+      if [[ "$EXPECTED_REF" != "$ACTUAL_REF" ]]; then
+        echo "::error Invalid ref. Expected: '$EXPECTED_REF' Actual: '$ACTUAL_REF'"
+        echo "$RUNNER_TEMP/payload.json"
+        exit 1
+      fi
+
+      if [[ "$ACTUAL_CHECKOUT_URI" != *$EXPECTED_CHECKOUT_URI_SUFFIX ]]; then
+        echo "::error Invalid checkout URI suffix. Expected suffix: $EXPECTED_CHECKOUT_URI_SUFFIX Actual uri: $ACTUAL_CHECKOUT_URI"
+        echo "$RUNNER_TEMP/payload.json"
+        exit 1
+      fi

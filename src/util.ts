@@ -636,7 +636,7 @@ export function isGoodVersion(versionSpec: string) {
  */
 export const ML_POWERED_JS_QUERIES_PACK: PackWithVersion = {
   packName: "codeql/javascript-experimental-atm-queries",
-  version: "~0.0.2",
+  version: "~0.1.0",
 };
 
 /**

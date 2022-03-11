@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Update default CodeQL bundle version to 2.8.3.
 
 ## 1.1.4 - 07 Mar 2022
 

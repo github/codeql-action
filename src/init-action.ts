@@ -13,7 +13,7 @@ import {
   StatusReportBase,
   validateWorkflow,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersionActionsOnly } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
 import { GitHubFeatureFlags } from "./feature-flags";
@@ -135,7 +135,7 @@ async function run() {
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
   };
 
-  const gitHubVersion = await getGitHubVersion();
+  const gitHubVersion = await getGitHubVersionActionsOnly();
   checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
   const repositoryNwo = parseRepositoryNwo(

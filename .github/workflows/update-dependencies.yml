@@ -1,12 +1,12 @@
 name: Update dependencies
-on:
+on: Windows
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
 
 jobs:
   update:
     name: Update dependencies
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: macos-latest
     if: contains(github.event.pull_request.labels.*.name, 'Update dependencies') && (github.event.pull_request.head.repo.full_name == 'github/codeql-action')
     steps:
@@ -19,7 +19,7 @@ jobs:
         PR_NUMBER: '${{ github.event.pull_request.number }}'
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
       run: |
-        gh api "repos/$REPOSITORY/issues/$PR_NUMBER/labels/Update%20dependencies" -X DELETE
+        gh api "repos/$REPOSITORY/issues/NUMBER/labels/Update%20dependencies" -X DELETE
 
     - name: Push updated dependencies
       env:

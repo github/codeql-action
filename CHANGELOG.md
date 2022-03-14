@@ -1,8 +1,9 @@
-# CodeQL Action and CodeQL Runner Changelog
+# CodeQL Action Changelog
 
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.8.3.
+- The CodeQL runner is now deprecated and no longer being released. For more information, see [CodeQL runner deprecation](https://github.blog/changelog/2021-09-21-codeql-runner-deprecation/).
 
 ## 1.1.4 - 07 Mar 2022
 

@@ -12,6 +12,7 @@ import * as sharedEnv from "./shared-environment";
 import {
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
+  isGitHubGhesVersionBelow,
   isHTTPError,
   UserError,
 } from "./util";
@@ -600,7 +601,7 @@ export interface StatusReportBase {
   /** Action runner operating system (context runner.os). */
   runner_os: string;
   /** Action runner hardware architecture (context runner.arch). */
-  runner_arch: string;
+  runner_arch?: string;
   /** Action runner operating system release (x.y.z from os.release()). */
   runner_os_release?: string;
 }
@@ -651,7 +652,6 @@ export async function createStatusReportBase(
     );
   }
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
-  const runnerArch = getRequiredEnvParam("RUNNER_ARCH");
 
   // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
   // See https://github.com/actions/runner/issues/803
@@ -673,7 +673,6 @@ export async function createStatusReportBase(
     action_started_at: actionStartedAt.toISOString(),
     status,
     runner_os: runnerOs,
-    runner_arch: runnerArch,
   };
 
   // Add optional parameters
@@ -694,6 +693,10 @@ export async function createStatusReportBase(
   const matrix = getRequiredInput("matrix");
   if (matrix) {
     statusReport.matrix_vars = matrix;
+  }
+  if ("RUNNER_ARCH" in process.env) {
+    // RUNNER_ARCH is available only in GHES 3.4 and later
+    statusReport.runner_arch = process.env["RUNNER_ARCH"];
   }
   if (runnerOs === "Windows" || runnerOs === "macOS") {
     statusReport.runner_os_release = os.release();
@@ -723,6 +726,14 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S
 ): Promise<boolean> {
+  const gitHubVersion = await api.getGitHubVersion();
+  if (isGitHubGhesVersionBelow(gitHubVersion, "3.2.0")) {
+    // GHES 3.1 and earlier versions reject unexpected properties, which means
+    // that they will reject status reports with newly added properties.
+    // Inhibiting status reporting for GHES < 3.2 avoids such failures.
+    return true;
+  }
+
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
   // If in test mode we don't want to upload the results

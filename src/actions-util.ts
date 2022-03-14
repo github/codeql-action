@@ -696,6 +696,7 @@ export async function createStatusReportBase(
   }
   if ("RUNNER_ARCH" in process.env) {
     // RUNNER_ARCH is available only in GHES 3.4 and later
+    // Values other than X86, X64, ARM, or ARM64 are discarded server side
     statusReport.runner_arch = process.env["RUNNER_ARCH"];
   }
   if (runnerOs === "Windows" || runnerOs === "macOS") {
@@ -726,7 +727,7 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S
 ): Promise<boolean> {
-  const gitHubVersion = await api.getGitHubVersion();
+  const gitHubVersion = await api.getGitHubVersionActionsOnly();
   if (isGitHubGhesVersionBelow(gitHubVersion, "3.2.0")) {
     // GHES 3.1 and earlier versions reject unexpected properties, which means
     // that they will reject status reports with newly added properties.

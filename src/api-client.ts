@@ -79,11 +79,11 @@ let cachedGitHubVersion: GitHubVersion | undefined = undefined;
  * Report the GitHub server version. This is a wrapper around
  * util.getGitHubVersion() that automatically supplies GitHub API details using
  * GitHub Action inputs. If you need to get the GitHub server version from the
- * action runner, please call util.getGitHubVersion() instead.
+ * Runner, please call util.getGitHubVersion() instead.
  *
  * @returns GitHub version
  */
-export async function getGitHubVersion(): Promise<GitHubVersion> {
+export async function getGitHubVersionActionsOnly(): Promise<GitHubVersion> {
   if (!util.isActions) {
     throw new Error("This getGitHubVersion() function works only in an action");
   }

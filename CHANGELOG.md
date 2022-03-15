@@ -2,6 +2,10 @@
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 1.1.5 - 15 Mar 2022
+
 - Update default CodeQL bundle version to 2.8.3.
 - The CodeQL runner is now deprecated and no longer being released. For more information, see [CodeQL runner deprecation](https://github.blog/changelog/2021-09-21-codeql-runner-deprecation/).
 - Fix two bugs that cause action failures with GHES 3.3 or earlier. [#978](https://github.com/github/codeql-action/pull/978)

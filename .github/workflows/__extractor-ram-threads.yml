@@ -27,6 +27,7 @@ jobs:
         - os: ubuntu-latest
           version: latest
     name: Extractor ram and threads options test
+    timeout-minutes: 30
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

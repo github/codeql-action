@@ -1811,7 +1811,7 @@ test(
   true,
   undefined,
   "security-extended",
-  "~0.0.2"
+  "~0.1.0"
 );
 test(
   mlPoweredQueriesMacro,
@@ -1819,7 +1819,7 @@ test(
   true,
   undefined,
   "security-and-quality",
-  "~0.0.2"
+  "~0.1.0"
 );
 test(
   mlPoweredQueriesMacro,

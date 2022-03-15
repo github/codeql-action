@@ -594,6 +594,16 @@ export function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }
 
+export function isGitHubGhesVersionBelow(
+  gitHubVersion: GitHubVersion,
+  expectedVersion: string
+): boolean {
+  return (
+    gitHubVersion.type === GitHubVariant.GHES &&
+    semver.lt(gitHubVersion.version, expectedVersion)
+  );
+}
+
 export async function codeQlVersionAbove(
   codeql: CodeQL,
   requiredVersion: string

@@ -4,6 +4,9 @@
 
 - Update default CodeQL bundle version to 2.8.3.
 - The CodeQL runner is now deprecated and no longer being released. For more information, see [CodeQL runner deprecation](https://github.blog/changelog/2021-09-21-codeql-runner-deprecation/).
+- Fix two bugs that cause action failures with GHES 3.3 or earlier. [#978](https://github.com/github/codeql-action/pull/978)
+  - Fix `not a permitted key` invalid requests with GHES 3.1 or earlier
+  - Fix `RUNNER_ARCH environment variable must be set` errors with GHES 3.3 or earlier
 
 ## 1.1.4 - 07 Mar 2022
 

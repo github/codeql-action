@@ -193,11 +193,21 @@ def main():
     required=True,
     help='The GitHub handle of the person who is conducting the release process.'
   )
+  parser.add_argument(
+    '--perform-v2-to-v1-backport',
+    action='store_true',
+    help='Pass this flag if this release is a backport from v2 to v1.'
+  )
 
   args = parser.parse_args()
 
   repo = Github(args.github_token).get_repo(args.repository_nwo)
   version = get_current_version()
+
+  if args.perform_v2_to_v1_backport:
+    # Change the version number to a v1 equivalent
+    version = get_current_version()
+    version = f'1{version[1:]}'
 
   # Print what we intend to go
   print('Considering difference between ' + args.source_branch + ' and ' + args.target_branch)
@@ -226,8 +236,17 @@ def main():
   print('Creating branch ' + new_branch_name)
   run_git('checkout', '-b', new_branch_name, ORIGIN + '/' + args.source_branch)
 
-  print('Updating changelog')
-  update_changelog(version)
+  if args.perform_v2_to_v1_backport:
+    print(f'Setting version number to {version}')
+    subprocess.run(['npm', 'version', version])
+    run_git('add', 'package.json', 'package-lock.json', 'runner/package.json', 'runner/package-lock.json')
+
+    print('Migrating changelog notes from v2 to v1')
+    subprocess.run(['sed', '-i', 's/## 2./## 1./g', 'CHANGELOG.md'])
+  else:
+    # We don't need to do this for a v1 release, since the changelog has already been updated in the v2 branch.
+    print('Updating changelog')
+    update_changelog(version)
 
   # Create a commit that updates the CHANGELOG
   run_git('add', 'CHANGELOG.md')

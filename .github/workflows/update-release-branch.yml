@@ -53,4 +53,5 @@ jobs:
           --repository-nwo ${{ github.repository }} \
           --source-branch v2 \
           --target-branch v1 \
-          --conductor ${GITHUB_ACTOR}
+          --conductor ${GITHUB_ACTOR} \
+          --perform-v2-to-v1-backport

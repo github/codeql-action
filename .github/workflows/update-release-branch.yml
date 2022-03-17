@@ -5,7 +5,7 @@ jobs:
   update:
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    if: ${{ github.repository == 'github/codeql-action' }}
+    if: github.repository == 'github/codeql-action'
     steps:
     - uses: actions/checkout@v2
       with:
@@ -28,4 +28,9 @@ jobs:
         git config --global user.name "github-actions[bot]"
 
     - name: Update release branch
-      run: python .github/update-release-branch.py ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }}
+      run: |
+        python .github/update-release-branch.py \
+          --github-token ${{ secrets.GITHUB_TOKEN }} \
+          --repository-nwo ${{ github.repository }} \
+          --source-branch main \
+          --target-branch v1

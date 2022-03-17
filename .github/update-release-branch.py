@@ -1,12 +1,9 @@
+import argparse
 import datetime
 from github import Github
-import random
-import requests
-import subprocess
-import sys
 import json
-import datetime
 import os
+import subprocess
 
 EMPTY_CHANGELOG = """# CodeQL Action and CodeQL Runner Changelog
 
@@ -16,12 +13,6 @@ No user facing changes.
 
 """
 
-# The branch being merged from.
-# This is the one that contains day-to-day development work.
-MAIN_BRANCH = 'main'
-# The branch being merged into.
-# This is the release branch that users reference.
-LATEST_RELEASE_BRANCH = 'v1'
 # Name of the remote
 ORIGIN = 'origin'
 
@@ -39,7 +30,7 @@ def branch_exists_on_remote(branch_name):
   return run_git('ls-remote', '--heads', ORIGIN, branch_name).strip() != ''
 
 # Opens a PR from the given branch to the release branch
-def open_pr(repo, all_commits, short_main_sha, branch_name):
+def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, target_branch):
   # Sort the commits into the pull requests that introduced them,
   # and any commits that don't have a pull request
   pull_requests = []
@@ -61,7 +52,7 @@ def open_pr(repo, all_commits, short_main_sha, branch_name):
 
   # Start constructing the body text
   body = []
-  body.append('Merging ' + short_main_sha + ' into ' + LATEST_RELEASE_BRANCH)
+  body.append('Merging ' + short_main_sha + ' into ' + target_branch)
 
   conductor = get_conductor(repo, pull_requests, commits_without_pull_requests)
   body.append('')
@@ -86,16 +77,16 @@ def open_pr(repo, all_commits, short_main_sha, branch_name):
   body.append('Please review the following:')
   body.append(' - [ ] The CHANGELOG displays the correct version and date.')
   body.append(' - [ ] The CHANGELOG includes all relevant, user-facing changes since the last release.')
-  body.append(' - [ ] There are no unexpected commits being merged into the ' + LATEST_RELEASE_BRANCH + ' branch.')
+  body.append(' - [ ] There are no unexpected commits being merged into the ' + target_branch + ' branch.')
   body.append(' - [ ] The docs team is aware of any documentation changes that need to be released.')
-  body.append(' - [ ] The mergeback PR is merged back into ' + MAIN_BRANCH + ' after this PR is merged.')
+  body.append(' - [ ] The mergeback PR is merged back into ' + source_branch + ' after this PR is merged.')
 
-  title = 'Merge ' + MAIN_BRANCH + ' into ' + LATEST_RELEASE_BRANCH
+  title = 'Merge ' + source_branch + ' into ' + target_branch
 
   # Create the pull request
   # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft so that
   # a maintainer can take the PR out of draft, thereby triggering the PR checks.
-  pr = repo.create_pull(title=title, body='\n'.join(body), head=branch_name, base=LATEST_RELEASE_BRANCH, draft=True)
+  pr = repo.create_pull(title=title, body='\n'.join(body), head=new_branch_name, base=target_branch, draft=True)
   print('Created PR #' + str(pr.number))
 
   # Assign the conductor
@@ -115,8 +106,8 @@ def get_conductor(repo, pull_requests, other_commits):
 # since the release branched off.
 # This will not include any commits that exist on the release branch
 # that aren't on main.
-def get_commit_difference(repo):
-  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + LATEST_RELEASE_BRANCH + '..' + ORIGIN + '/' + MAIN_BRANCH).strip().split('\n')
+def get_commit_difference(repo, source_branch, target_branch):
+  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + target_branch + '..' + ORIGIN + '/' + source_branch).strip().split('\n')
 
   # Convert to full-fledged commit objects
   commits = [repo.get_commit(c) for c in commits]
@@ -179,23 +170,47 @@ def update_changelog(version):
 
 
 def main():
-  if len(sys.argv) != 3:
-    raise Exception('Usage: update-release.branch.py <github token> <repository nwo>')
-  github_token = sys.argv[1]
-  repository_nwo = sys.argv[2]
+  parser = argparse.ArgumentParser('update-release-branch.py')
 
-  repo = Github(github_token).get_repo(repository_nwo)
+  parser.add_argument(
+    '--github-token',
+    type=str,
+    required=True,
+    help='GitHub token, typically from GitHub Actions.'
+  )
+  parser.add_argument(
+    '--repository-nwo',
+    type=str,
+    required=True,
+    help='The nwo of the repository, for example github/codeql-action.'
+  )
+  parser.add_argument(
+    '--source-branch',
+    type=str,
+    required=True,
+    help='The branch being merged from, typically "main" for a v2 release or "v2" for a v1 release.'
+  )
+  parser.add_argument(
+    '--target-branch',
+    type=str,
+    required=True,
+    help='The branch being merged into, typically "v2" for a v2 release or "v1" for a v1 release.'
+  )
+
+  args = parser.parse_args()
+
+  repo = Github(args.github_token).get_repo(args.repository_nwo)
   version = get_current_version()
 
   # Print what we intend to go
-  print('Considering difference between ' + MAIN_BRANCH + ' and ' + LATEST_RELEASE_BRANCH)
-  short_main_sha = run_git('rev-parse', '--short', ORIGIN + '/' + MAIN_BRANCH).strip()
-  print('Current head of ' + MAIN_BRANCH + ' is ' + short_main_sha)
+  print('Considering difference between ' + args.source_branch + ' and ' + args.target_branch)
+  short_main_sha = run_git('rev-parse', '--short', ORIGIN + '/' + args.source_branch).strip()
+  print('Current head of ' + args.source_branch + ' is ' + short_main_sha)
 
   # See if there are any commits to merge in
-  commits = get_commit_difference(repo)
+  commits = get_commit_difference(repo=repo, source_branch=args.source_branch, target_branch=args.target_branch)
   if len(commits) == 0:
-    print('No commits to merge from ' + MAIN_BRANCH + ' to ' + LATEST_RELEASE_BRANCH)
+    print('No commits to merge from ' + args.source_branch + ' to ' + args.target_branch)
     return
 
   # The branch name is based off of the name of branch being merged into
@@ -212,7 +227,7 @@ def main():
 
   # Create the new branch and push it to the remote
   print('Creating branch ' + new_branch_name)
-  run_git('checkout', '-b', new_branch_name, ORIGIN + '/' + MAIN_BRANCH)
+  run_git('checkout', '-b', new_branch_name, ORIGIN + '/' + args.source_branch)
 
   print('Updating changelog')
   update_changelog(version)
@@ -224,7 +239,14 @@ def main():
   run_git('push', ORIGIN, new_branch_name)
 
   # Open a PR to update the branch
-  open_pr(repo, commits, short_main_sha, new_branch_name)
+  open_pr(
+    repo,
+    commits,
+    short_main_sha,
+    new_branch_name,
+    source_branch=args.source_branch,
+    target_branch=args.target_branch
+  )
 
 if __name__ == '__main__':
   main()

@@ -10,12 +10,16 @@ import * as yaml from "js-yaml";
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
 import {
+  getCachedCodeQlVersion,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
   isGitHubGhesVersionBelow,
   isHTTPError,
   UserError,
 } from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 /**
  * The utils in this module are meant to be run inside of the action only.
@@ -604,6 +608,10 @@ export interface StatusReportBase {
   runner_arch?: string;
   /** Action runner operating system release (x.y.z from os.release()). */
   runner_os_release?: string;
+  /** Action version (x.y.z from package.json). */
+  action_version: string;
+  /** CodeQL CLI version (x.y.z from the CLI). */
+  codeql_cli_version?: string;
 }
 
 export function getActionsStatus(
@@ -652,6 +660,7 @@ export async function createStatusReportBase(
     );
   }
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
+  const codeQlCliVersion = getCachedCodeQlVersion();
 
   // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
   // See https://github.com/actions/runner/issues/803
@@ -673,6 +682,7 @@ export async function createStatusReportBase(
     action_started_at: actionStartedAt.toISOString(),
     status,
     runner_os: runnerOs,
+    action_version: pkg.version,
   };
 
   // Add optional parameters
@@ -701,6 +711,9 @@ export async function createStatusReportBase(
   }
   if (runnerOs === "Windows" || runnerOs === "macOS") {
     statusReport.runner_os_release = os.release();
+  }
+  if (codeQlCliVersion !== undefined) {
+    statusReport.codeql_cli_version = codeQlCliVersion;
   }
 
   return statusReport;

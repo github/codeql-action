@@ -30,7 +30,7 @@ def branch_exists_on_remote(branch_name):
   return run_git('ls-remote', '--heads', ORIGIN, branch_name).strip() != ''
 
 # Opens a PR from the given branch to the release branch
-def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, target_branch):
+def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, target_branch, conductor):
   # Sort the commits into the pull requests that introduced them,
   # and any commits that don't have a pull request
   pull_requests = []
@@ -54,7 +54,6 @@ def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, t
   body = []
   body.append('Merging ' + short_main_sha + ' into ' + target_branch)
 
-  conductor = get_conductor(repo, pull_requests, commits_without_pull_requests)
   body.append('')
   body.append('Conductor for this PR is @' + conductor)
 
@@ -92,15 +91,6 @@ def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, t
   # Assign the conductor
   pr.add_to_assignees(conductor)
   print('Assigned PR to ' + conductor)
-
-# Gets the person who should be in charge of the mergeback PR
-def get_conductor(repo, pull_requests, other_commits):
-  # If there are any PRs then use whoever merged the last one
-  if len(pull_requests) > 0:
-    return get_merger_of_pr(repo, pull_requests[-1])
-
-  # Otherwise take the author of the latest commit
-  return other_commits[-1].author.login
 
 # Gets a list of the SHAs of all commits that have happened on main
 # since the release branched off.
@@ -196,6 +186,12 @@ def main():
     required=True,
     help='The branch being merged into, typically "v2" for a v2 release or "v1" for a v1 release.'
   )
+  parser.add_argument(
+    '--conductor',
+    type=str,
+    required=True,
+    help='The GitHub handle of the person who is conducting the release process.'
+  )
 
   args = parser.parse_args()
 
@@ -245,7 +241,8 @@ def main():
     short_main_sha,
     new_branch_name,
     source_branch=args.source_branch,
-    target_branch=args.target_branch
+    target_branch=args.target_branch,
+    conductor=args.conductor
   )
 
 if __name__ == '__main__':

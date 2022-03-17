@@ -33,4 +33,5 @@ jobs:
           --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
           --source-branch main \
-          --target-branch v1
+          --target-branch v1 \
+          --conductor ${GITHUB_ACTOR}

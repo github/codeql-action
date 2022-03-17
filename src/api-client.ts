@@ -84,8 +84,8 @@ let cachedGitHubVersion: GitHubVersion | undefined = undefined;
  * @returns GitHub version
  */
 export async function getGitHubVersionActionsOnly(): Promise<GitHubVersion> {
-  if (!util.isActions) {
-    throw new Error("This getGitHubVersion() function works only in an action");
+  if (!util.isActions()) {
+    throw new Error("getGitHubVersionActionsOnly() works only in an action");
   }
   if (cachedGitHubVersion === undefined) {
     cachedGitHubVersion = await util.getGitHubVersion(getApiDetails());

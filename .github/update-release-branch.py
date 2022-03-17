@@ -70,7 +70,8 @@ def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, t
     body.append('')
     body.append('Contains the following commits not from a pull request:')
     for commit in commits_without_pull_requests:
-      body.append('- ' + commit.sha + ' - ' + get_truncated_commit_message(commit) + ' (@' + commit.author.login + ')')
+      author_description = ' (@' + commit.author.login + ')' if commit.author is not None else ''
+      body.append('- ' + commit.sha + ' - ' + get_truncated_commit_message(commit) + author_description)
 
   body.append('')
   body.append('Please review the following:')

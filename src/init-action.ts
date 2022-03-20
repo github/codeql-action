@@ -99,7 +99,7 @@ async function sendSuccessStatusReport(
   }
   if (queriesInput !== undefined) {
     queriesInput = queriesInput.startsWith("+")
-      ? queriesInput.substr(1)
+      ? queriesInput.slice(1)
       : queriesInput;
     queries.push(...queriesInput.split(","));
   }

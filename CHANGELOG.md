@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - [v2+ only] The CodeQL Action now runs on Node.js v16. [#1000](https://github.com/github/codeql-action/pull/1000)
+- Update default CodeQL bundle version to 2.8.4. [#990](https://github.com/github/codeql-action/pull/990)
 
 ## 1.1.5 - 15 Mar 2022
 

@@ -353,3 +353,30 @@ for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
     });
   });
 }
+
+test("isGitHubGhesVersionBelow", async (t) => {
+  t.falsy(
+    util.isGitHubGhesVersionBelow({ type: util.GitHubVariant.DOTCOM }, "3.2.0")
+  );
+  t.falsy(
+    util.isGitHubGhesVersionBelow({ type: util.GitHubVariant.GHAE }, "3.2.0")
+  );
+  t.falsy(
+    util.isGitHubGhesVersionBelow(
+      { type: util.GitHubVariant.GHES, version: "3.3.0" },
+      "3.2.0"
+    )
+  );
+  t.falsy(
+    util.isGitHubGhesVersionBelow(
+      { type: util.GitHubVariant.GHES, version: "3.2.0" },
+      "3.2.0"
+    )
+  );
+  t.true(
+    util.isGitHubGhesVersionBelow(
+      { type: util.GitHubVariant.GHES, version: "3.1.2" },
+      "3.2.0"
+    )
+  );
+});

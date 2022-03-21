@@ -594,6 +594,29 @@ export function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }
 
+export function isGitHubGhesVersionBelow(
+  gitHubVersion: GitHubVersion,
+  expectedVersion: string
+): boolean {
+  return (
+    gitHubVersion.type === GitHubVariant.GHES &&
+    semver.lt(gitHubVersion.version, expectedVersion)
+  );
+}
+
+let cachedCodeQlVersion: undefined | string = undefined;
+
+export function cacheCodeQlVersion(version: string): void {
+  if (cachedCodeQlVersion !== undefined) {
+    throw new Error("cacheCodeQlVersion() should be called only once");
+  }
+  cachedCodeQlVersion = version;
+}
+
+export function getCachedCodeQlVersion(): undefined | string {
+  return cachedCodeQlVersion;
+}
+
 export async function codeQlVersionAbove(
   codeql: CodeQL,
   requiredVersion: string

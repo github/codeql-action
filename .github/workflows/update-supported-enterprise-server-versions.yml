@@ -6,6 +6,7 @@ on:
 
 jobs:
   update-supported-enterprise-server-versions:
+    name: Update Supported Enterprise Server Versions
     timeout-minutes: 45
     runs-on: ubuntu-latest
     if: ${{ github.repository == 'github/codeql-action' }}

@@ -1,15 +1,11 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
+import { getGitHubVersionActionsOnly } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
-import {
-  getGitHubVersion,
-  getRequiredEnvParam,
-  initializeEnvironment,
-  Mode,
-} from "./util";
+import { getRequiredEnvParam, initializeEnvironment, Mode } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -55,7 +51,7 @@ async function run() {
       url: getRequiredEnvParam("GITHUB_SERVER_URL"),
     };
 
-    const gitHubVersion = await getGitHubVersion(apiDetails);
+    const gitHubVersion = await getGitHubVersionActionsOnly();
 
     const uploadResult = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),

@@ -5,7 +5,8 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getRequiredInput } from "./actions-util";
-import { getMode, getRequiredEnvParam } from "./util";
+import * as util from "./util";
+import { getMode, getRequiredEnvParam, GitHubVersion } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -58,14 +59,36 @@ function getApiUrl(githubUrl: string): string {
   return url.toString();
 }
 
+function getApiDetails() {
+  return {
+    auth: getRequiredInput("token"),
+    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+  };
+}
+
 // Temporary function to aid in the transition to running on and off of github actions.
 // Once all code has been converted this function should be removed or made canonical
 // and called only from the action entrypoints.
 export function getActionsApiClient() {
-  const apiDetails = {
-    auth: getRequiredInput("token"),
-    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-  };
+  return getApiClient(getApiDetails());
+}
 
-  return getApiClient(apiDetails);
+let cachedGitHubVersion: GitHubVersion | undefined = undefined;
+
+/**
+ * Report the GitHub server version. This is a wrapper around
+ * util.getGitHubVersion() that automatically supplies GitHub API details using
+ * GitHub Action inputs. If you need to get the GitHub server version from the
+ * Runner, please call util.getGitHubVersion() instead.
+ *
+ * @returns GitHub version
+ */
+export async function getGitHubVersionActionsOnly(): Promise<GitHubVersion> {
+  if (!util.isActions()) {
+    throw new Error("getGitHubVersionActionsOnly() works only in an action");
+  }
+  if (cachedGitHubVersion === undefined) {
+    cachedGitHubVersion = await util.getGitHubVersion(getApiDetails());
+  }
+  return cachedGitHubVersion;
 }

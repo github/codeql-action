@@ -367,6 +367,19 @@ async function getCodeQLBundleDownloadURL(
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${codeQLBundleName}`;
 }
 
+/**
+ * Set up CodeQL CLI access.
+ *
+ * @param codeqlURL
+ * @param apiDetails
+ * @param tempDir
+ * @param toolCacheDir
+ * @param variant
+ * @param logger
+ * @param checkVersion Whether to check that CodeQL CLI meets the minimum
+ *        version requirement. Must be set to true outside tests.
+ * @returns
+ */
 export async function setupCodeQL(
   codeqlURL: string | undefined,
   apiDetails: api.GitHubApiDetails,
@@ -611,19 +624,29 @@ export async function getCodeQLForTesting(): Promise<CodeQL> {
   return getCodeQLForCmd("codeql-for-testing", false);
 }
 
+/**
+ * Return a CodeQL object for CodeQL CLI access.
+ *
+ * @param cmd Path to CodeQL CLI
+ * @param checkVersion Whether to check that CodeQL CLI meets the minimum
+ *        version requirement. Must be set to true outside tests.
+ * @returns A new CodeQL object
+ */
 async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean
 ): Promise<CodeQL> {
-  let cachedVersion: undefined | Promise<string> = undefined;
   const codeql = {
     getPath() {
       return cmd;
     },
     async getVersion() {
-      if (cachedVersion === undefined)
-        cachedVersion = runTool(cmd, ["version", "--format=terse"]);
-      return await cachedVersion;
+      let result = util.getCachedCodeQlVersion();
+      if (result === undefined) {
+        result = await runTool(cmd, ["version", "--format=terse"]);
+        util.cacheCodeQlVersion(result);
+      }
+      return result;
     },
     async printVersion() {
       await runTool(cmd, ["version", "--format=json"]);
@@ -997,6 +1020,14 @@ async function getCodeQLForCmd(
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
+  // To ensure that status reports include the CodeQL CLI version whereever
+  // possbile, we want to call getVersion(), which populates the version value
+  // used by status reporting, at the earliest opportunity. But invoking
+  // getVersion() directly here breaks tests that only pretend to create a
+  // CodeQL object. So instead we rely on the assumption that all non-test
+  // callers would set checkVersion to true, and util.codeQlVersionAbove()
+  // would call getVersion(), so the CLI version would be cached as soon as the
+  // CodeQL object is created.
   if (
     checkVersion &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))

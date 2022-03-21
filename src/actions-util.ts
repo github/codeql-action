@@ -858,7 +858,7 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   // Get the current ref and trim and refs/heads/ prefix
   let currentRef = await getRef();
   currentRef = currentRef.startsWith("refs/heads/")
-    ? currentRef.substr("refs/heads/".length)
+    ? currentRef.slice("refs/heads/".length)
     : currentRef;
 
   const event = getWorkflowEvent();

@@ -104,11 +104,13 @@ jobs:
           PR_TITLE="Mergeback $VERSION $HEAD_BRANCH into $BASE_BRANCH"
           PR_BODY="Updates version and changelog."
 
+          # Update the version number ready for the next release
+          npm version patch --no-git-tag-version
+
           # Update the changelog
           perl -i -pe 's/^/## \[UNRELEASED\]\n\nNo user facing changes.\n\n/ if($.==3)' CHANGELOG.md
           git add .
           git commit -m "Update changelog and version after $VERSION"
-          npm version patch
 
           git push origin "$NEW_BRANCH"
 

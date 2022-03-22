@@ -98,7 +98,9 @@ def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, t
 # This will not include any commits that exist on the release branch
 # that aren't on main.
 def get_commit_difference(repo, source_branch, target_branch):
-  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + target_branch + '..' + ORIGIN + '/' + source_branch).strip().split('\n')
+  # Passing split nothing means that the empty string splits to nothing: compare `''.split() == []`
+  # to `''.split('\n') == ['']`.
+  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + target_branch + '..' + ORIGIN + '/' + source_branch).strip().split()
 
   # Convert to full-fledged commit objects
   commits = [repo.get_commit(c) for c in commits]

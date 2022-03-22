@@ -26,10 +26,13 @@ jobs:
       HEAD_BRANCH: "${{ github.head_ref || github.ref }}"
 
     steps:
-      - name: Dump GitHub Event context
+      - name: Dump environment
+        run: env
+
+      - name: Dump GitHub context
         env:
-          GITHUB_EVENT_CONTEXT: "${{ toJson(github.event) }}"
-        run: echo "$GITHUB_EVENT_CONTEXT"
+          GITHUB_CONTEXT: '${{ toJson(github) }}'
+        run: echo "$GITHUB_CONTEXT"
 
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2

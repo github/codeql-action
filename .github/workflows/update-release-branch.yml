@@ -15,6 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'github/codeql-action'
     steps:
+    - name: Dump environment
+      run: env
+
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: '${{ toJson(github) }}'
+      run: echo "$GITHUB_CONTEXT"
+
     - uses: actions/checkout@v2
       with:
         # Need full history so we calculate diffs

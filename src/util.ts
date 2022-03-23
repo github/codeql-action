@@ -610,10 +610,12 @@ export function cacheCodeQlVersion(version: string): void {
   if (cachedCodeQlVersion !== undefined) {
     throw new Error("cacheCodeQlVersion() should be called only once");
   }
+  console.log(`Caching CodeQL CLI version: ${version}`);
   cachedCodeQlVersion = version;
 }
 
 export function getCachedCodeQlVersion(): undefined | string {
+  console.log(`Returning cached CodeQL CLI version: ${cachedCodeQlVersion}`);
   return cachedCodeQlVersion;
 }
 

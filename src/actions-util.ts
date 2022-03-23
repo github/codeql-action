@@ -716,6 +716,7 @@ export async function createStatusReportBase(
     statusReport.codeql_cli_version = codeQlCliVersion;
   }
 
+  console.log(`Status report base: ${statusReport}`);
   return statusReport;
 }
 

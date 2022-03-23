@@ -30,7 +30,7 @@ def branch_exists_on_remote(branch_name):
   return run_git('ls-remote', '--heads', ORIGIN, branch_name).strip() != ''
 
 # Opens a PR from the given branch to the release branch
-def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, target_branch, conductor, include_mergeback_in_changelog):
+def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, target_branch, conductor, is_v2_to_v1_backport):
   # Sort the commits into the pull requests that introduced them,
   # and any commits that don't have a pull request
   pull_requests = []
@@ -79,8 +79,9 @@ def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, t
   body.append(' - [ ] The CHANGELOG includes all relevant, user-facing changes since the last release.')
   body.append(' - [ ] There are no unexpected commits being merged into the ' + target_branch + ' branch.')
   body.append(' - [ ] The docs team is aware of any documentation changes that need to be released.')
-  if include_mergeback_in_changelog:
+  if not is_v2_to_v1_backport:
     body.append(' - [ ] The mergeback PR is merged back into ' + source_branch + ' after this PR is merged.')
+    body.append(' - [ ] The v1 release PR is merged after this PR is merged.')
 
   title = 'Merge ' + source_branch + ' into ' + target_branch
 
@@ -273,7 +274,7 @@ def main():
     source_branch=args.source_branch,
     target_branch=args.target_branch,
     conductor=args.conductor,
-    include_mergeback_in_changelog=not args.perform_v2_to_v1_backport
+    is_v2_to_v1_backport=args.perform_v2_to_v1_backport
   )
 
 if __name__ == '__main__':

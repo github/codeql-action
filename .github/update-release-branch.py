@@ -30,7 +30,7 @@ def branch_exists_on_remote(branch_name):
   return run_git('ls-remote', '--heads', ORIGIN, branch_name).strip() != ''
 
 # Opens a PR from the given branch to the release branch
-def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, target_branch, conductor, is_v2_to_v1_backport):
+def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, target_branch, conductor, is_v2_to_v1_backport, labels):
   # Sort the commits into the pull requests that introduced them,
   # and any commits that don't have a pull request
   pull_requests = []
@@ -89,6 +89,7 @@ def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, t
   # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft so that
   # a maintainer can take the PR out of draft, thereby triggering the PR checks.
   pr = repo.create_pull(title=title, body='\n'.join(body), head=new_branch_name, base=target_branch, draft=True)
+  pr.add_to_labels(*labels)
   print('Created PR #' + str(pr.number))
 
   # Assign the conductor
@@ -274,7 +275,8 @@ def main():
     source_branch=args.source_branch,
     target_branch=args.target_branch,
     conductor=args.conductor,
-    is_v2_to_v1_backport=args.perform_v2_to_v1_backport
+    is_v2_to_v1_backport=args.perform_v2_to_v1_backport,
+    labels=['Update dependencies'] if args.perform_v2_to_v1_backport else [],
   )
 
 if __name__ == '__main__':

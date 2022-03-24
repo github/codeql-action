@@ -13,7 +13,7 @@ jobs:
   lint-js:
     name: Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2
@@ -22,7 +22,7 @@ jobs:
 
   check-js:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2
@@ -32,7 +32,7 @@ jobs:
   check-node-modules:
     name: Check modules up to date
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2
@@ -42,7 +42,7 @@ jobs:
   verify-pr-checks:
     name: Verify PR checks up to date
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2
@@ -64,7 +64,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2
@@ -74,7 +74,7 @@ jobs:
   runner-analyze-javascript-ubuntu:
     name: Runner ubuntu JS analyze
     needs: [check-js, check-node-modules]
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: ubuntu-latest
 
     steps:
@@ -103,7 +103,7 @@ jobs:
   runner-analyze-javascript-windows:
     name: Runner windows JS analyze
     needs: [check-js, check-node-modules]
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: windows-latest
 
     steps:
@@ -128,7 +128,7 @@ jobs:
   runner-analyze-javascript-macos:
     name: Runner macos JS analyze
     needs: [check-js, check-node-modules]
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: macos-latest
 
     steps:
@@ -153,7 +153,7 @@ jobs:
   runner-analyze-csharp-ubuntu:
     name: Runner ubuntu C# analyze
     needs: [check-js, check-node-modules]
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: ubuntu-latest
 
     steps:
@@ -193,7 +193,7 @@ jobs:
     needs: [check-js, check-node-modules]
     # Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
     # `windows-latest`.
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: windows-2019
 
     steps:
@@ -238,7 +238,7 @@ jobs:
 
   runner-analyze-csharp-macos:
     name: Runner macos C# analyze
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: [check-js, check-node-modules]
     runs-on: macos-latest
 
@@ -277,7 +277,7 @@ jobs:
 
   runner-analyze-csharp-autobuild-ubuntu:
     name: Runner ubuntu autobuild C# analyze
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
@@ -313,7 +313,7 @@ jobs:
           TEST_MODE: true
 
   runner-analyze-csharp-autobuild-windows:
-    timeout-minutes: 30
+    timeout-minutes: 45
     name: Runner windows autobuild C# analyze
     needs: [check-js, check-node-modules]
     # Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
@@ -356,7 +356,7 @@ jobs:
     name: Runner macos autobuild C# analyze
     needs: [check-js, check-node-modules]
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2
@@ -394,7 +394,7 @@ jobs:
     name: Runner upload sarif
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id }}
 
@@ -417,7 +417,7 @@ jobs:
     name: Runner ubuntu extractor RAM and threads options
     needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2

@@ -611,7 +611,7 @@ export interface StatusReportBase {
   /** Action version (x.y.z from package.json). */
   action_version: string;
   /** CodeQL CLI version (x.y.z from the CLI). */
-  codeql_cli_version?: string;
+  codeql_version?: string;
 }
 
 export function getActionsStatus(
@@ -713,7 +713,7 @@ export async function createStatusReportBase(
     statusReport.runner_os_release = os.release();
   }
   if (codeQlCliVersion !== undefined) {
-    statusReport.codeql_cli_version = codeQlCliVersion;
+    statusReport.codeql_version = codeQlCliVersion;
   }
 
   return statusReport;

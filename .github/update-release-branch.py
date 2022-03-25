@@ -29,8 +29,8 @@ def run_git(*args):
 def branch_exists_on_remote(branch_name):
   return run_git('ls-remote', '--heads', ORIGIN, branch_name).strip() != ''
 
-# Opens a PR from the given branch to the release branch
-def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, target_branch, conductor, is_v2_to_v1_backport, labels):
+# Opens a PR from the given branch to the target branch
+def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, source_branch, target_branch, conductor, is_v2_to_v1_backport, labels):
   # Sort the commits into the pull requests that introduced them,
   # and any commits that don't have a pull request
   pull_requests = []
@@ -52,7 +52,7 @@ def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, t
 
   # Start constructing the body text
   body = []
-  body.append('Merging ' + short_main_sha + ' into ' + target_branch)
+  body.append('Merging ' + source_branch_short_sha + ' into ' + target_branch)
 
   body.append('')
   body.append('Conductor for this PR is @' + conductor)
@@ -96,10 +96,10 @@ def open_pr(repo, all_commits, short_main_sha, new_branch_name, source_branch, t
   pr.add_to_assignees(conductor)
   print('Assigned PR to ' + conductor)
 
-# Gets a list of the SHAs of all commits that have happened on main
-# since the release branched off.
-# This will not include any commits that exist on the release branch
-# that aren't on main.
+# Gets a list of the SHAs of all commits that have happened on the source branch
+# since the last release to the target branch.
+# This will not include any commits that exist on the target branch
+# that aren't on the source branch.
 def get_commit_difference(repo, source_branch, target_branch):
   # Passing split nothing means that the empty string splits to nothing: compare `''.split() == []`
   # to `''.split('\n') == ['']`.
@@ -123,7 +123,7 @@ def get_truncated_commit_message(commit):
   else:
     return message
 
-# Converts a commit into the PR that introduced it to the main branch.
+# Converts a commit into the PR that introduced it to the source branch.
 # Returns the PR object, or None if no PR could be found.
 def get_pr_for_commit(repo, commit):
   prs = commit.get_pulls()
@@ -216,8 +216,8 @@ def main():
 
   # Print what we intend to go
   print('Considering difference between ' + args.source_branch + ' and ' + args.target_branch)
-  short_main_sha = run_git('rev-parse', '--short', ORIGIN + '/' + args.source_branch).strip()
-  print('Current head of ' + args.source_branch + ' is ' + short_main_sha)
+  source_branch_short_sha = run_git('rev-parse', '--short', ORIGIN + '/' + args.source_branch).strip()
+  print('Current head of ' + args.source_branch + ' is ' + source_branch_short_sha)
 
   # See if there are any commits to merge in
   commits = get_commit_difference(repo=repo, source_branch=args.source_branch, target_branch=args.target_branch)
@@ -228,7 +228,7 @@ def main():
   # The branch name is based off of the name of branch being merged into
   # and the SHA of the branch being merged from. Thus if the branch already
   # exists we can assume we don't need to recreate it.
-  new_branch_name = 'update-v' + version + '-' + short_main_sha
+  new_branch_name = 'update-v' + version + '-' + source_branch_short_sha
   print('Branch name is ' + new_branch_name)
 
   # Check if the branch already exists. If so we can abort as this script
@@ -301,7 +301,7 @@ def main():
   open_pr(
     repo,
     commits,
-    short_main_sha,
+    source_branch_short_sha,
     new_branch_name,
     source_branch=args.source_branch,
     target_branch=args.target_branch,

@@ -18,7 +18,7 @@ import { Logger } from "./logging";
 import * as toolcache from "./toolcache";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
-import { isGoodVersion } from "./util";
+import { isGoodVersion, ML_POWERED_JS_QUERIES_PACK } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -737,7 +737,23 @@ async function getCodeQLForCmd(
       }
       if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES)) {
         const configLocation = path.resolve(config.tempDir, "user-config.yaml");
-        fs.writeFileSync(configLocation, yaml.dump(config.originalUserInput));
+        const augmentedConfig = config.originalUserInput;
+        if (config.injectedMlQueries) {
+          // We need to inject the ML queries into the original user input before
+          // we pass this on to the CLI, to make sure these get run.
+          let packString = ML_POWERED_JS_QUERIES_PACK.packName;
+          if (ML_POWERED_JS_QUERIES_PACK.version)
+            packString = `${packString}@${ML_POWERED_JS_QUERIES_PACK.version}`;
+          if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
+          if (Array.isArray(augmentedConfig.packs)) {
+            augmentedConfig.packs.push(packString);
+          } else {
+            if (!augmentedConfig.packs.javascript)
+              augmentedConfig.packs["javascript"] = [];
+            augmentedConfig.packs["javascript"].push(packString);
+          }
+        }
+        fs.writeFileSync(configLocation, yaml.dump(augmentedConfig));
         extraArgs.push(`--codescanning-config=${configLocation}`);
       }
       await runTool(cmd, [

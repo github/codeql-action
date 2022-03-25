@@ -31,6 +31,7 @@ jobs:
         - os: ubuntu-latest
           version: nightly-latest
     name: Custom source root
+    timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

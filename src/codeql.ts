@@ -4,12 +4,13 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import { IHeaders } from "@actions/http-client/interfaces";
 import { default as deepEqual } from "fast-deep-equal";
+import * as yaml from "js-yaml";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
 
 import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
-import { PackWithVersion } from "./config-utils";
+import { Config, PackWithVersion } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
 import { isTracedLanguage, Language } from "./languages";
@@ -80,8 +81,7 @@ export interface CodeQL {
    * Run 'codeql database init --db-cluster'.
    */
   databaseInitCluster(
-    databasePath: string,
-    languages: Language[],
+    config: Config,
     sourceRoot: string,
     processName: string | undefined,
     processLevel: number | undefined
@@ -220,6 +220,7 @@ const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
+export const CODEQL_VERSION_CONFIG_FILES = "2.8.2"; // Versions before 2.8.2 weren't tolerant to unknown properties
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 
 /**
@@ -366,6 +367,19 @@ async function getCodeQLBundleDownloadURL(
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${CODEQL_BUNDLE_VERSION}/${codeQLBundleName}`;
 }
 
+/**
+ * Set up CodeQL CLI access.
+ *
+ * @param codeqlURL
+ * @param apiDetails
+ * @param tempDir
+ * @param toolCacheDir
+ * @param variant
+ * @param logger
+ * @param checkVersion Whether to check that CodeQL CLI meets the minimum
+ *        version requirement. Must be set to true outside tests.
+ * @returns
+ */
 export async function setupCodeQL(
   codeqlURL: string | undefined,
   apiDetails: api.GitHubApiDetails,
@@ -610,19 +624,29 @@ export async function getCodeQLForTesting(): Promise<CodeQL> {
   return getCodeQLForCmd("codeql-for-testing", false);
 }
 
+/**
+ * Return a CodeQL object for CodeQL CLI access.
+ *
+ * @param cmd Path to CodeQL CLI
+ * @param checkVersion Whether to check that CodeQL CLI meets the minimum
+ *        version requirement. Must be set to true outside tests.
+ * @returns A new CodeQL object
+ */
 async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean
 ): Promise<CodeQL> {
-  let cachedVersion: undefined | Promise<string> = undefined;
   const codeql = {
     getPath() {
       return cmd;
     },
     async getVersion() {
-      if (cachedVersion === undefined)
-        cachedVersion = runTool(cmd, ["version", "--format=terse"]);
-      return await cachedVersion;
+      let result = util.getCachedCodeQlVersion();
+      if (result === undefined) {
+        result = await runTool(cmd, ["version", "--format=terse"]);
+        util.cacheCodeQlVersion(result);
+      }
+      return result;
     },
     async printVersion() {
       await runTool(cmd, ["version", "--format=json"]);
@@ -692,26 +716,35 @@ async function getCodeQLForCmd(
       ]);
     },
     async databaseInitCluster(
-      databasePath: string,
-      languages: Language[],
+      config: Config,
       sourceRoot: string,
       processName: string | undefined,
       processLevel: number | undefined
     ) {
-      const extraArgs = languages.map((language) => `--language=${language}`);
-      if (languages.filter(isTracedLanguage).length > 0) {
+      const extraArgs = config.languages.map(
+        (language) => `--language=${language}`
+      );
+      if (config.languages.filter(isTracedLanguage).length > 0) {
         extraArgs.push("--begin-tracing");
         if (processName !== undefined) {
           extraArgs.push(`--trace-process-name=${processName}`);
         } else {
+          // We default to 3 if no other arguments are provided since this was the default
+          // behaviour of the Runner. Note this path never happens in the CodeQL Action
+          // because that always passes in a process name.
           extraArgs.push(`--trace-process-level=${processLevel || 3}`);
         }
+      }
+      if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES)) {
+        const configLocation = path.resolve(config.tempDir, "user-config.yaml");
+        fs.writeFileSync(configLocation, yaml.dump(config.originalUserInput));
+        extraArgs.push(`--codescanning-config=${configLocation}`);
       }
       await runTool(cmd, [
         "database",
         "init",
         "--db-cluster",
-        databasePath,
+        config.dbLocation,
         `--source-root=${sourceRoot}`,
         ...extraArgs,
         ...getExtraOptionsFromEnv(["database", "init"]),
@@ -864,7 +897,9 @@ async function getCodeQLForCmd(
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      codeqlArgs.push(querySuitePath);
+      if (!(await util.codeQlVersionAbove(this, CODEQL_VERSION_CONFIG_FILES))) {
+        codeqlArgs.push(querySuitePath);
+      }
       await runTool(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
@@ -899,7 +934,10 @@ async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
-      codeqlArgs.push(databasePath, ...querySuitePaths);
+      codeqlArgs.push(databasePath);
+      if (!(await util.codeQlVersionAbove(this, CODEQL_VERSION_CONFIG_FILES))) {
+        codeqlArgs.push(...querySuitePaths);
+      }
       // capture stdout, which contains analysis summaries
       return await runTool(cmd, codeqlArgs);
     },
@@ -982,6 +1020,14 @@ async function getCodeQLForCmd(
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
+  // To ensure that status reports include the CodeQL CLI version whereever
+  // possbile, we want to call getVersion(), which populates the version value
+  // used by status reporting, at the earliest opportunity. But invoking
+  // getVersion() directly here breaks tests that only pretend to create a
+  // CodeQL object. So instead we rely on the assumption that all non-test
+  // callers would set checkVersion to true, and util.codeQlVersionAbove()
+  // would call getVersion(), so the CLI version would be cached as soon as the
+  // CodeQL object is created.
   if (
     checkVersion &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))

@@ -849,7 +849,7 @@ async function addQueriesAndPacksFromWorkflow(
 // should instead be added in addition
 function shouldAddConfigFileQueries(queriesInput: string | undefined): boolean {
   if (queriesInput) {
-    return queriesInput.trimStart().substr(0, 1) === "+";
+    return queriesInput.trimStart().slice(0, 1) === "+";
   }
 
   return true;

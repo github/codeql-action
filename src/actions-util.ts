@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 
 import * as core from "@actions/core";
@@ -9,11 +10,16 @@ import * as yaml from "js-yaml";
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
 import {
+  getCachedCodeQlVersion,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
+  isGitHubGhesVersionBelow,
   isHTTPError,
   UserError,
 } from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 /**
  * The utils in this module are meant to be run inside of the action only.
@@ -608,6 +614,16 @@ export interface StatusReportBase {
   cause?: string;
   /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
+  /** Action runner operating system (context runner.os). */
+  runner_os: string;
+  /** Action runner hardware architecture (context runner.arch). */
+  runner_arch?: string;
+  /** Action runner operating system release (x.y.z from os.release()). */
+  runner_os_release?: string;
+  /** Action version (x.y.z from package.json). */
+  action_version: string;
+  /** CodeQL CLI version (x.y.z from the CLI). */
+  codeql_version?: string;
 }
 
 export function getActionsStatus(
@@ -655,6 +671,9 @@ export async function createStatusReportBase(
       workflowStartedAt
     );
   }
+  const runnerOs = getRequiredEnvParam("RUNNER_OS");
+  const codeQlCliVersion = getCachedCodeQlVersion();
+
   // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
   // See https://github.com/actions/runner/issues/803
   const actionRef = isRunningLocalAction()
@@ -674,6 +693,8 @@ export async function createStatusReportBase(
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),
     status,
+    runner_os: runnerOs,
+    action_version: pkg.version,
   };
 
   // Add optional parameters
@@ -694,6 +715,17 @@ export async function createStatusReportBase(
   const matrix = getRequiredInput("matrix");
   if (matrix) {
     statusReport.matrix_vars = matrix;
+  }
+  if ("RUNNER_ARCH" in process.env) {
+    // RUNNER_ARCH is available only in GHES 3.4 and later
+    // Values other than X86, X64, ARM, or ARM64 are discarded server side
+    statusReport.runner_arch = process.env["RUNNER_ARCH"];
+  }
+  if (runnerOs === "Windows" || runnerOs === "macOS") {
+    statusReport.runner_os_release = os.release();
+  }
+  if (codeQlCliVersion !== undefined) {
+    statusReport.codeql_version = codeQlCliVersion;
   }
 
   return statusReport;
@@ -720,6 +752,14 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S
 ): Promise<boolean> {
+  const gitHubVersion = await api.getGitHubVersionActionsOnly();
+  if (isGitHubGhesVersionBelow(gitHubVersion, "3.2.0")) {
+    // GHES 3.1 and earlier versions reject unexpected properties, which means
+    // that they will reject status reports with newly added properties.
+    // Inhibiting status reporting for GHES < 3.2 avoids such failures.
+    return true;
+  }
+
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
   // If in test mode we don't want to upload the results
@@ -830,7 +870,7 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   // Get the current ref and trim and refs/heads/ prefix
   let currentRef = await getRef();
   currentRef = currentRef.startsWith("refs/heads/")
-    ? currentRef.substr("refs/heads/".length)
+    ? currentRef.slice("refs/heads/".length)
     : currentRef;
 
   const event = getWorkflowEvent();

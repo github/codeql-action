@@ -65,6 +65,7 @@ jobs:
         - os: windows-2022
           version: nightly-latest
     name: Use a custom `checkout_path`
+    timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

@@ -220,7 +220,7 @@ const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
-const CODEQL_VERSION_CONFIG_FILES = "2.8.2"; // Versions before 2.8.2 weren't tolerant to unknown properties
+export const CODEQL_VERSION_CONFIG_FILES = "2.8.2"; // Versions before 2.8.2 weren't tolerant to unknown properties
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 
 /**

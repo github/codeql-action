@@ -91,11 +91,11 @@ To regenerate the PR jobs for the action:
     CHECKS="$(gh api repos/github/codeql-action/commits/${SHA}/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs | .[].name | select(contains("https://") or . == "CodeQL" or . == "LGTM.com" or . == "Update dependencies" or . == "Update Supported Enterprise Server Versions" | not)]')"
     echo "{\"contexts\": ${CHECKS}}" > checks.json
     gh api -X "PATCH" repos/github/codeql-action/branches/main/protection/required_status_checks --input checks.json
+    gh api -X "PATCH" repos/github/codeql-action/branches/v2/protection/required_status_checks --input checks.json
     gh api -X "PATCH" repos/github/codeql-action/branches/v1/protection/required_status_checks --input checks.json
     ````
 
 2. Go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules have been updated.
-
 
 ## Resources
 

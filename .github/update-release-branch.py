@@ -13,6 +13,12 @@ No user facing changes.
 
 """
 
+# Value of the mode flag for a v1 release
+V1_MODE = 'v1-release'
+
+# Value of the mode flag for a v2 release
+V2_MODE = 'v2-release'
+
 # Name of the remote
 ORIGIN = 'origin'
 
@@ -30,7 +36,7 @@ def branch_exists_on_remote(branch_name):
   return run_git('ls-remote', '--heads', ORIGIN, branch_name).strip() != ''
 
 # Opens a PR from the given branch to the target branch
-def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, source_branch, target_branch, conductor, is_v2_to_v1_backport, labels):
+def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, source_branch, target_branch, conductor, is_v2_release, labels):
   # Sort the commits into the pull requests that introduced them,
   # and any commits that don't have a pull request
   pull_requests = []
@@ -79,7 +85,7 @@ def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, source_
   body.append(' - [ ] The CHANGELOG includes all relevant, user-facing changes since the last release.')
   body.append(' - [ ] There are no unexpected commits being merged into the ' + target_branch + ' branch.')
   body.append(' - [ ] The docs team is aware of any documentation changes that need to be released.')
-  if not is_v2_to_v1_backport:
+  if is_v2_release:
     body.append(' - [ ] The mergeback PR is merged back into ' + source_branch + ' after this PR is merged.')
     body.append(' - [ ] The v1 release PR is merged after this PR is merged.')
 
@@ -181,16 +187,12 @@ def main():
     help='The nwo of the repository, for example github/codeql-action.'
   )
   parser.add_argument(
-    '--source-branch',
+    '--mode',
     type=str,
     required=True,
-    help='The branch being merged from, typically "main" for a v2 release or "v2" for a v1 release.'
-  )
-  parser.add_argument(
-    '--target-branch',
-    type=str,
-    required=True,
-    help='The branch being merged into, typically "v2" for a v2 release or "v1" for a v1 release.'
+    choices=[V2_MODE, V1_MODE],
+    help=f"Which release to perform. '{V2_MODE}' uses main as the source branch and v2 as the target branch. " +
+      f"'{V1_MODE}' uses v2 as the source branch and v1 as the target branch."
   )
   parser.add_argument(
     '--conductor',
@@ -198,31 +200,35 @@ def main():
     required=True,
     help='The GitHub handle of the person who is conducting the release process.'
   )
-  parser.add_argument(
-    '--perform-v2-to-v1-backport',
-    action='store_true',
-    help='Pass this flag if this release is a backport from v2 to v1.'
-  )
 
   args = parser.parse_args()
+
+  if args.mode == V2_MODE:
+    source_branch = 'main'
+    target_branch = 'v2'
+  elif args.mode == V1_MODE:
+    source_branch = 'v2'
+    target_branch = 'v1'
+  else:
+    raise ValueError(f"Unexpected value for release mode: '{args.mode}'")
 
   repo = Github(args.github_token).get_repo(args.repository_nwo)
   version = get_current_version()
 
-  if args.perform_v2_to_v1_backport:
+  if args.mode == V1_MODE:
     # Change the version number to a v1 equivalent
     version = get_current_version()
     version = f'1{version[1:]}'
 
   # Print what we intend to go
-  print('Considering difference between ' + args.source_branch + ' and ' + args.target_branch)
-  source_branch_short_sha = run_git('rev-parse', '--short', ORIGIN + '/' + args.source_branch).strip()
-  print('Current head of ' + args.source_branch + ' is ' + source_branch_short_sha)
+  print('Considering difference between ' + source_branch + ' and ' + target_branch)
+  source_branch_short_sha = run_git('rev-parse', '--short', ORIGIN + '/' + source_branch).strip()
+  print('Current head of ' + source_branch + ' is ' + source_branch_short_sha)
 
   # See if there are any commits to merge in
-  commits = get_commit_difference(repo=repo, source_branch=args.source_branch, target_branch=args.target_branch)
+  commits = get_commit_difference(repo=repo, source_branch=source_branch, target_branch=target_branch)
   if len(commits) == 0:
-    print('No commits to merge from ' + args.source_branch + ' to ' + args.target_branch)
+    print('No commits to merge from ' + source_branch + ' to ' + target_branch)
     return
 
   # The branch name is based off of the name of branch being merged into
@@ -240,7 +246,7 @@ def main():
   # Create the new branch and push it to the remote
   print('Creating branch ' + new_branch_name)
 
-  if args.perform_v2_to_v1_backport:
+  if args.mode == V1_MODE:
     # If we're performing a backport, start from the v1 branch
     print(f'Creating {new_branch_name} from the {ORIGIN}/v1 branch')
     run_git('checkout', '-b', new_branch_name, f'{ORIGIN}/v1')
@@ -267,8 +273,8 @@ def main():
     else:
       print('  Nothing to revert.')
 
-    print(f'Merging {ORIGIN}/{args.source_branch} into the release prep branch')
-    run_git('merge', f'{ORIGIN}/{args.source_branch}', '--no-edit')
+    print(f'Merging {ORIGIN}/{source_branch} into the release prep branch')
+    run_git('merge', f'{ORIGIN}/{source_branch}', '--no-edit')
 
     # Migrate the package version number from a v2 version number to a v1 version number
     print(f'Setting version number to {version}')
@@ -286,7 +292,7 @@ def main():
     # If we're performing a standard release, there won't be any new commits on the target branch,
     # as these will have already been merged back into the source branch. Therefore we can just
     # start from the source branch.
-    run_git('checkout', '-b', new_branch_name, f'{ORIGIN}/{args.source_branch}')
+    run_git('checkout', '-b', new_branch_name, f'{ORIGIN}/{source_branch}')
 
     print('Updating changelog')
     update_changelog(version)
@@ -303,11 +309,11 @@ def main():
     commits,
     source_branch_short_sha,
     new_branch_name,
-    source_branch=args.source_branch,
-    target_branch=args.target_branch,
+    source_branch=source_branch,
+    target_branch=target_branch,
     conductor=args.conductor,
-    is_v2_to_v1_backport=args.perform_v2_to_v1_backport,
-    labels=['Update dependencies'] if args.perform_v2_to_v1_backport else [],
+    is_v2_release=args.mode == V2_MODE,
+    labels=['Update dependencies'] if args.mode == V1_MODE else [],
   )
 
 if __name__ == '__main__':

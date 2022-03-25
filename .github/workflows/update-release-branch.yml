@@ -49,8 +49,7 @@ jobs:
         python .github/update-release-branch.py \
           --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
-          --source-branch main \
-          --target-branch v2 \
+          --mode release-v2 \
           --conductor ${GITHUB_ACTOR}
 
     - name: Update v1 release branch
@@ -59,7 +58,5 @@ jobs:
         python .github/update-release-branch.py \
           --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
-          --source-branch v2 \
-          --target-branch v1 \
-          --conductor ${GITHUB_ACTOR} \
-          --perform-v2-to-v1-backport
+          --mode release-v1 \
+          --conductor ${GITHUB_ACTOR}

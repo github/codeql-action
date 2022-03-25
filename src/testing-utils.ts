@@ -92,6 +92,7 @@ export function setupTests(test: TestFn<any>) {
 export function setupActionsVars(tempDir: string, toolsDir: string) {
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
+  process.env["GITHUB_WORKSPACE"] = tempDir;
 }
 
 export interface LoggedMessage {

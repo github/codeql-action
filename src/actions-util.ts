@@ -66,7 +66,10 @@ export function getToolCacheDirectory(): string {
 /**
  * Gets the SHA of the commit that is currently checked out.
  */
-export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
+export const getCommitOid = async function (
+  checkoutPath: string,
+  ref = "HEAD"
+): Promise<string> {
   // Try to use git to get the current commit SHA. If that fails then
   // log but otherwise silently fall back to using the SHA from the environment.
   // The only time these two values will differ is during analysis of a PR when
@@ -89,6 +92,7 @@ export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
             process.stderr.write(data);
           },
         },
+        cwd: checkoutPath,
       }
     ).exec();
     return commitOid.trim();
@@ -113,6 +117,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
   }
 
   const mergeSha = getRequiredEnvParam("GITHUB_SHA");
+  const checkoutPath = getOptionalInput("checkout_path");
 
   try {
     let commitOid = "";
@@ -140,6 +145,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
             process.stderr.write(data);
           },
         },
+        cwd: checkoutPath,
       }
     ).exec();
 
@@ -504,6 +510,10 @@ export async function getRef(): Promise<string> {
   // or in the form "refs/pull/N/merge" on a pull_request event
   const refInput = getOptionalInput("ref");
   const shaInput = getOptionalInput("sha");
+  const checkoutPath =
+    getOptionalInput("checkout_path") ||
+    getOptionalInput("source-root") ||
+    getRequiredEnvParam("GITHUB_WORKSPACE");
 
   const hasRefInput = !!refInput;
   const hasShaInput = !!shaInput;
@@ -532,7 +542,7 @@ export async function getRef(): Promise<string> {
     return ref;
   }
 
-  const head = await getCommitOid("HEAD");
+  const head = await getCommitOid(checkoutPath, "HEAD");
 
   // in actions/checkout@v2 we can check if git rev-parse HEAD == GITHUB_SHA
   // in actions/checkout@v1 this may not be true as it checks out the repository
@@ -541,8 +551,10 @@ export async function getRef(): Promise<string> {
   // git git-parse GITHUB_REF == git rev-parse HEAD instead.
   const hasChangedRef =
     sha !== head &&
-    (await getCommitOid(ref.replace(/^refs\/pull\//, "refs/remotes/pull/"))) !==
-      head;
+    (await getCommitOid(
+      checkoutPath,
+      ref.replace(/^refs\/pull\//, "refs/remotes/pull/")
+    )) !== head;
 
   if (hasChangedRef) {
     const newRef = ref.replace(pull_ref_regex, "refs/pull/$1/head");

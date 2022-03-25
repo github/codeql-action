@@ -9,6 +9,7 @@ on:
 
 jobs:
   update:
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     if: ${{ github.repository == 'github/codeql-action' }}
     steps:

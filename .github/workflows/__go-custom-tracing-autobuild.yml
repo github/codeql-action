@@ -49,6 +49,7 @@ jobs:
         - os: macos-latest
           version: nightly-latest
     name: 'Go: Autobuild custom tracing'
+    timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

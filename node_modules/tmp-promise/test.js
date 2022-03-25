@@ -1,7 +1,8 @@
+'use strict';
+
 const fs = require('fs')
-const {promisify} = require('util')
 const assert = require('assert')
-const {extname} = require('path')
+const { extname } = require('path')
 
 const tmp = require('.')
 

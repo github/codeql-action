@@ -29,6 +29,7 @@ jobs:
         - os: macos-latest
           version: nightly-20210831
     name: 'Packaging: Config file'
+    timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository

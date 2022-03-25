@@ -20,6 +20,6 @@ jobs:
         run: |
           bundle_version="$(cat "./src/defaults.json" | jq -r ".bundleVersion")"
           set -x
-          for expected_file in "codeql-bundle.tar.gz" "codeql-bundle-linux64.tar.gz" "codeql-bundle-osx64.tar.gz" "codeql-bundle-win64.tar.gz" "codeql-runner-linux" "codeql-runner-macos" "codeql-runner-win.exe"; do
+          for expected_file in "codeql-bundle.tar.gz" "codeql-bundle-linux64.tar.gz" "codeql-bundle-osx64.tar.gz" "codeql-bundle-win64.tar.gz"; do
             curl --location --fail --head --request GET "https://github.com/github/codeql-action/releases/download/$bundle_version/$expected_file" > /dev/null
           done

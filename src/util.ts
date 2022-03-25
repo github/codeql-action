@@ -594,6 +594,29 @@ export function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }
 
+export function isGitHubGhesVersionBelow(
+  gitHubVersion: GitHubVersion,
+  expectedVersion: string
+): boolean {
+  return (
+    gitHubVersion.type === GitHubVariant.GHES &&
+    semver.lt(gitHubVersion.version, expectedVersion)
+  );
+}
+
+let cachedCodeQlVersion: undefined | string = undefined;
+
+export function cacheCodeQlVersion(version: string): void {
+  if (cachedCodeQlVersion !== undefined) {
+    throw new Error("cacheCodeQlVersion() should be called only once");
+  }
+  cachedCodeQlVersion = version;
+}
+
+export function getCachedCodeQlVersion(): undefined | string {
+  return cachedCodeQlVersion;
+}
+
 export async function codeQlVersionAbove(
   codeql: CodeQL,
   requiredVersion: string
@@ -636,7 +659,7 @@ export function isGoodVersion(versionSpec: string) {
  */
 export const ML_POWERED_JS_QUERIES_PACK: PackWithVersion = {
   packName: "codeql/javascript-experimental-atm-queries",
-  version: "~0.0.2",
+  version: "~0.1.0",
 };
 
 /**

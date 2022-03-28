@@ -24,8 +24,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
+    strategy:
+      fail-fast: true
+      matrix:
+        node-types-version: [12.12, current]
+
     steps:
       - uses: actions/checkout@v2
+
+      - name: Update version of @types/node
+        if: matrix.node-types-version != 'current'
+        env:
+          NODE_TYPES_VERSION: ${{ matrix.node-types-version }}
+        run: |
+          export NODE_TYPES_VERSION="${NODE_TYPES_VERSION}"
+          contents=$(jq '.devDependencies."@types/node" = env.NODE_TYPES_VERSION' package.json)
+          echo "${contents}" > package.json
+          # Usually we need to run `npm install` on macOS, however we're not checking in the result
+          # here, so it's fine to run on Linux.
+          npm install
+
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions[bot]"
+          git add --all
+          git commit -am "Use @types/node=${NODE_TYPES_VERSION}"
+
       - name: Check generated JS
         run: .github/workflows/script/check-js.sh
 

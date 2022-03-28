@@ -37,11 +37,13 @@ jobs:
         env:
           NODE_TYPES_VERSION: ${{ matrix.node-types-version }}
         run: |
+          # Export `NODE_TYPES_VERSION` so it's available to jq
           export NODE_TYPES_VERSION="${NODE_TYPES_VERSION}"
           contents=$(jq '.devDependencies."@types/node" = env.NODE_TYPES_VERSION' package.json)
           echo "${contents}" > package.json
-          # Usually we need to run `npm install` on macOS, however we're not checking in the result
-          # here, so it's fine to run on Linux.
+          # Usually we run `npm install` on macOS to ensure that we pick up macOS-only dependencies.
+          # However we're not checking in the updated lockfile here, so it's fine to run
+          # `npm install` on Linux.
           npm install
 
           git config --global user.email "github-actions@github.com"

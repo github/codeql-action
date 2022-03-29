@@ -48,8 +48,9 @@ jobs:
 
           git config --global user.email "github-actions@github.com"
           git config --global user.name "github-actions[bot]"
-          git add --all
-          git commit -am "Use @types/node=${NODE_TYPES_VERSION}"
+          # The period in `git add --all .` ensures that we stage deleted files too.
+          git add --all .
+          git commit -m "Use @types/node=${NODE_TYPES_VERSION}"
 
       - name: Check generated JS
         run: .github/workflows/script/check-js.sh

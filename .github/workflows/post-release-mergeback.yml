@@ -34,8 +34,8 @@ jobs:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
         run: echo "$GITHUB_CONTEXT"
 
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
 
       - name: Update git config
         run: |

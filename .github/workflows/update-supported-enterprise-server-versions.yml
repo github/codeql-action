@@ -13,13 +13,13 @@ jobs:
 
     steps:
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: "3.7"
       - name: Checkout CodeQL Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Checkout Enterprise Releases
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: github/enterprise-releases
           ssh-key: ${{ secrets.ENTERPRISE_RELEASES_SSH_KEY }}

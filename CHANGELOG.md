@@ -4,6 +4,7 @@
 
 - [v2+ only] The CodeQL Action now runs on Node.js v16. [#1000](https://github.com/github/codeql-action/pull/1000)
 - Update default CodeQL bundle version to 2.8.4. [#990](https://github.com/github/codeql-action/pull/990)
+- The `analyze` and `upload-sarif` actions will now wait up to 2 minutes for processing to complete after they have uploaded the results so they can report any processing errors that occurred. This behavior can be disabled by setting the `wait-for-processing` action input to `"false"`. [#1007](https://github.com/github/codeql-action/pull/1007)
 
 ## 1.1.5 - 15 Mar 2022
 

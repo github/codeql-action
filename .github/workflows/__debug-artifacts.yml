@@ -71,7 +71,7 @@ jobs:
       run: ./build.sh
     - uses: ./../action/analyze
       id: analysis
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: my-debug-artifacts-${{ matrix.os }}-${{ matrix.version }}
     - shell: bash

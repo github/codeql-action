@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run Lint
         run: npm run-script lint
 
@@ -30,7 +30,7 @@ jobs:
         node-types-version: [12.12, current]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Update version of @types/node
         if: matrix.node-types-version != 'current'
@@ -63,7 +63,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Check node modules up to date
         run: .github/workflows/script/check-node-modules.sh
 
@@ -73,7 +73,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -95,7 +95,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: npm run-script test
         run: npm run-script test
 
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Build runner
         run: |
@@ -135,7 +135,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Build runner
         run: |
@@ -160,7 +160,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Build runner
         run: |
@@ -185,7 +185,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Move codeql-action
         shell: bash
@@ -225,7 +225,7 @@ jobs:
     runs-on: windows-2019
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Move codeql-action
         shell: bash
@@ -271,7 +271,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Move codeql-action
         shell: bash
@@ -310,7 +310,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Move codeql-action
         shell: bash
@@ -349,7 +349,7 @@ jobs:
     runs-on: windows-2019
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Move codeql-action
         shell: bash
@@ -387,7 +387,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Move codeql-action
         shell: bash
@@ -427,7 +427,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Build runner
         run: |
@@ -448,7 +448,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Build runner
         run: |

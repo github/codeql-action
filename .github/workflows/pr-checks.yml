@@ -46,11 +46,13 @@ jobs:
           # `npm install` on Linux.
           npm install
 
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "github-actions[bot]"
-          # The period in `git add --all .` ensures that we stage deleted files too.
-          git add --all .
-          git commit -m "Use @types/node=${NODE_TYPES_VERSION}"
+          if [ ! -z "$(git status --porcelain)" ]; then
+            git config --global user.email "github-actions@github.com"
+            git config --global user.name "github-actions[bot]"
+            # The period in `git add --all .` ensures that we stage deleted files too.
+            git add --all .
+            git commit -m "Use @types/node=${NODE_TYPES_VERSION}"
+          fi
 
       - name: Check generated JS
         run: .github/workflows/script/check-js.sh

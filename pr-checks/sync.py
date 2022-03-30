@@ -49,7 +49,7 @@ for file in os.listdir('checks'):
     steps = [
         {
             'name': 'Check out repository',
-            'uses': 'actions/checkout@v2'
+            'uses': 'actions/checkout@v3'
         },
         {
             'name': 'Prepare test',

@@ -147,6 +147,10 @@ export interface Config {
    * Specifies the name of the database in the debugging artifact.
    */
   debugDatabaseName: string;
+  /**
+   * Whether we injected ML queries into this configuration.
+   */
+  injectedMlQueries: boolean;
 }
 
 export type Packs = Partial<Record<Language, PackWithVersion[]>>;
@@ -274,6 +278,7 @@ const builtinSuites = ["security-extended", "security-and-quality"] as const;
 /**
  * Determine the set of queries associated with suiteName's suites and add them to resultMap.
  * Throws an error if suiteName is not a valid builtin suite.
+ * May inject ML queries, and the return value will declare if this was done.
  */
 async function addBuiltinSuiteQueries(
   languages: string[],
@@ -283,7 +288,8 @@ async function addBuiltinSuiteQueries(
   suiteName: string,
   featureFlags: FeatureFlags,
   configFile?: string
-) {
+): Promise<boolean> {
+  let injectedMlQueries = false;
   const found = builtinSuites.find((suite) => suite === suiteName);
   if (!found) {
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
@@ -305,10 +311,12 @@ async function addBuiltinSuiteQueries(
       packs.javascript = [];
     }
     packs.javascript.push(ML_POWERED_JS_QUERIES_PACK);
+    injectedMlQueries = true;
   }
 
   const suites = languages.map((l) => `${l}-${suiteName}.qls`);
   await runResolveQueries(codeQL, resultMap, suites, undefined);
+  return injectedMlQueries;
 }
 
 /**
@@ -410,6 +418,11 @@ async function addRemoteQueries(
  * parsing the 'uses' actions in the workflow file. So it can handle
  * local paths starting with './', or references to remote repos, or
  * a finite set of hardcoded terms for builtin suites.
+ *
+ * This may inject ML queries into the packs to use, and the return value will
+ * declare if this was done.
+ *
+ * @returns whether or not we injected ML queries into the packs
  */
 async function parseQueryUses(
   languages: string[],
@@ -423,7 +436,7 @@ async function parseQueryUses(
   featureFlags: FeatureFlags,
   logger: Logger,
   configFile?: string
-) {
+): Promise<boolean> {
   queryUses = queryUses.trim();
   if (queryUses === "") {
     throw new Error(getQueryUsesInvalid(configFile));
@@ -438,12 +451,12 @@ async function parseQueryUses(
       workspacePath,
       configFile
     );
-    return;
+    return false;
   }
 
   // Check for one of the builtin suites
   if (queryUses.indexOf("/") === -1 && queryUses.indexOf("@") === -1) {
-    await addBuiltinSuiteQueries(
+    return await addBuiltinSuiteQueries(
       languages,
       codeQL,
       resultMap,
@@ -452,7 +465,6 @@ async function parseQueryUses(
       featureFlags,
       configFile
     );
-    return;
   }
 
   // Otherwise, must be a reference to another repo
@@ -465,6 +477,7 @@ async function parseQueryUses(
     logger,
     configFile
   );
+  return false;
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -822,13 +835,14 @@ async function addQueriesAndPacksFromWorkflow(
   apiDetails: api.GitHubApiExternalRepoDetails,
   featureFlags: FeatureFlags,
   logger: Logger
-) {
+): Promise<boolean> {
+  let injectedMlQueries = false;
   queriesInput = queriesInput.trim();
   // "+" means "don't override config file" - see shouldAddConfigFileQueries
   queriesInput = queriesInput.replace(/^\+/, "");
 
   for (const query of queriesInput.split(",")) {
-    await parseQueryUses(
+    const didInject = await parseQueryUses(
       languages,
       codeQL,
       resultMap,
@@ -840,7 +854,9 @@ async function addQueriesAndPacksFromWorkflow(
       featureFlags,
       logger
     );
+    injectedMlQueries = injectedMlQueries || didInject;
   }
+  return injectedMlQueries;
 }
 
 // Returns true if either no queries were provided in the workflow.
@@ -849,7 +865,7 @@ async function addQueriesAndPacksFromWorkflow(
 // should instead be added in addition
 function shouldAddConfigFileQueries(queriesInput: string | undefined): boolean {
   if (queriesInput) {
-    return queriesInput.trimStart().substr(0, 1) === "+";
+    return queriesInput.trimStart().slice(0, 1) === "+";
   }
 
   return true;
@@ -892,8 +908,9 @@ export async function getDefaultConfig(
   }
   await addDefaultQueries(codeQL, languages, queries);
   const packs = parsePacksFromInput(packsInput, languages) ?? {};
+  let injectedMlQueries = false;
   if (queriesInput) {
-    await addQueriesAndPacksFromWorkflow(
+    injectedMlQueries = await addQueriesAndPacksFromWorkflow(
       codeQL,
       queriesInput,
       languages,
@@ -922,6 +939,7 @@ export async function getDefaultConfig(
     debugMode,
     debugArtifactName,
     debugDatabaseName,
+    injectedMlQueries,
   };
 }
 
@@ -1008,8 +1026,9 @@ async function loadConfig(
   // they should take precedence over the queries in the config file
   // unless they're prefixed with "+", in which case they supplement those
   // in the config file.
+  let injectedMlQueries = false;
   if (queriesInput) {
-    await addQueriesAndPacksFromWorkflow(
+    injectedMlQueries = await addQueriesAndPacksFromWorkflow(
       codeQL,
       queriesInput,
       languages,
@@ -1101,6 +1120,7 @@ async function loadConfig(
     debugMode,
     debugArtifactName,
     debugDatabaseName,
+    injectedMlQueries,
   };
 }
 

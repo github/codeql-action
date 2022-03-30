@@ -122,6 +122,7 @@ test("status report fields and search path setting", async (t) => {
         debugMode: false,
         debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
         debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
+        injectedMlQueries: false,
       };
       fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
         recursive: true,

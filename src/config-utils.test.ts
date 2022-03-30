@@ -1788,7 +1788,7 @@ const mlPoweredQueriesMacro = test.macro({
     }`,
 });
 
-// macro, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, versionString
+// macro, codeQLVersion, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, expectedVersionString
 test(
   mlPoweredQueriesMacro,
   "2.7.4",
@@ -1812,7 +1812,7 @@ test(
   true,
   undefined,
   "security-extended",
-  "~0.1.0"
+  process.platform === "win32" ? undefined : "~0.1.0"
 );
 test(
   mlPoweredQueriesMacro,
@@ -1820,7 +1820,7 @@ test(
   true,
   undefined,
   "security-and-quality",
-  "~0.1.0"
+  process.platform === "win32" ? undefined : "~0.1.0"
 );
 test(
   mlPoweredQueriesMacro,
@@ -1828,5 +1828,5 @@ test(
   true,
   "codeql/javascript-experimental-atm-queries@0.0.1",
   "security-and-quality",
-  "0.0.1"
+  process.platform === "win32" ? undefined : "0.0.1"
 );

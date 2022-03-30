@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: 3.8
       - name: Install dependencies
@@ -253,7 +253,7 @@ jobs:
           & $Env:CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
 
       - name: Upload tracer logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: tracer-logs
           path: ./codeql-runner/compound-build-tracer.log

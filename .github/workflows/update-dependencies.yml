@@ -6,7 +6,7 @@ on:
 jobs:
   update:
     name: Update dependencies
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: macos-latest
     if: contains(github.event.pull_request.labels.*.name, 'Update dependencies') && (github.event.pull_request.head.repo.full_name == 'github/codeql-action')
     steps:

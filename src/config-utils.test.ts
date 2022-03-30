@@ -357,6 +357,7 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
+      injectedMlQueries: false,
     };
 
     const languages = "javascript";

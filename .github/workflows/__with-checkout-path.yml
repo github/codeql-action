@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: "PR Check - Upload-sarif: 'ref' and 'sha' from inputs"
+name: PR Check - Use a custom `checkout_path`
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -20,7 +20,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  upload-ref-sha-input:
+  with-checkout-path:
     strategy:
       matrix:
         include:
@@ -64,7 +64,7 @@ jobs:
           version: nightly-latest
         - os: windows-2022
           version: nightly-latest
-    name: "Upload-sarif: 'ref' and 'sha' from inputs"
+    name: Use a custom `checkout_path`
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -75,27 +75,71 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
+    - uses: actions/checkout@v2
+      with:
+        ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
+        path: x/y/z/some-path
     - uses: ./../action/init
       with:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-        languages: cpp,csharp,java,javascript,python
-        config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
-          github.sha }}
-    - name: Build code
+      # it's enough to test one compiled language and one interpreted language
+        languages: csharp,javascript
+        source-path: x/y/z/some-path/tests/multi-language-repo
+        debug: true
+    - name: Build code (non-windows)
       shell: bash
-      run: ./build.sh
+      if: ${{ runner.os != 'Windows' }}
+      run: |
+        $CODEQL_RUNNER x/y/z/some-path/tests/multi-language-repo/build.sh
+    - name: Build code (windows)
+      shell: bash
+      if: ${{ runner.os == 'Windows' }}
+      run: |
+        x/y/z/some-path/tests/multi-language-repo/build.sh
     - uses: ./../action/analyze
       with:
-        ref: refs/heads/main
-        sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+        checkout_path: x/y/z/some-path/tests/multi-language-repo
+        ref: v1.1.0
+        sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
         upload: false
       env:
         TEST_MODE: true
+
     - uses: ./../action/upload-sarif
       with:
-        ref: refs/heads/main
-        sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+        ref: v1.1.0
+        sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
+        checkout_path: x/y/z/some-path/tests/multi-language-repo
       env:
         TEST_MODE: true
+
+    - name: Verify SARIF after upload
+      shell: bash
+      run: |
+        EXPECTED_COMMIT_OID="474bbf07f9247ffe1856c6a0f94aeeb10e7afee6"
+        EXPECTED_REF="v1.1.0"
+        EXPECTED_CHECKOUT_URI_SUFFIX="/x/y/z/some-path/tests/multi-language-repo"
+
+        ACTUAL_COMMIT_OID="$(cat "$RUNNER_TEMP/payload.json" | jq -r .commit_oid)"
+        ACTUAL_REF="$(cat "$RUNNER_TEMP/payload.json" | jq -r .ref)"
+        ACTUAL_CHECKOUT_URI="$(cat "$RUNNER_TEMP/payload.json" | jq -r .checkout_uri)"
+
+        if [[ "$EXPECTED_COMMIT_OID" != "$ACTUAL_COMMIT_OID" ]]; then
+          echo "::error Invalid commit oid. Expected: $EXPECTED_COMMIT_OID Actual: $ACTUAL_COMMIT_OID"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
+
+        if [[ "$EXPECTED_REF" != "$ACTUAL_REF" ]]; then
+          echo "::error Invalid ref. Expected: '$EXPECTED_REF' Actual: '$ACTUAL_REF'"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
+
+        if [[ "$ACTUAL_CHECKOUT_URI" != *$EXPECTED_CHECKOUT_URI_SUFFIX ]]; then
+          echo "::error Invalid checkout URI suffix. Expected suffix: $EXPECTED_CHECKOUT_URI_SUFFIX Actual uri: $ACTUAL_CHECKOUT_URI"
+          echo "$RUNNER_TEMP/payload.json"
+          exit 1
+        fi
     env:
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

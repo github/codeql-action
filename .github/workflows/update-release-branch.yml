@@ -1,18 +1,28 @@
 name: Update release branch
 on:
-  repository_dispatch:
-    # Example of how to trigger this:
-    # curl -H "Authorization: Bearer <token>" -X POST https://api.github.com/repos/github/codeql-action/dispatches -d '{"event_type":"update-release-branch"}'
-    # Replace <token> with a personal access token from this page: https://github.com/settings/tokens
-    types: [update-release-branch]
+  # You can trigger this workflow via workflow dispatch to start a release.
+  # This will open a PR to update the v2 release branch.
   workflow_dispatch:
+
+  # When the v2 release is complete, this workflow will open a PR to update the v1 release branch.
+  push:
+    branches:
+      - v2
 
 jobs:
   update:
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: ubuntu-latest
-    if: ${{ github.repository == 'github/codeql-action' }}
+    if: github.repository == 'github/codeql-action'
     steps:
+    - name: Dump environment
+      run: env
+
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: '${{ toJson(github) }}'
+      run: echo "$GITHUB_CONTEXT"
+
     - uses: actions/checkout@v2
       with:
         # Need full history so we calculate diffs
@@ -33,5 +43,20 @@ jobs:
         git config --global user.email "github-actions@github.com"
         git config --global user.name "github-actions[bot]"
 
-    - name: Update release branch
-      run: python .github/update-release-branch.py ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }}
+    - name: Update v2 release branch
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        python .github/update-release-branch.py \
+          --github-token ${{ secrets.GITHUB_TOKEN }} \
+          --repository-nwo ${{ github.repository }} \
+          --mode v2-release \
+          --conductor ${GITHUB_ACTOR}
+
+    - name: Update v1 release branch
+      if: github.event_name == 'push'
+      run: |
+        python .github/update-release-branch.py \
+          --github-token ${{ secrets.GITHUB_TOKEN }} \
+          --repository-nwo ${{ github.repository }} \
+          --mode v1-release \
+          --conductor ${GITHUB_ACTOR}

@@ -75,7 +75,7 @@ jobs:
         TEST_MODE: true
 
     - name: Upload SARIF
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ml-powered-queries-${{ matrix.os }}-${{ matrix.version }}.sarif.json
         path: ${{ runner.temp }}/results/javascript.sarif

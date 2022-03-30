@@ -1788,7 +1788,8 @@ const mlPoweredQueriesMacro = test.macro({
     }`,
 });
 
-// macro, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, versionString
+// macro, codeQLVersion, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, expectedVersionString
+// Test that ML-powered queries aren't run on v2.7.4 of the CLI.
 test(
   mlPoweredQueriesMacro,
   "2.7.4",
@@ -1797,6 +1798,7 @@ test(
   "security-extended",
   undefined
 );
+// Test that ML-powered queries aren't run when the feature flag is off.
 test(
   mlPoweredQueriesMacro,
   "2.7.5",
@@ -1805,28 +1807,33 @@ test(
   "security-extended",
   undefined
 );
+// Test that ML-powered queries aren't run when the user hasn't specified that we should run the
+// `security-extended` or `security-and-quality` query suite.
 test(mlPoweredQueriesMacro, "2.7.5", true, undefined, undefined, undefined);
+// Test that ML-powered queries are run on non-Windows platforms running `security-extended`.
 test(
   mlPoweredQueriesMacro,
   "2.7.5",
   true,
   undefined,
   "security-extended",
-  "~0.1.0"
+  process.platform === "win32" ? undefined : "~0.1.0"
 );
+// Test that ML-powered queries are run on non-Windows platforms running `security-and-quality`.
 test(
   mlPoweredQueriesMacro,
   "2.7.5",
   true,
   undefined,
   "security-and-quality",
-  "~0.1.0"
+  process.platform === "win32" ? undefined : "~0.1.0"
 );
+// Test that we don't inject an ML-powered query pack if the user has already specified one.
 test(
   mlPoweredQueriesMacro,
   "2.7.5",
   true,
   "codeql/javascript-experimental-atm-queries@0.0.1",
   "security-and-quality",
-  "0.0.1"
+  process.platform === "win32" ? undefined : "0.0.1"
 );

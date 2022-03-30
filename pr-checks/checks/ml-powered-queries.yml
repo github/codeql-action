@@ -1,0 +1,67 @@
+name: "ML-powered queries"
+description: "Tests that ML-powered queries are run with the security-extended suite and that they produce alerts on a test DB"
+versions: [
+    # Latest release in 2.7.x series
+    "stable-20220120",
+    "cached",
+    "latest",
+    "nightly-latest",
+  ]
+# Test on all three platforms since ML-powered queries use native code
+os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: javascript
+      queries: security-extended
+      source-root: ./../action/tests/ml-powered-queries-repo
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+      upload-database: false
+    env:
+      TEST_MODE: true
+
+  - name: Upload SARIF
+    uses: actions/upload-artifact@v2
+    with:
+      name: ml-powered-queries-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+      path: "${{ runner.temp }}/results/javascript.sarif"
+      retention-days: 7
+
+  - name: Check results
+    env:
+      IS_WINDOWS: ${{ matrix.os == 'windows-latest' }}
+    shell: bash
+    run: |
+      cd "$RUNNER_TEMP/results"
+      # We should run at least the ML-powered queries in `expected_rules`.
+      expected_rules="js/ml-powered/nosql-injection js/ml-powered/path-injection js/ml-powered/sql-injection js/ml-powered/xss"
+
+      for rule in ${expected_rules}; do
+        found_rule=$(jq --arg rule "${rule}" '[.runs[0].tool.extensions[].rules | select(. != null) |
+          flatten | .[].id] | any(. == $rule)' javascript.sarif)
+        echo "Did find rule '${rule}': ${found_rule}"
+        if [[ "${found_rule}" != "true" && "${IS_WINDOWS}" != "true" ]]; then
+          echo "Expected SARIF output to contain rule '${rule}', but found no such rule."
+          exit 1
+        elif [[ "${found_rule}" == "true" && "${IS_WINDOWS}" == "true" ]]; then
+          echo "Found rule '${rule}' in the SARIF output which shouldn't have been part of the analysis."
+          exit 1
+        fi
+      done
+
+      # We should have at least one alert from an ML-powered query.
+      num_alerts=$(jq '[.runs[0].results[] |
+        select(.properties.score != null and (.rule.id | startswith("js/ml-powered/")))] | length' \
+        javascript.sarif)
+      echo "Found ${num_alerts} alerts from ML-powered queries.";
+      if [[ "${num_alerts}" -eq 0 && "${IS_WINDOWS}" != "true" ]]; then
+        echo "Expected to find at least one alert from an ML-powered query but found ${num_alerts}."
+        exit 1
+      elif [[ "${num_alerts}" -ne 0 && "${IS_WINDOWS}" == "true" ]]; then
+        echo "Expected not to find any alerts from an ML-powered query but found ${num_alerts}."
+        exit 1
+      fi

@@ -299,6 +299,8 @@ async function addBuiltinSuiteQueries(
   // opted into the ML-powered queries beta, and a user hasn't already added the ML-powered query
   // pack, then add the ML-powered query pack so that we run ML-powered queries.
   if (
+    // Disable ML-powered queries on Windows
+    process.platform !== "win32" &&
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
     !packs.javascript?.some(

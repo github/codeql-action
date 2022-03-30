@@ -56,7 +56,7 @@ jobs:
 
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v1
+        uses: github/codeql-action/init@v2
         # Override language selection by uncommenting this and choosing your languages
         # with:
         #   languages: go, javascript, csharp, python, cpp, java
@@ -64,7 +64,7 @@ jobs:
       # Autobuild attempts to build any compiled languages (C/C++, C#, or Java).
       # If this step fails, then you should remove it and run the build manually (see below).
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v1
+        uses: github/codeql-action/autobuild@v2
 
       # ℹ️ Command-line programs to run using the OS shell.
       # 📚 https://git.io/JvXDl
@@ -78,14 +78,14 @@ jobs:
       #     make release
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v1
+        uses: github/codeql-action/analyze@v2
 ```
 
 If you prefer to integrate this within an existing CI workflow, it should end up looking something like this:
 
 ```yaml
 - name: Initialize CodeQL
-  uses: github/codeql-action/init@v1
+  uses: github/codeql-action/init@v2
   with:
     languages: go, javascript
 
@@ -95,7 +95,7 @@ If you prefer to integrate this within an existing CI workflow, it should end up
     make release
 
 - name: Perform CodeQL Analysis
-  uses: github/codeql-action/analyze@v1
+  uses: github/codeql-action/analyze@v2
 ```
 
 ### Configuration file
@@ -103,7 +103,7 @@ If you prefer to integrate this within an existing CI workflow, it should end up
 Use the `config-file` parameter of the `init` action to enable the configuration file. The value of `config-file` is the path to the configuration file you want to use. This example loads the configuration file `./.github/codeql/codeql-config.yml`.
 
 ```yaml
-- uses: github/codeql-action/init@v1
+- uses: github/codeql-action/init@v2
   with:
     config-file: ./.github/codeql/codeql-config.yml
 ```
@@ -111,7 +111,7 @@ Use the `config-file` parameter of the `init` action to enable the configuration
 The configuration file can be located in a different repository. This is useful if you want to share the same configuration across multiple repositories. If the configuration file is in a private repository you can also specify an `external-repository-token` option. This should be a personal access token that has read access to any repositories containing referenced config files and queries.
 
 ```yaml
-- uses: github/codeql-action/init@v1
+- uses: github/codeql-action/init@v2
   with:
     config-file: owner/repo/codeql-config.yml@branch
     external-repository-token: ${{ secrets.EXTERNAL_REPOSITORY_TOKEN }}
@@ -122,7 +122,7 @@ For information on how to write a configuration file, see "[Using a custom confi
 If you only want to customise the queries used, you can specify them in your workflow instead of creating a config file, using the `queries` property of the `init` action:
 
 ```yaml
-- uses: github/codeql-action/init@v1
+- uses: github/codeql-action/init@v2
   with:
     queries: <local-or-remote-query>,<another-query>
 ```
@@ -130,7 +130,7 @@ If you only want to customise the queries used, you can specify them in your wor
 By default, this will override any queries specified in a config file. If you wish to use both sets of queries, prefix the list of queries in the workflow with `+`:
 
 ```yaml
-- uses: github/codeql-action/init@v1
+- uses: github/codeql-action/init@v2
   with:
     queries: +<local-or-remote-query>,<another-query>
 ```

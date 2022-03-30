@@ -1,5 +1,11 @@
 # CodeQL Action Changelog
 
+## 2.1.6 - 30 Mar 2022
+
+- [v2+ only] The CodeQL Action now runs on Node.js v16. [#1000](https://github.com/github/codeql-action/pull/1000)
+- Update default CodeQL bundle version to 2.8.4. [#990](https://github.com/github/codeql-action/pull/990)
+- Fix a bug where an invalid `commit_oid` was being sent to code scanning when a custom checkout path was being used. [#956](https://github.com/github/codeql-action/pull/956)
+
 ## 1.1.5 - 15 Mar 2022
 
 - Update default CodeQL bundle version to 2.8.3.
@@ -15,7 +21,7 @@
 
 ## 1.1.3 - 23 Feb 2022
 
-- Fix bug where the CLR traces can continue tracing even after tracing should be stopped. [#938](https://github.com/github/codeql-action/pull/938)
+- Fix a bug where the CLR traces can continue tracing even after tracing should be stopped. [#938](https://github.com/github/codeql-action/pull/938)
 
 ## 1.1.2 - 17 Feb 2022
 

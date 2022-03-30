@@ -10,12 +10,16 @@ import * as yaml from "js-yaml";
 import * as api from "./api-client";
 import * as sharedEnv from "./shared-environment";
 import {
+  getCachedCodeQlVersion,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
   isGitHubGhesVersionBelow,
   isHTTPError,
   UserError,
 } from "./util";
+
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
 
 /**
  * The utils in this module are meant to be run inside of the action only.
@@ -62,7 +66,10 @@ export function getToolCacheDirectory(): string {
 /**
  * Gets the SHA of the commit that is currently checked out.
  */
-export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
+export const getCommitOid = async function (
+  checkoutPath: string,
+  ref = "HEAD"
+): Promise<string> {
   // Try to use git to get the current commit SHA. If that fails then
   // log but otherwise silently fall back to using the SHA from the environment.
   // The only time these two values will differ is during analysis of a PR when
@@ -85,6 +92,7 @@ export const getCommitOid = async function (ref = "HEAD"): Promise<string> {
             process.stderr.write(data);
           },
         },
+        cwd: checkoutPath,
       }
     ).exec();
     return commitOid.trim();
@@ -109,6 +117,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
   }
 
   const mergeSha = getRequiredEnvParam("GITHUB_SHA");
+  const checkoutPath = getOptionalInput("checkout_path");
 
   try {
     let commitOid = "";
@@ -136,6 +145,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
             process.stderr.write(data);
           },
         },
+        cwd: checkoutPath,
       }
     ).exec();
 
@@ -500,6 +510,10 @@ export async function getRef(): Promise<string> {
   // or in the form "refs/pull/N/merge" on a pull_request event
   const refInput = getOptionalInput("ref");
   const shaInput = getOptionalInput("sha");
+  const checkoutPath =
+    getOptionalInput("checkout_path") ||
+    getOptionalInput("source-root") ||
+    getRequiredEnvParam("GITHUB_WORKSPACE");
 
   const hasRefInput = !!refInput;
   const hasShaInput = !!shaInput;
@@ -528,7 +542,7 @@ export async function getRef(): Promise<string> {
     return ref;
   }
 
-  const head = await getCommitOid("HEAD");
+  const head = await getCommitOid(checkoutPath, "HEAD");
 
   // in actions/checkout@v2 we can check if git rev-parse HEAD == GITHUB_SHA
   // in actions/checkout@v1 this may not be true as it checks out the repository
@@ -537,8 +551,10 @@ export async function getRef(): Promise<string> {
   // git git-parse GITHUB_REF == git rev-parse HEAD instead.
   const hasChangedRef =
     sha !== head &&
-    (await getCommitOid(ref.replace(/^refs\/pull\//, "refs/remotes/pull/"))) !==
-      head;
+    (await getCommitOid(
+      checkoutPath,
+      ref.replace(/^refs\/pull\//, "refs/remotes/pull/")
+    )) !== head;
 
   if (hasChangedRef) {
     const newRef = ref.replace(pull_ref_regex, "refs/pull/$1/head");
@@ -604,6 +620,10 @@ export interface StatusReportBase {
   runner_arch?: string;
   /** Action runner operating system release (x.y.z from os.release()). */
   runner_os_release?: string;
+  /** Action version (x.y.z from package.json). */
+  action_version: string;
+  /** CodeQL CLI version (x.y.z from the CLI). */
+  codeql_version?: string;
 }
 
 export function getActionsStatus(
@@ -652,6 +672,7 @@ export async function createStatusReportBase(
     );
   }
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
+  const codeQlCliVersion = getCachedCodeQlVersion();
 
   // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
   // See https://github.com/actions/runner/issues/803
@@ -673,6 +694,7 @@ export async function createStatusReportBase(
     action_started_at: actionStartedAt.toISOString(),
     status,
     runner_os: runnerOs,
+    action_version: pkg.version,
   };
 
   // Add optional parameters
@@ -701,6 +723,9 @@ export async function createStatusReportBase(
   }
   if (runnerOs === "Windows" || runnerOs === "macOS") {
     statusReport.runner_os_release = os.release();
+  }
+  if (codeQlCliVersion !== undefined) {
+    statusReport.codeql_version = codeQlCliVersion;
   }
 
   return statusReport;
@@ -845,7 +870,7 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   // Get the current ref and trim and refs/heads/ prefix
   let currentRef = await getRef();
   currentRef = currentRef.startsWith("refs/heads/")
-    ? currentRef.substr("refs/heads/".length)
+    ? currentRef.slice("refs/heads/".length)
     : currentRef;
 
   const event = getWorkflowEvent();

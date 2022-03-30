@@ -604,6 +604,19 @@ export function isGitHubGhesVersionBelow(
   );
 }
 
+let cachedCodeQlVersion: undefined | string = undefined;
+
+export function cacheCodeQlVersion(version: string): void {
+  if (cachedCodeQlVersion !== undefined) {
+    throw new Error("cacheCodeQlVersion() should be called only once");
+  }
+  cachedCodeQlVersion = version;
+}
+
+export function getCachedCodeQlVersion(): undefined | string {
+  return cachedCodeQlVersion;
+}
+
 export async function codeQlVersionAbove(
   codeql: CodeQL,
   requiredVersion: string

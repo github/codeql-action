@@ -72,5 +72,5 @@ outputs:
   sarif-id:
     description: The ID of the uploaded SARIF file.
 runs:
-  using: "node12"
+  using: "node16"
   main: "../lib/analyze-action.js"

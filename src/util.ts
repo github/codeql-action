@@ -657,13 +657,15 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
   "codeql/javascript-experimental-atm-queries";
 
 /**
- * The ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
+ * Gets the ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
  * queries beta.
  */
-export const ML_POWERED_JS_QUERIES_PACK: PackWithVersion = {
-  packName: "codeql/javascript-experimental-atm-queries",
-  version: "~0.1.0",
-};
+export async function getMlPoweredJsQueriesPack(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _codeQL: CodeQL
+): Promise<PackWithVersion> {
+  return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" };
+}
 
 /**
  * Get information about ML-powered JS queries to populate status reports with.

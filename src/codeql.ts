@@ -18,7 +18,7 @@ import { Logger } from "./logging";
 import * as toolcache from "./toolcache";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
-import { isGoodVersion, ML_POWERED_JS_QUERIES_PACK } from "./util";
+import { isGoodVersion } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -741,9 +741,10 @@ async function getCodeQLForCmd(
         if (config.injectedMlQueries) {
           // We need to inject the ML queries into the original user input before
           // we pass this on to the CLI, to make sure these get run.
-          let packString = ML_POWERED_JS_QUERIES_PACK.packName;
-          if (ML_POWERED_JS_QUERIES_PACK.version)
-            packString = `${packString}@${ML_POWERED_JS_QUERIES_PACK.version}`;
+          const pack = await util.getMlPoweredJsQueriesPack(codeql);
+          const packString =
+            pack.packName + (pack.version ? `@${pack.version}` : "");
+
           if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
           if (Array.isArray(augmentedConfig.packs)) {
             augmentedConfig.packs.push(packString);

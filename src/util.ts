@@ -661,9 +661,11 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
  * queries beta.
  */
 export async function getMlPoweredJsQueriesPack(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _codeQL: CodeQL
+  codeQL: CodeQL
 ): Promise<PackWithVersion> {
+  if (await codeQlVersionAbove(codeQL, "2.8.4")) {
+    return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.2.0" };
+  }
   return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" };
 }
 

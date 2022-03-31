@@ -1837,3 +1837,12 @@ test(
   "security-and-quality",
   process.platform === "win32" ? undefined : "0.0.1"
 );
+// Test that the ~0.2.0 version of ML-powered queries is run on v2.8.4 of the CLI.
+test(
+  mlPoweredQueriesMacro,
+  "2.8.4",
+  true,
+  undefined,
+  "security-extended",
+  process.platform === "win32" ? undefined : "~0.2.0"
+);

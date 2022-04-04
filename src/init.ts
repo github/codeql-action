@@ -111,19 +111,20 @@ export async function runInit(
       }
     }
   } catch (e) {
-    // Handle the situation where init is called twice
-    // for the same database in the same job.
     if (
       e instanceof Error &&
       e.message?.includes("Refusing to create databases") &&
       e.message.includes("exists and is not an empty directory.")
     ) {
+      // Handle the situation where init is called twice
+      // for the same database in the same job.
       throw new util.UserError(
         `Is the "init" action called twice in the same job? ${e.message}`
       );
     } else if (
       e instanceof Error &&
-      e.message?.includes("is not compatible with this CodeQL CLI")
+      (e.message?.includes("is not compatible with this CodeQL CLI") ||
+        e.message?.includes("eventual cause: MissingTokenException"))
     ) {
       throw new util.UserError(e.message);
     } else {

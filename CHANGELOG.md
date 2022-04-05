@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## 1.1.7 - 05 Apr 2022
+
+- A bug where additional queries specified in the workflow file would sometimes not be respected has been fixed. [#1018](https://github.com/github/codeql-action/pull/1018)
+
 ## 1.1.6 - 30 Mar 2022
 
 - Update default CodeQL bundle version to 2.8.4. [#990](https://github.com/github/codeql-action/pull/990)

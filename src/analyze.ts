@@ -6,7 +6,6 @@ import * as yaml from "js-yaml";
 
 import * as analysisPaths from "./analysis-paths";
 import {
-  CODEQL_VERSION_CONFIG_FILES,
   CODEQL_VERSION_COUNTS_LINES,
   CODEQL_VERSION_NEW_TRACING,
   getCodeQL,
@@ -238,10 +237,7 @@ export async function runQueries(
 
     const codeql = await getCodeQL(config.codeQLCmd);
     try {
-      if (
-        hasPackWithCustomQueries &&
-        !(await util.codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES))
-      ) {
+      if (hasPackWithCustomQueries) {
         logger.info("Performing analysis with custom CodeQL Packs.");
         logger.startGroup(`Downloading custom packs for ${language}`);
 

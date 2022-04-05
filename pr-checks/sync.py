@@ -49,7 +49,7 @@ for file in os.listdir('checks'):
     steps = [
         {
             'name': 'Check out repository',
-            'uses': 'actions/checkout@v2'
+            'uses': 'actions/checkout@v3'
         },
         {
             'name': 'Prepare test',
@@ -108,7 +108,7 @@ for file in os.listdir('checks'):
             },
             'on': {
                 'push': {
-                    'branches': ['main', 'v1']
+                    'branches': ['main', 'v1', 'v2']
                 },
                 'pull_request': {
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]

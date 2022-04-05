@@ -7,7 +7,7 @@ os: [ubuntu-latest, macos-latest, windows-2019]
 steps:
   # Check out the actions repo again, but at a different location.
   # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
-  - uses: actions/checkout@v2
+  - uses: actions/checkout@v3
     with:
       ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
       path: x/y/z/some-path

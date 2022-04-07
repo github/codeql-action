@@ -424,7 +424,7 @@ async function getWorkflowPath(): Promise<string> {
 
   const apiClient = api.getActionsApiClient();
   const runsResponse = await apiClient.request(
-    "GET /repos/:owner/:repo/actions/runs/:run_id",
+    "GET /repos/:owner/:repo/actions/runs/:run_id?exclude_pull_requests=true",
     {
       owner,
       repo,

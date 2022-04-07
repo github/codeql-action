@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.8.5. [#1014](https://github.com/github/codeql-action/pull/1014)
+- Fix error where the init action would fail due to a GitHub API request that was taking too long to complete [#1025](https://github.com/github/codeql-action/pull/1025)
 
 ## 2.1.7 - 05 Apr 2022
 

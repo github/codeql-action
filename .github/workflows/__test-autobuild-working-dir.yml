@@ -1,0 +1,67 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Autobuild working directory
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - v1
+    - v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  test-autobuild-working-dir:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: latest
+    name: Autobuild working directory
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - name: Test setup
+      shell: bash
+      run: |
+        # Make sure that Gradle build succeeds in autobuild-dir ...
+        cp -a ../action/tests/java-repo autobuild-dir
+        # ... and fails if attempted in the current directory
+        echo > build.gradle
+    - uses: ./../action/init
+      with:
+        languages: java
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/autobuild
+      with:
+        working-directory: autobuild-dir
+    - uses: ./../action/analyze
+      env:
+        TEST_MODE: true
+    - name: Check database
+      shell: bash
+      run: |
+        cd "$RUNNER_TEMP/codeql_databases"
+        if [[ ! -d java ]]; then
+          echo "Did not find a Java database"
+          exit 1
+        fi
+    env:
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

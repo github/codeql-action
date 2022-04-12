@@ -1,7 +1,7 @@
-# This workflow runs after a release of the action.
-# It merges any changes from the release back into the
-# main branch. Typically, this is just a single commit
-# that updates the changelog.
+# This workflow runs after a release of the action. For v2 releases, it merges any changes from the
+# release back into the main branch. Typically, this is just a single commit that updates the
+# changelog. For v2 and v1 releases, it then tags the merge commit on the release branch that
+# represents the new release.
 name: Tag release and merge back
 
 on:

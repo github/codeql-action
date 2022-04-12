@@ -19,6 +19,9 @@ V1_MODE = 'v1-release'
 # Value of the mode flag for a v2 release
 V2_MODE = 'v2-release'
 
+SOURCE_BRANCH_FOR_MODE = { V1_MODE: 'releases/v2', V2_MODE: 'main' }
+TARGET_BRANCH_FOR_MODE = { V1_MODE: 'releases/v1', V2_MODE: 'releases/v2' }
+
 # Name of the remote
 ORIGIN = 'origin'
 
@@ -191,8 +194,10 @@ def main():
     type=str,
     required=True,
     choices=[V2_MODE, V1_MODE],
-    help=f"Which release to perform. '{V2_MODE}' uses main as the source branch and v2 as the target branch. " +
-      f"'{V1_MODE}' uses v2 as the source branch and v1 as the target branch."
+    help=f"Which release to perform. '{V2_MODE}' uses {SOURCE_BRANCH_FOR_MODE[V2_MODE]} as the source " +
+      f"branch and {TARGET_BRANCH_FOR_MODE[V2_MODE]} as the target branch. " +
+      f"'{V1_MODE}' uses {SOURCE_BRANCH_FOR_MODE[V1_MODE]} as the source branch and " +
+      f"{TARGET_BRANCH_FOR_MODE[V1_MODE]} as the target branch."
   )
   parser.add_argument(
     '--conductor',
@@ -203,14 +208,8 @@ def main():
 
   args = parser.parse_args()
 
-  if args.mode == V2_MODE:
-    source_branch = 'main'
-    target_branch = 'v2'
-  elif args.mode == V1_MODE:
-    source_branch = 'v2'
-    target_branch = 'v1'
-  else:
-    raise ValueError(f"Unexpected value for release mode: '{args.mode}'")
+  source_branch = SOURCE_BRANCH_FOR_MODE[args.mode]
+  target_branch = TARGET_BRANCH_FOR_MODE[args.mode]
 
   repo = Github(args.github_token).get_repo(args.repository_nwo)
   version = get_current_version()
@@ -247,9 +246,9 @@ def main():
   print('Creating branch ' + new_branch_name)
 
   if args.mode == V1_MODE:
-    # If we're performing a backport, start from the v1 branch
-    print(f'Creating {new_branch_name} from the {ORIGIN}/v1 branch')
-    run_git('checkout', '-b', new_branch_name, f'{ORIGIN}/v1')
+    # If we're performing a backport, start from the target branch
+    print(f'Creating {new_branch_name} from the {ORIGIN}/{target_branch} branch')
+    run_git('checkout', '-b', new_branch_name, f'{ORIGIN}/{target_branch}')
 
     # Revert the commit that we made as part of the last release that updated the version number and
     # changelog to refer to 1.x.x variants. This avoids merge conflicts in the changelog and

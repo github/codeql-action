@@ -21,7 +21,6 @@ on:
 jobs:
   merge-back:
     runs-on: ubuntu-latest
-    if: github.repository == 'github/codeql-action'
     env:
       BASE_BRANCH: "${{ github.event.inputs.baseBranch || 'main' }}"
       HEAD_BRANCH: "${{ github.head_ref || github.ref }}"

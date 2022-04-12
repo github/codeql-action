@@ -1,7 +1,8 @@
 # This workflow runs after a release of the action. For v2 releases, it merges any changes from the
 # release back into the main branch. Typically, this is just a single commit that updates the
-# changelog. For v2 and v1 releases, it then tags the merge commit on the release branch that
-# represents the new release.
+# changelog. For v2 and v1 releases, it then (a) tags the merge commit on the release branch that
+# represents the new release with an `vx.y.z` tag and (b) updates the `vx` tag to refer to this
+# commit.
 name: Tag release and merge back
 
 on:
@@ -89,9 +90,15 @@ jobs:
         env:
           VERSION: ${{ steps.getVersion.outputs.version }}
         run: |
-          git tag -a "$VERSION" -m "$VERSION"
-          git fetch --unshallow  # unshallow the repo in order to allow pushes
-          git push origin --follow-tags "$VERSION"
+          # Unshallow the repo in order to allow pushes
+          git fetch --unshallow
+          # Create the `vx.y.z` tag
+          git tag -a "${VERSION}" -m "${VERSION}"
+          # Update the `vx` tag
+          major_version_tag=$(cut -d '.' -f1 <<< "${VERSION}")
+          git tag -a "${major_version_tag}" -m "${major_version_tag}"
+          # Push the tags, using `--force` since we're overwriting the `vx` tag
+          git push origin --force --follow-tags "${VERSION}" "${major_version_tag}"
 
       - name: Create mergeback branch
         if: steps.check.outputs.exists != 'true' && contains(github.ref, 'v2')

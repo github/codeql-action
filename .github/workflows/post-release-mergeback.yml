@@ -33,7 +33,7 @@ jobs:
       - name: Dump GitHub context
         env:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
-        run: echo "$GITHUB_CONTEXT"
+        run: echo "${GITHUB_CONTEXT}"
 
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -47,25 +47,25 @@ jobs:
         id: getVersion
         run: |
           VERSION="v$(jq '.version' -r 'package.json')"
-          SHORT_SHA="${GITHUB_SHA:0:8}"
-          echo "::set-output name=version::$VERSION"
-          NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${SHORT_SHA}"
-          echo "::set-output name=newBranch::$NEW_BRANCH"
+          echo "::set-output name=version::${VERSION}"
+          short_sha="${GITHUB_SHA:0:8}"
+          NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
+          echo "::set-output name=newBranch::${NEW_BRANCH}"
 
 
       - name: Dump branches
         env:
           NEW_BRANCH: "${{ steps.getVersion.outputs.newBranch }}"
         run: |
-          echo "BASE_BRANCH $BASE_BRANCH"
-          echo "HEAD_BRANCH $HEAD_BRANCH"
-          echo "NEW_BRANCH $NEW_BRANCH"
+          echo "BASE_BRANCH ${BASE_BRANCH}"
+          echo "HEAD_BRANCH ${HEAD_BRANCH}"
+          echo "NEW_BRANCH ${NEW_BRANCH}"
 
       - name: Create mergeback branch
         env:
           NEW_BRANCH: "${{ steps.getVersion.outputs.newBranch }}"
         run: |
-          git checkout -b "$NEW_BRANCH"
+          git checkout -b "${NEW_BRANCH}"
 
       - name: Check for tag
         id: check
@@ -73,13 +73,13 @@ jobs:
           VERSION: "${{ steps.getVersion.outputs.version }}"
         run: |
           set +e # don't fail on an errored command
-          git ls-remote --tags origin | grep "$VERSION"
-          EXISTS="$?"
-          if [ "$EXISTS" -eq 0 ]; then
-            echo "Tag $TAG exists. Not going to re-release."
+          git ls-remote --tags origin | grep "${VERSION}"
+          exists="$?"
+          if [ "${exists}" -eq 0 ]; then
+            echo "Tag ${VERSION} exists. Not going to re-release."
             echo "::set-output name=exists::true"
           else
-            echo "Tag $TAG does not exist yet."
+            echo "Tag ${VERSION} does not exist yet."
           fi
 
       # we didn't tag the release during the update-release-branch workflow because the
@@ -108,8 +108,8 @@ jobs:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           set -exu
-          PR_TITLE="Mergeback $VERSION $HEAD_BRANCH into $BASE_BRANCH"
-          PR_BODY="Updates version and changelog."
+          pr_title="Mergeback ${VERSION} ${HEAD_BRANCH} into ${BASE_BRANCH}"
+          pr_body="Updates version and changelog."
 
           # Update the version number ready for the next release
           npm version patch --no-git-tag-version
@@ -117,16 +117,16 @@ jobs:
           # Update the changelog
           perl -i -pe 's/^/## \[UNRELEASED\]\n\nNo user facing changes.\n\n/ if($.==3)' CHANGELOG.md
           git add .
-          git commit -m "Update changelog and version after $VERSION"
+          git commit -m "Update changelog and version after ${VERSION}"
 
-          git push origin "$NEW_BRANCH"
+          git push origin "${NEW_BRANCH}"
 
           # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft
           # so that a maintainer can take the PR out of draft, thereby triggering the PR checks.
           gh pr create \
-            --head "$NEW_BRANCH" \
-            --base "$BASE_BRANCH" \
-            --title "$PR_TITLE" \
+            --head "${NEW_BRANCH}" \
+            --base "${BASE_BRANCH}" \
+            --title "${pr_title}" \
             --label "Update dependencies" \
-            --body "$PR_BODY" \
+            --body "${pr_body}" \
             --draft

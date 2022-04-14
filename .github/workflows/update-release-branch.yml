@@ -23,13 +23,13 @@ jobs:
         GITHUB_CONTEXT: '${{ toJson(github) }}'
       run: echo "$GITHUB_CONTEXT"
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         # Need full history so we calculate diffs
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: 3.8
 
@@ -49,7 +49,7 @@ jobs:
         python .github/update-release-branch.py \
           --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
-          --mode release-v2 \
+          --mode v2-release \
           --conductor ${GITHUB_ACTOR}
 
     - name: Update v1 release branch
@@ -58,5 +58,5 @@ jobs:
         python .github/update-release-branch.py \
           --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
-          --mode release-v1 \
+          --mode v1-release \
           --conductor ${GITHUB_ACTOR}

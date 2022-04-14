@@ -3,6 +3,7 @@ import * as core from "@actions/core";
 import {
   createStatusReportBase,
   getActionsStatus,
+  getOptionalInput,
   getTemporaryDirectory,
   sendStatusReport,
   StatusReportBase,
@@ -71,6 +72,13 @@ async function run() {
     }
     language = determineAutobuildLanguage(config, logger);
     if (language !== undefined) {
+      const workingDirectory = getOptionalInput("working-directory");
+      if (workingDirectory) {
+        logger.info(
+          `Changing autobuilder working directory to ${workingDirectory}`
+        );
+        process.chdir(workingDirectory);
+      }
       await runAutobuild(language, config, logger);
     }
   } catch (error) {

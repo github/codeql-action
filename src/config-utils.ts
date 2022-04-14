@@ -17,8 +17,9 @@ import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import {
   codeQlVersionAbove,
+  getMlPoweredJsQueriesPack,
   GitHubVersion,
-  ML_POWERED_JS_QUERIES_PACK,
+  ML_POWERED_JS_QUERIES_PACK_NAME,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -299,10 +300,12 @@ async function addBuiltinSuiteQueries(
   // opted into the ML-powered queries beta, and a user hasn't already added the ML-powered query
   // pack, then add the ML-powered query pack so that we run ML-powered queries.
   if (
+    // Disable ML-powered queries on Windows
+    process.platform !== "win32" &&
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
     !packs.javascript?.some(
-      (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK.packName
+      (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
     ) &&
     (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
     (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
@@ -310,7 +313,7 @@ async function addBuiltinSuiteQueries(
     if (!packs.javascript) {
       packs.javascript = [];
     }
-    packs.javascript.push(ML_POWERED_JS_QUERIES_PACK);
+    packs.javascript.push(await getMlPoweredJsQueriesPack(codeQL));
     injectedMlQueries = true;
   }
 

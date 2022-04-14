@@ -1,0 +1,119 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - ML-powered queries
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - v1
+    - v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  ml-powered-queries:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: stable-20220120
+        - os: macos-latest
+          version: stable-20220120
+        - os: windows-latest
+          version: stable-20220120
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: windows-latest
+          version: cached
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: windows-latest
+          version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+        - os: windows-latest
+          version: nightly-latest
+    name: ML-powered queries
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: ./../action/init
+      with:
+        languages: javascript
+        queries: security-extended
+        source-root: ./../action/tests/ml-powered-queries-repo
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - uses: ./../action/analyze
+      with:
+        output: ${{ runner.temp }}/results
+        upload-database: false
+      env:
+        TEST_MODE: true
+
+    - name: Upload SARIF
+      uses: actions/upload-artifact@v3
+      with:
+        name: ml-powered-queries-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+        path: ${{ runner.temp }}/results/javascript.sarif
+        retention-days: 7
+
+    - name: Check results
+      env:
+        IS_WINDOWS: ${{ matrix.os == 'windows-latest' }}
+      shell: bash
+      run: |
+        cd "$RUNNER_TEMP/results"
+        # We should run at least the ML-powered queries in `expected_rules`.
+        expected_rules="js/ml-powered/nosql-injection js/ml-powered/path-injection js/ml-powered/sql-injection js/ml-powered/xss"
+
+        for rule in ${expected_rules}; do
+          found_rule=$(jq --arg rule "${rule}" '[.runs[0].tool.extensions[].rules | select(. != null) |
+            flatten | .[].id] | any(. == $rule)' javascript.sarif)
+          echo "Did find rule '${rule}': ${found_rule}"
+          if [[ "${found_rule}" != "true" && "${IS_WINDOWS}" != "true" ]]; then
+            echo "Expected SARIF output to contain rule '${rule}', but found no such rule."
+            exit 1
+          elif [[ "${found_rule}" == "true" && "${IS_WINDOWS}" == "true" ]]; then
+            echo "Found rule '${rule}' in the SARIF output which shouldn't have been part of the analysis."
+            exit 1
+          fi
+        done
+
+        # We should have at least one alert from an ML-powered query.
+        num_alerts=$(jq '[.runs[0].results[] |
+          select(.properties.score != null and (.rule.id | startswith("js/ml-powered/")))] | length' \
+          javascript.sarif)
+        echo "Found ${num_alerts} alerts from ML-powered queries.";
+        if [[ "${num_alerts}" -eq 0 && "${IS_WINDOWS}" != "true" ]]; then
+          echo "Expected to find at least one alert from an ML-powered query but found ${num_alerts}."
+          exit 1
+        elif [[ "${num_alerts}" -ne 0 && "${IS_WINDOWS}" == "true" ]]; then
+          echo "Expected not to find any alerts from an ML-powered query but found ${num_alerts}."
+          exit 1
+        fi
+    env:
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

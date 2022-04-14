@@ -424,7 +424,7 @@ async function getWorkflowPath(): Promise<string> {
 
   const apiClient = api.getActionsApiClient();
   const runsResponse = await apiClient.request(
-    "GET /repos/:owner/:repo/actions/runs/:run_id",
+    "GET /repos/:owner/:repo/actions/runs/:run_id?exclude_pull_requests=true",
     {
       owner,
       repo,
@@ -544,7 +544,7 @@ export async function getRef(): Promise<string> {
 
   const head = await getCommitOid(checkoutPath, "HEAD");
 
-  // in actions/checkout@v2 we can check if git rev-parse HEAD == GITHUB_SHA
+  // in actions/checkout@v2+ we can check if git rev-parse HEAD == GITHUB_SHA
   // in actions/checkout@v1 this may not be true as it checks out the repository
   // using GITHUB_REF. There is a subtle race condition where
   // git rev-parse GITHUB_REF != GITHUB_SHA, so we must check

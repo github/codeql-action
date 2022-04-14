@@ -653,25 +653,30 @@ export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
 }
 
+export const ML_POWERED_JS_QUERIES_PACK_NAME =
+  "codeql/javascript-experimental-atm-queries";
+
 /**
- * The ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
+ * Gets the ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
  * queries beta.
  */
-export const ML_POWERED_JS_QUERIES_PACK: PackWithVersion = {
-  packName: "codeql/javascript-experimental-atm-queries",
-  version: "~0.1.0",
-};
+export async function getMlPoweredJsQueriesPack(
+  codeQL: CodeQL
+): Promise<PackWithVersion> {
+  if (await codeQlVersionAbove(codeQL, "2.8.4")) {
+    return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.2.0" };
+  }
+  return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" };
+}
 
 /**
  * Get information about ML-powered JS queries to populate status reports with.
  *
  * This will be:
  *
- * - The version string if the analysis is using the ML-powered query pack that will be added to the
- *   analysis if the repo is opted into the ML-powered queries beta, i.e.
- *   {@link ML_POWERED_JS_QUERIES_PACK.version}. If the version string
- *   {@link ML_POWERED_JS_QUERIES_PACK.version} is undefined, then the status report string will be
- *   "latest", however this shouldn't occur in practice (see comment below).
+ * - The version string if the analysis is using a single version of the ML-powered query pack.
+ * - "latest" if the version string of the ML-powered query pack is undefined. This is unlikely to
+ *   occur in practice (see comment below).
  * - "false" if the analysis won't run any ML-powered JS queries.
  * - "other" in all other cases.
  *
@@ -681,32 +686,25 @@ export const ML_POWERED_JS_QUERIES_PACK: PackWithVersion = {
  * version of the CodeQL Action. For instance, we might want to compare the `~0.1.0` and `~0.0.2`
  * version strings.
  *
- * We restrict the set of strings we report here by excluding other version strings and combinations
- * of version strings. We do this to limit the cardinality of the ML-powered JS queries status
- * report field, since some platforms that ingest this status report bill based on the cardinality
- * of its fields.
- *
  * This function lives here rather than in `init-action.ts` so it's easier to test, since tests for
  * `init-action.ts` would each need to live in their own file. See `analyze-action-env.ts` for an
  * explanation as to why this is.
  */
 export function getMlPoweredJsQueriesStatus(config: Config): string {
   const mlPoweredJsQueryPacks = (config.packs.javascript || []).filter(
-    (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK.packName
+    (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
   );
-  if (mlPoweredJsQueryPacks.length === 0) {
-    return "false";
+  switch (mlPoweredJsQueryPacks.length) {
+    case 1:
+      // We should always specify an explicit version string in `getMlPoweredJsQueriesPack`,
+      // otherwise we won't be able to make changes to the pack unless those changes are compatible
+      // with each version of the CodeQL Action. Therefore in practice we should only hit the
+      // `latest` case here when customers have explicitly added the ML-powered query pack to their
+      // CodeQL config.
+      return mlPoweredJsQueryPacks[0].version || "latest";
+    case 0:
+      return "false";
+    default:
+      return "other";
   }
-  const firstVersionString = mlPoweredJsQueryPacks[0].version;
-  if (
-    mlPoweredJsQueryPacks.length === 1 &&
-    ML_POWERED_JS_QUERIES_PACK.version === firstVersionString
-  ) {
-    // We should always specify an explicit version string in `ML_POWERED_JS_QUERIES_PACK`,
-    // otherwise we won't be able to make changes to the pack unless those changes are compatible
-    // with each version of the CodeQL Action. Therefore in practice, we should never hit the
-    // `latest` case here.
-    return ML_POWERED_JS_QUERIES_PACK.version || "latest";
-  }
-  return "other";
 }

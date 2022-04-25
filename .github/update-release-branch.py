@@ -85,9 +85,11 @@ def open_pr(
   body.append('')
   body.append('Please review the following:')
   if len(conflicted_files) > 0:
-    body.append(' - [ ] You have amended the merge commit appearing in this branch to resolve ' +
-      'the merge conflicts in the following files:')
+    body.append(' - [ ] You have added commits to this branch that resolve the merge conflicts ' +
+      'in the following files:')
     body.extend([f'    - [ ] `{file}`' for file in conflicted_files])
+    body.append(' - [ ] Another maintainer has reviewed the additional commits you added to this ' +
+      'branch to resolve the merge conflicts.')
   body.append(' - [ ] The CHANGELOG displays the correct version and date.')
   body.append(' - [ ] The CHANGELOG includes all relevant, user-facing changes since the last release.')
   body.append(' - [ ] There are no unexpected commits being merged into the ' + target_branch + ' branch.')

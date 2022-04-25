@@ -48,14 +48,15 @@ def install_packages_with_poetry():
     return python_executable_path
 
 
-def install_packages_with_pipenv():
+def install_packages_with_pipenv(has_lockfile):
     command = [sys.executable, '-m', 'pipenv']
     if sys.platform.startswith('win32'):
         # In windows the default path were the deps are installed gets wiped out between steps,
         # so we have to set it up to a folder that will be kept
         os.environ['WORKON_HOME'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
+    lock_args = ['--keep-outdated', '--ignore-pipfile'] if has_lockfile else ['--skip-lock']
     try:
-        _check_call(command + ['install', '--keep-outdated', '--ignore-pipfile'])
+        _check_call(command + ['install'] + lock_args)
     except subprocess.CalledProcessError:
         sys.exit('package installation with pipenv failed, see error above')
 
@@ -145,9 +146,10 @@ def install_packages(codeql_base_dir) -> Optional[str]:
     if os.path.exists('Pipfile') or os.path.exists('Pipfile.lock'):
         if os.path.exists('Pipfile.lock'):
             print('Found Pipfile.lock, will install packages with Pipenv', flush=True)
+            return install_packages_with_pipenv(has_lockfile=True)
         else:
             print('Found Pipfile, will install packages with Pipenv', flush=True)
-        return install_packages_with_pipenv()
+            return install_packages_with_pipenv(has_lockfile=False)
 
     # get_extractor_version returns the Python version the extractor thinks this repo is using
     version = extractor_version.get_extractor_version(codeql_base_dir, quiet=False)

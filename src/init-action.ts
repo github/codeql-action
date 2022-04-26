@@ -39,6 +39,7 @@ import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMlPoweredJsQueriesStatus,
+  checkActionVersion,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -124,6 +125,7 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   initializeEnvironment(Mode.actions, pkg.version);
+  await checkActionVersion(pkg.version);
 
   let config: configUtils.Config;
   let codeql: CodeQL;

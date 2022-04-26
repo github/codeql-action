@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as stream from "stream";
 
+import * as core from "@actions/core";
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
@@ -392,3 +393,49 @@ test("isGitHubGhesVersionBelow", async (t) => {
     )
   );
 });
+
+const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
+  [
+    ["1.2.1", { type: util.GitHubVariant.DOTCOM }, true],
+    ["1.2.1", { type: util.GitHubVariant.GHAE }, true],
+    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, false],
+    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, true],
+    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, true],
+    ["2.2.1", { type: util.GitHubVariant.DOTCOM }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHAE }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, false],
+  ];
+
+for (const [
+  version,
+  githubVersion,
+  shouldReportWarning,
+] of CHECK_ACTION_VERSION_TESTS) {
+  const reportWarningDescription = shouldReportWarning
+    ? "reports warning"
+    : "doesn't report warning";
+  const versionsDescription = `CodeQL Action version ${version} and GitHub version ${util.formatGitHubVersion(
+    githubVersion
+  )}`;
+  test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {
+    const warningSpy = sinon.spy(core, "warning");
+    const versionStub = sinon
+      .stub(api, "getGitHubVersionActionsOnly")
+      .resolves(githubVersion);
+    const isActionsStub = sinon.stub(util, "isActions").returns(true);
+    await util.checkActionVersion(version);
+    if (shouldReportWarning) {
+      t.true(
+        warningSpy.calledOnceWithExactly(
+          sinon.match("CodeQL Action version 1 will be deprecated")
+        )
+      );
+    } else {
+      t.false(warningSpy.called);
+    }
+    versionStub.restore();
+    isActionsStub.restore();
+  });
+}

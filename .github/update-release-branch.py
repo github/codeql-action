@@ -26,11 +26,12 @@ TARGET_BRANCH_FOR_MODE = { V1_MODE: 'releases/v1', V2_MODE: 'releases/v2' }
 ORIGIN = 'origin'
 
 # Runs git with the given args and returns the stdout.
-# Raises an error if git does not exit successfully.
-def run_git(*args):
+# Raises an error if git does not exit successfully (unless passed
+# allow_non_zero_exit_code=True).
+def run_git(*args, allow_non_zero_exit_code=False):
   cmd = ['git', *args]
   p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  if (p.returncode != 0):
+  if not allow_non_zero_exit_code and p.returncode != 0:
     raise Exception('Call to ' + ' '.join(cmd) + ' exited with code ' + str(p.returncode) + ' stderr:' + p.stderr.decode('ascii'))
   return p.stdout.decode('ascii')
 
@@ -39,7 +40,9 @@ def branch_exists_on_remote(branch_name):
   return run_git('ls-remote', '--heads', ORIGIN, branch_name).strip() != ''
 
 # Opens a PR from the given branch to the target branch
-def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, source_branch, target_branch, conductor, is_v2_release, labels):
+def open_pr(
+  repo, all_commits, source_branch_short_sha, new_branch_name, source_branch, target_branch,
+  conductor, is_v2_release, labels, conflicted_files):
   # Sort the commits into the pull requests that introduced them,
   # and any commits that don't have a pull request
   pull_requests = []
@@ -84,6 +87,12 @@ def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, source_
 
   body.append('')
   body.append('Please review the following:')
+  if len(conflicted_files) > 0:
+    body.append(' - [ ] You have added commits to this branch that resolve the merge conflicts ' +
+      'in the following files:')
+    body.extend([f'    - [ ] `{file}`' for file in conflicted_files])
+    body.append(' - [ ] Another maintainer has reviewed the additional commits you added to this ' +
+      'branch to resolve the merge conflicts.')
   body.append(' - [ ] The CHANGELOG displays the correct version and date.')
   body.append(' - [ ] The CHANGELOG includes all relevant, user-facing changes since the last release.')
   body.append(' - [ ] There are no unexpected commits being merged into the ' + target_branch + ' branch.')
@@ -245,6 +254,11 @@ def main():
   # Create the new branch and push it to the remote
   print('Creating branch ' + new_branch_name)
 
+  # The process of creating the v1 release can run into merge conflicts. We commit the unresolved
+  # conflicts so a maintainer can easily resolve them (vs erroring and requiring maintainers to
+  # reconstruct the release manually)
+  conflicted_files = []
+
   if args.mode == V1_MODE:
     # If we're performing a backport, start from the target branch
     print(f'Creating {new_branch_name} from the {ORIGIN}/{target_branch} branch')
@@ -273,7 +287,12 @@ def main():
       print('  Nothing to revert.')
 
     print(f'Merging {ORIGIN}/{source_branch} into the release prep branch')
-    run_git('merge', f'{ORIGIN}/{source_branch}', '--no-edit')
+    # Commit any conflicts (see the comment for `conflicted_files`)
+    run_git('merge', f'{ORIGIN}/{source_branch}', allow_non_zero_exit_code=True)
+    conflicted_files = run_git('diff', '--name-only', '--diff-filter', 'U').splitlines()
+    if len(conflicted_files) > 0:
+      run_git('add', '.')
+    run_git('commit', '--no-edit')
 
     # Migrate the package version number from a v2 version number to a v1 version number
     print(f'Setting version number to {version}')
@@ -316,6 +335,7 @@ def main():
     conductor=args.conductor,
     is_v2_release=args.mode == V2_MODE,
     labels=['Update dependencies'] if args.mode == V1_MODE else [],
+    conflicted_files=conflicted_files
   )
 
 if __name__ == '__main__':

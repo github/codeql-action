@@ -9,7 +9,7 @@ import * as semver from "semver";
 
 import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
-import { Config, PackWithVersion } from "./config-utils";
+import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
 import { isTracedLanguage, Language } from "./languages";
@@ -117,7 +117,7 @@ export interface CodeQL {
   /**
    * Run 'codeql pack download'.
    */
-  packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput>;
+  packDownload(packs: string[]): Promise<PackDownloadOutput>;
 
   /**
    * Run 'codeql database cleanup'.
@@ -950,13 +950,13 @@ async function getCodeQLForCmd(
      * downloaded. The check to determine what the latest version is is done
      * each time this package is requested.
      */
-    async packDownload(packs: PackWithVersion[]): Promise<PackDownloadOutput> {
+    async packDownload(packs: string[]): Promise<PackDownloadOutput> {
       const codeqlArgs = [
         "pack",
         "download",
         "--format=json",
         ...getExtraOptionsFromEnv(["pack", "download"]),
-        ...packs.map(packWithVersionToString),
+        ...packs,
       ];
 
       const output = await runTool(cmd, codeqlArgs);
@@ -1028,9 +1028,6 @@ async function getCodeQLForCmd(
   return codeql;
 }
 
-function packWithVersionToString(pack: PackWithVersion): string {
-  return pack.version ? `${pack.packName}@${pack.version}` : pack.packName;
-}
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
  */

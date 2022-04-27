@@ -1,13 +1,12 @@
 name: "Packaging: Action input"
 description: "Checks that specifying packages using the input to the Action works"
-versions: ["nightly-20210831"] # This CLI version is known to work with package used in this test
-os: ["ubuntu-latest", "macos-latest"]
+versions: ["latest", "cached", "nightly-latest"] # This feature is not compatible with old CLIs
 steps:
   - uses: ./../action/init
     with:
       config-file: ".github/codeql/codeql-config-packaging2.yml"
       languages: javascript
-      packs: dsp-testing/codeql-pack1@0.1.0, dsp-testing/codeql-pack2
+      packs: dsp-testing/codeql-pack1@1.0.0, dsp-testing/codeql-pack2, dsp-testing/codeql-pack3:other-query.ql
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code
     shell: bash
@@ -21,11 +20,11 @@ steps:
     shell: bash
     run: |
       cd "$RUNNER_TEMP/results"
-      # We should have 3 hits from these rules
-      EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+      # We should have 4 hits from these rules
+      EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
 
       # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-      RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+      RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | tr "\r" " " | xargs)"
       echo "Found matching rules '$RULES'"
       if [ "$RULES" != "$EXPECTED_RULES" ]; then
         echo "Did not match expected rules '$EXPECTED_RULES'."

@@ -26,9 +26,17 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: nightly-20210831
+          version: latest
         - os: macos-latest
-          version: nightly-20210831
+          version: latest
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
     name: Split workflow
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -43,7 +51,7 @@ jobs:
     - uses: ./../action/init
       with:
         config-file: .github/codeql/codeql-config-packaging3.yml
-        packs: +dsp-testing/codeql-pack1@0.1.0
+        packs: +dsp-testing/codeql-pack1@1.0.0
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - name: Build code
@@ -72,11 +80,11 @@ jobs:
       shell: bash
       run: |
         cd "$RUNNER_TEMP/results"
-        # We should have 3 hits from these rules
-        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+        # We should have 4 hits from these rules
+        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
 
         # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | tr "\r" " " | xargs)"
         echo "Found matching rules '$RULES'"
         if [ "$RULES" != "$EXPECTED_RULES" ]; then
           echo "Did not match expected rules '$EXPECTED_RULES'."

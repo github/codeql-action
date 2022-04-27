@@ -3,7 +3,6 @@ import * as path from "path";
 
 import test from "ava";
 import * as yaml from "js-yaml";
-import { clean } from "semver";
 import * as sinon from "sinon";
 
 import { runQueries } from "./analyze";
@@ -35,18 +34,8 @@ test("status report fields and search path setting", async (t) => {
     const addSnippetsFlag = "";
     const threadsFlag = "";
     const packs = {
-      [Language.cpp]: [
-        {
-          packName: "a/b",
-          version: clean("1.0.0")!,
-        },
-      ],
-      [Language.java]: [
-        {
-          packName: "c/d",
-          version: clean("2.0.0")!,
-        },
-      ],
+      [Language.cpp]: ["a/b@1.0.0"],
+      [Language.java]: ["c/d@2.0.0"],
     };
 
     for (const language of Object.values(Language)) {
@@ -241,32 +230,10 @@ test("status report fields and search path setting", async (t) => {
         query: "bar.ql",
       },
     ];
-    const qlsPackContentCpp = [
-      {
-        qlpack: "a/b",
-        version: "1.0.0",
-      },
-    ];
-    const qlsPackContentJava = [
-      {
-        qlpack: "c/d",
-        version: "2.0.0",
-      },
-    ];
     for (const lang of Object.values(Language)) {
       t.deepEqual(readContents(`${lang}-queries-builtin.qls`), qlsContent);
       t.deepEqual(readContents(`${lang}-queries-custom-0.qls`), qlsContent);
       t.deepEqual(readContents(`${lang}-queries-custom-1.qls`), qlsContent2);
-      const packSuiteName = `${lang}-queries-packs.qls`;
-      if (lang === Language.cpp) {
-        t.deepEqual(readContents(packSuiteName), qlsPackContentCpp);
-      } else if (lang === Language.java) {
-        t.deepEqual(readContents(packSuiteName), qlsPackContentJava);
-      } else {
-        t.false(
-          fs.existsSync(path.join(tmpDir, "codeql_databases", packSuiteName))
-        );
-      }
     }
 
     function readContents(name: string) {

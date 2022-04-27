@@ -8,7 +8,7 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { Config, PackWithVersion } from "./config-utils";
+import { Config } from "./config-utils";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -294,44 +294,32 @@ async function mockStdInForAuthExpectError(
   );
 }
 
-const ML_POWERED_JS_STATUS_TESTS: Array<[PackWithVersion[], string]> = [
+const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
   // If no packs are loaded, status is false.
   [[], "false"],
   // If another pack is loaded but not the ML-powered query pack, status is false.
-  [[{ packName: "someOtherPack" }], "false"],
+  [["someOtherPack"], "false"],
   // If the ML-powered query pack is loaded with a specific version, status is that version.
-  [
-    [{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" }],
-    "~0.1.0",
-  ],
+  [[`${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
   // If the ML-powered query pack is loaded with a specific version and another pack is loaded, the
   // status is the version of the ML-powered query pack.
   [
-    [
-      { packName: "someOtherPack" },
-      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" },
-    ],
+    ["someOtherPack", `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`],
     "~0.1.0",
   ],
   // If the ML-powered query pack is loaded without a version, the status is "latest".
-  [[{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME }], "latest"],
+  [[util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
   // If the ML-powered query pack is loaded with two different versions, the status is "other".
   [
     [
-      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.1" },
-      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.2" },
+      `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.1`,
+      `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.2`,
     ],
     "other",
   ],
   // If the ML-powered query pack is loaded with no specific version, and another pack is loaded,
   // the status is "latest".
-  [
-    [
-      { packName: "someOtherPack" },
-      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME },
-    ],
-    "latest",
-  ],
+  [["someOtherPack", util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
 ];
 
 for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {

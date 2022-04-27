@@ -7,7 +7,7 @@ on:
   # When the v2 release is complete, this workflow will open a PR to update the v1 release branch.
   push:
     branches:
-      - v2
+      - releases/v2
 
 jobs:
   update:

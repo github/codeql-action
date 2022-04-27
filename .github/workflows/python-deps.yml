@@ -2,7 +2,7 @@ name: Test Python Package Installation on Linux and Mac
 
 on:
   push:
-    branches: [main, v1, v2]
+    branches: [main, releases/v1, releases/v2]
   pull_request:
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.

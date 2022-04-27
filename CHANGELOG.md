@@ -1,16 +1,17 @@
 # CodeQL Action Changelog
 
-## 1.1.8 - 08 Apr 2022
+## 2.1.8 - 08 Apr 2022
 
 - Update default CodeQL bundle version to 2.8.5. [#1014](https://github.com/github/codeql-action/pull/1014)
 - Fix error where the init action would fail due to a GitHub API request that was taking too long to complete [#1025](https://github.com/github/codeql-action/pull/1025)
 
-## 1.1.7 - 05 Apr 2022
+## 2.1.7 - 05 Apr 2022
 
 - A bug where additional queries specified in the workflow file would sometimes not be respected has been fixed. [#1018](https://github.com/github/codeql-action/pull/1018)
 
-## 1.1.6 - 30 Mar 2022
+## 2.1.6 - 30 Mar 2022
 
+- [v2+ only] The CodeQL Action now runs on Node.js v16. [#1000](https://github.com/github/codeql-action/pull/1000)
 - Update default CodeQL bundle version to 2.8.4. [#990](https://github.com/github/codeql-action/pull/990)
 - Fix a bug where an invalid `commit_oid` was being sent to code scanning when a custom checkout path was being used. [#956](https://github.com/github/codeql-action/pull/956)
 

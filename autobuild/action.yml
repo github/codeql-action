@@ -6,6 +6,17 @@ inputs:
     default: ${{ github.token }}
   matrix:
     default: ${{ toJson(matrix) }}
+  working-directory:
+    description: >-
+      Run the autobuilder using this path (relative to $GITHUB_WORKSPACE) as
+      working directory. If this input is not set, the autobuilder runs with
+      $GITHUB_WORKSPACE as its working directory.
+    required: false
 runs:
+<<<<<<< HEAD
   using: 'node12'
   main: '../lib/autobuild-action.js'
+=======
+  using: 'node16'
+  main: '../lib/autobuild-action.js'
+>>>>>>> origin/releases/v2

@@ -61,22 +61,22 @@ Here are a few things you can do that will increase the likelihood of your pull 
 ## Releasing (write access required)
 
 1. The first step of releasing a new version of the `codeql-action` is running the "Update release branch" workflow.
-    This workflow goes through the pull requests that have been merged to `main` since the last release, creates a changelog, then opens a pull request to merge the changes since the last release into the `v2` release branch.
+    This workflow goes through the pull requests that have been merged to `main` since the last release, creates a changelog, then opens a pull request to merge the changes since the last release into the `releases/v2` release branch.
 
     You can start a release by triggering this workflow via [workflow dispatch](https://github.com/github/codeql-action/actions/workflows/update-release-branch.yml).
-1. The workflow run will open a pull request titled "Merge main into v2". Mark the pull request as [ready for review](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request#marking-a-pull-request-as-ready-for-review) to trigger the PR checks.
+1. The workflow run will open a pull request titled "Merge main into releases/v2". Mark the pull request as [ready for review](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request#marking-a-pull-request-as-ready-for-review) to trigger the PR checks.
 1. Review the checklist items in the pull request description.
     Once you've checked off all but the last two of these, approve the PR and automerge it.
-1. When the "Merge main into v2" pull request is merged into the `v2` branch, the "Tag release and merge back" workflow will create a mergeback PR.
-    This mergeback incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into v2" pull request, and bumps the patch version of the CodeQL Action.
+1. When the "Merge main into releases/v2" pull request is merged into the `releases/v2` branch, the "Tag release and merge back" workflow will create a mergeback PR.
+    This mergeback incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into releases/v2" pull request, and bumps the patch version of the CodeQL Action.
 
     Approve the mergeback PR and automerge it.
-1. When the "Merge main into v2" pull request is merged into the `v2` branch, the "Update release branch" workflow will create a "Merge v2 into v1" pull request to merge the changes since the last release into the `v1` release branch.
-    This ensures we keep both the `v1` and `v2` release branches up to date and fully supported.
+1. When the "Merge main into releases/v2" pull request is merged into the `releases/v2` branch, the "Update release branch" workflow will create a "Merge releases/v2 into releases/v1" pull request to merge the changes since the last release into the `releases/v1` release branch.
+    This ensures we keep both the `releases/v1` and `releases/v2` release branches up to date and fully supported.
 
     Review the checklist items in the pull request description.
     Once you've checked off all the items, approve the PR and automerge it.
-1. Once the mergeback has been merged to `main` and the "Merge v2 into v1" PR has been merged to `v1`, the release is complete.
+1. Once the mergeback has been merged to `main` and the "Merge releases/v2 into releases/v1" PR has been merged to `releases/v1`, the release is complete.
 
 ## Keeping the PR checks up to date (admin access required)
 
@@ -91,8 +91,8 @@ To regenerate the PR jobs for the action:
     CHECKS="$(gh api repos/github/codeql-action/commits/${SHA}/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs | .[].name | select(contains("https://") or . == "CodeQL" or . == "LGTM.com" or . == "Update dependencies" or . == "Update Supported Enterprise Server Versions" | not)]')"
     echo "{\"contexts\": ${CHECKS}}" > checks.json
     gh api -X "PATCH" repos/github/codeql-action/branches/main/protection/required_status_checks --input checks.json
-    gh api -X "PATCH" repos/github/codeql-action/branches/v2/protection/required_status_checks --input checks.json
-    gh api -X "PATCH" repos/github/codeql-action/branches/v1/protection/required_status_checks --input checks.json
+    gh api -X "PATCH" repos/github/codeql-action/branches/releases/v2/protection/required_status_checks --input checks.json
+    gh api -X "PATCH" repos/github/codeql-action/branches/releases/v1/protection/required_status_checks --input checks.json
     ````
 
 2. Go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules have been updated.

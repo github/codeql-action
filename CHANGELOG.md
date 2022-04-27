@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.1.9 - 27 Apr 2022
 
 - Add `working-directory` input to the `autobuild` action. [#1024](https://github.com/github/codeql-action/pull/1024)

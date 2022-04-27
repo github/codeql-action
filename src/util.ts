@@ -11,7 +11,7 @@ import * as api from "./api-client";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
-import { Config, PackWithVersion } from "./config-utils";
+import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -663,11 +663,11 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
  */
 export async function getMlPoweredJsQueriesPack(
   codeQL: CodeQL
-): Promise<PackWithVersion> {
+): Promise<string> {
   if (await codeQlVersionAbove(codeQL, "2.8.4")) {
-    return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.2.0" };
+    return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.2.0`;
   }
-  return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" };
+  return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`;
 }
 
 /**
@@ -692,9 +692,13 @@ export async function getMlPoweredJsQueriesPack(
  * explanation as to why this is.
  */
 export function getMlPoweredJsQueriesStatus(config: Config): string {
-  const mlPoweredJsQueryPacks = (config.packs.javascript || []).filter(
-    (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
-  );
+  const mlPoweredJsQueryPacks = (config.packs.javascript || [])
+    .map((pack) => pack.split("@"))
+    .filter(
+      (packNameVersion) =>
+        packNameVersion[0] === "codeql/javascript-experimental-atm-queries" &&
+        packNameVersion.length <= 2
+    );
   switch (mlPoweredJsQueryPacks.length) {
     case 1:
       // We should always specify an explicit version string in `getMlPoweredJsQueriesPack`,
@@ -702,7 +706,7 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
       // with each version of the CodeQL Action. Therefore in practice we should only hit the
       // `latest` case here when customers have explicitly added the ML-powered query pack to their
       // CodeQL config.
-      return mlPoweredJsQueryPacks[0].version || "latest";
+      return mlPoweredJsQueryPacks[0][1] || "latest";
     case 0:
       return "false";
     default:

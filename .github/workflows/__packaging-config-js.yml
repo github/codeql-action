@@ -26,9 +26,27 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: nightly-20210831
+          version: latest
         - os: macos-latest
-          version: nightly-20210831
+          version: latest
+        - os: windows-2019
+          version: latest
+        - os: windows-2022
+          version: latest
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: windows-2019
+          version: cached
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+        - os: windows-2019
+          version: nightly-latest
+        - os: windows-2022
+          version: nightly-latest
     name: 'Packaging: Config file'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -57,11 +75,11 @@ jobs:
       shell: bash
       run: |
         cd "$RUNNER_TEMP/results"
-        # We should have 3 hits from these rules
-        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/two-block"
+        # We should have 4 hits from these rules
+        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
 
         # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | xargs)"
+        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n" " " | tr "\r" " " | xargs)"
         echo "Found matching rules '$RULES'"
         if [ "$RULES" != "$EXPECTED_RULES" ]; then
           echo "Did not match expected rules '$EXPECTED_RULES'."

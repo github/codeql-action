@@ -5,7 +5,12 @@ import { getGitHubVersionActionsOnly } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
-import { getRequiredEnvParam, initializeEnvironment, Mode } from "./util";
+import {
+  checkActionVersion,
+  getRequiredEnvParam,
+  initializeEnvironment,
+  Mode,
+} from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -31,8 +36,9 @@ async function sendSuccessStatusReport(
 }
 
 async function run() {
-  initializeEnvironment(Mode.actions, pkg.version);
   const startedAt = new Date();
+  initializeEnvironment(Mode.actions, pkg.version);
+  await checkActionVersion(pkg.version);
   if (
     !(await actionsUtil.sendStatusReport(
       await actionsUtil.createStatusReportBase(

@@ -641,7 +641,7 @@ async function getCodeQLForCmd(
     async getVersion() {
       let result = util.getCachedCodeQlVersion();
       if (result === undefined) {
-        result = await runTool(cmd, ["version", "--format=terse"]);
+        result = (await runTool(cmd, ["version", "--format=terse"])).trim();
         util.cacheCodeQlVersion(result);
       }
       return result;

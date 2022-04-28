@@ -731,9 +731,9 @@ export async function checkActionVersion(version: string) {
         ))
     ) {
       core.warning(
-        "CodeQL Action version 1 will be deprecated on December 7th, 2022. Please upgrade to " +
-          "version 2. For more information, see " +
-          "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/."
+        "CodeQL Action v1 will be deprecated on December 7th, 2022. Please upgrade to v2. For " +
+          "more information, see " +
+          "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/"
       );
     }
   }

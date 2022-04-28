@@ -429,7 +429,7 @@ for (const [
     if (shouldReportWarning) {
       t.true(
         warningSpy.calledOnceWithExactly(
-          sinon.match("CodeQL Action version 1 will be deprecated")
+          sinon.match("CodeQL Action v1 will be deprecated")
         )
       );
     } else {

@@ -12,7 +12,7 @@ import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import * as config_utils from "./config-utils";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
-import { initializeEnvironment, Mode } from "./util";
+import { checkActionVersion, initializeEnvironment, Mode } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -49,8 +49,9 @@ async function sendCompletedStatusReport(
 }
 
 async function run() {
-  const logger = getActionsLogger();
   const startedAt = new Date();
+  const logger = getActionsLogger();
+  await checkActionVersion(pkg.version);
   let language: Language | undefined = undefined;
   try {
     if (

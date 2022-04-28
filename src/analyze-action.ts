@@ -69,6 +69,7 @@ async function run() {
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
   util.initializeEnvironment(util.Mode.actions, pkg.version);
+  await util.checkActionVersion(pkg.version);
 
   try {
     if (

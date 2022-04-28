@@ -15,6 +15,7 @@ import {
   GITHUB_DOTCOM_URL,
   isGitHubGhesVersionBelow,
   isHTTPError,
+  isInTestMode,
   UserError,
 } from "./util";
 
@@ -763,8 +764,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
   // If in test mode we don't want to upload the results
-  const testMode = process.env["TEST_MODE"] === "true" || false;
-  if (testMode) {
+  if (isInTestMode()) {
     core.debug("In test mode. Status reports are not uploaded.");
     return true;
   }

@@ -738,16 +738,3 @@ export async function checkActionVersion(version: string) {
     }
   }
 }
-
-export function formatGitHubVersion(version: GitHubVersion): string {
-  switch (version.type) {
-    case GitHubVariant.DOTCOM:
-      return "dotcom";
-    case GitHubVariant.GHAE:
-      return "GHAE";
-    case GitHubVariant.GHES:
-      return `GHES ${version.version}`;
-    default:
-      assertNever(version);
-  }
-}

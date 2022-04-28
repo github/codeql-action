@@ -394,6 +394,19 @@ test("isGitHubGhesVersionBelow", async (t) => {
   );
 });
 
+function formatGitHubVersion(version: util.GitHubVersion): string {
+  switch (version.type) {
+    case util.GitHubVariant.DOTCOM:
+      return "dotcom";
+    case util.GitHubVariant.GHAE:
+      return "GHAE";
+    case util.GitHubVariant.GHES:
+      return `GHES ${version.version}`;
+    default:
+      util.assertNever(version);
+  }
+}
+
 const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
   [
     ["1.2.1", { type: util.GitHubVariant.DOTCOM }, true],
@@ -416,7 +429,7 @@ for (const [
   const reportWarningDescription = shouldReportWarning
     ? "reports warning"
     : "doesn't report warning";
-  const versionsDescription = `CodeQL Action version ${version} and GitHub version ${util.formatGitHubVersion(
+  const versionsDescription = `CodeQL Action version ${version} and GitHub version ${formatGitHubVersion(
     githubVersion
   )}`;
   test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {

@@ -721,6 +721,10 @@ export async function checkActionVersion(version: string) {
   if (!semver.satisfies(version, ">=2")) {
     const githubVersion = await api.getGitHubVersionActionsOnly();
     // Only log a warning for versions of GHES that are compatible with CodeQL Action version 2.
+    //
+    // GHES 3.4 shipped without the v2 tag, but it also shipped without this warning message code.
+    // Therefore users who are seeing this warning message code have pulled in a new version of the
+    // Action, and with it the v2 tag.
     if (
       githubVersion.type === GitHubVariant.DOTCOM ||
       githubVersion.type === GitHubVariant.GHAE ||

@@ -94,6 +94,8 @@ jobs:
           == 'latest' || matrix.version == 'nightly-latest' }}
       shell: bash
       run: |
+        echo "Expecting ML-powered queries to be run: ${SHOULD_RUN_ML_POWERED_QUERIES}"
+
         cd "$RUNNER_TEMP/results"
         # We should run at least the ML-powered queries in `expected_rules`.
         expected_rules="js/ml-powered/nosql-injection js/ml-powered/path-injection js/ml-powered/sql-injection js/ml-powered/xss"

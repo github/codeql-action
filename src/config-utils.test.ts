@@ -1807,42 +1807,64 @@ test(
   "security-extended",
   undefined
 );
-// Test that ML-powered queries aren't run when the user hasn't specified that we should run the
-// `security-extended` or `security-and-quality` query suite.
-test(mlPoweredQueriesMacro, "2.7.5", true, undefined, undefined, undefined);
-// Test that ML-powered queries are run on non-Windows platforms running `security-extended`.
+// Test that the ~0.1.0 version of ML-powered queries is run on v2.8.3 of the CLI.
 test(
   mlPoweredQueriesMacro,
-  "2.7.5",
+  "2.8.3",
   true,
   undefined,
   "security-extended",
   process.platform === "win32" ? undefined : "~0.1.0"
 );
-// Test that ML-powered queries are run on non-Windows platforms running `security-and-quality`.
+// Test that ML-powered queries aren't run when the user hasn't specified that we should run the
+// `security-extended` or `security-and-quality` query suite.
+test(mlPoweredQueriesMacro, "2.7.5", true, undefined, undefined, undefined);
+// Test that ML-powered queries are run on non-Windows platforms running `security-extended` on
+// versions of the CodeQL CLI prior to 2.9.0.
 test(
   mlPoweredQueriesMacro,
-  "2.7.5",
-  true,
-  undefined,
-  "security-and-quality",
-  process.platform === "win32" ? undefined : "~0.1.0"
-);
-// Test that we don't inject an ML-powered query pack if the user has already specified one.
-test(
-  mlPoweredQueriesMacro,
-  "2.7.5",
-  true,
-  "codeql/javascript-experimental-atm-queries@0.0.1",
-  "security-and-quality",
-  process.platform === "win32" ? undefined : "0.0.1"
-);
-// Test that the ~0.2.0 version of ML-powered queries is run on v2.8.4 of the CLI.
-test(
-  mlPoweredQueriesMacro,
-  "2.8.4",
+  "2.8.5",
   true,
   undefined,
   "security-extended",
   process.platform === "win32" ? undefined : "~0.2.0"
+);
+// Test that ML-powered queries are run on non-Windows platforms running `security-and-quality` on
+// versions of the CodeQL CLI prior to 2.9.0.
+test(
+  mlPoweredQueriesMacro,
+  "2.8.5",
+  true,
+  undefined,
+  "security-and-quality",
+  process.platform === "win32" ? undefined : "~0.2.0"
+);
+// Test that ML-powered queries are run on all platforms running `security-extended` on CodeQL CLI
+// 2.9.0+.
+test(
+  mlPoweredQueriesMacro,
+  "2.9.0",
+  true,
+  undefined,
+  "security-extended",
+  "~0.2.0"
+);
+// Test that ML-powered queries are run on all platforms running `security-and-quality` on CodeQL
+// CLI 2.9.0+.
+test(
+  mlPoweredQueriesMacro,
+  "2.9.0",
+  true,
+  undefined,
+  "security-and-quality",
+  "~0.2.0"
+);
+// Test that we don't inject an ML-powered query pack if the user has already specified one.
+test(
+  mlPoweredQueriesMacro,
+  "2.9.0",
+  true,
+  "codeql/javascript-experimental-atm-queries@0.0.1",
+  "security-and-quality",
+  process.platform === "win32" ? undefined : "0.0.1"
 );

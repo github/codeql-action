@@ -8,6 +8,7 @@ import * as api from "./api-client";
 import {
   CodeQL,
   CODEQL_VERSION_ML_POWERED_QUERIES,
+  CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS,
   ResolveQueriesOutput,
 } from "./codeql";
 import * as externalQueries from "./external-queries";
@@ -300,8 +301,12 @@ async function addBuiltinSuiteQueries(
   // opted into the ML-powered queries beta, and a user hasn't already added the ML-powered query
   // pack, then add the ML-powered query pack so that we run ML-powered queries.
   if (
-    // Disable ML-powered queries on Windows
-    process.platform !== "win32" &&
+    // Only run ML-powered queries on Windows if we have a CLI that supports it.
+    (process.platform !== "win32" ||
+      (await codeQlVersionAbove(
+        codeQL,
+        CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS
+      ))) &&
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
     !packs.javascript?.some(

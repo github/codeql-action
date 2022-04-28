@@ -9,6 +9,7 @@ import {
   checkActionVersion,
   getRequiredEnvParam,
   initializeEnvironment,
+  isInTestMode,
   Mode,
 } from "./util";
 
@@ -66,7 +67,11 @@ async function run() {
       getActionsLogger()
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
-    if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
+
+    // We don't upload results in test mode, so don't wait for processing
+    if (isInTestMode()) {
+      core.debug("In test mode. Waiting for processing is disabled.");
+    } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,

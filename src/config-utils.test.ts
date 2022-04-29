@@ -1866,5 +1866,5 @@ test(
   true,
   "codeql/javascript-experimental-atm-queries@0.0.1",
   "security-and-quality",
-  process.platform === "win32" ? undefined : "0.0.1"
+  "0.0.1"
 );

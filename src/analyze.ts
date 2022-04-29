@@ -241,9 +241,8 @@ export async function runQueries(
         logger.info("Performing analysis with custom CodeQL Packs.");
         logger.startGroup(`Downloading custom packs for ${language}`);
 
-        const results = await codeql.packDownload(
-          removePackPath(packsWithVersion)
-        );
+        const results = await codeql.packDownload(packsWithVersion);
+
         logger.info(
           `Downloaded packs: ${results.packs
             .map((r) => `${r.name}@${r.version || "latest"}`)
@@ -497,16 +496,6 @@ async function injectLinesOfCode(
 
     fs.writeFileSync(sarifFile, JSON.stringify(sarif));
   }
-}
-
-/**
- * `codeql pack download` command does not support downloading pack specifiers with paths
- * in them. This removes the path from the pack specifier.
- * @param packsWithVersion array of pack specifiers, some of which may have paths in them
- * @returns array of pack specifiers without paths
- */
-function removePackPath(packsWithVersion: string[]) {
-  return packsWithVersion.map((pack) => pack.split(":")[0]);
 }
 
 function printLinesOfCodeSummary(

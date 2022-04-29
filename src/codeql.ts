@@ -955,6 +955,7 @@ async function getCodeQLForCmd(
         "pack",
         "download",
         "--format=json",
+        "--resolve-query-specs",
         ...getExtraOptionsFromEnv(["pack", "download"]),
         ...packs,
       ];

@@ -98,8 +98,7 @@ async function uploadPayload(
   logger.info("Uploading results");
 
   // If in test mode we don't want to upload the results
-  const testMode = process.env["TEST_MODE"] === "true" || false;
-  if (testMode) {
+  if (util.isInTestMode()) {
     const payloadSaveFile = path.join(
       actionsUtil.getTemporaryDirectory(),
       "payload.json"

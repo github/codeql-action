@@ -85,7 +85,7 @@ Since the `codeql-action` runs most of its testing through individual Actions wo
 To regenerate the PR jobs for the action:
 
 1. In a terminal check out the `SHA` whose checks you want to use as the base. Typically, this will be `main`. 
-2. From a terminal, run the following commands (replace `SHA` with the sha of the commit whose checks you want to use, typically this should be the latest from `main`):
+2. From a terminal, run the following commands:
 
     ```sh
     SHA="$(git rev-parse HEAD)"

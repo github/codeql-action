@@ -84,10 +84,11 @@ Since the `codeql-action` runs most of its testing through individual Actions wo
 
 To regenerate the PR jobs for the action:
 
-1. From a terminal, run the following commands (replace `SHA` with the sha of the commit whose checks you want to use, typically this should be the latest from `main`):
+1. In a terminal check out the `SHA` whose checks you want to use as the base. Typically, this will be `main`. 
+2. From a terminal, run the following commands:
 
     ```sh
-    SHA= ####
+    SHA="$(git rev-parse HEAD)"
     CHECKS="$(gh api repos/github/codeql-action/commits/${SHA}/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs | .[].name | select(contains("https://") or . == "CodeQL" or . == "LGTM.com" or . == "Update dependencies" or . == "Update Supported Enterprise Server Versions" | not)]')"
     echo "{\"contexts\": ${CHECKS}}" > checks.json
     gh api -X "PATCH" repos/github/codeql-action/branches/main/protection/required_status_checks --input checks.json
@@ -95,7 +96,7 @@ To regenerate the PR jobs for the action:
     gh api -X "PATCH" repos/github/codeql-action/branches/releases/v1/protection/required_status_checks --input checks.json
     ````
 
-2. Go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules have been updated.
+3. Go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules have been updated.
 
 ## Resources
 

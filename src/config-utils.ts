@@ -154,14 +154,7 @@ export interface Config {
   injectedMlQueries: boolean;
 }
 
-export type Packs = Partial<Record<Language, PackWithVersion[]>>;
-
-export interface PackWithVersion {
-  /** qualified name of a package reference */
-  packName: string;
-  /** version of the package, or undefined, which means latest version */
-  version?: string;
-}
+export type Packs = Partial<Record<Language, string[]>>;
 
 /**
  * A list of queries from https://github.com/github/codeql that
@@ -304,9 +297,7 @@ async function addBuiltinSuiteQueries(
     process.platform !== "win32" &&
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
-    !packs.javascript?.some(
-      (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
-    ) &&
+    !packs.javascript?.some(isMlPoweredJsQueriesPack) &&
     (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
     (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
   ) {
@@ -320,6 +311,14 @@ async function addBuiltinSuiteQueries(
   const suites = languages.map((l) => `${l}-${suiteName}.qls`);
   await runResolveQueries(codeQL, resultMap, suites, undefined);
   return injectedMlQueries;
+}
+
+function isMlPoweredJsQueriesPack(pack: string) {
+  return (
+    pack === ML_POWERED_JS_QUERIES_PACK_NAME ||
+    pack.startsWith(`${ML_POWERED_JS_QUERIES_PACK_NAME}@`) ||
+    pack.startsWith(`${ML_POWERED_JS_QUERIES_PACK_NAME}:`)
+  );
 }
 
 /**
@@ -1168,7 +1167,7 @@ export function parsePacksFromConfig(
     }
     packs[lang] = [];
     for (const packStr of packsArr) {
-      packs[lang].push(toPackWithVersion(packStr, configFile));
+      packs[lang].push(validatePacksSpecification(packStr, configFile));
     }
   }
   return packs;
@@ -1202,35 +1201,89 @@ function parsePacksFromInput(
 
   return {
     [languages[0]]: packsInput.split(",").reduce((packs, pack) => {
-      packs.push(toPackWithVersion(pack, ""));
+      packs.push(validatePacksSpecification(pack, ""));
       return packs;
-    }, [] as PackWithVersion[]),
+    }, [] as string[]),
   };
 }
 
-function toPackWithVersion(packStr, configFile?: string): PackWithVersion {
+/**
+ * Validates that this package specification is syntactically correct.
+ * It may not point to any real package, but after this function returns
+ * without throwing, we are guaranteed that the package specification
+ * is roughly correct.
+ *
+ * The CLI itself will do a more thorough validation of the package
+ * specification.
+ *
+ * A package specification looks like this:
+ *
+ * `scope/name@version:path`
+ *
+ * Version and path are optional.
+ *
+ * @param packStr the package specification to verify.
+ * @param configFile Config file to use for error reporting
+ */
+export function validatePacksSpecification(
+  packStr: string,
+  configFile?: string
+): string {
   if (typeof packStr !== "string") {
     throw new Error(getPacksStrInvalid(packStr, configFile));
   }
 
-  const nameWithVersion = packStr.trim().split("@");
-  let version: string | undefined;
-  if (
-    nameWithVersion.length > 2 ||
-    !PACK_IDENTIFIER_PATTERN.test(nameWithVersion[0])
-  ) {
+  packStr = packStr.trim();
+  const atIndex = packStr.indexOf("@");
+  const colonIndex = packStr.indexOf(":", atIndex);
+  const packStart = 0;
+  const versionStart = atIndex + 1 || undefined;
+  const pathStart = colonIndex + 1 || undefined;
+  const packEnd = Math.min(
+    atIndex > 0 ? atIndex : Infinity,
+    colonIndex > 0 ? colonIndex : Infinity,
+    packStr.length
+  );
+  const versionEnd = versionStart
+    ? Math.min(colonIndex > 0 ? colonIndex : Infinity, packStr.length)
+    : undefined;
+  const pathEnd = pathStart ? packStr.length : undefined;
+
+  const packName = packStr.slice(packStart, packEnd).trim();
+  const version = versionStart
+    ? packStr.slice(versionStart, versionEnd).trim()
+    : undefined;
+  const packPath = pathStart
+    ? packStr.slice(pathStart, pathEnd).trim()
+    : undefined;
+
+  if (!PACK_IDENTIFIER_PATTERN.test(packName)) {
     throw new Error(getPacksStrInvalid(packStr, configFile));
-  } else if (nameWithVersion.length === 2) {
-    version = semver.clean(nameWithVersion[1]) || undefined;
-    if (!version) {
+  }
+  if (version) {
+    try {
+      new semver.Range(version);
+    } catch (e) {
+      // The range string is invalid. OK to ignore the caught error
       throw new Error(getPacksStrInvalid(packStr, configFile));
     }
   }
 
-  return {
-    packName: nameWithVersion[0].trim(),
-    version,
-  };
+  if (
+    packPath &&
+    (path.isAbsolute(packPath) || path.normalize(packPath) !== packPath)
+  ) {
+    throw new Error(getPacksStrInvalid(packStr, configFile));
+  }
+
+  if (!packPath && pathStart) {
+    // 0 length path
+    throw new Error(getPacksStrInvalid(packStr, configFile));
+  }
+
+  return (
+    packName + (version ? `@${version}` : "") + (packPath ? `:${packPath}` : "")
+  );
 }
 
 // exported for testing

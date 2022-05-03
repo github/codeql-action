@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- When `wait-for-processing` is enabled, the workflow will now fail if there were any errors that occurred during processing of the analysis results.
 
 ## 2.1.9 - 27 Apr 2022
 

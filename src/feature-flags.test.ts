@@ -31,12 +31,12 @@ const ALL_FEATURE_FLAGS_DISABLED_VARIANTS: Array<{
   description: string;
   gitHubVersion: util.GitHubVersion;
 }> = [
-  {
-    description: "GHES",
-    gitHubVersion: { type: GitHubVariant.GHES, version: "3.0.0" },
-  },
-  { description: "GHAE", gitHubVersion: { type: GitHubVariant.GHAE } },
-];
+    {
+      description: "GHES",
+      gitHubVersion: { type: GitHubVariant.GHES, version: "3.0.0" },
+    },
+    { description: "GHAE", gitHubVersion: { type: GitHubVariant.GHAE } },
+  ];
 
 for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
   test(`All feature flags are disabled if running against ${variant.description}`, async (t) => {
@@ -60,7 +60,7 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
           (v: LoggedMessage) =>
             v.type === "debug" &&
             v.message ===
-              "Not running against github.com. Disabling all feature flags."
+            "Not running against github.com. Disabling all feature flags."
         ) !== undefined
       );
     });
@@ -91,7 +91,7 @@ test("Feature flags are disabled if they're not returned in API response", async
           (v: LoggedMessage) =>
             v.type === "debug" &&
             v.message ===
-              `Feature flag '${featureFlag}' undefined in API response, considering it disabled.`
+            `Feature flag '${featureFlag}' undefined in API response, considering it disabled.`
         ) !== undefined
       );
     }
@@ -121,7 +121,10 @@ test("Feature flags exception is propagated if the API request errors", async (t
   });
 });
 
-const FEATURE_FLAGS = ["ml_powered_queries_enabled"];
+const FEATURE_FLAGS = [
+  "ml_powered_queries_enabled",
+  "lua_tracer_config_enabled",
+];
 
 for (const featureFlag of FEATURE_FLAGS) {
   test(`Feature flag '${featureFlag}' is enabled if enabled in the API response`, async (t) => {
@@ -145,6 +148,9 @@ for (const featureFlag of FEATURE_FLAGS) {
       const actualFeatureFlags: { [flag: string]: boolean } = {
         ml_powered_queries_enabled: await featureFlags.getValue(
           FeatureFlag.MlPoweredQueriesEnabled
+        ),
+        lua_tracer_config_enabled: await featureFlags.getValue(
+          FeatureFlag.LuaTracerConfigEnabled
         ),
       };
 

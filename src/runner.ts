@@ -180,14 +180,14 @@ program
   .option(
     "--ram <number>",
     "The amount of memory in MB that can be used by CodeQL extractors. " +
-      "By default, CodeQL extractors will use most of the memory available in the system. " +
-      'This input also sets the amount of memory that can later be used by the "analyze" command.'
+    "By default, CodeQL extractors will use most of the memory available in the system. " +
+    'This input also sets the amount of memory that can later be used by the "analyze" command.'
   )
   .option(
     "--threads <number>",
     "The number of threads that can be used by CodeQL extractors. " +
-      "By default, CodeQL extractors will use all the hardware threads available in the system. " +
-      'This input also sets the number of threads that can later be used by the "analyze" command.'
+    "By default, CodeQL extractors will use all the hardware threads available in the system. " +
+    'This input also sets the number of threads that can later be used by the "analyze" command.'
   )
   .action(async (cmd: InitArgs) => {
     const logger = getRunnerLogger(cmd.debug);
@@ -271,7 +271,8 @@ program
         config,
         sourceRoot,
         parseTraceProcessName(),
-        parseTraceProcessLevel()
+        parseTraceProcessLevel(),
+        createFeatureFlags([])
       );
       if (tracerConfig === undefined) {
         return;
@@ -309,9 +310,9 @@ program
 
         logger.info(
           `\nCodeQL environment output to "${jsonEnvFile}", "${batEnvFile}" and "${powershellEnvFile}". ` +
-            `Please export these variables to future processes so that CodeQL can monitor the build. ` +
-            `If using cmd/batch run "call ${batEnvFile}" ` +
-            `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`
+          `Please export these variables to future processes so that CodeQL can monitor the build. ` +
+          `If using cmd/batch run "call ${batEnvFile}" ` +
+          `or if using PowerShell run "cat ${powershellEnvFile} | Invoke-Expression".`
         );
       } else {
         // Assume that anything that's not windows is using a unix-style shell
@@ -327,8 +328,8 @@ program
 
         logger.info(
           `\nCodeQL environment output to "${jsonEnvFile}" and "${shEnvFile}". ` +
-            `Please export these variables to future processes so that CodeQL can monitor the build, ` +
-            `for example by running ". ${shEnvFile}".`
+          `Please export these variables to future processes so that CodeQL can monitor the build, ` +
+          `for example by running ". ${shEnvFile}".`
         );
       }
     } catch (e) {
@@ -363,7 +364,7 @@ program
       if (config === undefined) {
         throw new Error(
           "Config file could not be found at expected location. " +
-            "Was the 'init' command run with the same '--temp-dir' argument as this command."
+          "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
       await enrichEnvironment(Mode.runner, await getCodeQL(config.codeQLCmd));
@@ -374,9 +375,9 @@ program
         if (language === undefined || !config.languages.includes(language)) {
           throw new Error(
             `"${cmd.language}" is not a recognised language. ` +
-              `Known languages in this project are ${config.languages.join(
-                ", "
-              )}.`
+            `Known languages in this project are ${config.languages.join(
+              ", "
+            )}.`
           );
         }
       } else {
@@ -440,9 +441,9 @@ program
   .option(
     "--ram <ram>",
     "The amount of memory in MB that can be used by CodeQL for database finalization and query execution. " +
-      'By default, this command will use the same amount of memory as previously set in the "init" command. ' +
-      'If the "init" command also does not have an explicit "ram" flag, this command will use most of the ' +
-      "memory available in the system."
+    'By default, this command will use the same amount of memory as previously set in the "init" command. ' +
+    'If the "init" command also does not have an explicit "ram" flag, this command will use most of the ' +
+    "memory available in the system."
   )
   .option(
     "--no-add-snippets",
@@ -451,9 +452,9 @@ program
   .option(
     "--threads <threads>",
     "The number of threads that can be used by CodeQL for database finalization and query execution. " +
-      'By default, this command will use the same number of threads as previously set in the "init" command. ' +
-      'If the "init" command also does not have an explicit "threads" flag, this command will use all the ' +
-      "hardware threads available in the system."
+    'By default, this command will use the same number of threads as previously set in the "init" command. ' +
+    'If the "init" command also does not have an explicit "threads" flag, this command will use all the ' +
+    "hardware threads available in the system."
   )
   .option(
     "--temp-dir <dir>",
@@ -471,7 +472,7 @@ program
       if (config === undefined) {
         throw new Error(
           "Config file could not be found at expected location. " +
-            "Was the 'init' command run with the same '--temp-dir' argument as this command."
+          "Was the 'init' command run with the same '--temp-dir' argument as this command."
         );
       }
       await enrichEnvironment(Mode.runner, await getCodeQL(config.codeQLCmd));

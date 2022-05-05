@@ -12,6 +12,7 @@ import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
+import { FeatureFlags, FeatureFlag } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as toolcache from "./toolcache";
@@ -83,7 +84,8 @@ export interface CodeQL {
     config: Config,
     sourceRoot: string,
     processName: string | undefined,
-    processLevel: number | undefined
+    processLevel: number | undefined,
+    featureFlags: FeatureFlags
   ): Promise<void>;
   /**
    * Runs the autobuilder for the given language.
@@ -220,6 +222,7 @@ const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
+const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.9.2";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL
@@ -726,7 +729,8 @@ async function getCodeQLForCmd(
       config: Config,
       sourceRoot: string,
       processName: string | undefined,
-      processLevel: number | undefined
+      processLevel: number | undefined,
+      featureFlags: FeatureFlags
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`
@@ -740,6 +744,15 @@ async function getCodeQLForCmd(
           // behaviour of the Runner. Note this path never happens in the CodeQL Action
           // because that always passes in a process name.
           extraArgs.push(`--trace-process-level=${processLevel || 3}`);
+        }
+        if (
+          await util.codeQlVersionAbove(this, CODEQL_VERSION_LUA_TRACER_CONFIG)
+        ) {
+          if (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) {
+            extraArgs.push("--internal-use-lua-tracing");
+          } else {
+            extraArgs.push("--no-internal-use-lua-tracing");
+          }
         }
       }
       await runTool(cmd, [
@@ -1091,10 +1104,10 @@ export function getExtraOptions(
     paths.length === 0
       ? asExtraOptions(options, pathInfo)
       : getExtraOptions(
-          options?.[paths[0]],
-          paths?.slice(1),
-          pathInfo.concat(paths[0])
-        );
+        options?.[paths[0]],
+        paths?.slice(1),
+        pathInfo.concat(paths[0])
+      );
   return all.concat(specific);
 }
 

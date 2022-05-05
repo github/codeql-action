@@ -87,7 +87,8 @@ export async function runInit(
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
-  processLevel: number | undefined
+  processLevel: number | undefined,
+  featureFlags: FeatureFlags
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
@@ -98,7 +99,8 @@ export async function runInit(
         config,
         sourceRoot,
         processName,
-        processLevel
+        processLevel,
+        featureFlags
       );
     } else {
       for (const language of config.languages) {
@@ -263,9 +265,9 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     logger.endGroup();
     logger.warning(
       `An error occurred while trying to automatically install Python dependencies: ${e}\n` +
-        "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
-        "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
-        "dependency installation and avoid this warning."
+      "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
+      "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
+      "dependency installation and avoid this warning."
     );
     return;
   }

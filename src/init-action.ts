@@ -240,7 +240,7 @@ async function run() {
     core.exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
-        getMemoryFlagValue(getOptionalInput("ram")).toString()
+      getMemoryFlagValue(getOptionalInput("ram")).toString()
     );
     core.exportVariable(
       "CODEQL_THREADS",
@@ -257,7 +257,8 @@ async function run() {
       config,
       sourceRoot,
       "Runner.Worker.exe",
-      undefined
+      undefined,
+      featureFlags
     );
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {

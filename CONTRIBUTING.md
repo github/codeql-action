@@ -80,14 +80,15 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 ## Keeping the PR checks up to date (admin access required)
 
-Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred jobs that need to pass in order for a PR to turn green. Managing these PR checks manually is time consuming and complex. Here is a semi-automated approach.
+Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred jobs that need to pass in order for a PR to turn green. You can regenerate the checks automatically by running the [Update required checks](.github/workflows/update-required-checks.yml) workflow.
 
-To regenerate the PR jobs for the action:
+Or you can use this semi-automated approach:
 
-1. From a terminal, run the following commands (replace `SHA` with the sha of the commit whose checks you want to use, typically this should be the latest from `main`):
+1. In a terminal check out the `SHA` whose checks you want to use as the base. Typically, this will be `main`. 
+2. From a terminal, run the following commands:
 
     ```sh
-    SHA= ####
+    SHA="$(git rev-parse HEAD)"
     CHECKS="$(gh api repos/github/codeql-action/commits/${SHA}/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs | .[].name | select(contains("https://") or . == "CodeQL" or . == "LGTM.com" or . == "Update dependencies" or . == "Update Supported Enterprise Server Versions" | not)]')"
     echo "{\"contexts\": ${CHECKS}}" > checks.json
     gh api -X "PATCH" repos/github/codeql-action/branches/main/protection/required_status_checks --input checks.json
@@ -95,7 +96,7 @@ To regenerate the PR jobs for the action:
     gh api -X "PATCH" repos/github/codeql-action/branches/releases/v1/protection/required_status_checks --input checks.json
     ````
 
-2. Go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules have been updated.
+3. Go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules have been updated.
 
 ## Resources
 

@@ -3,6 +3,7 @@ import * as path from "path";
 import zlib from "zlib";
 
 import * as core from "@actions/core";
+import { OctokitResponse } from "@octokit/types";
 import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
 import * as semver from "semver";
@@ -98,8 +99,7 @@ async function uploadPayload(
   logger.info("Uploading results");
 
   // If in test mode we don't want to upload the results
-  const testMode = process.env["TEST_MODE"] === "true" || false;
-  if (testMode) {
+  if (util.isInTestMode()) {
     const payloadSaveFile = path.join(
       actionsUtil.getTemporaryDirectory(),
       "payload.json"
@@ -472,8 +472,9 @@ export async function waitForProcessing(
       );
       break;
     }
+    let response: OctokitResponse<any> | undefined = undefined;
     try {
-      const response = await client.request(
+      response = await client.request(
         "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
         {
           owner: repositoryNwo.owner,
@@ -481,22 +482,24 @@ export async function waitForProcessing(
           sarif_id: sarifID,
         }
       );
-      const status = response.data.processing_status;
-      logger.info(`Analysis upload status is ${status}.`);
-      if (status === "complete") {
-        break;
-      } else if (status === "pending") {
-        logger.debug("Analysis processing is still pending...");
-      } else if (status === "failed") {
-        throw new Error(
-          `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
-        );
-      }
     } catch (e) {
       logger.warning(
         `An error occurred checking the status of the delivery. ${e} It should still be processed in the background, but errors that occur during processing may not be reported.`
       );
+      break;
     }
+    const status = response.data.processing_status;
+    logger.info(`Analysis upload status is ${status}.`);
+    if (status === "complete") {
+      break;
+    } else if (status === "pending") {
+      logger.debug("Analysis processing is still pending...");
+    } else if (status === "failed") {
+      throw new Error(
+        `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
+      );
+    }
+
     await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
   }
   logger.endGroup();

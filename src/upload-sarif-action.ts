@@ -5,7 +5,13 @@ import { getGitHubVersionActionsOnly } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
-import { getRequiredEnvParam, initializeEnvironment, Mode } from "./util";
+import {
+  checkActionVersion,
+  getRequiredEnvParam,
+  initializeEnvironment,
+  isInTestMode,
+  Mode,
+} from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -31,8 +37,9 @@ async function sendSuccessStatusReport(
 }
 
 async function run() {
-  initializeEnvironment(Mode.actions, pkg.version);
   const startedAt = new Date();
+  initializeEnvironment(Mode.actions, pkg.version);
+  await checkActionVersion(pkg.version);
   if (
     !(await actionsUtil.sendStatusReport(
       await actionsUtil.createStatusReportBase(
@@ -60,7 +67,11 @@ async function run() {
       getActionsLogger()
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
-    if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
+
+    // We don't upload results in test mode, so don't wait for processing
+    if (isInTestMode()) {
+      core.debug("In test mode. Waiting for processing is disabled.");
+    } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,

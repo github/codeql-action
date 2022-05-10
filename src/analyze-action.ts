@@ -69,6 +69,7 @@ async function run() {
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
   util.initializeEnvironment(util.Mode.actions, pkg.version);
+  await util.checkActionVersion(pkg.version);
 
   try {
     if (
@@ -195,7 +196,10 @@ async function run() {
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
 
-    if (
+    // We don't upload results in test mode, so don't wait for processing
+    if (util.isInTestMode()) {
+      core.debug("In test mode. Waiting for processing is disabled.");
+    } else if (
       uploadResult !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
     ) {

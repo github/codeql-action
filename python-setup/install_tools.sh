@@ -29,9 +29,16 @@ python3 -m pip install --user poetry!=1.0.10
 python3 -m pip install --user pipenv
 
 if command -v python2 >/dev/null 2>&1; then
-	# Setup Python 2 dependency installation tools.
-	# The Ubuntu 20.04 GHA environment does not come with a Python 2 pip
-	curl --location --fail https://bootstrap.pypa.io/pip/2.7/get-pip.py | python2
+	# Setup Python 2 dependency installation tools. The Ubuntu 20.04 GHA environment
+	# does not come with a Python 2 pip, but if it is already installed, don't try to
+	# install it again (since that causes problems).
+	#
+	# This might seem like a hypothetical situation, but it happens all the time in our
+	# internal testing where we run the action twice in a row.
+	if ! python2 -m pip --version; then
+		echo "Will install pip for python2"
+		curl --location --fail https://bootstrap.pypa.io/pip/2.7/get-pip.py | python2
+	fi
 
 	python2 -m pip install --user --upgrade pip setuptools wheel
 

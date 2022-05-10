@@ -7,10 +7,11 @@ import * as core from "@actions/core";
 import del from "del";
 import * as semver from "semver";
 
+import * as api from "./api-client";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
-import { Config, PackWithVersion } from "./config-utils";
+import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -662,11 +663,11 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
  */
 export async function getMlPoweredJsQueriesPack(
   codeQL: CodeQL
-): Promise<PackWithVersion> {
+): Promise<string> {
   if (await codeQlVersionAbove(codeQL, "2.8.4")) {
-    return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.2.0" };
+    return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.2.0`;
   }
-  return { packName: ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" };
+  return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`;
 }
 
 /**
@@ -691,9 +692,13 @@ export async function getMlPoweredJsQueriesPack(
  * explanation as to why this is.
  */
 export function getMlPoweredJsQueriesStatus(config: Config): string {
-  const mlPoweredJsQueryPacks = (config.packs.javascript || []).filter(
-    (pack) => pack.packName === ML_POWERED_JS_QUERIES_PACK_NAME
-  );
+  const mlPoweredJsQueryPacks = (config.packs.javascript || [])
+    .map((pack) => pack.split("@"))
+    .filter(
+      (packNameVersion) =>
+        packNameVersion[0] === "codeql/javascript-experimental-atm-queries" &&
+        packNameVersion.length <= 2
+    );
   switch (mlPoweredJsQueryPacks.length) {
     case 1:
       // We should always specify an explicit version string in `getMlPoweredJsQueriesPack`,
@@ -701,10 +706,52 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
       // with each version of the CodeQL Action. Therefore in practice we should only hit the
       // `latest` case here when customers have explicitly added the ML-powered query pack to their
       // CodeQL config.
-      return mlPoweredJsQueryPacks[0].version || "latest";
+      return mlPoweredJsQueryPacks[0][1] || "latest";
     case 0:
       return "false";
     default:
       return "other";
   }
+}
+
+/**
+ * Prompt the customer to upgrade to CodeQL Action v2, if appropriate.
+ *
+ * Check whether a customer is running v1. If they are, and we can determine that the GitHub
+ * instance supports v2, then log a warning about v1's upcoming deprecation prompting the customer
+ * to upgrade to v2.
+ */
+export async function checkActionVersion(version: string) {
+  if (!semver.satisfies(version, ">=2")) {
+    const githubVersion = await api.getGitHubVersionActionsOnly();
+    // Only log a warning for versions of GHES that are compatible with CodeQL Action version 2.
+    //
+    // GHES 3.4 shipped without the v2 tag, but it also shipped without this warning message code.
+    // Therefore users who are seeing this warning message code have pulled in a new version of the
+    // Action, and with it the v2 tag.
+    if (
+      githubVersion.type === GitHubVariant.DOTCOM ||
+      githubVersion.type === GitHubVariant.GHAE ||
+      (githubVersion.type === GitHubVariant.GHES &&
+        semver.satisfies(
+          semver.coerce(githubVersion.version) ?? "0.0.0",
+          ">=3.4"
+        ))
+    ) {
+      core.warning(
+        "CodeQL Action v1 will be deprecated on December 7th, 2022. Please upgrade to v2. For " +
+          "more information, see " +
+          "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/"
+      );
+    }
+  }
+}
+
+/*
+ * Returns whether we are in test mode.
+ *
+ * In test mode, we don't upload SARIF results or status reports to the GitHub API.
+ */
+export function isInTestMode(): boolean {
+  return process.env["TEST_MODE"] === "true" || false;
 }

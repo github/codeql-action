@@ -2,12 +2,13 @@ import * as fs from "fs";
 import * as os from "os";
 import * as stream from "stream";
 
+import * as core from "@actions/core";
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { Config, PackWithVersion } from "./config-utils";
+import { Config } from "./config-utils";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -293,44 +294,32 @@ async function mockStdInForAuthExpectError(
   );
 }
 
-const ML_POWERED_JS_STATUS_TESTS: Array<[PackWithVersion[], string]> = [
+const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
   // If no packs are loaded, status is false.
   [[], "false"],
   // If another pack is loaded but not the ML-powered query pack, status is false.
-  [[{ packName: "someOtherPack" }], "false"],
+  [["someOtherPack"], "false"],
   // If the ML-powered query pack is loaded with a specific version, status is that version.
-  [
-    [{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" }],
-    "~0.1.0",
-  ],
+  [[`${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
   // If the ML-powered query pack is loaded with a specific version and another pack is loaded, the
   // status is the version of the ML-powered query pack.
   [
-    [
-      { packName: "someOtherPack" },
-      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "~0.1.0" },
-    ],
+    ["someOtherPack", `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`],
     "~0.1.0",
   ],
   // If the ML-powered query pack is loaded without a version, the status is "latest".
-  [[{ packName: util.ML_POWERED_JS_QUERIES_PACK_NAME }], "latest"],
+  [[util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
   // If the ML-powered query pack is loaded with two different versions, the status is "other".
   [
     [
-      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.1" },
-      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME, version: "0.0.2" },
+      `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.1`,
+      `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.2`,
     ],
     "other",
   ],
   // If the ML-powered query pack is loaded with no specific version, and another pack is loaded,
   // the status is "latest".
-  [
-    [
-      { packName: "someOtherPack" },
-      { packName: util.ML_POWERED_JS_QUERIES_PACK_NAME },
-    ],
-    "latest",
-  ],
+  [["someOtherPack", util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
 ];
 
 for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
@@ -392,3 +381,62 @@ test("isGitHubGhesVersionBelow", async (t) => {
     )
   );
 });
+
+function formatGitHubVersion(version: util.GitHubVersion): string {
+  switch (version.type) {
+    case util.GitHubVariant.DOTCOM:
+      return "dotcom";
+    case util.GitHubVariant.GHAE:
+      return "GHAE";
+    case util.GitHubVariant.GHES:
+      return `GHES ${version.version}`;
+    default:
+      util.assertNever(version);
+  }
+}
+
+const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
+  [
+    ["1.2.1", { type: util.GitHubVariant.DOTCOM }, true],
+    ["1.2.1", { type: util.GitHubVariant.GHAE }, true],
+    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, false],
+    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, true],
+    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, true],
+    ["2.2.1", { type: util.GitHubVariant.DOTCOM }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHAE }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, false],
+  ];
+
+for (const [
+  version,
+  githubVersion,
+  shouldReportWarning,
+] of CHECK_ACTION_VERSION_TESTS) {
+  const reportWarningDescription = shouldReportWarning
+    ? "reports warning"
+    : "doesn't report warning";
+  const versionsDescription = `CodeQL Action version ${version} and GitHub version ${formatGitHubVersion(
+    githubVersion
+  )}`;
+  test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {
+    const warningSpy = sinon.spy(core, "warning");
+    const versionStub = sinon
+      .stub(api, "getGitHubVersionActionsOnly")
+      .resolves(githubVersion);
+    const isActionsStub = sinon.stub(util, "isActions").returns(true);
+    await util.checkActionVersion(version);
+    if (shouldReportWarning) {
+      t.true(
+        warningSpy.calledOnceWithExactly(
+          sinon.match("CodeQL Action v1 will be deprecated")
+        )
+      );
+    } else {
+      t.false(warningSpy.called);
+    }
+    versionStub.restore();
+    isActionsStub.restore();
+  });
+}

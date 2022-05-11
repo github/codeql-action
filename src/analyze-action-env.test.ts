@@ -22,14 +22,17 @@ setupTests(test);
 
 test("analyze action with RAM & threads from environment variables", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    process.env["GITHUB_SERVER_URL"] = "fake-server-url";
-    process.env["GITHUB_REPOSITORY"] = "fake/repository";
+    process.env["GITHUB_SERVER_URL"] = util.GITHUB_DOTCOM_URL;
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     sinon
       .stub(actionsUtil, "createStatusReportBase")
       .resolves({} as actionsUtil.StatusReportBase);
     sinon.stub(actionsUtil, "sendStatusReport").resolves(true);
+    const gitHubVersion: util.GitHubVersion = {
+      type: util.GitHubVariant.DOTCOM,
+    };
     sinon.stub(configUtils, "getConfig").resolves({
-      gitHubVersion: { type: util.GitHubVariant.DOTCOM },
+      gitHubVersion,
       languages: [],
       packs: [],
     } as unknown as configUtils.Config);
@@ -38,6 +41,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     requiredInputStub.withArgs("upload-database").returns("false");
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     optionalInputStub.withArgs("cleanup-level").returns("none");
+    sinon.stub(util, "getGitHubVersion").resolves(gitHubVersion);
     setupActionsVars(tmpDir, tmpDir);
     mockFeatureFlagApiEndpoint(200, {});
 

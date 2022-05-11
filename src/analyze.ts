@@ -242,6 +242,7 @@ export async function runQueries(
         logger.startGroup(`Downloading custom packs for ${language}`);
 
         const results = await codeql.packDownload(packsWithVersion);
+
         logger.info(
           `Downloaded packs: ${results.packs
             .map((r) => `${r.name}@${r.version || "latest"}`)
@@ -283,12 +284,12 @@ export async function runQueries(
       }
       if (packsWithVersion.length > 0) {
         querySuitePaths.push(
-          await runQueryGroup(
+          ...(await runQueryPacks(
             language,
             "packs",
-            createPackSuiteContents(packsWithVersion),
+            packsWithVersion,
             undefined
-          )
+          ))
         );
         ranCustom = true;
       }
@@ -386,25 +387,36 @@ export async function runQueries(
     logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
     return querySuitePath;
   }
+  async function runQueryPacks(
+    language: Language,
+    type: string,
+    packs: string[],
+    searchPath: string | undefined
+  ): Promise<string[]> {
+    const databasePath = util.getCodeQLDatabasePath(config, language);
+    // Run the queries individually instead of all at once to avoid command
+    // line length restrictions, particularly on windows.
+
+    for (const pack of packs) {
+      logger.debug(`Running query pack for ${language}-${type}: ${pack}`);
+
+      const codeql = await getCodeQL(config.codeQLCmd);
+      await codeql.databaseRunQueries(
+        databasePath,
+        searchPath,
+        pack,
+        memoryFlag,
+        threadsFlag
+      );
+
+      logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
+    }
+    return packs;
+  }
 }
+
 function createQuerySuiteContents(queries: string[]) {
   return queries.map((q: string) => `- query: ${q}`).join("\n");
-}
-
-function createPackSuiteContents(
-  packsWithVersion: configUtils.PackWithVersion[]
-) {
-  return packsWithVersion.map(packWithVersionToQuerySuiteEntry).join("\n");
-}
-
-function packWithVersionToQuerySuiteEntry(
-  pack: configUtils.PackWithVersion
-): string {
-  let text = `- qlpack: ${pack.packName}`;
-  if (pack.version) {
-    text += `\n  version: ${pack.version}`;
-  }
-  return text;
 }
 
 export async function runFinalize(

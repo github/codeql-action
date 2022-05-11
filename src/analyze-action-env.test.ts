@@ -47,6 +47,10 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     process.env["CODEQL_THREADS"] = "-1";
     process.env["CODEQL_RAM"] = "4992";
 
+    // Don't upload SARIF or send status reports. This cuts down on the number of requests we make
+    // to the GitHub API when running PR checks.
+    process.env["TEST_MODE"] = "true";
+
     const runFinalizeStub = sinon.stub(analyze, "runFinalize");
     const runQueriesStub = sinon.stub(analyze, "runQueries");
     const analyzeAction = require("./analyze-action");

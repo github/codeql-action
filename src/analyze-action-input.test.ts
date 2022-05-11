@@ -44,6 +44,10 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     process.env["CODEQL_THREADS"] = "1";
     process.env["CODEQL_RAM"] = "4992";
 
+    // Don't upload SARIF or send status reports. This cuts down on the number of requests we make
+    // to the GitHub API when running PR checks.
+    process.env["TEST_MODE"] = "true";
+
     // Action inputs have precedence over environment variables.
     optionalInputStub.withArgs("threads").returns("-1");
     optionalInputStub.withArgs("ram").returns("3012");

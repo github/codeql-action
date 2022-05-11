@@ -32,10 +32,19 @@ steps:
       retention-days: 7
 
   - name: Check results
+    # Running ML-powered queries on Windows requires CodeQL CLI 2.9.0+. We don't run these checks
+    # against Windows and `cached` while CodeQL CLI 2.9.0 makes its way into `cached` to avoid the
+    # test starting to fail when the cached CodeQL Bundle gets updated. Once the CodeQL Bundle
+    # containing CodeQL CLI 2.9.0 has been fully released, we can drop this line and start running
+    # these checks on Windows and `cached`.
+    if: matrix.os != 'windows-latest' || matrix.version != 'cached'
     env:
-      IS_WINDOWS: ${{ matrix.os == 'windows-latest' }}
+      # Running on Windows requires CodeQL CLI 2.9.0+, which has so far only made it to 'latest'.
+      SHOULD_RUN_ML_POWERED_QUERIES: ${{ matrix.os != 'windows-latest' || matrix.version == 'latest' || matrix.version == 'nightly-latest' }}
     shell: bash
     run: |
+      echo "Expecting ML-powered queries to be run: ${SHOULD_RUN_ML_POWERED_QUERIES}"
+
       cd "$RUNNER_TEMP/results"
       # We should run at least the ML-powered queries in `expected_rules`.
       expected_rules="js/ml-powered/nosql-injection js/ml-powered/path-injection js/ml-powered/sql-injection js/ml-powered/xss"
@@ -44,10 +53,10 @@ steps:
         found_rule=$(jq --arg rule "${rule}" '[.runs[0].tool.extensions[].rules | select(. != null) |
           flatten | .[].id] | any(. == $rule)' javascript.sarif)
         echo "Did find rule '${rule}': ${found_rule}"
-        if [[ "${found_rule}" != "true" && "${IS_WINDOWS}" != "true" ]]; then
+        if [[ "${found_rule}" != "true" && "${SHOULD_RUN_ML_POWERED_QUERIES}" == "true" ]]; then
           echo "Expected SARIF output to contain rule '${rule}', but found no such rule."
           exit 1
-        elif [[ "${found_rule}" == "true" && "${IS_WINDOWS}" == "true" ]]; then
+        elif [[ "${found_rule}" == "true" && "${SHOULD_RUN_ML_POWERED_QUERIES}" != "true" ]]; then
           echo "Found rule '${rule}' in the SARIF output which shouldn't have been part of the analysis."
           exit 1
         fi
@@ -58,10 +67,10 @@ steps:
         select(.properties.score != null and (.rule.id | startswith("js/ml-powered/")))] | length' \
         javascript.sarif)
       echo "Found ${num_alerts} alerts from ML-powered queries.";
-      if [[ "${num_alerts}" -eq 0 && "${IS_WINDOWS}" != "true" ]]; then
+      if [[ "${num_alerts}" -eq 0 && "${SHOULD_RUN_ML_POWERED_QUERIES}" == "true" ]]; then
         echo "Expected to find at least one alert from an ML-powered query but found ${num_alerts}."
         exit 1
-      elif [[ "${num_alerts}" -ne 0 && "${IS_WINDOWS}" == "true" ]]; then
+      elif [[ "${num_alerts}" -ne 0 && "${SHOULD_RUN_ML_POWERED_QUERIES}" != "true" ]]; then
         echo "Expected not to find any alerts from an ML-powered query but found ${num_alerts}."
         exit 1
       fi

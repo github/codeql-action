@@ -292,7 +292,7 @@ def main():
     conflicted_files = run_git('diff', '--name-only', '--diff-filter', 'U').splitlines()
     if len(conflicted_files) > 0:
       run_git('add', '.')
-    run_git('commit', '--no-edit')
+      run_git('commit', '--no-edit')
 
     # Migrate the package version number from a v2 version number to a v1 version number
     print(f'Setting version number to {version}')

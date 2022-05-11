@@ -80,22 +80,11 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 ## Keeping the PR checks up to date (admin access required)
 
-Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred jobs that need to pass in order for a PR to turn green. Managing these PR checks manually is time consuming and complex. Here is a semi-automated approach.
+Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred jobs that need to pass in order for a PR to turn green. You can regenerate the checks automatically by running the [update-required-checks.sh](.github/workflows/script/update-required-checks.sh) script:
 
-To regenerate the PR jobs for the action:
-
-1. From a terminal, run the following commands (replace `SHA` with the sha of the commit whose checks you want to use, typically this should be the latest from `main`):
-
-    ```sh
-    SHA= ####
-    CHECKS="$(gh api repos/github/codeql-action/commits/${SHA}/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs | .[].name | select(contains("https://") or . == "CodeQL" or . == "LGTM.com" or . == "Update dependencies" or . == "Update Supported Enterprise Server Versions" | not)]')"
-    echo "{\"contexts\": ${CHECKS}}" > checks.json
-    gh api -X "PATCH" repos/github/codeql-action/branches/main/protection/required_status_checks --input checks.json
-    gh api -X "PATCH" repos/github/codeql-action/branches/releases/v2/protection/required_status_checks --input checks.json
-    gh api -X "PATCH" repos/github/codeql-action/branches/releases/v1/protection/required_status_checks --input checks.json
-    ````
-
-2. Go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules have been updated.
+1. By default, this script retrieves the checks from the latest SHA on `main`, so make sure that your `main` branch is up to date.
+2. Run the script. If there's a reason to, you can pass in a different SHA as a CLI argument.
+3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v1`, and `v2` have been updated.
 
 ## Resources
 

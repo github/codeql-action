@@ -3,7 +3,6 @@ import * as path from "path";
 
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
-import { clean } from "semver";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
@@ -1132,12 +1131,7 @@ test("Config specifies packages", async (t) => {
       getRunnerLogger(true)
     );
     t.deepEqual(packs as unknown, {
-      [Language.javascript]: [
-        {
-          packName: "a/b",
-          version: clean("1.2.3"),
-        },
-      ],
+      [Language.javascript]: ["a/b@1.2.3"],
     });
   });
 });
@@ -1194,18 +1188,8 @@ test("Config specifies packages for multiple languages", async (t) => {
       getRunnerLogger(true)
     );
     t.deepEqual(packs as unknown, {
-      [Language.javascript]: [
-        {
-          packName: "a/b",
-          version: clean("1.2.3"),
-        },
-      ],
-      [Language.python]: [
-        {
-          packName: "c/d",
-          version: clean("1.2.3"),
-        },
-      ],
+      [Language.javascript]: ["a/b@1.2.3"],
+      [Language.python]: ["c/d@1.2.3"],
     });
     t.deepEqual(queries, {
       cpp: {
@@ -1437,7 +1421,7 @@ const parsePacksMacro = test.macro({
     t: ExecutionContext<unknown>,
     packsByLanguage: string[] | Record<string, string[]>,
     languages: Language[],
-    expected: Partial<Record<Language, configUtils.PackWithVersion[]>>
+    expected: Partial<Record<Language, string[]>>
   ) =>
     t.deepEqual(
       configUtils.parsePacksFromConfig(packsByLanguage, languages, "/a/b"),
@@ -1490,10 +1474,7 @@ const invalidPackNameMacro = test.macro({
 
 test("no packs", parsePacksMacro, {}, [], {});
 test("two packs", parsePacksMacro, ["a/b", "c/d@1.2.3"], [Language.cpp], {
-  [Language.cpp]: [
-    { packName: "a/b", version: undefined },
-    { packName: "c/d", version: clean("1.2.3") as string },
-  ],
+  [Language.cpp]: ["a/b", "c/d@1.2.3"],
 });
 test(
   "two packs with spaces",
@@ -1501,10 +1482,7 @@ test(
   [" a/b ", " c/d@1.2.3 "],
   [Language.cpp],
   {
-    [Language.cpp]: [
-      { packName: "a/b", version: undefined },
-      { packName: "c/d", version: clean("1.2.3") as string },
-    ],
+    [Language.cpp]: ["a/b", "c/d@1.2.3"],
   }
 );
 test(
@@ -1516,13 +1494,45 @@ test(
   },
   [Language.cpp, Language.java, Language.csharp],
   {
+    [Language.cpp]: ["a/b", "c/d@1.2.3"],
+    [Language.java]: ["d/e", "f/g@1.2.3"],
+  }
+);
+
+test(
+  "packs with other valid names",
+  parsePacksMacro,
+  [
+    // ranges are ok
+    "c/d@1.0",
+    "c/d@~1.0.0",
+    "c/d@~1.0.0:a/b",
+    "c/d@~1.0.0+abc:a/b",
+    "c/d@~1.0.0-abc:a/b",
+    "c/d:a/b",
+    // whitespace is removed
+    " c/d      @     ~1.0.0    :    b.qls   ",
+    // and it is retained within a path
+    " c/d      @     ~1.0.0    :    b/a path with/spaces.qls   ",
+    // this is valid. the path is '@'. It will probably fail when passed to the CLI
+    "c/d@1.2.3:@",
+    // this is valid, too. It will fail if it doesn't match a path
+    // (globbing is not done)
+    "c/d@1.2.3:+*)_(",
+  ],
+  [Language.cpp],
+  {
     [Language.cpp]: [
-      { packName: "a/b", version: undefined },
-      { packName: "c/d", version: clean("1.2.3") as string },
-    ],
-    [Language.java]: [
-      { packName: "d/e", version: undefined },
-      { packName: "f/g", version: clean("1.2.3") as string },
+      "c/d@1.0",
+      "c/d@~1.0.0",
+      "c/d@~1.0.0:a/b",
+      "c/d@~1.0.0+abc:a/b",
+      "c/d@~1.0.0-abc:a/b",
+      "c/d:a/b",
+      "c/d@~1.0.0:b.qls",
+      "c/d@~1.0.0:b/a path with/spaces.qls",
+      "c/d@1.2.3:@",
+      "c/d@1.2.3:+*)_(",
     ],
   }
 );
@@ -1553,7 +1563,14 @@ test(invalidPackNameMacro, "c"); // all packs require at least a scope and a nam
 test(invalidPackNameMacro, "c-/d");
 test(invalidPackNameMacro, "-c/d");
 test(invalidPackNameMacro, "c/d_d");
-test(invalidPackNameMacro, "c/d@x");
+test(invalidPackNameMacro, "c/d@@");
+test(invalidPackNameMacro, "c/d@1.0.0:");
+test(invalidPackNameMacro, "c/d:");
+test(invalidPackNameMacro, "c/d:/a");
+test(invalidPackNameMacro, "@1.0.0:a");
+test(invalidPackNameMacro, "c/d@../a");
+test(invalidPackNameMacro, "c/d@b/../a");
+test(invalidPackNameMacro, "c/d:z@1");
 
 /**
  * Test macro for testing the packs block and the packs input
@@ -1598,7 +1615,7 @@ parseInputAndConfigErrorMacro.title = (providedTitle: string) =>
   `Parse Packs input and config Error: ${providedTitle}`;
 
 test("input only", parseInputAndConfigMacro, {}, " c/d ", [Language.cpp], {
-  [Language.cpp]: [{ packName: "c/d", version: undefined }],
+  [Language.cpp]: ["c/d"],
 });
 
 test(
@@ -1608,10 +1625,7 @@ test(
   "a/b , c/d@1.2.3",
   [Language.cpp],
   {
-    [Language.cpp]: [
-      { packName: "a/b", version: undefined },
-      { packName: "c/d", version: "1.2.3" },
-    ],
+    [Language.cpp]: ["a/b", "c/d@1.2.3"],
   }
 );
 
@@ -1622,10 +1636,7 @@ test(
   "  +  a/b , c/d@1.2.3 ",
   [Language.cpp],
   {
-    [Language.cpp]: [
-      { packName: "a/b", version: undefined },
-      { packName: "c/d", version: "1.2.3" },
-    ],
+    [Language.cpp]: ["a/b", "c/d@1.2.3"],
   }
 );
 
@@ -1636,10 +1647,7 @@ test(
   "  ",
   [Language.cpp],
   {
-    [Language.cpp]: [
-      { packName: "a/b", version: undefined },
-      { packName: "c/d", version: undefined },
-    ],
+    [Language.cpp]: ["a/b", "c/d"],
   }
 );
 
@@ -1650,10 +1658,7 @@ test(
   " e/f, g/h@1.2.3 ",
   [Language.cpp],
   {
-    [Language.cpp]: [
-      { packName: "e/f", version: undefined },
-      { packName: "g/h", version: "1.2.3" },
-    ],
+    [Language.cpp]: ["e/f", "g/h@1.2.3"],
   }
 );
 
@@ -1664,12 +1669,7 @@ test(
   " +e/f, g/h@1.2.3 ",
   [Language.cpp],
   {
-    [Language.cpp]: [
-      { packName: "e/f", version: undefined },
-      { packName: "g/h", version: "1.2.3" },
-      { packName: "a/b", version: undefined },
-      { packName: "c/d", version: undefined },
-    ],
+    [Language.cpp]: ["e/f", "g/h@1.2.3", "a/b", "c/d"],
   }
 );
 
@@ -1760,10 +1760,7 @@ const mlPoweredQueriesMacro = test.macro({
       if (expectedVersionString !== undefined) {
         t.deepEqual(packs as unknown, {
           [Language.javascript]: [
-            {
-              packName: "codeql/javascript-experimental-atm-queries",
-              version: expectedVersionString,
-            },
+            `codeql/javascript-experimental-atm-queries@${expectedVersionString}`,
           ],
         });
       } else {

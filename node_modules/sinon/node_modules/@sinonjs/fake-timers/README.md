@@ -1,7 +1,6 @@
 # `@sinonjs/fake-timers`
 
-[![CircleCI](https://circleci.com/gh/sinonjs/fake-timers.svg?style=svg)](https://circleci.com/gh/sinonjs/fake-timers)
-[![codecov](https://codecov.io/gh/sinonjs/fake-timers/branch/master/graph/badge.svg)](https://codecov.io/gh/sinonjs/fake-timers)
+[![codecov](https://codecov.io/gh/sinonjs/fake-timers/branch/main/graph/badge.svg)](https://codecov.io/gh/sinonjs/fake-timers)
 <a href="CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg" alt="Contributor Covenant" /></a>
 
 JavaScript implementation of the timer APIs; `setTimeout`, `clearTimeout`, `setImmediate`, `clearImmediate`, `setInterval`, `clearInterval`, `requestAnimationFrame`, `cancelAnimationFrame`, `requestIdleCallback`, and `cancelIdleCallback`, along with a clock instance that controls the flow of time. FakeTimers also provides a `Date` implementation that gets its time from the clock.

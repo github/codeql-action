@@ -1,6 +1,6 @@
 {
   "name": "nise",
-  "version": "5.1.0",
+  "version": "5.1.1",
   "description": "Fake XHR and server",
   "keywords": [
     "test",
@@ -45,8 +45,8 @@
     "lib/**/*.js"
   ],
   "devDependencies": {
-    "@sinonjs/eslint-config": "^4.0.0",
-    "@sinonjs/referee": "^5.0.0",
+    "@sinonjs/eslint-config": "^4.0.5",
+    "@sinonjs/referee": "^9.1.1",
     "browserify": "^16.2.3",
     "husky": "^4.2.1",
     "jsdom": "^16.2.0",
@@ -59,11 +59,11 @@
     "proxyquire": "^2.1.3",
     "proxyquire-universal": "^2.1.0",
     "proxyquireify": "^3.2.1",
-    "sinon": "^9.0.0"
+    "sinon": ">=9"
   },
   "dependencies": {
-    "@sinonjs/commons": "^1.7.0",
-    "@sinonjs/fake-timers": "^7.0.4",
+    "@sinonjs/commons": "^1.8.3",
+    "@sinonjs/fake-timers": ">=5",
     "@sinonjs/text-encoding": "^0.7.1",
     "just-extend": "^4.0.2",
     "path-to-regexp": "^1.7.0"

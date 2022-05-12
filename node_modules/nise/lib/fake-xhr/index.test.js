@@ -1,0 +1,2870 @@
+/*global ActiveXObject*/
+"use strict";
+
+var referee = require("@sinonjs/referee");
+var proxyquire = require("proxyquire");
+var sinonStub = require("sinon").stub;
+var sinonSpy = require("sinon").spy;
+
+var sinon = require("sinon");
+var extend = require("just-extend");
+var JSDOM = require("jsdom").JSDOM;
+
+var GlobalTextEncoder =
+    typeof TextEncoder !== "undefined"
+        ? TextEncoder
+        : require("@sinonjs/text-encoding").TextEncoder;
+var assert = referee.assert;
+var refute = referee.refute;
+
+var globalActiveXObject =
+    typeof ActiveXObject !== "undefined" ? ActiveXObject : undefined;
+
+var supportsFormData = typeof FormData !== "undefined";
+var supportsArrayBuffer = typeof ArrayBuffer !== "undefined";
+var supportsBlob = require("./blob").isSupported;
+var isInBrowser = global.window === global;
+var setupDOM = require("jsdom-global");
+
+var globalXMLHttpRequest,
+    sinonFakeXhr,
+    FakeXMLHttpRequest,
+    fakeXhr,
+    JSDOMParser;
+
+if (JSDOM) {
+    JSDOMParser = new JSDOM().window.DOMParser;
+}
+
+function fakeXhrSetUp() {
+    fakeXhr = sinonFakeXhr.useFakeXMLHttpRequest();
+}
+
+function fakeXhrTearDown() {
+    if (typeof fakeXhr.restore === "function") {
+        fakeXhr.restore();
+    }
+}
+
+function runWithWorkingXHROveride(workingXHR, test) {
+    var original;
+    try {
+        // eslint-disable-line no-restricted-syntax
+        original = sinonFakeXhr.xhr.workingXHR;
+        sinonFakeXhr.xhr.workingXHR = workingXHR;
+        test();
+    } finally {
+        sinonFakeXhr.xhr.workingXHR = original;
+    }
+}
+
+function toBinaryString(buffer) {
+    return String.fromCharCode.apply(null, new Uint8Array(buffer));
+}
+
+function assertArrayBufferMatches(actual, expected) {
+    assert(actual instanceof ArrayBuffer, "${0} expected to be an ArrayBuffer");
+    assert(
+        expected instanceof ArrayBuffer,
+        "${0} expected to be an ArrayBuffer"
+    );
+    var actualString = toBinaryString(actual);
+    var expectedString = toBinaryString(expected);
+    assert.same(
+        actualString,
+        expectedString,
+        "ArrayBuffer [${0}] expected to match ArrayBuffer [${1}]"
+    );
+}
+
+function assertBlobMatches(actual, expected, done) {
+    var actualReader = new FileReader();
+    actualReader.onloadend = function() {
+        assert.same(actualReader.result, expected);
+        done();
+    };
+    actualReader.readAsText(actual);
+}
+
+function assertProgressEvent(event, progress) {
+    assert.equals(event.loaded, progress);
+    assert.equals(event.total, progress);
+    assert.equals(event.lengthComputable, Boolean(progress));
+}
+
+function assertEventOrdering(event, progress, callback) {
+    it(`should follow request sequence for ${event}`, function(done) {
+        var expectedOrder = [
+            "upload:progress",
+            `upload:${event}`,
+            "upload:loadend",
+            "xhr:progress",
+            `xhr:on${event}`,
+            `xhr:${event}`
+        ];
+        var eventOrder = [];
+
+        function observe(name) {
+            return function(e) {
+                assertProgressEvent(e, progress);
+                eventOrder.push(name);
+            };
+        }
+
+        this.xhr.open("GET", "/");
+        this.xhr.send();
+
+        this.xhr.upload.addEventListener(
+            "progress",
+            observe("upload:progress")
+        );
+        this.xhr.upload.addEventListener("loadend", observe("upload:loadend"));
+        this.xhr.addEventListener("progress", observe("xhr:progress"));
+        this.xhr.addEventListener("loadend", function(e) {
+            assertProgressEvent(e, progress);
+
+            // finish next tick to allow any events that might fire
+            // after loadend to trigger
+            setTimeout(function() {
+                assert.equals(eventOrder, expectedOrder);
+
+                done();
+            }, 1);
+        });
+
+        // listen for abort, error, and load events to make sure only
+        // the expected events fire
+        ["abort", "timeout", "error", "load"].forEach(function(name) {
+            this.xhr.upload.addEventListener(name, observe(`upload:${name}`));
+            this.xhr.addEventListener(name, observe(`xhr:${name}`));
+            this.xhr[`on${name}`] = observe(`xhr:on${name}`);
+        }, this);
+
+        callback(this.xhr);
+    });
+}
+
+function assertRequestErrorSteps(callback) {
+    it("sets response to empty string", function() {
+        this.xhr.response = "Partial data";
+
+        callback(this.xhr);
+
+        assert.same(this.xhr.response, "");
+    });
+
+    it("sets responseText to empty string", function() {
+        this.xhr.responseText = "Partial data";
+
+        callback(this.xhr);
+
+        assert.same(this.xhr.responseText, "");
+    });
+
+    it("sets errorFlag to true", function() {
+        callback(this.xhr);
+
+        assert.isTrue(this.xhr.errorFlag);
+    });
+
+    it("nulls request headers", function() {
+        this.xhr.open("GET", "/");
+        this.xhr.setRequestHeader("X-Test", "Sumptn");
+
+        callback(this.xhr);
+
+        assert.equals(this.xhr.requestHeaders, {});
+    });
+
+    it("does not have undefined response headers", function() {
+        this.xhr.open("GET", "/");
+
+        callback(this.xhr);
+
+        refute.isUndefined(this.xhr.responseHeaders);
+    });
+
+    it("nulls response headers", function() {
+        this.xhr.open("GET", "/");
+
+        callback(this.xhr);
+
+        assert.equals(this.xhr.responseHeaders, {});
+    });
+
+    it("signals onreadystatechange with state set to DONE if sent before", function() {
+        var readyState;
+        this.xhr.open("GET", "/");
+        this.xhr.send();
+
+        this.xhr.onreadystatechange = function() {
+            readyState = this.readyState;
+        };
+
+        callback(this.xhr);
+
+        assert.equals(readyState, FakeXMLHttpRequest.DONE);
+    });
+
+    it("sets send flag to false if sent before", function() {
+        this.xhr.open("GET", "/");
+        this.xhr.send();
+
+        callback(this.xhr);
+
+        assert.isFalse(this.xhr.sendFlag);
+    });
+
+    it("dispatches readystatechange event if sent before", function() {
+        this.xhr.open("GET", "/");
+        this.xhr.send();
+        this.xhr.onreadystatechange = sinonStub();
+
+        callback(this.xhr);
+
+        assert(this.xhr.onreadystatechange.called);
+    });
+
+    it("does not dispatch readystatechange event if readyState is unsent", function() {
+        this.xhr.onreadystatechange = sinonStub();
+
+        callback(this.xhr);
+
+        assert.isFalse(this.xhr.onreadystatechange.called);
+    });
+
+    it("does not dispatch readystatechange event if readyState is opened but not sent", function() {
+        this.xhr.open("GET", "/");
+        this.xhr.onreadystatechange = sinonStub();
+
+        callback(this.xhr);
+
+        assert.isFalse(this.xhr.onreadystatechange.called);
+    });
+
+    it("does not dispatch readystatechange event if readyState is done", function() {
+        this.xhr.open("GET", "/");
+        this.xhr.send();
+        this.xhr.respond();
+
+        this.xhr.onreadystatechange = sinonStub();
+        callback(this.xhr);
+
+        assert.isFalse(this.xhr.onreadystatechange.called);
+    });
+}
+
+function loadModule() {
+    sinonFakeXhr = proxyquire("./index", {});
+    FakeXMLHttpRequest = sinonFakeXhr.FakeXMLHttpRequest;
+}
+
+describe("FakeXMLHttpRequest", function() {
+    beforeEach(function() {
+        if (JSDOMParser) {
+            global.DOMParser = JSDOMParser;
+            this.cleanupDOM = setupDOM();
+        }
+        globalXMLHttpRequest = global.XMLHttpRequest;
+        loadModule();
+    });
+
+    afterEach(function() {
+        delete FakeXMLHttpRequest.onCreate;
+        if (JSDOMParser) {
+            delete global.DOMParser;
+            this.cleanupDOM();
+        }
+    });
+
+    it("is constructor", function() {
+        assert.isFunction(FakeXMLHttpRequest);
+        assert.same(
+            FakeXMLHttpRequest.prototype.constructor,
+            FakeXMLHttpRequest
+        );
+    });
+
+    it("class implements readyState constants", function() {
+        assert.same(FakeXMLHttpRequest.OPENED, 1);
+        assert.same(FakeXMLHttpRequest.HEADERS_RECEIVED, 2);
+        assert.same(FakeXMLHttpRequest.LOADING, 3);
+        assert.same(FakeXMLHttpRequest.DONE, 4);
+    });
+
+    it("instance implements readyState constants", function() {
+        var xhr = new FakeXMLHttpRequest();
+
+        assert.same(xhr.OPENED, 1);
+        assert.same(xhr.HEADERS_RECEIVED, 2);
+        assert.same(xhr.LOADING, 3);
+        assert.same(xhr.DONE, 4);
+    });
+
+    it("calls onCreate if listener is set", function() {
+        var onCreate = sinonSpy();
+        FakeXMLHttpRequest.onCreate = onCreate;
+
+        // instantiating FakeXMLHttpRequest for it's onCreate side effect
+        var xhr = new FakeXMLHttpRequest(); // eslint-disable-line no-unused-vars
+
+        assert(onCreate.called);
+    });
+
+    it("passes new object to onCreate if set", function() {
+        var onCreate = sinonSpy();
+        FakeXMLHttpRequest.onCreate = onCreate;
+
+        var xhr = new FakeXMLHttpRequest();
+
+        assert.same(onCreate.getCall(0).args[0], xhr);
+    });
+
+    describe(".withCredentials", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("should set the property if we support standards CORS", function() {
+            assert.equals(
+                sinonFakeXhr.xhr.supportsCORS,
+                "withCredentials" in this.xhr
+            );
+        });
+    });
+
+    describe(".timeout", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("should set the property if we support timeout", function() {
+            assert.equals(
+                sinonFakeXhr.xhr.supportsTimeout,
+                "timeout" in this.xhr
+            );
+        });
+    });
+
+    describe(".open", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("is method", function() {
+            assert.isFunction(this.xhr.open);
+        });
+
+        it("sets properties on object", function() {
+            this.xhr.open("GET", "/my/url", true, "cjno", "pass");
+
+            assert.equals(this.xhr.method, "GET");
+            assert.equals(this.xhr.url, "/my/url");
+            assert.isTrue(this.xhr.async);
+            assert.equals(this.xhr.username, "cjno");
+            assert.equals(this.xhr.password, "pass");
+        });
+
+        it("is async by default", function() {
+            this.xhr.open("GET", "/my/url");
+
+            assert.isTrue(this.xhr.async);
+        });
+
+        it("sets async to false", function() {
+            this.xhr.open("GET", "/my/url", false);
+
+            assert.isFalse(this.xhr.async);
+        });
+
+        it("sets response to empty string", function() {
+            this.xhr.open("GET", "/my/url");
+
+            assert.same(this.xhr.response, "");
+        });
+
+        it("sets responseText to empty string", function() {
+            this.xhr.open("GET", "/my/url");
+
+            assert.same(this.xhr.responseText, "");
+        });
+
+        it("sets responseXML to null", function() {
+            this.xhr.open("GET", "/my/url");
+
+            assert.isNull(this.xhr.responseXML);
+        });
+
+        it("sets requestHeaders to blank object", function() {
+            this.xhr.open("GET", "/my/url");
+
+            assert.isObject(this.xhr.requestHeaders);
+            assert.equals(this.xhr.requestHeaders, {});
+        });
+
+        it("sets readyState to OPENED", function() {
+            this.xhr.open("GET", "/my/url");
+
+            assert.same(this.xhr.readyState, FakeXMLHttpRequest.OPENED);
+        });
+
+        it("sets send flag to false", function() {
+            this.xhr.open("GET", "/my/url");
+
+            assert.isFalse(this.xhr.sendFlag);
+        });
+
+        it("dispatches onreadystatechange with reset state", function() {
+            var state = {};
+
+            this.xhr.onreadystatechange = function() {
+                extend(state, this);
+            };
+
+            this.xhr.open("GET", "/my/url");
+
+            assert.equals(state.method, "GET");
+            assert.equals(state.url, "/my/url");
+            assert.isTrue(state.async);
+            assert.isUndefined(state.username);
+            assert.isUndefined(state.password);
+            assert.same(state.response, "");
+            assert.same(state.responseText, "");
+            assert.isNull(state.responseXML);
+            assert.isUndefined(state.responseHeaders);
+            assert.equals(state.readyState, FakeXMLHttpRequest.OPENED);
+            assert.isFalse(state.sendFlag);
+        });
+    });
+
+    describe(".setRequestHeader", function() {
+        var unsafeHeaders = [
+            "Accept-Charset",
+            "Access-Control-Request-Headers",
+            "Access-Control-Request-Method",
+            "Accept-Encoding",
+            "Connection",
+            "Content-Length",
+            "Cookie",
+            "Cookie2",
+            "Content-Transfer-Encoding",
+            "Date",
+            "DNT",
+            "Expect",
+            "Host",
+            "Keep-Alive",
+            "Origin",
+            "Referer",
+            "TE",
+            "Trailer",
+            "Transfer-Encoding",
+            "Upgrade",
+            "User-Agent",
+            "Via"
+        ];
+
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+            this.xhr.open("GET", "/");
+        });
+
+        it("throws exception if readyState is not OPENED", function() {
+            var xhr = new FakeXMLHttpRequest();
+
+            assert.exception(function() {
+                xhr.setRequestHeader("X-EY", "No-no");
+            });
+        });
+
+        it("throws exception if send flag is true", function() {
+            var xhr = this.xhr;
+            xhr.sendFlag = true;
+
+            assert.exception(function() {
+                xhr.setRequestHeader("X-EY", "No-no");
+            });
+        });
+
+        it("disallows unsafe headers by default", function() {
+            var xhr = this.xhr;
+
+            unsafeHeaders.forEach(function(headerName) {
+                assert.exception(function() {
+                    xhr.setRequestHeader(headerName, "");
+                });
+            });
+
+            assert.exception(function() {
+                xhr.setRequestHeader("Proxy-Oops", "");
+            });
+
+            assert.exception(function() {
+                xhr.setRequestHeader("Sec-Oops", "");
+            });
+        });
+
+        it("applies unsafe headers check with header name case ignored", function() {
+            var xhr = this.xhr;
+
+            assert.exception(function() {
+                xhr.setRequestHeader("accept-CHARSET", "");
+            });
+        });
+
+        it("allows unsafe headers when fake server unsafeHeadersEnabled option is turned off", function() {
+            var server = sinon.fakeServer.create({
+                unsafeHeadersEnabled: false
+            });
+
+            var xhr = new sinon.FakeXMLHttpRequest();
+            xhr.open("GET", "/");
+
+            unsafeHeaders.forEach(function(headerName) {
+                refute.exception(function() {
+                    xhr.setRequestHeader(headerName, "");
+                });
+            });
+
+            refute.exception(function() {
+                xhr.setRequestHeader("Proxy-Oops", "");
+            });
+
+            refute.exception(function() {
+                xhr.setRequestHeader("Sec-Oops", "");
+            });
+
+            server.restore();
+        });
+
+        it("sets header and value", function() {
+            this.xhr.setRequestHeader("X-Fake", "Yeah!");
+
+            assert.equals(this.xhr.requestHeaders, { "X-Fake": "Yeah!" });
+        });
+
+        it("throw on receiving non-string values", function() {
+            assert.exception(function() {
+                this.xhr.setRequestHeader("X-Version", 1.0);
+            }, "TypeError");
+        });
+
+        it("appends same-named header values", function() {
+            this.xhr.setRequestHeader("X-Fake", "Oh");
+            this.xhr.setRequestHeader("X-Fake", "yeah!");
+
+            assert.equals(this.xhr.requestHeaders, { "X-Fake": "Oh, yeah!" });
+        });
+
+        it("appends same-named header values when casing differs in header name", function() {
+            this.xhr.setRequestHeader("X-Fake", "Oh");
+            this.xhr.setRequestHeader("x-fake", "yeah!");
+
+            assert.equals(this.xhr.requestHeaders, { "X-Fake": "Oh, yeah!" });
+        });
+
+        describe("value normalization", function() {
+            var httpWhitespaceBytes = ["\x09\x0A\x0D\x20"];
+
+            function runTest(input, expected) {
+                var xhr = new FakeXMLHttpRequest();
+                xhr.open("GET", "/");
+                xhr.setRequestHeader("X-Fake", input);
+                assert.equals(xhr.requestHeaders, { "X-Fake": expected });
+            }
+
+            it("removes HTTP whitespace bytes prefixing the value", function() {
+                httpWhitespaceBytes.forEach(function(value) {
+                    runTest(`${value}something`, "something");
+                });
+
+                httpWhitespaceBytes.forEach(function(value) {
+                    runTest(`${value + value}something`, "something");
+                });
+
+                runTest(`${httpWhitespaceBytes.join()}something`, "something");
+            });
+
+            it("removes HTTP whitespace bytes sufficing the value", function() {
+                httpWhitespaceBytes.forEach(function(value) {
+                    runTest(`${value}something`, "something");
+                });
+
+                httpWhitespaceBytes.forEach(function(value) {
+                    runTest(`something${value}${value}`, "something");
+                });
+
+                runTest(`something${httpWhitespaceBytes.join()}`, "something");
+            });
+
+            it("leaves HTTP whitespace bytes in the middle of value", function() {
+                httpWhitespaceBytes.forEach(function(value) {
+                    runTest(`something${value}else`, `something${value}else`);
+                });
+
+                runTest(
+                    `something${httpWhitespaceBytes.join()}else`,
+                    `something${httpWhitespaceBytes.join()}else`
+                );
+            });
+        });
+    });
+
+    describe(".send", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("throws if request is not open", function() {
+            var xhr = new FakeXMLHttpRequest();
+
+            assert.exception(function() {
+                xhr.send();
+            });
+        });
+
+        it("throws if send flag is true", function() {
+            var xhr = this.xhr;
+            xhr.open("GET", "/");
+            xhr.sendFlag = true;
+
+            assert.exception(function() {
+                xhr.send();
+            });
+        });
+
+        it("sets HEAD body to null", function() {
+            this.xhr.open("HEAD", "/");
+            this.xhr.send("Data");
+
+            assert.isNull(this.xhr.requestBody);
+        });
+
+        if (supportsFormData) {
+            describe("sets mime to text/plain", function() {
+                it("test", function() {
+                    this.xhr.open("POST", "/");
+                    this.xhr.send("Data");
+
+                    assert.equals(
+                        this.xhr.requestHeaders["Content-Type"],
+                        "text/plain;charset=utf-8"
+                    );
+                });
+            });
+        }
+
+        it("does not override mime", function() {
+            this.xhr.open("POST", "/");
+            this.xhr.setRequestHeader("Content-Type", "text/html");
+            this.xhr.send("Data");
+
+            assert.equals(
+                this.xhr.requestHeaders["Content-Type"],
+                "text/html;charset=utf-8"
+            );
+        });
+
+        it("does not add new 'Content-Type' header if 'content-type' already exists", function() {
+            this.xhr.open("POST", "/");
+            this.xhr.setRequestHeader("content-type", "application/json");
+            this.xhr.send("Data");
+
+            assert.isUndefined(this.xhr.requestHeaders["Content-Type"]);
+            assert.equals(
+                this.xhr.requestHeaders["content-type"],
+                "application/json;charset=utf-8"
+            );
+        });
+
+        if (supportsFormData) {
+            describe("does not add 'Content-Type' header if data is FormData", function() {
+                it("test", function() {
+                    this.xhr.open("POST", "/");
+                    var formData = new FormData();
+                    formData.append("username", "biz");
+                    this.xhr.send("Data");
+
+                    assert.isUndefined(this.xhr.requestHeaders["content-type"]);
+                });
+            });
+        }
+
+        it("sets request body to string data for GET", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send("Data");
+
+            assert.equals(this.xhr.requestBody, "Data");
+        });
+
+        it("sets request body to string data for POST", function() {
+            this.xhr.open("POST", "/");
+            this.xhr.send("Data");
+
+            assert.equals(this.xhr.requestBody, "Data");
+        });
+
+        it("sets error flag to false", function() {
+            this.xhr.open("POST", "/");
+            this.xhr.send("Data");
+
+            assert.isFalse(this.xhr.errorFlag);
+        });
+
+        it("sets send flag to true", function() {
+            this.xhr.open("POST", "/");
+            this.xhr.send("Data");
+
+            assert.isTrue(this.xhr.sendFlag);
+        });
+
+        it("does not set send flag to true if sync", function() {
+            this.xhr.open("POST", "/", false);
+            this.xhr.send("Data");
+
+            assert.isFalse(this.xhr.sendFlag);
+        });
+
+        it("should not duplicate readystatechange events", function(done) {
+            var events = [];
+            var xhr = this.xhr;
+
+            xhr.addEventListener("readystatechange", function() {
+                events.push(xhr.readyState);
+
+                if (xhr.readyState === 4) {
+                    assert.equals(events, [1, 2, 3, 4]);
+                    done();
+                }
+            });
+            xhr.open("POST", "/", true);
+
+            xhr.send("Data");
+            xhr.respond(200, {}, "");
+        });
+
+        it("dispatches onSend callback if set", function() {
+            this.xhr.open("POST", "/", true);
+            var callback = sinonSpy();
+            this.xhr.onSend = callback;
+
+            this.xhr.send("Data");
+
+            assert(callback.called);
+        });
+
+        it("dispatches onSend with request as argument", function() {
+            this.xhr.open("POST", "/", true);
+            var callback = sinonSpy();
+            this.xhr.onSend = callback;
+
+            this.xhr.send("Data");
+
+            assert(callback.calledWith(this.xhr));
+        });
+
+        it("dispatches onSend when async", function() {
+            this.xhr.open("POST", "/", false);
+            var callback = sinonSpy();
+            this.xhr.onSend = callback;
+
+            this.xhr.send("Data");
+
+            assert(callback.calledWith(this.xhr));
+        });
+    });
+
+    describe(".setResponseHeaders", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("sets request headers", function() {
+            var object = { id: 42 };
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.setResponseHeaders(object);
+
+            assert.equals(this.xhr.responseHeaders, object);
+        });
+
+        it("calls readyStateChange with HEADERS_RECEIVED", function() {
+            var object = { id: 42 };
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            var spy = (this.xhr.readyStateChange = sinonSpy());
+
+            this.xhr.setResponseHeaders(object);
+
+            assert(spy.calledWith(FakeXMLHttpRequest.HEADERS_RECEIVED));
+        });
+
+        it("does not call readyStateChange if sync", function() {
+            var object = { id: 42 };
+            this.xhr.open("GET", "/", false);
+            this.xhr.send();
+            var spy = (this.xhr.readyStateChange = sinonSpy());
+
+            this.xhr.setResponseHeaders(object);
+
+            assert.isFalse(spy.called);
+        });
+
+        it("changes readyState to HEADERS_RECEIVED if sync", function() {
+            var object = { id: 42 };
+            this.xhr.open("GET", "/", false);
+            this.xhr.send();
+
+            this.xhr.setResponseHeaders(object);
+
+            assert.equals(
+                this.xhr.readyState,
+                FakeXMLHttpRequest.HEADERS_RECEIVED
+            );
+        });
+
+        it("throws if headers were already set", function() {
+            var xhr = this.xhr;
+
+            xhr.open("GET", "/", false);
+            xhr.send();
+            xhr.setResponseHeaders({});
+
+            assert.exception(function() {
+                xhr.setResponseHeaders({});
+            });
+        });
+    });
+
+    describe(".setStatus", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("cannot be set on closed request", function() {
+            assert.exception(function() {
+                this.xhr.setStatus();
+            });
+        });
+
+        it("cannot be set on unsent request", function() {
+            this.xhr.open("GET", "/");
+
+            assert.exception(function() {
+                this.xhr.setStatus();
+            });
+        });
+
+        it("by default sets status to 200", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.setStatus();
+
+            assert.equals(this.xhr.status, 200);
+            assert.equals(this.xhr.statusText, "OK");
+        });
+
+        it("sets status", function() {
+            var expectedStatus = 206;
+            var xhr = this.xhr;
+
+            xhr.open("GET", "/");
+            xhr.send();
+            xhr.setStatus(expectedStatus);
+
+            assert.equals(xhr.status, expectedStatus);
+        });
+
+        it("sets status text to the value from FakeXMLHttpRequest.statusCodes", function() {
+            var status = 206;
+            var expectedStatusText = FakeXMLHttpRequest.statusCodes[status];
+            var xhr = this.xhr;
+
+            xhr.open("GET", "/");
+            xhr.send();
+            xhr.setStatus(status);
+
+            assert.equals(xhr.statusText, expectedStatusText);
+        });
+    });
+
+    describe(".setResponseBodyAsync", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.setResponseHeaders({});
+        });
+
+        it("invokes onreadystatechange handler with LOADING state", function() {
+            var spy = sinonSpy();
+            this.xhr.readyStateChange = spy;
+
+            this.xhr.setResponseBody("Some text goes in here ok?");
+
+            assert(spy.calledWith(FakeXMLHttpRequest.LOADING));
+        });
+
+        it("invokes onreadystatechange handler for each 10 byte chunk", function() {
+            var spy = sinonSpy();
+            this.xhr.readyStateChange = spy;
+            this.xhr.chunkSize = 10;
+
+            this.xhr.setResponseBody("Some text goes in here ok?");
+
+            assert.equals(spy.callCount, 4);
+        });
+
+        it("invokes onreadystatechange handler for each x byte chunk", function() {
+            var spy = sinonSpy();
+            this.xhr.readyStateChange = spy;
+            this.xhr.chunkSize = 20;
+
+            this.xhr.setResponseBody("Some text goes in here ok?");
+
+            assert.equals(spy.callCount, 3);
+        });
+
+        it("invokes onreadystatechange handler with partial data", function() {
+            var pieces = [];
+            var mismatch = false;
+
+            this.xhr.readyStateChange = function() {
+                if (this.response !== this.responseText) {
+                    mismatch = true;
+                }
+                pieces.push(this.responseText);
+            };
+            this.xhr.chunkSize = 9;
+
+            this.xhr.setResponseBody("Some text goes in here ok?");
+
+            assert.isFalse(mismatch);
+            assert.equals(pieces[1], "Some text");
+        });
+
+        it("calls onreadystatechange with DONE state", function() {
+            var spy = sinonSpy();
+            this.xhr.readyStateChange = spy;
+
+            this.xhr.setResponseBody("Some text goes in here ok?");
+
+            assert(spy.calledWith(FakeXMLHttpRequest.DONE));
+        });
+
+        it("throws if not open", function() {
+            var xhr = new FakeXMLHttpRequest();
+
+            assert.exception(function() {
+                xhr.setResponseBody("");
+            });
+        });
+
+        it("throws if no headers received", function() {
+            var xhr = new FakeXMLHttpRequest();
+            xhr.open("GET", "/");
+            xhr.send();
+
+            assert.exception(function() {
+                xhr.setResponseBody("");
+            });
+        });
+
+        it("throws if body was already sent", function() {
+            var xhr = new FakeXMLHttpRequest();
+            xhr.open("GET", "/");
+            xhr.send();
+            xhr.setResponseHeaders({});
+            xhr.setResponseBody("");
+
+            assert.exception(function() {
+                xhr.setResponseBody("");
+            });
+        });
+
+        it("throws if body is not a string", function() {
+            var xhr = new FakeXMLHttpRequest();
+            xhr.open("GET", "/");
+            xhr.send();
+            xhr.setResponseHeaders({});
+
+            assert.exception(function() {
+                xhr.setResponseBody({});
+            }, "InvalidBodyException");
+        });
+
+        it("throws if body is not a string or arraybuffer and responseType='arraybuffer'", function() {
+            var xhr = new FakeXMLHttpRequest();
+            xhr.open("GET", "/");
+            xhr.responseType = "arraybuffer";
+            xhr.send();
+            xhr.setResponseHeaders({});
+
+            assert.exception(function() {
+                xhr.setResponseBody({});
+            }, "InvalidBodyException");
+        });
+
+        it("throws if body is not a string, arraybuffer, or blob and responseType='blob'", function() {
+            var xhr = new FakeXMLHttpRequest();
+            xhr.open("GET", "/");
+            xhr.responseType = "blob";
+            xhr.send();
+            xhr.setResponseHeaders({});
+
+            assert.exception(function() {
+                xhr.setResponseBody({});
+            }, "InvalidBodyException");
+        });
+
+        if (supportsArrayBuffer) {
+            describe("with ArrayBuffer support", function() {
+                it("invokes onreadystatechange for each chunk when responseType='arraybuffer'", function() {
+                    var spy = sinonSpy();
+                    this.xhr.readyStateChange = spy;
+                    this.xhr.chunkSize = 10;
+
+                    this.xhr.responseType = "arraybuffer";
+
+                    this.xhr.setResponseBody("Some text goes in here ok?");
+
+                    assert.equals(spy.callCount, 4);
+                });
+            });
+        }
+
+        if (supportsBlob) {
+            describe("with Blob support", function() {
+                it("invokes onreadystatechange handler for each 10 byte chunk when responseType='blob'", function() {
+                    var spy = sinonSpy();
+                    this.xhr.readyStateChange = spy;
+                    this.xhr.chunkSize = 10;
+
+                    this.xhr.responseType = "blob";
+
+                    this.xhr.setResponseBody("Some text goes in here ok?");
+
+                    assert.equals(spy.callCount, 4);
+                });
+            });
+        }
+    });
+
+    describe(".setResponseBodySync", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+            this.xhr.open("GET", "/", false);
+            this.xhr.send();
+            this.xhr.setResponseHeaders({});
+        });
+
+        it("does not throw", function() {
+            var xhr = this.xhr;
+
+            refute.exception(function() {
+                xhr.setResponseBody("");
+            });
+        });
+
+        it("sets readyState to DONE", function() {
+            this.xhr.setResponseBody("");
+
+            assert.equals(this.xhr.readyState, FakeXMLHttpRequest.DONE);
+        });
+
+        it("throws if responding to request twice", function() {
+            var xhr = this.xhr;
+            this.xhr.setResponseBody("");
+
+            assert.exception(function() {
+                xhr.setResponseBody("");
+            });
+        });
+
+        it("calls onreadystatechange for sync request with DONE state", function() {
+            var spy = sinonSpy();
+            this.xhr.readyStateChange = spy;
+
+            this.xhr.setResponseBody("Some text goes in here ok?");
+
+            assert(spy.calledWith(FakeXMLHttpRequest.DONE));
+        });
+
+        it("simulates synchronous request", function() {
+            var xhr = new FakeXMLHttpRequest();
+
+            xhr.onSend = function() {
+                this.setResponseHeaders({});
+                this.setResponseBody("Oh yeah");
+            };
+
+            xhr.open("GET", "/", false);
+            xhr.send();
+
+            assert.equals(xhr.responseText, "Oh yeah");
+        });
+    });
+
+    describe(".respond", function() {
+        beforeEach(function() {
+            this.sandbox = sinon.createSandbox();
+            this.xhr = new FakeXMLHttpRequest({
+                setTimeout: this.sandbox.spy(),
+                useImmediateExceptions: false
+            });
+            this.xhr.open("GET", "/");
+            var spy = (this.spy = sinonSpy());
+
+            this.xhr.onreadystatechange = function() {
+                if (this.readyState === 4) {
+                    spy.call(this);
+                }
+            };
+
+            this.xhr.send();
+        });
+
+        afterEach(function() {
+            this.sandbox.restore();
+        });
+
+        it("fire onload event", function() {
+            this.onload = this.spy;
+            this.xhr.respond(200, {}, "");
+            assert.equals(this.spy.callCount, 1);
+        });
+
+        it("fire onload event with this set to the XHR object", function(done) {
+            var xhr = new FakeXMLHttpRequest();
+            xhr.open("GET", "/");
+
+            xhr.onload = function() {
+                assert.same(this, xhr);
+
+                done();
+            };
+
+            xhr.send();
+            xhr.respond(200, {}, "");
+        });
+
+        it("calls readystate handler with readyState DONE once", function() {
+            this.xhr.respond(200, {}, "");
+
+            assert.equals(this.spy.callCount, 1);
+        });
+
+        it("defaults to status 200, no headers, and blank body", function() {
+            this.xhr.respond();
+
+            assert.equals(this.xhr.status, 200);
+            assert.equals(this.xhr.getAllResponseHeaders(), "");
+            assert.equals(this.xhr.responseText, "");
+        });
+
+        it("sets status", function() {
+            this.xhr.respond(201);
+
+            assert.equals(this.xhr.status, 201);
+        });
+
+        it("sets status text", function() {
+            this.xhr.respond(201);
+
+            assert.equals(this.xhr.statusText, "Created");
+        });
+
+        it("sets headers", function() {
+            sinonSpy(this.xhr, "setResponseHeaders");
+            var responseHeaders = { some: "header", value: "over here" };
+            this.xhr.respond(200, responseHeaders);
+
+            assert.equals(
+                this.xhr.setResponseHeaders.args[0][0],
+                responseHeaders
+            );
+        });
+
+        it("sets response url", function() {
+            var xhr = new FakeXMLHttpRequest();
+            var uri = "/";
+
+            xhr.open("GET", uri);
+            xhr.send();
+            xhr.respond(200, {}, "");
+
+            assert.equals(xhr.responseURL, uri);
+        });
+
+        it("url is provided before onload event of the XHR object", function(done) {
+            var xhr = new FakeXMLHttpRequest();
+            var uri = "/";
+            xhr.open("GET", uri);
+
+            xhr.onload = function() {
+                assert.same(this.responseURL, uri);
+
+                done();
+            };
+
+            xhr.send();
+            xhr.respond(200, {}, "");
+        });
+
+        it("sets response text", function() {
+            this.xhr.respond(200, {}, "'tis some body text");
+
+            assert.equals(this.xhr.responseText, "'tis some body text");
+        });
+
+        it("completes request when onreadystatechange fails", function() {
+            this.xhr.onreadystatechange = sinonStub().throws();
+            this.xhr.respond(200, {}, "'tis some body text");
+
+            assert.equals(this.xhr.onreadystatechange.callCount, 4);
+        });
+
+        it("sets status before transitioning to readyState HEADERS_RECEIVED", function() {
+            var status, statusText;
+            this.xhr.onreadystatechange = function() {
+                if (this.readyState === 2) {
+                    status = this.status;
+                    statusText = this.statusText;
+                }
+            };
+            this.xhr.respond(204);
+
+            assert.equals(status, 204);
+            assert.equals(statusText, "No Content");
+        });
+
+        it("only performs readystatechange events prior to loadend event during xhr response", function() {
+            var eventLog = [];
+            this.xhr.addEventListener("readystatechange", function() {
+                eventLog.push({
+                    event: "readystatechange",
+                    timestamp: Date.now()
+                });
+            });
+            this.xhr.addEventListener("loadend", function() {
+                eventLog.push({ event: "loadend", timestamp: Date.now() });
+            });
+            this.xhr.respond(200);
+
+            // Loadend is last event
+            assert.equals(eventLog[eventLog.length - 1].event, "loadend");
+            // Only 1 loadend event occurs
+            assert.equals(
+                eventLog.filter(item => item.event !== "readystatechange")
+                    .length,
+                1
+            );
+        });
+    });
+
+    describe(".getResponseHeader", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("returns null if request is not finished", function() {
+            this.xhr.open("GET", "/");
+            assert.isNull(this.xhr.getResponseHeader("Content-Type"));
+        });
+
+        it("returns null if header is Set-Cookie", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            assert.isNull(this.xhr.getResponseHeader("Set-Cookie"));
+        });
+
+        it("returns null if header is Set-Cookie2", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            assert.isNull(this.xhr.getResponseHeader("Set-Cookie2"));
+        });
+
+        it("returns header value", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.setResponseHeaders({ "Content-Type": "text/html" });
+
+            assert.equals(
+                this.xhr.getResponseHeader("Content-Type"),
+                "text/html"
+            );
+        });
+
+        it("returns header value if sync", function() {
+            this.xhr.open("GET", "/", false);
+            this.xhr.send();
+            this.xhr.setResponseHeaders({ "Content-Type": "text/html" });
+
+            assert.equals(
+                this.xhr.getResponseHeader("Content-Type"),
+                "text/html"
+            );
+        });
+
+        it("returns null if header is not set", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            assert.isNull(this.xhr.getResponseHeader("Content-Type"));
+        });
+
+        it("returns headers case insensitive", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.setResponseHeaders({ "Content-Type": "text/html" });
+
+            assert.equals(
+                this.xhr.getResponseHeader("content-type"),
+                "text/html"
+            );
+        });
+    });
+
+    describe(".getAllResponseHeaders", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("returns empty string if request is not finished", function() {
+            this.xhr.open("GET", "/");
+            assert.equals(this.xhr.getAllResponseHeaders(), "");
+        });
+
+        it("does not return Set-Cookie and Set-Cookie2 headers", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.setResponseHeaders({
+                "Set-Cookie": "Hey",
+                "Set-Cookie2": "There"
+            });
+
+            assert.equals(this.xhr.getAllResponseHeaders(), "");
+        });
+
+        it("returns headers", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.setResponseHeaders({
+                "Content-Type": "text/html",
+                "Set-Cookie2": "There",
+                "Content-Length": "32"
+            });
+
+            assert.equals(
+                this.xhr.getAllResponseHeaders(),
+                "Content-Type: text/html\r\nContent-Length: 32\r\n"
+            );
+        });
+
+        it("returns headers if sync", function() {
+            this.xhr.open("GET", "/", false);
+            this.xhr.send();
+            this.xhr.setResponseHeaders({
+                "Content-Type": "text/html",
+                "Set-Cookie2": "There",
+                "Content-Length": "32"
+            });
+
+            assert.equals(
+                this.xhr.getAllResponseHeaders(),
+                "Content-Type: text/html\r\nContent-Length: 32\r\n"
+            );
+        });
+    });
+
+    describe(".abort", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("sets aborted flag to true", function() {
+            this.xhr.abort();
+
+            assert.isTrue(this.xhr.aborted);
+        });
+
+        it("sets readyState to unsent if sent before", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.abort();
+
+            assert.equals(this.xhr.readyState, FakeXMLHttpRequest.UNSENT);
+        });
+
+        it("keeps readyState unsent if called in unsent state", function() {
+            this.xhr.abort();
+
+            assert.equals(this.xhr.readyState, FakeXMLHttpRequest.UNSENT);
+        });
+
+        it("resets readyState to unsent if it was opened", function() {
+            this.xhr.open("GET", "/");
+
+            this.xhr.abort();
+
+            assert.equals(this.xhr.readyState, FakeXMLHttpRequest.UNSENT);
+        });
+
+        it("resets readyState to unsent if it was opened with send() flag sent", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.abort();
+
+            assert.equals(this.xhr.readyState, FakeXMLHttpRequest.UNSENT);
+        });
+
+        it("resets readyState to unsent if it headers were received", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.setResponseHeaders({});
+
+            this.xhr.abort();
+
+            assert.equals(this.xhr.readyState, FakeXMLHttpRequest.UNSENT);
+        });
+
+        it("resets readyState to unsent if it was done", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.respond();
+
+            this.xhr.abort();
+
+            assert.equals(this.xhr.readyState, FakeXMLHttpRequest.UNSENT);
+        });
+
+        // eslint-disable-next-line mocha/no-setup-in-describe
+        assertRequestErrorSteps(function(xhr) {
+            // eslint-disable-next-line mocha/no-setup-in-describe
+            xhr.abort();
+        });
+
+        // eslint-disable-next-line mocha/no-setup-in-describe
+        assertEventOrdering("abort", 0, function(xhr) {
+            // eslint-disable-next-line mocha/no-setup-in-describe
+            xhr.abort();
+        });
+    });
+
+    describe(".error", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("sets response to empty string", function() {
+            this.xhr.response = "Partial data";
+
+            this.xhr.error();
+
+            assert.same(this.xhr.response, "");
+        });
+
+        it("sets responseText to empty string", function() {
+            this.xhr.responseText = "Partial data";
+
+            this.xhr.error();
+
+            assert.same(this.xhr.responseText, "");
+        });
+
+        it("sets errorFlag to true", function() {
+            this.xhr.errorFlag = false;
+            this.xhr.error();
+
+            assert.isTrue(this.xhr.errorFlag);
+        });
+
+        it("nulls request headers", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.setRequestHeader("X-Test", "Sumptn");
+
+            this.xhr.error();
+
+            assert.equals(this.xhr.requestHeaders, {});
+        });
+
+        it("nulls response headers", function() {
+            this.xhr.open("GET", "/");
+
+            this.xhr.error();
+
+            assert.equals(this.xhr.responseHeaders, {});
+        });
+
+        it("dispatches readystatechange event if sent before", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+            this.xhr.onreadystatechange = sinonStub();
+
+            this.xhr.error();
+
+            assert(this.xhr.onreadystatechange.called);
+        });
+
+        it("sets readyState to DONE", function() {
+            this.xhr.open("GET", "/");
+
+            this.xhr.error();
+
+            assert.equals(this.xhr.readyState, FakeXMLHttpRequest.DONE);
+        });
+
+        // eslint-disable-next-line mocha/no-setup-in-describe
+        assertEventOrdering("error", 0, function(xhr) {
+            // eslint-disable-next-line mocha/no-setup-in-describe
+            xhr.error();
+        });
+    });
+
+    describe(".triggerTimeout", function() {
+        beforeEach(function() {
+            this.sandbox = sinon.createSandbox();
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        afterEach(function() {
+            this.sandbox.restore();
+        });
+
+        it("sets timedOut to true", function() {
+            this.xhr.triggerTimeout();
+
+            assert.isTrue(this.xhr.timedOut);
+        });
+
+        it("does not get called without a fake timer", function(done) {
+            var xhr = this.xhr;
+
+            xhr.open("GET", "/");
+            xhr.timeout = 1;
+            xhr.triggerTimeout = sinonSpy();
+            xhr.send();
+
+            setTimeout(function() {
+                assert.isFalse(xhr.triggerTimeout.called);
+                done();
+            }, 2);
+        });
+
+        it("does not get called after being aborted", function() {
+            this.sandbox.useFakeTimers();
+
+            this.xhr.open("GET", "/");
+            this.xhr.timeout = 1;
+            this.xhr.triggerTimeout = sinonSpy();
+            this.xhr.send();
+            this.xhr.abort();
+
+            this.sandbox.clock.tick(1);
+            assert.isFalse(this.xhr.triggerTimeout.called);
+        });
+
+        it("does not get called after erroring", function() {
+            this.sandbox.useFakeTimers();
+
+            this.xhr.open("GET", "/");
+            this.xhr.timeout = 1;
+            this.xhr.triggerTimeout = sinonSpy();
+            this.xhr.send();
+            this.xhr.error();
+
+            this.sandbox.clock.tick(1);
+            assert.isFalse(this.xhr.triggerTimeout.called);
+        });
+
+        it("only gets called with fake timers", function() {
+            this.sandbox.useFakeTimers();
+            this.xhr.open("GET", "/");
+            this.xhr.timeout = 1;
+            this.xhr.triggerTimeout = sinonSpy();
+            this.xhr.send();
+
+            this.sandbox.clock.tick(1);
+            assert.isTrue(this.xhr.triggerTimeout.called);
+        });
+
+        it("only gets called once with fake timers", function() {
+            this.sandbox.useFakeTimers();
+            this.xhr.open("GET", "/");
+            this.xhr.timeout = 1;
+            this.xhr.triggerTimeout = sinonSpy();
+            this.xhr.send();
+
+            this.sandbox.clock.tick(2);
+            assert.isTrue(this.xhr.triggerTimeout.calledOnce);
+        });
+
+        it("allows timeout to be changed while fetching", function() {
+            this.sandbox.useFakeTimers();
+            this.xhr.open("GET", "/");
+            this.xhr.timeout = 2;
+            this.xhr.triggerTimeout = sinonSpy();
+            this.xhr.send();
+
+            this.sandbox.clock.tick(1);
+            assert.isFalse(this.xhr.triggerTimeout.calledOnce);
+
+            this.xhr.timeout = 3;
+            this.sandbox.clock.tick(1);
+            assert.isFalse(this.xhr.triggerTimeout.calledOnce);
+
+            this.sandbox.clock.tick(1);
+            assert.isTrue(this.xhr.triggerTimeout.calledOnce);
+        });
+
+        // eslint-disable-next-line mocha/no-setup-in-describe
+        assertRequestErrorSteps(function(xhr) {
+            // eslint-disable-next-line mocha/no-setup-in-describe
+            xhr.triggerTimeout();
+        });
+
+        // eslint-disable-next-line mocha/no-setup-in-describe
+        assertEventOrdering("timeout", 0, function(xhr) {
+            // eslint-disable-next-line mocha/no-setup-in-describe
+            xhr.triggerTimeout();
+        });
+    });
+
+    describe(".response", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("is initially the empty string if responseType === ''", function() {
+            this.xhr.responseType = "";
+            this.xhr.open("GET", "/");
+            assert.same(this.xhr.response, "");
+        });
+
+        it("is initially the empty string if responseType === 'text'", function() {
+            this.xhr.responseType = "text";
+            this.xhr.open("GET", "/");
+            assert.same(this.xhr.response, "");
+        });
+
+        it("is initially null if responseType === 'json'", function() {
+            this.xhr.responseType = "json";
+            this.xhr.open("GET", "/");
+            assert.isNull(this.xhr.response);
+        });
+
+        it("is initially null if responseType === 'document'", function() {
+            this.xhr.responseType = "document";
+            this.xhr.open("GET", "/");
+            assert.isNull(this.xhr.response);
+        });
+
+        it("is the empty string when the response body is empty", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(200, {}, "");
+
+            assert.same(this.xhr.response, "");
+        });
+
+        it("parses JSON for responseType='json'", function() {
+            this.xhr.responseType = "json";
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(
+                200,
+                { "Content-Type": "application/json" },
+                JSON.stringify({ foo: true })
+            );
+
+            var response = this.xhr.response;
+            assert.isObject(response);
+            assert.isTrue(response.foo);
+        });
+
+        it("does not parse JSON if responseType!='json'", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            var responseText = JSON.stringify({ foo: true });
+
+            this.xhr.respond(
+                200,
+                { "Content-Type": "application/json" },
+                responseText
+            );
+
+            var response = this.xhr.response;
+            assert.isString(response);
+            assert.equals(response, responseText);
+        });
+
+        if (supportsArrayBuffer) {
+            describe("with ArrayBuffer support", function() {
+                it("is initially null if responseType === 'arraybuffer'", function() {
+                    this.xhr.responseType = "arraybuffer";
+                    this.xhr.open("GET", "/");
+                    assert.isNull(this.xhr.response);
+                });
+
+                it("defaults to empty ArrayBuffer response", function() {
+                    this.xhr.responseType = "arraybuffer";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    this.xhr.respond();
+                    assertArrayBufferMatches(
+                        this.xhr.response,
+                        new Uint8Array([]).buffer
+                    );
+                });
+
+                it("returns ArrayBuffer when responseType='arraybuffer'", function() {
+                    this.xhr.responseType = "arraybuffer";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    this.xhr.respond(
+                        200,
+                        { "Content-Type": "application/octet-stream" },
+                        "a test buffer"
+                    );
+
+                    var expected = new GlobalTextEncoder("utf-8").encode(
+                        "a test buffer"
+                    ).buffer;
+                    assertArrayBufferMatches(this.xhr.response, expected);
+                });
+
+                it("returns utf-8 strings correctly when responseType='arraybuffer'", function() {
+                    this.xhr.responseType = "arraybuffer";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    this.xhr.respond(
+                        200,
+                        { "Content-Type": "application/octet-stream" },
+                        "\xFF"
+                    );
+
+                    var expectedBuffer = new GlobalTextEncoder("utf-8").encode(
+                        "\xFF"
+                    ).buffer;
+
+                    assertArrayBufferMatches(this.xhr.response, expectedBuffer);
+                });
+
+                it("returns binary data correctly when responseType='arraybuffer'", function() {
+                    this.xhr.responseType = "arraybuffer";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    var buffer = new Uint8Array([160, 64, 0, 0, 32, 193])
+                        .buffer;
+
+                    this.xhr.respond(
+                        200,
+                        { "Content-Type": "application/octet-stream" },
+                        buffer
+                    );
+
+                    assertArrayBufferMatches(this.xhr.response, buffer);
+                });
+            });
+        }
+
+        if (supportsBlob) {
+            describe("with Blob support", function() {
+                it("is initially null if responseType === 'blob'", function() {
+                    this.xhr.responseType = "blob";
+                    this.xhr.open("GET", "/");
+                    assert.isNull(this.xhr.response);
+                });
+
+                it("defaults to empty Blob response", function(done) {
+                    this.xhr.responseType = "blob";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    this.xhr.respond();
+
+                    assertBlobMatches(this.xhr.response, "", done);
+                });
+
+                it("returns blob with correct data", function(done) {
+                    this.xhr.responseType = "blob";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    this.xhr.respond(
+                        200,
+                        { "Content-Type": "application/octet-stream" },
+                        "a test blob"
+                    );
+
+                    assertBlobMatches(this.xhr.response, "a test blob", done);
+                });
+
+                it("returns blob with correct binary data", function(done) {
+                    this.xhr.responseType = "blob";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    this.xhr.respond(
+                        200,
+                        { "Content-Type": "application/octet-stream" },
+                        "\xFF"
+                    );
+
+                    assertBlobMatches(this.xhr.response, "\xFF", done);
+                });
+
+                it("returns blob with correct binary data when using an arraybuffer", function(done) {
+                    this.xhr.responseType = "blob";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    var buffer = new Uint8Array([160, 64, 0, 0, 32, 193])
+                        .buffer;
+
+                    this.xhr.respond(
+                        200,
+                        { "Content-Type": "application/octet-stream" },
+                        buffer
+                    );
+
+                    assertBlobMatches(
+                        this.xhr.response,
+                        new Blob([buffer]),
+                        done
+                    );
+                });
+
+                it("returns blob with correct binary data when using a blob", function(done) {
+                    this.xhr.responseType = "blob";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    var blob = new Blob([
+                        new Uint8Array([160, 64, 0, 0, 32, 193]).buffer
+                    ]);
+
+                    this.xhr.respond(
+                        200,
+                        { "Content-Type": "application/octet-stream" },
+                        blob
+                    );
+
+                    assertBlobMatches(this.xhr.response, blob, done);
+                });
+
+                it("does parse utf-8 content outside ASCII range properly", function(done) {
+                    this.xhr.responseType = "blob";
+                    this.xhr.open("GET", "/");
+                    this.xhr.send();
+
+                    var responseText = JSON.stringify({ foo: "♥" });
+
+                    this.xhr.respond(
+                        200,
+                        { "Content-Type": "application/octet-stream" },
+                        responseText
+                    );
+
+                    assertBlobMatches(this.xhr.response, responseText, done);
+                });
+            });
+        }
+    });
+
+    describe(".responseXML", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("is initially null", function() {
+            this.xhr.open("GET", "/");
+            assert.isNull(this.xhr.responseXML);
+        });
+
+        it("is null when the response body is empty", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(200, {}, "");
+
+            assert.isNull(this.xhr.responseXML);
+        });
+
+        it("is null when the response body contains invalid XML", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(
+                200,
+                { "Content-Type": "application/xml" },
+                //eslint-disable-next-line quotes
+                '!!!<?xml version="1.0" encoding="UTF-8"?><broken>'
+            );
+
+            assert.isNull(this.xhr.responseXML);
+        });
+
+        it("parses XML for application/xml", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(
+                200,
+                { "Content-Type": "application/xml" },
+                "<div><h1>Hola!</h1></div>"
+            );
+
+            var doc = this.xhr.responseXML;
+            var elements = doc.documentElement.getElementsByTagName("h1");
+            assert.equals(elements.length, 1);
+            assert.equals(elements[0].tagName, "h1");
+        });
+
+        it("parses XML for text/xml", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(
+                200,
+                { "Content-Type": "text/xml" },
+                "<div><h1>Hola!</h1></div>"
+            );
+
+            refute.isNull(this.xhr.responseXML);
+        });
+
+        it("parses XML for custom xml content type", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(
+                200,
+                { "Content-Type": "application/text+xml" },
+                "<div><h1>Hola!</h1></div>"
+            );
+
+            refute.isNull(this.xhr.responseXML);
+        });
+
+        it("parses XML with no Content-Type", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(200, {}, "<div><h1>Hola!</h1></div>");
+
+            var doc = this.xhr.responseXML;
+            var elements = doc.documentElement.getElementsByTagName("h1");
+            assert.equals(elements.length, 1);
+            assert.equals(elements[0].tagName, "h1");
+        });
+
+        it("does not parse XML with Content-Type text/plain", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(
+                200,
+                { "Content-Type": "text/plain" },
+                "<div></div>"
+            );
+
+            assert.isNull(this.xhr.responseXML);
+        });
+
+        it("does not parse XML with Content-Type text/plain if sync", function() {
+            this.xhr.open("GET", "/", false);
+            this.xhr.send();
+
+            this.xhr.respond(
+                200,
+                { "Content-Type": "text/plain" },
+                "<div></div>"
+            );
+
+            assert.isNull(this.xhr.responseXML);
+        });
+    });
+
+    describe(".overrideMimeType", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        if (supportsBlob) {
+            it("overrides provided MIME-Type", function() {
+                this.xhr.responseType = "blob";
+                this.xhr.open("GET", "/");
+                this.xhr.overrideMimeType("text/plain");
+                this.xhr.send();
+
+                this.xhr.respond(200, { "Content-Type": "text/html" }, "");
+
+                assert.equals(this.xhr.response.type, "text/plain");
+            });
+        }
+
+        it("throws when executed too late", function() {
+            this.xhr.open("GET", "/");
+            this.xhr.send();
+
+            this.xhr.respond(200, {}, "");
+
+            assert.exception(function() {
+                this.xhr.overrideMimeType("text/plain");
+            });
+        });
+    });
+
+    describe(".responseURL", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+        });
+
+        it("should set responseURL after response", function() {
+            this.xhr.open("GET", "/");
+
+            assert.isUndefined(this.xhr.responseURL);
+
+            this.xhr.send();
+
+            assert.isUndefined(this.xhr.responseURL);
+
+            this.xhr.respond(200, {}, "");
+
+            assert.equals(this.xhr.responseURL, "/");
+        });
+    });
+
+    describe("stub XHR", function() {
+        beforeEach(fakeXhrSetUp);
+        afterEach(fakeXhrTearDown);
+
+        it("returns FakeXMLHttpRequest constructor", function() {
+            assert.same(fakeXhr, FakeXMLHttpRequest);
+        });
+
+        it("temporarily blesses FakeXMLHttpRequest with restore method", function() {
+            assert.isFunction(fakeXhr.restore);
+        });
+
+        it("calling restore removes temporary method", function() {
+            fakeXhr.restore();
+
+            assert.isUndefined(fakeXhr.restore);
+        });
+
+        it("removes XMLHttpRequest onCreate listener", function() {
+            // eslint-disable-next-line no-empty-function
+            FakeXMLHttpRequest.onCreate = function() {};
+
+            fakeXhr.restore();
+
+            assert.isUndefined(FakeXMLHttpRequest.onCreate);
+        });
+
+        it("optionally keeps XMLHttpRequest onCreate listener", function() {
+            // eslint-disable-next-line no-empty-function
+            var onCreate = function() {};
+            FakeXMLHttpRequest.onCreate = onCreate;
+
+            fakeXhr.restore(true);
+
+            assert.same(FakeXMLHttpRequest.onCreate, onCreate);
+        });
+    });
+
+    if (typeof XMLHttpRequest !== "undefined") {
+        describe(".filtering", function() {
+            beforeEach(function() {
+                FakeXMLHttpRequest.useFilters = true;
+                FakeXMLHttpRequest.filters = [];
+                sinonFakeXhr.useFakeXMLHttpRequest();
+            });
+
+            afterEach(function() {
+                FakeXMLHttpRequest.useFilters = false;
+                FakeXMLHttpRequest.restore();
+                if (FakeXMLHttpRequest.defake.restore) {
+                    FakeXMLHttpRequest.defake.restore();
+                }
+            });
+
+            it("does not defake XHR requests that don't match a filter", function() {
+                sinonStub(FakeXMLHttpRequest, "defake");
+
+                FakeXMLHttpRequest.addFilter(function() {
+                    return false;
+                });
+                new XMLHttpRequest().open("GET", "http://example.com");
+
+                refute(FakeXMLHttpRequest.defake.called);
+            });
+
+            it("defakes XHR requests that match a filter", function() {
+                sinonStub(FakeXMLHttpRequest, "defake");
+
+                FakeXMLHttpRequest.addFilter(function() {
+                    return true;
+                });
+                new XMLHttpRequest().open("GET", "http://example.com");
+
+                assert(FakeXMLHttpRequest.defake.calledOnce);
+            });
+        });
+    }
+
+    describe("defaked XHR", function() {
+        beforeEach(function() {
+            fakeXhr = new FakeXMLHttpRequest();
+        });
+
+        it("updates attributes from working XHR object when ready state changes", function() {
+            var workingXHRInstance;
+            var readyStateCallbacks = [];
+            var workingXHROverride = function() {
+                workingXHRInstance = this;
+                this.addEventListener = function(str, fn) {
+                    if (str === "readystatechange") {
+                        readyStateCallbacks.push(fn);
+                    }
+                };
+                // eslint-disable-next-line no-empty-function
+                this.open = function() {};
+            };
+
+            runWithWorkingXHROveride(workingXHROverride, function() {
+                FakeXMLHttpRequest.defake(fakeXhr, []);
+                workingXHRInstance.statusText =
+                    "This is the status text of the real XHR";
+                workingXHRInstance.readyState = 4;
+                readyStateCallbacks.forEach(function(cb) {
+                    cb();
+                });
+                assert.equals(
+                    fakeXhr.statusText,
+                    "This is the status text of the real XHR"
+                );
+            });
+        });
+
+        it("passes on methods to working XHR object", function() {
+            var workingXHRInstance, spy;
+            var workingXHROverride = function() {
+                workingXHRInstance = this;
+                // eslint-disable-next-line no-empty-function
+                this.addEventListener = this.open = function() {};
+            };
+
+            runWithWorkingXHROveride(workingXHROverride, function() {
+                FakeXMLHttpRequest.defake(fakeXhr, []);
+                workingXHRInstance.getResponseHeader = spy = sinonSpy();
+                fakeXhr.getResponseHeader();
+                assert(spy.calledOnce);
+            });
+        });
+
+        it("calls legacy onreadystatechange handlers with target set to fakeXHR", function() {
+            var spy, readyStateCb;
+            var workingXHROverride = function() {
+                this.addEventListener = function(str, fn) {
+                    readyStateCb = fn;
+                };
+                // eslint-disable-next-line no-empty-function
+                this.open = function() {};
+            };
+
+            runWithWorkingXHROveride(workingXHROverride, function() {
+                FakeXMLHttpRequest.defake(fakeXhr, []);
+                fakeXhr.onreadystatechange = spy = sinonSpy();
+                readyStateCb();
+                assert(spy.calledOnce);
+
+                // Fix to make weinre work
+                assert.isObject(spy.args[0][0]);
+                assert.equals(spy.args[0][0].target, fakeXhr);
+                assert.equals(spy.args[0][0].currentTarget, fakeXhr);
+            });
+        });
+
+        it("performs initial readystatechange on opening when filters are being used, but don't match", function() {
+            try {
+                // eslint-disable-line no-restricted-syntax
+                FakeXMLHttpRequest.useFilters = true;
+                var spy = sinonSpy();
+                fakeXhr.addEventListener("readystatechange", spy);
+                fakeXhr.open("GET", "http://example.com", true);
+                assert(spy.calledOnce);
+            } finally {
+                FakeXMLHttpRequest.useFilters = false;
+            }
+        });
+
+        it("calls on events as well as events added via addEventListener on the fakeXhr", function() {
+            var abortSpy = sinonSpy();
+            var onabortSpy = sinonSpy();
+
+            fakeXhr.addEventListener("abort", abortSpy);
+            fakeXhr.onabort = onabortSpy;
+            FakeXMLHttpRequest.defake(fakeXhr, [
+                "GET",
+                "http://example.com",
+                true
+            ]);
+            fakeXhr.send();
+            fakeXhr.abort();
+
+            assert(abortSpy.calledOnce);
+            assert(onabortSpy.calledOnce);
+        });
+
+        it("passes responseType to working XHR object", function() {
+            var workingXHRInstance;
+            var workingXHROverride = function() {
+                workingXHRInstance = this;
+                this.responseType = "";
+                // eslint-disable-next-line no-empty-function
+                this.open = function() {};
+                // eslint-disable-next-line no-empty-function
+                this.send = function() {};
+            };
+
+            runWithWorkingXHROveride(workingXHROverride, function() {
+                FakeXMLHttpRequest.defake(fakeXhr, []);
+                fakeXhr.responseType = "arraybuffer";
+                fakeXhr.send();
+                assert.equals(workingXHRInstance.responseType, "arraybuffer");
+            });
+        });
+
+        it("issue 61 - InvalidAccessError on synchronous XHR in browser", function() {
+            var spy;
+            var workingXHROverride = function() {
+                // eslint-disable-next-line no-empty-function
+                this.open = function() {};
+                // eslint-disable-next-line no-empty-function
+                this.send = function() {};
+                Object.defineProperty(this, "responseType", {
+                    get: function() {
+                        return "";
+                    },
+                    // eslint-disable-next-line no-empty-function
+                    set: function() {},
+                    configurable: true
+                });
+                spy = sinonSpy(this, "responseType", ["set"]);
+            };
+
+            runWithWorkingXHROveride(workingXHROverride, function() {
+                FakeXMLHttpRequest.defake(fakeXhr, [
+                    "GET",
+                    "http://example.com",
+                    false
+                ]);
+                fakeXhr.send();
+                assert(spy.set.notCalled);
+            });
+        });
+    });
+
+    if (isInBrowser) {
+        describe("defaked XHR filters", function() {
+            beforeEach(function() {
+                FakeXMLHttpRequest.useFilters = true;
+                FakeXMLHttpRequest.filters = [];
+                sinonFakeXhr.useFakeXMLHttpRequest();
+                FakeXMLHttpRequest.addFilter(function() {
+                    return true;
+                });
+            });
+
+            afterEach(function() {
+                FakeXMLHttpRequest.useFilters = false;
+                FakeXMLHttpRequest.filters = [];
+                FakeXMLHttpRequest.restore();
+            });
+
+            it("loads resource asynchronously", function(done) {
+                var req = new XMLHttpRequest();
+
+                req.onreadystatechange = function() {
+                    if (this.readyState === 4) {
+                        assert.match(this.responseText, /loaded successfully/);
+                        assert.match(this.response, /loaded successfully/);
+                        done();
+                    }
+                };
+
+                req.open("GET", "/test/resources/xhr_target.txt", true);
+                req.send();
+            });
+
+            it("loads resource synchronously", function() {
+                var req = new XMLHttpRequest();
+                req.open("GET", "/test/resources/xhr_target.txt", false);
+                req.send();
+
+                assert.match(req.responseText, /loaded successfully/);
+                assert.match(req.response, /loaded successfully/);
+            });
+        });
+    }
+
+    if (typeof ActiveXObject === "undefined") {
+        describe("missing ActiveXObject", function() {
+            beforeEach(fakeXhrSetUp);
+            afterEach(fakeXhrTearDown);
+
+            it("does not expose ActiveXObject", function() {
+                assert.equals(typeof ActiveXObject, "undefined");
+            });
+
+            it("does not expose ActiveXObject when restored", function() {
+                fakeXhr.restore();
+
+                assert.equals(typeof ActiveXObject, "undefined");
+            });
+        });
+    } else {
+        describe("native ActiveXObject", function() {
+            beforeEach(fakeXhrSetUp);
+            afterEach(fakeXhrTearDown);
+
+            it("hijacks ActiveXObject", function() {
+                refute.same(global.ActiveXObject, globalActiveXObject);
+                refute.same(global.ActiveXObject, globalActiveXObject);
+                refute.same(ActiveXObject, globalActiveXObject); // eslint-disable-line no-undef
+            });
+
+            it("restores global ActiveXObject", function() {
+                fakeXhr.restore();
+
+                assert.same(global.ActiveXObject, globalActiveXObject);
+                assert.same(global.ActiveXObject, globalActiveXObject);
+                assert.same(ActiveXObject, globalActiveXObject); // eslint-disable-line no-undef
+            });
+
+            it("creates FakeXHR object with ActiveX Microsoft.XMLHTTP", function() {
+                var xhr = new ActiveXObject("Microsoft.XMLHTTP"); // eslint-disable-line no-undef
+
+                assert(xhr instanceof FakeXMLHttpRequest);
+            });
+
+            it("creates FakeXHR object with ActiveX Msxml2.XMLHTTP", function() {
+                var xhr = new ActiveXObject("Msxml2.XMLHTTP"); // eslint-disable-line no-undef
+
+                assert(xhr instanceof FakeXMLHttpRequest);
+            });
+
+            it("creates FakeXHR object with ActiveX Msxml2.XMLHTTP.3.0", function() {
+                var xhr = new ActiveXObject("Msxml2.XMLHTTP.3.0"); // eslint-disable-line no-undef
+
+                assert(xhr instanceof FakeXMLHttpRequest);
+            });
+
+            it("creates FakeXHR object with ActiveX Msxml2.XMLHTTP.6.0", function() {
+                var xhr = new ActiveXObject("Msxml2.XMLHTTP.6.0"); // eslint-disable-line no-undef
+
+                assert(xhr instanceof FakeXMLHttpRequest);
+            });
+        });
+    }
+
+    describe("when there is no native XHR", function() {
+        var nativeXhr = null;
+
+        beforeEach(function() {
+            if ("XMLHttpRequest" in global) {
+                nativeXhr = global.XMLHttpRequest;
+                delete global.XMLHttpRequest;
+            }
+            loadModule();
+            fakeXhrSetUp();
+        });
+
+        afterEach(function() {
+            fakeXhrTearDown();
+            if (nativeXhr !== null) {
+                global.XMLHttpRequest = nativeXhr;
+            }
+        });
+
+        it("does not expose XMLHttpRequest", function() {
+            assert.equals(typeof XMLHttpRequest, "undefined");
+        });
+
+        it("does not expose XMLHttpRequest after restore", function() {
+            fakeXhr.restore();
+
+            assert.equals(typeof XMLHttpRequest, "undefined");
+        });
+    });
+
+    describe("with native XHR", function() {
+        beforeEach(fakeXhrSetUp);
+        afterEach(fakeXhrTearDown);
+
+        it("replaces global XMLHttpRequest", function() {
+            refute.same(XMLHttpRequest, globalXMLHttpRequest);
+            assert.same(XMLHttpRequest, FakeXMLHttpRequest);
+        });
+
+        it("restores global XMLHttpRequest", function() {
+            fakeXhr.restore();
+            assert.same(global.XMLHttpRequest, globalXMLHttpRequest);
+        });
+    });
+
+    describe("progress events", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+            this.xhr.open("GET", "/some/url");
+        });
+
+        it("triggers 'loadstart' event on #send", function(done) {
+            this.xhr.addEventListener("loadstart", function() {
+                assert(true);
+
+                done();
+            });
+
+            this.xhr.send();
+        });
+
+        it("triggers 'loadstart' with event target set to the XHR object", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.addEventListener("loadstart", function(event) {
+                assert.same(xhr, event.target);
+                assert.same(xhr, event.currentTarget);
+
+                done();
+            });
+
+            this.xhr.send();
+        });
+
+        it("calls #onloadstart on #send", function(done) {
+            this.xhr.onloadstart = function() {
+                assert(true);
+
+                done();
+            };
+
+            this.xhr.send();
+        });
+
+        it("triggers 'load' event on success", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.addEventListener("load", function() {
+                assert.equals(xhr.readyState, FakeXMLHttpRequest.DONE);
+                refute.equals(xhr.status, 0);
+
+                done();
+            });
+
+            this.xhr.send();
+            this.xhr.respond(200, {}, "");
+        });
+
+        it("triggers 'load' event on for non-200 events", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.addEventListener("load", function() {
+                assert.equals(xhr.readyState, FakeXMLHttpRequest.DONE);
+                assert.equals(xhr.status, 500);
+
+                done();
+            });
+
+            this.xhr.send();
+            this.xhr.respond(500, {}, "");
+        });
+
+        it("triggers 'load' with event target set to the XHR object", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.addEventListener("load", function(event) {
+                assert.same(xhr, event.target);
+                assert.same(xhr, event.currentTarget);
+
+                done();
+            });
+
+            this.xhr.send();
+            this.xhr.respond(200, {}, "");
+        });
+
+        it("calls #onload on success", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.onload = function() {
+                assert.equals(xhr.readyState, FakeXMLHttpRequest.DONE);
+                refute.equals(xhr.status, 0);
+
+                done();
+            };
+
+            this.xhr.send();
+            this.xhr.respond(200, {}, "");
+        });
+
+        it("calls #onload for non-200 events", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.onload = function() {
+                assert.equals(xhr.readyState, FakeXMLHttpRequest.DONE);
+                assert.equals(xhr.status, 500);
+
+                done();
+            };
+
+            this.xhr.send();
+            this.xhr.respond(500, {}, "");
+        });
+
+        it("does not trigger 'load' event on abort", function(done) {
+            this.xhr.addEventListener("load", function() {
+                assert(false);
+            });
+
+            this.xhr.addEventListener("abort", function() {
+                assert(true);
+
+                // finish on next tick
+                setTimeout(done, 0);
+            });
+
+            this.xhr.send();
+            this.xhr.abort();
+        });
+
+        it("triggers 'abort' event on cancel", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.addEventListener("abort", function() {
+                assert.equals(xhr.readyState, FakeXMLHttpRequest.DONE);
+                assert.equals(xhr.status, 0);
+
+                setTimeout(function() {
+                    assert.equals(xhr.readyState, FakeXMLHttpRequest.UNSENT);
+                    done();
+                }, 0);
+            });
+
+            this.xhr.send();
+            this.xhr.abort();
+        });
+
+        it("triggers 'abort' with event target set to the XHR object", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.addEventListener("abort", function(event) {
+                assert.same(xhr, event.target);
+                assert.same(xhr, event.currentTarget);
+
+                done();
+            });
+
+            this.xhr.send();
+            this.xhr.abort();
+        });
+
+        it("calls #onabort on cancel", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.onabort = function() {
+                assert.equals(xhr.readyState, FakeXMLHttpRequest.DONE);
+                assert.equals(xhr.status, 0);
+
+                setTimeout(function() {
+                    assert.equals(xhr.readyState, FakeXMLHttpRequest.UNSENT);
+                    done();
+                }, 0);
+            };
+
+            this.xhr.send();
+            this.xhr.abort();
+        });
+
+        it("triggers 'loadend' event at the end", function(done) {
+            this.xhr.addEventListener("loadend", function(e) {
+                assertProgressEvent(e, 100);
+                assert(true);
+
+                done();
+            });
+
+            this.xhr.send();
+            this.xhr.respond(403, {}, "");
+        });
+
+        it("triggers 'loadend' with event target set to the XHR object", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.addEventListener("loadend", function(event) {
+                assertProgressEvent(event, 100);
+                assert.same(xhr, event.target);
+                assert.same(xhr, event.currentTarget);
+
+                done();
+            });
+
+            this.xhr.send();
+            this.xhr.respond(200, {}, "");
+        });
+
+        it("calls #onloadend at the end", function(done) {
+            this.xhr.onloadend = function(e) {
+                assertProgressEvent(e, 100);
+                assert(true);
+
+                done();
+            };
+
+            this.xhr.send();
+            this.xhr.respond(403, {}, "");
+        });
+
+        it("triggers (download) progress event when response is done", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.addEventListener("progress", function(e) {
+                assert.equals(e.total, 100);
+                assert.equals(e.loaded, 20);
+                assert.isTrue(e.lengthComputable);
+                assert.same(e.target, xhr);
+                done();
+            });
+            this.xhr.downloadProgress({
+                total: 100,
+                loaded: 20
+            });
+        });
+
+        // eslint-disable-next-line mocha/no-setup-in-describe
+        assertEventOrdering("load", 100, function(xhr) {
+            // eslint-disable-next-line mocha/no-setup-in-describe
+            xhr.respond(200, {}, "");
+        });
+
+        describe("timeout", function() {
+            beforeEach(function() {
+                this.sandbox = sinon.createSandbox({ useFakeTimers: true });
+            });
+
+            afterEach(function() {
+                this.sandbox.restore();
+            });
+
+            it("triggers 'timeout' event when timed out", function(done) {
+                this.xhr.timeout = 1;
+
+                this.xhr.addEventListener("timeout", function() {
+                    assert(true);
+                    done();
+                });
+
+                this.xhr.send();
+
+                this.sandbox.clock.tick(1);
+            });
+
+            it("does not trigger 'load' event on timeout", function(done) {
+                var self = this;
+
+                this.xhr.timeout = 1;
+
+                this.xhr.addEventListener("load", function() {
+                    assert(false);
+                });
+
+                this.xhr.addEventListener("timeout", function() {
+                    assert(true);
+
+                    // restore the sandbox, so we can finish on next tick.
+                    self.sandbox.clock.restore();
+                    setTimeout(done, 0);
+                });
+
+                this.xhr.send();
+
+                this.sandbox.clock.tick(1);
+            });
+        });
+    });
+
+    describe("xhr.upload", function() {
+        beforeEach(function() {
+            this.xhr = new FakeXMLHttpRequest();
+            this.xhr.open("POST", "/some/url", true);
+        });
+
+        it("progress event is triggered with xhr.uploadProgress({loaded, 20, total, 100})", function(done) {
+            this.xhr.upload.addEventListener("progress", function(e) {
+                assert.equals(e.total, 100);
+                assert.equals(e.loaded, 20);
+                assert.isTrue(e.lengthComputable);
+                done();
+            });
+            this.xhr.uploadProgress({
+                total: 100,
+                loaded: 20
+            });
+        });
+
+        it("calls .onprogress", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.upload.onprogress = function(e) {
+                assert.equals(e.total, 100);
+                assert.equals(e.loaded, 20);
+                assert.isTrue(e.lengthComputable);
+                assert.equals(e.target, xhr.upload);
+                done();
+            };
+            this.xhr.uploadProgress({
+                total: 100,
+                loaded: 20
+            });
+        });
+
+        it("triggers 'load' event on success", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.upload.addEventListener("load", function() {
+                assert.equals(xhr.readyState, FakeXMLHttpRequest.DONE);
+                refute.equals(xhr.status, 0);
+                done();
+            });
+
+            this.xhr.send();
+            this.xhr.respond(200, {}, "");
+        });
+
+        it("fires event with 100% progress on 'load'", function(done) {
+            this.xhr.upload.addEventListener("progress", function(e) {
+                assert.equals(e.total, 100);
+                assert.equals(e.loaded, 100);
+                done();
+            });
+
+            this.xhr.send();
+            this.xhr.respond(200, {}, "");
+        });
+
+        it("fires events in an order similar to a browser", function(done) {
+            var xhr = this.xhr;
+            var events = [];
+
+            this.xhr.upload.addEventListener("progress", function(e) {
+                events.push(e.type);
+            });
+            this.xhr.upload.addEventListener("load", function(e) {
+                events.push(e.type);
+            });
+            this.xhr.addEventListener("readystatechange", function(e) {
+                if (xhr.readyState === 4) {
+                    events.push(e.type);
+                    assert.equals(events, [
+                        "progress",
+                        "load",
+                        "readystatechange"
+                    ]);
+                    done();
+                }
+            });
+
+            this.xhr.send();
+            this.xhr.respond(200, {}, "");
+        });
+
+        it("calls .onprogess", function(done) {
+            var xhr = this.xhr;
+            this.onprogressCalled = false;
+
+            this.xhr.onprogress = function() {
+                this.onprogressCalled = true;
+            };
+            this.xhr.addEventListener("readystatechange", function() {
+                if (xhr.readyState === 4) {
+                    assert.isTrue(this.onprogressCalled);
+                    done();
+                }
+            });
+
+            this.xhr.send();
+            this.xhr.respond(200, {}, "");
+        });
+
+        it("calls 'abort' on cancel", function(done) {
+            var xhr = this.xhr;
+
+            this.xhr.upload.addEventListener("abort", function() {
+                assert.equals(xhr.readyState, FakeXMLHttpRequest.DONE);
+                assert.equals(xhr.status, 0);
+
+                setTimeout(function() {
+                    assert.equals(xhr.readyState, FakeXMLHttpRequest.UNSENT);
+                    done();
+                }, 0);
+            });
+
+            this.xhr.send();
+            this.xhr.abort();
+        });
+
+        if (typeof CustomEvent !== "undefined") {
+            describe("error event", function() {
+                it("is triggered with xhr.uploadError(new Error('foobar'))", function(done) {
+                    this.xhr.upload.addEventListener("error", function(e) {
+                        assert.equals(e.detail.message, "foobar");
+
+                        done();
+                    });
+                    this.xhr.uploadError(new Error("foobar"));
+                });
+            });
+        }
+    });
+
+    describe("fakeXMLHttpRequestFor", function() {
+        var win;
+
+        beforeEach(function() {
+            if (JSDOM) {
+                win = new JSDOM().window;
+                win.DOMParser = JSDOMParser;
+            } else {
+                win = window;
+            }
+            var scopedSinonFakeXhr = sinonFakeXhr.fakeXMLHttpRequestFor(win);
+            globalXMLHttpRequest = win.XMLHttpRequest;
+            fakeXhr = scopedSinonFakeXhr.useFakeXMLHttpRequest();
+            FakeXMLHttpRequest = scopedSinonFakeXhr.FakeXMLHttpRequest;
+        });
+
+        afterEach(fakeXhrTearDown);
+
+        it("replaces the XMLHttpRequest on the given Window object", function() {
+            refute.same(win.XMLHttpRequest, globalXMLHttpRequest);
+            assert.same(win.XMLHttpRequest, FakeXMLHttpRequest);
+        });
+
+        it("restores the XMLHttpRequest on the given Window object", function() {
+            fakeXhr.restore();
+            assert.same(win.XMLHttpRequest, globalXMLHttpRequest);
+        });
+    });
+});

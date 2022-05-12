@@ -113,6 +113,18 @@ function verifyResponseBodyType(body, responseType) {
             );
             error.name = "InvalidBodyException";
         }
+    } else if (responseType === "blob") {
+        if (
+            !isString &&
+            !(body instanceof ArrayBuffer) &&
+            supportsBlob &&
+            !(body instanceof Blob)
+        ) {
+            error = new Error(
+                `Attempted to respond to fake XMLHttpRequest with ${body}, which is not a string, ArrayBuffer, or Blob.`
+            );
+            error.name = "InvalidBodyException";
+        }
     } else if (!isString) {
         error = new Error(
             `Attempted to respond to fake XMLHttpRequest with ${body}, which is not a string.`
@@ -353,6 +365,10 @@ function fakeXMLHttpRequestFor(globalScope) {
                 return null;
             }
         } else if (supportsBlob && responseType === "blob") {
+            if (body instanceof Blob) {
+                return body;
+            }
+
             var blobOptions = {};
             if (contentType) {
                 blobOptions.type = contentType;

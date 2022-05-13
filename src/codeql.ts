@@ -1,8 +1,8 @@
 import * as fs from "fs";
+import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
-import { IHeaders } from "@actions/http-client/interfaces";
 import { default as deepEqual } from "fast-deep-equal";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
@@ -458,7 +458,9 @@ export async function setupCodeQL(
 
         const parsedCodeQLURL = new URL(codeqlURL);
         const parsedQueryString = queryString.parse(parsedCodeQLURL.search);
-        const headers: IHeaders = { accept: "application/octet-stream" };
+        const headers: OutgoingHttpHeaders = {
+          accept: "application/octet-stream",
+        };
         // We only want to provide an authorization header if we are downloading
         // from the same GitHub instance the Action is running on.
         // This avoids leaking Enterprise tokens to dotcom.

@@ -1,9 +1,9 @@
 import * as fs from "fs";
+import { OutgoingHttpHeaders } from "http";
 import * as os from "os";
 import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
-import { IHeaders } from "@actions/http-client/interfaces";
 import * as io from "@actions/io";
 import * as actionsToolcache from "@actions/tool-cache";
 import * as safeWhich from "@chrisgavin/safe-which";
@@ -236,7 +236,7 @@ export function findAllVersions(
 export async function downloadTool(
   url: string,
   tempDir: string,
-  headers: IHeaders
+  headers: OutgoingHttpHeaders
 ): Promise<string> {
   const dest = path.join(tempDir, uuidV4());
   const finalHeaders = Object.assign(

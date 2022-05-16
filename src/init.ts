@@ -265,9 +265,9 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     logger.endGroup();
     logger.warning(
       `An error occurred while trying to automatically install Python dependencies: ${e}\n` +
-      "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
-      "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
-      "dependency installation and avoid this warning."
+        "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
+        "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
+        "dependency installation and avoid this warning."
     );
     return;
   }

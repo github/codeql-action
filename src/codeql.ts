@@ -1104,10 +1104,10 @@ export function getExtraOptions(
     paths.length === 0
       ? asExtraOptions(options, pathInfo)
       : getExtraOptions(
-        options?.[paths[0]],
-        paths?.slice(1),
-        pathInfo.concat(paths[0])
-      );
+          options?.[paths[0]],
+          paths?.slice(1),
+          pathInfo.concat(paths[0])
+        );
   return all.concat(specific);
 }
 

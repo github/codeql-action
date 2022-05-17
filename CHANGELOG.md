@@ -1,8 +1,12 @@
 # CodeQL Action Changelog
 
+## 1.1.11 - 17 May 2022
+
+- Update default CodeQL bundle version to 2.9.2. [#1074](https://github.com/github/codeql-action/pull/1074)
+
 ## 1.1.10 - 10 May 2022
 
-- Update default CodeQL bundle version to 2.9.5. [#1056](https://github.com/github/codeql-action/pull/1056)
+- Update default CodeQL bundle version to 2.9.1. [#1056](https://github.com/github/codeql-action/pull/1056)
 - When `wait-for-processing` is enabled, the workflow will now fail if there were any errors that occurred during processing of the analysis results.
 
 ## 1.1.9 - 27 Apr 2022

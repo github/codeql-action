@@ -1,8 +1,8 @@
 import * as fs from "fs";
+import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
-import { IHeaders } from "@actions/http-client/interfaces";
 import { default as deepEqual } from "fast-deep-equal";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
@@ -232,6 +232,13 @@ export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
  */
 export const CODEQL_VERSION_NEW_TRACING = "2.7.0";
 
+/**
+ * Versions 2.9.0+ of the CodeQL CLI run machine learning models from a temporary directory, which
+ * resolves an issue on Windows where TensorFlow models are not correctly loaded due to the path of
+ * some of their files being greater than MAX_PATH (260 characters).
+ */
+export const CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS = "2.9.0";
+
 function getCodeQLBundleName(): string {
   let platform: string;
   if (process.platform === "win32") {
@@ -451,7 +458,9 @@ export async function setupCodeQL(
 
         const parsedCodeQLURL = new URL(codeqlURL);
         const parsedQueryString = queryString.parse(parsedCodeQLURL.search);
-        const headers: IHeaders = { accept: "application/octet-stream" };
+        const headers: OutgoingHttpHeaders = {
+          accept: "application/octet-stream",
+        };
         // We only want to provide an authorization header if we are downloading
         // from the same GitHub instance the Action is running on.
         // This avoids leaking Enterprise tokens to dotcom.

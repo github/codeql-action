@@ -87,7 +87,8 @@ export async function runInit(
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
-  processLevel: number | undefined
+  processLevel: number | undefined,
+  featureFlags: FeatureFlags
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
@@ -98,7 +99,8 @@ export async function runInit(
         config,
         sourceRoot,
         processName,
-        processLevel
+        processLevel,
+        featureFlags
       );
     } else {
       for (const language of config.languages) {

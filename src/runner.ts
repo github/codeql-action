@@ -271,7 +271,8 @@ program
         config,
         sourceRoot,
         parseTraceProcessName(),
-        parseTraceProcessLevel()
+        parseTraceProcessLevel(),
+        createFeatureFlags([])
       );
       if (tracerConfig === undefined) {
         return;

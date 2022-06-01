@@ -664,7 +664,10 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
 export async function getMlPoweredJsQueriesPack(
   codeQL: CodeQL
 ): Promise<string> {
-  if (await codeQlVersionAbove(codeQL, "2.8.4")) {
+  if (await codeQlVersionAbove(codeQL, "2.9.3")) {
+    return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.3.0`;
+  }
+  else if (await codeQlVersionAbove(codeQL, "2.8.4")) {
     return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.2.0`;
   }
   return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`;
@@ -740,8 +743,8 @@ export async function checkActionVersion(version: string) {
     ) {
       core.warning(
         "CodeQL Action v1 will be deprecated on December 7th, 2022. Please upgrade to v2. For " +
-          "more information, see " +
-          "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/"
+        "more information, see " +
+        "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/"
       );
     }
   }

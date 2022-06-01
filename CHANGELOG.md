@@ -1,32 +1,33 @@
 # CodeQL Action Changelog
 
-## 1.1.11 - 17 May 2022
+## 2.1.11 - 17 May 2022
 
 - Update default CodeQL bundle version to 2.9.2. [#1074](https://github.com/github/codeql-action/pull/1074)
 
-## 1.1.10 - 10 May 2022
+## 2.1.10 - 10 May 2022
 
 - Update default CodeQL bundle version to 2.9.1. [#1056](https://github.com/github/codeql-action/pull/1056)
 - When `wait-for-processing` is enabled, the workflow will now fail if there were any errors that occurred during processing of the analysis results.
 
-## 1.1.9 - 27 Apr 2022
+## 2.1.9 - 27 Apr 2022
 
 - Add `working-directory` input to the `autobuild` action. [#1024](https://github.com/github/codeql-action/pull/1024)
 - The `analyze` and `upload-sarif` actions will now wait up to 2 minutes for processing to complete after they have uploaded the results so they can report any processing errors that occurred. This behavior can be disabled by setting the `wait-for-processing` action input to `"false"`. [#1007](https://github.com/github/codeql-action/pull/1007)
 - Update default CodeQL bundle version to 2.9.0.
 - Fix a bug where [status reporting fails on Windows](https://github.com/github/codeql-action/issues/1041). [#1042](https://github.com/github/codeql-action/pull/1042)
 
-## 1.1.8 - 08 Apr 2022
+## 2.1.8 - 08 Apr 2022
 
 - Update default CodeQL bundle version to 2.8.5. [#1014](https://github.com/github/codeql-action/pull/1014)
 - Fix error where the init action would fail due to a GitHub API request that was taking too long to complete [#1025](https://github.com/github/codeql-action/pull/1025)
 
-## 1.1.7 - 05 Apr 2022
+## 2.1.7 - 05 Apr 2022
 
 - A bug where additional queries specified in the workflow file would sometimes not be respected has been fixed. [#1018](https://github.com/github/codeql-action/pull/1018)
 
-## 1.1.6 - 30 Mar 2022
+## 2.1.6 - 30 Mar 2022
 
+- [v2+ only] The CodeQL Action now runs on Node.js v16. [#1000](https://github.com/github/codeql-action/pull/1000)
 - Update default CodeQL bundle version to 2.8.4. [#990](https://github.com/github/codeql-action/pull/990)
 - Fix a bug where an invalid `commit_oid` was being sent to code scanning when a custom checkout path was being used. [#956](https://github.com/github/codeql-action/pull/956)
 

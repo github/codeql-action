@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import del from "del";
 import * as yaml from "js-yaml";
 
 import * as analysisPaths from "./analysis-paths";
@@ -435,13 +436,8 @@ export async function runFinalize(
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
   }
 
-  // After switching to Node16, this entire block can be replaced with `await fs.promises.rm(outputDir, { recursive: true, force: true });`.
   try {
-    await fs.promises.rmdir(outputDir, {
-      recursive: true,
-      maxRetries: 5,
-      retryDelay: 2000,
-    } as any);
+    await del(outputDir, { force: true });
   } catch (error: any) {
     if (error?.code !== "ENOENT") {
       throw error;

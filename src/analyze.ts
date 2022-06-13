@@ -152,7 +152,7 @@ function dbIsFinalized(
   try {
     const dbInfo = yaml.load(
       fs.readFileSync(path.resolve(dbPath, "codeql-database.yml"), "utf8")
-    );
+    ) as { inProgress?: boolean };
     return !("inProgress" in dbInfo);
   } catch (e) {
     logger.warning(

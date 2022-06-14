@@ -1,0 +1,10 @@
+name: "CodeQL config 1"
+
+query-filters:
+# This should run js/path-injection and js/zipslip
+- include:
+    tags contain: external/cwe/cwe-022
+
+# Removes out js/path-injection
+- exclude:
+    id: js/path-injection

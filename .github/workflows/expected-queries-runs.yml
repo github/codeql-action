@@ -1,6 +1,4 @@
 name: Expected queries runs
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 on:
   push:

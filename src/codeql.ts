@@ -829,6 +829,7 @@ async function getCodeQLForCmd(
           "database",
           "trace-command",
           ...getExtraOptionsFromEnv(["database", "trace-command"]),
+          "--internal-use-lua-tracing",
           databasePath,
           "--",
           traceCommand,

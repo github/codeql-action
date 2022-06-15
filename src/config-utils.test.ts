@@ -1865,15 +1865,15 @@ test(
   "security-and-quality",
   "0.0.1"
 );
-// Test that the ~0.3.0 version of ML-powered queries are run on non-Windows platforms running
-// `security-extended` on version 2.9.3+ of the CodeQL CLI.
+// Test that ML-powered queries are run on all platforms running `security-extended` on CodeQL
+// CLI 2.9.3+.
 test(
   mlPoweredQueriesMacro,
   "2.9.3",
   true,
   undefined,
   "security-extended",
-  process.platform === "win32" ? undefined : "~0.3.0"
+  "~0.3.0"
 );
 // Test that ML-powered queries are run on all platforms running `security-and-quality` on CodeQL
 // CLI 2.9.3+.

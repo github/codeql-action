@@ -97,7 +97,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: npm run-script test
-        run: npm run-script test
+        run: |
+          npm install
+          npm run-script test
 
   runner-analyze-javascript-ubuntu:
     name: Runner ubuntu JS analyze

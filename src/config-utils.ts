@@ -1448,7 +1448,7 @@ function getLocalConfig(configFile: string, workspacePath: string): UserConfig {
     throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
   }
 
-  return yaml.load(fs.readFileSync(configFile, "utf8"));
+  return yaml.load(fs.readFileSync(configFile, "utf8")) as UserConfig;
 }
 
 async function getRemoteConfig(
@@ -1483,7 +1483,9 @@ async function getRemoteConfig(
     throw new Error(getConfigFileFormatInvalidMessage(configFile));
   }
 
-  return yaml.load(Buffer.from(fileContents, "base64").toString("binary"));
+  return yaml.load(
+    Buffer.from(fileContents, "base64").toString("binary")
+  ) as UserConfig;
 }
 
 /**

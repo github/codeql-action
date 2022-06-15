@@ -269,7 +269,7 @@ test("getWorkflowErrors() when on.push is correct with empty objects", (t) => {
 on:
   push:
   pull_request:
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -441,7 +441,7 @@ on:
   push:
     branches: ["main"]
   pull_request:
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(
@@ -559,7 +559,7 @@ test("getWorkflowErrors() when branches contain dots", (t) => {
     pull_request:
       # The branches below must be a subset of the branches above
       branches: [4.1, master]
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -575,7 +575,7 @@ on:
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [master]
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -604,7 +604,7 @@ jobs:
 
   test3:
     steps: []
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(
@@ -635,7 +635,7 @@ jobs:
 
   test3:
     steps: []
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -645,7 +645,7 @@ test("getWorkflowErrors() when on is missing", (t) => {
   const errors = actionsutil.getWorkflowErrors(
     yaml.load(`
 name: "CodeQL"
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -658,7 +658,7 @@ test("getWorkflowErrors() with a different on setup", (t) => {
         yaml.load(`
 name: "CodeQL"
 on: "workflow_dispatch"
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -670,7 +670,7 @@ on: "workflow_dispatch"
         yaml.load(`
 name: "CodeQL"
 on: [workflow_dispatch]
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -683,7 +683,7 @@ on: [workflow_dispatch]
 name: "CodeQL"
 on:
   workflow_dispatch: {}
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -699,7 +699,7 @@ name: "CodeQL"
 on:
   push:
     branches: [master]
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -711,7 +711,7 @@ on:
         yaml.load(`
 name: "CodeQL"
 on: ["push"]
-`)
+`) as actionsutil.Workflow
       ),
       []
     )

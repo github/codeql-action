@@ -402,9 +402,9 @@ export async function runQueries(
     }
 
     // combine the list of packs into a query suite in order to run them all simultaneously.
-    const querySuite = packs
-      .map(convertPackToQuerySuiteEntry)
-      .concat(queryFilters as any[]);
+    const querySuite = (
+      packs.map(convertPackToQuerySuiteEntry) as configUtils.QuerySuiteEntry[]
+    ).concat(queryFilters);
 
     const querySuitePath = `${databasePath}-queries-${type}.qls`;
     fs.writeFileSync(querySuitePath, yaml.dump(querySuite));
@@ -424,7 +424,9 @@ export async function runQueries(
   }
 }
 
-export function convertPackToQuerySuiteEntry(packStr: string) {
+export function convertPackToQuerySuiteEntry(
+  packStr: string
+): configUtils.QuerySuitePackEntry {
   const pack = configUtils.parsePacksSpecification(packStr);
   return {
     qlpack: !pack.path ? pack.name : undefined,

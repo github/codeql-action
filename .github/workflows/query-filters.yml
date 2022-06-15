@@ -27,71 +27,29 @@ jobs:
       with:
         version: latest
 
-    # Test 1
-    - uses: ./../action/init
-      with:
-        languages: javascript
-        config-file: ./.github/codeql/codeql-config-query-filters1.yml
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-        db-location: ${{ runner.temp }}/test1
-    - uses: ./../action/analyze
-      with:
-        output: ${{ runner.temp }}/results
-        upload-database: false
-        upload: false
-      env:
-        TEST_MODE: true
-    - name: Check Sarif
-      uses: ./../action/.github/check-sarif
+    - name: Check Sarif for default queries with Single include, Single exclude
+      uses: ./../action/.github/query-filter-test
       with:
         sarif-file:  ${{ runner.temp }}/results/javascript.sarif
         queries-run: js/zipslip
         queries-not-run: js/path-injection
-    - name: Cleanup after test
-      run: rm -rf "$RUNNER_TEMP/results"
-
-    # Test 2
-    - uses: ./../action/init
-      with:
-        languages: javascript
-        config-file: ./.github/codeql/codeql-config-query-filters2.yml
+        config-file: ./.github/codeql/codeql-config-query-filters1.yml
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-        db-location: ${{ runner.temp }}/test2
-    - uses: ./../action/analyze
-      with:
-        output: ${{ runner.temp }}/results
-        upload-database: false
-        upload: false
-      env:
-        TEST_MODE: true
-    - name: Check Sarif
-      uses: ./../action/.github/check-sarif
+
+    - name: Check Sarif for query packs with Single include, Single exclude
+      uses: ./../action/.github/query-filter-test
       with:
         sarif-file:  ${{ runner.temp }}/results/javascript.sarif
         queries-run: js/zipslip,javascript/example/empty-or-one-block
         queries-not-run: js/path-injection
-    - name: Cleanup after test
-      run: rm -rf "$RUNNER_TEMP/results"
-
-    # Test 3
-    - uses: ./../action/init
-      with:
-        languages: javascript
-        config-file: ./.github/codeql/codeql-config-query-filters3.yml
+        config-file: ./.github/codeql/codeql-config-query-filters2.yml
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-        db-location: ${{ runner.temp }}/test3
-    - uses: ./../action/analyze
-      with:
-        output: ${{ runner.temp }}/results
-        upload-database: false
-        upload: false
-      env:
-        TEST_MODE: true
-    - name: Check Sarif
-      uses: ./../action/.github/check-sarif
+
+    - name: Check Sarif for query packs and local queries with Single include, Single exclude
+      uses: ./../action/.github/query-filter-test
       with:
         sarif-file:  ${{ runner.temp }}/results/javascript.sarif
         queries-run: js/zipslip,javascript/example/empty-or-one-block,inrepo-javascript-querypack/show-ifs
         queries-not-run: js/path-injection,complex-python-querypack/show-ifs,complex-python-querypack/foo/bar/show-ifs
-    - name: Cleanup after test
-      run: rm -rf "$RUNNER_TEMP/results"
+        config-file: ./.github/codeql/codeql-config-query-filters3.yml
+        tools: ${{ steps.prepare-test.outputs.tools-url }}

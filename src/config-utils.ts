@@ -65,6 +65,22 @@ interface IncludeQueryFilter {
   include: Record<string, string[] | string>;
 }
 
+export type QuerySuitePackEntry = {
+  version?: string;
+} & (
+  | {
+      qlpack: string;
+    }
+  | {
+      from?: string;
+      query?: string;
+      queries?: string;
+      apply?: string;
+    }
+);
+
+export type QuerySuiteEntry = QuerySuitePackEntry | QueryFilter;
+
 /**
  * Lists of query files for each language.
  * Will only contain .ql files and not other kinds of files,

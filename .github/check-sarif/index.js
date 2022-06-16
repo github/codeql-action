@@ -1,33 +1,24 @@
 'use strict'
 
-const core = require('@actions/core');
+const core = require('@actions/core')
 const fs = require('fs')
 
 const sarif = JSON.parse(fs.readFileSync(core.getInput('sarif-file'), 'utf8'))
 const rules = sarif.runs[0].tool.extensions.flatMap(ext => ext.rules || [])
+const ruleIds = rules.map(rule => rule.id)
 
-// Expected Queries
-const expectedQueriesRun = getInput('queries-run')
-const queriesThatShouldHaveRunButDidnt = expectedQueriesRun.reduce((acc, queryId) => {
-  if (!rules.some(rule => rule.id === queryId)) {
-    acc.push(queryId)
-  }
-  return acc
-}, []);
+// Check that all the expected queries ran
+const expectedQueriesRun = getQueryIdsInput('queries-run')
+const queriesThatShouldHaveRunButDidNot = expectedQueriesRun.filter(queryId => !ruleIds.includes(queryId))
 
-if (queriesThatShouldHaveRunButDidnt.length > 0) {
-  core.setFailed(`The following queries were expected to run but did not: ${queriesThatShouldHaveRunButDidnt.join(', ')}`)
+if (queriesThatShouldHaveRunButDidNot.length > 0) {
+  core.setFailed(`The following queries were expected to run but did not: ${queriesThatShouldHaveRunButDidNot.join(', ')}`)
 }
 
-// Unexpected Queries
-const expectedQueriesNotRun = getInput('queries-not-run')
+// Check that all the unexpected queries did not run
+const expectedQueriesNotRun = getQueryIdsInput('queries-not-run')
 
-const queriesThatShouldNotHaveRunButDid = expectedQueriesNotRun.reduce((acc, queryId) => {
-  if (rules.some(rule => rule.id === queryId)) {
-    acc.push(queryId)
-  }
-  return acc
-}, []);
+const queriesThatShouldNotHaveRunButDid = expectedQueriesNotRun.filter(queryId => ruleIds.includes(queryId))
 
 if (queriesThatShouldNotHaveRunButDid.length > 0) {
   core.setFailed(`The following queries were NOT expected to have run but did: ${queriesThatShouldNotHaveRunButDid.join(', ')}`)
@@ -44,7 +35,7 @@ core.startGroup('Full SARIF')
 core.info(JSON.stringify(sarif, null, 2))
 core.endGroup()
 
-function getInput(name) {
+function getQueryIdsInput(name) {
   return core.getInput(name)
     .split(',')
     .map(q => q.trim())

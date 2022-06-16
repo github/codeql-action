@@ -664,7 +664,9 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
 export async function getMlPoweredJsQueriesPack(
   codeQL: CodeQL
 ): Promise<string> {
-  if (await codeQlVersionAbove(codeQL, "2.8.4")) {
+  if (await codeQlVersionAbove(codeQL, "2.9.3")) {
+    return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.3.0`;
+  } else if (await codeQlVersionAbove(codeQL, "2.8.4")) {
     return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.2.0`;
   }
   return `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`;

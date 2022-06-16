@@ -1919,3 +1919,23 @@ test(
   "security-and-quality",
   "0.0.1"
 );
+// Test that ML-powered queries are run on all platforms running `security-extended` on CodeQL
+// CLI 2.9.3+.
+test(
+  mlPoweredQueriesMacro,
+  "2.9.3",
+  true,
+  undefined,
+  "security-extended",
+  "~0.3.0"
+);
+// Test that ML-powered queries are run on all platforms running `security-and-quality` on CodeQL
+// CLI 2.9.3+.
+test(
+  mlPoweredQueriesMacro,
+  "2.9.3",
+  true,
+  undefined,
+  "security-and-quality",
+  "~0.3.0"
+);

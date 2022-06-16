@@ -1,4 +1,4 @@
-name: Expected queries runs
+name: Check queries that ran
 
 on:
   push:

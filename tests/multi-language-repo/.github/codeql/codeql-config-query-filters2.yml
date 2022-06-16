@@ -1,4 +1,4 @@
-name: "CodeQL config 2"
+name: "Check SARIF for query packs with Single include, Single exclude"
 
 disable-default-queries: true
 
@@ -12,7 +12,7 @@ query-filters:
 - include:
     tags contain: external/cwe/cwe-022
 
-# Removes out js/path-injection
+# Removes js/path-injection
 - exclude:
     id: js/path-injection
 

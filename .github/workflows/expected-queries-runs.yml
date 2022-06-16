@@ -41,6 +41,6 @@ jobs:
     - name: Check Sarif
       uses: ./../action/.github/check-sarif
       with:
-        sarif-file:  ${{ runner.temp }}/results/javascript.sarif
+        sarif-file: ${{ runner.temp }}/results/javascript.sarif
         queries-run: js/incomplete-hostname-regexp,js/path-injection
         queries-not-run: foo,bar

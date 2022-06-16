@@ -141,7 +141,7 @@ test("resolveUriToFile", (t) => {
   // should generally always be the case so this is fine.
   const cwd = process.cwd();
   const filepath = __filename;
-  t.true(filepath.startsWith(`${cwd}/`));
+  t.true(filepath.startsWith(cwd + path.sep));
   const relativeFilepath = filepath.substring(cwd.length + 1);
 
   // Absolute paths are unmodified

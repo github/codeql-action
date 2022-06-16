@@ -1,6 +1,4 @@
 name: Check queries that ran
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 on:
   push:

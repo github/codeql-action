@@ -519,16 +519,21 @@ test("Queries can be specified in config file", async (t) => {
     // and once for `./foo` from the config file.
     t.deepEqual(resolveQueriesArgs.length, 2);
     t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
-    t.regex(resolveQueriesArgs[1].queries[0], /.*\/foo$/);
+    t.true(resolveQueriesArgs[1].queries[0].endsWith(`${path.sep}foo`));
 
     // Now check that the end result contains the default queries and the query from config
     t.deepEqual(config.queries["javascript"].builtin.length, 1);
     t.deepEqual(config.queries["javascript"].custom.length, 1);
-    t.regex(
-      config.queries["javascript"].builtin[0],
-      /javascript-code-scanning.qls$/
+    t.true(
+      config.queries["javascript"].builtin[0].endsWith(
+        "javascript-code-scanning.qls"
+      )
     );
-    t.regex(config.queries["javascript"].custom[0].queries[0], /.*\/foo$/);
+    t.true(
+      config.queries["javascript"].custom[0].queries[0].endsWith(
+        `${path.sep}foo`
+      )
+    );
   });
 });
 
@@ -587,16 +592,21 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
     // but won't be called for './foo' from the config file.
     t.deepEqual(resolveQueriesArgs.length, 2);
     t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
-    t.regex(resolveQueriesArgs[1].queries[0], /.*\/override$/);
+    t.true(resolveQueriesArgs[1].queries[0].endsWith(`${path.sep}override`));
 
     // Now check that the end result contains only the default queries and the override query
     t.deepEqual(config.queries["javascript"].builtin.length, 1);
     t.deepEqual(config.queries["javascript"].custom.length, 1);
-    t.regex(
-      config.queries["javascript"].builtin[0],
-      /javascript-code-scanning.qls$/
+    t.true(
+      config.queries["javascript"].builtin[0].endsWith(
+        "javascript-code-scanning.qls"
+      )
     );
-    t.regex(config.queries["javascript"].custom[0].queries[0], /.*\/override$/);
+    t.true(
+      config.queries["javascript"].custom[0].queries[0].endsWith(
+        `${path.sep}override`
+      )
+    );
   });
 });
 
@@ -653,14 +663,17 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
     // but won't be called for the default one since that was disabled
     t.deepEqual(resolveQueriesArgs.length, 1);
     t.deepEqual(resolveQueriesArgs[0].queries.length, 1);
-    t.regex(resolveQueriesArgs[0].queries[0], /.*\/workflow-query$/);
+    t.true(
+      resolveQueriesArgs[0].queries[0].endsWith(`${path.sep}workflow-query`)
+    );
 
     // Now check that the end result contains only the workflow query, and not the default one
     t.deepEqual(config.queries["javascript"].builtin.length, 0);
     t.deepEqual(config.queries["javascript"].custom.length, 1);
-    t.regex(
-      config.queries["javascript"].custom[0].queries[0],
-      /.*\/workflow-query$/
+    t.true(
+      config.queries["javascript"].custom[0].queries[0].endsWith(
+        `${path.sep}workflow-query`
+      )
     );
   });
 });
@@ -713,23 +726,26 @@ test("Multiple queries can be specified in workflow file, no config file require
     t.deepEqual(resolveQueriesArgs.length, 3);
     t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
     t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
-    t.regex(resolveQueriesArgs[1].queries[0], /.*\/override1$/);
-    t.regex(resolveQueriesArgs[2].queries[0], /.*\/override2$/);
+    t.true(resolveQueriesArgs[1].queries[0].endsWith(`${path.sep}override1`));
+    t.true(resolveQueriesArgs[2].queries[0].endsWith(`${path.sep}override2`));
 
     // Now check that the end result contains both the queries from the workflow, as well as the defaults
     t.deepEqual(config.queries["javascript"].builtin.length, 1);
     t.deepEqual(config.queries["javascript"].custom.length, 2);
-    t.regex(
-      config.queries["javascript"].builtin[0],
-      /javascript-code-scanning.qls$/
+    t.true(
+      config.queries["javascript"].builtin[0].endsWith(
+        "javascript-code-scanning.qls"
+      )
     );
-    t.regex(
-      config.queries["javascript"].custom[0].queries[0],
-      /.*\/override1$/
+    t.true(
+      config.queries["javascript"].custom[0].queries[0].endsWith(
+        `${path.sep}override1`
+      )
     );
-    t.regex(
-      config.queries["javascript"].custom[1].queries[0],
-      /.*\/override2$/
+    t.true(
+      config.queries["javascript"].custom[1].queries[0].endsWith(
+        `${path.sep}override2`
+      )
     );
   });
 });
@@ -793,28 +809,35 @@ test("Queries in workflow file can be added to the set of queries without overri
     // and once for './foo' from the config file
     t.deepEqual(resolveQueriesArgs.length, 4);
     t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
-    t.regex(resolveQueriesArgs[1].queries[0], /.*\/additional1$/);
+    t.true(resolveQueriesArgs[1].queries[0].endsWith(`${path.sep}additional1`));
     t.deepEqual(resolveQueriesArgs[2].queries.length, 1);
-    t.regex(resolveQueriesArgs[2].queries[0], /.*\/additional2$/);
+    t.true(resolveQueriesArgs[2].queries[0].endsWith(`${path.sep}additional2`));
     t.deepEqual(resolveQueriesArgs[3].queries.length, 1);
-    t.regex(resolveQueriesArgs[3].queries[0], /.*\/foo$/);
+    t.true(resolveQueriesArgs[3].queries[0].endsWith(`${path.sep}foo`));
 
     // Now check that the end result contains all the queries
     t.deepEqual(config.queries["javascript"].builtin.length, 1);
     t.deepEqual(config.queries["javascript"].custom.length, 3);
-    t.regex(
-      config.queries["javascript"].builtin[0],
-      /javascript-code-scanning.qls$/
+    t.true(
+      config.queries["javascript"].builtin[0].endsWith(
+        "javascript-code-scanning.qls"
+      )
     );
-    t.regex(
-      config.queries["javascript"].custom[0].queries[0],
-      /.*\/additional1$/
+    t.true(
+      config.queries["javascript"].custom[0].queries[0].endsWith(
+        `${path.sep}additional1`
+      )
     );
-    t.regex(
-      config.queries["javascript"].custom[1].queries[0],
-      /.*\/additional2$/
+    t.true(
+      config.queries["javascript"].custom[1].queries[0].endsWith(
+        `${path.sep}additional2`
+      )
     );
-    t.regex(config.queries["javascript"].custom[2].queries[0], /.*\/foo$/);
+    t.true(
+      config.queries["javascript"].custom[2].queries[0].endsWith(
+        `${path.sep}foo`
+      )
+    );
   });
 });
 

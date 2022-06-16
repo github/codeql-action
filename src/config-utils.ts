@@ -1275,7 +1275,13 @@ export function validatePacksSpecification(
 
   if (
     packPath &&
-    (path.isAbsolute(packPath) || path.normalize(packPath) !== packPath)
+    (path.isAbsolute(packPath) ||
+      // Permit using "/" instead of "\" on Windows
+      // Use `x.split(y).join(z)` as a polyfill for `x.replaceAll(y, z)` since
+      // if we used a regex we'd need to escape the path separator on Windows
+      // which seems more awkward.
+      path.normalize(packPath).split(path.sep).join("/") !==
+        packPath.split(path.sep).join("/"))
   ) {
     throw new Error(getPacksStrInvalid(packStr, configFile));
   }

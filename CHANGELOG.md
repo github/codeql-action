@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-- Add the ability to filter queries from a code scanning run by using the `query-filters` option in the code scanning configuration file.[#1098](https://github.com/github/codeql-action/pull/1098)
+- Add the ability to filter queries from a code scanning run by using the `query-filters` option in the code scanning configuration file. [#1098](https://github.com/github/codeql-action/pull/1098)
 
 ## 2.1.12 - 01 Jun 2022
 

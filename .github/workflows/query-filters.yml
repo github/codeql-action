@@ -27,7 +27,7 @@ jobs:
       with:
         version: latest
 
-    - name: Check Sarif for default queries with Single include, Single exclude
+    - name: Check SARIF for default queries with Single include, Single exclude
       uses: ./../action/.github/query-filter-test
       with:
         sarif-file:  ${{ runner.temp }}/results/javascript.sarif
@@ -36,7 +36,7 @@ jobs:
         config-file: ./.github/codeql/codeql-config-query-filters1.yml
         tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-    - name: Check Sarif for query packs with Single include, Single exclude
+    - name: Check SARIF for query packs with Single include, Single exclude
       uses: ./../action/.github/query-filter-test
       with:
         sarif-file:  ${{ runner.temp }}/results/javascript.sarif
@@ -45,7 +45,7 @@ jobs:
         config-file: ./.github/codeql/codeql-config-query-filters2.yml
         tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-    - name: Check Sarif for query packs and local queries with Single include, Single exclude
+    - name: Check SARIF for query packs and local queries with Single include, Single exclude
       uses: ./../action/.github/query-filter-test
       with:
         sarif-file:  ${{ runner.temp }}/results/javascript.sarif

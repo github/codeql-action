@@ -3,7 +3,7 @@ description: Checks a SARIF file to see if certain queries were run and others w
 inputs:
   sarif-file:
     required: true
-    description: The sarif file to check
+    description: The SARIF file to check
 
   queries-run:
     required: true

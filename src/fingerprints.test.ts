@@ -139,10 +139,11 @@ test("resolveUriToFile", (t) => {
   // so we need to give it real files to look at. We will use this file as an example.
   // For this to work we require the current working directory to be a parent, but this
   // should generally always be the case so this is fine.
-  const cwd = process.cwd();
-  const filepath = __filename;
-  t.true(filepath.startsWith(cwd + path.sep));
-  const relativeFilepath = filepath.substring(cwd.length + 1);
+  const filepath = __filename.split(path.sep).join("/");
+  const relativeFilepath = path
+    .relative(process.cwd(), __filename)
+    .split(path.sep)
+    .join("/");
 
   // Absolute paths are unmodified
   t.is(testResolveUriToFile(filepath, undefined, []), filepath);

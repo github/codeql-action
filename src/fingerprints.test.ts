@@ -150,9 +150,16 @@ test("resolveUriToFile", (t) => {
   t.is(testResolveUriToFile(`file://${filepath}`, undefined, []), filepath);
 
   // Relative paths are made absolute
-  t.is(testResolveUriToFile(relativeFilepath, undefined, []), filepath);
   t.is(
-    testResolveUriToFile(`file://${relativeFilepath}`, undefined, []),
+    testResolveUriToFile(relativeFilepath, undefined, [])
+      ?.split(path.sep)
+      .join("/"),
+    filepath
+  );
+  t.is(
+    testResolveUriToFile(`file://${relativeFilepath}`, undefined, [])
+      ?.split(path.sep)
+      .join("/"),
     filepath
   );
 

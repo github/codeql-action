@@ -15,7 +15,8 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  expected-queries:
+  query-filters:
+    name: Query Filters Tests
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:

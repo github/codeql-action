@@ -4,6 +4,7 @@ import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import { default as deepEqual } from "fast-deep-equal";
+import * as yaml from "js-yaml";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
 
@@ -225,6 +226,7 @@ const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
+export const CODEQL_VERSION_CONFIG_FILES = "2.8.2"; // Versions before 2.8.2 weren't tolerant to unknown properties
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 
@@ -761,6 +763,26 @@ async function getCodeQLForCmd(
           }
         }
       }
+      if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES)) {
+        const configLocation = path.resolve(config.tempDir, "user-config.yaml");
+        const augmentedConfig = config.originalUserInput;
+        if (config.injectedMlQueries) {
+          // We need to inject the ML queries into the original user input before
+          // we pass this on to the CLI, to make sure these get run.
+          const packString = await util.getMlPoweredJsQueriesPack(codeql);
+
+          if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
+          if (Array.isArray(augmentedConfig.packs)) {
+            augmentedConfig.packs.push(packString);
+          } else {
+            if (!augmentedConfig.packs.javascript)
+              augmentedConfig.packs["javascript"] = [];
+            augmentedConfig.packs["javascript"].push(packString);
+          }
+        }
+        fs.writeFileSync(configLocation, yaml.dump(augmentedConfig));
+        extraArgs.push(`--codescanning-config=${configLocation}`);
+      }
       await runTool(cmd, [
         "database",
         "init",
@@ -933,7 +955,9 @@ async function getCodeQLForCmd(
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      codeqlArgs.push(querySuitePath);
+      if (!(await util.codeQlVersionAbove(this, CODEQL_VERSION_CONFIG_FILES))) {
+        codeqlArgs.push(querySuitePath);
+      }
       await runTool(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
@@ -969,7 +993,9 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       codeqlArgs.push(databasePath);
-      codeqlArgs.push(...querySuitePaths);
+      if (!(await util.codeQlVersionAbove(this, CODEQL_VERSION_CONFIG_FILES))) {
+        codeqlArgs.push(...querySuitePaths);
+      }
       // capture stdout, which contains analysis summaries
       return await runTool(cmd, codeqlArgs);
     },

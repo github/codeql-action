@@ -55,7 +55,10 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   // If the temporary or tools directory is in the working directory ignore that too.
   const tempRelativeToWorking = path.relative(process.cwd(), config.tempDir);
   let pathsIgnore = config.pathsIgnore;
-  if (!tempRelativeToWorking.startsWith("..")) {
+  if (
+    !tempRelativeToWorking.startsWith("..") &&
+    !path.isAbsolute(tempRelativeToWorking)
+  ) {
     pathsIgnore = pathsIgnore.concat(tempRelativeToWorking);
   }
   if (pathsIgnore.length !== 0) {

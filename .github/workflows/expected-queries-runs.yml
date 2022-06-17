@@ -16,6 +16,7 @@ on:
 
 jobs:
   expected-queries:
+    name: Expected Queries Tests
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:

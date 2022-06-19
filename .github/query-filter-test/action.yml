@@ -49,4 +49,4 @@ runs:
         queries-not-run: ${{ inputs.queries-not-run}}
     - name: Cleanup after test
       shell: bash
-      run: rm -rf "$RUNNER_TEMP/results" "$RUNNER_TEMP//query-filter-test"
+      run: rm -rf "$RUNNER_TEMP/results" "$RUNNER_TEMP/query-filter-test"

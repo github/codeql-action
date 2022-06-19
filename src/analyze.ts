@@ -8,7 +8,6 @@ import * as yaml from "js-yaml";
 import * as analysisPaths from "./analysis-paths";
 import {
   CodeQL,
-  CODEQL_VERSION_CONFIG_FILES,
   CODEQL_VERSION_COUNTS_LINES,
   CODEQL_VERSION_NEW_TRACING,
   getCodeQL,
@@ -246,7 +245,7 @@ export async function runQueries(
     try {
       if (
         hasPackWithCustomQueries &&
-        !(await util.codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES))
+        !(await util.useCodeScanningConfigInCli(codeql))
       ) {
         logger.info("Performing analysis with custom CodeQL Packs.");
         logger.startGroup(`Downloading custom packs for ${language}`);

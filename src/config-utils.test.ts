@@ -173,7 +173,9 @@ test("loading config saves config", async (t) => {
     const config2 = await configUtils.getConfig(tmpDir, logger);
     t.not(config2, undefined);
     if (config2 !== undefined) {
-      t.deepEqual(config1, config2);
+      // removes properties assigned to undefined.
+      const expectedConfig = JSON.parse(JSON.stringify(config1));
+      t.deepEqual(expectedConfig, config2);
     }
   });
 });
@@ -356,7 +358,13 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
-      injectedMlQueries: false,
+      augmentationProperties: {
+        injectedMlQueries: false,
+        packsInputCombines: false,
+        queriesInputCombines: false,
+        packsInput: undefined,
+        queriesInput: undefined,
+      },
     };
 
     const languages = "javascript";
@@ -1598,6 +1606,7 @@ function parseInputAndConfigMacro(
     configUtils.parsePacks(
       packsFromConfig,
       packsFromInput,
+      !!packsFromInput?.trim().startsWith("+"),
       languages,
       "/a/b",
       mockLogger
@@ -1619,6 +1628,7 @@ function parseInputAndConfigErrorMacro(
   packsFromConfig: string[] | Record<string, string[]>,
   packsFromInput: string | undefined,
   languages: Language[],
+  packsFromInputOverride: boolean,
   expected: RegExp
 ) {
   t.throws(
@@ -1626,6 +1636,7 @@ function parseInputAndConfigErrorMacro(
       configUtils.parsePacks(
         packsFromConfig,
         packsFromInput,
+        packsFromInputOverride,
         languages,
         "/a/b",
         mockLogger
@@ -1704,6 +1715,7 @@ test(
   {},
   "c/d",
   [],
+  false,
   /No languages specified/
 );
 
@@ -1713,6 +1725,7 @@ test(
   {},
   "c/d",
   [Language.cpp, Language.csharp],
+  false,
   /multi-language analysis/
 );
 
@@ -1722,6 +1735,7 @@ test(
   {},
   " + ",
   [Language.cpp],
+  true,
   /remove the '\+'/
 );
 
@@ -1731,6 +1745,7 @@ test(
   {},
   " xxx",
   [Language.cpp],
+  false,
   /"xxx" is not a valid pack/
 );
 
@@ -1909,4 +1924,165 @@ test(
   undefined,
   "security-and-quality",
   "~0.3.0"
+);
+
+const calculateAugmentationMacro = test.macro({
+  exec: async (
+    t: ExecutionContext,
+    _title: string,
+    rawPacksInput: string | undefined,
+    rawQueriesInput: string | undefined,
+    languages: Language[],
+    expectedAugmentationProperties: configUtils.AugmentationProperties
+  ) => {
+    const actualAugmentationProperties = configUtils.calculateAugmentation(
+      rawPacksInput,
+      rawQueriesInput,
+      languages
+    );
+    t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
+  },
+  title: (_, title) => `Calculate Augmentation: ${title}`,
+});
+
+test(
+  calculateAugmentationMacro,
+  "All empty",
+  undefined,
+  undefined,
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: undefined,
+    packsInputCombines: false,
+    packsInput: undefined,
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With queries",
+  undefined,
+  " a, b , c, d",
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    packsInputCombines: false,
+    packsInput: undefined,
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With queries combining",
+  undefined,
+  "   +   a, b , c, d ",
+  [Language.javascript],
+  {
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    packsInputCombines: false,
+    packsInput: undefined,
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With packs",
+  "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
+  undefined,
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: undefined,
+    packsInputCombines: false,
+    packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With packs combining",
+  "   +   codeql/a, codeql/b, codeql/c, codeql/d",
+  undefined,
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: undefined,
+    packsInputCombines: true,
+    packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+const calculateAugmentationErrorMacro = test.macro({
+  exec: async (
+    t: ExecutionContext,
+    _title: string,
+    rawPacksInput: string | undefined,
+    rawQueriesInput: string | undefined,
+    languages: Language[],
+    expectedError: RegExp | string
+  ) => {
+    t.throws(
+      () =>
+        configUtils.calculateAugmentation(
+          rawPacksInput,
+          rawQueriesInput,
+          languages
+        ),
+      { message: expectedError }
+    );
+  },
+  title: (_, title) => `Calculate Augmentation Error: ${title}`,
+});
+
+test(
+  calculateAugmentationErrorMacro,
+  "Plus (+) with nothing else (queries)",
+  undefined,
+  "   +   ",
+  [Language.javascript],
+  /The workflow property "queries" is invalid/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Plus (+) with nothing else (packs)",
+  "   +   ",
+  undefined,
+  [Language.javascript],
+  /The workflow property "packs" is invalid/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Packs input with multiple languages",
+  "   +  a/b, c/d ",
+  undefined,
+  [Language.javascript, Language.java],
+  /Cannot specify a 'packs' input in a multi-language analysis/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Packs input with no languages",
+  "   +  a/b, c/d ",
+  undefined,
+  [],
+  /No languages specified/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Invalid packs",
+  " a-pack-without-a-scope ",
+  undefined,
+  [Language.javascript],
+  /"a-pack-without-a-scope" is not a valid pack/
 );

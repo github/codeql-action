@@ -56,7 +56,11 @@ function getTestConfig(tmpDir: string): Config {
     debugMode: false,
     debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
-    injectedMlQueries: false,
+    augmentationProperties: {
+      injectedMlQueries: false,
+      packsInputCombines: false,
+      queriesInputCombines: false,
+    },
   };
 }
 

@@ -10,7 +10,11 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
+import {
+  CodeQL,
+  CODEQL_VERSION_CONFIG_FILES,
+  CODEQL_VERSION_NEW_TRACING,
+} from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
@@ -510,6 +514,13 @@ enum EnvVar {
    * own sandwiched workflow mechanism
    */
   FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
+
+  /**
+   * If set to the "true" string and the codeql CLI version is greater than
+   * `CODEQL_VERSION_CONFIG_FILES`, then the codeql-action will pass the
+   * the codeql-config file to the codeql CLI to be processed there.
+   */
+  CODEQL_PASS_CONFIG_TO_CLI = "CODEQL_PASS_CONFIG_TO_CLI",
 }
 
 const exportVar = (mode: Mode, name: string, value: string) => {
@@ -759,4 +770,18 @@ export async function checkActionVersion(version: string) {
  */
 export function isInTestMode(): boolean {
   return process.env["TEST_MODE"] === "true" || false;
+}
+
+/**
+ * @returns true if the action should generate a conde-scanning config file
+ * that gets passed to the CLI.
+ */
+export async function useCodeScanningConfigInCli(
+  codeql: CodeQL
+): Promise<boolean> {
+  return (
+    (process.env[EnvVar.CODEQL_PASS_CONFIG_TO_CLI] === "true" &&
+      (await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES))) ||
+    false
+  );
 }

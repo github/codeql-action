@@ -763,26 +763,12 @@ async function getCodeQLForCmd(
           }
         }
       }
-      if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES)) {
-        const configLocation = path.resolve(config.tempDir, "user-config.yaml");
-        const augmentedConfig = config.originalUserInput;
-        if (config.injectedMlQueries) {
-          // We need to inject the ML queries into the original user input before
-          // we pass this on to the CLI, to make sure these get run.
-          const packString = await util.getMlPoweredJsQueriesPack(codeql);
 
-          if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
-          if (Array.isArray(augmentedConfig.packs)) {
-            augmentedConfig.packs.push(packString);
-          } else {
-            if (!augmentedConfig.packs.javascript)
-              augmentedConfig.packs["javascript"] = [];
-            augmentedConfig.packs["javascript"].push(packString);
-          }
-        }
-        fs.writeFileSync(configLocation, yaml.dump(augmentedConfig));
+      const configLocation = await generateCodescanningConfig(codeql, config);
+      if (configLocation) {
         extraArgs.push(`--codescanning-config=${configLocation}`);
       }
+
       await runTool(cmd, [
         "database",
         "init",
@@ -955,7 +941,7 @@ async function getCodeQLForCmd(
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      if (!(await util.codeQlVersionAbove(this, CODEQL_VERSION_CONFIG_FILES))) {
+      if (!(await util.useCodeScanningConfigInCli(this))) {
         codeqlArgs.push(querySuitePath);
       }
       await runTool(cmd, codeqlArgs);
@@ -993,7 +979,7 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       codeqlArgs.push(databasePath);
-      if (!(await util.codeQlVersionAbove(this, CODEQL_VERSION_CONFIG_FILES))) {
+      if (!(await util.useCodeScanningConfigInCli(this))) {
         codeqlArgs.push(...querySuitePaths);
       }
       // capture stdout, which contains analysis summaries
@@ -1186,4 +1172,78 @@ async function runTool(cmd: string, args: string[] = []) {
   if (exitCode !== 0)
     throw new CommandInvocationError(cmd, args, exitCode, error);
   return output;
+}
+
+/**
+ * If appropriate, generates a code scanning configuration that is to be used for a scan.
+ * If the configuration is not to be generated, returns undefined.
+ *
+ * @param codeql The CodeQL object to use.
+ * @param config The configuration to use.
+ * @returns the path to the generated user configuration file.
+ */
+async function generateCodescanningConfig(codeql: CodeQL, config: Config) {
+  if (!(await util.useCodeScanningConfigInCli(codeql))) {
+    return;
+  }
+  const configLocation = path.resolve(config.tempDir, "user-config.yaml");
+  // make a copy so we can modify it
+  const augmentedConfig = JSON.parse(JSON.stringify(config.originalUserInput));
+
+  // Inject the queries from the input
+  if (config.augmentationProperties.queriesInput) {
+    if (config.augmentationProperties.queriesInputCombines) {
+      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
+        config.augmentationProperties.queriesInput
+      );
+    } else {
+      augmentedConfig.queries = config.augmentationProperties.queriesInput;
+    }
+  }
+  if (augmentedConfig.queries?.length === 0) {
+    delete augmentedConfig.queries;
+  }
+
+  // Inject the packs from the input
+  if (config.augmentationProperties.packsInput) {
+    if (config.augmentationProperties.packsInputCombines) {
+      // At this point, we already know that this is a single-language analysis
+      if (Array.isArray(augmentedConfig.packs)) {
+        augmentedConfig.packs = (augmentedConfig.packs || []).concat(
+          config.augmentationProperties.packsInput
+        );
+      } else if (!augmentedConfig.packs) {
+        augmentedConfig.packs = config.augmentationProperties.packsInput;
+      } else {
+        // At this point, we know there is only one language.
+        // If there were more than one language, an error would already have been thrown.
+        const language = Object.keys(augmentedConfig.packs)[0];
+        augmentedConfig.packs[language] = augmentedConfig.packs[
+          language
+        ].concat(config.augmentationProperties.packsInput);
+      }
+    } else {
+      augmentedConfig.packs = config.augmentationProperties.packsInput;
+    }
+  }
+  if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
+    delete augmentedConfig.packs;
+  }
+  if (config.augmentationProperties.injectedMlQueries) {
+    // We need to inject the ML queries into the original user input before
+    // we pass this on to the CLI, to make sure these get run.
+    const packString = await util.getMlPoweredJsQueriesPack(codeql);
+
+    if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
+    if (Array.isArray(augmentedConfig.packs)) {
+      augmentedConfig.packs.push(packString);
+    } else {
+      if (!augmentedConfig.packs.javascript)
+        augmentedConfig.packs["javascript"] = [];
+      augmentedConfig.packs["javascript"].push(packString);
+    }
+  }
+
+  fs.writeFileSync(configLocation, yaml.dump(augmentedConfig));
+  return configLocation;
 }

@@ -15,6 +15,14 @@ steps:
       output: "${{ runner.temp }}/results"
     env:
       TEST_MODE: true
+
+  - name: Check results
+    uses: ./../action/.github/check-sarif
+    with:
+      sarif-file: ${{ runner.temp }}/results/javascript.sarif
+      queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+      queries-not-run: foo,bar
+
   - name: Assert Results
     shell: bash
     run: |

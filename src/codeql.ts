@@ -222,7 +222,7 @@ const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
-const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.9.3";
+const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL

@@ -7,6 +7,7 @@ export enum Language {
   javascript = "javascript",
   python = "python",
   ruby = "ruby",
+  swift = "swift",
 }
 
 // Additional names for languages
@@ -37,7 +38,7 @@ export function parseLanguage(language: string): Language | undefined {
 
 export function isTracedLanguage(language: Language): boolean {
   return (
-    ["cpp", "java", "csharp"].includes(language) ||
+    ["cpp", "java", "csharp", "swift"].includes(language) ||
     (process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "on" &&
       language === Language.go)
   );

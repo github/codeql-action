@@ -49,7 +49,37 @@ export interface UserConfig {
   // language. If this is a single language analysis, then no split by
   // language is necessary.
   packs?: Record<string, string[]> | string[];
+
+  // Set of query filters to include and exclude extra queries based on
+  // codeql query suite `include` and `exclude` properties
+  "query-filters"?: QueryFilter[];
 }
+
+export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
+
+interface ExcludeQueryFilter {
+  exclude: Record<string, string[] | string>;
+}
+
+interface IncludeQueryFilter {
+  include: Record<string, string[] | string>;
+}
+
+export type QuerySuitePackEntry = {
+  version?: string;
+} & (
+  | {
+      qlpack: string;
+    }
+  | {
+      from?: string;
+      query?: string;
+      queries?: string;
+      apply?: string;
+    }
+);
+
+export type QuerySuiteEntry = QuerySuitePackEntry | QueryFilter;
 
 /**
  * Lists of query files for each language.
@@ -156,6 +186,12 @@ export interface Config {
 }
 
 export type Packs = Partial<Record<Language, string[]>>;
+
+export interface Pack {
+  name: string;
+  version?: string;
+  path?: string;
+}
 
 /**
  * A list of queries from https://github.com/github/codeql that
@@ -319,11 +355,7 @@ async function addBuiltinSuiteQueries(
 }
 
 function isMlPoweredJsQueriesPack(pack: string) {
-  return (
-    pack === ML_POWERED_JS_QUERIES_PACK_NAME ||
-    pack.startsWith(`${ML_POWERED_JS_QUERIES_PACK_NAME}@`) ||
-    pack.startsWith(`${ML_POWERED_JS_QUERIES_PACK_NAME}:`)
-  );
+  return parsePacksSpecification(pack).name === ML_POWERED_JS_QUERIES_PACK_NAME;
 }
 
 /**
@@ -1170,10 +1202,10 @@ export function parsePacksFromConfig(
     if (!languages.includes(lang as Language)) {
       throw new Error(getPacksRequireLanguage(lang, configFile));
     }
-    packs[lang] = [];
-    for (const packStr of packsArr) {
-      packs[lang].push(validatePacksSpecification(packStr, configFile));
-    }
+
+    packs[lang] = packsArr.map((packStr) =>
+      validatePackSpecification(packStr, configFile)
+    );
   }
   return packs;
 }
@@ -1206,7 +1238,7 @@ function parsePacksFromInput(
 
   return {
     [languages[0]]: packsInput.split(",").reduce((packs, pack) => {
-      packs.push(validatePacksSpecification(pack, ""));
+      packs.push(validatePackSpecification(pack));
       return packs;
     }, [] as string[]),
   };
@@ -1230,10 +1262,10 @@ function parsePacksFromInput(
  * @param packStr the package specification to verify.
  * @param configFile Config file to use for error reporting
  */
-export function validatePacksSpecification(
+export function parsePacksSpecification(
   packStr: string,
   configFile?: string
-): string {
+): Pack {
   if (typeof packStr !== "string") {
     throw new Error(getPacksStrInvalid(packStr, configFile));
   }
@@ -1286,9 +1318,21 @@ export function validatePacksSpecification(
     throw new Error(getPacksStrInvalid(packStr, configFile));
   }
 
-  return (
-    packName + (version ? `@${version}` : "") + (packPath ? `:${packPath}` : "")
-  );
+  return {
+    name: packName,
+    version,
+    path: packPath,
+  };
+}
+
+export function prettyPrintPack(pack: Pack) {
+  return `${pack.name}${pack.version ? `@${pack.version}` : ""}${
+    pack.path ? `:${pack.path}` : ""
+  }`;
+}
+
+export function validatePackSpecification(pack: string, configFile?: string) {
+  return prettyPrintPack(parsePacksSpecification(pack, configFile));
 }
 
 // exported for testing
@@ -1448,7 +1492,7 @@ function getLocalConfig(configFile: string, workspacePath: string): UserConfig {
     throw new Error(getConfigFileDoesNotExistErrorMessage(configFile));
   }
 
-  return yaml.load(fs.readFileSync(configFile, "utf8"));
+  return yaml.load(fs.readFileSync(configFile, "utf8")) as UserConfig;
 }
 
 async function getRemoteConfig(
@@ -1483,7 +1527,9 @@ async function getRemoteConfig(
     throw new Error(getConfigFileFormatInvalidMessage(configFile));
   }
 
-  return yaml.load(Buffer.from(fileContents, "base64").toString("binary"));
+  return yaml.load(
+    Buffer.from(fileContents, "base64").toString("binary")
+  ) as UserConfig;
 }
 
 /**

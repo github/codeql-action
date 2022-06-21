@@ -1573,6 +1573,60 @@ test(invalidPackNameMacro, "c/d@b/../a");
 test(invalidPackNameMacro, "c/d:z@1");
 
 /**
+ * Test macro for pretty printing pack specs
+ */
+const packSpecPrettyPrintingMacro = test.macro({
+  exec: (t: ExecutionContext, packStr: string, packObj: configUtils.Pack) => {
+    const parsed = configUtils.parsePacksSpecification(packStr);
+    t.deepEqual(parsed, packObj, "parsed pack spec is correct");
+    const stringified = configUtils.prettyPrintPack(packObj);
+    t.deepEqual(
+      stringified,
+      packStr.trim(),
+      "pretty-printed pack spec is correct"
+    );
+
+    t.deepEqual(
+      configUtils.validatePackSpecification(packStr),
+      packStr.trim(),
+      "pack spec is valid"
+    );
+  },
+  title: (
+    _providedTitle: string | undefined,
+    packStr: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _packObj: configUtils.Pack
+  ) => `Prettyprint pack spec: '${packStr}'`,
+});
+
+test(packSpecPrettyPrintingMacro, "a/b", {
+  name: "a/b",
+  version: undefined,
+  path: undefined,
+});
+test(packSpecPrettyPrintingMacro, "a/b@~1.2.3", {
+  name: "a/b",
+  version: "~1.2.3",
+  path: undefined,
+});
+test(packSpecPrettyPrintingMacro, "a/b@~1.2.3:abc/def", {
+  name: "a/b",
+  version: "~1.2.3",
+  path: "abc/def",
+});
+test(packSpecPrettyPrintingMacro, "a/b:abc/def", {
+  name: "a/b",
+  version: undefined,
+  path: "abc/def",
+});
+test(packSpecPrettyPrintingMacro, "    a/b:abc/def    ", {
+  name: "a/b",
+  version: undefined,
+  path: "abc/def",
+});
+
+/**
  * Test macro for testing the packs block and the packs input
  */
 function parseInputAndConfigMacro(
@@ -1864,4 +1918,24 @@ test(
   "codeql/javascript-experimental-atm-queries@0.0.1",
   "security-and-quality",
   "0.0.1"
+);
+// Test that ML-powered queries are run on all platforms running `security-extended` on CodeQL
+// CLI 2.9.3+.
+test(
+  mlPoweredQueriesMacro,
+  "2.9.3",
+  true,
+  undefined,
+  "security-extended",
+  "~0.3.0"
+);
+// Test that ML-powered queries are run on all platforms running `security-and-quality` on CodeQL
+// CLI 2.9.3+.
+test(
+  mlPoweredQueriesMacro,
+  "2.9.3",
+  true,
+  undefined,
+  "security-and-quality",
+  "~0.3.0"
 );

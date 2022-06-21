@@ -191,7 +191,7 @@ interface WorkflowTriggers {
   pull_request?: WorkflowTrigger | null;
 }
 
-interface Workflow {
+export interface Workflow {
   jobs?: { [key: string]: WorkflowJob };
   on?: string | string[] | WorkflowTriggers;
 }
@@ -411,7 +411,7 @@ export async function getWorkflow(): Promise<Workflow> {
     relativePath
   );
 
-  return yaml.load(fs.readFileSync(absolutePath, "utf-8"));
+  return yaml.load(fs.readFileSync(absolutePath, "utf-8")) as Workflow;
 }
 
 /**

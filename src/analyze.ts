@@ -13,6 +13,7 @@ import {
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { countLoc } from "./count-loc";
+import { FeatureFlags } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
@@ -116,7 +117,8 @@ async function setupPythonExtractor(logger: Logger) {
 
 async function createdDBForScannedLanguages(
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
+  featureFlags: FeatureFlags
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
@@ -136,7 +138,8 @@ async function createdDBForScannedLanguages(
 
       await codeql.extractScannedLanguage(
         util.getCodeQLDatabasePath(config, language),
-        language
+        language,
+        featureFlags
       );
       logger.endGroup();
     }
@@ -166,9 +169,10 @@ async function finalizeDatabaseCreation(
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
-  logger: Logger
+  logger: Logger,
+  featureFlags: FeatureFlags
 ) {
-  await createdDBForScannedLanguages(config, logger);
+  await createdDBForScannedLanguages(config, logger, featureFlags);
 
   const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
@@ -425,7 +429,8 @@ export async function runFinalize(
   threadsFlag: string,
   memoryFlag: string,
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
+  featureFlags: FeatureFlags
 ) {
   const codeql = await getCodeQL(config.codeQLCmd);
   if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
@@ -445,7 +450,13 @@ export async function runFinalize(
   }
   await fs.promises.mkdir(outputDir, { recursive: true });
 
-  await finalizeDatabaseCreation(config, threadsFlag, memoryFlag, logger);
+  await finalizeDatabaseCreation(
+    config,
+    threadsFlag,
+    memoryFlag,
+    logger,
+    featureFlags
+  );
 }
 
 export async function runCleanup(

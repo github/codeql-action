@@ -55,7 +55,7 @@
     "@ava/typescript": "3.0.1",
     "@types/js-yaml": "^4.0.5",
     "@types/long": "4.0.1",
-    "@types/node": "16.11.22",
+    "@types/node": "18.0.0",
     "@types/semver": "^7.3.8",
     "@types/sinon": "^10.0.2",
     "@typescript-eslint/parser": "^5.0.0",

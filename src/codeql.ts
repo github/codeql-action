@@ -95,7 +95,11 @@ export interface CodeQL {
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
    */
-  extractScannedLanguage(database: string, language: Language): Promise<void>;
+  extractScannedLanguage(
+    database: string,
+    language: Language,
+    featureFlags: FeatureFlags
+  ): Promise<void>;
   /**
    * Finalize a database using 'codeql database finalize'.
    */
@@ -789,7 +793,11 @@ async function getCodeQLForCmd(
 
       await runTool(autobuildCmd);
     },
-    async extractScannedLanguage(databasePath: string, language: Language) {
+    async extractScannedLanguage(
+      databasePath: string,
+      language: Language,
+      featureFlags: FeatureFlags
+    ) {
       // Get extractor location
       let extractorPath = "";
       await new toolrunner.ToolRunner(
@@ -821,6 +829,16 @@ async function getCodeQLForCmd(
         "tools",
         `autobuild${ext}`
       );
+      const extraArgs: string[] = [];
+      if (
+        await util.codeQlVersionAbove(this, CODEQL_VERSION_LUA_TRACER_CONFIG)
+      ) {
+        if (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) {
+          extraArgs.push("--internal-use-lua-tracing");
+        } else {
+          extraArgs.push("--no-internal-use-lua-tracing");
+        }
+      }
 
       // Run trace command
       await toolrunnerErrorCatcher(
@@ -828,6 +846,7 @@ async function getCodeQLForCmd(
         [
           "database",
           "trace-command",
+          ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "trace-command"]),
           databasePath,
           "--",

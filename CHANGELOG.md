@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-- It is no longer an error to include an unscanned language in the `packs` block in the codeql configuration file. [#1116](https://github.com/github/codeql-action/pull/1116)
+- CodeQL query packs listed in the `packs` configuration field will be skipped if their target language is not being analyzed in the current Actions job. Previously, this would throw an error. [#1116](https://github.com/github/codeql-action/pull/1116)
 
 ## 2.1.13 - 21 Jun 2022
 

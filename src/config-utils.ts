@@ -629,14 +629,11 @@ export function getPathsInvalid(configFile: string): string {
   );
 }
 
-export function getPacksRequireLanguage(
-  lang: string,
-  configFile: string
-): string {
+function getPacksRequireLanguage(lang: string, configFile: string): string {
   return getConfigFilePropertyError(
     configFile,
     PACKS_PROPERTY,
-    `has "${lang}", but it is not one of the languages to analyze`
+    `has "${lang}", but it is not a valid language.`
   );
 }
 
@@ -1026,7 +1023,8 @@ async function loadConfig(
     parsedYAML[PACKS_PROPERTY] ?? {},
     packsInput,
     languages,
-    configFile
+    configFile,
+    logger
   );
 
   // If queries were provided using `with` in the action configuration,
@@ -1146,7 +1144,8 @@ const PACK_IDENTIFIER_PATTERN = (function () {
 export function parsePacksFromConfig(
   packsByLanguage: string[] | Record<string, string[]>,
   languages: Language[],
-  configFile: string
+  configFile: string,
+  logger: Logger
 ): Packs {
   const packs = {};
 
@@ -1168,7 +1167,16 @@ export function parsePacksFromConfig(
       throw new Error(getPacksInvalid(configFile));
     }
     if (!languages.includes(lang as Language)) {
-      throw new Error(getPacksRequireLanguage(lang, configFile));
+      // This particular language is not being analyzed in this run.
+      if (Language[lang as Language]) {
+        logger.info(
+          `Ignoring packs for ${lang} since this language is not being analyzed in this run.`
+        );
+        continue;
+      } else {
+        // This language is invalid, probably a misspelling
+        throw new Error(getPacksRequireLanguage(configFile, lang));
+      }
     }
     packs[lang] = [];
     for (const packStr of packsArr) {
@@ -1296,13 +1304,15 @@ export function parsePacks(
   rawPacksFromConfig: string[] | Record<string, string[]>,
   rawPacksInput: string | undefined,
   languages: Language[],
-  configFile: string
+  configFile: string,
+  logger: Logger
 ) {
   const packsFromInput = parsePacksFromInput(rawPacksInput, languages);
   const packsFomConfig = parsePacksFromConfig(
     rawPacksFromConfig,
     languages,
-    configFile
+    configFile,
+    logger
   );
 
   if (!packsFromInput) {

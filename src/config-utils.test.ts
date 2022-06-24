@@ -10,7 +10,7 @@ import { getCachedCodeQL, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
-import { getRunnerLogger } from "./logging";
+import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -1424,7 +1424,12 @@ const parsePacksMacro = test.macro({
     expected: Partial<Record<Language, string[]>>
   ) =>
     t.deepEqual(
-      configUtils.parsePacksFromConfig(packsByLanguage, languages, "/a/b"),
+      configUtils.parsePacksFromConfig(
+        packsByLanguage,
+        languages,
+        "/a/b",
+        mockLogger
+      ),
       expected
     ),
 
@@ -1446,7 +1451,8 @@ const parsePacksErrorMacro = test.macro({
         configUtils.parsePacksFromConfig(
           packsByLanguage as string[] | Record<string, string[]>,
           languages,
-          "/a/b"
+          "/a/b",
+          {} as Logger
         ),
       {
         message: expected,
@@ -1500,6 +1506,19 @@ test(
 );
 
 test(
+  "two packs with unused language in config",
+  parsePacksMacro,
+  {
+    [Language.cpp]: ["a/b", "c/d@1.2.3"],
+    [Language.java]: ["d/e", "f/g@1.2.3"],
+  },
+  [Language.cpp, Language.csharp],
+  {
+    [Language.cpp]: ["a/b", "c/d@1.2.3"],
+  }
+);
+
+test(
   "packs with other valid names",
   parsePacksMacro,
   [
@@ -1545,13 +1564,6 @@ test(
   /The configuration file "\/a\/b" is invalid: property "packs" must split packages by language/
 );
 test(
-  "invalid language",
-  parsePacksErrorMacro,
-  { [Language.java]: ["c/d"] },
-  [Language.cpp],
-  /The configuration file "\/a\/b" is invalid: property "packs" has "java", but it is not one of the languages to analyze/
-);
-test(
   "not an array",
   parsePacksErrorMacro,
   { [Language.cpp]: "c/d" },
@@ -1583,12 +1595,24 @@ function parseInputAndConfigMacro(
   expected
 ) {
   t.deepEqual(
-    configUtils.parsePacks(packsFromConfig, packsFromInput, languages, "/a/b"),
+    configUtils.parsePacks(
+      packsFromConfig,
+      packsFromInput,
+      languages,
+      "/a/b",
+      mockLogger
+    ),
     expected
   );
 }
 parseInputAndConfigMacro.title = (providedTitle: string) =>
   `Parse Packs input and config: ${providedTitle}`;
+
+const mockLogger = {
+  info: (message: string) => {
+    console.log(message);
+  },
+} as Logger;
 
 function parseInputAndConfigErrorMacro(
   t: ExecutionContext<unknown>,
@@ -1603,7 +1627,8 @@ function parseInputAndConfigErrorMacro(
         packsFromConfig,
         packsFromInput,
         languages,
-        "/a/b"
+        "/a/b",
+        mockLogger
       );
     },
     {

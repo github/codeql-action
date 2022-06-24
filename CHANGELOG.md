@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-- The combination of python2 and poetry is no longer supported. See https://github.com/actions/setup-python/issues/374 for more details.
+- The combination of python2 and poetry is no longer supported. See https://github.com/actions/setup-python/issues/374 for more details. [#1124](https://github.com/github/codeql-action/pull/1124)
 
 ## 2.1.14 - 22 Jun 2022
 

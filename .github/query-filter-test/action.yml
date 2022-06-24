@@ -2,8 +2,8 @@ name: Query Filter Test
 description: Runs a test of query filters using the check sarif action
 inputs:
   sarif-file:
-    required: true
-    description: The SARIF file to check
+    required: false
+    description: trigger alert
 
   queries-run:
     required: true
@@ -31,7 +31,7 @@ runs:
     - uses: ./../action/init
       with:
         languages: javascript
-        config-file: ${{ inputs.config-file }}
+        config-file: ./.github/codeql/fake_file.yml
         tools: ${{ inputs.tools }}
         db-location: ${{ runner.temp }}/query-filter-test
     - uses: ./../action/analyze

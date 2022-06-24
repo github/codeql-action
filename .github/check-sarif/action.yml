@@ -3,12 +3,12 @@ description: Checks a SARIF file to see if certain queries were run and others w
 inputs:
   sarif-file:
     required: true
-    description: The SARIF file to check
+    description: Different definition
 
   queries-run:
-    required: true
+    required: false
     description: |
-      Comma separated list of query ids that should be included in this SARIF file.
+      Different definitions
 
   queries-not-run:
     required: true

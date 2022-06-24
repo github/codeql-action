@@ -30,7 +30,7 @@
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^3.0.9",
     "@octokit/types": "^6.21.1",
-    "commander": "^8.1.0",
+    "commander": "^9.3.0",
     "console-log-level": "^1.4.1",
     "del": "^6.0.0",
     "fast-deep-equal": "^3.1.3",

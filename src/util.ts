@@ -11,7 +11,11 @@ import * as api from "./api-client";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
-import { Config } from "./config-utils";
+import {
+  Config,
+  parsePacksSpecification,
+  prettyPrintPack,
+} from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -672,7 +676,10 @@ export async function getMlPoweredJsQueriesPack(
   } else {
     version = `~0.1.0`;
   }
-  return `${ML_POWERED_JS_QUERIES_PACK_NAME}@${version}`;
+  return prettyPrintPack({
+    name: ML_POWERED_JS_QUERIES_PACK_NAME,
+    version,
+  });
 }
 
 /**
@@ -698,11 +705,10 @@ export async function getMlPoweredJsQueriesPack(
  */
 export function getMlPoweredJsQueriesStatus(config: Config): string {
   const mlPoweredJsQueryPacks = (config.packs.javascript || [])
-    .map((pack) => pack.split("@"))
+    .map((p) => parsePacksSpecification(p))
     .filter(
-      (packNameVersion) =>
-        packNameVersion[0] === "codeql/javascript-experimental-atm-queries" &&
-        packNameVersion.length <= 2
+      (pack) =>
+        pack.name === "codeql/javascript-experimental-atm-queries" && !pack.path
     );
   switch (mlPoweredJsQueryPacks.length) {
     case 1:
@@ -711,7 +717,7 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
       // with each version of the CodeQL Action. Therefore in practice we should only hit the
       // `latest` case here when customers have explicitly added the ML-powered query pack to their
       // CodeQL config.
-      return mlPoweredJsQueryPacks[0][1] || "latest";
+      return mlPoweredJsQueryPacks[0].version || "latest";
     case 0:
       return "false";
     default:

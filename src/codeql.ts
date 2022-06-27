@@ -634,8 +634,10 @@ export function getCachedCodeQL(): CodeQL {
  * a non-existent placeholder codeql command, so tests that use this function
  * should also stub the toolrunner.ToolRunner constructor.
  */
-export async function getCodeQLForTesting(): Promise<CodeQL> {
-  return getCodeQLForCmd("codeql-for-testing", false);
+export async function getCodeQLForTesting(
+  cmd = "codeql-for-testing"
+): Promise<CodeQL> {
+  return getCodeQLForCmd(cmd, false);
 }
 
 /**

@@ -7,6 +7,7 @@ import * as yaml from "js-yaml";
 
 import * as analysisPaths from "./analysis-paths";
 import {
+  CodeQL,
   CODEQL_VERSION_COUNTS_LINES,
   CODEQL_VERSION_NEW_TRACING,
   getCodeQL,
@@ -115,7 +116,8 @@ async function setupPythonExtractor(logger: Logger) {
   process.env["LGTM_PYTHON_SETUP_VERSION"] = output;
 }
 
-async function createdDBForScannedLanguages(
+export async function createdDBForScannedLanguages(
+  codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
   featureFlags: FeatureFlags
@@ -124,7 +126,6 @@ async function createdDBForScannedLanguages(
   // we extract any scanned languages.
   analysisPaths.includeAndExcludeAnalysisPaths(config);
 
-  const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (
       isScannedLanguage(language) &&
@@ -172,9 +173,9 @@ async function finalizeDatabaseCreation(
   logger: Logger,
   featureFlags: FeatureFlags
 ) {
-  await createdDBForScannedLanguages(config, logger, featureFlags);
-
   const codeql = await getCodeQL(config.codeQLCmd);
+  await createdDBForScannedLanguages(codeql, config, logger, featureFlags);
+
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
       logger.info(

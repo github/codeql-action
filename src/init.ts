@@ -240,14 +240,13 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
 
   try {
-    const env = { ...process.env, PYTHONDONTWRITEBYTECODE: "1" };
     if (process.platform === "win32") {
       await new toolrunner.ToolRunner(await safeWhich.safeWhich("powershell"), [
         path.join(scriptsFolder, "install_tools.ps1"),
-      ], { env: env }).exec();
+      ]).exec();
     } else {
       await new toolrunner.ToolRunner(
-        path.join(scriptsFolder, "install_tools.sh"), [], { env: env }
+        path.join(scriptsFolder, "install_tools.sh")
       ).exec();
     }
     const script = "auto_install_packages.py";
@@ -256,19 +255,19 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
         "-3",
         path.join(scriptsFolder, script),
         path.dirname(codeql.getPath()),
-      ], { env: env }).exec();
+      ]).exec();
     } else {
       await new toolrunner.ToolRunner(path.join(scriptsFolder, script), [
         path.dirname(codeql.getPath()),
-      ], { env: env }).exec();
+      ]).exec();
     }
   } catch (e) {
     logger.endGroup();
     logger.warning(
       `An error occurred while trying to automatically install Python dependencies: ${e}\n` +
-      "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
-      "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
-      "dependency installation and avoid this warning."
+        "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
+        "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
+        "dependency installation and avoid this warning."
     );
     return;
   }

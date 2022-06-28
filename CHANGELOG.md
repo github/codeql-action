@@ -4,6 +4,7 @@
 
 - CodeQL query packs listed in the `packs` configuration field will be skipped if their target language is not being analyzed in the current Actions job. Previously, this would throw an error. [#1116](https://github.com/github/codeql-action/pull/1116)
 - The combination of python2 and poetry is no longer supported. See https://github.com/actions/setup-python/issues/374 for more details. [#1124](https://github.com/github/codeql-action/pull/1124)
+- Update default CodeQL bundle version to 2.10.0. [#1123](https://github.com/github/codeql-action/pull/1123)
 
 ## 2.1.14 - 22 Jun 2022
 

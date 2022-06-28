@@ -540,7 +540,7 @@ test("databaseInitCluster() Lua feature flag disabled, compatible CLI", async (t
   );
 });
 
-function stubToolRunnerConstructor(): sinon.SinonStub<
+export function stubToolRunnerConstructor(): sinon.SinonStub<
   any[],
   toolrunner.ToolRunner
 > {

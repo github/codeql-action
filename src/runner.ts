@@ -501,7 +501,14 @@ program
         logger
       );
       const memory = getMemoryFlag(cmd.ram || initEnv["CODEQL_RAM"]);
-      await runFinalize(outputDir, threads, memory, config, logger);
+      await runFinalize(
+        outputDir,
+        threads,
+        memory,
+        config,
+        logger,
+        createFeatureFlags([])
+      );
       await runQueries(
         outputDir,
         memory,

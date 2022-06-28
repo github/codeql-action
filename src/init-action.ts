@@ -185,7 +185,11 @@ async function run() {
       getOptionalInput("packs"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
-      getOptionalInput("debug") === "true",
+      // Debug mode is enabled if:
+      // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
+      //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
+      // - The `init` Action is passed `debug: true`.
+      getOptionalInput("debug") === "true" || !!process.env["RUNNER_DEBUG"],
       getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
       getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
       repositoryNwo,

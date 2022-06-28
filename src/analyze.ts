@@ -308,7 +308,8 @@ export async function runQueries(
       const analysisSummary = await runInterpretResults(
         language,
         querySuitePaths,
-        sarifFile
+        sarifFile,
+        config.debugMode
       );
       if (!cliCanCountBaseline)
         await injectLinesOfCode(sarifFile, language, locPromise);
@@ -337,7 +338,8 @@ export async function runQueries(
   async function runInterpretResults(
     language: Language,
     queries: string[],
-    sarifFile: string
+    sarifFile: string,
+    enableDebugLogging: boolean
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     const codeql = await getCodeQL(config.codeQLCmd);
@@ -347,6 +349,7 @@ export async function runQueries(
       sarifFile,
       addSnippetsFlag,
       threadsFlag,
+      enableDebugLogging ? "-vv" : "-v",
       automationDetailsId
     );
   }

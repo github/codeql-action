@@ -272,118 +272,78 @@ const stubConfig: Config = {
   injectedMlQueries: false,
 };
 
-test("createdDBForScannedLanguages() Lua feature flag enabled, but old CLI", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await getCodeQLForTesting("codeql/for-testing");
-  sinon.stub(codeqlObject, "getVersion").resolves("2.9.0");
+for (const options of [
+  {
+    name: "Lua feature flag enabled, but old CLI",
+    version: "2.9.0",
+    featureFlags: [FeatureFlag.LuaTracerConfigEnabled],
+    yesFlagSet: false,
+    noFlagSet: false,
+  },
+  {
+    name: "Lua feature flag disabled, with old CLI",
+    version: "2.9.0",
+    featureFlags: [],
+    yesFlagSet: false,
+    noFlagSet: false,
+  },
+  {
+    name: "Lua feature flag enabled, with new CLI",
+    version: "2.10.0",
+    featureFlags: [FeatureFlag.LuaTracerConfigEnabled],
+    yesFlagSet: true,
+    noFlagSet: false,
+  },
+  {
+    name: "Lua feature flag disabled, with new CLI",
+    version: "2.10.0",
+    featureFlags: [],
+    yesFlagSet: false,
+    noFlagSet: true,
+  },
+]) {
+  test(`createdDBForScannedLanguages() ${options.name}`, async (t) => {
+    const runnerConstructorStub = stubToolRunnerConstructor();
+    const codeqlObject = await getCodeQLForTesting("codeql/for-testing");
+    sinon.stub(codeqlObject, "getVersion").resolves(options.version);
 
-  const promise = createdDBForScannedLanguages(
-    codeqlObject,
-    stubConfig,
-    getRunnerLogger(true),
-    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled])
-  );
-  // call listener on `codeql resolve extractor`
-  const mockToolRunner = runnerConstructorStub.getCall(0);
-  mockToolRunner.args[2].listeners.stdout('"/path/to/extractor"');
-  await promise;
-  t.false(
-    runnerConstructorStub.secondCall.args[1].includes(
-      "--internal-use-lua-tracing"
-    ),
-    "--internal-use-lua-tracing should be absent, but it is present"
-  );
-  t.false(
-    runnerConstructorStub.secondCall.args[1].includes(
-      "--no-internal-use-lua-tracing"
-    ),
-    "--no-internal-use-lua-tracing should be absent, but it is present"
-  );
-});
-
-test("createdDBForScannedLanguages() Lua feature flag disabled, with old CLI", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await getCodeQLForTesting("codeql/for-testing");
-  sinon.stub(codeqlObject, "getVersion").resolves("2.9.0");
-
-  const promise = createdDBForScannedLanguages(
-    codeqlObject,
-    stubConfig,
-    getRunnerLogger(true),
-    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled])
-  );
-  // call listener on `codeql resolve extractor`
-  const mockToolRunner = runnerConstructorStub.getCall(0);
-  mockToolRunner.args[2].listeners.stdout('"/path/to/extractor"');
-  await promise;
-  t.false(
-    runnerConstructorStub.secondCall.args[1].includes(
-      "--internal-use-lua-tracing"
-    ),
-    "--internal-use-lua-tracing should be absent, but it is present"
-  );
-  t.false(
-    runnerConstructorStub.secondCall.args[1].includes(
-      "--no-internal-use-lua-tracing"
-    ),
-    "--no-internal-use-lua-tracing should be absent, but it is present"
-  );
-});
-
-test("createdDBForScannedLanguages() Lua feature flag enabled, with new CLI", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await getCodeQLForTesting("codeql/for-testing");
-  sinon.stub(codeqlObject, "getVersion").resolves("2.10.0");
-
-  const promise = createdDBForScannedLanguages(
-    codeqlObject,
-    stubConfig,
-    getRunnerLogger(true),
-    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled])
-  );
-  // call listener on `codeql resolve extractor`
-  const mockToolRunner = runnerConstructorStub.getCall(0);
-  mockToolRunner.args[2].listeners.stdout('"/path/to/extractor"');
-  await promise;
-  t.true(
-    runnerConstructorStub.secondCall.args[1].includes(
-      "--internal-use-lua-tracing"
-    ),
-    "--internal-use-lua-tracing should be present, but is not"
-  );
-  t.false(
-    runnerConstructorStub.secondCall.args[1].includes(
-      "--no-internal-use-lua-tracing"
-    ),
-    "--no-internal-use-lua-tracing should be absent, but it is present"
-  );
-});
-
-test("createdDBForScannedLanguages() Lua feature flag disabled, with new CLI", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await getCodeQLForTesting("codeql/for-testing");
-  sinon.stub(codeqlObject, "getVersion").resolves("2.10.0");
-
-  const promise = createdDBForScannedLanguages(
-    codeqlObject,
-    stubConfig,
-    getRunnerLogger(true),
-    createFeatureFlags([])
-  );
-  // call listener on `codeql resolve extractor`
-  const mockToolRunner = runnerConstructorStub.getCall(0);
-  mockToolRunner.args[2].listeners.stdout('"/path/to/extractor"');
-  await promise;
-  t.false(
-    runnerConstructorStub.secondCall.args[1].includes(
-      "--internal-use-lua-tracing"
-    ),
-    "--internal-use-lua-tracing should be absent, but is present"
-  );
-  t.true(
-    runnerConstructorStub.secondCall.args[1].includes(
-      "--no-internal-use-lua-tracing"
-    ),
-    "--no-internal-use-lua-tracing should be present, but is absent"
-  );
-});
+    const promise = createdDBForScannedLanguages(
+      codeqlObject,
+      stubConfig,
+      getRunnerLogger(true),
+      createFeatureFlags(options.featureFlags)
+    );
+    // call listener on `codeql resolve extractor`
+    const mockToolRunner = runnerConstructorStub.getCall(0);
+    mockToolRunner.args[2].listeners.stdout('"/path/to/extractor"');
+    await promise;
+    if (options.yesFlagSet)
+      t.true(
+        runnerConstructorStub.secondCall.args[1].includes(
+          "--internal-use-lua-tracing"
+        ),
+        "--internal-use-lua-tracing should be present, but it is absent"
+      );
+    else
+      t.false(
+        runnerConstructorStub.secondCall.args[1].includes(
+          "--internal-use-lua-tracing"
+        ),
+        "--internal-use-lua-tracing should be absent, but it is present"
+      );
+    if (options.noFlagSet)
+      t.true(
+        runnerConstructorStub.secondCall.args[1].includes(
+          "--no-internal-use-lua-tracing"
+        ),
+        "--no-internal-use-lua-tracing should be present, but it is absent"
+      );
+    else
+      t.false(
+        runnerConstructorStub.secondCall.args[1].includes(
+          "--no-internal-use-lua-tracing"
+        ),
+        "--no-internal-use-lua-tracing should be absent, but it is present"
+      );
+  });
+}

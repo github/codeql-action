@@ -260,7 +260,7 @@ async function run() {
       }
     }
 
-    if (core.isDebug() && config !== undefined) {
+    if (config !== undefined && config.debugMode) {
       core.info("Debug mode is on. Printing CodeQL debug logs...");
       for (const language of config.languages) {
         const databaseDirectory = util.getCodeQLDatabasePath(config, language);

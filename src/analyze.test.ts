@@ -5,10 +5,12 @@ import test from "ava";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
-import { runQueries } from "./analyze";
-import { setCodeQL } from "./codeql";
+import { runQueries, createdDBForScannedLanguages } from "./analyze";
+import { setCodeQL, getCodeQLForTesting } from "./codeql";
+import { stubToolRunnerConstructor } from "./codeql.test";
 import { Config } from "./config-utils";
 import * as count from "./count-loc";
+import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars } from "./testing-utils";
@@ -249,3 +251,99 @@ test("status report fields and search path setting", async (t) => {
     }
   }
 });
+
+const stubConfig: Config = {
+  languages: [Language.cpp, Language.go],
+  queries: {},
+  pathsIgnore: [],
+  paths: [],
+  originalUserInput: {},
+  tempDir: "",
+  toolCacheDir: "",
+  codeQLCmd: "",
+  gitHubVersion: {
+    type: util.GitHubVariant.DOTCOM,
+  } as util.GitHubVersion,
+  dbLocation: "",
+  packs: {},
+  debugMode: false,
+  debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
+  debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
+  injectedMlQueries: false,
+};
+
+for (const options of [
+  {
+    name: "Lua feature flag enabled, but old CLI",
+    version: "2.9.0",
+    featureFlags: [FeatureFlag.LuaTracerConfigEnabled],
+    yesFlagSet: false,
+    noFlagSet: false,
+  },
+  {
+    name: "Lua feature flag disabled, with old CLI",
+    version: "2.9.0",
+    featureFlags: [],
+    yesFlagSet: false,
+    noFlagSet: false,
+  },
+  {
+    name: "Lua feature flag enabled, with new CLI",
+    version: "2.10.0",
+    featureFlags: [FeatureFlag.LuaTracerConfigEnabled],
+    yesFlagSet: true,
+    noFlagSet: false,
+  },
+  {
+    name: "Lua feature flag disabled, with new CLI",
+    version: "2.10.0",
+    featureFlags: [],
+    yesFlagSet: false,
+    noFlagSet: true,
+  },
+]) {
+  test(`createdDBForScannedLanguages() ${options.name}`, async (t) => {
+    const runnerConstructorStub = stubToolRunnerConstructor();
+    const codeqlObject = await getCodeQLForTesting("codeql/for-testing");
+    sinon.stub(codeqlObject, "getVersion").resolves(options.version);
+
+    const promise = createdDBForScannedLanguages(
+      codeqlObject,
+      stubConfig,
+      getRunnerLogger(true),
+      createFeatureFlags(options.featureFlags)
+    );
+    // call listener on `codeql resolve extractor`
+    const mockToolRunner = runnerConstructorStub.getCall(0);
+    mockToolRunner.args[2].listeners.stdout('"/path/to/extractor"');
+    await promise;
+    if (options.yesFlagSet)
+      t.true(
+        runnerConstructorStub.secondCall.args[1].includes(
+          "--internal-use-lua-tracing"
+        ),
+        "--internal-use-lua-tracing should be present, but it is absent"
+      );
+    else
+      t.false(
+        runnerConstructorStub.secondCall.args[1].includes(
+          "--internal-use-lua-tracing"
+        ),
+        "--internal-use-lua-tracing should be absent, but it is present"
+      );
+    if (options.noFlagSet)
+      t.true(
+        runnerConstructorStub.secondCall.args[1].includes(
+          "--no-internal-use-lua-tracing"
+        ),
+        "--no-internal-use-lua-tracing should be present, but it is absent"
+      );
+    else
+      t.false(
+        runnerConstructorStub.secondCall.args[1].includes(
+          "--no-internal-use-lua-tracing"
+        ),
+        "--no-internal-use-lua-tracing should be absent, but it is present"
+      );
+  });
+}

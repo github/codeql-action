@@ -14,7 +14,7 @@ npm run-script build
 # Check that repo is still clean
 if [ ! -z "$(git status --porcelain)" ]; then
     # If we get a fail here then the PR needs attention
-    >&2 echo "Failed: JavaScript files are not up to date. Run 'npm run-script build' to update"
+    >&2 echo "Failed: JavaScript files are not up to date. Run 'rm -rf lib && npm run-script build' to update"
     git status
     exit 1
 fi

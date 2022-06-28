@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.1.15 - 28 Jun 2022
 
 - CodeQL query packs listed in the `packs` configuration field will be skipped if their target language is not being analyzed in the current Actions job. Previously, this would throw an error. [#1116](https://github.com/github/codeql-action/pull/1116)

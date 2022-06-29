@@ -96,8 +96,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: npm run-script test
-        run: npm run-script test
+      - name: npm test
+        run: |
+          # Run any commands referenced in package.json using Bash, otherwise
+          # we won't be able to find them on Windows.
+          npm config set script-shell bash
+          npm test
 
   runner-analyze-javascript-ubuntu:
     name: Runner ubuntu JS analyze

@@ -144,7 +144,7 @@ export interface CodeQL {
   databaseRunQueries(
     databasePath: string,
     extraSearchPath: string | undefined,
-    querySuitePath: string,
+    querySuitePath: string | undefined,
     memoryFlag: string,
     threadsFlag: string
   ): Promise<void>;
@@ -153,7 +153,7 @@ export interface CodeQL {
    */
   databaseInterpretResults(
     databasePath: string,
-    querySuitePaths: string[],
+    querySuitePaths: string[] | undefined,
     sarifFile: string,
     addSnippetsFlag: string,
     threadsFlag: string,
@@ -226,9 +226,9 @@ const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
-export const CODEQL_VERSION_CONFIG_FILES = "2.8.2"; // Versions before 2.8.2 weren't tolerant to unknown properties
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
+export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL
@@ -924,7 +924,7 @@ async function getCodeQLForCmd(
     async databaseRunQueries(
       databasePath: string,
       extraSearchPath: string | undefined,
-      querySuitePath: string,
+      querySuitePath: string | undefined,
       memoryFlag: string,
       threadsFlag: string
     ): Promise<void> {
@@ -941,14 +941,14 @@ async function getCodeQLForCmd(
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      if (!(await util.useCodeScanningConfigInCli(this))) {
+      if (querySuitePath) {
         codeqlArgs.push(querySuitePath);
       }
       await runTool(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
       databasePath: string,
-      querySuitePaths: string[],
+      querySuitePaths: string[] | undefined,
       sarifFile: string,
       addSnippetsFlag: string,
       threadsFlag: string,
@@ -979,7 +979,7 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       codeqlArgs.push(databasePath);
-      if (!(await util.useCodeScanningConfigInCli(this))) {
+      if (querySuitePaths) {
         codeqlArgs.push(...querySuitePaths);
       }
       // capture stdout, which contains analysis summaries

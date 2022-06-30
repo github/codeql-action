@@ -12,9 +12,11 @@ import {
   runQueries,
   runFinalize,
 } from "./analyze";
+import { getGitHubVersionActionsOnly } from "./api-client";
 import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { GitHubFeatureFlags } from "./feature-flags";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -112,7 +114,16 @@ async function run() {
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
     );
 
-    await runFinalize(outputDir, threads, memory, config, logger);
+    const gitHubVersion = await getGitHubVersionActionsOnly();
+
+    const featureFlags = new GitHubFeatureFlags(
+      gitHubVersion,
+      apiDetails,
+      repositoryNwo,
+      logger
+    );
+
+    await runFinalize(outputDir, threads, memory, config, logger, featureFlags);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
         outputDir,

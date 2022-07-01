@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- You can now quickly debug a job that uses the CodeQL Action by re-running the job from the GitHub UI and selecting the "Enable debug logging" option. [#1132](https://github.com/github/codeql-action/pull/1132)
 
 ## 2.1.15 - 28 Jun 2022
 

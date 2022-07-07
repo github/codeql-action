@@ -2,3 +2,4 @@
 /runner/node_modules/
 # Ignore for example failing-tests.json from AVA
 node_modules/.cache
+.DS_store

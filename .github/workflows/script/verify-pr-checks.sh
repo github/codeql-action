@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eu
 
+echo "Hello world"
+
 # Sanity check that repo is clean to start with
 if [ ! -z "$(git status --porcelain)" ]; then
     # If we get a fail here then this workflow needs attention...

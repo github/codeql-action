@@ -452,6 +452,7 @@ export async function setupCodeQL(
         const parsedQueryString = queryString.parse(parsedCodeQLURL.search);
         const headers: OutgoingHttpHeaders = {
           accept: "application/octet-stream",
+          "User-Agent": util.getUserAgent(),
         };
         // We only want to provide an authorization header if we are downloading
         // from the same GitHub instance the Action is running on.
@@ -471,15 +472,11 @@ export async function setupCodeQL(
         );
 
         const dest = path.join(tempDir, uuidV4());
-        const finalHeaders = Object.assign(
-          { "User-Agent": "CodeQL Action" },
-          headers
-        );
         const codeqlPath = await toolcache.downloadTool(
           codeqlURL,
           dest,
           undefined,
-          finalHeaders
+          headers
         );
         logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 

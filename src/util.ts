@@ -15,6 +15,9 @@ import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
+// eslint-disable-next-line import/no-commonjs
+const pkg = require("../package.json");
+
 /**
  * Specifies bundle versions that are known to be broken
  * and will not be used if found in the toolcache.
@@ -755,4 +758,11 @@ export async function checkActionVersion(version: string) {
  */
 export function isInTestMode(): boolean {
   return process.env["TEST_MODE"] === "true" || false;
+}
+
+/**
+ * Gets a value to use as the user agent header in outgoing HTTP requests.
+ */
+export function getUserAgent(): string {
+  return `CodeQL-Action/${pkg.version}`;
 }

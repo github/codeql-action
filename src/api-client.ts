@@ -6,10 +6,7 @@ import consoleLogLevel from "console-log-level";
 
 import { getRequiredInput } from "./actions-util";
 import * as util from "./util";
-import { getMode, getRequiredEnvParam, GitHubVersion } from "./util";
-
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
+import { getRequiredEnvParam, getUserAgent, GitHubVersion } from "./util";
 
 export enum DisallowedAPIVersionReason {
   ACTION_TOO_OLD,
@@ -39,7 +36,7 @@ export const getApiClient = function (
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: getApiUrl(apiDetails.url),
-      userAgent: `CodeQL-${getMode()}/${pkg.version}`,
+      userAgent: getUserAgent(),
       log: consoleLogLevel({ level: "debug" }),
     })
   );

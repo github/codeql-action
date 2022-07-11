@@ -249,11 +249,14 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     if (process.platform === "win32") {
       await new toolrunner.ToolRunner(await safeWhich.safeWhich("py"), [
         "-3",
+        "-B",
         path.join(scriptsFolder, script),
         path.dirname(codeql.getPath()),
       ]).exec();
     } else {
-      await new toolrunner.ToolRunner(path.join(scriptsFolder, script), [
+      await new toolrunner.ToolRunner(await safeWhich.safeWhich("python3"), [
+        "-B",
+        path.join(scriptsFolder, script),
         path.dirname(codeql.getPath()),
       ]).exec();
     }

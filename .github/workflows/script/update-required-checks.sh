@@ -23,7 +23,7 @@ fi
 echo "Getting checks for $GITHUB_SHA"
 
 # Ignore any checks with "https://", CodeQL, LGTM, and Update checks.
-CHECKS="$(gh api repos/github/codeql-action/commits/"${GITHUB_SHA}"/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs | .[].name | select(contains("https://") or . == ""CodeQL" or . == "LGTM.com" or contains("Update") or contains("update") | not)] | unique | sort')"
+CHECKS="$(gh api repos/github/codeql-action/commits/"${GITHUB_SHA}"/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs | .[].name | select(contains("https://") or . == "CodeQL" or . == "LGTM.com" or contains("Update") or contains("update") | not)] | unique | sort')"
 
 echo "$CHECKS" | jq
 

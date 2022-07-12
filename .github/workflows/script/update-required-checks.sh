@@ -4,7 +4,7 @@
 
 if ! gh auth status 2>/dev/null; then
   gh auth status
-  echo "Failed: No GitHub token found. This script requires admin access to github/codeql-action."
+  echo "Failed: Not authorized. This script requires admin access to github/codeql-action through the gh CLI."
   exit 1
 fi
 

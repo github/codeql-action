@@ -737,13 +737,14 @@ async function getCodeQLForCmd(
           // because that always passes in a process name.
           extraArgs.push(`--trace-process-level=${processLevel || 3}`);
         }
+        extraArgs.push("--internal-use-lua-tracing");
         if (
           await util.codeQlVersionAbove(this, CODEQL_VERSION_LUA_TRACER_CONFIG)
         ) {
           if (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) {
-            extraArgs.push("--internal-use-lua-tracing");
+            //
           } else {
-            extraArgs.push("--no-internal-use-lua-tracing");
+            // extraArgs.push("--no-internal-use-lua-tracing");
           }
         }
       }
@@ -821,10 +822,11 @@ async function getCodeQLForCmd(
       if (
         await util.codeQlVersionAbove(this, CODEQL_VERSION_LUA_TRACER_CONFIG)
       ) {
+        extraArgs.push("--internal-use-lua-tracing");
         if (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) {
-          extraArgs.push("--internal-use-lua-tracing");
+          //   extraArgs.push("--internal-use-lua-tracing");
         } else {
-          extraArgs.push("--no-internal-use-lua-tracing");
+          //   extraArgs.push("--no-internal-use-lua-tracing");
         }
       }
 
@@ -1128,7 +1130,7 @@ export function getExtraOptions(
  */
 const maxErrorSize = 20_000;
 
-async function runTool(cmd: string, args: string[] = []) {
+export async function runTool(cmd: string, args: string[] = []) {
   let output = "";
   let error = "";
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {

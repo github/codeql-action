@@ -11,6 +11,7 @@ import {
   CODEQL_VERSION_COUNTS_LINES,
   CODEQL_VERSION_NEW_TRACING,
   getCodeQL,
+  runTool,
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { countLoc } from "./count-loc";
@@ -433,15 +434,6 @@ export async function runFinalize(
   logger: Logger,
   featureFlags: FeatureFlags
 ) {
-  const codeql = await getCodeQL(config.codeQLCmd);
-  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(config);
-  } else {
-    // Delete the tracer config env var to avoid tracing ourselves
-    delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
-  }
-
   try {
     await del(outputDir, { force: true });
   } catch (error: any) {
@@ -458,6 +450,17 @@ export async function runFinalize(
     logger,
     featureFlags
   );
+
+  const codeql = await getCodeQL(config.codeQLCmd);
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    // Delete variables as specified by the end-tracing script
+    await runTool("bash", ["-c", "export"]);
+    await endTracingForCluster(config);
+    await runTool("bash", ["-c", "export"]);
+  } else {
+    // Delete the tracer config env var to avoid tracing ourselves
+    delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
+  }
 }
 
 export async function runCleanup(
@@ -492,7 +495,7 @@ async function injectLinesOfCode(
           if (metric.rule && metric.rule.toolComponent) {
             const matchingRule =
               run.tool.extensions[metric.rule.toolComponent.index].rules[
-                metric.rule.index
+              metric.rule.index
               ];
             if (matchingRule.properties.tags?.includes("lines-of-code")) {
               metric.baseline = lineCounts[language];

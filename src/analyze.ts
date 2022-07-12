@@ -209,11 +209,9 @@ export async function runQueries(
     {}
   );
   const cliCanCountBaseline = await cliCanCountLoC();
-  const debugMode =
-    process.env["INTERNAL_CODEQL_ACTION_DEBUG_LOC"] ||
-    process.env["ACTIONS_RUNNER_DEBUG"] ||
-    process.env["ACTIONS_STEP_DEBUG"];
-  if (!cliCanCountBaseline || debugMode) {
+  const countLocDebugMode =
+    process.env["INTERNAL_CODEQL_ACTION_DEBUG_LOC"] || config.debugMode;
+  if (!cliCanCountBaseline || countLocDebugMode) {
     // count the number of lines in the background
     locPromise = countLoc(
       path.resolve(),
@@ -310,7 +308,8 @@ export async function runQueries(
       const analysisSummary = await runInterpretResults(
         language,
         querySuitePaths,
-        sarifFile
+        sarifFile,
+        config.debugMode
       );
       if (!cliCanCountBaseline)
         await injectLinesOfCode(sarifFile, language, locPromise);
@@ -318,7 +317,7 @@ export async function runQueries(
         new Date().getTime() - startTimeInterpretResults;
       logger.endGroup();
       logger.info(analysisSummary);
-      if (!cliCanCountBaseline || debugMode)
+      if (!cliCanCountBaseline || countLocDebugMode)
         printLinesOfCodeSummary(logger, language, await locPromise);
       if (cliCanCountBaseline) logger.info(await runPrintLinesOfCode(language));
     } catch (e) {
@@ -339,7 +338,8 @@ export async function runQueries(
   async function runInterpretResults(
     language: Language,
     queries: string[],
-    sarifFile: string
+    sarifFile: string,
+    enableDebugLogging: boolean
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     const codeql = await getCodeQL(config.codeQLCmd);
@@ -349,6 +349,7 @@ export async function runQueries(
       sarifFile,
       addSnippetsFlag,
       threadsFlag,
+      enableDebugLogging ? "-vv" : "-v",
       automationDetailsId
     );
   }

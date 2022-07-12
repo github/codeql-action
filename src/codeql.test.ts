@@ -400,7 +400,7 @@ test("databaseInterpretResults() does not set --sarif-add-query-help for 2.7.0",
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves("2.7.0");
-  await codeqlObject.databaseInterpretResults("", [], "", "", "", "");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
   t.false(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be absent, but it is present"
@@ -411,7 +411,7 @@ test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves("2.7.1");
-  await codeqlObject.databaseInterpretResults("", [], "", "", "", "");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
   t.true(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be present, but it is absent"

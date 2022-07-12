@@ -434,15 +434,6 @@ export async function runFinalize(
   logger: Logger,
   featureFlags: FeatureFlags
 ) {
-  const codeql = await getCodeQL(config.codeQLCmd);
-  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(config);
-  } else {
-    // Delete the tracer config env var to avoid tracing ourselves
-    delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
-  }
-
   try {
     await del(outputDir, { force: true });
   } catch (error: any) {
@@ -459,6 +450,20 @@ export async function runFinalize(
     logger,
     featureFlags
   );
+
+  const codeql = await getCodeQL(config.codeQLCmd);
+  // WARNING: This does not _really_ end tracing, as the tracer will restore its
+  // critical environment variables and it'll still be active for all processes
+  // launched from this build step.
+  // However, it will stop tracing for all steps past the codeql-action/analyze
+  // step.
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    // Delete variables as specified by the end-tracing script
+    await endTracingForCluster(config);
+  } else {
+    // Delete the tracer config env var to avoid tracing ourselves
+    delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
+  }
 }
 
 export async function runCleanup(

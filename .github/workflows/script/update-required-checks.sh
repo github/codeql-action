@@ -2,7 +2,8 @@
 # Update the required checks based on the current branch.
 # Typically, this will be main.
 
-if [ -z "$GITHUB_TOKEN" ]; then
+if ! gh auth status 2>/dev/null; then
+  gh auth status
   echo "Failed: No GitHub token found. This script requires admin access to github/codeql-action."
   exit 1
 fi

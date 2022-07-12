@@ -54,16 +54,12 @@ export function includeAndExcludeAnalysisPaths(config: configUtils.Config) {
   }
   // If the temporary or tools directory is in the working directory ignore that too.
   const tempRelativeToWorking = path.relative(process.cwd(), config.tempDir);
-  const toolsRelativeToWorking = path.relative(
-    process.cwd(),
-    config.toolCacheDir
-  );
   let pathsIgnore = config.pathsIgnore;
-  if (!tempRelativeToWorking.startsWith("..")) {
+  if (
+    !tempRelativeToWorking.startsWith("..") &&
+    !path.isAbsolute(tempRelativeToWorking)
+  ) {
     pathsIgnore = pathsIgnore.concat(tempRelativeToWorking);
-  }
-  if (!toolsRelativeToWorking.startsWith("..")) {
-    pathsIgnore = pathsIgnore.concat(toolsRelativeToWorking);
   }
   if (pathsIgnore.length !== 0) {
     process.env["LGTM_INDEX_EXCLUDE"] = buildIncludeExcludeEnvVar(pathsIgnore);

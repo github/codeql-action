@@ -8,7 +8,6 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  getToolCacheDirectory,
   sendStatusReport,
   StatusReportBase,
   validateWorkflow,
@@ -171,7 +170,6 @@ async function run() {
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
-      getToolCacheDirectory(),
       gitHubVersion.type,
       logger
     );
@@ -194,7 +192,6 @@ async function run() {
       getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
       repositoryNwo,
       getTemporaryDirectory(),
-      getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       gitHubVersion,

@@ -17,7 +17,6 @@ test("emptyPaths", async (t) => {
       paths: [],
       originalUserInput: {},
       tempDir: tmpDir,
-      toolCacheDir: tmpDir,
       codeQLCmd: "",
       gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
       dbLocation: path.resolve(tmpDir, "codeql_databases"),
@@ -43,7 +42,6 @@ test("nonEmptyPaths", async (t) => {
       pathsIgnore: ["path4", "path5", "path6/**"],
       originalUserInput: {},
       tempDir: tmpDir,
-      toolCacheDir: tmpDir,
       codeQLCmd: "",
       gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
       dbLocation: path.resolve(tmpDir, "codeql_databases"),
@@ -64,28 +62,25 @@ test("nonEmptyPaths", async (t) => {
 });
 
 test("exclude temp dir", async (t) => {
-  return await util.withTmpDir(async (toolCacheDir) => {
-    const tempDir = path.join(process.cwd(), "codeql-runner-temp");
-    const config = {
-      languages: [],
-      queries: {},
-      pathsIgnore: [],
-      paths: [],
-      originalUserInput: {},
-      tempDir,
-      toolCacheDir,
-      codeQLCmd: "",
-      gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
-      dbLocation: path.resolve(tempDir, "codeql_databases"),
-      packs: {},
-      debugMode: false,
-      debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-      debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-      injectedMlQueries: false,
-    };
-    analysisPaths.includeAndExcludeAnalysisPaths(config);
-    t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
-    t.is(process.env["LGTM_INDEX_EXCLUDE"], "codeql-runner-temp");
-    t.is(process.env["LGTM_INDEX_FILTERS"], undefined);
-  });
+  const tempDir = path.join(process.cwd(), "codeql-runner-temp");
+  const config = {
+    languages: [],
+    queries: {},
+    pathsIgnore: [],
+    paths: [],
+    originalUserInput: {},
+    tempDir,
+    codeQLCmd: "",
+    gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
+    dbLocation: path.resolve(tempDir, "codeql_databases"),
+    packs: {},
+    debugMode: false,
+    debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
+    debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
+    injectedMlQueries: false,
+  };
+  analysisPaths.includeAndExcludeAnalysisPaths(config);
+  t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
+  t.is(process.env["LGTM_INDEX_EXCLUDE"], "codeql-runner-temp");
+  t.is(process.env["LGTM_INDEX_FILTERS"], undefined);
 });

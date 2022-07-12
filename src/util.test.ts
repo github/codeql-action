@@ -335,7 +335,6 @@ for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
         pathsIgnore: [],
         originalUserInput: {},
         tempDir: tmpDir,
-        toolCacheDir: tmpDir,
         codeQLCmd: "",
         gitHubVersion: {
           type: util.GitHubVariant.DOTCOM,

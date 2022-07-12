@@ -157,6 +157,7 @@ export interface CodeQL {
     sarifFile: string,
     addSnippetsFlag: string,
     threadsFlag: string,
+    verbosityFlag: string | undefined,
     automationDetailsId: string | undefined
   ): Promise<string>;
   /**
@@ -928,6 +929,7 @@ async function getCodeQLForCmd(
       sarifFile: string,
       addSnippetsFlag: string,
       threadsFlag: string,
+      verbosityFlag: string,
       automationDetailsId: string | undefined
     ): Promise<string> {
       const codeqlArgs = [
@@ -935,7 +937,7 @@ async function getCodeQLForCmd(
         "interpret-results",
         threadsFlag,
         "--format=sarif-latest",
-        "-v",
+        verbosityFlag,
         `--output=${sarifFile}`,
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),

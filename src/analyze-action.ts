@@ -236,7 +236,7 @@ async function run() {
 
     return;
   } finally {
-    if (config !== undefined && config.debugMode) {
+    if (config?.debugMode) {
       try {
         // Upload the database bundles as an Actions artifact for debugging
         const toUpload: string[] = [];
@@ -260,7 +260,7 @@ async function run() {
       }
     }
 
-    if (core.isDebug() && config !== undefined) {
+    if (config?.debugMode) {
       core.info("Debug mode is on. Printing CodeQL debug logs...");
       for (const language of config.languages) {
         const databaseDirectory = util.getCodeQLDatabasePath(config, language);

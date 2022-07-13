@@ -57,13 +57,6 @@ export function getTemporaryDirectory(): string {
     : getRequiredEnvParam("RUNNER_TEMP");
 }
 
-export function getToolCacheDirectory(): string {
-  const value = process.env["CODEQL_ACTION_TOOL_CACHE"];
-  return value !== undefined && value !== ""
-    ? value
-    : getRequiredEnvParam("RUNNER_TOOL_CACHE");
-}
-
 /**
  * Gets the SHA of the commit that is currently checked out.
  */

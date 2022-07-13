@@ -19,7 +19,6 @@ export async function initCodeQL(
   codeqlURL: string | undefined,
   apiDetails: GitHubApiDetails,
   tempDir: string,
-  toolCacheDir: string,
   variant: util.GitHubVariant,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
@@ -28,7 +27,6 @@ export async function initCodeQL(
     codeqlURL,
     apiDetails,
     tempDir,
-    toolCacheDir,
     variant,
     logger,
     true
@@ -49,7 +47,6 @@ export async function initConfig(
   debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
-  toolCacheDir: string,
   codeQL: CodeQL,
   workspacePath: string,
   gitHubVersion: util.GitHubVersion,
@@ -69,7 +66,6 @@ export async function initConfig(
     debugDatabaseName,
     repository,
     tempDir,
-    toolCacheDir,
     codeQL,
     workspacePath,
     gitHubVersion,
@@ -253,11 +249,14 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     if (process.platform === "win32") {
       await new toolrunner.ToolRunner(await safeWhich.safeWhich("py"), [
         "-3",
+        "-B",
         path.join(scriptsFolder, script),
         path.dirname(codeql.getPath()),
       ]).exec();
     } else {
-      await new toolrunner.ToolRunner(path.join(scriptsFolder, script), [
+      await new toolrunner.ToolRunner(await safeWhich.safeWhich("python3"), [
+        "-B",
+        path.join(scriptsFolder, script),
         path.dirname(codeql.getPath()),
       ]).exec();
     }

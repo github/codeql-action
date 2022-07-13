@@ -3,9 +3,11 @@ import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
+import { v4 as uuidV4 } from "uuid";
 
 import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
 import * as api from "./api-client";
@@ -15,7 +17,6 @@ import { errorMatchers } from "./error-matcher";
 import { FeatureFlags, FeatureFlag } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import * as toolcache from "./toolcache";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
 import { isGoodVersion } from "./util";
@@ -156,6 +157,7 @@ export interface CodeQL {
     sarifFile: string,
     addSnippetsFlag: string,
     threadsFlag: string,
+    verbosityFlag: string | undefined,
     automationDetailsId: string | undefined
   ): Promise<string>;
   /**
@@ -385,7 +387,6 @@ async function getCodeQLBundleDownloadURL(
  * @param codeqlURL
  * @param apiDetails
  * @param tempDir
- * @param toolCacheDir
  * @param variant
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
@@ -396,7 +397,6 @@ export async function setupCodeQL(
   codeqlURL: string | undefined,
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
-  toolCacheDir: string,
   variant: util.GitHubVariant,
   logger: Logger,
   checkVersion: boolean
@@ -411,7 +411,7 @@ export async function setupCodeQL(
     let codeqlFolder: string;
     let codeqlURLVersion: string;
     if (codeqlURL && !codeqlURL.startsWith("http")) {
-      codeqlFolder = await toolcache.extractTar(codeqlURL, tempDir, logger);
+      codeqlFolder = await toolcache.extractTar(codeqlURL);
       codeqlURLVersion = "local";
     } else {
       codeqlURLVersion = getCodeQLURLVersion(
@@ -420,29 +420,15 @@ export async function setupCodeQL(
       const codeqlURLSemVer = convertToSemVer(codeqlURLVersion, logger);
 
       // If we find the specified version, we always use that.
-      codeqlFolder = toolcache.find(
-        "CodeQL",
-        codeqlURLSemVer,
-        toolCacheDir,
-        logger
-      );
+      codeqlFolder = toolcache.find("CodeQL", codeqlURLSemVer);
 
       // If we don't find the requested version, in some cases we may allow a
       // different version to save download time if the version hasn't been
       // specified explicitly (in which case we always honor it).
       if (!codeqlFolder && !codeqlURL && !forceLatest) {
-        const codeqlVersions = toolcache.findAllVersions(
-          "CodeQL",
-          toolCacheDir,
-          logger
-        );
+        const codeqlVersions = toolcache.findAllVersions("CodeQL");
         if (codeqlVersions.length === 1 && isGoodVersion(codeqlVersions[0])) {
-          const tmpCodeqlFolder = toolcache.find(
-            "CodeQL",
-            codeqlVersions[0],
-            toolCacheDir,
-            logger
-          );
+          const tmpCodeqlFolder = toolcache.find("CodeQL", codeqlVersions[0]);
           if (fs.existsSync(path.join(tmpCodeqlFolder, "pinned-version"))) {
             logger.debug(
               `CodeQL in cache overriding the default ${CODEQL_BUNDLE_VERSION}`
@@ -484,24 +470,25 @@ export async function setupCodeQL(
         logger.info(
           `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`
         );
+
+        const dest = path.join(tempDir, uuidV4());
+        const finalHeaders = Object.assign(
+          { "User-Agent": "CodeQL Action" },
+          headers
+        );
         const codeqlPath = await toolcache.downloadTool(
           codeqlURL,
-          tempDir,
-          headers
+          dest,
+          undefined,
+          finalHeaders
         );
         logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 
-        const codeqlExtracted = await toolcache.extractTar(
-          codeqlPath,
-          tempDir,
-          logger
-        );
+        const codeqlExtracted = await toolcache.extractTar(codeqlPath);
         codeqlFolder = await toolcache.cacheDir(
           codeqlExtracted,
           "CodeQL",
-          codeqlURLSemVer,
-          toolCacheDir,
-          logger
+          codeqlURLSemVer
         );
       }
     }
@@ -942,6 +929,7 @@ async function getCodeQLForCmd(
       sarifFile: string,
       addSnippetsFlag: string,
       threadsFlag: string,
+      verbosityFlag: string,
       automationDetailsId: string | undefined
     ): Promise<string> {
       const codeqlArgs = [
@@ -949,7 +937,7 @@ async function getCodeQLForCmd(
         "interpret-results",
         threadsFlag,
         "--format=sarif-latest",
-        "-v",
+        verbosityFlag,
         `--output=${sarifFile}`,
         addSnippetsFlag,
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),

@@ -56,7 +56,10 @@ inputs:
       This input also sets the number of threads that can later be used by the "analyze" action.
     required: false
   debug:
-    description: Enable debugging mode. This will result in more output being produced which may be useful when debugging certain issues.
+    description: >-
+      Enable debugging mode.
+      This will result in more output being produced which may be useful when debugging certain issues.
+      Debugging mode is enabled automatically when step debug logging is turned on.
     required: false
     default: 'false'
   debug-artifact-name:

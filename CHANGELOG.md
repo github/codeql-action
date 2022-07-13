@@ -1,5 +1,10 @@
 # CodeQL Action Changelog
 
+## 2.1.16 - 13 Jul 2022
+
+- You can now quickly debug a job that uses the CodeQL Action by re-running the job from the GitHub UI and selecting the "Enable debug logging" option. [#1132](https://github.com/github/codeql-action/pull/1132)
+- You can now see diagnostic messages produced by the analysis in the logs of the `analyze` Action by enabling debug mode. To enable debug mode, pass `debug: true` to the `init` Action, or [enable step debug logging](https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging#enabling-step-debug-logging). This feature is available for CodeQL CLI version 2.10.0 and later. [#1133](https://github.com/github/codeql-action/pull/1133)
+
 ## 2.1.15 - 28 Jun 2022
 
 - CodeQL query packs listed in the `packs` configuration field will be skipped if their target language is not being analyzed in the current Actions job. Previously, this would throw an error. [#1116](https://github.com/github/codeql-action/pull/1116)

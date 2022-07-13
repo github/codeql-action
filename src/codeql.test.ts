@@ -43,7 +43,6 @@ test.beforeEach(() => {
     paths: [],
     originalUserInput: {},
     tempDir: "",
-    toolCacheDir: "",
     codeQLCmd: "",
     gitHubVersion: {
       type: util.GitHubVariant.DOTCOM,
@@ -81,7 +80,6 @@ test("download codeql bundle cache", async (t) => {
         `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
         sampleApiDetails,
         tmpDir,
-        tmpDir,
         util.GitHubVariant.DOTCOM,
         getRunnerLogger(true),
         false
@@ -111,7 +109,6 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       "https://example.com/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
       sampleApiDetails,
       tmpDir,
-      tmpDir,
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true),
       false
@@ -129,7 +126,6 @@ test("download codeql bundle cache explicitly requested with pinned different ve
     await codeql.setupCodeQL(
       "https://example.com/download/codeql-bundle-20200610/codeql-bundle.tar.gz",
       sampleApiDetails,
-      tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true),
@@ -155,7 +151,6 @@ test("don't download codeql bundle cache with pinned different version cached", 
       "https://example.com/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
       sampleApiDetails,
       tmpDir,
-      tmpDir,
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true),
       false
@@ -166,7 +161,6 @@ test("don't download codeql bundle cache with pinned different version cached", 
     await codeql.setupCodeQL(
       undefined,
       sampleApiDetails,
-      tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true),
@@ -194,7 +188,6 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       "https://example.com/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
       sampleApiDetails,
       tmpDir,
-      tmpDir,
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true),
       false
@@ -220,7 +213,6 @@ test("download codeql bundle cache with different version cached (not pinned)", 
     await codeql.setupCodeQL(
       undefined,
       sampleApiDetails,
-      tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true),
@@ -248,7 +240,6 @@ test('download codeql bundle cache with pinned different version cached if "late
       "https://example.com/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
       sampleApiDetails,
       tmpDir,
-      tmpDir,
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true),
       false
@@ -275,7 +266,6 @@ test('download codeql bundle cache with pinned different version cached if "late
     await codeql.setupCodeQL(
       "latest",
       sampleApiDetails,
-      tmpDir,
       tmpDir,
       util.GitHubVariant.DOTCOM,
       getRunnerLogger(true),
@@ -330,7 +320,6 @@ test("download codeql bundle from github ae endpoint", async (t) => {
     await codeql.setupCodeQL(
       undefined,
       sampleGHAEApiDetails,
-      tmpDir,
       tmpDir,
       util.GitHubVariant.GHAE,
       getRunnerLogger(true),
@@ -439,7 +428,7 @@ test("databaseInterpretResults() does not set --sarif-add-query-help for 2.7.0",
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves("2.7.0");
-  await codeqlObject.databaseInterpretResults("", [], "", "", "", "");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
   t.false(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be absent, but it is present"
@@ -450,7 +439,7 @@ test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves("2.7.1");
-  await codeqlObject.databaseInterpretResults("", [], "", "", "", "");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
   t.true(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be present, but it is absent"
@@ -658,7 +647,7 @@ test(
   },
   {},
   {
-    packs: ["codeql/javascript-experimental-atm-queries@~0.1.0"],
+    packs: ["codeql/javascript-experimental-atm-queries@~0.3.0"],
   }
 );
 
@@ -679,7 +668,7 @@ test(
     packs: {
       javascript: [
         "codeql/something-else",
-        "codeql/javascript-experimental-atm-queries@~0.1.0",
+        "codeql/javascript-experimental-atm-queries@~0.3.0",
       ],
     },
   }
@@ -701,7 +690,7 @@ test(
   {
     packs: {
       cpp: ["codeql/something-else"],
-      javascript: ["codeql/javascript-experimental-atm-queries@~0.1.0"],
+      javascript: ["codeql/javascript-experimental-atm-queries@~0.3.0"],
     },
   }
 );
@@ -782,7 +771,7 @@ test(
     },
   },
   {
-    packs: ["xxx", "yyy", "codeql/javascript-experimental-atm-queries@~0.1.0"],
+    packs: ["xxx", "yyy", "codeql/javascript-experimental-atm-queries@~0.3.0"],
   }
 );
 

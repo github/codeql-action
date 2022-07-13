@@ -103,7 +103,6 @@ test("status report fields and search path setting", async (t) => {
         paths: [],
         originalUserInput: {},
         tempDir: tmpDir,
-        toolCacheDir: tmpDir,
         codeQLCmd: "",
         gitHubVersion: {
           type: util.GitHubVariant.DOTCOM,
@@ -263,7 +262,6 @@ const stubConfig: Config = {
   paths: [],
   originalUserInput: {},
   tempDir: "",
-  toolCacheDir: "",
   codeQLCmd: "",
   gitHubVersion: {
     type: util.GitHubVariant.DOTCOM,

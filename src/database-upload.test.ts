@@ -48,7 +48,6 @@ function getTestConfig(tmpDir: string): Config {
     paths: [],
     originalUserInput: {},
     tempDir: tmpDir,
-    toolCacheDir: tmpDir,
     codeQLCmd: "foo",
     gitHubVersion: { type: GitHubVariant.DOTCOM },
     dbLocation: tmpDir,

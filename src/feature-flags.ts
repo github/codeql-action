@@ -31,14 +31,21 @@ export class GitHubFeatureFlags implements FeatureFlags {
   ) {}
 
   async getValue(flag: FeatureFlag): Promise<boolean> {
-    const response = (await this.getApiResponse())[flag];
+    const response = await this.getApiResponse();
     if (response === undefined) {
+      this.logger.debug(
+        `No feature flags API response for ${flag}, considering it disabled.`
+      );
+      return false;
+    }
+    const flag_value = response[flag];
+    if (flag_value === undefined) {
       this.logger.debug(
         `Feature flag '${flag}' undefined in API response, considering it disabled.`
       );
       return false;
     }
-    return response;
+    return flag_value;
   }
 
   private async getApiResponse(): Promise<FeatureFlagsApiResponse> {

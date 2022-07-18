@@ -28,7 +28,7 @@ export class GitHubFeatureFlags implements FeatureFlags {
     private apiDetails: GitHubApiDetails,
     private repositoryNwo: RepositoryNwo,
     private logger: Logger
-  ) { }
+  ) {}
 
   async getValue(flag: FeatureFlag): Promise<boolean> {
     const response = await this.getApiResponse();
@@ -71,9 +71,9 @@ export class GitHubFeatureFlags implements FeatureFlags {
         if (util.isHTTPError(e) && e.status === 403) {
           this.logger.warning(
             "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
-            "As a result, it will not be opted into any experimental features. " +
-            "This could be because the Action is running on a pull request from a fork. If not, " +
-            `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
+              "As a result, it will not be opted into any experimental features. " +
+              "This could be because the Action is running on a pull request from a fork. If not, " +
+              `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
           );
         } else {
           // Some feature flags, such as `ml_powered_queries_enabled` affect the produced alerts.

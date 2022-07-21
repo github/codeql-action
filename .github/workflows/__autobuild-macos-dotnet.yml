@@ -90,6 +90,14 @@ jobs:
         run: |
           ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
 
+      - name: Load environment variable
+        shell: bash
+        run: |
+          cat codeql-runner/codeql-env.json | jq
+          DYLD="$(cat codeql-runner/codeql-env.json | jq -r '.DYLD_INSERT_LIBRARIES')"
+          echo "$DYLD"
+          echo "DYLD_INSERT_LIBRARIES=$DYLD" >> "$GITHUB_ENV"
+
       - name: Build code
         shell: bash
         run: |

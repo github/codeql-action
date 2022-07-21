@@ -13,7 +13,6 @@ jobs:
   runner-analyze-csharp-autobuild-ubuntu:
     name: Runner ubuntu autobuild C# analyze
     timeout-minutes: 45
-    needs: [check-js, check-node-modules]
     runs-on: ubuntu-latest
 
     steps:

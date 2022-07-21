@@ -63,3 +63,43 @@ jobs:
         fi
     env:
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+
+  runner-analyze-csharp-autobuild-macos:
+    name: Runner macos autobuild C# analyze
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
+
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Build code
+        shell: bash
+        run: |
+          env
+          # No CODEQL_RUNNER prefix.
+          # No explicit sourcing of the tracing environment. We assume the autobuild command loads the tracing environment.
+          ../action/runner/dist/codeql-runner-macos autobuild
+
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true

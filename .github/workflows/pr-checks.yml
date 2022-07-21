@@ -13,7 +13,6 @@ jobs:
   runner-analyze-csharp-macos:
     name: Runner macos C# analyze
     timeout-minutes: 45
-    needs: [check-js, check-node-modules]
     runs-on: macos-latest
 
     steps:

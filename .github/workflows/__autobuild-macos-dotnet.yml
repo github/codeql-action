@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Autobuild '
+name: 'PR Check - Autobuild C# on macOS'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -25,15 +25,9 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
         - os: macos-latest
           version: latest
-        - os: windows-2019
-          version: latest
-        - os: windows-2022
-          version: latest
-    name: 'Autobuild '
+    name: 'Autobuild C# on macOS'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -49,6 +43,13 @@ jobs:
         languages: csharp
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - uses: ./../action/autobuild
+      env:
+        COR_ENABLE_PROFILING: ""
+        COR_PROFILER: ""
+        COR_PROFILER_PATH_64: ""
+        CORECLR_ENABLE_PROFILING: ""
+        CORECLR_PROFILER: ""
+        CORECLR_PROFILER_PATH_64: ""
     - uses: ./../action/analyze
       env:
         TEST_MODE: true

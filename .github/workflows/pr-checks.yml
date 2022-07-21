@@ -10,10 +10,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  runner-analyze-csharp-macos:
-    name: Runner macos C# analyze
+  runner-analyze-csharp-autobuild-ubuntu:
+    name: Runner ubuntu autobuild C# analyze
     timeout-minutes: 45
-    runs-on: macos-latest
+    needs: [check-js, check-node-modules]
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -25,22 +26,17 @@ jobs:
           mv * .github ../action/
           mv ../action/tests/multi-language-repo/{*,.github} .
           mv ../action/.github/workflows .github
-
       - name: Build runner
         run: |
           cd ../action/runner
           npm install
           npm run build-runner
-
       - name: Run init
         run: |
-          ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-
+          ../action/runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
       - name: Build code
-        shell: bash
         run: |
-          . ./codeql-runner/codeql-env.sh
-          $CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
+          ../action/runner/dist/codeql-runner-linux autobuild
       - uses: actions/upload-artifact@v3
         if: always()
         with:
@@ -48,8 +44,10 @@ jobs:
           path: |
             /Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases/
             !/Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases//working/copy-root
+
       - name: Run analyze
         run: |
-          ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+          ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
         env:
           TEST_MODE: true
+

@@ -33,6 +33,11 @@ jobs:
       - name: Run init
         run: |
           ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Build code
+        shell: bash
+        run: |
+          ../action/runner/dist/codeql-runner-macos autobuild
       - uses: actions/upload-artifact@v3
         if: always()
         with:
@@ -40,11 +45,6 @@ jobs:
           path: |
             /Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases/
             !/Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases//working/copy-root
-
-      - name: Build code
-        shell: bash
-        run: |
-          ../action/runner/dist/codeql-runner-macos autobuild
       - name: Run analyze
         run: |
           ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}

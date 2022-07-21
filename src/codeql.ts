@@ -780,7 +780,12 @@ async function getCodeQLForCmd(
         "-Dmaven.wagon.http.pool=false",
       ].join(" ");
 
-      await runTool(autobuildCmd);
+      const runnerExe = process.env["CODEQL_RUNNER"];
+      if (runnerExe) {
+        await runTool(runnerExe, [autobuildCmd]);
+      } else {
+        await runTool(autobuildCmd);
+      }
     },
     async extractScannedLanguage(
       databasePath: string,

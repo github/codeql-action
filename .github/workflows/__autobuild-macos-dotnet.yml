@@ -93,10 +93,18 @@ jobs:
       - name: Load environment variable
         shell: bash
         run: |
+          echo "Initial environment"
           cat codeql-runner/codeql-env.json | jq
           DYLD="$(cat codeql-runner/codeql-env.json | jq -r '.DYLD_INSERT_LIBRARIES')"
           echo "$DYLD"
           echo "DYLD_INSERT_LIBRARIES=$DYLD" >> "$GITHUB_ENV"
+
+          echo "Removing CLR tracer variables"
+          cat codeql-runner/codeql-env.json | jq 'del(.COR_ENABLE_PROFILING, .COR_PROFILER, .COR_PROFILER_PATH_64, .CORECLR_ENABLE_PROFILING, .CORECLR_PROFILER, .CORECLR_PROFILER_PATH_64)' > codeql-env.temp.json
+          mv codeql-env.temp.json codeql-runner/codeql-env.json
+
+          echo "Final environment"
+          cat codeql-runner/codeql-env.json | jq
 
       - name: Build code
         shell: bash

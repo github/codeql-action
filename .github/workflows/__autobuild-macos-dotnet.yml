@@ -22,49 +22,6 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  autobuild-macos-dotnet:
-    strategy:
-      matrix:
-        include:
-        - os: macos-latest
-          version: latest
-    name: 'Autobuild C# on macOS'
-    timeout-minutes: 45
-    runs-on: ${{ matrix.os }}
-    steps:
-    - name: Check out repository
-      uses: actions/checkout@v3
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/prepare-test
-      with:
-        version: ${{ matrix.version }}
-    - uses: ./../action/init
-      with:
-        languages: csharp
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/autobuild
-      env:
-        COR_ENABLE_PROFILING: ""
-        COR_PROFILER: ""
-        COR_PROFILER_PATH_64: ""
-        CORECLR_ENABLE_PROFILING: ""
-        CORECLR_PROFILER: ""
-        CORECLR_PROFILER_PATH_64: ""
-    - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
-    - name: Check database
-      shell: bash
-      run: |
-        cd "$RUNNER_TEMP/codeql_databases"
-        if [[ ! -d csharp ]]; then
-          echo "Did not find a C# database"
-          exit 1
-        fi
-    env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
-
   runner-analyze-csharp-autobuild-macos:
     name: Runner macos autobuild C# analyze
     runs-on: macos-latest
@@ -102,6 +59,9 @@ jobs:
           LOG="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_TRACER_LOG')"
           echo "$LOG"
           echo "CODEQL_TRACER_LOG=$LOG" >> "$GITHUB_ENV"
+          SEMMLE_COPY_EXECUTABLES_ROOT="$(cat codeql-runner/codeql-env.json | jq -r '.SEMMLE_COPY_EXECUTABLES_ROOT')"
+          echo "$SEMMLE_COPY_EXECUTABLES_ROOT"
+          echo "SEMMLE_COPY_EXECUTABLES_ROOT=$SEMMLE_COPY_EXECUTABLES_ROOT" >> "$GITHUB_ENV"
 
           echo "Removing CLR tracer variables"
           cat codeql-runner/codeql-env.json | jq 'del(.COR_ENABLE_PROFILING, .COR_PROFILER, .COR_PROFILER_PATH_64, .CORECLR_ENABLE_PROFILING, .CORECLR_PROFILER, .CORECLR_PROFILER_PATH_64)' > codeql-env.temp.json

@@ -13,6 +13,7 @@ on:
     - main
     - releases/v1
     - releases/v2
+    - aibaars/runner-autobuilders
   pull_request:
     types:
     - opened
@@ -98,6 +99,9 @@ jobs:
           DYLD="$(cat codeql-runner/codeql-env.json | jq -r '.DYLD_INSERT_LIBRARIES')"
           echo "$DYLD"
           echo "DYLD_INSERT_LIBRARIES=$DYLD" >> "$GITHUB_ENV"
+          LOG="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_TRACER_LOG')"
+          echo "$LOG"
+          echo "CODEQL_TRACER_LOG=$LOG" >> "$GITHUB_ENV"
 
           echo "Removing CLR tracer variables"
           cat codeql-runner/codeql-env.json | jq 'del(.COR_ENABLE_PROFILING, .COR_PROFILER, .COR_PROFILER_PATH_64, .CORECLR_ENABLE_PROFILING, .CORECLR_PROFILER, .CORECLR_PROFILER_PATH_64)' > codeql-env.temp.json
@@ -113,6 +117,13 @@ jobs:
           # No CODEQL_RUNNER prefix.
           # No explicit sourcing of the tracing environment. We assume the autobuild command loads the tracing environment.
           ../action/runner/dist/codeql-runner-macos autobuild
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: debug-artifact-log
+          path: |
+            /Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases
+            !/Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases/working/copy-root
 
       - name: Run analyze
         run: |

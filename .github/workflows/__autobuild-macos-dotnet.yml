@@ -65,7 +65,19 @@ jobs:
           SEMMLE_PRELOAD_libtrace="$(cat codeql-runner/codeql-env.json | jq -r '.SEMMLE_PRELOAD_libtrace')"
           echo "$SEMMLE_PRELOAD_libtrace"
           echo "SEMMLE_PRELOAD_libtrace=$SEMMLE_PRELOAD_libtrace" >> "$GITHUB_ENV"
-
+          ODASA_TRACER_CONFIGURATION="$(cat codeql-runner/codeql-env.json | jq -r '.ODASA_TRACER_CONFIGURATION')"
+          echo "$ODASA_TRACER_CONFIGURATION"
+          echo "ODASA_TRACER_CONFIGURATION=$ODASA_TRACER_CONFIGURATION" >> "$GITHUB_ENV"
+          CODEQL_DIST="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_DIST')"
+          echo "$CODEQL_DIST"
+          echo "CODEQL_DIST=$CODEQL_DIST" >> "$GITHUB_ENV"
+          CODEQL_PLATFORM="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_PLATFORM')"
+          echo "$CODEQL_PLATFORM"
+          echo "CODEQL_PLATFORM=$CODEQL_PLATFORM" >> "$GITHUB_ENV"
+          CODEQL_TOOL_PATH="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_TOOL_PATH')"
+          echo "$CODEQL_TOOL_PATH"
+          echo "CODEQL_TOOL_PATH=$CODEQL_TOOL_PATH" >> "$GITHUB_ENV"
+          
           echo "Removing CLR tracer variables"
           cat codeql-runner/codeql-env.json | jq 'del(.COR_ENABLE_PROFILING, .COR_PROFILER, .COR_PROFILER_PATH_64, .CORECLR_ENABLE_PROFILING, .CORECLR_PROFILER, .CORECLR_PROFILER_PATH_64)' > codeql-env.temp.json
           mv codeql-env.temp.json codeql-runner/codeql-env.json
@@ -87,7 +99,6 @@ jobs:
           name: debug-artifact-log
           path: |
             /Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases
-            !/Users/runner/work/codeql-action/codeql-action/codeql-runner/codeql_databases/working/copy-root
 
       - name: Run analyze
         run: |

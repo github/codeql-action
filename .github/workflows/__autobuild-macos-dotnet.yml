@@ -62,6 +62,9 @@ jobs:
           SEMMLE_COPY_EXECUTABLES_ROOT="$(cat codeql-runner/codeql-env.json | jq -r '.SEMMLE_COPY_EXECUTABLES_ROOT')"
           echo "$SEMMLE_COPY_EXECUTABLES_ROOT"
           echo "SEMMLE_COPY_EXECUTABLES_ROOT=$SEMMLE_COPY_EXECUTABLES_ROOT" >> "$GITHUB_ENV"
+          SEMMLE_PRELOAD_libtrace="$(cat codeql-runner/codeql-env.json | jq -r '.SEMMLE_PRELOAD_libtrace')"
+          echo "$SEMMLE_PRELOAD_libtrace"
+          echo "SEMMLE_PRELOAD_libtrace=$SEMMLE_PRELOAD_libtrace" >> "$GITHUB_ENV"
 
           echo "Removing CLR tracer variables"
           cat codeql-runner/codeql-env.json | jq 'del(.COR_ENABLE_PROFILING, .COR_PROFILER, .COR_PROFILER_PATH_64, .CORECLR_ENABLE_PROFILING, .CORECLR_PROFILER, .CORECLR_PROFILER_PATH_64)' > codeql-env.temp.json
@@ -69,6 +72,7 @@ jobs:
 
           echo "Final environment"
           cat codeql-runner/codeql-env.json | jq
+          env
 
       - name: Build code
         shell: bash

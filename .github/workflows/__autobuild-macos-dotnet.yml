@@ -77,7 +77,11 @@ jobs:
           CODEQL_TOOL_PATH="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_TOOL_PATH')"
           echo "$CODEQL_TOOL_PATH"
           echo "CODEQL_TOOL_PATH=$CODEQL_TOOL_PATH" >> "$GITHUB_ENV"
-          
+          echo "SEMMLE_DEBUG_TRACER=10000" >> "$GITHUB_ENV"
+          CODEQL_SCRATCH_DIR="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_SCRATCH_DIR')"
+          echo "$CODEQL_SCRATCH_DIR"
+          echo "CODEQL_SCRATCH_DIR=$CODEQL_SCRATCH_DIR" >> "$GITHUB_ENV"
+
           echo "Removing CLR tracer variables"
           cat codeql-runner/codeql-env.json | jq 'del(.COR_ENABLE_PROFILING, .COR_PROFILER, .COR_PROFILER_PATH_64, .CORECLR_ENABLE_PROFILING, .CORECLR_PROFILER, .CORECLR_PROFILER_PATH_64)' > codeql-env.temp.json
           mv codeql-env.temp.json codeql-runner/codeql-env.json

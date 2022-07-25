@@ -414,7 +414,7 @@ jobs:
       - name: Build code
         shell: bash
         run: |
-          ../action/runner/dist/codeql-runner-macos autobuild
+          $CODEQL_RUNNER ../action/runner/dist/codeql-runner-macos autobuild
 
       - name: Run analyze
         run: |

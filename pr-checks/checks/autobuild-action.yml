@@ -7,6 +7,14 @@ steps:
       languages: csharp
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/autobuild
+    env:
+      # Explicitly disable the CLR tracer.
+      COR_ENABLE_PROFILING: ""
+      COR_PROFILER: ""
+      COR_PROFILER_PATH_64: ""
+      CORECLR_ENABLE_PROFILING: ""
+      CORECLR_PROFILER: ""
+      CORECLR_PROFILER_PATH_64: ""
   - uses: ./../action/analyze
     env:
       TEST_MODE: true

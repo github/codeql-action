@@ -414,7 +414,10 @@ jobs:
       - name: Build code
         shell: bash
         run: |
-          ../action/runner/dist/codeql-runner-macos autobuild
+          . codeql-runner/codeql-env.sh
+          CODEQL_RUNNER="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_RUNNER')"
+          echo "$CODEQL_RUNNER"
+          $CODEQL_RUNNER ../action/runner/dist/codeql-runner-macos autobuild
 
       - name: Run analyze
         run: |

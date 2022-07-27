@@ -14,6 +14,10 @@ on:
       - 'python-setup/**'
       # Changes to the default CodeQL bundle version.
       - '**/defaults.json'
+  schedule:
+    # Weekly on Monday.
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
 
 jobs:
   test-setup-python-scripts:

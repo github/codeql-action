@@ -1,0 +1,28 @@
+name: "autobuild-action"
+description: "Tests that the C# autobuild action works"
+versions: ["latest"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: csharp
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/autobuild
+    env:
+      # Explicitly disable the CLR tracer.
+      COR_ENABLE_PROFILING: ""
+      COR_PROFILER: ""
+      COR_PROFILER_PATH_64: ""
+      CORECLR_ENABLE_PROFILING: ""
+      CORECLR_PROFILER: ""
+      CORECLR_PROFILER_PATH_64: ""
+  - uses: ./../action/analyze
+    env:
+      TEST_MODE: true
+  - name: Check database
+    shell: bash
+    run: |
+      cd "$RUNNER_TEMP/codeql_databases"
+      if [[ ! -d csharp ]]; then
+        echo "Did not find a C# database"
+        exit 1
+      fi

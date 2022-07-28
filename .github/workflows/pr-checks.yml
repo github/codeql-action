@@ -10,17 +10,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint-js:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run Lint
-        run: npm run-script lint
-
   check-js:
+    name: Check JS
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -30,7 +21,11 @@ jobs:
         node-types-version: [12.12, current]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Lint
+        run: npm run-script lint
 
       - name: Update version of @types/node
         if: matrix.node-types-version != 'current'

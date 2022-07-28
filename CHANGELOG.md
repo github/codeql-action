@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## 1.1.17 - 28 Jul 2022
+
+- Update default CodeQL bundle version to 2.10.1.  [#1143](https://github.com/github/codeql-action/pull/1143)
+
 ## 1.1.16 - 13 Jul 2022
 
 - You can now quickly debug a job that uses the CodeQL Action by re-running the job from the GitHub UI and selecting the "Enable debug logging" option. [#1132](https://github.com/github/codeql-action/pull/1132)

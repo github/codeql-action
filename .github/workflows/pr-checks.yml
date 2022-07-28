@@ -10,17 +10,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint-js:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run Lint
-        run: npm run-script lint
-
   check-js:
+    name: Check JS
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -30,7 +21,11 @@ jobs:
         node-types-version: [12.12, current]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Lint
+        run: npm run-script lint
 
       - name: Update version of @types/node
         if: matrix.node-types-version != 'current'
@@ -414,7 +409,10 @@ jobs:
       - name: Build code
         shell: bash
         run: |
-          ../action/runner/dist/codeql-runner-macos autobuild
+          . codeql-runner/codeql-env.sh
+          CODEQL_RUNNER="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_RUNNER')"
+          echo "$CODEQL_RUNNER"
+          $CODEQL_RUNNER ../action/runner/dist/codeql-runner-macos autobuild
 
       - name: Run analyze
         run: |

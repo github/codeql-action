@@ -2,14 +2,18 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
+import * as artifact from "@actions/artifact";
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
+import { getCodeQL } from "./codeql";
+import { Config } from "./config-utils";
 import * as sharedEnv from "./shared-environment";
 import {
+  bundleDb,
   getCachedCodeQlVersion,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
@@ -874,4 +878,60 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
 
 export function sanitizeArifactName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
+}
+
+// REVIEW: Not sure this is the best place for this function?
+export function doesDirectoryExist(dirPath: string) {
+  try {
+    const stats = fs.lstatSync(dirPath);
+    return stats.isDirectory();
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function uploadDebugArtifacts(
+  toUpload: string[],
+  rootDir: string,
+  artifactName: string
+) {
+  if (toUpload.length === 0) {
+    return;
+  }
+  let suffix = "";
+  const matrix = getRequiredInput("matrix");
+  if (matrix !== undefined && matrix !== "null") {
+    for (const entry of Object.entries(JSON.parse(matrix)).sort())
+      suffix += `-${entry[1]}`;
+  }
+  await artifact.create().uploadArtifact(
+    sanitizeArifactName(`${artifactName}${suffix}`),
+    toUpload.map((file) => path.normalize(file)),
+    path.normalize(rootDir)
+  );
+}
+
+// TODO(angelapwen): this method doesn't work yet for incomplete database
+// bundles. Move caller to init-action-cleanup after implementation.
+export async function uploadDatabaseBundleDebugArtifact(config: Config) {
+  try {
+    const toUpload: string[] = [];
+    for (const language of config.languages) {
+      toUpload.push(
+        await bundleDb(
+          config,
+          language,
+          await getCodeQL(config.codeQLCmd),
+          `${config.debugDatabaseName}-${language}`
+        )
+      );
+    }
+    await uploadDebugArtifacts(
+      toUpload,
+      config.dbLocation,
+      config.debugArtifactName
+    );
+  } catch (error) {
+    console.log(`Failed to upload database debug bundles: ${error}`);
+  }
 }

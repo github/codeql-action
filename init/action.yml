@@ -78,3 +78,4 @@ outputs:
 runs:
   using: 'node16'
   main: '../lib/init-action.js'
+  post: '../lib/init-action-cleanup.js'

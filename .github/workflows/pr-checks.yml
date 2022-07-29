@@ -62,21 +62,43 @@ jobs:
       - name: Check node modules up to date
         run: .github/workflows/script/check-node-modules.sh
 
-  verify-pr-checks:
-    name: Verify PR checks up to date
+  check-file-contents:
+    name: Check file contents
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Checks for any conflict markers created by git. This check is primarily intended to validate that
+      # any merge conflicts in the v2 -> v1 backport PR are fixed before the PR is merged.
+      - name: Check for merge conflicts
+        run: |
+          # Use `|| true` since grep returns exit code 1 if there are no matches, and we don't want
+          # this to fail the workflow.
+          FILES_WITH_CONFLICTS=$(grep --extended-regexp --ignore-case --line-number --recursive \
+            '^(<<<<<<<|>>>>>>>)' . || true)
+          if [[ "${FILES_WITH_CONFLICTS}" ]]; then
+            echo "Fail: Found merge conflict markers in the following files:"
+            echo ""
+            echo "${FILES_WITH_CONFLICTS}"
+            exit 1
+          else
+            echo "Success: Found no merge conflict markers."
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
           python-version: 3.8
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install ruamel.yaml
+
+      # Ensure the generated PR check workflows are up to date.
       - name: Verify PR checks up to date
         run: .github/workflows/script/verify-pr-checks.sh
 

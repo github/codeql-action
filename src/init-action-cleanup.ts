@@ -4,10 +4,11 @@ import * as path from "path";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
+import { dbIsFinalized } from "./analyze";
 import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
-import { getActionsLogger } from "./logging";
-import { codeQlVersionAbove, getCodeQLDatabasePath } from "./util";
+import { getActionsLogger, Logger } from "./logging";
+import { bundleDb, codeQlVersionAbove, getCodeQLDatabasePath } from "./util";
 
 function listFolder(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -20,6 +21,42 @@ function listFolder(dir: string): string[] {
     }
   }
   return files;
+}
+
+export async function uploadDatabaseBundleDebugArtifact(
+  config: Config,
+  logger: Logger
+) {
+  for (const language of config.languages) {
+    if (!dbIsFinalized(config, language, logger)) {
+      core.info(
+        `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle...`
+      );
+      // TODO(angelapwen): Zip up files and upload directly.
+      continue;
+    }
+    try {
+      // Otherwise run `codeql database bundle` command.
+      const toUpload: string[] = [];
+      toUpload.push(
+        await bundleDb(
+          config,
+          language,
+          await getCodeQL(config.codeQLCmd),
+          `${config.debugDatabaseName}-${language}`
+        )
+      );
+      await actionsUtil.uploadDebugArtifacts(
+        toUpload,
+        config.dbLocation,
+        config.debugArtifactName
+      );
+    } catch (error) {
+      core.info(
+        `Failed to upload database debug bundles for ${config.debugDatabaseName}-${language}: ${error}`
+      );
+    }
+  }
 }
 
 async function uploadLogsDebugArtifact(config: Config) {
@@ -108,9 +145,9 @@ async function run() {
 
   // Upload appropriate Actions artifacts for debugging
   if (config?.debugMode) {
+    await uploadDatabaseBundleDebugArtifact(config, logger);
     await uploadLogsDebugArtifact(config);
     await uploadFinalLogsDebugArtifact(config);
-    // TODO(angelapwen): Add database bundle upload.
   }
 }
 

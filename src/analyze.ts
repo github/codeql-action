@@ -147,7 +147,7 @@ export async function createdDBForScannedLanguages(
   }
 }
 
-function dbIsFinalized(
+export function dbIsFinalized(
   config: configUtils.Config,
   language: Language,
   logger: Logger

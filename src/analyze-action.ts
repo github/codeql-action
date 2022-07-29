@@ -188,10 +188,6 @@ async function run() {
     }
 
     return;
-  } finally {
-    if (config?.debugMode) {
-      await actionsUtil.uploadDatabaseBundleDebugArtifact(config);
-    }
   }
 
   if (runStats && uploadResult) {

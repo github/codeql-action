@@ -888,8 +888,8 @@ export async function uploadDebugArtifacts(
   let suffix = "";
   const matrix = getRequiredInput("matrix");
   if (matrix) {
-    for (const entry of Object.entries(JSON.parse(matrix)).sort())
-      suffix += `-${entry[1]}`;
+    for (const [, matrixVal] of Object.entries(JSON.parse(matrix)).sort())
+      suffix += `-${matrixVal}`;
   }
   await artifact.create().uploadArtifact(
     sanitizeArifactName(`${artifactName}${suffix}`),

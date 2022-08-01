@@ -763,3 +763,5 @@ test("sanitizeArifactName", (t) => {
     "manyinvalid"
   );
 });
+
+// TODO(angelapwen): Test uploadDebugArtifacts if toUpload is empty

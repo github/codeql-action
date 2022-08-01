@@ -439,3 +439,15 @@ for (const [
     isActionsStub.restore();
   });
 }
+
+// TODO(angelapwen): Test doesDirectoryExist() returns true if directory
+
+// TODO(angelapwen): Test doesDirectoryExist() returns false if file
+
+// TODO(angelapwen): Test doesDirectoryExist() returns false if no file of this type exists
+
+// TODO(angelapwen): Test listFolder() returns files in directory
+
+// TODO(angelapwen): Test listFolder() returns empty if not a directory
+
+// TODO(angelapwen): Test doesDirectoryExist() returns empty if directory is empty

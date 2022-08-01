@@ -2,6 +2,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
+import AdmZip from "adm-zip";
+import del from "del";
 
 import * as actionsUtil from "./actions-util";
 import { dbIsFinalized } from "./analyze";
@@ -32,7 +34,24 @@ export async function uploadDatabaseBundleDebugArtifact(
       core.info(
         `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle...`
       );
-      // TODO(angelapwen): Zip up files and upload directly.
+      // Zip up files and upload directly.
+      const databasePath = getCodeQLDatabasePath(config, language);
+      const databaseBundlePath = path.resolve(
+        config.dbLocation,
+        `${config.debugDatabaseName}.zip`
+      );
+      // See `bundleDb` for explanation behind deleting existing db bundle.
+      if (fs.existsSync(databaseBundlePath)) {
+        await del(databaseBundlePath, { force: true });
+      }
+      const zip = new AdmZip();
+      zip.addLocalFolder(databasePath);
+      zip.writeZip(databaseBundlePath);
+      await actionsUtil.uploadDebugArtifacts(
+        [databaseBundlePath],
+        config.dbLocation,
+        config.debugArtifactName
+      );
       continue;
     }
     try {

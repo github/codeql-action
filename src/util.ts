@@ -768,3 +768,19 @@ export function doesDirectoryExist(dirPath: string): boolean {
     return false;
   }
 }
+
+/**
+ * Returns a list of files in a given directory.
+ */
+export function listFolder(dir: string): string[] {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  let files: string[] = [];
+  for (const entry of entries) {
+    if (entry.isFile()) {
+      files.push(path.resolve(dir, entry.name));
+    } else if (entry.isDirectory()) {
+      files = files.concat(listFolder(path.resolve(dir, entry.name)));
+    }
+  }
+  return files;
+}

@@ -10,7 +10,12 @@ import { dbIsFinalized } from "./analyze";
 import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { getActionsLogger, Logger } from "./logging";
-import { bundleDb, codeQlVersionAbove, getCodeQLDatabasePath } from "./util";
+import {
+  bundleDb,
+  codeQlVersionAbove,
+  doesDirectoryExist,
+  getCodeQLDatabasePath,
+} from "./util";
 
 function listFolder(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -85,7 +90,7 @@ async function uploadLogsDebugArtifact(config: Config) {
   for (const language of config.languages) {
     const databaseDirectory = getCodeQLDatabasePath(config, language);
     const logsDirectory = path.resolve(databaseDirectory, "log");
-    if (actionsUtil.doesDirectoryExist(logsDirectory)) {
+    if (doesDirectoryExist(logsDirectory)) {
       toUpload = toUpload.concat(listFolder(logsDirectory));
     }
   }
@@ -96,7 +101,7 @@ async function uploadLogsDebugArtifact(config: Config) {
       config.dbLocation,
       "log"
     );
-    if (actionsUtil.doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
+    if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
       toUpload = toUpload.concat(listFolder(multiLanguageTracingLogsDirectory));
     }
   }
@@ -112,7 +117,7 @@ async function uploadLogsDebugArtifact(config: Config) {
       config.tempDir,
       "compound-build-tracer.log"
     );
-    if (actionsUtil.doesDirectoryExist(compoundBuildTracerLogDirectory)) {
+    if (doesDirectoryExist(compoundBuildTracerLogDirectory)) {
       await actionsUtil.uploadDebugArtifacts(
         [compoundBuildTracerLogDirectory],
         config.tempDir,
@@ -127,7 +132,7 @@ async function uploadFinalLogsDebugArtifact(config: Config) {
   for (const language of config.languages) {
     const databaseDirectory = getCodeQLDatabasePath(config, language);
     const logsDirectory = path.join(databaseDirectory, "log");
-    if (!actionsUtil.doesDirectoryExist(logsDirectory)) {
+    if (!doesDirectoryExist(logsDirectory)) {
       core.info(`Directory ${logsDirectory} does not exist.`);
       continue; // Skip this language database.
     }

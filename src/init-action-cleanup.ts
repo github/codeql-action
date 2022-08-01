@@ -36,14 +36,14 @@ export async function uploadDatabaseBundleDebugArtifact(
 ) {
   for (const language of config.languages) {
     if (!dbIsFinalized(config, language, logger)) {
-      core.info(
-        `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle...`
-      );
       // Zip up files and upload directly.
       const databasePath = getCodeQLDatabasePath(config, language);
       const databaseBundlePath = path.resolve(
         config.dbLocation,
-        `${config.debugDatabaseName}.zip`
+        `${config.debugDatabaseName}-${language}-partial.zip`
+      );
+      core.info(
+        `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle at ${databaseBundlePath}...`
       );
       // See `bundleDb` for explanation behind deleting existing db bundle.
       if (fs.existsSync(databaseBundlePath)) {

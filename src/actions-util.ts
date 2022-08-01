@@ -877,16 +877,6 @@ export function sanitizeArifactName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
 }
 
-// REVIEW: Not sure this is the best place for this function?
-export function doesDirectoryExist(dirPath: string) {
-  try {
-    const stats = fs.lstatSync(dirPath);
-    return stats.isDirectory();
-  } catch (e) {
-    return false;
-  }
-}
-
 export async function uploadDebugArtifacts(
   toUpload: string[],
   rootDir: string,

@@ -756,3 +756,15 @@ export async function checkActionVersion(version: string) {
 export function isInTestMode(): boolean {
   return process.env["TEST_MODE"] === "true" || false;
 }
+
+/*
+ * Returns whether the path in the argument represents an existing directory.
+ */
+export function doesDirectoryExist(dirPath: string): boolean {
+  try {
+    const stats = fs.lstatSync(dirPath);
+    return stats.isDirectory();
+  } catch (e) {
+    return false;
+  }
+}

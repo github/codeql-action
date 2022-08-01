@@ -6,9 +6,10 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
+import { doesDirectoryExist } from "./util";
 
 async function uploadSarifDebugArtifact(config: Config, outputDir: string) {
-  if (!actionsUtil.doesDirectoryExist(outputDir)) {
+  if (!doesDirectoryExist(outputDir)) {
     return;
   }
 

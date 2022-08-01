@@ -888,8 +888,14 @@ export async function uploadDebugArtifacts(
   let suffix = "";
   const matrix = getRequiredInput("matrix");
   if (matrix) {
-    for (const [, matrixVal] of Object.entries(JSON.parse(matrix)).sort())
-      suffix += `-${matrixVal}`;
+    try {
+      for (const [, matrixVal] of Object.entries(JSON.parse(matrix)).sort())
+        suffix += `-${matrixVal}`;
+    } catch (e) {
+      core.info(
+        "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input."
+      );
+    }
   }
   await artifact.create().uploadArtifact(
     sanitizeArifactName(`${artifactName}${suffix}`),

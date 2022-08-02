@@ -69,35 +69,6 @@ export async function uploadSarifDebugArtifact(
   await uploadDebugArtifacts(toUpload, outputDir, config.debugArtifactName);
 }
 
-export async function printDebugLogs(config: Config) {
-  core.info("Debug mode is on. Printing CodeQL debug logs...");
-  for (const language of config.languages) {
-    const databaseDirectory = getCodeQLDatabasePath(config, language);
-    const logsDirectory = path.join(databaseDirectory, "log");
-    if (!doesDirectoryExist(logsDirectory)) {
-      core.info(`Directory ${logsDirectory} does not exist.`);
-      continue; // Skip this language database.
-    }
-
-    const walkLogFiles = (dir: string) => {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      if (entries.length === 0) {
-        core.info(`No debug logs found at directory ${logsDirectory}.`);
-      }
-      for (const entry of entries) {
-        if (entry.isFile()) {
-          core.startGroup(`CodeQL Debug Logs - ${language} - ${entry.name}`);
-          process.stdout.write(fs.readFileSync(path.resolve(dir, entry.name)));
-          core.endGroup();
-        } else if (entry.isDirectory()) {
-          walkLogFiles(path.resolve(dir, entry.name));
-        }
-      }
-    };
-    walkLogFiles(logsDirectory);
-  }
-}
-
 export async function uploadLogsDebugArtifact(config: Config) {
   const codeql = await getCodeQL(config.codeQLCmd);
 

@@ -8,9 +8,12 @@ import * as safeWhich from "@chrisgavin/safe-which";
 import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
+import { Config } from "./config-utils";
 import * as sharedEnv from "./shared-environment";
 import {
+  doesDirectoryExist,
   getCachedCodeQlVersion,
+  getCodeQLDatabasePath,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
   isGitHubGhesVersionBelow,
@@ -870,4 +873,33 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   const defaultBranch = event?.repository?.default_branch;
 
   return currentRef === defaultBranch;
+}
+
+export async function printDebugLogs(config: Config) {
+  core.info("Debug mode is on. Printing CodeQL debug logs...");
+  for (const language of config.languages) {
+    const databaseDirectory = getCodeQLDatabasePath(config, language);
+    const logsDirectory = path.join(databaseDirectory, "log");
+    if (!doesDirectoryExist(logsDirectory)) {
+      core.info(`Directory ${logsDirectory} does not exist.`);
+      continue; // Skip this language database.
+    }
+
+    const walkLogFiles = (dir: string) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      if (entries.length === 0) {
+        core.info(`No debug logs found at directory ${logsDirectory}.`);
+      }
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          core.startGroup(`CodeQL Debug Logs - ${language} - ${entry.name}`);
+          process.stdout.write(fs.readFileSync(path.resolve(dir, entry.name)));
+          core.endGroup();
+        } else if (entry.isDirectory()) {
+          walkLogFiles(path.resolve(dir, entry.name));
+        }
+      }
+    };
+    walkLogFiles(logsDirectory);
+  }
 }

@@ -20,6 +20,7 @@ import { Logger } from "./logging";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
 import { isGoodVersion } from "./util";
+import { getTrapCachingExtractorConfigArgs, getTrapCachingExtractorConfigArgsForLang } from "./trap-caching";
 
 type Options = Array<string | number | boolean>;
 
@@ -97,7 +98,7 @@ export interface CodeQL {
    * and running the language extractor.
    */
   extractScannedLanguage(
-    database: string,
+    config: Config,
     language: Language,
     featureFlags: FeatureFlags
   ): Promise<void>;
@@ -113,6 +114,10 @@ export interface CodeQL {
    * Run 'codeql resolve languages'.
    */
   resolveLanguages(): Promise<ResolveLanguagesOutput>;
+  /**
+   * Run 'codeql resolve languages' with '--format=betterjson'.
+   */
+  betterResolveLanguages(): Promise<BetterResolveLanguagesOutput>;
   /**
    * Run 'codeql resolve queries'.
    */
@@ -168,6 +173,15 @@ export interface CodeQL {
 
 export interface ResolveLanguagesOutput {
   [language: string]: [string];
+}
+
+export interface BetterResolveLanguagesOutput {
+  extractors: {
+    [language: string]: [{
+      "extractor_root": string;
+      "extractor_options": {};
+    }];
+  }
 }
 
 export interface ResolveQueriesOutput {
@@ -247,6 +261,12 @@ export const CODEQL_VERSION_NEW_TRACING = "2.7.0";
  * some of their files being greater than MAX_PATH (260 characters).
  */
 export const CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS = "2.9.0";
+
+/**
+ * Previous versions had the option already, but were missing the 
+ * --extractor-options-verbosity that we need.
+ */
+export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -585,6 +605,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     ),
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
+    betterResolveLanguages: resolveFunction(partialCodeql, "betterResolveLanguages"),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
@@ -754,6 +775,7 @@ async function getCodeQLForCmd(
         "--db-cluster",
         config.dbLocation,
         `--source-root=${sourceRoot}`,
+        ...await getTrapCachingExtractorConfigArgs(config),
         ...extraArgs,
         ...getExtraOptionsFromEnv(["database", "init"]),
       ]);
@@ -797,10 +819,11 @@ async function getCodeQLForCmd(
       await runTool(autobuildCmd);
     },
     async extractScannedLanguage(
-      databasePath: string,
+      config: Config,
       language: Language,
       featureFlags: FeatureFlags
     ) {
+      const databasePath = util.getCodeQLDatabasePath(config, language);
       // Get extractor location
       let extractorPath = "";
       await new toolrunner.ToolRunner(
@@ -850,6 +873,7 @@ async function getCodeQLForCmd(
           "database",
           "trace-command",
           ...extraArgs,
+          ...await getTrapCachingExtractorConfigArgsForLang(config, language),
           ...getExtraOptionsFromEnv(["database", "trace-command"]),
           databasePath,
           "--",
@@ -889,6 +913,24 @@ async function getCodeQLForCmd(
       } catch (e) {
         throw new Error(
           `Unexpected output from codeql resolve languages: ${e}`
+        );
+      }
+    },
+    async betterResolveLanguages() {
+      const codeqlArgs = [
+        "resolve",
+        "languages",
+        "--format=betterjson",
+        "--extractor-options-verbosity=5",
+        ...getExtraOptionsFromEnv(["resolve", "languages"]),
+      ];
+      const output = await runTool(cmd, codeqlArgs);
+
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`
         );
       }
     },

@@ -42,6 +42,7 @@ export async function initConfig(
   packsInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  trapCaching: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
@@ -61,6 +62,7 @@ export async function initConfig(
     packsInput,
     configFile,
     dbLocation,
+    trapCaching,
     debugMode,
     debugArtifactName,
     debugDatabaseName,
@@ -86,6 +88,7 @@ export async function runInit(
   processLevel: number | undefined,
   featureFlags: FeatureFlags
 ): Promise<TracerConfig | undefined> {
+  
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
   try {

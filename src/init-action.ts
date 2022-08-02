@@ -15,7 +15,7 @@ import {
 import { getGitHubVersionActionsOnly } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
-import { GitHubFeatureFlags } from "./feature-flags";
+import { FeatureFlag, FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -183,6 +183,7 @@ async function run() {
       getOptionalInput("packs"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
+      await getTrapCachingEnabled(featureFlags),
       // Debug mode is enabled if:
       // - The `init` Action is passed `debug: true`.
       // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
@@ -297,6 +298,16 @@ async function run() {
     return;
   }
   await sendSuccessStatusReport(startedAt, config, toolsVersion);
+}
+
+
+function getTrapCachingEnabled(
+  featureFlags: FeatureFlags
+): Promise<boolean> {
+  const trapCaching = getOptionalInput("trap-caching");
+  if (trapCaching !== undefined)
+    return Promise.resolve(trapCaching.toLowerCase() === "true");
+  return featureFlags.getValue(FeatureFlag.TrapCachingEnabled);
 }
 
 async function runWrapper() {

@@ -23,6 +23,7 @@ import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
 import { bundleDb, codeQlVersionAbove } from "./util";
+import { uploadTrapCaches } from "./trap-caching";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -208,6 +209,9 @@ async function run() {
 
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
+
+    // Possibly upload the TRAP caches for later re-use
+    await uploadTrapCaches(config, logger);
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {

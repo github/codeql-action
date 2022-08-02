@@ -138,7 +138,7 @@ export async function createdDBForScannedLanguages(
       }
 
       await codeql.extractScannedLanguage(
-        util.getCodeQLDatabasePath(config, language),
+        config,
         language,
         featureFlags
       );

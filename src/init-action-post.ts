@@ -42,7 +42,7 @@ async function runWrapper() {
     await run(
       debugArtifacts.uploadDatabaseBundleDebugArtifact,
       debugArtifacts.uploadLogsDebugArtifact,
-      debugArtifacts.printDebugLogs
+      actionsUtil.printDebugLogs
     );
   } catch (error) {
     core.setFailed(`init action cleanup failed: ${error}`);

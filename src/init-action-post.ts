@@ -14,7 +14,7 @@ import { getActionsLogger } from "./logging";
 async function run(
   uploadDatabaseBundleDebugArtifact: Function,
   uploadLogsDebugArtifact: Function,
-  uploadFinalLogsDebugArtifact: Function
+  printDebugLogs: Function
 ) {
   const logger = getActionsLogger();
 
@@ -27,9 +27,13 @@ async function run(
 
   // Upload appropriate Actions artifacts for debugging
   if (config?.debugMode) {
+    core.info(
+      "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts..."
+    );
     await uploadDatabaseBundleDebugArtifact(config, logger);
     await uploadLogsDebugArtifact(config);
-    await uploadFinalLogsDebugArtifact(config);
+
+    await printDebugLogs(config);
   }
 }
 
@@ -38,7 +42,7 @@ async function runWrapper() {
     await run(
       debugArtifacts.uploadDatabaseBundleDebugArtifact,
       debugArtifacts.uploadLogsDebugArtifact,
-      debugArtifacts.uploadFinalLogsDebugArtifact
+      debugArtifacts.printDebugLogs
     );
   } catch (error) {
     core.setFailed(`init action cleanup failed: ${error}`);

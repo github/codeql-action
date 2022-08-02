@@ -69,7 +69,7 @@ export async function uploadSarifDebugArtifact(
   await uploadDebugArtifacts(toUpload, outputDir, config.debugArtifactName);
 }
 
-export async function uploadFinalLogsDebugArtifact(config: Config) {
+export async function printDebugLogs(config: Config) {
   core.info("Debug mode is on. Printing CodeQL debug logs...");
   for (const language of config.languages) {
     const databaseDirectory = getCodeQLDatabasePath(config, language);

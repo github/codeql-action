@@ -22,6 +22,9 @@ async function run(uploadSarifDebugArtifact: Function) {
 
   // Upload Actions SARIF artifacts for debugging
   if (config?.debugMode) {
+    core.info(
+      "Debug mode is on. Uploading available SARIF files as Actions debugging artifact..."
+    );
     const outputDir = actionsUtil.getRequiredInput("output");
     await uploadSarifDebugArtifact(config, outputDir);
   }

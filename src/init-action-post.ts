@@ -7,7 +7,7 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { Config, getConfig } from "./config-utils";
+import { getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 
 async function run(
@@ -17,11 +17,10 @@ async function run(
 ) {
   const logger = getActionsLogger();
 
-  let config: Config | undefined = undefined;
-  config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
+  const config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
   if (config === undefined) {
     throw new Error(
-      "Config file could not be found at expected location. Has the 'init' action been called?"
+      "Config file could not be found at expected location. Did the 'init' action fail to start?"
     );
   }
 

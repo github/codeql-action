@@ -137,11 +137,7 @@ export async function createdDBForScannedLanguages(
         await setupPythonExtractor(logger);
       }
 
-      await codeql.extractScannedLanguage(
-        util.getCodeQLDatabasePath(config, language),
-        language,
-        featureFlags
-      );
+      await codeql.extractScannedLanguage(config, language, featureFlags);
       logger.endGroup();
     }
   }

@@ -16,6 +16,7 @@ import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { downloadTrapCaches } from "./trap-caching";
 import {
   codeQlVersionAbove,
   getMlPoweredJsQueriesPack,
@@ -148,6 +149,11 @@ export interface Config {
    * Whether we injected ML queries into this configuration.
    */
   injectedMlQueries: boolean;
+  /**
+   * Partial map from languages to locations of TRAP caches for that language.
+   * A key being omitted means TRAP caching should not be used for that language.
+   */
+  trapCaches: Partial<Record<Language, string>>;
 }
 
 export type Packs = Partial<Record<Language, string[]>>;
@@ -878,6 +884,7 @@ export async function getDefaultConfig(
   queriesInput: string | undefined,
   packsInput: string | undefined,
   dbLocation: string | undefined,
+  trapCaching: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
@@ -937,6 +944,9 @@ export async function getDefaultConfig(
     debugArtifactName,
     debugDatabaseName,
     injectedMlQueries,
+    trapCaches: trapCaching
+      ? await downloadTrapCaches(codeQL, languages, logger)
+      : {},
   };
 }
 
@@ -949,6 +959,7 @@ async function loadConfig(
   packsInput: string | undefined,
   configFile: string,
   dbLocation: string | undefined,
+  trapCaching: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
@@ -1117,6 +1128,9 @@ async function loadConfig(
     debugArtifactName,
     debugDatabaseName,
     injectedMlQueries,
+    trapCaches: trapCaching
+      ? await downloadTrapCaches(codeQL, languages, logger)
+      : {},
   };
 }
 
@@ -1358,6 +1372,7 @@ export async function initConfig(
   packsInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  trapCaching: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
@@ -1380,6 +1395,7 @@ export async function initConfig(
       queriesInput,
       packsInput,
       dbLocation,
+      trapCaching,
       debugMode,
       debugArtifactName,
       debugDatabaseName,
@@ -1399,6 +1415,7 @@ export async function initConfig(
       packsInput,
       configFile,
       dbLocation,
+      trapCaching,
       debugMode,
       debugArtifactName,
       debugDatabaseName,

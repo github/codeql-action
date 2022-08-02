@@ -9,8 +9,8 @@ import {
   CodeQLAnalysisError,
   QueriesStatusReport,
   runCleanup,
-  runQueries,
   runFinalize,
+  runQueries,
 } from "./analyze";
 import { getGitHubVersionActionsOnly } from "./api-client";
 import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
@@ -19,6 +19,7 @@ import { uploadDatabases } from "./database-upload";
 import { GitHubFeatureFlags } from "./feature-flags";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
@@ -208,6 +209,9 @@ async function run() {
 
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
+
+    // Possibly upload the TRAP caches for later re-use
+    await uploadTrapCaches(codeql, config, logger);
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {

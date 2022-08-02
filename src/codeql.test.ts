@@ -435,6 +435,7 @@ const stubConfig: Config = {
   debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
   debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
   injectedMlQueries: false,
+  trapCaches: {},
 };
 
 test("databaseInitCluster() Lua feature flag enabled, but old CLI", async (t) => {

@@ -8,6 +8,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getConfig } from "./config-utils";
+import * as debugArtifacts from "./debug-artifacts";
 import { getActionsLogger } from "./logging";
 
 async function run(
@@ -35,9 +36,9 @@ async function run(
 async function runWrapper() {
   try {
     await run(
-      actionsUtil.uploadDatabaseBundleDebugArtifact,
-      actionsUtil.uploadLogsDebugArtifact,
-      actionsUtil.uploadFinalLogsDebugArtifact
+      debugArtifacts.uploadDatabaseBundleDebugArtifact,
+      debugArtifacts.uploadLogsDebugArtifact,
+      debugArtifacts.uploadFinalLogsDebugArtifact
     );
   } catch (error) {
     core.setFailed(`init action cleanup failed: ${error}`);

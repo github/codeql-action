@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import zlib from "zlib";
 
 import * as artifact from "@actions/artifact";
 import * as core from "@actions/core";
@@ -141,13 +142,45 @@ async function uploadPartialDatabaseBundle(config: Config, language: Language) {
   );
 }
 
+async function uploadPartialDatabaseBundleZlib(
+  config: Config,
+  language: Language
+) {
+  const databasePath = getCodeQLDatabasePath(config, language);
+  const databaseBundlePath = path.resolve(
+    config.dbLocation,
+    `${config.debugDatabaseName}-${language}-partial.gz`
+  );
+  core.info(
+    `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle at ${databaseBundlePath}...`
+  );
+  // See `bundleDb` for explanation behind deleting existing db bundle.
+  if (fs.existsSync(databaseBundlePath)) {
+    await del(databaseBundlePath, { force: true });
+  }
+  const gzip = zlib.createGzip();
+  const outputStream = fs.createWriteStream(databaseBundlePath);
+
+  // Write all files in database folder to gz location
+  listFolder(databasePath).map((file) => {
+    const readStream = fs.createReadStream(file);
+    readStream.pipe(gzip).pipe(outputStream);
+  });
+
+  await uploadDebugArtifacts(
+    [databaseBundlePath],
+    config.dbLocation,
+    config.debugArtifactName
+  );
+}
+
 export async function uploadDatabaseBundleDebugArtifact(
   config: Config,
   logger: Logger
 ) {
   for (const language of config.languages) {
     if (!dbIsFinalized(config, language, logger)) {
-      await uploadPartialDatabaseBundle(config, language);
+      await uploadPartialDatabaseBundleZlib(config, language);
       continue;
     }
     try {

@@ -31,7 +31,7 @@ jobs:
         id: prepare-test
         uses: ./.github/prepare-test
         with:
-        version: ${{ matrix.version }}
+          version: ${{ matrix.version }}
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}

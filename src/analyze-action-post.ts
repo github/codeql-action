@@ -7,6 +7,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getConfig } from "./config-utils";
+import * as debugArtifacts from "./debug-artifacts";
 import { getActionsLogger } from "./logging";
 
 async function run(uploadSarifDebugArtifact: Function) {
@@ -28,7 +29,7 @@ async function run(uploadSarifDebugArtifact: Function) {
 
 async function runWrapper() {
   try {
-    await run(actionsUtil.uploadSarifDebugArtifact);
+    await run(debugArtifacts.uploadSarifDebugArtifact);
   } catch (error) {
     core.setFailed(`analyze action cleanup failed: ${error}`);
     console.log(error);

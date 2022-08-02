@@ -30,6 +30,7 @@ import {
   listFolder,
   UserError,
 } from "./util";
+import { Language } from "./languages";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -1006,48 +1007,53 @@ export async function uploadLogsDebugArtifact(config: Config) {
   }
 }
 
+/**
+ * If a database has not been finalized, we cannot run the `codeql database bundle`
+ * command in the CLI because it will return an error. Instead we directly zip
+ * all files in the database folder and upload it as an artifact.
+ */
+async function uploadPartialDatabaseBundle(config: Config, language: Language) {
+  const databasePath = getCodeQLDatabasePath(config, language);
+  const databaseBundlePath = path.resolve(
+    config.dbLocation,
+    `${config.debugDatabaseName}-${language}-partial.zip`
+  );
+  core.info(
+    `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle at ${databaseBundlePath}...`
+  );
+  // See `bundleDb` for explanation behind deleting existing db bundle.
+  if (fs.existsSync(databaseBundlePath)) {
+    await del(databaseBundlePath, { force: true });
+  }
+  const zip = new AdmZip();
+  zip.addLocalFolder(databasePath);
+  zip.writeZip(databaseBundlePath);
+  await uploadDebugArtifacts(
+    [databaseBundlePath],
+    config.dbLocation,
+    config.debugArtifactName
+  );
+}
+
 export async function uploadDatabaseBundleDebugArtifact(
   config: Config,
   logger: Logger
 ) {
   for (const language of config.languages) {
     if (!dbIsFinalized(config, language, logger)) {
-      // Zip up files and upload directly.
-      const databasePath = getCodeQLDatabasePath(config, language);
-      const databaseBundlePath = path.resolve(
-        config.dbLocation,
-        `${config.debugDatabaseName}-${language}-partial.zip`
-      );
-      core.info(
-        `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle at ${databaseBundlePath}...`
-      );
-      // See `bundleDb` for explanation behind deleting existing db bundle.
-      if (fs.existsSync(databaseBundlePath)) {
-        await del(databaseBundlePath, { force: true });
-      }
-      const zip = new AdmZip();
-      zip.addLocalFolder(databasePath);
-      zip.writeZip(databaseBundlePath);
-      await uploadDebugArtifacts(
-        [databaseBundlePath],
-        config.dbLocation,
-        config.debugArtifactName
-      );
+      await uploadPartialDatabaseBundle(config, language);
       continue;
     }
     try {
       // Otherwise run `codeql database bundle` command.
-      const toUpload: string[] = [];
-      toUpload.push(
-        await bundleDb(
-          config,
-          language,
-          await getCodeQL(config.codeQLCmd),
-          `${config.debugDatabaseName}-${language}`
-        )
+      const bundlePath = await bundleDb(
+        config,
+        language,
+        await getCodeQL(config.codeQLCmd),
+        `${config.debugDatabaseName}-${language}`
       );
       await uploadDebugArtifacts(
-        toUpload,
+        [bundlePath],
         config.dbLocation,
         config.debugArtifactName
       );

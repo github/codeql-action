@@ -1,0 +1,393 @@
+name: CodeQL Runner Checks
+
+on:
+  push:
+    branches: [main, releases/v1, releases/v2]
+  pull_request:
+    # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
+    # by other workflows.
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+jobs:
+  runner-analyze-javascript-ubuntu:
+    name: Runner ubuntu JS analyze
+
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          # Pass --config-file here, but not for other jobs in this workflow.
+          # This means we're testing the config file parsing in the runner
+          # but not slowing down all jobs unnecessarily as it doesn't add much
+          # testing the parsing on different operating systems and languages.
+          runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Run analyze
+        run: |
+          runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-analyze-javascript-windows:
+    name: Runner windows JS analyze
+    timeout-minutes: 45
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages javascript --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Run analyze
+        run: |
+          runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-analyze-javascript-macos:
+    name: Runner macos JS analyze
+    timeout-minutes: 45
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Run analyze
+        run: |
+          runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-analyze-csharp-ubuntu:
+    name: Runner ubuntu C# analyze
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
+
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Build code
+        run: |
+          . ./codeql-runner/codeql-env.sh
+          $CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
+
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-analyze-csharp-windows:
+    name: Runner windows C# analyze
+
+    # Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
+    # `windows-latest`.
+    timeout-minutes: 45
+    runs-on: windows-2019
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
+
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages csharp --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Build code
+        shell: powershell
+        run: |
+          cat ./codeql-runner/codeql-env.sh | Invoke-Expression
+          $Env:CODEQL_EXTRACTOR_CSHARP_ROOT = "" # Unset an environment variable to make sure the tracer resists this
+          & $Env:CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
+
+      - name: Upload tracer logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: tracer-logs
+          path: ./codeql-runner/compound-build-tracer.log
+
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-analyze-csharp-macos:
+    name: Runner macos C# analyze
+    timeout-minutes: 45
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
+
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Build code
+        shell: bash
+        run: |
+          . ./codeql-runner/codeql-env.sh
+          $CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
+
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-analyze-csharp-autobuild-ubuntu:
+    name: Runner ubuntu autobuild C# analyze
+    timeout-minutes: 45
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
+
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Build code
+        run: |
+          ../action/runner/dist/codeql-runner-linux autobuild
+
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-analyze-csharp-autobuild-windows:
+    timeout-minutes: 45
+    name: Runner windows autobuild C# analyze
+
+    # Build tracing currently does not support Windows 2022, so use `windows-2019` instead of
+    # `windows-latest`.
+    runs-on: windows-2019
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
+
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages csharp --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Build code
+        shell: powershell
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe autobuild
+
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-analyze-csharp-autobuild-macos:
+    name: Runner macos autobuild C# analyze
+
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Move codeql-action
+        shell: bash
+        run: |
+          mkdir ../action
+          mv * .github ../action/
+          mv ../action/tests/multi-language-repo/{*,.github} .
+          mv ../action/.github/workflows .github
+
+      - name: Build runner
+        run: |
+          cd ../action/runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          ../action/runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages csharp --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Build code
+        shell: bash
+        run: |
+          . codeql-runner/codeql-env.sh
+          CODEQL_RUNNER="$(cat codeql-runner/codeql-env.json | jq -r '.CODEQL_RUNNER')"
+          echo "$CODEQL_RUNNER"
+          $CODEQL_RUNNER ../action/runner/dist/codeql-runner-macos autobuild
+
+      - name: Run analyze
+        run: |
+          ../action/runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+        env:
+          TEST_MODE: true
+
+  runner-upload-sarif:
+    name: Runner upload sarif
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
+
+      - name: Upload with runner
+        run: |
+          # Deliberately don't use TEST_MODE here. This is specifically testing
+          # the compatibility with the API.
+          runner/dist/codeql-runner-linux upload --sarif-file src/testdata/empty-sarif.sarif --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+  runner-extractor-ram-threads-options:
+    name: Runner ubuntu extractor RAM and threads options
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build runner
+        run: |
+          cd runner
+          npm install
+          npm run build-runner
+
+      - name: Run init
+        run: |
+          runner/dist/codeql-runner-linux init --ram=230 --threads=1 --repository $GITHUB_REPOSITORY --languages java --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
+
+      - name: Assert Results
+        shell: bash
+        run: |
+          . ./codeql-runner/codeql-env.sh
+          if [ "${CODEQL_RAM}" != "230" ]; then
+            echo "CODEQL_RAM is '${CODEQL_RAM}' instead of 230"
+            exit 1
+          fi
+          if [ "${CODEQL_EXTRACTOR_JAVA_RAM}" != "230" ]; then
+            echo "CODEQL_EXTRACTOR_JAVA_RAM is '${CODEQL_EXTRACTOR_JAVA_RAM}' instead of 230"
+            exit 1
+          fi
+          if [ "${CODEQL_THREADS}" != "1" ]; then
+            echo "CODEQL_THREADS is '${CODEQL_THREADS}' instead of 1"
+            exit 1
+          fi
+          if [ "${CODEQL_EXTRACTOR_JAVA_THREADS}" != "1" ]; then
+            echo "CODEQL_EXTRACTOR_JAVA_THREADS is '${CODEQL_EXTRACTOR_JAVA_THREADS}' instead of 1"
+            exit 1
+          fi

@@ -51,8 +51,6 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
-      - name: Display structure of downloaded files
-        run: ls -R
       - name: Check expected artifacts exist
         shell: bash
         run: |
@@ -62,9 +60,9 @@ jobs:
           for os in $OPERATING_SYSTEMS; do
             for version in $VERSIONS; do
               cd ./my-debug-artifacts-$os-$version
-              echo "Checking version $version on $os"
+              echo "Artifacts from version $version on $os:"
               for language in $LANGUAGES; do
-                echo "Checking $language"
+                echo "- Checking $language"
                 if [[ ! -f "$language.sarif" ]] ; then
                   echo "Missing a SARIF file for $language"
                   exit 1

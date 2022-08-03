@@ -61,8 +61,10 @@ jobs:
           LANGUAGES="cpp csharp go java javascript python"
           for os in $OPERATING_SYSTEMS; do
             for version in $VERSIONS; do
+              cd ./my-debug-artifacts-$os-$version
+              echo "Checking version $version on $os"
               for language in $LANGUAGES; do
-                echo "Checking $language in $version on $os"
+                echo "Checking $language"
                 if [[ ! -f "$language.sarif" ]] ; then
                   echo "Missing a SARIF file for $language"
                   exit 1
@@ -76,6 +78,7 @@ jobs:
                   exit 1
                 fi
               done
+              cd ..
             done
           done
         env:

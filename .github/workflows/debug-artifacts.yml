@@ -49,10 +49,12 @@ jobs:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v3
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
       - name: Display structure of downloaded files
         run: ls -R
-      - shell: bash
+      - name: Check expected artifacts exist
+        shell: bash
         run: |
           OPERATING_SYSTEMS="ubuntu-latest macos-latest"
           VERSIONS="stable-20210308 stable-20210319 stable-20210809 cached latest nightly-latest"
@@ -74,5 +76,7 @@ jobs:
                   exit 1
                 fi
               done
+            done
+          done
         env:
           INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

@@ -59,7 +59,7 @@ jobs:
           LANGUAGES="cpp csharp go java javascript python"
           for os in $OPERATING_SYSTEMS; do
             for version in $VERSIONS; do
-              cd ./my-debug-artifacts-$os-$version
+              pushd "./my-debug-artifacts-$os-$version"
               echo "Artifacts from version $version on $os:"
               for language in $LANGUAGES; do
                 echo "- Checking $language"
@@ -76,7 +76,7 @@ jobs:
                   exit 1
                 fi
               done
-              cd ..
+              popd
             done
           done
         env:

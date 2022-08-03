@@ -44,35 +44,35 @@ jobs:
       - uses: ./../action/analyze
         id: analysis  
   download-and-check-artifacts:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        version: [stable-20210308, stable-20210319, stable-20210809, cached, latest, nightly-latest]        
     name: Download and check debug artifacts
     needs: upload-artifacts
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
-        with:
-          name: my-debug-artifacts-${{ matrix.os }}-${{ matrix.version }}
+      - name: Display structure of downloaded files
+        run: ls -R
       - shell: bash
         run: |
+          OPERATING_SYSTEMS="ubuntu-latest macos-latest"
+          VERSIONS="stable-20210308 stable-20210319 stable-20210809 cached latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
-          for language in $LANGUAGES; do
-            echo "Checking $language"
-            if [[ ! -f "$language.sarif" ]] ; then
-              echo "Missing a SARIF file for $language"
-              exit 1
-            fi
-            if [[ ! -f "my-db-$language.zip" ]] ; then
-              echo "Missing a database bundle for $language"
-              exit 1
-            fi
-            if [[ ! -d "$language/log" ]] ; then
-              echo "Missing logs for $language"
-              exit 1
-            fi
-          done
+          for os in $OPERATING_SYSTEMS; do
+            for version in $VERSIONS; do
+              for language in $LANGUAGES; do
+                echo "Checking $language in $version on $os"
+                if [[ ! -f "$language.sarif" ]] ; then
+                  echo "Missing a SARIF file for $language"
+                  exit 1
+                fi
+                if [[ ! -f "my-db-$language.zip" ]] ; then
+                  echo "Missing a database bundle for $language"
+                  exit 1
+                fi
+                if [[ ! -d "$language/log" ]] ; then
+                  echo "Missing logs for $language"
+                  exit 1
+                fi
+              done
         env:
           INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

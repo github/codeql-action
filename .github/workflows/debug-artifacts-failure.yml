@@ -1,5 +1,6 @@
-# Checks logs, SARIF, and database bundle debug artifacts exist.
-name: PR Check - Debug artifact upload
+# Checks logs, SARIF, and database bundle debug artifacts exist
+# when the analyze step fails.
+name: PR Check - Debug artifact upload after failure
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
@@ -20,7 +21,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        version: [stable-20210308, stable-20210319, stable-20210809, cached, latest, nightly-latest]
     name: Upload debug artifacts
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -31,7 +31,7 @@ jobs:
         id: prepare-test
         uses: ./.github/prepare-test
         with:
-          version: ${{ matrix.version }}
+          version: latest
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -43,8 +43,10 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis  
+        with:
+          ram: 1
   download-and-check-artifacts:
-    name: Download and check debug artifacts
+    name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts
     timeout-minutes: 45
     runs-on: ubuntu-latest
@@ -55,33 +57,26 @@ jobs:
         shell: bash
         run: |
           OPERATING_SYSTEMS="ubuntu-latest macos-latest"
-          VERSIONS="stable-20210308 stable-20210319 stable-20210809 cached latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for os in $OPERATING_SYSTEMS; do
-            for version in $VERSIONS; do
-              pushd "./my-debug-artifacts-$os-$version"
-              echo "Artifacts from version $version on $os:"
-              for language in $LANGUAGES; do
-                echo "- Checking $language"
-                if [[ ! -f "$language.sarif" ]] ; then
-                  echo "Missing a SARIF file for $language"
-                  exit 1
-                fi
-                if [[ ! -f "my-db-$language.zip" ]] ; then
-                  echo "Missing a database bundle for $language"
-                  exit 1
-                fi
-                if [[ ! -d "log" ]] ; then
-                  echo "Missing database initialization logs"
-                  exit 1
-                fi
-                if [[ ! -d "$language/log" ]] ; then
-                  echo "Missing logs for $language"
-                  exit 1
-                fi
-              done
-              popd
+            pushd "./my-debug-artifacts-$os-latest"
+            echo "Artifacts from version latest on $os:"
+            for language in $LANGUAGES; do
+              echo "- Checking $language"
+              if [[ ! -f "my-db-$language-partial.zip" ]] ; then
+                echo "Missing a partial database bundle for $language"
+                exit 1
+              fi
+              if [[ ! -d "log" ]] ; then
+                echo "Missing database initialization logs"
+                exit 1
+              fi
+              if [[ ! -d "$language/log" ]] ; then
+                echo "Missing logs for $language"
+                exit 1
+              fi
             done
+            popd
           done
         env:
           INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

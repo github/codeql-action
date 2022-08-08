@@ -54,6 +54,8 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
+      - name: Display structure of downloaded files
+        run: ls -R
       - name: Check expected artifacts exist
         shell: bash
         run: |

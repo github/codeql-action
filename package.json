@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.1.17",
+  "version": "2.1.19",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -22,6 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "@actions/artifact": "^1.0.0",
+    "@actions/cache": "^3.0.0",
     "@actions/core": "^1.4.0",
     "@actions/exec": "^1.1.0",
     "@actions/github": "^4.0.0",

@@ -62,8 +62,8 @@ jobs:
           OPERATING_SYSTEMS="ubuntu-latest macos-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for os in $OPERATING_SYSTEMS; do
-            pushd "./my-debug-artifacts-$os-latest"
-            echo "Artifacts from version latest on $os:"
+            pushd "./my-debug-artifacts-$os"
+            echo "Artifacts from run on $os:"
             for language in $LANGUAGES; do
               echo "- Checking $language"
               if [[ ! -f "my-db-$language-partial.zip" ]] ; then

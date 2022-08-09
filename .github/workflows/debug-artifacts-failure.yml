@@ -1,6 +1,6 @@
 # Checks logs, SARIF, and database bundle debug artifacts exist
 # when the analyze step fails.
-name: PR Check - Debug artifact upload after failure
+name: PR Check - Debug artifacts after failure
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-    name: Upload debug artifacts
+    name: Failure Expected - Upload debug artifacts
     continue-on-error: true
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}

@@ -71,10 +71,6 @@ jobs:
                   echo "Missing a database bundle for $language"
                   exit 1
                 fi
-                if [[ ! -d "log" ]] ; then
-                  echo "Missing database initialization logs"
-                  exit 1
-                fi
                 if [[ ! -d "$language/log" ]] ; then
                   echo "Missing logs for $language"
                   exit 1

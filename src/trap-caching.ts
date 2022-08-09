@@ -17,15 +17,18 @@ import { codeQlVersionAbove } from "./util";
 // goes into the cache key.
 const CACHE_VERSION = 1;
 
+// This constant sets the size of each TRAP cache in megabytes.
+const CACHE_SIZE_MB = 1024;
+
 export async function getTrapCachingExtractorConfigArgs(
   config: Config
 ): Promise<string[]> {
-  const result: string[] = [];
+  const result: string[][] = [];
   for (const language of config.languages)
     result.push(
-      ...(await getTrapCachingExtractorConfigArgsForLang(config, language))
+      await getTrapCachingExtractorConfigArgsForLang(config, language)
     );
-  return result;
+  return result.flat();
 }
 
 export async function getTrapCachingExtractorConfigArgsForLang(
@@ -37,11 +40,19 @@ export async function getTrapCachingExtractorConfigArgsForLang(
   const write = await actionsUtil.isAnalyzingDefaultBranch();
   return [
     `-O=${language}.trap.cache.dir=${cacheDir}`,
-    `-O=${language}.trap.cache.bound=1024`,
+    `-O=${language}.trap.cache.bound=${CACHE_SIZE_MB}`,
     `-O=${language}.trap.cache.write=${write}`,
   ];
 }
 
+/**
+ * Download TRAP caches from the Actions cache.
+ * @param codeql The CodeQL instance to use.
+ * @param languages The languages being analyzed.
+ * @param logger A logger to record some informational messages to.
+ * @returns A partial map from languages to TRAP cache paths on disk, with
+ * languages for which we shouldn't use TRAP caching omitted.
+ */
 export async function downloadTrapCaches(
   codeql: CodeQL,
   languages: Language[],
@@ -77,23 +88,28 @@ export async function downloadTrapCaches(
 
   let baseSha = "unknown";
   const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (eventPath !== undefined) {
+  if (
+    process.env.GITHUB_EVENT_NAME === "pull_request" &&
+    eventPath !== undefined
+  ) {
     const event = JSON.parse(fs.readFileSync(path.resolve(eventPath), "utf-8"));
-    baseSha = event.pull_request?.base?.sha || "unknown";
+    baseSha = event.pull_request?.base?.sha || baseSha;
   }
   for (const language of languages) {
     const cacheDir = result[language];
     if (cacheDir === undefined) continue;
     // The SHA from the base of the PR is the most similar commit we might have a cache for
-    const preferredKey = `codeql-trap-${CACHE_VERSION}-${await codeql.getVersion()}-${language}-${baseSha}`;
+    const preferredKey = await cacheKey(codeql, language, baseSha);
     logger.info(
       `Looking in Actions cache for TRAP cache with key ${preferredKey}`
     );
     const found = await cache.restoreCache([cacheDir], preferredKey, [
-      `codeql-trap-${CACHE_VERSION}-${await codeql.getVersion()}-${language}-`, // Fall back to any cache with the right key prefix
+      await cachePrefix(codeql, language), // Fall back to any cache with the right key prefix
     ]);
     if (found === undefined) {
-      // Didn't find any cache, let's unset to avoid lookups in an empty directory
+      // We didn't find a TRAP cache in the Actions cache, so the directory on disk is
+      // still just an empty directory. There's no reason to tell the extractor to use it,
+      // so let's unset the entry in the map so we don't set any extractor options.
       logger.info(`No TRAP cache found in Actions cache for ${language}`);
       result[language] = undefined;
     }
@@ -109,15 +125,19 @@ export async function uploadTrapCaches(
 ): Promise<void> {
   if (!(await actionsUtil.isAnalyzingDefaultBranch())) return; // Only upload caches from the default branch
 
+  const toAwait: Array<Promise<number>> = [];
   for (const language of config.languages) {
     const cacheDir = config.trapCaches[language];
     if (cacheDir === undefined) continue;
-    const key = `codeql-trap-${CACHE_VERSION}-${await codeql.getVersion()}-${language}-${
+    const key = await cacheKey(
+      codeql,
+      language,
       process.env.GITHUB_SHA || "unknown"
-    }`;
+    );
     logger.info(`Uploading TRAP cache to Actions cache with key ${key}`);
-    await cache.saveCache([cacheDir], key);
+    toAwait.push(cache.saveCache([cacheDir], key));
   }
+  await Promise.all(toAwait);
 }
 
 export async function getLanguagesSupportingCaching(
@@ -132,6 +152,7 @@ export async function getLanguagesSupportingCaching(
     return result;
   const resolveResult = await codeql.betterResolveLanguages();
   outer: for (const lang of languages) {
+    if (resolveResult.extractors[lang].length !== 1) continue;
     const extractor = resolveResult.extractors[lang][0];
     const trapCacheOptions =
       extractor.extractor_options?.trap?.properties?.cache?.properties;
@@ -152,4 +173,19 @@ export async function getLanguagesSupportingCaching(
     result.push(lang);
   }
   return result;
+}
+
+async function cacheKey(
+  codeql: CodeQL,
+  language: Language,
+  baseSha: string
+): Promise<string> {
+  return `${await cachePrefix(codeql, language)}-${baseSha}`;
+}
+
+async function cachePrefix(
+  codeql: CodeQL,
+  language: Language
+): Promise<string> {
+  return `codeql-trap-${CACHE_VERSION}-${await codeql.getVersion()}-${language}-`;
 }

@@ -300,11 +300,12 @@ async function run() {
   await sendSuccessStatusReport(startedAt, config, toolsVersion);
 }
 
-function getTrapCachingEnabled(featureFlags: FeatureFlags): Promise<boolean> {
+async function getTrapCachingEnabled(
+  featureFlags: FeatureFlags
+): Promise<boolean> {
   const trapCaching = getOptionalInput("trap-caching");
-  if (trapCaching !== undefined)
-    return Promise.resolve(trapCaching.toLowerCase() === "true");
-  return featureFlags.getValue(FeatureFlag.TrapCachingEnabled);
+  if (trapCaching !== undefined) return trapCaching === "true";
+  return await featureFlags.getValue(FeatureFlag.TrapCachingEnabled);
 }
 
 async function runWrapper() {

@@ -63,7 +63,7 @@ const stubCodeql = setCodeQL({
   },
 });
 
-const stubConfig: Config = {
+const testConfigWithoutTmpDir: Config = {
   languages: [Language.javascript, Language.cpp],
   queries: {},
   pathsIgnore: [],
@@ -85,7 +85,7 @@ const stubConfig: Config = {
   },
 };
 
-function getTestConfig(tmpDir: string): configUtils.Config {
+function getTestConfigWithTempDir(tmpDir: string): configUtils.Config {
   return {
     languages: [Language.javascript, Language.ruby],
     queries: {},
@@ -110,7 +110,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
 
 test("check flags for JS, analyzing default branch", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    const config = getTestConfig(tmpDir);
+    const config = getTestConfigWithTempDir(tmpDir);
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
     const result = await getTrapCachingExtractorConfigArgsForLang(
       config,
@@ -126,7 +126,7 @@ test("check flags for JS, analyzing default branch", async (t) => {
 
 test("check flags for all, not analyzing default branch", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
-    const config = getTestConfig(tmpDir);
+    const config = getTestConfigWithTempDir(tmpDir);
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(false);
     const result = await getTrapCachingExtractorConfigArgs(config);
     t.deepEqual(result, [
@@ -157,7 +157,7 @@ test("upload cache key contains right fields", async (t) => {
   sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
   const stubSave = sinon.stub(cache, "saveCache");
   process.env.GITHUB_SHA = "somesha";
-  await uploadTrapCaches(stubCodeql, stubConfig, logger);
+  await uploadTrapCaches(stubCodeql, testConfigWithoutTmpDir, logger);
   t.assert(
     stubSave.calledOnceWith(
       sinon.match.array.contains(["/some/cache/dir"]),
@@ -177,6 +177,7 @@ test("download cache looks for the right key and creates dir", async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(false);
     const stubRestore = sinon.stub(cache, "restoreCache").resolves("found");
     const eventFile = path.resolve(tmpDir, "event.json");
+    process.env.GITHUB_EVENT_NAME = "pull_request";
     process.env.GITHUB_EVENT_PATH = eventFile;
     fs.writeFileSync(
       eventFile,

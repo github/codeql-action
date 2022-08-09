@@ -151,7 +151,7 @@ export interface Config {
   injectedMlQueries: boolean;
   /**
    * Partial map from languages to locations of TRAP caches for that language.
-   * A key being omitted means TRAP caching should not be used for that language.
+   * If a key is omitted, then TRAP caching should not be used for that language.
    */
   trapCaches: Partial<Record<Language, string>>;
 }
@@ -884,7 +884,7 @@ export async function getDefaultConfig(
   queriesInput: string | undefined,
   packsInput: string | undefined,
   dbLocation: string | undefined,
-  trapCaching: boolean,
+  trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
@@ -944,7 +944,7 @@ export async function getDefaultConfig(
     debugArtifactName,
     debugDatabaseName,
     injectedMlQueries,
-    trapCaches: trapCaching
+    trapCaches: trapCachingEnabled
       ? await downloadTrapCaches(codeQL, languages, logger)
       : {},
   };
@@ -959,7 +959,7 @@ async function loadConfig(
   packsInput: string | undefined,
   configFile: string,
   dbLocation: string | undefined,
-  trapCaching: boolean,
+  trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
@@ -1128,7 +1128,7 @@ async function loadConfig(
     debugArtifactName,
     debugDatabaseName,
     injectedMlQueries,
-    trapCaches: trapCaching
+    trapCaches: trapCachingEnabled
       ? await downloadTrapCaches(codeQL, languages, logger)
       : {},
   };
@@ -1372,7 +1372,7 @@ export async function initConfig(
   packsInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
-  trapCaching: boolean,
+  trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
@@ -1395,7 +1395,7 @@ export async function initConfig(
       queriesInput,
       packsInput,
       dbLocation,
-      trapCaching,
+      trapCachingEnabled,
       debugMode,
       debugArtifactName,
       debugDatabaseName,
@@ -1415,7 +1415,7 @@ export async function initConfig(
       packsInput,
       configFile,
       dbLocation,
-      trapCaching,
+      trapCachingEnabled,
       debugMode,
       debugArtifactName,
       debugDatabaseName,

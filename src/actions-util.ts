@@ -667,12 +667,7 @@ export async function createStatusReportBase(
   }
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
   const codeQlCliVersion = getCachedCodeQlVersion();
-
-  // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
-  // See https://github.com/actions/runner/issues/803
-  const actionRef = isRunningLocalAction()
-    ? undefined
-    : process.env["GITHUB_ACTION_REF"];
+  const actionRef = process.env["GITHUB_ACTION_REF"];
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,

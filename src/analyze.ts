@@ -7,12 +7,14 @@ import * as yaml from "js-yaml";
 
 import * as analysisPaths from "./analysis-paths";
 import {
+  CodeQL,
   CODEQL_VERSION_COUNTS_LINES,
   CODEQL_VERSION_NEW_TRACING,
   getCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { countLoc } from "./count-loc";
+import { FeatureFlags } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
@@ -114,15 +116,16 @@ async function setupPythonExtractor(logger: Logger) {
   process.env["LGTM_PYTHON_SETUP_VERSION"] = output;
 }
 
-async function createdDBForScannedLanguages(
+export async function createdDBForScannedLanguages(
+  codeql: CodeQL,
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
+  featureFlags: FeatureFlags
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
   analysisPaths.includeAndExcludeAnalysisPaths(config);
 
-  const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     if (
       isScannedLanguage(language) &&
@@ -134,10 +137,7 @@ async function createdDBForScannedLanguages(
         await setupPythonExtractor(logger);
       }
 
-      await codeql.extractScannedLanguage(
-        util.getCodeQLDatabasePath(config, language),
-        language
-      );
+      await codeql.extractScannedLanguage(config, language, featureFlags);
       logger.endGroup();
     }
   }
@@ -166,11 +166,12 @@ async function finalizeDatabaseCreation(
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
-  logger: Logger
+  logger: Logger,
+  featureFlags: FeatureFlags
 ) {
-  await createdDBForScannedLanguages(config, logger);
-
   const codeql = await getCodeQL(config.codeQLCmd);
+  await createdDBForScannedLanguages(codeql, config, logger, featureFlags);
+
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
       logger.info(
@@ -204,11 +205,9 @@ export async function runQueries(
     {}
   );
   const cliCanCountBaseline = await cliCanCountLoC();
-  const debugMode =
-    process.env["INTERNAL_CODEQL_ACTION_DEBUG_LOC"] ||
-    process.env["ACTIONS_RUNNER_DEBUG"] ||
-    process.env["ACTIONS_STEP_DEBUG"];
-  if (!cliCanCountBaseline || debugMode) {
+  const countLocDebugMode =
+    process.env["INTERNAL_CODEQL_ACTION_DEBUG_LOC"] || config.debugMode;
+  if (!cliCanCountBaseline || countLocDebugMode) {
     // count the number of lines in the background
     locPromise = countLoc(
       path.resolve(),
@@ -306,7 +305,8 @@ export async function runQueries(
       const analysisSummary = await runInterpretResults(
         language,
         querySuitePaths,
-        sarifFile
+        sarifFile,
+        config.debugMode
       );
       if (!cliCanCountBaseline)
         await injectLinesOfCode(sarifFile, language, locPromise);
@@ -314,7 +314,7 @@ export async function runQueries(
         new Date().getTime() - startTimeInterpretResults;
       logger.endGroup();
       logger.info(analysisSummary);
-      if (!cliCanCountBaseline || debugMode)
+      if (!cliCanCountBaseline || countLocDebugMode)
         printLinesOfCodeSummary(logger, language, await locPromise);
       if (cliCanCountBaseline) logger.info(await runPrintLinesOfCode(language));
     } catch (e) {
@@ -335,7 +335,8 @@ export async function runQueries(
   async function runInterpretResults(
     language: Language,
     queries: string[],
-    sarifFile: string
+    sarifFile: string,
+    enableDebugLogging: boolean
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     const codeql = await getCodeQL(config.codeQLCmd);
@@ -345,6 +346,7 @@ export async function runQueries(
       sarifFile,
       addSnippetsFlag,
       threadsFlag,
+      enableDebugLogging ? "-vv" : "-v",
       automationDetailsId
     );
   }
@@ -455,17 +457,9 @@ export async function runFinalize(
   threadsFlag: string,
   memoryFlag: string,
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
+  featureFlags: FeatureFlags
 ) {
-  const codeql = await getCodeQL(config.codeQLCmd);
-  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(config);
-  } else {
-    // Delete the tracer config env var to avoid tracing ourselves
-    delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
-  }
-
   try {
     await del(outputDir, { force: true });
   } catch (error: any) {
@@ -475,7 +469,27 @@ export async function runFinalize(
   }
   await fs.promises.mkdir(outputDir, { recursive: true });
 
-  await finalizeDatabaseCreation(config, threadsFlag, memoryFlag, logger);
+  await finalizeDatabaseCreation(
+    config,
+    threadsFlag,
+    memoryFlag,
+    logger,
+    featureFlags
+  );
+
+  const codeql = await getCodeQL(config.codeQLCmd);
+  // WARNING: This does not _really_ end tracing, as the tracer will restore its
+  // critical environment variables and it'll still be active for all processes
+  // launched from this build step.
+  // However, it will stop tracing for all steps past the codeql-action/analyze
+  // step.
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    // Delete variables as specified by the end-tracing script
+    await endTracingForCluster(config);
+  } else {
+    // Delete the tracer config env var to avoid tracing ourselves
+    delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
+  }
 }
 
 export async function runCleanup(

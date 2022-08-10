@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import path from "path";
 
 import Long from "long";
 
@@ -226,7 +227,7 @@ export function resolveUriToFile(
   // Just assume a relative path is relative to the src root.
   // This is not necessarily true but should be a good approximation
   // and here we likely want to err on the side of handling more cases.
-  if (!uri.startsWith("/")) {
+  if (!path.isAbsolute(uri)) {
     uri = srcRootPrefix + uri;
   }
 

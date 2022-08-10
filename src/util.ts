@@ -116,11 +116,7 @@ export async function withTmpDir<T>(
   body: (tmpDir: string) => Promise<T>
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
-  const realSubdir = path.join(tmpDir, "real");
-  fs.mkdirSync(realSubdir);
-  const symlinkSubdir = path.join(tmpDir, "symlink");
-  fs.symlinkSync(realSubdir, symlinkSubdir, "dir");
-  const result = await body(symlinkSubdir);
+  const result = await body(tmpDir);
   await del(tmpDir, { force: true });
   return result;
 }

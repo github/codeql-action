@@ -24,7 +24,6 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     paths: [],
     originalUserInput: {},
     tempDir: tmpDir,
-    toolCacheDir: tmpDir,
     codeQLCmd: "",
     gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
     dbLocation: path.resolve(tmpDir, "codeql_databases"),
@@ -33,6 +32,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     injectedMlQueries: false,
+    trapCaches: {},
   };
 }
 

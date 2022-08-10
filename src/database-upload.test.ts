@@ -48,7 +48,6 @@ function getTestConfig(tmpDir: string): Config {
     paths: [],
     originalUserInput: {},
     tempDir: tmpDir,
-    toolCacheDir: tmpDir,
     codeQLCmd: "foo",
     gitHubVersion: { type: GitHubVariant.DOTCOM },
     dbLocation: tmpDir,
@@ -57,6 +56,7 @@ function getTestConfig(tmpDir: string): Config {
     debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
     injectedMlQueries: false,
+    trapCaches: {},
   };
 }
 

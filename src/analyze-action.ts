@@ -9,14 +9,17 @@ import {
   CodeQLAnalysisError,
   QueriesStatusReport,
   runCleanup,
-  runQueries,
   runFinalize,
+  runQueries,
 } from "./analyze";
+import { getGitHubVersionActionsOnly } from "./api-client";
 import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { GitHubFeatureFlags } from "./feature-flags";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
@@ -112,7 +115,16 @@ async function run() {
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
     );
 
-    await runFinalize(outputDir, threads, memory, config, logger);
+    const gitHubVersion = await getGitHubVersionActionsOnly();
+
+    const featureFlags = new GitHubFeatureFlags(
+      gitHubVersion,
+      apiDetails,
+      repositoryNwo,
+      logger
+    );
+
+    await runFinalize(outputDir, threads, memory, config, logger, featureFlags);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
         outputDir,
@@ -140,17 +152,19 @@ async function run() {
 
     if (config.debugMode) {
       // Upload the logs as an Actions artifact for debugging
-      const toUpload: string[] = [];
+      let toUpload: string[] = [];
       for (const language of config.languages) {
-        toUpload.push(
-          ...listFolder(
+        toUpload = toUpload.concat(
+          listFolder(
             path.resolve(util.getCodeQLDatabasePath(config, language), "log")
           )
         );
       }
       if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
         // Multilanguage tracing: there are additional logs in the root of the cluster
-        toUpload.push(...listFolder(path.resolve(config.dbLocation, "log")));
+        toUpload = toUpload.concat(
+          listFolder(path.resolve(config.dbLocation, "log"))
+        );
       }
       await uploadDebugArtifacts(
         toUpload,
@@ -196,6 +210,9 @@ async function run() {
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
 
+    // Possibly upload the TRAP caches for later re-use
+    await uploadTrapCaches(codeql, config, logger);
+
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
       core.debug("In test mode. Waiting for processing is disabled.");
@@ -225,7 +242,7 @@ async function run() {
 
     return;
   } finally {
-    if (config !== undefined && config.debugMode) {
+    if (config?.debugMode) {
       try {
         // Upload the database bundles as an Actions artifact for debugging
         const toUpload: string[] = [];
@@ -249,7 +266,7 @@ async function run() {
       }
     }
 
-    if (core.isDebug() && config !== undefined) {
+    if (config?.debugMode) {
       core.info("Debug mode is on. Printing CodeQL debug logs...");
       for (const language of config.languages) {
         const databaseDirectory = util.getCodeQLDatabasePath(config, language);
@@ -308,12 +325,12 @@ async function uploadDebugArtifacts(
 
 function listFolder(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
-  const files: string[] = [];
+  let files: string[] = [];
   for (const entry of entries) {
     if (entry.isFile()) {
       files.push(path.resolve(dir, entry.name));
     } else if (entry.isDirectory()) {
-      files.push(...listFolder(path.resolve(dir, entry.name)));
+      files = files.concat(listFolder(path.resolve(dir, entry.name)));
     }
   }
   return files;

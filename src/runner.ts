@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
 import { Command } from "commander";
@@ -45,14 +44,6 @@ function getTempDir(userInput: string | undefined): string {
     fs.mkdirSync(tempDir, { recursive: true });
   }
   return tempDir;
-}
-
-function getToolsDir(userInput: string | undefined): string {
-  const toolsDir = userInput || path.join(os.homedir(), "codeql-runner-tools");
-  if (!fs.existsSync(toolsDir)) {
-    fs.mkdirSync(toolsDir, { recursive: true });
-  }
-  return toolsDir;
 }
 
 const codeqlEnvJsonFilename = "codeql-env.json";
@@ -194,7 +185,6 @@ program
 
     try {
       const tempDir = getTempDir(cmd.tempDir);
-      const toolsDir = getToolsDir(cmd.toolsDir);
       const checkoutPath = cmd.checkoutPath || process.cwd();
 
       // Wipe the temp dir
@@ -237,7 +227,6 @@ program
             undefined,
             apiDetails,
             tempDir,
-            toolsDir,
             gitHubVersion.type,
             logger
           )
@@ -252,11 +241,11 @@ program
         cmd.configFile,
         undefined,
         false,
+        false,
         "",
         "",
         parseRepositoryNwo(cmd.repository),
         tempDir,
-        toolsDir,
         codeql,
         workspacePath,
         gitHubVersion,
@@ -501,7 +490,14 @@ program
         logger
       );
       const memory = getMemoryFlag(cmd.ram || initEnv["CODEQL_RAM"]);
-      await runFinalize(outputDir, threads, memory, config, logger);
+      await runFinalize(
+        outputDir,
+        threads,
+        memory,
+        config,
+        logger,
+        createFeatureFlags([])
+      );
       await runQueries(
         outputDir,
         memory,

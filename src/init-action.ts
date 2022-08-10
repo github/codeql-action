@@ -8,7 +8,6 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  getToolCacheDirectory,
   sendStatusReport,
   StatusReportBase,
   validateWorkflow,
@@ -16,7 +15,7 @@ import {
 import { getGitHubVersionActionsOnly } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
-import { GitHubFeatureFlags } from "./feature-flags";
+import { FeatureFlag, FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -28,18 +27,18 @@ import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
-  getRequiredEnvParam,
-  initializeEnvironment,
-  Mode,
+  checkActionVersion,
   checkGitHubVersionInRange,
   codeQlVersionAbove,
-  enrichEnvironment,
-  getMemoryFlagValue,
-  getThreadsFlagValue,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
+  enrichEnvironment,
+  getMemoryFlagValue,
   getMlPoweredJsQueriesStatus,
-  checkActionVersion,
+  getRequiredEnvParam,
+  getThreadsFlagValue,
+  initializeEnvironment,
+  Mode,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -171,7 +170,6 @@ async function run() {
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
-      getToolCacheDirectory(),
       gitHubVersion.type,
       logger
     );
@@ -185,12 +183,16 @@ async function run() {
       getOptionalInput("packs"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
-      getOptionalInput("debug") === "true",
+      await getTrapCachingEnabled(featureFlags),
+      // Debug mode is enabled if:
+      // - The `init` Action is passed `debug: true`.
+      // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
+      //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
+      getOptionalInput("debug") === "true" || core.isDebug(),
       getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
       getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
       repositoryNwo,
       getTemporaryDirectory(),
-      getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       gitHubVersion,
@@ -296,6 +298,14 @@ async function run() {
     return;
   }
   await sendSuccessStatusReport(startedAt, config, toolsVersion);
+}
+
+async function getTrapCachingEnabled(
+  featureFlags: FeatureFlags
+): Promise<boolean> {
+  const trapCaching = getOptionalInput("trap-caching");
+  if (trapCaching !== undefined) return trapCaching === "true";
+  return await featureFlags.getValue(FeatureFlag.TrapCachingEnabled);
 }
 
 async function runWrapper() {

@@ -16,6 +16,7 @@ import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { downloadTrapCaches } from "./trap-caching";
 import {
   codeQlVersionAbove,
   getMlPoweredJsQueriesPack,
@@ -145,11 +146,6 @@ export interface Config {
    */
   tempDir: string;
   /**
-   * Directory to use for the tool cache.
-   * This may be persisted between jobs but this is not guaranteed.
-   */
-  toolCacheDir: string;
-  /**
    * Path of the CodeQL executable.
    */
   codeQLCmd: string;
@@ -183,6 +179,11 @@ export interface Config {
    * Whether we injected ML queries into this configuration.
    */
   injectedMlQueries: boolean;
+  /**
+   * Partial map from languages to locations of TRAP caches for that language.
+   * If a key is omitted, then TRAP caching should not be used for that language.
+   */
+  trapCaches: Partial<Record<Language, string>>;
 }
 
 export type Packs = Partial<Record<Language, string[]>>;
@@ -915,12 +916,12 @@ export async function getDefaultConfig(
   queriesInput: string | undefined,
   packsInput: string | undefined,
   dbLocation: string | undefined,
+  trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
-  toolCacheDir: string,
   codeQL: CodeQL,
   workspacePath: string,
   gitHubVersion: GitHubVersion,
@@ -968,7 +969,6 @@ export async function getDefaultConfig(
     packs,
     originalUserInput: {},
     tempDir,
-    toolCacheDir,
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
@@ -976,6 +976,9 @@ export async function getDefaultConfig(
     debugArtifactName,
     debugDatabaseName,
     injectedMlQueries,
+    trapCaches: trapCachingEnabled
+      ? await downloadTrapCaches(codeQL, languages, logger)
+      : {},
   };
 }
 
@@ -988,12 +991,12 @@ async function loadConfig(
   packsInput: string | undefined,
   configFile: string,
   dbLocation: string | undefined,
+  trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
-  toolCacheDir: string,
   codeQL: CodeQL,
   workspacePath: string,
   gitHubVersion: GitHubVersion,
@@ -1150,7 +1153,6 @@ async function loadConfig(
     packs,
     originalUserInput: parsedYAML,
     tempDir,
-    toolCacheDir,
     codeQLCmd: codeQL.getPath(),
     gitHubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
@@ -1158,6 +1160,9 @@ async function loadConfig(
     debugArtifactName,
     debugDatabaseName,
     injectedMlQueries,
+    trapCaches: trapCachingEnabled
+      ? await downloadTrapCaches(codeQL, languages, logger)
+      : {},
   };
 }
 
@@ -1316,7 +1321,13 @@ export function parsePacksSpecification(
 
   if (
     packPath &&
-    (path.isAbsolute(packPath) || path.normalize(packPath) !== packPath)
+    (path.isAbsolute(packPath) ||
+      // Permit using "/" instead of "\" on Windows
+      // Use `x.split(y).join(z)` as a polyfill for `x.replaceAll(y, z)` since
+      // if we used a regex we'd need to escape the path separator on Windows
+      // which seems more awkward.
+      path.normalize(packPath).split(path.sep).join("/") !==
+        packPath.split(path.sep).join("/"))
   ) {
     throw new Error(getPacksStrInvalid(packStr, configFile));
   }
@@ -1405,12 +1416,12 @@ export async function initConfig(
   packsInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
-  toolCacheDir: string,
   codeQL: CodeQL,
   workspacePath: string,
   gitHubVersion: GitHubVersion,
@@ -1428,12 +1439,12 @@ export async function initConfig(
       queriesInput,
       packsInput,
       dbLocation,
+      trapCachingEnabled,
       debugMode,
       debugArtifactName,
       debugDatabaseName,
       repository,
       tempDir,
-      toolCacheDir,
       codeQL,
       workspacePath,
       gitHubVersion,
@@ -1448,12 +1459,12 @@ export async function initConfig(
       packsInput,
       configFile,
       dbLocation,
+      trapCachingEnabled,
       debugMode,
       debugArtifactName,
       debugDatabaseName,
       repository,
       tempDir,
-      toolCacheDir,
       codeQL,
       workspacePath,
       gitHubVersion,

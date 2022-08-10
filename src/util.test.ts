@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as os from "os";
+import path from "path";
 import * as stream from "stream";
 
 import * as core from "@actions/core";
@@ -440,14 +441,46 @@ for (const [
   });
 }
 
-// TODO(angelapwen): Test doesDirectoryExist() returns true if directory
+test("doesDirectoryExist", (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "does-dir-exist-"));
 
-// TODO(angelapwen): Test doesDirectoryExist() returns false if file
+  const topLevelFile = "top-level-test-file.txt";
+  fs.writeFileSync(topLevelFile, "");
+  fs.writeFileSync(`${tmpDir}/nested-test-file.txt`, "");
 
-// TODO(angelapwen): Test doesDirectoryExist() returns false if no file of this type exists
+  // Returns true if directory
+  t.true(util.doesDirectoryExist(tmpDir));
 
-// TODO(angelapwen): Test listFolder() returns files in directory
+  // Returns false if file
+  t.false(util.doesDirectoryExist(topLevelFile));
 
-// TODO(angelapwen): Test listFolder() returns empty if not a directory
+  // Returns false if no file of this type exists
+  t.false(util.doesDirectoryExist("non-existent-file.txt"));
 
-// TODO(angelapwen): Test doesDirectoryExist() returns empty if directory is empty
+  // Clean up test files.
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+  fs.unlinkSync(topLevelFile);
+});
+
+test("listFolder", (t) => {
+  // Returns empty if not a directory
+  t.deepEqual(util.listFolder("not-a-directory"), []);
+
+  // Returns empty if directory is empty
+  const emptyTmpDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "list-folder-empty-")
+  );
+  t.deepEqual(util.listFolder(emptyTmpDir), []);
+  fs.rmSync(emptyTmpDir, { recursive: true, force: true });
+
+  // Returns all file names in directory
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "list-folder-"));
+  fs.writeFileSync(`${tmpDir}/test-file-1.txt`, "");
+  fs.writeFileSync(`${tmpDir}/test-file-2.txt`, "");
+  fs.writeFileSync(`${tmpDir}/test-file-3.txt`, "");
+  t.deepEqual(util.listFolder(tmpDir), [
+    `${tmpDir}/test-file-1.txt`,
+    `${tmpDir}/test-file-2.txt`,
+    `${tmpDir}/test-file-3.txt`,
+  ]);
+});

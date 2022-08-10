@@ -56,6 +56,7 @@ async function run() {
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),
       url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
     };
 
     const gitHubVersion = await getGitHubVersionActionsOnly();

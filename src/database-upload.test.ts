@@ -60,6 +60,7 @@ function getTestConfig(tmpDir: string): Config {
       packsInputCombines: false,
       queriesInputCombines: false,
     },
+    trapCaches: {},
   };
 }
 

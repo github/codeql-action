@@ -29,6 +29,7 @@ test("emptyPaths", async (t) => {
         packsInputCombines: false,
         queriesInputCombines: false,
       },
+      trapCaches: {},
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
@@ -58,6 +59,7 @@ test("nonEmptyPaths", async (t) => {
         packsInputCombines: false,
         queriesInputCombines: false,
       },
+      trapCaches: {},
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], "path1\npath2");
@@ -90,6 +92,7 @@ test("exclude temp dir", async (t) => {
       packsInputCombines: false,
       queriesInputCombines: false,
     },
+    trapCaches: {},
   };
   analysisPaths.includeAndExcludeAnalysisPaths(config);
   t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);

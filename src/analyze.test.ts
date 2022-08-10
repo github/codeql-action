@@ -117,6 +117,7 @@ test("status report fields and search path setting", async (t) => {
           packsInputCombines: false,
           queriesInputCombines: false,
         },
+        trapCaches: {},
       };
       fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
         recursive: true,
@@ -276,6 +277,7 @@ const stubConfig: Config = {
     packsInputCombines: false,
     queriesInputCombines: false,
   },
+  trapCaches: {},
 };
 
 for (const options of [

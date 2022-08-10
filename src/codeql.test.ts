@@ -57,6 +57,7 @@ test.beforeEach(() => {
       packsInputCombines: false,
       queriesInputCombines: false,
     },
+    trapCaches: {},
   };
 });
 

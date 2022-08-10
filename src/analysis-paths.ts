@@ -5,7 +5,7 @@ import { Logger } from "./logging";
 
 function isInterpretedLanguage(language): boolean {
   return (
-    language === "javascript" || language === "python" || language === "ruby"
+    language === "javascript" || language === "python" || language === "ruby" || language === "ql"
   );
 }
 

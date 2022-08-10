@@ -75,7 +75,6 @@ inputs:
   trap-caching:
     description: >-
       Explicitly enable or disable TRAP caching rather than respecting the feature flag for it.
-      This is currently a no-op, as the feature behind this has not been implemented yet.
     required: false
 outputs:
   codeql-path:

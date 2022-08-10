@@ -162,6 +162,7 @@ async function run() {
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
 
     // Possibly upload the TRAP caches for later re-use
+    const codeql = await getCodeQL(config.codeQLCmd);
     await uploadTrapCaches(codeql, config, logger);
 
     // We don't upload results in test mode, so don't wait for processing

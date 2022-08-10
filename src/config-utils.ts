@@ -190,6 +190,16 @@ export interface AugmentationProperties {
   injectedMlQueries: boolean;
 }
 
+/**
+ * The default, empty augmentation properties. This is most useeful
+ * for tests.
+ */
+export const defaultAugmentationProperties: AugmentationProperties = {
+  queriesInputCombines: false,
+  packsInputCombines: false,
+  injectedMlQueries: false,
+};
+
 export type Packs = Partial<Record<Language, string[]>>;
 
 /**

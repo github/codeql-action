@@ -8,7 +8,7 @@ import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
 import { setCodeQL } from "./codeql";
-import { Config } from "./config-utils";
+import { Config, defaultAugmentationProperties } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { Language } from "./languages";
 import { RepositoryNwo } from "./repository";
@@ -55,11 +55,7 @@ function getTestConfig(tmpDir: string): Config {
     debugMode: false,
     debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: {
-      injectedMlQueries: false,
-      packsInputCombines: false,
-      queriesInputCombines: false,
-    },
+    augmentationProperties: defaultAugmentationProperties,
     trapCaches: {},
   };
 }

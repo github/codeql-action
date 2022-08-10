@@ -31,11 +31,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: {
-      injectedMlQueries: false,
-      packsInputCombines: false,
-      queriesInputCombines: false,
-    },
+    augmentationProperties: configUtils.defaultAugmentationProperties,
     trapCaches: {},
   };
 }

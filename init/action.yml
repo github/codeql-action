@@ -72,6 +72,10 @@ inputs:
       The name of the database uploaded to the debugging artifact.
       This is only used when debug mode is enabled.
     required: false
+  trap-caching:
+    description: >-
+      Explicitly enable or disable TRAP caching rather than respecting the feature flag for it.
+    required: false
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

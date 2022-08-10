@@ -36,6 +36,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
       packsInputCombines: false,
       queriesInputCombines: false,
     },
+    trapCaches: {},
   };
 }
 

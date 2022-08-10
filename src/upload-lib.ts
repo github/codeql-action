@@ -524,7 +524,8 @@ export function validateUniqueCategory(sarif: SarifFile): void {
       if (process.env[sentinelEnvVar]) {
         throw new Error(
           "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
-            "The easiest fix is to specify a unique value for the `category` input. " +
+            "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
+            "in the sarif file, that will take precedence over your configured `category`. " +
             `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`
         );
       }

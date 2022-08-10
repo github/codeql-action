@@ -357,13 +357,7 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
-      augmentationProperties: {
-        injectedMlQueries: false,
-        packsInputCombines: false,
-        queriesInputCombines: false,
-        packsInput: undefined,
-        queriesInput: undefined,
-      },
+      augmentationProperties: configUtils.defaultAugmentationProperties,
       trapCaches: {},
     };
 

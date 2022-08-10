@@ -773,6 +773,9 @@ export function doesDirectoryExist(dirPath: string): boolean {
  * Returns a list of files in a given directory.
  */
 export function listFolder(dir: string): string[] {
+  if (!doesDirectoryExist(dir)) {
+    return [];
+  }
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   let files: string[] = [];
   for (const entry of entries) {

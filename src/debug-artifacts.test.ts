@@ -15,4 +15,9 @@ test("sanitizeArifactName", (t) => {
   );
 });
 
-// TODO(angelapwen): Test uploadDebugArtifacts if toUpload is empty
+test("uploadDebugArtifacts", async (t) => {
+  // Test that no error is thrown if artifacts list is empty.
+  await t.notThrowsAsync(
+    debugArtifacts.uploadDebugArtifacts([], "rootDir", "artifactName")
+  );
+});

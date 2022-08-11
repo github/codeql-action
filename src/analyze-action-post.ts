@@ -34,7 +34,7 @@ async function runWrapper() {
   try {
     await run(debugArtifacts.uploadSarifDebugArtifact);
   } catch (error) {
-    core.setFailed(`analyze action cleanup failed: ${error}`);
+    core.setFailed(`analyze post-action step failed: ${error}`);
     console.log(error);
   }
 }

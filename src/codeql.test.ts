@@ -24,11 +24,13 @@ setupTests(test);
 const sampleApiDetails = {
   auth: "token",
   url: "https://github.com",
+  apiURL: undefined,
 };
 
 const sampleGHAEApiDetails = {
   auth: "token",
   url: "https://example.githubenterprise.com",
+  apiURL: undefined,
 };
 
 let stubConfig: Config;

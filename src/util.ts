@@ -770,7 +770,7 @@ export function doesDirectoryExist(dirPath: string): boolean {
 }
 
 /**
- * Returns a list of files in a given directory.
+ * Returns a recursive list of files in a given directory.
  */
 export function listFolder(dir: string): string[] {
   if (!doesDirectoryExist(dir)) {

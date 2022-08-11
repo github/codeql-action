@@ -208,6 +208,7 @@ test("getGitHubVersion", async (t) => {
   const v = await util.getGitHubVersion({
     auth: "",
     url: "https://github.com",
+    apiURL: undefined,
   });
   t.deepEqual(util.GitHubVariant.DOTCOM, v.type);
 
@@ -215,6 +216,7 @@ test("getGitHubVersion", async (t) => {
   const v2 = await util.getGitHubVersion({
     auth: "",
     url: "https://ghe.example.com",
+    apiURL: undefined,
   });
   t.deepEqual(
     { type: util.GitHubVariant.GHES, version: "2.0" } as util.GitHubVersion,
@@ -225,6 +227,7 @@ test("getGitHubVersion", async (t) => {
   const ghae = await util.getGitHubVersion({
     auth: "",
     url: "https://example.githubenterprise.com",
+    apiURL: undefined,
   });
   t.deepEqual({ type: util.GitHubVariant.GHAE }, ghae);
 
@@ -232,6 +235,7 @@ test("getGitHubVersion", async (t) => {
   const v3 = await util.getGitHubVersion({
     auth: "",
     url: "https://ghe.example.com",
+    apiURL: undefined,
   });
   t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
 });

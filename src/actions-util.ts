@@ -891,8 +891,11 @@ export async function printDebugLogs(config: Config) {
       }
       for (const entry of entries) {
         if (entry.isFile()) {
-          core.startGroup(`CodeQL Debug Logs - ${language} - ${entry.name}`);
-          process.stdout.write(fs.readFileSync(path.resolve(dir, entry.name)));
+          const absolutePath = path.resolve(dir, entry.name);
+          core.startGroup(
+            `CodeQL Debug Logs - ${language} - ${entry.name} from file at path ${absolutePath}`
+          );
+          process.stdout.write(fs.readFileSync(absolutePath));
           core.endGroup();
         } else if (entry.isDirectory()) {
           walkLogFiles(path.resolve(dir, entry.name));

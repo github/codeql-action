@@ -74,3 +74,4 @@ outputs:
 runs:
   using: "node16"
   main: "../lib/analyze-action.js"
+  post: "../lib/analyze-action-post.js"

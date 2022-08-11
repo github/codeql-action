@@ -198,6 +198,8 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   queriesInputCombines: false,
   packsInputCombines: false,
   injectedMlQueries: false,
+  packsInput: undefined,
+  queriesInput: undefined,
 };
 
 export type Packs = Partial<Record<Language, string[]>>;

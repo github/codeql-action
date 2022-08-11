@@ -1234,13 +1234,16 @@ async function runTool(cmd: string, args: string[] = []) {
  * @param config The configuration to use.
  * @returns the path to the generated user configuration file.
  */
-async function generateCodescanningConfig(codeql: CodeQL, config: Config) {
+async function generateCodescanningConfig(
+  codeql: CodeQL,
+  config: Config
+): Promise<string | undefined> {
   if (!(await util.useCodeScanningConfigInCli(codeql))) {
     return;
   }
   const configLocation = path.resolve(config.tempDir, "user-config.yaml");
   // make a copy so we can modify it
-  const augmentedConfig = JSON.parse(JSON.stringify(config.originalUserInput));
+  const augmentedConfig = cloneObject(config.originalUserInput);
 
   // Inject the queries from the input
   if (config.augmentationProperties.queriesInput) {
@@ -1298,4 +1301,8 @@ async function generateCodescanningConfig(codeql: CodeQL, config: Config) {
 
   fs.writeFileSync(configLocation, yaml.dump(augmentedConfig));
   return configLocation;
+}
+
+function cloneObject(obj: any) {
+  return JSON.parse(JSON.stringify(obj));
 }

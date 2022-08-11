@@ -134,6 +134,7 @@ async function run() {
     auth: getRequiredInput("token"),
     externalRepoAuth: getOptionalInput("external-repository-token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
   };
 
   const gitHubVersion = await getGitHubVersionActionsOnly();

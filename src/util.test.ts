@@ -303,13 +303,13 @@ const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
   // If no packs are loaded, status is false.
   [[], "false"],
   // If another pack is loaded but not the ML-powered query pack, status is false.
-  [["someOtherPack"], "false"],
+  [["some-other/pack"], "false"],
   // If the ML-powered query pack is loaded with a specific version, status is that version.
   [[`${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
   // If the ML-powered query pack is loaded with a specific version and another pack is loaded, the
   // status is the version of the ML-powered query pack.
   [
-    ["someOtherPack", `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`],
+    ["some-other/pack", `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`],
     "~0.1.0",
   ],
   // If the ML-powered query pack is loaded without a version, the status is "latest".
@@ -324,7 +324,7 @@ const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
   ],
   // If the ML-powered query pack is loaded with no specific version, and another pack is loaded,
   // the status is "latest".
-  [["someOtherPack", util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
+  [["some-other/pack", util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
 ];
 
 for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {

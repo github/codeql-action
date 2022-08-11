@@ -223,6 +223,9 @@ export async function runQueries(
 
   for (const language of config.languages) {
     const queries = config.queries[language];
+    const queryFilters = validateQueryFilters(
+      config.originalUserInput["query-filters"]
+    );
     const packsWithVersion = config.packs[language] || [];
 
     const hasBuiltinQueries = queries?.builtin.length > 0;
@@ -260,7 +263,7 @@ export async function runQueries(
           await runQueryGroup(
             language,
             "builtin",
-            createQuerySuiteContents(queries["builtin"]),
+            createQuerySuiteContents(queries["builtin"], queryFilters),
             undefined
           )
         );
@@ -275,7 +278,10 @@ export async function runQueries(
             await runQueryGroup(
               language,
               `custom-${i}`,
-              createQuerySuiteContents(queries["custom"][i].queries),
+              createQuerySuiteContents(
+                queries["custom"][i].queries,
+                queryFilters
+              ),
               queries["custom"][i].searchPath
             )
           );
@@ -284,12 +290,7 @@ export async function runQueries(
       }
       if (packsWithVersion.length > 0) {
         querySuitePaths.push(
-          ...(await runQueryPacks(
-            language,
-            "packs",
-            packsWithVersion,
-            undefined
-          ))
+          await runQueryPacks(language, "packs", packsWithVersion, queryFilters)
         );
         ranCustom = true;
       }
@@ -394,32 +395,61 @@ export async function runQueries(
     language: Language,
     type: string,
     packs: string[],
-    searchPath: string | undefined
-  ): Promise<string[]> {
+    queryFilters: configUtils.QueryFilter[]
+  ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
-    // Run the queries individually instead of all at once to avoid command
-    // line length restrictions, particularly on windows.
 
     for (const pack of packs) {
       logger.debug(`Running query pack for ${language}-${type}: ${pack}`);
-
-      const codeql = await getCodeQL(config.codeQLCmd);
-      await codeql.databaseRunQueries(
-        databasePath,
-        searchPath,
-        pack,
-        memoryFlag,
-        threadsFlag
-      );
-
-      logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
     }
-    return packs;
+
+    // combine the list of packs into a query suite in order to run them all simultaneously.
+    const querySuite = (
+      packs.map(convertPackToQuerySuiteEntry) as configUtils.QuerySuiteEntry[]
+    ).concat(queryFilters);
+
+    const querySuitePath = `${databasePath}-queries-${type}.qls`;
+    fs.writeFileSync(querySuitePath, yaml.dump(querySuite));
+
+    logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
+
+    const codeql = await getCodeQL(config.codeQLCmd);
+    await codeql.databaseRunQueries(
+      databasePath,
+      undefined,
+      querySuitePath,
+      memoryFlag,
+      threadsFlag
+    );
+
+    return querySuitePath;
   }
 }
 
-function createQuerySuiteContents(queries: string[]) {
-  return queries.map((q: string) => `- query: ${q}`).join("\n");
+export function convertPackToQuerySuiteEntry(
+  packStr: string
+): configUtils.QuerySuitePackEntry {
+  const pack = configUtils.parsePacksSpecification(packStr);
+  return {
+    qlpack: !pack.path ? pack.name : undefined,
+    from: pack.path ? pack.name : undefined,
+    version: pack.version,
+    query: pack.path?.endsWith(".ql") ? pack.path : undefined,
+    queries:
+      !pack.path?.endsWith(".ql") && !pack.path?.endsWith(".qls")
+        ? pack.path
+        : undefined,
+    apply: pack.path?.endsWith(".qls") ? pack.path : undefined,
+  };
+}
+
+export function createQuerySuiteContents(
+  queries: string[],
+  queryFilters: configUtils.QueryFilter[]
+) {
+  return yaml.dump(
+    queries.map((q: string) => ({ query: q })).concat(queryFilters as any)
+  );
 }
 
 export async function runFinalize(
@@ -518,4 +548,34 @@ function printLinesOfCodeSummary(
       `Counted a baseline of ${lineCounts[language]} lines of code for ${language}.`
     );
   }
+}
+
+// exported for testing
+export function validateQueryFilters(queryFilters?: configUtils.QueryFilter[]) {
+  if (!queryFilters) {
+    return [];
+  }
+
+  const errors: string[] = [];
+  for (const qf of queryFilters) {
+    const keys = Object.keys(qf);
+    if (keys.length !== 1) {
+      errors.push(
+        `Query filter must have exactly one key: ${JSON.stringify(qf)}`
+      );
+    }
+    if (!["exclude", "include"].includes(keys[0])) {
+      errors.push(
+        `Only "include" or "exclude" filters are allowed:\n${JSON.stringify(
+          qf
+        )}`
+      );
+    }
+  }
+
+  if (errors.length) {
+    throw new Error(`Invalid query filter.\n${errors.join("\n")}`);
+  }
+
+  return queryFilters;
 }

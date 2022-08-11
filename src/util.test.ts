@@ -442,46 +442,44 @@ for (const [
   });
 }
 
-test("doesDirectoryExist", (t) => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "does-dir-exist-"));
+test("doesDirectoryExist", async (t) => {
+  await util.withTmpDir(async (tmpDir: string) => {
+    const topLevelFile = "top-level-test-file.txt";
+    fs.writeFileSync(topLevelFile, "");
+    fs.writeFileSync(`${tmpDir}/nested-test-file.txt`, "");
 
-  const topLevelFile = "top-level-test-file.txt";
-  fs.writeFileSync(topLevelFile, "");
-  fs.writeFileSync(`${tmpDir}/nested-test-file.txt`, "");
+    // Returns true if directory
+    t.true(util.doesDirectoryExist(tmpDir));
 
-  // Returns true if directory
-  t.true(util.doesDirectoryExist(tmpDir));
+    // Returns false if file
+    t.false(util.doesDirectoryExist(topLevelFile));
 
-  // Returns false if file
-  t.false(util.doesDirectoryExist(topLevelFile));
-
-  // Returns false if no file of this type exists
-  t.false(util.doesDirectoryExist("non-existent-file.txt"));
-
-  // Clean up test files.
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-  fs.unlinkSync(topLevelFile);
+    // Returns false if no file of this type exists
+    t.false(util.doesDirectoryExist("non-existent-file.txt"));
+  });
 });
 
-test("listFolder", (t) => {
-  // Returns empty if not a directory
-  t.deepEqual(util.listFolder("not-a-directory"), []);
+test("listFolder", async (t) => {
+  await util.withTmpDir(async (tmpDir: string) => {
+    // Returns empty if not a directory
+    t.deepEqual(util.listFolder("not-a-directory"), []);
 
-  // Returns empty if directory is empty
-  const emptyTmpDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "list-folder-empty-")
-  );
-  t.deepEqual(util.listFolder(emptyTmpDir), []);
-  fs.rmSync(emptyTmpDir, { recursive: true, force: true });
+    // Returns empty if directory is empty
+    const emptyTmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "list-folder-empty-")
+    );
+    t.deepEqual(util.listFolder(emptyTmpDir), []);
+    fs.rmSync(emptyTmpDir, { recursive: true, force: true });
 
-  // Returns all file names in directory
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "list-folder-"));
-  fs.writeFileSync(`${tmpDir}/test-file-1.txt`, "");
-  fs.writeFileSync(`${tmpDir}/test-file-2.txt`, "");
-  fs.writeFileSync(`${tmpDir}/test-file-3.txt`, "");
-  t.deepEqual(util.listFolder(tmpDir), [
-    `${tmpDir}/test-file-1.txt`,
-    `${tmpDir}/test-file-2.txt`,
-    `${tmpDir}/test-file-3.txt`,
-  ]);
+    // Returns all file names in directory
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "list-folder-"));
+    fs.writeFileSync(`${tmpDir}/test-file-1.txt`, "");
+    fs.writeFileSync(`${tmpDir}/test-file-2.txt`, "");
+    fs.writeFileSync(`${tmpDir}/test-file-3.txt`, "");
+    t.deepEqual(util.listFolder(tmpDir), [
+      `${tmpDir}/test-file-1.txt`,
+      `${tmpDir}/test-file-2.txt`,
+      `${tmpDir}/test-file-3.txt`,
+    ]);
+  });
 });

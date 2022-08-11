@@ -116,9 +116,12 @@ export async function uploadLogsDebugArtifact(config: Config) {
 /**
  * If a database has not been finalized, we cannot run the `codeql database bundle`
  * command in the CLI because it will return an error. Instead we directly zip
- * all files in the database folder and upload it as an artifact.
+ * all files in the database folder and return the path.
  */
-async function uploadPartialDatabaseBundle(config: Config, language: Language) {
+async function createPartialDatabaseBundle(
+  config: Config,
+  language: Language
+): Promise<string> {
   const databasePath = getCodeQLDatabasePath(config, language);
   const databaseBundlePath = path.resolve(
     config.dbLocation,
@@ -134,11 +137,24 @@ async function uploadPartialDatabaseBundle(config: Config, language: Language) {
   const zip = new AdmZip();
   zip.addLocalFolder(databasePath);
   zip.writeZip(databaseBundlePath);
-  await uploadDebugArtifacts(
-    [databaseBundlePath],
-    config.dbLocation,
-    config.debugArtifactName
+  return databaseBundlePath;
+}
+
+/**
+ * Runs `codeql database bundle` command and returns the path.
+ */
+async function createDatabaseBundleCli(
+  config: Config,
+  language: Language
+): Promise<string> {
+  // Otherwise run `codeql database bundle` command.
+  const databaseBundlePath = await bundleDb(
+    config,
+    language,
+    await getCodeQL(config.codeQLCmd),
+    `${config.debugDatabaseName}-${language}`
   );
+  return databaseBundlePath;
 }
 
 export async function uploadDatabaseBundleDebugArtifact(
@@ -146,26 +162,24 @@ export async function uploadDatabaseBundleDebugArtifact(
   logger: Logger
 ) {
   for (const language of config.languages) {
-    if (!dbIsFinalized(config, language, logger)) {
-      await uploadPartialDatabaseBundle(config, language);
-      continue;
-    }
     try {
-      // Otherwise run `codeql database bundle` command.
-      const bundlePath = await bundleDb(
-        config,
-        language,
-        await getCodeQL(config.codeQLCmd),
-        `${config.debugDatabaseName}-${language}`
-      );
+      let databaseBundlePath;
+      if (!dbIsFinalized(config, language, logger)) {
+        databaseBundlePath = await createPartialDatabaseBundle(
+          config,
+          language
+        );
+      } else {
+        databaseBundlePath = await createDatabaseBundleCli(config, language);
+      }
       await uploadDebugArtifacts(
-        [bundlePath],
+        [databaseBundlePath],
         config.dbLocation,
         config.debugArtifactName
       );
     } catch (error) {
       core.info(
-        `Failed to upload database debug bundles for ${config.debugDatabaseName}-${language}: ${error}`
+        `Failed to upload database debug bundle for ${config.debugDatabaseName}-${language}: ${error}`
       );
     }
   }

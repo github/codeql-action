@@ -876,7 +876,6 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
 }
 
 export async function printDebugLogs(config: Config) {
-  core.info("Debug mode is on. Printing CodeQL debug logs...");
   for (const language of config.languages) {
     const databaseDirectory = getCodeQLDatabasePath(config, language);
     const logsDirectory = path.join(databaseDirectory, "log");

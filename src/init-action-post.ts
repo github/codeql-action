@@ -45,7 +45,7 @@ async function runWrapper() {
       actionsUtil.printDebugLogs
     );
   } catch (error) {
-    core.setFailed(`init action cleanup failed: ${error}`);
+    core.setFailed(`init post-action step failed: ${error}`);
     console.log(error);
   }
 }

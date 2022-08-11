@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as os from "os";
+import path from "path";
 import * as stream from "stream";
 
 import * as core from "@actions/core";
@@ -444,3 +445,45 @@ for (const [
     isActionsStub.restore();
   });
 }
+
+test("doesDirectoryExist", async (t) => {
+  // Returns false if no file/dir of this name exists
+  t.false(util.doesDirectoryExist("non-existent-file.txt"));
+
+  await util.withTmpDir(async (tmpDir: string) => {
+    // Returns false if file
+    const testFile = `${tmpDir}/test-file.txt`;
+    fs.writeFileSync(testFile, "");
+    t.false(util.doesDirectoryExist(testFile));
+
+    // Returns true if directory
+    fs.writeFileSync(`${tmpDir}/nested-test-file.txt`, "");
+    t.true(util.doesDirectoryExist(tmpDir));
+  });
+});
+
+test("listFolder", async (t) => {
+  // Returns empty if not a directory
+  t.deepEqual(util.listFolder("not-a-directory"), []);
+
+  // Returns empty if directory is empty
+  await util.withTmpDir(async (emptyTmpDir: string) => {
+    t.deepEqual(util.listFolder(emptyTmpDir), []);
+  });
+
+  // Returns all file names in directory
+  await util.withTmpDir(async (tmpDir: string) => {
+    const nestedDir = fs.mkdtempSync(path.join(tmpDir, "nested-"));
+    fs.writeFileSync(path.resolve(nestedDir, "nested-test-file.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-1.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-2.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-3.txt"), "");
+
+    t.deepEqual(util.listFolder(tmpDir), [
+      path.resolve(nestedDir, "nested-test-file.txt"),
+      path.resolve(tmpDir, "test-file-1.txt"),
+      path.resolve(tmpDir, "test-file-2.txt"),
+      path.resolve(tmpDir, "test-file-3.txt"),
+    ]);
+  });
+});

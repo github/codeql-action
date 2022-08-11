@@ -38,6 +38,7 @@ const testRepoName: RepositoryNwo = { owner: "github", repo: "example" };
 const testApiDetails: GitHubApiDetails = {
   auth: "1234",
   url: "https://github.com",
+  apiURL: undefined,
 };
 
 function getTestConfig(tmpDir: string): Config {

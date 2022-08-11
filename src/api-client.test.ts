@@ -87,6 +87,23 @@ test("Get the client API with github url", async (t) => {
   );
 });
 
+test("Get the API with an API URL directly", async (t) => {
+  doTest(
+    t,
+    {
+      auth: "xyz",
+      url: "http://github.localhost",
+      apiURL: "http://api.github.localhost",
+    },
+    undefined,
+    {
+      auth: "token xyz",
+      baseUrl: "http://api.github.localhost",
+      userAgent: `CodeQL-Action/${pkg.version}`,
+    }
+  );
+});
+
 function doTest(
   t: ExecutionContext<unknown>,
   clientArgs: any,

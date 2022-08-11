@@ -762,3 +762,34 @@ export async function checkActionVersion(version: string) {
 export function isInTestMode(): boolean {
   return process.env["TEST_MODE"] === "true" || false;
 }
+
+/*
+ * Returns whether the path in the argument represents an existing directory.
+ */
+export function doesDirectoryExist(dirPath: string): boolean {
+  try {
+    const stats = fs.lstatSync(dirPath);
+    return stats.isDirectory();
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Returns a recursive list of files in a given directory.
+ */
+export function listFolder(dir: string): string[] {
+  if (!doesDirectoryExist(dir)) {
+    return [];
+  }
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  let files: string[] = [];
+  for (const entry of entries) {
+    if (entry.isFile()) {
+      files.push(path.resolve(dir, entry.name));
+    } else if (entry.isDirectory()) {
+      files = files.concat(listFolder(path.resolve(dir, entry.name)));
+    }
+  }
+  return files;
+}

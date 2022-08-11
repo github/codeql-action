@@ -24,6 +24,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
   await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_SERVER_URL"] = util.GITHUB_DOTCOM_URL;
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    process.env["GITHUB_API_URL"] = "https://api.github.com";
     sinon
       .stub(actionsUtil, "createStatusReportBase")
       .resolves({} as actionsUtil.StatusReportBase);

@@ -96,6 +96,7 @@ async function run() {
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),
       url: util.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiURL: util.getRequiredEnvParam("GITHUB_API_URL"),
     };
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(

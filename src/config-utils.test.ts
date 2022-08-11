@@ -20,6 +20,7 @@ const sampleApiDetails = {
   auth: "token",
   externalRepoAuth: "token",
   url: "https://github.example.com",
+  apiURL: undefined,
 };
 
 const gitHubVersion = { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion;

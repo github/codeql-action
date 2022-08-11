@@ -470,15 +470,16 @@ test("listFolder", async (t) => {
   // Returns all file names in directory
   await util.withTmpDir(async (tmpDir: string) => {
     const nestedDir = fs.mkdtempSync(path.join(tmpDir, "nested-"));
-    fs.writeFileSync(`${nestedDir}/nested-test-file.txt`, "");
-    fs.writeFileSync(`${tmpDir}/test-file-1.txt`, "");
-    fs.writeFileSync(`${tmpDir}/test-file-2.txt`, "");
-    fs.writeFileSync(`${tmpDir}/test-file-3.txt`, "");
+    fs.writeFileSync(path.resolve(nestedDir, "nested-test-file.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-1.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-2.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-3.txt"), "");
+
     t.deepEqual(util.listFolder(tmpDir), [
-      `${nestedDir}/nested-test-file.txt`,
-      `${tmpDir}/test-file-1.txt`,
-      `${tmpDir}/test-file-2.txt`,
-      `${tmpDir}/test-file-3.txt`,
+      path.resolve(nestedDir, "nested-test-file.txt"),
+      path.resolve(tmpDir, "test-file-1.txt"),
+      path.resolve(tmpDir, "test-file-2.txt"),
+      path.resolve(tmpDir, "test-file-3.txt"),
     ]);
   });
 });

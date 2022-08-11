@@ -443,16 +443,16 @@ for (const [
 }
 
 test("doesDirectoryExist", async (t) => {
-  const topLevelFile = "top-level-test-file.txt";
-  fs.writeFileSync(topLevelFile, "");
-  // Returns false if file
-  t.false(util.doesDirectoryExist(topLevelFile));
-
-  // Returns false if no file of this type exists
+  // Returns false if no file/dir of this name exists
   t.false(util.doesDirectoryExist("non-existent-file.txt"));
 
-  // Returns true if directory
   await util.withTmpDir(async (tmpDir: string) => {
+    // Returns false if file
+    const testFile = `${tmpDir}/test-file.txt`;
+    fs.writeFileSync(testFile, "");
+    t.false(util.doesDirectoryExist(testFile));
+
+    // Returns true if directory
     fs.writeFileSync(`${tmpDir}/nested-test-file.txt`, "");
     t.true(util.doesDirectoryExist(tmpDir));
   });

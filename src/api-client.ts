@@ -38,10 +38,7 @@ export const getApiClient = function (
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
-  let apiURL = apiDetails.apiURL;
-  if (!apiURL) {
-    apiURL = deriveApiUrl(apiDetails.url);
-  }
+  const apiURL = apiDetails.apiURL || deriveApiUrl(apiDetails.url);
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiURL,

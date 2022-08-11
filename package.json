@@ -31,6 +31,7 @@
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^3.0.9",
     "@octokit/types": "^6.21.1",
+    "adm-zip": "^0.5.9",
     "commander": "^8.1.0",
     "console-log-level": "^1.4.1",
     "del": "^6.0.0",
@@ -54,6 +55,7 @@
   ],
   "devDependencies": {
     "@ava/typescript": "3.0.1",
+    "@types/adm-zip": "^0.5.0",
     "@types/js-yaml": "^4.0.5",
     "@types/long": "4.0.1",
     "@types/node": "16.11.22",

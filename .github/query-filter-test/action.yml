@@ -1,5 +1,5 @@
 name: Query Filter Test
-description: Runs a test of query filters using the check sarif action
+description: Runs a test of query filters using the check SARIF action
 inputs:
   sarif-file:
     required: true

@@ -1623,7 +1623,7 @@ function parseInputAndConfigMacro(
     configUtils.parsePacks(
       packsFromConfig,
       packsFromInput,
-      !!packsFromInput?.trim().startsWith("+"),
+      !!packsFromInput?.trim().startsWith("+"), // coerce to boolean
       languages,
       "/a/b",
       mockLogger

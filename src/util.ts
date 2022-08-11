@@ -776,8 +776,7 @@ export async function useCodeScanningConfigInCli(
   codeql: CodeQL
 ): Promise<boolean> {
   return (
-    (process.env[EnvVar.CODEQL_PASS_CONFIG_TO_CLI] === "true" &&
-      (await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES))) ||
-    false
+    process.env[EnvVar.CODEQL_PASS_CONFIG_TO_CLI] === "true" &&
+    (await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES))
   );
 }

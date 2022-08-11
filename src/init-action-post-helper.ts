@@ -1,4 +1,3 @@
-// REVIEW: What do you think about the name of this file?
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";

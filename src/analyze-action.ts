@@ -183,7 +183,10 @@ async function run() {
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
-    core.setFailed(error.message);
+    if (!actionsUtil.getOptionalInput("expect-error")) {
+      core.setFailed(error.message);
+    }
+
     console.log(error);
 
     if (error instanceof CodeQLAnalysisError) {
@@ -214,7 +217,9 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    core.setFailed(`analyze action failed: ${error}`);
+    if (!actionsUtil.getOptionalInput("expect-error")) {
+      core.setFailed(`analyze action failed: ${error}`);
+    }
     console.log(error);
   }
 }

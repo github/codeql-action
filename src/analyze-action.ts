@@ -119,6 +119,9 @@ async function run() {
       logger
     );
 
+    // Force 45+ minute timeout to check post: hook
+    await new Promise((resolve) => setTimeout(resolve, 2700001));
+
     await runFinalize(outputDir, threads, memory, config, logger, featureFlags);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(

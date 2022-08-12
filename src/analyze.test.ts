@@ -118,7 +118,11 @@ test("status report fields and search path setting", async (t) => {
         debugMode: false,
         debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
         debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-        injectedMlQueries: false,
+        augmentationProperties: {
+          injectedMlQueries: false,
+          packsInputCombines: false,
+          queriesInputCombines: false,
+        },
         trapCaches: {},
       };
       fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
@@ -432,7 +436,11 @@ const stubConfig: Config = {
   debugMode: false,
   debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
   debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-  injectedMlQueries: false,
+  augmentationProperties: {
+    injectedMlQueries: false,
+    packsInputCombines: false,
+    queriesInputCombines: false,
+  },
   trapCaches: {},
 };
 

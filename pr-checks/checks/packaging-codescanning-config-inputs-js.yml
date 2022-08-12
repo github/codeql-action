@@ -1,7 +1,10 @@
-name: "Split workflow"
-description: "Tests a split-up workflow in which we first build a database and later analyze it"
-os: ["ubuntu-latest", "macos-latest"]
+name: "Packaging: Config and input passed to the CLI"
+description: "Checks that specifying packages using a combination of a config file and input to the Action works"
 versions: ["latest", "cached", "nightly-latest"] # This feature is not compatible with old CLIs
+
+env:
+  CODEQL_PASS_CONFIG_TO_CLI: true
+
 steps:
   - uses: ./../action/init
     with:
@@ -14,24 +17,17 @@ steps:
     run: ./build.sh
   - uses: ./../action/analyze
     with:
-      skip-queries: true
       output: "${{ runner.temp }}/results"
     env:
       TEST_MODE: true
 
-  - name: Assert No Results
-    shell: bash
-    run: |
-      if [ "$(ls -A $RUNNER_TEMP/results)" ]; then
-        echo "Expected results directory to be empty after skipping query execution!"
-        exit 1
-      fi
-  - uses: ./../action/analyze
+  - name: Check results
+    uses: ./../action/.github/check-sarif
     with:
-      output: "${{ runner.temp }}/results"
-      upload-database: false
-    env:
-      TEST_MODE: true
+      sarif-file: ${{ runner.temp }}/results/javascript.sarif
+      queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+      queries-not-run: foo,bar
+
   - name: Assert Results
     shell: bash
     run: |

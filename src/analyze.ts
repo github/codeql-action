@@ -221,6 +221,7 @@ export async function runQueries(
     );
   }
 
+  const codeql = await getCodeQL(config.codeQLCmd);
   for (const language of config.languages) {
     const queries = config.queries[language];
     const queryFilters = validateQueryFilters(
@@ -238,85 +239,122 @@ export async function runQueries(
       );
     }
 
-    const codeql = await getCodeQL(config.codeQLCmd);
     try {
-      if (hasPackWithCustomQueries) {
-        logger.info("Performing analysis with custom CodeQL Packs.");
-        logger.startGroup(`Downloading custom packs for ${language}`);
-
-        const results = await codeql.packDownload(packsWithVersion);
-
-        logger.info(
-          `Downloaded packs: ${results.packs
-            .map((r) => `${r.name}@${r.version || "latest"}`)
-            .join(", ")}`
-        );
-
-        logger.endGroup();
-      }
-
-      logger.startGroup(`Running queries for ${language}`);
-      const querySuitePaths: string[] = [];
-      if (queries["builtin"].length > 0) {
+      if (await util.useCodeScanningConfigInCli(codeql)) {
+        // If we are using the codescanning config in the CLI,
+        // much of the work needed to generate the query suites
+        // is done in the CLI. We just need to make a single
+        // call to run all the queries for each language and
+        // another to interpret the results.
+        logger.startGroup(`Running queries for ${language}`);
         const startTimeBuiltIn = new Date().getTime();
-        querySuitePaths.push(
-          await runQueryGroup(
-            language,
-            "builtin",
-            createQuerySuiteContents(queries["builtin"], queryFilters),
-            undefined
-          )
-        );
+        await runQueryGroup(language, "all", undefined, undefined);
+        // TODO should not be using `builtin` here. We should be using `all` instead.
+        // The status report does not support `all` yet.
         statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
           new Date().getTime() - startTimeBuiltIn;
-      }
-      const startTimeCustom = new Date().getTime();
-      let ranCustom = false;
-      for (let i = 0; i < queries["custom"].length; ++i) {
-        if (queries["custom"][i].queries.length > 0) {
+
+        logger.startGroup(`Interpreting results for ${language}`);
+        const startTimeInterpretResults = new Date().getTime();
+        const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+        const analysisSummary = await runInterpretResults(
+          language,
+          undefined,
+          sarifFile,
+          config.debugMode
+        );
+        statusReport[`interpret_results_${language}_duration_ms`] =
+          new Date().getTime() - startTimeInterpretResults;
+        logger.endGroup();
+        logger.info(analysisSummary);
+      } else {
+        if (hasPackWithCustomQueries) {
+          logger.info("Performing analysis with custom CodeQL Packs.");
+          logger.startGroup(`Downloading custom packs for ${language}`);
+
+          const results = await codeql.packDownload(packsWithVersion);
+
+          logger.info(
+            `Downloaded packs: ${results.packs
+              .map((r) => `${r.name}@${r.version || "latest"}`)
+              .join(", ")}`
+          );
+
+          logger.endGroup();
+        }
+
+        logger.startGroup(`Running queries for ${language}`);
+        const querySuitePaths: string[] = [];
+        if (queries["builtin"].length > 0) {
+          const startTimeBuiltIn = new Date().getTime();
           querySuitePaths.push(
-            await runQueryGroup(
+            (await runQueryGroup(
               language,
-              `custom-${i}`,
-              createQuerySuiteContents(
-                queries["custom"][i].queries,
-                queryFilters
-              ),
-              queries["custom"][i].searchPath
+              "builtin",
+              createQuerySuiteContents(queries["builtin"], queryFilters),
+              undefined
+            )) as string
+          );
+          statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
+            new Date().getTime() - startTimeBuiltIn;
+        }
+        const startTimeCustom = new Date().getTime();
+        let ranCustom = false;
+        for (let i = 0; i < queries["custom"].length; ++i) {
+          if (queries["custom"][i].queries.length > 0) {
+            querySuitePaths.push(
+              (await runQueryGroup(
+                language,
+                `custom-${i}`,
+                createQuerySuiteContents(
+                  queries["custom"][i].queries,
+                  queryFilters
+                ),
+                queries["custom"][i].searchPath
+              )) as string
+            );
+            ranCustom = true;
+          }
+        }
+        if (packsWithVersion.length > 0) {
+          querySuitePaths.push(
+            await runQueryPacks(
+              language,
+              "packs",
+              packsWithVersion,
+              queryFilters
             )
           );
           ranCustom = true;
         }
-      }
-      if (packsWithVersion.length > 0) {
-        querySuitePaths.push(
-          await runQueryPacks(language, "packs", packsWithVersion, queryFilters)
+        if (ranCustom) {
+          statusReport[`analyze_custom_queries_${language}_duration_ms`] =
+            new Date().getTime() - startTimeCustom;
+        }
+        logger.endGroup();
+        logger.startGroup(`Interpreting results for ${language}`);
+        const startTimeInterpretResults = new Date().getTime();
+        const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+        const analysisSummary = await runInterpretResults(
+          language,
+          querySuitePaths,
+          sarifFile,
+          config.debugMode
         );
-        ranCustom = true;
+        if (!cliCanCountBaseline) {
+          await injectLinesOfCode(sarifFile, language, locPromise);
+        }
+        statusReport[`interpret_results_${language}_duration_ms`] =
+          new Date().getTime() - startTimeInterpretResults;
+        logger.endGroup();
+        logger.info(analysisSummary);
       }
-      if (ranCustom) {
-        statusReport[`analyze_custom_queries_${language}_duration_ms`] =
-          new Date().getTime() - startTimeCustom;
-      }
-      logger.endGroup();
-      logger.startGroup(`Interpreting results for ${language}`);
-      const startTimeInterpretResults = new Date().getTime();
-      const sarifFile = path.join(sarifFolder, `${language}.sarif`);
-      const analysisSummary = await runInterpretResults(
-        language,
-        querySuitePaths,
-        sarifFile,
-        config.debugMode
-      );
-      if (!cliCanCountBaseline)
-        await injectLinesOfCode(sarifFile, language, locPromise);
-      statusReport[`interpret_results_${language}_duration_ms`] =
-        new Date().getTime() - startTimeInterpretResults;
-      logger.endGroup();
-      logger.info(analysisSummary);
-      if (!cliCanCountBaseline || countLocDebugMode)
+      if (!cliCanCountBaseline || countLocDebugMode) {
         printLinesOfCodeSummary(logger, language, await locPromise);
-      if (cliCanCountBaseline) logger.info(await runPrintLinesOfCode(language));
+      }
+      if (cliCanCountBaseline) {
+        logger.info(await runPrintLinesOfCode(language));
+      }
     } catch (e) {
       logger.info(String(e));
       if (e instanceof Error) {
@@ -334,12 +372,11 @@ export async function runQueries(
 
   async function runInterpretResults(
     language: Language,
-    queries: string[],
+    queries: string[] | undefined,
     sarifFile: string,
     enableDebugLogging: boolean
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
-    const codeql = await getCodeQL(config.codeQLCmd);
     return await codeql.databaseInterpretResults(
       databasePath,
       queries,
@@ -360,26 +397,27 @@ export async function runQueries(
 
   async function runPrintLinesOfCode(language: Language): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
-    const codeql = await getCodeQL(config.codeQLCmd);
     return await codeql.databasePrintBaseline(databasePath);
   }
 
   async function runQueryGroup(
     language: Language,
     type: string,
-    querySuiteContents: string,
+    querySuiteContents: string | undefined,
     searchPath: string | undefined
-  ): Promise<string> {
+  ): Promise<string | undefined> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     // Pass the queries to codeql using a file instead of using the command
     // line to avoid command line length restrictions, particularly on windows.
-    const querySuitePath = `${databasePath}-queries-${type}.qls`;
-    fs.writeFileSync(querySuitePath, querySuiteContents);
-    logger.debug(
-      `Query suite file for ${language}-${type}...\n${querySuiteContents}`
-    );
-
-    const codeql = await getCodeQL(config.codeQLCmd);
+    const querySuitePath = querySuiteContents
+      ? `${databasePath}-queries-${type}.qls`
+      : undefined;
+    if (querySuiteContents && querySuitePath) {
+      fs.writeFileSync(querySuitePath, querySuiteContents);
+      logger.debug(
+        `Query suite file for ${language}-${type}...\n${querySuiteContents}`
+      );
+    }
     await codeql.databaseRunQueries(
       databasePath,
       searchPath,
@@ -413,7 +451,6 @@ export async function runQueries(
 
     logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
 
-    const codeql = await getCodeQL(config.codeQLCmd);
     await codeql.databaseRunQueries(
       databasePath,
       undefined,

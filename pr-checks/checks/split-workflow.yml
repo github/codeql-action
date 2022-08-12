@@ -18,6 +18,7 @@ steps:
       output: "${{ runner.temp }}/results"
     env:
       TEST_MODE: true
+
   - name: Assert No Results
     shell: bash
     run: |

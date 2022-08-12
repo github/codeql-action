@@ -67,7 +67,7 @@ inputs:
   matrix:
     default: ${{ toJson(matrix) }}
   expect-error:
-    description: [Internal] If true, the Action will not set Actions status to failure.
+    description: "[Internal] If true, the Action will not set Actions status to failure."
     required: false
     default: "false"
 outputs:

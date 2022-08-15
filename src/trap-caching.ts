@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as cache from "@actions/cache";
+import fastFolderSizeSync from "fast-folder-size/sync";
 
 import * as actionsUtil from "./actions-util";
 import { CodeQL, CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES } from "./codeql";
@@ -171,6 +172,23 @@ export async function getLanguagesSupportingCaching(
       }
     }
     result.push(lang);
+  }
+  return result;
+}
+
+export async function getTotalCacheSize(
+  trapCaches: Partial<Record<Language, string>>
+): Promise<number> {
+  const sizes = await Promise.all(
+    Object.values(trapCaches).map(async (cacheDir) => {
+      return fastFolderSizeSync(cacheDir);
+    })
+  );
+  let result = 0;
+  for (const size of sizes) {
+    if (size === undefined)
+      throw new Error(`Could not get size of TRAP caches!`);
+    result += size;
   }
   return result;
 }

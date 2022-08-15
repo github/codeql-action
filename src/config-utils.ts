@@ -676,6 +676,14 @@ export function getQueriesInvalid(configFile: string): string {
   );
 }
 
+export function getQueriesMissingUses(configFile: string): string {
+  return getConfigFilePropertyError(
+    configFile,
+    QUERIES_PROPERTY,
+    "must be an array, with each entry having a 'uses' property"
+  );
+}
+
 export function getQueryUsesInvalid(
   configFile: string | undefined,
   queryUses?: string
@@ -1149,11 +1157,8 @@ async function loadConfig(
       throw new Error(getQueriesInvalid(configFile));
     }
     for (const query of queriesArr) {
-      if (
-        !(QUERIES_USES_PROPERTY in query) ||
-        typeof query[QUERIES_USES_PROPERTY] !== "string"
-      ) {
-        throw new Error(getQueryUsesInvalid(configFile));
+      if (typeof query[QUERIES_USES_PROPERTY] !== "string") {
+        throw new Error(getQueriesMissingUses(configFile));
       }
       await parseQueryUses(
         languages,

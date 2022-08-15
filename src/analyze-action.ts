@@ -15,7 +15,7 @@ import { uploadDatabases } from "./database-upload";
 import { GitHubFeatureFlags } from "./feature-flags";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { uploadTrapCaches } from "./trap-caching";
+import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
@@ -29,13 +29,18 @@ interface AnalysisStatusReport
 
 interface FinishStatusReport
   extends actionsUtil.StatusReportBase,
-    AnalysisStatusReport {}
+    AnalysisStatusReport {
+  trap_cache_upload_size_bytes: number;
+  trap_cache_upload_duration_ms: number;
+}
 
 export async function sendStatusReport(
   startedAt: Date,
   config: Config | undefined,
   stats: AnalysisStatusReport | undefined,
-  error?: Error
+  error?: Error,
+  trapCacheUploadTime?: number,
+  didUploadTrapCaches?: boolean
 ) {
   const status = actionsUtil.getActionsStatus(
     error,
@@ -57,6 +62,11 @@ export async function sendStatusReport(
         }
       : {}),
     ...(stats || {}),
+    trap_cache_upload_duration_ms: trapCacheUploadTime || 0,
+    trap_cache_upload_size_bytes:
+      config && didUploadTrapCaches
+        ? await getTotalCacheSize(config.trapCaches)
+        : 0,
   };
   await actionsUtil.sendStatusReport(statusReport);
 }
@@ -66,6 +76,8 @@ async function run() {
   let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  let trapCacheUploadTime: number | undefined = undefined;
+  let didUploadTrapCaches = false;
   util.initializeEnvironment(util.Mode.actions, pkg.version);
   await util.checkActionVersion(pkg.version);
 
@@ -163,8 +175,10 @@ async function run() {
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
 
     // Possibly upload the TRAP caches for later re-use
+    const trapCacheUploadStartTime = Date.now();
     const codeql = await getCodeQL(config.codeQLCmd);
-    await uploadTrapCaches(codeql, config, logger);
+    trapCacheUploadTime = Date.now() - trapCacheUploadStartTime;
+    didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
@@ -188,23 +202,58 @@ async function run() {
 
     if (error instanceof CodeQLAnalysisError) {
       const stats = { ...error.queriesStatusReport };
-      await sendStatusReport(startedAt, config, stats, error);
+      await sendStatusReport(
+        startedAt,
+        config,
+        stats,
+        error,
+        trapCacheUploadTime,
+        didUploadTrapCaches
+      );
     } else {
-      await sendStatusReport(startedAt, config, undefined, error);
+      await sendStatusReport(
+        startedAt,
+        config,
+        undefined,
+        error,
+        trapCacheUploadTime,
+        didUploadTrapCaches
+      );
     }
 
     return;
   }
 
   if (runStats && uploadResult) {
-    await sendStatusReport(startedAt, config, {
-      ...runStats,
-      ...uploadResult.statusReport,
-    });
+    await sendStatusReport(
+      startedAt,
+      config,
+      {
+        ...runStats,
+        ...uploadResult.statusReport,
+      },
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches
+    );
   } else if (runStats) {
-    await sendStatusReport(startedAt, config, { ...runStats });
+    await sendStatusReport(
+      startedAt,
+      config,
+      { ...runStats },
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches
+    );
   } else {
-    await sendStatusReport(startedAt, config, undefined);
+    await sendStatusReport(
+      startedAt,
+      config,
+      undefined,
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches
+    );
   }
 }
 

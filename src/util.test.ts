@@ -357,6 +357,7 @@ for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
           queriesInputCombines: false,
         },
         trapCaches: {},
+        trapCacheDownloadTime: 0,
       };
 
       t.is(util.getMlPoweredJsQueriesStatus(config), expectedStatus);

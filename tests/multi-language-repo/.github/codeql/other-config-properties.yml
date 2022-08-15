@@ -1,0 +1,9 @@
+name: Config using all properties
+
+disable-default-queries: true
+
+paths-ignore:
+  - xxx
+
+paths:
+  - yyy

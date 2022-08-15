@@ -90,7 +90,10 @@ async function run() {
     }
 
     const expectError = actionsUtil.getOptionalInput("expect-error");
-    if (expectError && !actionsUtil.isAnalyzingCodeQLActionRepoOrFork()) {
+    if (
+      expectError === "true" &&
+      !actionsUtil.isAnalyzingCodeQLActionRepoOrFork()
+    ) {
       throw new Error(
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork."
       );
@@ -190,7 +193,7 @@ async function run() {
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
-    if (!actionsUtil.getOptionalInput("expect-error")) {
+    if (actionsUtil.getOptionalInput("expect-error") === "false") {
       core.setFailed(error.message);
     }
 
@@ -224,7 +227,7 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    if (!actionsUtil.getOptionalInput("expect-error")) {
+    if (actionsUtil.getOptionalInput("expect-error") === "false") {
       core.setFailed(`analyze action failed: ${error}`);
     }
     console.log(error);

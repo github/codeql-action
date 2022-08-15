@@ -81,6 +81,15 @@ jobs:
         path: ${{ runner.temp }}/results/javascript.sarif
         retention-days: 7
 
+    - name: Check sarif
+      uses: ./../action/.github/check-sarif
+      if: matrix.os != 'windows-latest' || matrix.version == 'latest' || matrix.version
+        == 'nightly-latest'
+      with:
+        sarif-file: ${{ runner.temp }}/results/javascript.sarif
+        queries-run: js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
+        queries-not-run: foo,bar
+
     - name: Check results
     # Running ML-powered queries on Windows requires CodeQL CLI 2.9.0+. We don't run these checks
     # against Windows and `cached` while CodeQL CLI 2.9.0 makes its way into `cached` to avoid the

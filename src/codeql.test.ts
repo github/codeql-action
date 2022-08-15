@@ -1,13 +1,16 @@
+import * as fs from "fs";
 import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
-import test from "ava";
+import test, { ExecutionContext } from "ava";
+import del from "del";
+import * as yaml from "js-yaml";
 import nock from "nock";
 import * as sinon from "sinon";
 
 import * as codeql from "./codeql";
-import { Config } from "./config-utils";
+import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
@@ -30,8 +33,34 @@ const sampleGHAEApiDetails = {
   apiURL: undefined,
 };
 
+let stubConfig: Config;
+
 test.beforeEach(() => {
   initializeEnvironment(Mode.actions, "1.2.3");
+
+  stubConfig = {
+    languages: [Language.cpp],
+    queries: {},
+    pathsIgnore: [],
+    paths: [],
+    originalUserInput: {},
+    tempDir: "",
+    codeQLCmd: "",
+    gitHubVersion: {
+      type: util.GitHubVariant.DOTCOM,
+    } as util.GitHubVersion,
+    dbLocation: "",
+    packs: {},
+    debugMode: false,
+    debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
+    debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
+    augmentationProperties: {
+      injectedMlQueries: false,
+      packsInputCombines: false,
+      queriesInputCombines: false,
+    },
+    trapCaches: {},
+  };
 });
 
 test("download codeql bundle cache", async (t) => {
@@ -420,26 +449,6 @@ test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (
   );
 });
 
-const stubConfig: Config = {
-  languages: [Language.cpp],
-  queries: {},
-  pathsIgnore: [],
-  paths: [],
-  originalUserInput: {},
-  tempDir: "",
-  codeQLCmd: "",
-  gitHubVersion: {
-    type: util.GitHubVariant.DOTCOM,
-  } as util.GitHubVersion,
-  dbLocation: "",
-  packs: {},
-  debugMode: false,
-  debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-  debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-  injectedMlQueries: false,
-  trapCaches: {},
-};
-
 test("databaseInitCluster() Lua feature flag enabled, but old CLI", async (t) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
@@ -530,6 +539,392 @@ test("databaseInitCluster() Lua feature flag disabled, compatible CLI", async (t
     ),
     "--no-internal-use-lua-tracing should be present, but it is absent"
   );
+});
+
+test("databaseInitCluster() without injected codescanning config", async (t) => {
+  await util.withTmpDir(async (tempDir) => {
+    const runnerConstructorStub = stubToolRunnerConstructor();
+    const codeqlObject = await codeql.getCodeQLForTesting();
+    sinon.stub(codeqlObject, "getVersion").resolves("2.8.1");
+
+    const thisStubConfig: Config = {
+      ...stubConfig,
+      tempDir,
+      augmentationProperties: {
+        injectedMlQueries: false,
+        queriesInputCombines: false,
+        packsInputCombines: false,
+      },
+    };
+
+    await codeqlObject.databaseInitCluster(
+      thisStubConfig,
+      "",
+      undefined,
+      undefined,
+      createFeatureFlags([])
+    );
+
+    const args = runnerConstructorStub.firstCall.args[1];
+    // should NOT have used an config file
+    const configArg = args.find((arg: string) =>
+      arg.startsWith("--codescanning-config=")
+    );
+    t.falsy(configArg, "Should have injected a codescanning config");
+  });
+});
+
+// Test macro for ensuring different variants of injected augmented configurations
+const injectedConfigMacro = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    augmentationProperties: AugmentationProperties,
+    configOverride: Partial<Config>,
+    expectedConfig: any
+  ) => {
+    const origCODEQL_PASS_CONFIG_TO_CLI = process.env.CODEQL_PASS_CONFIG_TO_CLI;
+    process.env["CODEQL_PASS_CONFIG_TO_CLI"] = "true";
+    try {
+      await util.withTmpDir(async (tempDir) => {
+        const runnerConstructorStub = stubToolRunnerConstructor();
+        const codeqlObject = await codeql.getCodeQLForTesting();
+        sinon
+          .stub(codeqlObject, "getVersion")
+          .resolves(codeql.CODEQL_VERSION_CONFIG_FILES);
+
+        const thisStubConfig: Config = {
+          ...stubConfig,
+          ...configOverride,
+          tempDir,
+          augmentationProperties,
+        };
+
+        await codeqlObject.databaseInitCluster(
+          thisStubConfig,
+          "",
+          undefined,
+          undefined,
+          createFeatureFlags([])
+        );
+
+        const args = runnerConstructorStub.firstCall.args[1];
+        // should have used an config file
+        const configArg = args.find((arg: string) =>
+          arg.startsWith("--codescanning-config=")
+        );
+        t.truthy(configArg, "Should have injected a codescanning config");
+        const configFile = configArg.split("=")[1];
+        const augmentedConfig = yaml.load(fs.readFileSync(configFile, "utf8"));
+        t.deepEqual(augmentedConfig, expectedConfig);
+
+        await del(configFile, { force: true });
+      });
+    } finally {
+      process.env["CODEQL_PASS_CONFIG_TO_CLI"] = origCODEQL_PASS_CONFIG_TO_CLI;
+    }
+  },
+
+  title: (providedTitle = "") =>
+    `databaseInitCluster() injected config: ${providedTitle}`,
+});
+
+test(
+  "basic",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+  },
+  {},
+  {}
+);
+
+test(
+  "injected ML queries",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: true,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+  },
+  {},
+  {
+    packs: ["codeql/javascript-experimental-atm-queries@~0.3.0"],
+  }
+);
+
+test(
+  "injected ML queries with existing packs",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: true,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+  },
+  {
+    originalUserInput: {
+      packs: { javascript: ["codeql/something-else"] },
+    },
+  },
+  {
+    packs: {
+      javascript: [
+        "codeql/something-else",
+        "codeql/javascript-experimental-atm-queries@~0.3.0",
+      ],
+    },
+  }
+);
+
+test(
+  "injected ML queries with existing packs of different language",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: true,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+  },
+  {
+    originalUserInput: {
+      packs: { cpp: ["codeql/something-else"] },
+    },
+  },
+  {
+    packs: {
+      cpp: ["codeql/something-else"],
+      javascript: ["codeql/javascript-experimental-atm-queries@~0.3.0"],
+    },
+  }
+);
+
+test(
+  "injected packs from input",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+    packsInput: ["xxx", "yyy"],
+  },
+  {},
+  {
+    packs: ["xxx", "yyy"],
+  }
+);
+
+test(
+  "injected packs from input with existing packs combines",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: false,
+    packsInputCombines: true,
+    packsInput: ["xxx", "yyy"],
+  },
+  {
+    originalUserInput: {
+      packs: {
+        cpp: ["codeql/something-else"],
+      },
+    },
+  },
+  {
+    packs: {
+      cpp: ["codeql/something-else", "xxx", "yyy"],
+    },
+  }
+);
+
+test(
+  "injected packs from input with existing packs overrides",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+    packsInput: ["xxx", "yyy"],
+  },
+  {
+    originalUserInput: {
+      packs: {
+        cpp: ["codeql/something-else"],
+      },
+    },
+  },
+  {
+    packs: ["xxx", "yyy"],
+  }
+);
+
+test(
+  "injected packs from input with existing packs overrides and ML model inject",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: true,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+    packsInput: ["xxx", "yyy"],
+  },
+  {
+    originalUserInput: {
+      packs: {
+        cpp: ["codeql/something-else"],
+      },
+    },
+  },
+  {
+    packs: ["xxx", "yyy", "codeql/javascript-experimental-atm-queries@~0.3.0"],
+  }
+);
+
+// similar, but with queries
+test(
+  "injected queries from input",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+  },
+  {},
+  {
+    queries: [
+      {
+        uses: "xxx",
+      },
+      {
+        uses: "yyy",
+      },
+    ],
+  }
+);
+
+test(
+  "injected queries from input overrides",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: false,
+    packsInputCombines: false,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "zzz" }],
+    },
+  },
+  {
+    queries: [
+      {
+        uses: "xxx",
+      },
+      {
+        uses: "yyy",
+      },
+    ],
+  }
+);
+
+test(
+  "injected queries from input combines",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: true,
+    packsInputCombines: false,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "zzz" }],
+    },
+  },
+  {
+    queries: [
+      {
+        uses: "zzz",
+      },
+      {
+        uses: "xxx",
+      },
+      {
+        uses: "yyy",
+      },
+    ],
+  }
+);
+
+test(
+  "injected queries from input combines 2",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: true,
+    packsInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+  },
+  {},
+  {
+    queries: [
+      {
+        uses: "xxx",
+      },
+      {
+        uses: "yyy",
+      },
+    ],
+  }
+);
+
+test(
+  "injected queries and packs, but empty",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: true,
+    packsInputCombines: true,
+    queriesInput: [],
+    packsInput: [],
+  },
+  {
+    originalUserInput: {
+      packs: [],
+      queries: [],
+    },
+  },
+  {}
+);
+
+test("does not use injected confg", async (t: ExecutionContext<unknown>) => {
+  const origCODEQL_PASS_CONFIG_TO_CLI = process.env.CODEQL_PASS_CONFIG_TO_CLI;
+  process.env["CODEQL_PASS_CONFIG_TO_CLI"] = "false";
+
+  try {
+    const runnerConstructorStub = stubToolRunnerConstructor();
+    const codeqlObject = await codeql.getCodeQLForTesting();
+    sinon
+      .stub(codeqlObject, "getVersion")
+      .resolves(codeql.CODEQL_VERSION_CONFIG_FILES);
+
+    await codeqlObject.databaseInitCluster(
+      stubConfig,
+      "",
+      undefined,
+      undefined,
+      createFeatureFlags([])
+    );
+
+    const args = runnerConstructorStub.firstCall.args[1];
+    // should have used an config file
+    const configArg = args.find((arg: string) =>
+      arg.startsWith("--codescanning-config=")
+    );
+    t.falsy(configArg, "Should NOT have injected a codescanning config");
+  } finally {
+    process.env["CODEQL_PASS_CONFIG_TO_CLI"] = origCODEQL_PASS_CONFIG_TO_CLI;
+  }
 });
 
 export function stubToolRunnerConstructor(): sinon.SinonStub<

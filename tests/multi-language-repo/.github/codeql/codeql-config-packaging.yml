@@ -6,9 +6,6 @@ packs:
     - dsp-testing/codeql-pack1@1.0.0
     - dsp-testing/codeql-pack2
     - dsp-testing/codeql-pack3:other-query.ql
-  ruby:
-    - dsp-testing/hucairz
-    - dsp-testing/i-dont-exist@1.0.0
 
 paths-ignore:
   - tests

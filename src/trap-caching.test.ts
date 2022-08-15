@@ -79,7 +79,11 @@ const testConfigWithoutTmpDir: Config = {
   debugMode: false,
   debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
   debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-  injectedMlQueries: false,
+  augmentationProperties: {
+    injectedMlQueries: false,
+    packsInputCombines: false,
+    queriesInputCombines: false,
+  },
   trapCaches: {
     javascript: "/some/cache/dir",
   },
@@ -100,7 +104,11 @@ function getTestConfigWithTempDir(tmpDir: string): configUtils.Config {
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    injectedMlQueries: false,
+    augmentationProperties: {
+      injectedMlQueries: false,
+      packsInputCombines: false,
+      queriesInputCombines: false,
+    },
     trapCaches: {
       javascript: path.resolve(tmpDir, "jsCache"),
       ruby: path.resolve(tmpDir, "rubyCache"),

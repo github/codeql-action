@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Packaging: Action input'
+name: 'PR Check - Packaging: Config and input passed to the CLI'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,7 +21,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  packaging-inputs-js:
+  packaging-codescanning-config-inputs-js:
     strategy:
       matrix:
         include:
@@ -47,7 +47,7 @@ jobs:
           version: nightly-latest
         - os: windows-2022
           version: nightly-latest
-    name: 'Packaging: Action input'
+    name: 'Packaging: Config and input passed to the CLI'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -60,9 +60,9 @@ jobs:
         version: ${{ matrix.version }}
     - uses: ./../action/init
       with:
-        config-file: .github/codeql/codeql-config-packaging2.yml
+        config-file: .github/codeql/codeql-config-packaging3.yml
+        packs: +dsp-testing/codeql-pack1@1.0.0
         languages: javascript
-        packs: dsp-testing/codeql-pack1@1.0.0, dsp-testing/codeql-pack2, dsp-testing/codeql-pack3:other-query.ql
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - name: Build code
       shell: bash
@@ -95,4 +95,6 @@ jobs:
           exit 1
         fi
     env:
+      CODEQL_PASS_CONFIG_TO_CLI: true
+
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

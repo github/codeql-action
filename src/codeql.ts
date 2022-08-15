@@ -5,6 +5,7 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
+import * as yaml from "js-yaml";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -152,7 +153,7 @@ export interface CodeQL {
   databaseRunQueries(
     databasePath: string,
     extraSearchPath: string | undefined,
-    querySuitePath: string,
+    querySuitePath: string | undefined,
     memoryFlag: string,
     threadsFlag: string
   ): Promise<void>;
@@ -161,7 +162,7 @@ export interface CodeQL {
    */
   databaseInterpretResults(
     databasePath: string,
-    querySuitePaths: string[],
+    querySuitePaths: string[] | undefined,
     sarifFile: string,
     addSnippetsFlag: string,
     threadsFlag: string,
@@ -248,6 +249,7 @@ export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
+export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL
@@ -778,6 +780,12 @@ async function getCodeQLForCmd(
           }
         }
       }
+
+      const configLocation = await generateCodescanningConfig(codeql, config);
+      if (configLocation) {
+        extraArgs.push(`--codescanning-config=${configLocation}`);
+      }
+
       await runTool(cmd, [
         "database",
         "init",
@@ -967,7 +975,7 @@ async function getCodeQLForCmd(
     async databaseRunQueries(
       databasePath: string,
       extraSearchPath: string | undefined,
-      querySuitePath: string,
+      querySuitePath: string | undefined,
       memoryFlag: string,
       threadsFlag: string
     ): Promise<void> {
@@ -984,12 +992,14 @@ async function getCodeQLForCmd(
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      codeqlArgs.push(querySuitePath);
+      if (querySuitePath) {
+        codeqlArgs.push(querySuitePath);
+      }
       await runTool(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
       databasePath: string,
-      querySuitePaths: string[],
+      querySuitePaths: string[] | undefined,
       sarifFile: string,
       addSnippetsFlag: string,
       threadsFlag: string,
@@ -1021,7 +1031,9 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       codeqlArgs.push(databasePath);
-      codeqlArgs.push(...querySuitePaths);
+      if (querySuitePaths) {
+        codeqlArgs.push(...querySuitePaths);
+      }
       // capture stdout, which contains analysis summaries
       return await runTool(cmd, codeqlArgs);
     },
@@ -1212,4 +1224,85 @@ async function runTool(cmd: string, args: string[] = []) {
   if (exitCode !== 0)
     throw new CommandInvocationError(cmd, args, exitCode, error);
   return output;
+}
+
+/**
+ * If appropriate, generates a code scanning configuration that is to be used for a scan.
+ * If the configuration is not to be generated, returns undefined.
+ *
+ * @param codeql The CodeQL object to use.
+ * @param config The configuration to use.
+ * @returns the path to the generated user configuration file.
+ */
+async function generateCodescanningConfig(
+  codeql: CodeQL,
+  config: Config
+): Promise<string | undefined> {
+  if (!(await util.useCodeScanningConfigInCli(codeql))) {
+    return;
+  }
+  const configLocation = path.resolve(config.tempDir, "user-config.yaml");
+  // make a copy so we can modify it
+  const augmentedConfig = cloneObject(config.originalUserInput);
+
+  // Inject the queries from the input
+  if (config.augmentationProperties.queriesInput) {
+    if (config.augmentationProperties.queriesInputCombines) {
+      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
+        config.augmentationProperties.queriesInput
+      );
+    } else {
+      augmentedConfig.queries = config.augmentationProperties.queriesInput;
+    }
+  }
+  if (augmentedConfig.queries?.length === 0) {
+    delete augmentedConfig.queries;
+  }
+
+  // Inject the packs from the input
+  if (config.augmentationProperties.packsInput) {
+    if (config.augmentationProperties.packsInputCombines) {
+      // At this point, we already know that this is a single-language analysis
+      if (Array.isArray(augmentedConfig.packs)) {
+        augmentedConfig.packs = (augmentedConfig.packs || []).concat(
+          config.augmentationProperties.packsInput
+        );
+      } else if (!augmentedConfig.packs) {
+        augmentedConfig.packs = config.augmentationProperties.packsInput;
+      } else {
+        // At this point, we know there is only one language.
+        // If there were more than one language, an error would already have been thrown.
+        const language = Object.keys(augmentedConfig.packs)[0];
+        augmentedConfig.packs[language] = augmentedConfig.packs[
+          language
+        ].concat(config.augmentationProperties.packsInput);
+      }
+    } else {
+      augmentedConfig.packs = config.augmentationProperties.packsInput;
+    }
+  }
+  if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
+    delete augmentedConfig.packs;
+  }
+  if (config.augmentationProperties.injectedMlQueries) {
+    // We need to inject the ML queries into the original user input before
+    // we pass this on to the CLI, to make sure these get run.
+    const packString = await util.getMlPoweredJsQueriesPack(codeql);
+
+    if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
+    if (Array.isArray(augmentedConfig.packs)) {
+      augmentedConfig.packs.push(packString);
+    } else {
+      if (!augmentedConfig.packs.javascript)
+        augmentedConfig.packs["javascript"] = [];
+      augmentedConfig.packs["javascript"].push(packString);
+    }
+  }
+
+  fs.writeFileSync(configLocation, yaml.dump(augmentedConfig));
+  return configLocation;
+}
+
+function cloneObject(obj: any) {
+  return JSON.parse(JSON.stringify(obj));
 }

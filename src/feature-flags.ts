@@ -33,6 +33,11 @@ export class GitHubFeatureFlags implements FeatureFlags {
   ) {}
 
   async getValue(flag: FeatureFlag): Promise<boolean> {
+    // Bypassing the toolcache is disabled in test mode.
+    if (flag === FeatureFlag.BypassToolcacheEnabled && util.isInTestMode()) {
+      return false;
+    }
+
     const response = await this.getApiResponse();
     if (response === undefined) {
       this.logger.debug(

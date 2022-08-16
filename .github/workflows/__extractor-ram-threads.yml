@@ -43,6 +43,8 @@ jobs:
         languages: java
         ram: 230
         threads: 1
+      env:
+        TEST_MODE: true
     - name: Assert Results
       shell: bash
       run: |

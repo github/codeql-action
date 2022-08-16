@@ -771,7 +771,7 @@ export async function checkActionVersion(version: string) {
  * In test mode, we don't upload SARIF results or status reports to the GitHub API.
  */
 export function isInTestMode(): boolean {
-  return process.env["TEST_MODE"] === "true" || false;
+  return process.env["TEST_MODE"] === "true";
 }
 
 /**

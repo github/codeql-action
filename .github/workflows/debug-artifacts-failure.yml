@@ -39,6 +39,8 @@ jobs:
           debug: true
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
+        env:
+          TEST_MODE: true
       - name: Build code
         shell: bash
         run: ./build.sh
@@ -46,6 +48,8 @@ jobs:
         id: analysis  
         with:
           ram: 1
+        env:
+          TEST_MODE: true
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts

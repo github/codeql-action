@@ -48,6 +48,8 @@ jobs:
       with:
         languages: csharp
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
     - uses: ./../action/autobuild
       env:
       # Explicitly disable the CLR tracer.

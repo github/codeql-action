@@ -8,8 +8,9 @@ export interface FeatureFlags {
 }
 
 export enum FeatureFlag {
-  MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
+  BypassToolcacheEnabled = "bypass_toolcache_enabled",
   LuaTracerConfigEnabled = "lua_tracer_config_enabled",
+  MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
 }
 

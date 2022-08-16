@@ -88,6 +88,16 @@ async function run() {
         "Config file could not be found at expected location. Has the 'init' action been called?"
       );
     }
+
+    if (
+      actionsUtil.getOptionalInput("expect-error") === "true" &&
+      !actionsUtil.isAnalyzingCodeQLActionRepoOrFork()
+    ) {
+      throw new Error(
+        "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork."
+      );
+    }
+
     await util.enrichEnvironment(
       util.Mode.actions,
       await getCodeQL(config.codeQLCmd)
@@ -119,16 +129,6 @@ async function run() {
       repositoryNwo,
       logger
     );
-
-    const expectError = actionsUtil.getOptionalInput("expect-error");
-    if (
-      expectError === "true" &&
-      !actionsUtil.isAnalyzingCodeQLActionRepoOrFork()
-    ) {
-      throw new Error(
-        "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork."
-      );
-    }
 
     await runFinalize(outputDir, threads, memory, config, logger, featureFlags);
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {

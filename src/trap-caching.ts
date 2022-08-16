@@ -180,7 +180,7 @@ async function cacheKey(
   language: Language,
   baseSha: string
 ): Promise<string> {
-  return `${await cachePrefix(codeql, language)}-${baseSha}`;
+  return `${await cachePrefix(codeql, language)}${baseSha}`;
 }
 
 async function cachePrefix(

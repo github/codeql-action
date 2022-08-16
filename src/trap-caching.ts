@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as cache from "@actions/cache";
+import getFolderSize from "get-folder-size";
 
 import * as actionsUtil from "./actions-util";
 import { CodeQL, CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES } from "./codeql";
@@ -118,12 +119,19 @@ export async function downloadTrapCaches(
   return result;
 }
 
+/**
+ * Possibly upload TRAP caches to the Actions cache.
+ * @param codeql The CodeQL instance to use.
+ * @param config The configuration for this workflow.
+ * @param logger A logger to record some informational messages to.
+ * @returns Whether the TRAP caches were uploaded.
+ */
 export async function uploadTrapCaches(
   codeql: CodeQL,
   config: Config,
   logger: Logger
-): Promise<void> {
-  if (!(await actionsUtil.isAnalyzingDefaultBranch())) return; // Only upload caches from the default branch
+): Promise<boolean> {
+  if (!(await actionsUtil.isAnalyzingDefaultBranch())) return false; // Only upload caches from the default branch
 
   const toAwait: Array<Promise<number>> = [];
   for (const language of config.languages) {
@@ -138,6 +146,7 @@ export async function uploadTrapCaches(
     toAwait.push(cache.saveCache([cacheDir], key));
   }
   await Promise.all(toAwait);
+  return true;
 }
 
 export async function getLanguagesSupportingCaching(
@@ -173,6 +182,27 @@ export async function getLanguagesSupportingCaching(
     result.push(lang);
   }
   return result;
+}
+
+export async function getTotalCacheSize(
+  trapCaches: Partial<Record<Language, string>>,
+  logger: Logger
+): Promise<number> {
+  const sizes = await Promise.all(
+    Object.values(trapCaches).map(async (cacheDir) => {
+      return new Promise<number>((resolve) => {
+        getFolderSize(cacheDir, (err, size) => {
+          if (err) {
+            logger.warning(`Error getting size of ${cacheDir}: ${err}`);
+            resolve(0);
+          } else {
+            resolve(size);
+          }
+        });
+      });
+    })
+  );
+  return sizes.reduce((a, b) => a + b, 0);
 }
 
 async function cacheKey(

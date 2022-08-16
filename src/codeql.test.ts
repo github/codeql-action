@@ -13,7 +13,7 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { createFeatureFlags, FeatureFlag } from "./feature-flags";
+import { createFeatureFlags, FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars } from "./testing-utils";
@@ -66,17 +66,19 @@ test.beforeEach(() => {
 });
 
 async function mockApiAndSetupCodeQL({
-  version,
+  apiDetails,
+  featureFlags,
   isPinned,
   tmpDir,
   toolsInput,
-  apiDetails,
+  version,
 }: {
-  version: string;
+  apiDetails?: GitHubApiDetails;
+  featureFlags?: FeatureFlags;
   isPinned?: boolean;
   tmpDir: string;
   toolsInput?: { input?: string };
-  apiDetails?: GitHubApiDetails;
+  version: string;
 }) {
   const platform =
     process.platform === "win32"
@@ -105,7 +107,7 @@ async function mockApiAndSetupCodeQL({
     apiDetails ?? sampleApiDetails,
     tmpDir,
     util.GitHubVariant.DOTCOM,
-    createFeatureFlags([]),
+    featureFlags ?? createFeatureFlags([]),
     getRunnerLogger(true),
     false
   );
@@ -217,6 +219,57 @@ test('download codeql bundle cache with pinned different version cached if "late
     t.is(cachedVersions.length, 2);
   });
 });
+
+const TOOLCACHE_BYPASS_TEST_CASES: Array<
+  [boolean, string | undefined, boolean]
+> = [
+  [true, undefined, true],
+  [false, undefined, false],
+  [
+    true,
+    "https://github.com/github/codeql-action/releases/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
+    false,
+  ],
+];
+
+for (const [
+  isFeatureFlagEnabled,
+  toolsInput,
+  shouldToolcacheBeBypassed,
+] of TOOLCACHE_BYPASS_TEST_CASES) {
+  test(`download codeql bundle ${
+    shouldToolcacheBeBypassed ? "bypasses" : "does not bypass"
+  } toolcache when feature flag ${
+    isFeatureFlagEnabled ? "enabled" : "disabled"
+  } and tools: ${toolsInput} passed`, async (t) => {
+    await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      await mockApiAndSetupCodeQL({
+        version: "codeql-bundle-20200601",
+        apiDetails: sampleApiDetails,
+        isPinned: true,
+        tmpDir,
+      });
+
+      t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
+
+      await mockApiAndSetupCodeQL({
+        version: defaults.bundleVersion,
+        apiDetails: sampleApiDetails,
+        featureFlags: createFeatureFlags(
+          isFeatureFlagEnabled ? [FeatureFlag.BypassToolcacheEnabled] : []
+        ),
+        toolsInput: { input: toolsInput },
+        tmpDir,
+      });
+
+      const cachedVersions = toolcache.findAllVersions("CodeQL");
+
+      t.is(cachedVersions.length, shouldToolcacheBeBypassed ? 2 : 1);
+    });
+  });
+}
 
 test("download codeql bundle from github ae endpoint", async (t) => {
   await util.withTmpDir(async (tmpDir) => {

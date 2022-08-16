@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { promisify } from "util";
 
 import * as cache from "@actions/cache";
 import getFolderSize from "get-folder-size";
@@ -188,21 +189,17 @@ export async function getTotalCacheSize(
   trapCaches: Partial<Record<Language, string>>,
   logger: Logger
 ): Promise<number> {
-  const sizes = await Promise.all(
-    Object.values(trapCaches).map(async (cacheDir) => {
-      return new Promise<number>((resolve) => {
-        getFolderSize(cacheDir, (err, size) => {
-          if (err) {
-            logger.warning(`Error getting size of ${cacheDir}: ${err}`);
-            resolve(0);
-          } else {
-            resolve(size);
-          }
-        });
-      });
-    })
-  );
-  return sizes.reduce((a, b) => a + b, 0);
+  try {
+    const sizes = await Promise.all(
+      Object.values(trapCaches).map(async (cacheDir) => {
+        return promisify<string, number>(getFolderSize)(cacheDir);
+      })
+    );
+    return sizes.reduce((a, b) => a + b, 0);
+  } catch (e) {
+    logger.warning(`Encountered an error while getting TRAP cache size: ${e}`);
+    return 0;
+  }
 }
 
 async function cacheKey(

@@ -907,8 +907,6 @@ export async function printDebugLogs(config: Config) {
 export function isAnalyzingCodeQLActionRepoOrFork(): boolean {
   const codeQLActionRepoUrl = `https://api.github.com/repos/${CODEQL_DEFAULT_ACTION_REPOSITORY}`;
   const repo = getWorkflowEvent()?.repository;
-  core.info(`repo is ${repo}`);
-  core.info(`repo URL is ${repo?.url}`);
   if (repo?.url === codeQLActionRepoUrl) {
     return true;
   }

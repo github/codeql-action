@@ -1052,13 +1052,16 @@ async function downloadCacheWithTime(
   codeQL: CodeQL,
   languages: Language[],
   logger: Logger
-) {
+): Promise<{
+  trapCaches: Partial<Record<Language, string>>;
+  trapCacheDownloadTime: number;
+}> {
   let trapCaches = {};
   let trapCacheDownloadTime = 0;
   if (trapCachingEnabled) {
-    const start = Date.now();
+    const start = performance.now();
     trapCaches = await downloadTrapCaches(codeQL, languages, logger);
-    trapCacheDownloadTime = Date.now() - start;
+    trapCacheDownloadTime = performance.now() - start;
   }
   return { trapCaches, trapCacheDownloadTime };
 }

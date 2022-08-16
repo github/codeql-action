@@ -13,7 +13,7 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { GitHubFeatureFlags } from "./feature-flags";
-import { getActionsLogger } from "./logging";
+import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
@@ -29,8 +29,12 @@ interface AnalysisStatusReport
 
 interface FinishStatusReport
   extends actionsUtil.StatusReportBase,
-    AnalysisStatusReport {
+    AnalysisStatusReport {}
+
+interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
+  /** Size of TRAP caches that we uploaded, in bytes. */
   trap_cache_upload_size_bytes: number;
+  /** Time taken to upload TRAP caches, in milliseconds. */
   trap_cache_upload_duration_ms: number;
 }
 
@@ -38,9 +42,10 @@ export async function sendStatusReport(
   startedAt: Date,
   config: Config | undefined,
   stats: AnalysisStatusReport | undefined,
-  error?: Error,
-  trapCacheUploadTime?: number,
-  didUploadTrapCaches?: boolean
+  error: Error | undefined,
+  trapCacheUploadTime: number | undefined,
+  didUploadTrapCaches: boolean,
+  logger: Logger
 ) {
   const status = actionsUtil.getActionsStatus(
     error,
@@ -62,13 +67,20 @@ export async function sendStatusReport(
         }
       : {}),
     ...(stats || {}),
-    trap_cache_upload_duration_ms: trapCacheUploadTime || 0,
-    trap_cache_upload_size_bytes:
-      config && didUploadTrapCaches
-        ? await getTotalCacheSize(config.trapCaches)
-        : 0,
   };
-  await actionsUtil.sendStatusReport(statusReport);
+  if (config && didUploadTrapCaches) {
+    const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
+      ...statusReport,
+      trap_cache_upload_duration_ms: trapCacheUploadTime || 0,
+      trap_cache_upload_size_bytes: await getTotalCacheSize(
+        config.trapCaches,
+        logger
+      ),
+    };
+    await actionsUtil.sendStatusReport(trapCacheUploadStatusReport);
+  } else {
+    await actionsUtil.sendStatusReport(statusReport);
+  }
 }
 
 async function run() {
@@ -81,6 +93,7 @@ async function run() {
   util.initializeEnvironment(util.Mode.actions, pkg.version);
   await util.checkActionVersion(pkg.version);
 
+  const logger = getActionsLogger();
   try {
     if (
       !(await actionsUtil.sendStatusReport(
@@ -93,7 +106,6 @@ async function run() {
     ) {
       return;
     }
-    const logger = getActionsLogger();
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
@@ -175,9 +187,9 @@ async function run() {
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
 
     // Possibly upload the TRAP caches for later re-use
-    const trapCacheUploadStartTime = Date.now();
+    const trapCacheUploadStartTime = performance.now();
     const codeql = await getCodeQL(config.codeQLCmd);
-    trapCacheUploadTime = Date.now() - trapCacheUploadStartTime;
+    trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
 
     // We don't upload results in test mode, so don't wait for processing
@@ -208,7 +220,8 @@ async function run() {
         stats,
         error,
         trapCacheUploadTime,
-        didUploadTrapCaches
+        didUploadTrapCaches,
+        logger
       );
     } else {
       await sendStatusReport(
@@ -217,7 +230,8 @@ async function run() {
         undefined,
         error,
         trapCacheUploadTime,
-        didUploadTrapCaches
+        didUploadTrapCaches,
+        logger
       );
     }
 
@@ -234,7 +248,8 @@ async function run() {
       },
       undefined,
       trapCacheUploadTime,
-      didUploadTrapCaches
+      didUploadTrapCaches,
+      logger
     );
   } else if (runStats) {
     await sendStatusReport(
@@ -243,7 +258,8 @@ async function run() {
       { ...runStats },
       undefined,
       trapCacheUploadTime,
-      didUploadTrapCaches
+      didUploadTrapCaches,
+      logger
     );
   } else {
     await sendStatusReport(
@@ -252,7 +268,8 @@ async function run() {
       undefined,
       undefined,
       trapCacheUploadTime,
-      didUploadTrapCaches
+      didUploadTrapCaches,
+      logger
     );
   }
 }

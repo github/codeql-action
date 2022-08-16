@@ -185,15 +185,19 @@ export async function getLanguagesSupportingCaching(
 }
 
 export async function getTotalCacheSize(
-  trapCaches: Partial<Record<Language, string>>
+  trapCaches: Partial<Record<Language, string>>,
+  logger: Logger
 ): Promise<number> {
   const sizes = await Promise.all(
     Object.values(trapCaches).map(async (cacheDir) => {
       return new Promise<number>((resolve) => {
         getFolderSize(cacheDir, (err, size) => {
-          // Ignore file system errors when getting the size. It's only used for telemetry anyway.
-          if (err) resolve(0);
-          resolve(size);
+          if (err) {
+            logger.warning(`Error getting size of ${cacheDir}: ${err}`);
+            resolve(0);
+          } else {
+            resolve(size);
+          }
         });
       });
     })

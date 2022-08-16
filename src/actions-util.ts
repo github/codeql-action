@@ -910,6 +910,7 @@ export function isAnalyzingCodeQLActionRepoOrFork(): boolean {
   if (repo?.url === codeQLActionRepoUrl) {
     return true;
   }
+  // TODO(angelapwen): Check if fork logic works.
   if (repo?.fork && repo?.parent?.url === codeQLActionRepoUrl) {
     return true;
   }

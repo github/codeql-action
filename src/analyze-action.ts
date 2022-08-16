@@ -61,6 +61,13 @@ export async function sendStatusReport(
   await actionsUtil.sendStatusReport(statusReport);
 }
 
+function hasBadExpectErrorInput(): boolean {
+  return (
+    actionsUtil.getOptionalInput("expect-error") === "true" &&
+    !actionsUtil.isAnalyzingCodeQLActionRepoOrFork()
+  );
+}
+
 async function run() {
   const startedAt = new Date();
   let uploadResult: UploadResult | undefined = undefined;
@@ -89,10 +96,7 @@ async function run() {
       );
     }
 
-    if (
-      actionsUtil.getOptionalInput("expect-error") === "true" &&
-      !actionsUtil.isAnalyzingCodeQLActionRepoOrFork()
-    ) {
+    if (hasBadExpectErrorInput()) {
       throw new Error(
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork."
       );
@@ -193,7 +197,10 @@ async function run() {
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
-    if (actionsUtil.getOptionalInput("expect-error") === "false") {
+    if (
+      actionsUtil.getOptionalInput("expect-error") === "false" ||
+      hasBadExpectErrorInput()
+    ) {
       core.setFailed(error.message);
     }
 
@@ -227,7 +234,10 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    if (actionsUtil.getOptionalInput("expect-error") === "false") {
+    if (
+      actionsUtil.getOptionalInput("expect-error") === "false" ||
+      hasBadExpectErrorInput()
+    ) {
       core.setFailed(`analyze action failed: ${error}`);
     }
     console.log(error);

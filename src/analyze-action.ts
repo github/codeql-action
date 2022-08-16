@@ -83,8 +83,6 @@ export async function sendStatusReport(
   }
 }
 
-// REVIEW: Instead of returning the boolean and calling the method twice
-// I could also update a top level variable in this file. Which is preferable?
 function hasBadExpectErrorInput(): boolean {
   return (
     actionsUtil.getOptionalInput("expect-error") !== "false" &&

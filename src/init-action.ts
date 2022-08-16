@@ -24,8 +24,9 @@ import {
   runInit,
 } from "./init";
 import { Language } from "./languages";
-import { getActionsLogger } from "./logging";
+import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { getTotalCacheSize } from "./trap-caching";
 import {
   checkActionVersion,
   checkGitHubVersionInRange,
@@ -65,12 +66,19 @@ interface InitSuccessStatusReport extends StatusReportBase {
   tools_resolved_version: string;
   /** Comma-separated list of languages specified explicitly in the workflow file. */
   workflow_languages: string;
+  /** Comma-separated list of languages for which we are using TRAP caching. */
+  trap_cache_languages: string;
+  /** Size of TRAP caches that we downloaded, in bytes. */
+  trap_cache_download_size_bytes: number;
+  /** Time taken to download TRAP caches, in milliseconds. */
+  trap_cache_download_duration_ms: number;
 }
 
 async function sendSuccessStatusReport(
   startedAt: Date,
   config: configUtils.Config,
-  toolsVersion: string
+  toolsVersion: string,
+  logger: Logger
 ) {
   const statusReportBase = await createStatusReportBase(
     "init",
@@ -115,6 +123,12 @@ async function sendSuccessStatusReport(
     tools_input: getOptionalInput("tools") || "",
     tools_resolved_version: toolsVersion,
     workflow_languages: workflowLanguages || "",
+    trap_cache_languages: Object.keys(config.trapCaches).join(","),
+    trap_cache_download_size_bytes: await getTotalCacheSize(
+      config.trapCaches,
+      logger
+    ),
+    trap_cache_download_duration_ms: config.trapCacheDownloadTime,
   };
 
   await sendStatusReport(statusReport);
@@ -298,7 +312,7 @@ async function run() {
     );
     return;
   }
-  await sendSuccessStatusReport(startedAt, config, toolsVersion);
+  await sendSuccessStatusReport(startedAt, config, toolsVersion, logger);
 }
 
 async function getTrapCachingEnabled(

@@ -13,9 +13,9 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { GitHubFeatureFlags } from "./feature-flags";
-import { getActionsLogger } from "./logging";
+import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { uploadTrapCaches } from "./trap-caching";
+import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
@@ -31,11 +31,21 @@ interface FinishStatusReport
   extends actionsUtil.StatusReportBase,
     AnalysisStatusReport {}
 
+interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
+  /** Size of TRAP caches that we uploaded, in bytes. */
+  trap_cache_upload_size_bytes: number;
+  /** Time taken to upload TRAP caches, in milliseconds. */
+  trap_cache_upload_duration_ms: number;
+}
+
 export async function sendStatusReport(
   startedAt: Date,
   config: Config | undefined,
   stats: AnalysisStatusReport | undefined,
-  error?: Error
+  error: Error | undefined,
+  trapCacheUploadTime: number | undefined,
+  didUploadTrapCaches: boolean,
+  logger: Logger
 ) {
   const status = actionsUtil.getActionsStatus(
     error,
@@ -58,7 +68,19 @@ export async function sendStatusReport(
       : {}),
     ...(stats || {}),
   };
-  await actionsUtil.sendStatusReport(statusReport);
+  if (config && didUploadTrapCaches) {
+    const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
+      ...statusReport,
+      trap_cache_upload_duration_ms: trapCacheUploadTime || 0,
+      trap_cache_upload_size_bytes: await getTotalCacheSize(
+        config.trapCaches,
+        logger
+      ),
+    };
+    await actionsUtil.sendStatusReport(trapCacheUploadStatusReport);
+  } else {
+    await actionsUtil.sendStatusReport(statusReport);
+  }
 }
 
 // REVIEW: Instead of returning the boolean and calling the method twice
@@ -75,9 +97,12 @@ async function run() {
   let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  let trapCacheUploadTime: number | undefined = undefined;
+  let didUploadTrapCaches = false;
   util.initializeEnvironment(util.Mode.actions, pkg.version);
   await util.checkActionVersion(pkg.version);
 
+  const logger = getActionsLogger();
   try {
     if (
       !(await actionsUtil.sendStatusReport(
@@ -90,7 +115,6 @@ async function run() {
     ) {
       return;
     }
-    const logger = getActionsLogger();
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
@@ -179,8 +203,10 @@ async function run() {
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
 
     // Possibly upload the TRAP caches for later re-use
+    const trapCacheUploadStartTime = performance.now();
     const codeql = await getCodeQL(config.codeQLCmd);
-    await uploadTrapCaches(codeql, config, logger);
+    trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
+    didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
@@ -210,23 +236,63 @@ async function run() {
 
     if (error instanceof CodeQLAnalysisError) {
       const stats = { ...error.queriesStatusReport };
-      await sendStatusReport(startedAt, config, stats, error);
+      await sendStatusReport(
+        startedAt,
+        config,
+        stats,
+        error,
+        trapCacheUploadTime,
+        didUploadTrapCaches,
+        logger
+      );
     } else {
-      await sendStatusReport(startedAt, config, undefined, error);
+      await sendStatusReport(
+        startedAt,
+        config,
+        undefined,
+        error,
+        trapCacheUploadTime,
+        didUploadTrapCaches,
+        logger
+      );
     }
 
     return;
   }
 
   if (runStats && uploadResult) {
-    await sendStatusReport(startedAt, config, {
-      ...runStats,
-      ...uploadResult.statusReport,
-    });
+    await sendStatusReport(
+      startedAt,
+      config,
+      {
+        ...runStats,
+        ...uploadResult.statusReport,
+      },
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches,
+      logger
+    );
   } else if (runStats) {
-    await sendStatusReport(startedAt, config, { ...runStats });
+    await sendStatusReport(
+      startedAt,
+      config,
+      { ...runStats },
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches,
+      logger
+    );
   } else {
-    await sendStatusReport(startedAt, config, undefined);
+    await sendStatusReport(
+      startedAt,
+      config,
+      undefined,
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches,
+      logger
+    );
   }
 }
 

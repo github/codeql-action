@@ -58,6 +58,7 @@ function getTestConfig(tmpDir: string): Config {
     debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
     augmentationProperties: defaultAugmentationProperties,
     trapCaches: {},
+    trapCacheDownloadTime: 0,
   };
 }
 

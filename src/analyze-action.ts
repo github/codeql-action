@@ -61,6 +61,8 @@ export async function sendStatusReport(
   await actionsUtil.sendStatusReport(statusReport);
 }
 
+// REVIEW: Instead of returning the boolean and calling the method twice
+// I could also update a top level variable in this file. Which is preferable?
 function hasBadExpectErrorInput(): boolean {
   return (
     actionsUtil.getOptionalInput("expect-error") === "true" &&
@@ -198,7 +200,7 @@ async function run() {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
     if (
-      actionsUtil.getOptionalInput("expect-error") === "false" ||
+      actionsUtil.getOptionalInput("expect-error") !== "true" ||
       hasBadExpectErrorInput()
     ) {
       core.setFailed(error.message);
@@ -233,9 +235,15 @@ export const runPromise = run();
 async function runWrapper() {
   try {
     await runPromise;
+    // If we did not throw an error yet here, but we expect one, throw it.
+    if (actionsUtil.getOptionalInput("expect-error") === "true") {
+      core.setFailed(
+        `expect-error input was set to true but no error was thrown.`
+      );
+    }
   } catch (error) {
     if (
-      actionsUtil.getOptionalInput("expect-error") === "false" ||
+      actionsUtil.getOptionalInput("expect-error") !== "true" ||
       hasBadExpectErrorInput()
     ) {
       core.setFailed(`analyze action failed: ${error}`);

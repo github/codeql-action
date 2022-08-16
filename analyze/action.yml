@@ -67,7 +67,7 @@ inputs:
   matrix:
     default: ${{ toJson(matrix) }}
   expect-error:
-    description: "[Internal] If true, the Action will not set Actions status to failure."
+    description: "[Internal] It is an error to use this input outside of integration testing of the codeql-action."
     required: false
     default: "false"
 outputs:

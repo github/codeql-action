@@ -46,7 +46,6 @@ jobs:
         id: analysis  
         with:
           expect-error: true
-          ram: 1
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts

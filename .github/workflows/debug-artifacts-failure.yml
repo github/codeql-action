@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-    name: Failure Expected - Upload debug artifacts
+    name: Upload debug artifacts after failure in analyze
     continue-on-error: true
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -45,6 +45,7 @@ jobs:
       - uses: ./../action/analyze
         id: analysis  
         with:
+          expect-error: true
           ram: 1
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze

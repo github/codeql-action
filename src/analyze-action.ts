@@ -83,6 +83,8 @@ export async function sendStatusReport(
   }
 }
 
+// `expect-error` should only be set to any value by the
+// codeql-action repo or a fork of it.
 function hasBadExpectErrorInput(): boolean {
   return (
     actionsUtil.getOptionalInput("expect-error") !== "false" &&

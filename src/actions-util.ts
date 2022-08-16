@@ -902,6 +902,8 @@ export async function printDebugLogs(config: Config) {
   }
 }
 
+// Returns whether workflow kicked off by codeql-action repo itself,
+// or a fork of it.
 export function isAnalyzingCodeQLActionRepoOrFork(): boolean {
   const codeQLActionRepoUrl = `https://api.github.com/repos/${CODEQL_DEFAULT_ACTION_REPOSITORY}`;
   const repo = getWorkflowEvent()?.repository;
@@ -910,7 +912,6 @@ export function isAnalyzingCodeQLActionRepoOrFork(): boolean {
   if (repo?.url === codeQLActionRepoUrl) {
     return true;
   }
-  // TODO(angelapwen): Check if fork logic works.
   if (repo?.fork && repo?.parent?.url === codeQLActionRepoUrl) {
     return true;
   }

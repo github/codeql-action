@@ -87,6 +87,7 @@ const testConfigWithoutTmpDir: Config = {
   trapCaches: {
     javascript: "/some/cache/dir",
   },
+  trapCacheDownloadTime: 0,
 };
 
 function getTestConfigWithTempDir(tmpDir: string): configUtils.Config {
@@ -113,6 +114,7 @@ function getTestConfigWithTempDir(tmpDir: string): configUtils.Config {
       javascript: path.resolve(tmpDir, "jsCache"),
       ruby: path.resolve(tmpDir, "rubyCache"),
     },
+    trapCacheDownloadTime: 0,
   };
 }
 

@@ -1,0 +1,39 @@
+{
+  "name": "gar",
+  "version": "1.0.4",
+  "description": "The lightweight Node arguments parser",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Tested before deployment.\" && exit 0",
+    "test-dev": "npm install && node test.js",
+    "prepublishOnly": "npm run test-dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethanent/gar.git"
+  },
+  "keywords": [
+    "argument",
+    "args",
+    "argv",
+    "parse",
+    "cli",
+    "command-line",
+    "parser",
+    "command",
+    "lightweight"
+  ],
+  "author": "Ethan Davis",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ethanent/gar/issues"
+  },
+  "homepage": "https://github.com/ethanent/gar#readme",
+  "devDependencies": {
+    "whew": "^1.1.3"
+  },
+  "files": [
+    "index.js",
+    "LICENSE"
+  ]
+}

@@ -60,6 +60,7 @@ test.beforeEach(() => {
       queriesInputCombines: false,
     },
     trapCaches: {},
+    trapCacheDownloadTime: 0,
   };
 });
 

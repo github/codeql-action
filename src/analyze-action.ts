@@ -222,6 +222,12 @@ async function run() {
         getActionsLogger()
       );
     }
+    // If we did not throw an error yet here, but we expect one, throw it.
+    if (actionsUtil.getOptionalInput("expect-error") === "true") {
+      core.setFailed(
+        `expect-error input was set to true but no error was thrown.`
+      );
+    }
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));

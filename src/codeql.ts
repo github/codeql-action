@@ -222,7 +222,7 @@ interface PackDownloadItem {
 let cachedCodeQL: CodeQL | undefined = undefined;
 
 const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
-const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
 /**
  * The oldest version of CodeQL that the Action will run with. This should be

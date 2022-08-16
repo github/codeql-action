@@ -83,6 +83,15 @@ export async function sendStatusReport(
   }
 }
 
+// `expect-error` should only be set to any value by the
+// codeql-action repo or a fork of it.
+function hasBadExpectErrorInput(): boolean {
+  return (
+    actionsUtil.getOptionalInput("expect-error") !== "false" &&
+    !actionsUtil.isAnalyzingCodeQLActionRepoOrFork()
+  );
+}
+
 async function run() {
   const startedAt = new Date();
   let uploadResult: UploadResult | undefined = undefined;
@@ -112,6 +121,13 @@ async function run() {
         "Config file could not be found at expected location. Has the 'init' action been called?"
       );
     }
+
+    if (hasBadExpectErrorInput()) {
+      throw new Error(
+        "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork."
+      );
+    }
+
     await util.enrichEnvironment(
       util.Mode.actions,
       await getCodeQL(config.codeQLCmd)
@@ -206,10 +222,22 @@ async function run() {
         getActionsLogger()
       );
     }
+    // If we did not throw an error yet here, but we expect one, throw it.
+    if (actionsUtil.getOptionalInput("expect-error") === "true") {
+      core.setFailed(
+        `expect-error input was set to true but no error was thrown.`
+      );
+    }
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
-    core.setFailed(error.message);
+    if (
+      actionsUtil.getOptionalInput("expect-error") !== "true" ||
+      hasBadExpectErrorInput()
+    ) {
+      core.setFailed(error.message);
+    }
+
     console.log(error);
 
     if (error instanceof CodeQLAnalysisError) {

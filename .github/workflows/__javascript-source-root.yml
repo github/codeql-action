@@ -52,6 +52,8 @@ jobs:
         languages: javascript
         source-root: ../new-source-root
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
     - uses: ./../action/analyze
       with:
         skip-queries: true

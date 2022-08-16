@@ -16,6 +16,8 @@ steps:
       queries: security-extended
       source-root: ./../action/tests/ml-powered-queries-repo
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
 
   - uses: ./../action/analyze
     with:

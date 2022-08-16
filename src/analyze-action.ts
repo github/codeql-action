@@ -87,7 +87,7 @@ export async function sendStatusReport(
 // I could also update a top level variable in this file. Which is preferable?
 function hasBadExpectErrorInput(): boolean {
   return (
-    actionsUtil.getOptionalInput("expect-error") === "true" &&
+    actionsUtil.getOptionalInput("expect-error") !== "false" &&
     !actionsUtil.isAnalyzingCodeQLActionRepoOrFork()
   );
 }

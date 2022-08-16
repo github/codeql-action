@@ -307,12 +307,6 @@ export const runPromise = run();
 async function runWrapper() {
   try {
     await runPromise;
-    // If we did not throw an error yet here, but we expect one, throw it.
-    if (actionsUtil.getOptionalInput("expect-error") === "true") {
-      core.setFailed(
-        `expect-error input was set to true but no error was thrown.`
-      );
-    }
   } catch (error) {
     if (
       actionsUtil.getOptionalInput("expect-error") !== "true" ||

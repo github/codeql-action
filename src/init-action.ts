@@ -186,6 +186,7 @@ async function run() {
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
+      featureFlags,
       logger
     );
     codeql = initCodeQLResult.codeql;

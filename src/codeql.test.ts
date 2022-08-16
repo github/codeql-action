@@ -15,7 +15,11 @@ import * as defaults from "./defaults.json";
 import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests, setupActionsVars } from "./testing-utils";
+import {
+  setupTests,
+  setupActionsVars,
+  mockFeatureFlagApiEndpoint,
+} from "./testing-utils";
 import * as util from "./util";
 import { Mode, initializeEnvironment } from "./util";
 
@@ -80,11 +84,14 @@ test("download codeql bundle cache", async (t) => {
           path.join(__dirname, `/../src/testdata/codeql-bundle.tar.gz`)
         );
 
+      mockFeatureFlagApiEndpoint(200, {});
+
       await codeql.setupCodeQL(
         `https://example.com/download/codeql-bundle-${version}/codeql-bundle.tar.gz`,
         sampleApiDetails,
         tmpDir,
         util.GitHubVariant.DOTCOM,
+        createFeatureFlags([]),
         getRunnerLogger(true),
         false
       );
@@ -114,6 +121,7 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -132,6 +140,7 @@ test("download codeql bundle cache explicitly requested with pinned different ve
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -156,6 +165,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -167,6 +177,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -193,6 +204,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -219,6 +231,7 @@ test("download codeql bundle cache with different version cached (not pinned)", 
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -245,6 +258,7 @@ test('download codeql bundle cache with pinned different version cached if "late
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -272,6 +286,7 @@ test('download codeql bundle cache with pinned different version cached if "late
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -326,6 +341,7 @@ test("download codeql bundle from github ae endpoint", async (t) => {
       sampleGHAEApiDetails,
       tmpDir,
       util.GitHubVariant.GHAE,
+      createFeatureFlags([]),
       getRunnerLogger(true),
       false
     );
@@ -898,7 +914,7 @@ test(
   {}
 );
 
-test("does not use injected confg", async (t: ExecutionContext<unknown>) => {
+test("does not use injected config", async (t: ExecutionContext<unknown>) => {
   const origCODEQL_PASS_CONFIG_TO_CLI = process.env.CODEQL_PASS_CONFIG_TO_CLI;
   process.env["CODEQL_PASS_CONFIG_TO_CLI"] = "false";
 

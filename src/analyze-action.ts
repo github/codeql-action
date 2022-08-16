@@ -308,12 +308,7 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    if (
-      actionsUtil.getOptionalInput("expect-error") !== "true" ||
-      hasBadExpectErrorInput()
-    ) {
-      core.setFailed(`analyze action failed: ${error}`);
-    }
+    core.setFailed(`analyze action failed: ${error}`);
     console.log(error);
   }
 }

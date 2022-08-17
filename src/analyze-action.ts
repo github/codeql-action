@@ -203,8 +203,8 @@ async function run() {
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();
     const codeql = await getCodeQL(config.codeQLCmd);
-    trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
+    trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {

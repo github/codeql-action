@@ -431,17 +431,24 @@ export async function setupCodeQL(
   checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   try {
-    const forceLatest =
+    const forceLatestReason =
       // We use the special value of 'latest' to prioritize the version in the
       // defaults over any pinned cached version.
-      codeqlURL === "latest" ||
-      // If the user hasn't requested a particular CodeQL version, then bypass
-      // the toolcache when the appropriate feature flag is enabled. This
-      // allows us to quickly rollback a broken bundle that has made its way
-      // into the toolcache.
-      (codeqlURL === undefined &&
-        (await featureFlags.getValue(FeatureFlag.BypassToolcacheEnabled)));
+      codeqlURL === "latest"
+        ? '"tools: latest" was requested'
+        : // If the user hasn't requested a particular CodeQL version, then bypass
+        // the toolcache when the appropriate feature flag is enabled. This
+        // allows us to quickly rollback a broken bundle that has made its way
+        // into the toolcache.
+        codeqlURL === undefined &&
+          (await featureFlags.getValue(FeatureFlag.BypassToolcacheEnabled))
+        ? "a specific version of CodeQL was not requested, and the bypass toolcache feature flag is enabled"
+        : undefined;
+    const forceLatest = forceLatestReason !== undefined;
     if (forceLatest) {
+      logger.debug(
+        `Forcing the latest version of the CodeQL tools since ${forceLatestReason}.`
+      );
       codeqlURL = undefined;
     }
     let codeqlFolder: string;

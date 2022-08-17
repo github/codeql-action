@@ -83,6 +83,8 @@ jobs:
       with:
         languages: go
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
     - name: Build code
       shell: bash
       run: go build main.go

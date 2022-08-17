@@ -229,6 +229,7 @@ program
             apiDetails,
             tempDir,
             gitHubVersion.type,
+            createFeatureFlags([]),
             logger
           )
         ).codeql;

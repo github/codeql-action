@@ -442,7 +442,7 @@ export async function setupCodeQL(
         // into the toolcache.
         codeqlURL === undefined &&
           (await featureFlags.getValue(FeatureFlag.BypassToolcacheEnabled))
-        ? "a specific version of CodeQL was not requested, and the bypass toolcache feature flag is enabled"
+        ? "a specific version of CodeQL was not requested and the bypass toolcache feature flag is enabled"
         : undefined;
     const forceLatest = forceLatestReason !== undefined;
     if (forceLatest) {

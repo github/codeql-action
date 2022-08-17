@@ -1,6 +1,6 @@
 # CodeQL Action Changelog
 
-## [UNRELEASED]
+## 2.1.19 - 17 Aug 2022
 
 - In debug mode, debug artifacts are now uploaded even if a step in the Actions workflow fails. [#1159](https://github.com/github/codeql-action/pull/1159)
 - Update default CodeQL bundle version to 2.10.3. [#1178](https://github.com/github/codeql-action/pull/1178)

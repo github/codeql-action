@@ -71,10 +71,9 @@ export async function sendStatusReport(
   if (config && didUploadTrapCaches) {
     const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
       ...statusReport,
-      trap_cache_upload_duration_ms: trapCacheUploadTime || 0,
-      trap_cache_upload_size_bytes: await getTotalCacheSize(
-        config.trapCaches,
-        logger
+      trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
+      trap_cache_upload_size_bytes: Math.round(
+        await getTotalCacheSize(config.trapCaches, logger)
       ),
     };
     await actionsUtil.sendStatusReport(trapCacheUploadStatusReport);

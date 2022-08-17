@@ -124,11 +124,10 @@ async function sendSuccessStatusReport(
     tools_resolved_version: toolsVersion,
     workflow_languages: workflowLanguages || "",
     trap_cache_languages: Object.keys(config.trapCaches).join(","),
-    trap_cache_download_size_bytes: await getTotalCacheSize(
-      config.trapCaches,
-      logger
+    trap_cache_download_size_bytes: Math.round(
+      await getTotalCacheSize(config.trapCaches, logger)
     ),
-    trap_cache_download_duration_ms: config.trapCacheDownloadTime,
+    trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
   };
 
   await sendStatusReport(statusReport);

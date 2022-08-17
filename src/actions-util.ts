@@ -8,7 +8,6 @@ import * as safeWhich from "@chrisgavin/safe-which";
 import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
-import { CODEQL_DEFAULT_ACTION_REPOSITORY } from "./codeql";
 import { Config } from "./config-utils";
 import * as sharedEnv from "./shared-environment";
 import {
@@ -900,18 +899,4 @@ export async function printDebugLogs(config: Config) {
     };
     walkLogFiles(logsDirectory);
   }
-}
-
-// Returns whether workflow kicked off by codeql-action repo itself,
-// or a fork of it.
-export function isAnalyzingCodeQLActionRepoOrFork(): boolean {
-  const codeQLActionRepoUrl = `https://api.github.com/repos/${CODEQL_DEFAULT_ACTION_REPOSITORY}`;
-  const repo = getWorkflowEvent()?.repository;
-  if (repo?.url === codeQLActionRepoUrl) {
-    return true;
-  }
-  if (repo?.fork && repo?.parent?.url === codeQLActionRepoUrl) {
-    return true;
-  }
-  return false;
 }

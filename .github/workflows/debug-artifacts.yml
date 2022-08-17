@@ -38,11 +38,15 @@ jobs:
           debug: true
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
+        env:
+          TEST_MODE: true
       - name: Build code
         shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis  
+        env:
+          TEST_MODE: true
   download-and-check-artifacts:
     name: Download and check debug artifacts
     needs: upload-artifacts

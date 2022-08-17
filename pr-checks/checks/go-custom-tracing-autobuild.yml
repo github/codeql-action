@@ -11,6 +11,8 @@ steps:
     with:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
   - uses: ./../action/autobuild
   - uses: ./../action/analyze
     env:

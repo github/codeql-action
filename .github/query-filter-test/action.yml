@@ -34,6 +34,8 @@ runs:
         config-file: ${{ inputs.config-file }}
         tools: ${{ inputs.tools }}
         db-location: ${{ runner.temp }}/query-filter-test
+      env:
+        TEST_MODE: "true"
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results

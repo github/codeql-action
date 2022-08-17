@@ -160,6 +160,8 @@ jobs:
         tools: latest
         languages: python
         setup-python-dependencies: false
+      env:
+        TEST_MODE: true
 
     - name: Test Auto Package Installation
       run: |

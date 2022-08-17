@@ -26,6 +26,8 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Dump GitHub event
+        run: cat "${GITHUB_EVENT_PATH}"
       - name: Check out repository
         uses: actions/checkout@v3
       - name: Prepare test

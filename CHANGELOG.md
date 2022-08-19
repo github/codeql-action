@@ -1,71 +1,70 @@
 # CodeQL Action Changelog
 
-## 2.1.19 - 17 Aug 2022
+## 1.1.19 - 17 Aug 2022
 
 - Add the ability to filter queries from a code scanning run by using the `query-filters` option in the code scanning configuration file. [#1098](https://github.com/github/codeql-action/pull/1098)
 - In debug mode, debug artifacts are now uploaded even if a step in the Actions workflow fails. [#1159](https://github.com/github/codeql-action/pull/1159)
 - Update default CodeQL bundle version to 2.10.3. [#1178](https://github.com/github/codeql-action/pull/1178)
 - The combination of python2 and Pipenv is no longer supported. [#1181](https://github.com/github/codeql-action/pull/1181)
 
-## 2.1.18 - 03 Aug 2022
+## 1.1.18 - 03 Aug 2022
 
 - Update default CodeQL bundle version to 2.10.2.  [#1156](https://github.com/github/codeql-action/pull/1156)
 
-## 2.1.17 - 28 Jul 2022
+## 1.1.17 - 28 Jul 2022
 
 - Update default CodeQL bundle version to 2.10.1.  [#1143](https://github.com/github/codeql-action/pull/1143)
 
-## 2.1.16 - 13 Jul 2022
+## 1.1.16 - 13 Jul 2022
 
 - You can now quickly debug a job that uses the CodeQL Action by re-running the job from the GitHub UI and selecting the "Enable debug logging" option. [#1132](https://github.com/github/codeql-action/pull/1132)
 - You can now see diagnostic messages produced by the analysis in the logs of the `analyze` Action by enabling debug mode. To enable debug mode, pass `debug: true` to the `init` Action, or [enable step debug logging](https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging#enabling-step-debug-logging). This feature is available for CodeQL CLI version 2.10.0 and later. [#1133](https://github.com/github/codeql-action/pull/1133)
 
-## 2.1.15 - 28 Jun 2022
+## 1.1.15 - 28 Jun 2022
 
 - CodeQL query packs listed in the `packs` configuration field will be skipped if their target language is not being analyzed in the current Actions job. Previously, this would throw an error. [#1116](https://github.com/github/codeql-action/pull/1116)
 - The combination of python2 and poetry is no longer supported. See https://github.com/actions/setup-python/issues/374 for more details. [#1124](https://github.com/github/codeql-action/pull/1124)
 - Update default CodeQL bundle version to 2.10.0. [#1123](https://github.com/github/codeql-action/pull/1123)
 
-## 2.1.14 - 22 Jun 2022
+## 1.1.14 - 22 Jun 2022
 
 No user facing changes.
 
-## 2.1.13 - 21 Jun 2022
+## 1.1.13 - 21 Jun 2022
 
 - Update default CodeQL bundle version to 2.9.4. [#1100](https://github.com/github/codeql-action/pull/1100)
 
-## 2.1.12 - 01 Jun 2022
+## 1.1.12 - 01 Jun 2022
 
 - Update default CodeQL bundle version to 2.9.3. [#1084](https://github.com/github/codeql-action/pull/1084)
 
-## 2.1.11 - 17 May 2022
+## 1.1.11 - 17 May 2022
 
 - Update default CodeQL bundle version to 2.9.2. [#1074](https://github.com/github/codeql-action/pull/1074)
 
-## 2.1.10 - 10 May 2022
+## 1.1.10 - 10 May 2022
 
 - Update default CodeQL bundle version to 2.9.1. [#1056](https://github.com/github/codeql-action/pull/1056)
 - When `wait-for-processing` is enabled, the workflow will now fail if there were any errors that occurred during processing of the analysis results.
 
-## 2.1.9 - 27 Apr 2022
+## 1.1.9 - 27 Apr 2022
 
 - Add `working-directory` input to the `autobuild` action. [#1024](https://github.com/github/codeql-action/pull/1024)
 - The `analyze` and `upload-sarif` actions will now wait up to 2 minutes for processing to complete after they have uploaded the results so they can report any processing errors that occurred. This behavior can be disabled by setting the `wait-for-processing` action input to `"false"`. [#1007](https://github.com/github/codeql-action/pull/1007)
 - Update default CodeQL bundle version to 2.9.0.
 - Fix a bug where [status reporting fails on Windows](https://github.com/github/codeql-action/issues/1041). [#1042](https://github.com/github/codeql-action/pull/1042)
 
-## 2.1.8 - 08 Apr 2022
+## 1.1.8 - 08 Apr 2022
 
 - Update default CodeQL bundle version to 2.8.5. [#1014](https://github.com/github/codeql-action/pull/1014)
 - Fix error where the init action would fail due to a GitHub API request that was taking too long to complete [#1025](https://github.com/github/codeql-action/pull/1025)
 
-## 2.1.7 - 05 Apr 2022
+## 1.1.7 - 05 Apr 2022
 
 - A bug where additional queries specified in the workflow file would sometimes not be respected has been fixed. [#1018](https://github.com/github/codeql-action/pull/1018)
 
-## 2.1.6 - 30 Mar 2022
+## 1.1.6 - 30 Mar 2022
 
-- [v2+ only] The CodeQL Action now runs on Node.js v16. [#1000](https://github.com/github/codeql-action/pull/1000)
 - Update default CodeQL bundle version to 2.8.4. [#990](https://github.com/github/codeql-action/pull/990)
 - Fix a bug where an invalid `commit_oid` was being sent to code scanning when a custom checkout path was being used. [#956](https://github.com/github/codeql-action/pull/956)
 

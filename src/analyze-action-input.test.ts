@@ -24,6 +24,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_SERVER_URL"] = util.GITHUB_DOTCOM_URL;
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    process.env["GITHUB_API_URL"] = "https://api.github.com";
     sinon
       .stub(actionsUtil, "createStatusReportBase")
       .resolves({} as actionsUtil.StatusReportBase);
@@ -41,6 +42,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     requiredInputStub.withArgs("upload-database").returns("false");
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     optionalInputStub.withArgs("cleanup-level").returns("none");
+    optionalInputStub.withArgs("expect-error").returns("false");
     sinon.stub(util, "getGitHubVersion").resolves(gitHubVersion);
     setupActionsVars(tmpDir, tmpDir);
     mockFeatureFlagApiEndpoint(200, {});

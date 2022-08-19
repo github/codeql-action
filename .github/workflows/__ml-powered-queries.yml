@@ -66,6 +66,8 @@ jobs:
         queries: security-extended
         source-root: ./../action/tests/ml-powered-queries-repo
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
 
     - uses: ./../action/analyze
       with:
@@ -80,6 +82,15 @@ jobs:
         name: ml-powered-queries-${{ matrix.os }}-${{ matrix.version }}.sarif.json
         path: ${{ runner.temp }}/results/javascript.sarif
         retention-days: 7
+
+    - name: Check sarif
+      uses: ./../action/.github/check-sarif
+      if: matrix.os != 'windows-latest' || matrix.version == 'latest' || matrix.version
+        == 'nightly-latest'
+      with:
+        sarif-file: ${{ runner.temp }}/results/javascript.sarif
+        queries-run: js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
+        queries-not-run: foo,bar
 
     - name: Check results
     # Running ML-powered queries on Windows requires CodeQL CLI 2.9.0+. We don't run these checks

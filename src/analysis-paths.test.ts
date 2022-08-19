@@ -24,7 +24,13 @@ test("emptyPaths", async (t) => {
       debugMode: false,
       debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-      injectedMlQueries: false,
+      augmentationProperties: {
+        injectedMlQueries: false,
+        packsInputCombines: false,
+        queriesInputCombines: false,
+      },
+      trapCaches: {},
+      trapCacheDownloadTime: 0,
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);
@@ -49,7 +55,13 @@ test("nonEmptyPaths", async (t) => {
       debugMode: false,
       debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-      injectedMlQueries: false,
+      augmentationProperties: {
+        injectedMlQueries: false,
+        packsInputCombines: false,
+        queriesInputCombines: false,
+      },
+      trapCaches: {},
+      trapCacheDownloadTime: 0,
     };
     analysisPaths.includeAndExcludeAnalysisPaths(config);
     t.is(process.env["LGTM_INDEX_INCLUDE"], "path1\npath2");
@@ -77,7 +89,13 @@ test("exclude temp dir", async (t) => {
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    injectedMlQueries: false,
+    augmentationProperties: {
+      injectedMlQueries: false,
+      packsInputCombines: false,
+      queriesInputCombines: false,
+    },
+    trapCaches: {},
+    trapCacheDownloadTime: 0,
   };
   analysisPaths.includeAndExcludeAnalysisPaths(config);
   t.is(process.env["LGTM_INDEX_INCLUDE"], undefined);

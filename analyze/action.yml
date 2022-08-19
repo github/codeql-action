@@ -66,6 +66,10 @@ inputs:
     default: ${{ github.token }}
   matrix:
     default: ${{ toJson(matrix) }}
+  expect-error:
+    description: "[Internal] It is an error to use this input outside of integration testing of the codeql-action."
+    required: false
+    default: "false"
 outputs:
   db-locations:
     description: A map from language to absolute path for each database created by CodeQL.
@@ -74,3 +78,4 @@ outputs:
 runs:
   using: "node16"
   main: "../lib/analyze-action.js"
+  post: "../lib/analyze-action-post.js"

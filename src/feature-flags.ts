@@ -8,8 +8,10 @@ export interface FeatureFlags {
 }
 
 export enum FeatureFlag {
-  MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
+  BypassToolcacheEnabled = "bypass_toolcache_enabled",
   LuaTracerConfigEnabled = "lua_tracer_config_enabled",
+  MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
+  TrapCachingEnabled = "trap_caching_enabled",
 }
 
 /**
@@ -31,6 +33,11 @@ export class GitHubFeatureFlags implements FeatureFlags {
   ) {}
 
   async getValue(flag: FeatureFlag): Promise<boolean> {
+    // Bypassing the toolcache is disabled in test mode.
+    if (flag === FeatureFlag.BypassToolcacheEnabled && util.isInTestMode()) {
+      return false;
+    }
+
     const response = await this.getApiResponse();
     if (response === undefined) {
       this.logger.debug(

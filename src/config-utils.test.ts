@@ -20,6 +20,7 @@ const sampleApiDetails = {
   auth: "token",
   externalRepoAuth: "token",
   url: "https://github.example.com",
+  apiURL: undefined,
 };
 
 const gitHubVersion = { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion;
@@ -86,6 +87,7 @@ test("load empty config", async (t) => {
       undefined,
       undefined,
       false,
+      false,
       "",
       "",
       { owner: "github", repo: "example " },
@@ -105,6 +107,7 @@ test("load empty config", async (t) => {
         undefined,
         undefined,
         undefined,
+        false,
         false,
         "",
         "",
@@ -151,6 +154,7 @@ test("loading config saves config", async (t) => {
       undefined,
       undefined,
       false,
+      false,
       "",
       "",
       { owner: "github", repo: "example " },
@@ -170,7 +174,9 @@ test("loading config saves config", async (t) => {
     const config2 = await configUtils.getConfig(tmpDir, logger);
     t.not(config2, undefined);
     if (config2 !== undefined) {
-      t.deepEqual(config1, config2);
+      // removes properties assigned to undefined.
+      const expectedConfig = JSON.parse(JSON.stringify(config1));
+      t.deepEqual(expectedConfig, config2);
     }
   });
 });
@@ -184,6 +190,7 @@ test("load input outside of workspace", async (t) => {
         undefined,
         "../input",
         undefined,
+        false,
         false,
         "",
         "",
@@ -223,6 +230,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         configFile,
         undefined,
         false,
+        false,
         "",
         "",
         { owner: "github", repo: "example " },
@@ -261,6 +269,7 @@ test("load non-existent input", async (t) => {
         undefined,
         configFile,
         undefined,
+        false,
         false,
         "",
         "",
@@ -349,7 +358,9 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
-      injectedMlQueries: false,
+      augmentationProperties: configUtils.defaultAugmentationProperties,
+      trapCaches: {},
+      trapCacheDownloadTime: 0,
     };
 
     const languages = "javascript";
@@ -361,6 +372,7 @@ test("load non-empty input", async (t) => {
       undefined,
       configFilePath,
       undefined,
+      false,
       false,
       "my-artifact",
       "my-db",
@@ -427,6 +439,7 @@ test("Default queries are used", async (t) => {
       undefined,
       configFilePath,
       undefined,
+      false,
       false,
       "",
       "",
@@ -502,6 +515,7 @@ test("Queries can be specified in config file", async (t) => {
       configFilePath,
       undefined,
       false,
+      false,
       "",
       "",
       { owner: "github", repo: "example " },
@@ -575,6 +589,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       configFilePath,
       undefined,
       false,
+      false,
       "",
       "",
       { owner: "github", repo: "example " },
@@ -646,6 +661,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       configFilePath,
       undefined,
       false,
+      false,
       "",
       "",
       { owner: "github", repo: "example " },
@@ -707,6 +723,7 @@ test("Multiple queries can be specified in workflow file, no config file require
       undefined,
       undefined,
       undefined,
+      false,
       false,
       "",
       "",
@@ -791,6 +808,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       configFilePath,
       undefined,
       false,
+      false,
       "",
       "",
       { owner: "github", repo: "example " },
@@ -868,6 +886,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         undefined,
         undefined,
         false,
+        false,
         "",
         "",
         { owner: "github", repo: "example " },
@@ -935,6 +954,7 @@ test("API client used when reading remote config", async (t) => {
       configFile,
       undefined,
       false,
+      false,
       "",
       "",
       { owner: "github", repo: "example " },
@@ -963,6 +983,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
         undefined,
         repoReference,
         undefined,
+        false,
         false,
         "",
         "",
@@ -1000,6 +1021,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
         undefined,
         repoReference,
         undefined,
+        false,
         false,
         "",
         "",
@@ -1039,6 +1061,7 @@ test("No detected languages", async (t) => {
         undefined,
         undefined,
         false,
+        false,
         "",
         "",
         { owner: "github", repo: "example " },
@@ -1068,6 +1091,7 @@ test("Unknown languages", async (t) => {
         undefined,
         undefined,
         undefined,
+        false,
         false,
         "",
         "",
@@ -1120,6 +1144,7 @@ test("Config specifies packages", async (t) => {
       undefined,
       configFile,
       undefined,
+      false,
       false,
       "",
       "",
@@ -1176,6 +1201,7 @@ test("Config specifies packages for multiple languages", async (t) => {
       undefined,
       configFile,
       undefined,
+      false,
       false,
       "",
       "",
@@ -1243,6 +1269,7 @@ function doInvalidInputTest(
           undefined,
           configFile,
           undefined,
+          false,
           false,
           "",
           "",
@@ -1585,6 +1612,60 @@ test(invalidPackNameMacro, "c/d@b/../a");
 test(invalidPackNameMacro, "c/d:z@1");
 
 /**
+ * Test macro for pretty printing pack specs
+ */
+const packSpecPrettyPrintingMacro = test.macro({
+  exec: (t: ExecutionContext, packStr: string, packObj: configUtils.Pack) => {
+    const parsed = configUtils.parsePacksSpecification(packStr);
+    t.deepEqual(parsed, packObj, "parsed pack spec is correct");
+    const stringified = configUtils.prettyPrintPack(packObj);
+    t.deepEqual(
+      stringified,
+      packStr.trim(),
+      "pretty-printed pack spec is correct"
+    );
+
+    t.deepEqual(
+      configUtils.validatePackSpecification(packStr),
+      packStr.trim(),
+      "pack spec is valid"
+    );
+  },
+  title: (
+    _providedTitle: string | undefined,
+    packStr: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _packObj: configUtils.Pack
+  ) => `Prettyprint pack spec: '${packStr}'`,
+});
+
+test(packSpecPrettyPrintingMacro, "a/b", {
+  name: "a/b",
+  version: undefined,
+  path: undefined,
+});
+test(packSpecPrettyPrintingMacro, "a/b@~1.2.3", {
+  name: "a/b",
+  version: "~1.2.3",
+  path: undefined,
+});
+test(packSpecPrettyPrintingMacro, "a/b@~1.2.3:abc/def", {
+  name: "a/b",
+  version: "~1.2.3",
+  path: "abc/def",
+});
+test(packSpecPrettyPrintingMacro, "a/b:abc/def", {
+  name: "a/b",
+  version: undefined,
+  path: "abc/def",
+});
+test(packSpecPrettyPrintingMacro, "    a/b:abc/def    ", {
+  name: "a/b",
+  version: undefined,
+  path: "abc/def",
+});
+
+/**
  * Test macro for testing the packs block and the packs input
  */
 function parseInputAndConfigMacro(
@@ -1598,6 +1679,7 @@ function parseInputAndConfigMacro(
     configUtils.parsePacks(
       packsFromConfig,
       packsFromInput,
+      !!packsFromInput?.trim().startsWith("+"), // coerce to boolean
       languages,
       "/a/b",
       mockLogger
@@ -1619,6 +1701,7 @@ function parseInputAndConfigErrorMacro(
   packsFromConfig: string[] | Record<string, string[]>,
   packsFromInput: string | undefined,
   languages: Language[],
+  packsFromInputOverride: boolean,
   expected: RegExp
 ) {
   t.throws(
@@ -1626,6 +1709,7 @@ function parseInputAndConfigErrorMacro(
       configUtils.parsePacks(
         packsFromConfig,
         packsFromInput,
+        packsFromInputOverride,
         languages,
         "/a/b",
         mockLogger
@@ -1704,6 +1788,7 @@ test(
   {},
   "c/d",
   [],
+  false,
   /No languages specified/
 );
 
@@ -1713,6 +1798,7 @@ test(
   {},
   "c/d",
   [Language.cpp, Language.csharp],
+  false,
   /multi-language analysis/
 );
 
@@ -1722,6 +1808,7 @@ test(
   {},
   " + ",
   [Language.cpp],
+  true,
   /remove the '\+'/
 );
 
@@ -1731,6 +1818,7 @@ test(
   {},
   " xxx",
   [Language.cpp],
+  false,
   /"xxx" is not a valid pack/
 );
 
@@ -1765,6 +1853,7 @@ const mlPoweredQueriesMacro = test.macro({
         packsInput,
         undefined,
         undefined,
+        false,
         false,
         "",
         "",
@@ -1908,4 +1997,165 @@ test(
   undefined,
   "security-and-quality",
   "~0.3.0"
+);
+
+const calculateAugmentationMacro = test.macro({
+  exec: async (
+    t: ExecutionContext,
+    _title: string,
+    rawPacksInput: string | undefined,
+    rawQueriesInput: string | undefined,
+    languages: Language[],
+    expectedAugmentationProperties: configUtils.AugmentationProperties
+  ) => {
+    const actualAugmentationProperties = configUtils.calculateAugmentation(
+      rawPacksInput,
+      rawQueriesInput,
+      languages
+    );
+    t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
+  },
+  title: (_, title) => `Calculate Augmentation: ${title}`,
+});
+
+test(
+  calculateAugmentationMacro,
+  "All empty",
+  undefined,
+  undefined,
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: undefined,
+    packsInputCombines: false,
+    packsInput: undefined,
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With queries",
+  undefined,
+  " a, b , c, d",
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    packsInputCombines: false,
+    packsInput: undefined,
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With queries combining",
+  undefined,
+  "   +   a, b , c, d ",
+  [Language.javascript],
+  {
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    packsInputCombines: false,
+    packsInput: undefined,
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With packs",
+  "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
+  undefined,
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: undefined,
+    packsInputCombines: false,
+    packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With packs combining",
+  "   +   codeql/a, codeql/b, codeql/c, codeql/d",
+  undefined,
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: undefined,
+    packsInputCombines: true,
+    packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+const calculateAugmentationErrorMacro = test.macro({
+  exec: async (
+    t: ExecutionContext,
+    _title: string,
+    rawPacksInput: string | undefined,
+    rawQueriesInput: string | undefined,
+    languages: Language[],
+    expectedError: RegExp | string
+  ) => {
+    t.throws(
+      () =>
+        configUtils.calculateAugmentation(
+          rawPacksInput,
+          rawQueriesInput,
+          languages
+        ),
+      { message: expectedError }
+    );
+  },
+  title: (_, title) => `Calculate Augmentation Error: ${title}`,
+});
+
+test(
+  calculateAugmentationErrorMacro,
+  "Plus (+) with nothing else (queries)",
+  undefined,
+  "   +   ",
+  [Language.javascript],
+  /The workflow property "queries" is invalid/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Plus (+) with nothing else (packs)",
+  "   +   ",
+  undefined,
+  [Language.javascript],
+  /The workflow property "packs" is invalid/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Packs input with multiple languages",
+  "   +  a/b, c/d ",
+  undefined,
+  [Language.javascript, Language.java],
+  /Cannot specify a 'packs' input in a multi-language analysis/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Packs input with no languages",
+  "   +  a/b, c/d ",
+  undefined,
+  [],
+  /No languages specified/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Invalid packs",
+  " a-pack-without-a-scope ",
+  undefined,
+  [Language.javascript],
+  /"a-pack-without-a-scope" is not a valid pack/
 );

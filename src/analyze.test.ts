@@ -1,11 +1,17 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
-import { runQueries, createdDBForScannedLanguages } from "./analyze";
+import {
+  convertPackToQuerySuiteEntry,
+  createdDBForScannedLanguages,
+  createQuerySuiteContents,
+  runQueries,
+  validateQueryFilters,
+} from "./analyze";
 import { setCodeQL, getCodeQLForTesting } from "./codeql";
 import { stubToolRunnerConstructor } from "./codeql.test";
 import { Config } from "./config-utils";
@@ -112,7 +118,13 @@ test("status report fields and search path setting", async (t) => {
         debugMode: false,
         debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
         debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-        injectedMlQueries: false,
+        augmentationProperties: {
+          injectedMlQueries: false,
+          packsInputCombines: false,
+          queriesInputCombines: false,
+        },
+        trapCaches: {},
+        trapCacheDownloadTime: 0,
       };
       fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
         recursive: true,
@@ -251,6 +263,164 @@ test("status report fields and search path setting", async (t) => {
   }
 });
 
+test("validateQueryFilters", (t) => {
+  t.notThrows(() => validateQueryFilters([]));
+  t.notThrows(() => validateQueryFilters(undefined));
+  t.notThrows(() => {
+    return validateQueryFilters([
+      {
+        exclude: {
+          "problem.severity": "recommendation",
+        },
+      },
+      {
+        exclude: {
+          "tags contain": ["foo", "bar"],
+        },
+      },
+      {
+        include: {
+          "problem.severity": "something-to-think-about",
+        },
+      },
+      {
+        include: {
+          "tags contain": ["baz", "bop"],
+        },
+      },
+    ]);
+  });
+
+  t.throws(
+    () => {
+      return validateQueryFilters([
+        {
+          exclude: {
+            "tags contain": ["foo", "bar"],
+          },
+          include: {
+            "tags contain": ["baz", "bop"],
+          },
+        },
+      ]);
+    },
+    { message: /Query filter must have exactly one key/ }
+  );
+
+  t.throws(
+    () => {
+      return validateQueryFilters([{ xxx: "foo" } as any]);
+    },
+    { message: /Only "include" or "exclude" filters are allowed/ }
+  );
+});
+
+const convertPackToQuerySuiteEntryMacro = test.macro({
+  exec: (t: ExecutionContext<unknown>, packSpec: string, suiteEntry: any) =>
+    t.deepEqual(convertPackToQuerySuiteEntry(packSpec), suiteEntry),
+
+  title: (_providedTitle, packSpec: string) => `Query Suite Entry: ${packSpec}`,
+});
+
+test(convertPackToQuerySuiteEntryMacro, "a/b", {
+  qlpack: "a/b",
+  from: undefined,
+  version: undefined,
+  query: undefined,
+  queries: undefined,
+  apply: undefined,
+});
+
+test(convertPackToQuerySuiteEntryMacro, "a/b@~1.2.3", {
+  qlpack: "a/b",
+  from: undefined,
+  version: "~1.2.3",
+  query: undefined,
+  queries: undefined,
+  apply: undefined,
+});
+
+test(convertPackToQuerySuiteEntryMacro, "a/b:my/path", {
+  qlpack: undefined,
+  from: "a/b",
+  version: undefined,
+  query: undefined,
+  queries: "my/path",
+  apply: undefined,
+});
+
+test(convertPackToQuerySuiteEntryMacro, "a/b@~1.2.3:my/path", {
+  qlpack: undefined,
+  from: "a/b",
+  version: "~1.2.3",
+  query: undefined,
+  queries: "my/path",
+  apply: undefined,
+});
+
+test(convertPackToQuerySuiteEntryMacro, "a/b:my/path/query.ql", {
+  qlpack: undefined,
+  from: "a/b",
+  version: undefined,
+  query: "my/path/query.ql",
+  queries: undefined,
+  apply: undefined,
+});
+
+test(convertPackToQuerySuiteEntryMacro, "a/b@~1.2.3:my/path/query.ql", {
+  qlpack: undefined,
+  from: "a/b",
+  version: "~1.2.3",
+  query: "my/path/query.ql",
+  queries: undefined,
+  apply: undefined,
+});
+
+test(convertPackToQuerySuiteEntryMacro, "a/b:my/path/suite.qls", {
+  qlpack: undefined,
+  from: "a/b",
+  version: undefined,
+  query: undefined,
+  queries: undefined,
+  apply: "my/path/suite.qls",
+});
+
+test(convertPackToQuerySuiteEntryMacro, "a/b@~1.2.3:my/path/suite.qls", {
+  qlpack: undefined,
+  from: "a/b",
+  version: "~1.2.3",
+  query: undefined,
+  queries: undefined,
+  apply: "my/path/suite.qls",
+});
+
+test("convertPackToQuerySuiteEntry Failure", (t) => {
+  t.throws(() => convertPackToQuerySuiteEntry("this-is-not-a-pack"));
+});
+
+test("createQuerySuiteContents", (t) => {
+  const yamlResult = createQuerySuiteContents(
+    ["query1.ql", "query2.ql"],
+    [
+      {
+        exclude: { "problem.severity": "recommendation" },
+      },
+      {
+        include: { "problem.severity": "recommendation" },
+      },
+    ]
+  );
+  const expected = `- query: query1.ql
+- query: query2.ql
+- exclude:
+    problem.severity: recommendation
+- include:
+    problem.severity: recommendation
+`;
+
+  t.deepEqual(yamlResult, expected);
+});
+
 const stubConfig: Config = {
   languages: [Language.cpp, Language.go],
   queries: {},
@@ -267,7 +437,13 @@ const stubConfig: Config = {
   debugMode: false,
   debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
   debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-  injectedMlQueries: false,
+  augmentationProperties: {
+    injectedMlQueries: false,
+    packsInputCombines: false,
+    queriesInputCombines: false,
+  },
+  trapCaches: {},
+  trapCacheDownloadTime: 0,
 };
 
 for (const options of [

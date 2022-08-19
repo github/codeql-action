@@ -8,9 +8,12 @@ import * as safeWhich from "@chrisgavin/safe-which";
 import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
+import { Config } from "./config-utils";
 import * as sharedEnv from "./shared-environment";
 import {
+  doesDirectoryExist,
   getCachedCodeQlVersion,
+  getCodeQLDatabasePath,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
   isGitHubGhesVersionBelow,
@@ -667,12 +670,7 @@ export async function createStatusReportBase(
   }
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
   const codeQlCliVersion = getCachedCodeQlVersion();
-
-  // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
-  // See https://github.com/actions/runner/issues/803
-  const actionRef = isRunningLocalAction()
-    ? undefined
-    : process.env["GITHUB_ACTION_REF"];
+  const actionRef = process.env["GITHUB_ACTION_REF"];
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
@@ -872,6 +870,33 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   return currentRef === defaultBranch;
 }
 
-export function sanitizeArifactName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
+export async function printDebugLogs(config: Config) {
+  for (const language of config.languages) {
+    const databaseDirectory = getCodeQLDatabasePath(config, language);
+    const logsDirectory = path.join(databaseDirectory, "log");
+    if (!doesDirectoryExist(logsDirectory)) {
+      core.info(`Directory ${logsDirectory} does not exist.`);
+      continue; // Skip this language database.
+    }
+
+    const walkLogFiles = (dir: string) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      if (entries.length === 0) {
+        core.info(`No debug logs found at directory ${logsDirectory}.`);
+      }
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          const absolutePath = path.resolve(dir, entry.name);
+          core.startGroup(
+            `CodeQL Debug Logs - ${language} - ${entry.name} from file at path ${absolutePath}`
+          );
+          process.stdout.write(fs.readFileSync(absolutePath));
+          core.endGroup();
+        } else if (entry.isDirectory()) {
+          walkLogFiles(path.resolve(dir, entry.name));
+        }
+      }
+    };
+    walkLogFiles(logsDirectory);
+  }
 }

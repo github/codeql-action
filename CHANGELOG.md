@@ -2,6 +2,11 @@
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 2.1.19 - 17 Aug 2022
+
+- Add the ability to filter queries from a code scanning run by using the `query-filters` option in the code scanning configuration file. [#1098](https://github.com/github/codeql-action/pull/1098)
 - In debug mode, debug artifacts are now uploaded even if a step in the Actions workflow fails. [#1159](https://github.com/github/codeql-action/pull/1159)
 - Update default CodeQL bundle version to 2.10.3. [#1178](https://github.com/github/codeql-action/pull/1178)
 - The combination of python2 and Pipenv is no longer supported. [#1181](https://github.com/github/codeql-action/pull/1181)
@@ -31,7 +36,6 @@ No user facing changes.
 
 ## 2.1.13 - 21 Jun 2022
 
-- Add the ability to filter queries from a code scanning run by using the `query-filters` option in the code scanning configuration file. [#1098](https://github.com/github/codeql-action/pull/1098)
 - Update default CodeQL bundle version to 2.9.4. [#1100](https://github.com/github/codeql-action/pull/1100)
 
 ## 2.1.12 - 01 Jun 2022

@@ -85,7 +85,11 @@ test("checkoutExternalQueries", async (t) => {
     await externalQueries.checkoutExternalRepository(
       repoName,
       commit1Sha,
-      { url: `file://${testRepoBaseDir}`, externalRepoAuth: "" },
+      {
+        url: `file://${testRepoBaseDir}`,
+        externalRepoAuth: "",
+        apiURL: undefined,
+      },
       tmpDir,
       getRunnerLogger(true)
     );
@@ -99,7 +103,11 @@ test("checkoutExternalQueries", async (t) => {
     await externalQueries.checkoutExternalRepository(
       repoName,
       commit2Sha,
-      { url: `file://${testRepoBaseDir}`, externalRepoAuth: "" },
+      {
+        url: `file://${testRepoBaseDir}`,
+        externalRepoAuth: "",
+        apiURL: undefined,
+      },
       tmpDir,
       getRunnerLogger(true)
     );
@@ -114,6 +122,7 @@ test("buildCheckoutURL", (t) => {
     externalQueries.buildCheckoutURL("foo/bar", {
       url: "https://github.com",
       externalRepoAuth: undefined,
+      apiURL: undefined,
     }),
     "https://github.com/foo/bar"
   );
@@ -121,6 +130,7 @@ test("buildCheckoutURL", (t) => {
     externalQueries.buildCheckoutURL("foo/bar", {
       url: "https://github.example.com/",
       externalRepoAuth: undefined,
+      apiURL: undefined,
     }),
     "https://github.example.com/foo/bar"
   );
@@ -129,6 +139,7 @@ test("buildCheckoutURL", (t) => {
     externalQueries.buildCheckoutURL("foo/bar", {
       url: "https://github.com",
       externalRepoAuth: "abc",
+      apiURL: undefined,
     }),
     "https://x-access-token:abc@github.com/foo/bar"
   );
@@ -136,6 +147,7 @@ test("buildCheckoutURL", (t) => {
     externalQueries.buildCheckoutURL("foo/bar", {
       url: "https://github.example.com/",
       externalRepoAuth: "abc",
+      apiURL: undefined,
     }),
     "https://x-access-token:abc@github.example.com/foo/bar"
   );

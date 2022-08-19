@@ -5,19 +5,24 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
+import * as yaml from "js-yaml";
 import { default as queryString } from "query-string";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { isRunningLocalAction, getRelativeScriptPath } from "./actions-util";
+import { getRelativeScriptPath, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
-import { FeatureFlags, FeatureFlag } from "./feature-flags";
+import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
+import {
+  getTrapCachingExtractorConfigArgs,
+  getTrapCachingExtractorConfigArgsForLang,
+} from "./trap-caching";
 import * as util from "./util";
 import { isGoodVersion } from "./util";
 
@@ -97,7 +102,7 @@ export interface CodeQL {
    * and running the language extractor.
    */
   extractScannedLanguage(
-    database: string,
+    config: Config,
     language: Language,
     featureFlags: FeatureFlags
   ): Promise<void>;
@@ -113,6 +118,10 @@ export interface CodeQL {
    * Run 'codeql resolve languages'.
    */
   resolveLanguages(): Promise<ResolveLanguagesOutput>;
+  /**
+   * Run 'codeql resolve languages' with '--format=betterjson'.
+   */
+  betterResolveLanguages(): Promise<BetterResolveLanguagesOutput>;
   /**
    * Run 'codeql resolve queries'.
    */
@@ -144,7 +153,7 @@ export interface CodeQL {
   databaseRunQueries(
     databasePath: string,
     extraSearchPath: string | undefined,
-    querySuitePath: string,
+    querySuitePath: string | undefined,
     memoryFlag: string,
     threadsFlag: string
   ): Promise<void>;
@@ -153,7 +162,7 @@ export interface CodeQL {
    */
   databaseInterpretResults(
     databasePath: string,
-    querySuitePaths: string[],
+    querySuitePaths: string[] | undefined,
     sarifFile: string,
     addSnippetsFlag: string,
     threadsFlag: string,
@@ -168,6 +177,17 @@ export interface CodeQL {
 
 export interface ResolveLanguagesOutput {
   [language: string]: [string];
+}
+
+export interface BetterResolveLanguagesOutput {
+  extractors: {
+    [language: string]: [
+      {
+        extractor_root: string;
+        extractor_options?: any;
+      }
+    ];
+  };
 }
 
 export interface ResolveQueriesOutput {
@@ -202,7 +222,7 @@ interface PackDownloadItem {
 let cachedCodeQL: CodeQL | undefined = undefined;
 
 const CODEQL_BUNDLE_VERSION = defaults.bundleVersion;
-const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
 /**
  * The oldest version of CodeQL that the Action will run with. This should be
@@ -229,6 +249,7 @@ export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
+export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL
@@ -247,6 +268,12 @@ export const CODEQL_VERSION_NEW_TRACING = "2.7.0";
  * some of their files being greater than MAX_PATH (260 characters).
  */
 export const CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS = "2.9.0";
+
+/**
+ * Previous versions had the option already, but were missing the
+ * --extractor-options-verbosity that we need.
+ */
+export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 
 function getCodeQLBundleName(): string {
   let platform: string;
@@ -388,6 +415,7 @@ async function getCodeQLBundleDownloadURL(
  * @param apiDetails
  * @param tempDir
  * @param variant
+ * @param featureFlags
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
@@ -398,14 +426,29 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
+  featureFlags: FeatureFlags,
   logger: Logger,
   checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   try {
-    // We use the special value of 'latest' to prioritize the version in the
-    // defaults over any pinned cached version.
-    const forceLatest = codeqlURL === "latest";
+    const forceLatestReason =
+      // We use the special value of 'latest' to prioritize the version in the
+      // defaults over any pinned cached version.
+      codeqlURL === "latest"
+        ? '"tools: latest" was requested'
+        : // If the user hasn't requested a particular CodeQL version, then bypass
+        // the toolcache when the appropriate feature flag is enabled. This
+        // allows us to quickly rollback a broken bundle that has made its way
+        // into the toolcache.
+        codeqlURL === undefined &&
+          (await featureFlags.getValue(FeatureFlag.BypassToolcacheEnabled))
+        ? "a specific version of CodeQL was not requested and the bypass toolcache feature flag is enabled"
+        : undefined;
+    const forceLatest = forceLatestReason !== undefined;
     if (forceLatest) {
+      logger.debug(
+        `Forcing the latest version of the CodeQL tools since ${forceLatestReason}.`
+      );
       codeqlURL = undefined;
     }
     let codeqlFolder: string;
@@ -585,6 +628,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     ),
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
+    betterResolveLanguages: resolveFunction(
+      partialCodeql,
+      "betterResolveLanguages"
+    ),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
@@ -730,6 +777,7 @@ async function getCodeQLForCmd(
       );
       if (config.languages.filter(isTracedLanguage).length > 0) {
         extraArgs.push("--begin-tracing");
+        extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
         if (processName !== undefined) {
           extraArgs.push(`--trace-process-name=${processName}`);
         } else {
@@ -748,6 +796,12 @@ async function getCodeQLForCmd(
           }
         }
       }
+
+      const configLocation = await generateCodescanningConfig(codeql, config);
+      if (configLocation) {
+        extraArgs.push(`--codescanning-config=${configLocation}`);
+      }
+
       await runTool(cmd, [
         "database",
         "init",
@@ -797,10 +851,11 @@ async function getCodeQLForCmd(
       await runTool(autobuildCmd);
     },
     async extractScannedLanguage(
-      databasePath: string,
+      config: Config,
       language: Language,
       featureFlags: FeatureFlags
     ) {
+      const databasePath = util.getCodeQLDatabasePath(config, language);
       // Get extractor location
       let extractorPath = "";
       await new toolrunner.ToolRunner(
@@ -850,6 +905,7 @@ async function getCodeQLForCmd(
           "database",
           "trace-command",
           ...extraArgs,
+          ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
           ...getExtraOptionsFromEnv(["database", "trace-command"]),
           databasePath,
           "--",
@@ -892,6 +948,24 @@ async function getCodeQLForCmd(
         );
       }
     },
+    async betterResolveLanguages() {
+      const codeqlArgs = [
+        "resolve",
+        "languages",
+        "--format=betterjson",
+        "--extractor-options-verbosity=4",
+        ...getExtraOptionsFromEnv(["resolve", "languages"]),
+      ];
+      const output = await runTool(cmd, codeqlArgs);
+
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`
+        );
+      }
+    },
     async resolveQueries(
       queries: string[],
       extraSearchPath: string | undefined
@@ -917,7 +991,7 @@ async function getCodeQLForCmd(
     async databaseRunQueries(
       databasePath: string,
       extraSearchPath: string | undefined,
-      querySuitePath: string,
+      querySuitePath: string | undefined,
       memoryFlag: string,
       threadsFlag: string
     ): Promise<void> {
@@ -934,12 +1008,14 @@ async function getCodeQLForCmd(
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      codeqlArgs.push(querySuitePath);
+      if (querySuitePath) {
+        codeqlArgs.push(querySuitePath);
+      }
       await runTool(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
       databasePath: string,
-      querySuitePaths: string[],
+      querySuitePaths: string[] | undefined,
       sarifFile: string,
       addSnippetsFlag: string,
       threadsFlag: string,
@@ -971,7 +1047,9 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       codeqlArgs.push(databasePath);
-      codeqlArgs.push(...querySuitePaths);
+      if (querySuitePaths) {
+        codeqlArgs.push(...querySuitePaths);
+      }
       // capture stdout, which contains analysis summaries
       return await runTool(cmd, codeqlArgs);
     },
@@ -1162,4 +1240,85 @@ async function runTool(cmd: string, args: string[] = []) {
   if (exitCode !== 0)
     throw new CommandInvocationError(cmd, args, exitCode, error);
   return output;
+}
+
+/**
+ * If appropriate, generates a code scanning configuration that is to be used for a scan.
+ * If the configuration is not to be generated, returns undefined.
+ *
+ * @param codeql The CodeQL object to use.
+ * @param config The configuration to use.
+ * @returns the path to the generated user configuration file.
+ */
+async function generateCodescanningConfig(
+  codeql: CodeQL,
+  config: Config
+): Promise<string | undefined> {
+  if (!(await util.useCodeScanningConfigInCli(codeql))) {
+    return;
+  }
+  const configLocation = path.resolve(config.tempDir, "user-config.yaml");
+  // make a copy so we can modify it
+  const augmentedConfig = cloneObject(config.originalUserInput);
+
+  // Inject the queries from the input
+  if (config.augmentationProperties.queriesInput) {
+    if (config.augmentationProperties.queriesInputCombines) {
+      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
+        config.augmentationProperties.queriesInput
+      );
+    } else {
+      augmentedConfig.queries = config.augmentationProperties.queriesInput;
+    }
+  }
+  if (augmentedConfig.queries?.length === 0) {
+    delete augmentedConfig.queries;
+  }
+
+  // Inject the packs from the input
+  if (config.augmentationProperties.packsInput) {
+    if (config.augmentationProperties.packsInputCombines) {
+      // At this point, we already know that this is a single-language analysis
+      if (Array.isArray(augmentedConfig.packs)) {
+        augmentedConfig.packs = (augmentedConfig.packs || []).concat(
+          config.augmentationProperties.packsInput
+        );
+      } else if (!augmentedConfig.packs) {
+        augmentedConfig.packs = config.augmentationProperties.packsInput;
+      } else {
+        // At this point, we know there is only one language.
+        // If there were more than one language, an error would already have been thrown.
+        const language = Object.keys(augmentedConfig.packs)[0];
+        augmentedConfig.packs[language] = augmentedConfig.packs[
+          language
+        ].concat(config.augmentationProperties.packsInput);
+      }
+    } else {
+      augmentedConfig.packs = config.augmentationProperties.packsInput;
+    }
+  }
+  if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
+    delete augmentedConfig.packs;
+  }
+  if (config.augmentationProperties.injectedMlQueries) {
+    // We need to inject the ML queries into the original user input before
+    // we pass this on to the CLI, to make sure these get run.
+    const packString = await util.getMlPoweredJsQueriesPack(codeql);
+
+    if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
+    if (Array.isArray(augmentedConfig.packs)) {
+      augmentedConfig.packs.push(packString);
+    } else {
+      if (!augmentedConfig.packs.javascript)
+        augmentedConfig.packs["javascript"] = [];
+      augmentedConfig.packs["javascript"].push(packString);
+    }
+  }
+
+  fs.writeFileSync(configLocation, yaml.dump(augmentedConfig));
+  return configLocation;
+}
+
+function cloneObject(obj: any) {
+  return JSON.parse(JSON.stringify(obj));
 }

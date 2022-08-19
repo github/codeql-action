@@ -1,7 +1,6 @@
-import * as fs from "fs";
-import * as path from "path";
+// We need to import `performance` on Node 12
+import { performance } from "perf_hooks";
 
-import * as artifact from "@actions/artifact";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -9,20 +8,20 @@ import {
   CodeQLAnalysisError,
   QueriesStatusReport,
   runCleanup,
-  runQueries,
   runFinalize,
+  runQueries,
 } from "./analyze";
 import { getGitHubVersionActionsOnly } from "./api-client";
-import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
+import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { GitHubFeatureFlags } from "./feature-flags";
-import { getActionsLogger } from "./logging";
+import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
-import { bundleDb, codeQlVersionAbove } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -35,11 +34,21 @@ interface FinishStatusReport
   extends actionsUtil.StatusReportBase,
     AnalysisStatusReport {}
 
+interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
+  /** Size of TRAP caches that we uploaded, in bytes. */
+  trap_cache_upload_size_bytes: number;
+  /** Time taken to upload TRAP caches, in milliseconds. */
+  trap_cache_upload_duration_ms: number;
+}
+
 export async function sendStatusReport(
   startedAt: Date,
   config: Config | undefined,
   stats: AnalysisStatusReport | undefined,
-  error?: Error
+  error: Error | undefined,
+  trapCacheUploadTime: number | undefined,
+  didUploadTrapCaches: boolean,
+  logger: Logger
 ) {
   const status = actionsUtil.getActionsStatus(
     error,
@@ -62,7 +71,26 @@ export async function sendStatusReport(
       : {}),
     ...(stats || {}),
   };
-  await actionsUtil.sendStatusReport(statusReport);
+  if (config && didUploadTrapCaches) {
+    const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
+      ...statusReport,
+      trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
+      trap_cache_upload_size_bytes: Math.round(
+        await getTotalCacheSize(config.trapCaches, logger)
+      ),
+    };
+    await actionsUtil.sendStatusReport(trapCacheUploadStatusReport);
+  } else {
+    await actionsUtil.sendStatusReport(statusReport);
+  }
+}
+
+// `expect-error` should only be set to a non-false value by the CodeQL Action PR checks.
+function hasBadExpectErrorInput(): boolean {
+  return (
+    actionsUtil.getOptionalInput("expect-error") !== "false" &&
+    !util.isInTestMode()
+  );
 }
 
 async function run() {
@@ -70,9 +98,12 @@ async function run() {
   let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  let trapCacheUploadTime: number | undefined = undefined;
+  let didUploadTrapCaches = false;
   util.initializeEnvironment(util.Mode.actions, pkg.version);
   await util.checkActionVersion(pkg.version);
 
+  const logger = getActionsLogger();
   try {
     if (
       !(await actionsUtil.sendStatusReport(
@@ -85,13 +116,19 @@ async function run() {
     ) {
       return;
     }
-    const logger = getActionsLogger();
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
         "Config file could not be found at expected location. Has the 'init' action been called?"
       );
     }
+
+    if (hasBadExpectErrorInput()) {
+      throw new Error(
+        "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork."
+      );
+    }
+
     await util.enrichEnvironment(
       util.Mode.actions,
       await getCodeQL(config.codeQLCmd)
@@ -100,6 +137,7 @@ async function run() {
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),
       url: util.getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiURL: util.getRequiredEnvParam("GITHUB_API_URL"),
     };
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(
@@ -134,50 +172,6 @@ async function run() {
         config,
         logger
       );
-
-      if (config.debugMode) {
-        // Upload the SARIF files as an Actions artifact for debugging
-        await uploadDebugArtifacts(
-          config.languages.map((lang) =>
-            path.resolve(outputDir, `${lang}.sarif`)
-          ),
-          outputDir,
-          config.debugArtifactName
-        );
-      }
-    }
-
-    const codeql = await getCodeQL(config.codeQLCmd);
-
-    if (config.debugMode) {
-      // Upload the logs as an Actions artifact for debugging
-      let toUpload: string[] = [];
-      for (const language of config.languages) {
-        toUpload = toUpload.concat(
-          listFolder(
-            path.resolve(util.getCodeQLDatabasePath(config, language), "log")
-          )
-        );
-      }
-      if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-        // Multilanguage tracing: there are additional logs in the root of the cluster
-        toUpload = toUpload.concat(
-          listFolder(path.resolve(config.dbLocation, "log"))
-        );
-      }
-      await uploadDebugArtifacts(
-        toUpload,
-        config.dbLocation,
-        config.debugArtifactName
-      );
-      if (!(await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING))) {
-        // Before multi-language tracing, we wrote a compound-build-tracer.log in the temp dir
-        await uploadDebugArtifacts(
-          [path.resolve(config.tempDir, "compound-build-tracer.log")],
-          config.tempDir,
-          config.debugArtifactName
-        );
-      }
     }
 
     if (actionsUtil.getOptionalInput("cleanup-level") !== "none") {
@@ -209,6 +203,12 @@ async function run() {
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
 
+    // Possibly upload the TRAP caches for later re-use
+    const trapCacheUploadStartTime = performance.now();
+    const codeql = await getCodeQL(config.codeQLCmd);
+    didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
+    trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
+
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
       core.debug("In test mode. Waiting for processing is disabled.");
@@ -223,113 +223,84 @@ async function run() {
         getActionsLogger()
       );
     }
+    // If we did not throw an error yet here, but we expect one, throw it.
+    if (actionsUtil.getOptionalInput("expect-error") === "true") {
+      core.setFailed(
+        `expect-error input was set to true but no error was thrown.`
+      );
+    }
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
-    core.setFailed(error.message);
+    if (
+      actionsUtil.getOptionalInput("expect-error") !== "true" ||
+      hasBadExpectErrorInput()
+    ) {
+      core.setFailed(error.message);
+    }
+
     console.log(error);
 
     if (error instanceof CodeQLAnalysisError) {
       const stats = { ...error.queriesStatusReport };
-      await sendStatusReport(startedAt, config, stats, error);
+      await sendStatusReport(
+        startedAt,
+        config,
+        stats,
+        error,
+        trapCacheUploadTime,
+        didUploadTrapCaches,
+        logger
+      );
     } else {
-      await sendStatusReport(startedAt, config, undefined, error);
+      await sendStatusReport(
+        startedAt,
+        config,
+        undefined,
+        error,
+        trapCacheUploadTime,
+        didUploadTrapCaches,
+        logger
+      );
     }
 
     return;
-  } finally {
-    if (config?.debugMode) {
-      try {
-        // Upload the database bundles as an Actions artifact for debugging
-        const toUpload: string[] = [];
-        for (const language of config.languages) {
-          toUpload.push(
-            await bundleDb(
-              config,
-              language,
-              await getCodeQL(config.codeQLCmd),
-              `${config.debugDatabaseName}-${language}`
-            )
-          );
-        }
-        await uploadDebugArtifacts(
-          toUpload,
-          config.dbLocation,
-          config.debugArtifactName
-        );
-      } catch (error) {
-        console.log(`Failed to upload database debug bundles: ${error}`);
-      }
-    }
-
-    if (config?.debugMode) {
-      core.info("Debug mode is on. Printing CodeQL debug logs...");
-      for (const language of config.languages) {
-        const databaseDirectory = util.getCodeQLDatabasePath(config, language);
-        const logsDirectory = path.join(databaseDirectory, "log");
-
-        const walkLogFiles = (dir: string) => {
-          const entries = fs.readdirSync(dir, { withFileTypes: true });
-          for (const entry of entries) {
-            if (entry.isFile()) {
-              core.startGroup(
-                `CodeQL Debug Logs - ${language} - ${entry.name}`
-              );
-              process.stdout.write(
-                fs.readFileSync(path.resolve(dir, entry.name))
-              );
-              core.endGroup();
-            } else if (entry.isDirectory()) {
-              walkLogFiles(path.resolve(dir, entry.name));
-            }
-          }
-        };
-        walkLogFiles(logsDirectory);
-      }
-    }
   }
 
   if (runStats && uploadResult) {
-    await sendStatusReport(startedAt, config, {
-      ...runStats,
-      ...uploadResult.statusReport,
-    });
+    await sendStatusReport(
+      startedAt,
+      config,
+      {
+        ...runStats,
+        ...uploadResult.statusReport,
+      },
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches,
+      logger
+    );
   } else if (runStats) {
-    await sendStatusReport(startedAt, config, { ...runStats });
+    await sendStatusReport(
+      startedAt,
+      config,
+      { ...runStats },
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches,
+      logger
+    );
   } else {
-    await sendStatusReport(startedAt, config, undefined);
+    await sendStatusReport(
+      startedAt,
+      config,
+      undefined,
+      undefined,
+      trapCacheUploadTime,
+      didUploadTrapCaches,
+      logger
+    );
   }
-}
-
-async function uploadDebugArtifacts(
-  toUpload: string[],
-  rootDir: string,
-  artifactName: string
-) {
-  let suffix = "";
-  const matrix = actionsUtil.getRequiredInput("matrix");
-  if (matrix !== undefined && matrix !== "null") {
-    for (const entry of Object.entries(JSON.parse(matrix)).sort())
-      suffix += `-${entry[1]}`;
-  }
-  await artifact.create().uploadArtifact(
-    actionsUtil.sanitizeArifactName(`${artifactName}${suffix}`),
-    toUpload.map((file) => path.normalize(file)),
-    path.normalize(rootDir)
-  );
-}
-
-function listFolder(dir: string): string[] {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  let files: string[] = [];
-  for (const entry of entries) {
-    if (entry.isFile()) {
-      files.push(path.resolve(dir, entry.name));
-    } else if (entry.isDirectory()) {
-      files = files.concat(listFolder(path.resolve(dir, entry.name)));
-    }
-  }
-  return files;
 }
 
 export const runPromise = run();

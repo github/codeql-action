@@ -52,6 +52,8 @@ jobs:
       with:
         languages: ruby
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
     - uses: ./../action/analyze
       id: analysis
       env:

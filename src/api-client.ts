@@ -22,11 +22,13 @@ export type GitHubApiCombinedDetails = GitHubApiDetails &
 export interface GitHubApiDetails {
   auth: string;
   url: string;
+  apiURL: string | undefined;
 }
 
 export interface GitHubApiExternalRepoDetails {
   externalRepoAuth?: string;
   url: string;
+  apiURL: string | undefined;
 }
 
 export const getApiClient = function (
@@ -36,16 +38,18 @@ export const getApiClient = function (
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+  const apiURL = apiDetails.apiURL || deriveApiUrl(apiDetails.url);
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
-      baseUrl: getApiUrl(apiDetails.url),
+      baseUrl: apiURL,
       userAgent: `CodeQL-${getMode()}/${pkg.version}`,
       log: consoleLogLevel({ level: "debug" }),
     })
   );
 };
 
-function getApiUrl(githubUrl: string): string {
+// Once the runner is deleted, this can also be removed since the GitHub API URL is always available in an environment variable on Actions.
+function deriveApiUrl(githubUrl: string): string {
   const url = new URL(githubUrl);
 
   // If we detect this is trying to connect to github.com
@@ -63,6 +67,7 @@ function getApiDetails() {
   return {
     auth: getRequiredInput("token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
   };
 }
 

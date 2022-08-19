@@ -8,6 +8,8 @@ steps:
       packs: +dsp-testing/codeql-pack1@1.0.0
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
   - name: Build code
     shell: bash
     run: ./build.sh
@@ -16,6 +18,14 @@ steps:
       output: "${{ runner.temp }}/results"
     env:
       TEST_MODE: true
+
+  - name: Check results
+    uses: ./../action/.github/check-sarif
+    with:
+      sarif-file: ${{ runner.temp }}/results/javascript.sarif
+      queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+      queries-not-run: foo,bar
+
   - name: Assert Results
     shell: bash
     run: |

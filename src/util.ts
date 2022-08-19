@@ -10,8 +10,16 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
-import { Config } from "./config-utils";
+import {
+  CodeQL,
+  CODEQL_VERSION_CONFIG_FILES,
+  CODEQL_VERSION_NEW_TRACING,
+} from "./codeql";
+import {
+  Config,
+  parsePacksSpecification,
+  prettyPrintPack,
+} from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -506,6 +514,13 @@ enum EnvVar {
    * own sandwiched workflow mechanism
    */
   FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
+
+  /**
+   * If set to the "true" string and the codeql CLI version is greater than
+   * `CODEQL_VERSION_CONFIG_FILES`, then the codeql-action will pass the
+   * the codeql-config file to the codeql CLI to be processed there.
+   */
+  CODEQL_PASS_CONFIG_TO_CLI = "CODEQL_PASS_CONFIG_TO_CLI",
 }
 
 const exportVar = (mode: Mode, name: string, value: string) => {
@@ -668,7 +683,10 @@ export async function getMlPoweredJsQueriesPack(
   } else {
     version = `~0.1.0`;
   }
-  return `${ML_POWERED_JS_QUERIES_PACK_NAME}@${version}`;
+  return prettyPrintPack({
+    name: ML_POWERED_JS_QUERIES_PACK_NAME,
+    version,
+  });
 }
 
 /**
@@ -694,11 +712,10 @@ export async function getMlPoweredJsQueriesPack(
  */
 export function getMlPoweredJsQueriesStatus(config: Config): string {
   const mlPoweredJsQueryPacks = (config.packs.javascript || [])
-    .map((pack) => pack.split("@"))
+    .map((p) => parsePacksSpecification(p))
     .filter(
-      (packNameVersion) =>
-        packNameVersion[0] === "codeql/javascript-experimental-atm-queries" &&
-        packNameVersion.length <= 2
+      (pack) =>
+        pack.name === "codeql/javascript-experimental-atm-queries" && !pack.path
     );
   switch (mlPoweredJsQueryPacks.length) {
     case 1:
@@ -707,7 +724,7 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
       // with each version of the CodeQL Action. Therefore in practice we should only hit the
       // `latest` case here when customers have explicitly added the ML-powered query pack to their
       // CodeQL config.
-      return mlPoweredJsQueryPacks[0][1] || "latest";
+      return mlPoweredJsQueryPacks[0].version || "latest";
     case 0:
       return "false";
     default:
@@ -754,5 +771,49 @@ export async function checkActionVersion(version: string) {
  * In test mode, we don't upload SARIF results or status reports to the GitHub API.
  */
 export function isInTestMode(): boolean {
-  return process.env["TEST_MODE"] === "true" || false;
+  return process.env["TEST_MODE"] === "true";
+}
+
+/**
+ * @returns true if the action should generate a conde-scanning config file
+ * that gets passed to the CLI.
+ */
+export async function useCodeScanningConfigInCli(
+  codeql: CodeQL
+): Promise<boolean> {
+  return (
+    process.env[EnvVar.CODEQL_PASS_CONFIG_TO_CLI] === "true" &&
+    (await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES))
+  );
+}
+
+/*
+ * Returns whether the path in the argument represents an existing directory.
+ */
+export function doesDirectoryExist(dirPath: string): boolean {
+  try {
+    const stats = fs.lstatSync(dirPath);
+    return stats.isDirectory();
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Returns a recursive list of files in a given directory.
+ */
+export function listFolder(dir: string): string[] {
+  if (!doesDirectoryExist(dir)) {
+    return [];
+  }
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  let files: string[] = [];
+  for (const entry of entries) {
+    if (entry.isFile()) {
+      files.push(path.resolve(dir, entry.name));
+    } else if (entry.isDirectory()) {
+      files = files.concat(listFolder(path.resolve(dir, entry.name)));
+    }
+  }
+  return files;
 }

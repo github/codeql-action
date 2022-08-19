@@ -20,6 +20,7 @@ export async function initCodeQL(
   apiDetails: GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
+  featureFlags: FeatureFlags,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
@@ -28,6 +29,7 @@ export async function initCodeQL(
     apiDetails,
     tempDir,
     variant,
+    featureFlags,
     logger,
     true
   );
@@ -42,6 +44,7 @@ export async function initConfig(
   packsInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
@@ -61,6 +64,7 @@ export async function initConfig(
     packsInput,
     configFile,
     dbLocation,
+    trapCachingEnabled,
     debugMode,
     debugArtifactName,
     debugDatabaseName,

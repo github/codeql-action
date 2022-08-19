@@ -1,0 +1,7 @@
+packs:
+  javascript:
+    - dsp-testing/codeql-pack1@1.0.0
+    - dsp-testing/codeql-pack2
+
+queries:
+  - uses: ./codeql-qlpacks/complex-javascript-qlpack/foo2/show_ifs.ql

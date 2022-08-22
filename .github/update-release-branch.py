@@ -88,7 +88,7 @@ def open_pr(
   body.append('')
   body.append('Please review the following:')
   if len(conflicted_files) > 0:
-    body.append('- [ ] The `package.json` file contains the correct version.')
+    body.append(' - [ ] The `package.json` file contains the correct version.')
     body.append(' - [ ] You have added commits to this branch that resolve the merge conflicts ' +
       'in the following files:')
     body.extend([f'    - [ ] `{file}`' for file in conflicted_files])

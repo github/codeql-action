@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## 2.1.20 - 22 Aug 2022
+
+No user facing changes.
+
 ## 2.1.19 - 17 Aug 2022
 
 - Add the ability to filter queries from a code scanning run by using the `query-filters` option in the code scanning configuration file. [#1098](https://github.com/github/codeql-action/pull/1098)

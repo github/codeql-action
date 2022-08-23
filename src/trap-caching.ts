@@ -113,7 +113,7 @@ export async function downloadTrapCaches(
       // still just an empty directory. There's no reason to tell the extractor to use it,
       // so let's unset the entry in the map so we don't set any extractor options.
       logger.info(`No TRAP cache found in Actions cache for ${language}`);
-      result[language] = undefined;
+      delete result[language];
     }
   }
 

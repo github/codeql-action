@@ -593,6 +593,12 @@ export function validateQueryFilters(queryFilters?: configUtils.QueryFilter[]) {
     return [];
   }
 
+  if (!Array.isArray(queryFilters)) {
+    throw new Error(
+      `Query filters must be an array of "include" or "exclude" entries. Found ${typeof queryFilters}`
+    );
+  }
+
   const errors: string[] = [];
   for (const qf of queryFilters) {
     const keys = Object.keys(qf);

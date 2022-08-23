@@ -2,7 +2,7 @@ name: "Go: Autobuild custom tracing"
 description: "Checks that Go tracing works in conjunction with the autobuilder"
 os: ["ubuntu-latest", "macos-latest"]
 env:
-  CODEQL_EXTRACTOR_GO_BUILD_TRACING: "true"
+  CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
 steps:
   - uses: actions/setup-go@v3
     with:

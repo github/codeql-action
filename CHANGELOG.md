@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - Improve error messages when the code scanning configuration file includes an invalid `queries` block or an invalid `query-filters` block. [#1208](https://github.com/github/codeql-action/pull/1208)
+- Fix a bug where Go build tracing could fail on Windows. [#1209](https://github.com/github/codeql-action/pull/1209)
 
 ## 2.1.20 - 22 Aug 2022
 

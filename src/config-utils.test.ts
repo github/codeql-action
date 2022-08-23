@@ -1327,7 +1327,7 @@ doInvalidInputTest(
   queries:
   - uses:
       - hello: world`,
-  configUtils.getQueryUsesInvalid
+  configUtils.getQueriesMissingUses
 );
 
 function doInvalidQueryUsesTest(

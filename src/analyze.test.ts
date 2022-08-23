@@ -312,6 +312,16 @@ test("validateQueryFilters", (t) => {
     },
     { message: /Only "include" or "exclude" filters are allowed/ }
   );
+
+  t.throws(
+    () => {
+      return validateQueryFilters({ exclude: "foo" } as any);
+    },
+    {
+      message:
+        /Query filters must be an array of "include" or "exclude" entries/,
+    }
+  );
 });
 
 const convertPackToQuerySuiteEntryMacro = test.macro({

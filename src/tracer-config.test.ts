@@ -33,6 +33,7 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     augmentationProperties: configUtils.defaultAugmentationProperties,
     trapCaches: {},
+    trapCacheDownloadTime: 0,
   };
 }
 

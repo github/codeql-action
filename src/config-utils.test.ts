@@ -360,6 +360,7 @@ test("load non-empty input", async (t) => {
       debugDatabaseName: "my-db",
       augmentationProperties: configUtils.defaultAugmentationProperties,
       trapCaches: {},
+      trapCacheDownloadTime: 0,
     };
 
     const languages = "javascript";

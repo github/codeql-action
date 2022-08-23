@@ -1,5 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
+// We need to import `performance` on Node 12
+import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
 import * as semver from "semver";
@@ -183,6 +185,11 @@ export interface Config {
    * If a key is omitted, then TRAP caching should not be used for that language.
    */
   trapCaches: Partial<Record<Language, string>>;
+
+  /**
+   * Time taken to download TRAP caches. Used for status reporting.
+   */
+  trapCacheDownloadTime: number;
 }
 
 /**
@@ -1023,6 +1030,13 @@ export async function getDefaultConfig(
       );
   }
 
+  const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
+    trapCachingEnabled,
+    codeQL,
+    languages,
+    logger
+  );
+
   return {
     languages,
     queries,
@@ -1038,10 +1052,28 @@ export async function getDefaultConfig(
     debugArtifactName,
     debugDatabaseName,
     augmentationProperties,
-    trapCaches: trapCachingEnabled
-      ? await downloadTrapCaches(codeQL, languages, logger)
-      : {},
+    trapCaches,
+    trapCacheDownloadTime,
   };
+}
+
+async function downloadCacheWithTime(
+  trapCachingEnabled: boolean,
+  codeQL: CodeQL,
+  languages: Language[],
+  logger: Logger
+): Promise<{
+  trapCaches: Partial<Record<Language, string>>;
+  trapCacheDownloadTime: number;
+}> {
+  let trapCaches = {};
+  let trapCacheDownloadTime = 0;
+  if (trapCachingEnabled) {
+    const start = performance.now();
+    trapCaches = await downloadTrapCaches(codeQL, languages, logger);
+    trapCacheDownloadTime = performance.now() - start;
+  }
+  return { trapCaches, trapCacheDownloadTime };
 }
 
 /**
@@ -1209,6 +1241,13 @@ async function loadConfig(
     }
   }
 
+  const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
+    trapCachingEnabled,
+    codeQL,
+    languages,
+    logger
+  );
+
   return {
     languages,
     queries,
@@ -1224,9 +1263,8 @@ async function loadConfig(
     debugArtifactName,
     debugDatabaseName,
     augmentationProperties,
-    trapCaches: trapCachingEnabled
-      ? await downloadTrapCaches(codeQL, languages, logger)
-      : {},
+    trapCaches,
+    trapCacheDownloadTime,
   };
 }
 

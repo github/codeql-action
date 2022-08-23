@@ -87,6 +87,8 @@ jobs:
         languages: csharp,javascript
         source-path: x/y/z/some-path/tests/multi-language-repo
         debug: true
+      env:
+        TEST_MODE: true
     - name: Build code (non-windows)
       shell: bash
       if: ${{ runner.os != 'Windows' }}

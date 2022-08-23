@@ -49,6 +49,8 @@ jobs:
       with:
         languages: java
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
     - uses: ./../action/autobuild
       with:
         working-directory: autobuild-dir

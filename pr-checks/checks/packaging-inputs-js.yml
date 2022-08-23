@@ -8,6 +8,8 @@ steps:
       languages: javascript
       packs: dsp-testing/codeql-pack1@1.0.0, dsp-testing/codeql-pack2, dsp-testing/codeql-pack3:other-query.ql
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
   - name: Build code
     shell: bash
     run: ./build.sh

@@ -37,6 +37,13 @@ export function parseLanguage(language: string): Language | undefined {
 }
 
 export function isTracedLanguage(language: Language): boolean {
+  if (process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "true") {
+    throw new Error(
+      "The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable is set to an invalid value. " +
+        "To enable Go build tracing, please set it to 'on'."
+    );
+  }
+
   return (
     ["cpp", "java", "csharp", "swift"].includes(language) ||
     (process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "on" &&

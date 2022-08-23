@@ -789,7 +789,17 @@ async function getCodeQLForCmd(
         if (
           await util.codeQlVersionAbove(this, CODEQL_VERSION_LUA_TRACER_CONFIG)
         ) {
-          if (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) {
+          if (
+            (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) &&
+            // There's a bug in Lua tracing for Go on Windows in versions 2.10.3 and earlier,
+            // so don't use Lua tracing when tracing Go on Windows.
+            // Once we've released a fix, we should add a version gate based on the fixed version.
+            !(
+              config.languages.includes(Language.go) &&
+              isTracedLanguage(Language.go) &&
+              process.platform === "win32"
+            )
+          ) {
             extraArgs.push("--internal-use-lua-tracing");
           } else {
             extraArgs.push("--no-internal-use-lua-tracing");

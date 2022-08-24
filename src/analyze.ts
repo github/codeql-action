@@ -128,7 +128,7 @@ export async function createdDBForScannedLanguages(
 
   for (const language of config.languages) {
     if (
-      isScannedLanguage(language) &&
+      isScannedLanguage(language, logger) &&
       !dbIsFinalized(config, language, logger)
     ) {
       logger.startGroup(`Extracting ${language}`);
@@ -522,7 +522,7 @@ export async function runFinalize(
   // step.
   if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
     // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(config);
+    await endTracingForCluster(config, logger);
   } else {
     // Delete the tracer config env var to avoid tracing ourselves
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];

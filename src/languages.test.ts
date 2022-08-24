@@ -6,6 +6,7 @@ import {
   isTracedLanguage,
   parseLanguage,
 } from "./languages";
+import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 
 setupTests(test);
@@ -32,21 +33,25 @@ test("parseLanguage", async (t) => {
 });
 
 test("isTracedLanguage", async (t) => {
-  t.true(isTracedLanguage(Language.cpp));
-  t.true(isTracedLanguage(Language.java));
-  t.true(isTracedLanguage(Language.csharp));
+  const logger = getRunnerLogger(true);
 
-  t.false(isTracedLanguage(Language.go));
-  t.false(isTracedLanguage(Language.javascript));
-  t.false(isTracedLanguage(Language.python));
+  t.true(isTracedLanguage(Language.cpp, logger));
+  t.true(isTracedLanguage(Language.java, logger));
+  t.true(isTracedLanguage(Language.csharp, logger));
+
+  t.false(isTracedLanguage(Language.go, logger));
+  t.false(isTracedLanguage(Language.javascript, logger));
+  t.false(isTracedLanguage(Language.python, logger));
 });
 
 test("isScannedLanguage", async (t) => {
-  t.false(isScannedLanguage(Language.cpp));
-  t.false(isScannedLanguage(Language.java));
-  t.false(isScannedLanguage(Language.csharp));
+  const logger = getRunnerLogger(true);
 
-  t.true(isScannedLanguage(Language.go));
-  t.true(isScannedLanguage(Language.javascript));
-  t.true(isScannedLanguage(Language.python));
+  t.false(isScannedLanguage(Language.cpp, logger));
+  t.false(isScannedLanguage(Language.java, logger));
+  t.false(isScannedLanguage(Language.csharp, logger));
+
+  t.true(isScannedLanguage(Language.go, logger));
+  t.true(isScannedLanguage(Language.javascript, logger));
+  t.true(isScannedLanguage(Language.python, logger));
 });

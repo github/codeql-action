@@ -88,7 +88,8 @@ export async function runInit(
   sourceRoot: string,
   processName: string | undefined,
   processLevel: number | undefined,
-  featureFlags: FeatureFlags
+  featureFlags: FeatureFlags,
+  logger: Logger
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
@@ -100,7 +101,8 @@ export async function runInit(
         sourceRoot,
         processName,
         processLevel,
-        featureFlags
+        featureFlags,
+        logger
       );
     } else {
       for (const language of config.languages) {
@@ -132,7 +134,7 @@ export async function runInit(
       throw e;
     }
   }
-  return await getCombinedTracerConfig(config, codeql);
+  return await getCombinedTracerConfig(config, codeql, logger);
 }
 
 // Runs a powershell script to inject the tracer into a parent process

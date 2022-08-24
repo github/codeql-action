@@ -91,7 +91,8 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     processLevel: number | undefined,
-    featureFlags: FeatureFlags
+    featureFlags: FeatureFlags,
+    logger: Logger
   ): Promise<void>;
   /**
    * Runs the autobuilder for the given language.
@@ -770,12 +771,15 @@ async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       processLevel: number | undefined,
-      featureFlags: FeatureFlags
+      featureFlags: FeatureFlags,
+      logger: Logger
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`
       );
-      if (config.languages.filter(isTracedLanguage).length > 0) {
+      if (
+        config.languages.filter((l) => isTracedLanguage(l, logger)).length > 0
+      ) {
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
         if (processName !== undefined) {
@@ -789,7 +793,17 @@ async function getCodeQLForCmd(
         if (
           await util.codeQlVersionAbove(this, CODEQL_VERSION_LUA_TRACER_CONFIG)
         ) {
-          if (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) {
+          if (
+            (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) &&
+            // There's a bug in Lua tracing for Go on Windows in versions 2.10.3 and earlier,
+            // so don't use Lua tracing when tracing Go on Windows.
+            // Once we've released a fix, we should add a version gate based on the fixed version.
+            !(
+              config.languages.includes(Language.go) &&
+              isTracedLanguage(Language.go, logger) &&
+              process.platform === "win32"
+            )
+          ) {
             extraArgs.push("--internal-use-lua-tracing");
           } else {
             extraArgs.push("--no-internal-use-lua-tracing");

@@ -623,6 +623,11 @@ export interface StatusReportBase {
   codeql_version?: string;
 }
 
+export interface DatabaseCreationTimings {
+  scanned_language_extraction_duration_ms?: number;
+  trap_import_duration_ms?: number;
+}
+
 export function getActionsStatus(
   error?: unknown,
   otherFailureCause?: string

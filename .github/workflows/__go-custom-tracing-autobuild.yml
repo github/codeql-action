@@ -82,4 +82,5 @@ jobs:
         fi
     env:
       CODEQL_EXTRACTOR_GO_BUILD_TRACING: on
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

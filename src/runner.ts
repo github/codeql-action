@@ -263,7 +263,8 @@ program
         sourceRoot,
         parseTraceProcessName(),
         parseTraceProcessLevel(),
-        createFeatureFlags([])
+        createFeatureFlags([]),
+        logger
       );
       if (tracerConfig === undefined) {
         return;

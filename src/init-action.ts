@@ -275,7 +275,8 @@ async function run() {
       sourceRoot,
       "Runner.Worker.exe",
       undefined,
-      featureFlags
+      featureFlags,
+      logger
     );
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {

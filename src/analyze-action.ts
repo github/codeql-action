@@ -1,6 +1,3 @@
-// We need to import `performance` on Node 12
-import { performance } from "perf_hooks";
-
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";

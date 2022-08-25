@@ -92,5 +92,5 @@ jobs:
       env:
         TEST_MODE: true
     env:
-      CODEQL_EXTRACTOR_GO_BUILD_TRACING: 'true'
+      CODEQL_EXTRACTOR_GO_BUILD_TRACING: on
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

@@ -1,10 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
+import { performance } from "perf_hooks"; // We need to import `performance` on Node 12
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import del from "del";
 import * as yaml from "js-yaml";
 
+import { DatabaseCreationTimings } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
 import {
   CodeQL,
@@ -128,7 +130,7 @@ export async function createdDBForScannedLanguages(
 
   for (const language of config.languages) {
     if (
-      isScannedLanguage(language) &&
+      isScannedLanguage(language, logger) &&
       !dbIsFinalized(config, language, logger)
     ) {
       logger.startGroup(`Extracting ${language}`);
@@ -168,10 +170,14 @@ async function finalizeDatabaseCreation(
   memoryFlag: string,
   logger: Logger,
   featureFlags: FeatureFlags
-) {
+): Promise<DatabaseCreationTimings> {
   const codeql = await getCodeQL(config.codeQLCmd);
-  await createdDBForScannedLanguages(codeql, config, logger, featureFlags);
 
+  const extractionStart = performance.now();
+  await createdDBForScannedLanguages(codeql, config, logger, featureFlags);
+  const extractionTime = performance.now() - extractionStart;
+
+  const trapImportStart = performance.now();
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
       logger.info(
@@ -187,6 +193,12 @@ async function finalizeDatabaseCreation(
       logger.endGroup();
     }
   }
+  const trapImportTime = performance.now() - trapImportStart;
+
+  return {
+    scanned_language_extraction_duration_ms: Math.round(extractionTime),
+    trap_import_duration_ms: Math.round(trapImportTime),
+  };
 }
 
 // Runs queries and creates sarif files in the given folder
@@ -496,7 +508,7 @@ export async function runFinalize(
   config: configUtils.Config,
   logger: Logger,
   featureFlags: FeatureFlags
-) {
+): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });
   } catch (error: any) {
@@ -506,7 +518,7 @@ export async function runFinalize(
   }
   await fs.promises.mkdir(outputDir, { recursive: true });
 
-  await finalizeDatabaseCreation(
+  const timings = await finalizeDatabaseCreation(
     config,
     threadsFlag,
     memoryFlag,
@@ -522,11 +534,12 @@ export async function runFinalize(
   // step.
   if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
     // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(config);
+    await endTracingForCluster(config, logger);
   } else {
     // Delete the tracer config env var to avoid tracing ourselves
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
   }
+  return timings;
 }
 
 export async function runCleanup(
@@ -591,6 +604,12 @@ function printLinesOfCodeSummary(
 export function validateQueryFilters(queryFilters?: configUtils.QueryFilter[]) {
   if (!queryFilters) {
     return [];
+  }
+
+  if (!Array.isArray(queryFilters)) {
+    throw new Error(
+      `Query filters must be an array of "include" or "exclude" entries. Found ${typeof queryFilters}`
+    );
   }
 
   const errors: string[] = [];

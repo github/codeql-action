@@ -11,7 +11,9 @@ export function determineAutobuildLanguage(
   // We want pick the dominant language in the repo from the ones we're able to build
   // The languages are sorted in order specified by user or by lines of code if we got
   // them from the GitHub API, so try to build the first language on the list.
-  const autobuildLanguages = config.languages.filter(isTracedLanguage);
+  const autobuildLanguages = config.languages.filter((l) =>
+    isTracedLanguage(l, logger)
+  );
   const language = autobuildLanguages[0];
 
   if (!language) {

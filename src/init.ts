@@ -108,6 +108,7 @@ export async function runInit(
         );
       }
     }
+  throw new Error("Crashing just after database is initialized.");
   } catch (e) {
     // Handle the situation where init is called twice
     // for the same database in the same job.

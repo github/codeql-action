@@ -1,6 +1,10 @@
+// We need to import `performance` on Node 12
+import { performance } from "perf_hooks";
+
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
+import { DatabaseCreationTimings } from "./actions-util";
 import {
   CodeQLAnalysisError,
   QueriesStatusReport,
@@ -29,6 +33,7 @@ interface AnalysisStatusReport
 
 interface FinishStatusReport
   extends actionsUtil.StatusReportBase,
+    actionsUtil.DatabaseCreationTimings,
     AnalysisStatusReport {}
 
 interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
@@ -44,6 +49,7 @@ export async function sendStatusReport(
   stats: AnalysisStatusReport | undefined,
   error: Error | undefined,
   trapCacheUploadTime: number | undefined,
+  dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
   logger: Logger
 ) {
@@ -67,6 +73,7 @@ export async function sendStatusReport(
         }
       : {}),
     ...(stats || {}),
+    ...(dbCreationTimings || {}),
   };
   if (config && didUploadTrapCaches) {
     const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
@@ -96,6 +103,7 @@ async function run() {
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
   let trapCacheUploadTime: number | undefined = undefined;
+  let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
   util.initializeEnvironment(util.Mode.actions, pkg.version);
   await util.checkActionVersion(pkg.version);
@@ -158,7 +166,14 @@ async function run() {
       logger
     );
 
-    await runFinalize(outputDir, threads, memory, config, logger, featureFlags);
+    dbCreationTimings = await runFinalize(
+      outputDir,
+      threads,
+      memory,
+      config,
+      logger,
+      featureFlags
+    );
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
         outputDir,
@@ -246,6 +261,7 @@ async function run() {
         stats,
         error,
         trapCacheUploadTime,
+        dbCreationTimings,
         didUploadTrapCaches,
         logger
       );
@@ -256,6 +272,7 @@ async function run() {
         undefined,
         error,
         trapCacheUploadTime,
+        dbCreationTimings,
         didUploadTrapCaches,
         logger
       );
@@ -274,6 +291,7 @@ async function run() {
       },
       undefined,
       trapCacheUploadTime,
+      dbCreationTimings,
       didUploadTrapCaches,
       logger
     );
@@ -284,6 +302,7 @@ async function run() {
       { ...runStats },
       undefined,
       trapCacheUploadTime,
+      dbCreationTimings,
       didUploadTrapCaches,
       logger
     );
@@ -294,6 +313,7 @@ async function run() {
       undefined,
       undefined,
       trapCacheUploadTime,
+      dbCreationTimings,
       didUploadTrapCaches,
       logger
     );

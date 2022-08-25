@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.1.20",
+  "version": "2.1.21",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -59,7 +59,6 @@
     "@types/adm-zip": "^0.5.0",
     "@types/get-folder-size": "^2.0.0",
     "@types/js-yaml": "^4.0.5",
-    "@types/long": "5.0.0",
     "@types/node": "16.11.22",
     "@types/semver": "^7.3.8",
     "@types/sinon": "^10.0.2",

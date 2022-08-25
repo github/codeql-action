@@ -623,6 +623,11 @@ export interface StatusReportBase {
   codeql_version?: string;
 }
 
+export interface DatabaseCreationTimings {
+  scanned_language_extraction_duration_ms?: number;
+  trap_import_duration_ms?: number;
+}
+
 export function getActionsStatus(
   error?: unknown,
   otherFailureCause?: string
@@ -855,17 +860,23 @@ function getWorkflowEvent(): any {
   }
 }
 
+function removeRefsHeadsPrefix(ref: string): string {
+  return ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : ref;
+}
+
 // Is the version of the repository we are currently analyzing from the default branch,
 // or alternatively from another branch or a pull request.
 export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   // Get the current ref and trim and refs/heads/ prefix
   let currentRef = await getRef();
-  currentRef = currentRef.startsWith("refs/heads/")
-    ? currentRef.slice("refs/heads/".length)
-    : currentRef;
+  currentRef = removeRefsHeadsPrefix(currentRef);
 
   const event = getWorkflowEvent();
-  const defaultBranch = event?.repository?.default_branch;
+  let defaultBranch = event?.repository?.default_branch;
+
+  if (process.env.GITHUB_EVENT_NAME === "schedule") {
+    defaultBranch = removeRefsHeadsPrefix(getRequiredEnvParam("GITHUB_REF"));
+  }
 
   return currentRef === defaultBranch;
 }

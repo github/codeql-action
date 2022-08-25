@@ -450,7 +450,8 @@ test("databaseInitCluster() Lua feature flag enabled, but old CLI", async (t) =>
     "",
     undefined,
     undefined,
-    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled])
+    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled]),
+    getRunnerLogger(true)
   );
   t.false(
     runnerConstructorStub.firstCall.args[1].includes(
@@ -476,7 +477,8 @@ test("databaseInitCluster() Lua feature flag disabled, with old CLI", async (t) 
     "",
     undefined,
     undefined,
-    createFeatureFlags([])
+    createFeatureFlags([]),
+    getRunnerLogger(true)
   );
   t.false(
     runnerConstructorStub.firstCall.args[1].includes(
@@ -502,7 +504,8 @@ test("databaseInitCluster() Lua feature flag enabled, compatible CLI", async (t)
     "",
     undefined,
     undefined,
-    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled])
+    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled]),
+    getRunnerLogger(true)
   );
   t.true(
     runnerConstructorStub.firstCall.args[1].includes(
@@ -522,7 +525,8 @@ test("databaseInitCluster() Lua feature flag disabled, compatible CLI", async (t
     "",
     undefined,
     undefined,
-    createFeatureFlags([])
+    createFeatureFlags([]),
+    getRunnerLogger(true)
   );
   t.true(
     runnerConstructorStub.firstCall.args[1].includes(
@@ -553,7 +557,8 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
       "",
       undefined,
       undefined,
-      createFeatureFlags([])
+      createFeatureFlags([]),
+      getRunnerLogger(true)
     );
 
     const args = runnerConstructorStub.firstCall.args[1];
@@ -595,7 +600,8 @@ const injectedConfigMacro = test.macro({
           "",
           undefined,
           undefined,
-          createFeatureFlags([])
+          createFeatureFlags([]),
+          getRunnerLogger(true)
         );
 
         const args = runnerConstructorStub.firstCall.args[1];
@@ -904,7 +910,8 @@ test("does not use injected config", async (t: ExecutionContext<unknown>) => {
       "",
       undefined,
       undefined,
-      createFeatureFlags([])
+      createFeatureFlags([]),
+      getRunnerLogger(true)
     );
 
     const args = runnerConstructorStub.firstCall.args[1];

@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.1.21 - 25 Aug 2022
 
 - Improve error messages when the code scanning configuration file includes an invalid `queries` block or an invalid `query-filters` block. [#1208](https://github.com/github/codeql-action/pull/1208)

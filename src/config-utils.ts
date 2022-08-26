@@ -24,6 +24,7 @@ import {
   getMlPoweredJsQueriesPack,
   GitHubVersion,
   ML_POWERED_JS_QUERIES_PACK_NAME,
+  useCodeScanningConfigInCli,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -953,6 +954,7 @@ async function addQueriesAndPacksFromWorkflow(
     );
     injectedMlQueries = injectedMlQueries || didInject;
   }
+
   return injectedMlQueries;
 }
 
@@ -1680,6 +1682,12 @@ export async function initConfig(
     }
   }
 
+  // if using the codescanning config in the CLI, pack downloads
+  // happen in the CLI, so no need to do them here.
+  if (!(await useCodeScanningConfigInCli(codeQL))) {
+    await downloadPacks(codeQL, config.languages, config.packs, logger);
+  }
+
   // Save the config so we can easily access it again in the future
   await saveConfig(config, logger);
   return config;
@@ -1780,4 +1788,34 @@ export async function getConfig(
   logger.debug("Loaded config:");
   logger.debug(configString);
   return JSON.parse(configString);
+}
+
+export async function downloadPacks(
+  codeQL: CodeQL,
+  languages: Language[],
+  packs: Packs,
+  logger: Logger
+) {
+  let packsDownloaded = 0;
+  logger.startGroup("Downloading packs");
+  for (const language of languages) {
+    const packsWithVersion = packs[language];
+    if (packsWithVersion?.length) {
+      logger.info(`Downloading custom packs for ${language}`);
+      const results = await codeQL.packDownload(packsWithVersion);
+      packsDownloaded += results.packs.length;
+      logger.info(
+        `Downloaded packs: ${results.packs
+          .map((r) => `${r.name}@${r.version || "latest"}`)
+          .join(", ")}`
+      );
+    }
+
+    if (packsDownloaded) {
+      logger.info(`Downloaded ${packsDownloaded} packs`);
+    } else {
+      logger.info("No packs to download");
+    }
+    logger.endGroup();
+  }
 }

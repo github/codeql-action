@@ -1,4 +1,5 @@
 // We need to import `performance` on Node 12
+import * as fs from "fs";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
@@ -13,10 +14,12 @@ import {
   runQueries,
 } from "./analyze";
 import { getGitHubVersionActionsOnly } from "./api-client";
+import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { GitHubFeatureFlags } from "./feature-flags";
+import { FeatureFlag, GitHubFeatureFlags } from "./feature-flags";
+import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
@@ -97,6 +100,20 @@ function hasBadExpectErrorInput(): boolean {
   );
 }
 
+// Check for any .trap[.gz] files under the db-go/ folder
+function didGolangExtraction(config: Config): boolean {
+  const golangDbDirectory = util.getCodeQLDatabasePath(config, Language.go);
+  const extractedFiles = fs
+    .readdirSync(golangDbDirectory)
+    .filter(
+      (fileName) => fileName.endsWith(".trap") || fileName.endsWith(".trap.gz")
+    );
+  if (extractedFiles.length !== 0) {
+    return true;
+  }
+  return false;
+}
+
 async function run() {
   const startedAt = new Date();
   let uploadResult: UploadResult | undefined = undefined;
@@ -165,6 +182,21 @@ async function run() {
       repositoryNwo,
       logger
     );
+
+    if (
+      await featureFlags.getValue(
+        FeatureFlag.GolangExtractionReconciliationEnabled
+      )
+    ) {
+      // Run autobuilder for Go, unless it's already been run or user built manually
+      if (
+        Language.go in config.languages &&
+        process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] !== "true" &&
+        !didGolangExtraction(config)
+      ) {
+        await runAutobuild(Language.go, config, logger);
+      }
+    }
 
     dbCreationTimings = await runFinalize(
       outputDir,

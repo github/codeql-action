@@ -209,6 +209,7 @@ test("getGitHubVersion", async (t) => {
     auth: "",
     url: "https://github.com",
     apiURL: undefined,
+    registriesAuthTokens: undefined,
   });
   t.deepEqual(util.GitHubVariant.DOTCOM, v.type);
 
@@ -217,6 +218,7 @@ test("getGitHubVersion", async (t) => {
     auth: "",
     url: "https://ghe.example.com",
     apiURL: undefined,
+    registriesAuthTokens: undefined,
   });
   t.deepEqual(
     { type: util.GitHubVariant.GHES, version: "2.0" } as util.GitHubVersion,
@@ -228,6 +230,7 @@ test("getGitHubVersion", async (t) => {
     auth: "",
     url: "https://example.githubenterprise.com",
     apiURL: undefined,
+    registriesAuthTokens: undefined,
   });
   t.deepEqual({ type: util.GitHubVariant.GHAE }, ghae);
 
@@ -236,6 +239,7 @@ test("getGitHubVersion", async (t) => {
     auth: "",
     url: "https://ghe.example.com",
     apiURL: undefined,
+    registriesAuthTokens: undefined,
   });
   t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
 });

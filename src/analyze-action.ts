@@ -143,6 +143,9 @@ async function run() {
       auth: actionsUtil.getRequiredInput("token"),
       url: util.getRequiredEnvParam("GITHUB_SERVER_URL"),
       apiURL: util.getRequiredEnvParam("GITHUB_API_URL"),
+
+      // not needed or available in the analize action
+      registriesAuthTokens: undefined,
     };
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(

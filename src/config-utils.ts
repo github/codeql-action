@@ -57,9 +57,23 @@ export interface UserConfig {
   // Set of query filters to include and exclude extra queries based on
   // codeql query suite `include` and `exclude` properties
   "query-filters"?: QueryFilter[];
+
+  // Set of external registries and which packs to retrieve from each
+  registries?: RegistryConfig[];
 }
 
 export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
+
+/**
+ * The list of registries and the associated pack globs that determine where each pack can be downloaded from.
+ */
+export interface RegistryConfig {
+  // URL of a package registry, eg- https://ghcr.io/v2/
+  url: string;
+
+  // List of globs that determine which packs are associated with this registry.
+  packages: string[] | string;
+}
 
 interface ExcludeQueryFilter {
   exclude: Record<string, string[] | string>;
@@ -1686,7 +1700,15 @@ export async function initConfig(
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
   if (!(await useCodeScanningConfigInCli(codeQL))) {
-    await downloadPacks(codeQL, config.languages, config.packs, logger);
+    await downloadPacks(
+      codeQL,
+      config.languages,
+      config.packs,
+      config.originalUserInput.registries,
+      apiDetails,
+      config.tempDir,
+      logger
+    );
   }
 
   // Save the config so we can easily access it again in the future
@@ -1795,30 +1817,79 @@ export async function downloadPacks(
   codeQL: CodeQL,
   languages: Language[],
   packs: Packs,
+  registries: RegistryConfig[] | undefined,
+  apiDetails: api.GitHubApiDetails,
+  tmpDir: string,
   logger: Logger
 ) {
-  let numPacksDownloaded = 0;
-  logger.startGroup("Downloading packs");
-  for (const language of languages) {
-    const packsWithVersion = packs[language];
-    if (packsWithVersion?.length) {
-      logger.info(`Downloading custom packs for ${language}`);
-      const results = await codeQL.packDownload(packsWithVersion);
-      numPacksDownloaded += results.packs.length;
-      logger.info(
-        `Downloaded packs: ${results.packs
-          .map((r) => `${r.name}@${r.version || "latest"}`)
-          .join(", ")}`
-      );
+  let qlconfigFile: string | undefined;
+  if (registries) {
+    // generate a qlconfig.yml file to hold the registry configs.
+    const qlconfig = {
+      registries,
+    };
+    qlconfigFile = path.join(tmpDir, "qlconfig.yml");
+    fs.writeFileSync(qlconfigFile, yaml.dump(qlconfig), "utf8");
+  }
+
+  await wrapEnvironment(
+    {
+      GITHUB_TOKEN: apiDetails.auth,
+      CODEQL_REGISTRIES_AUTH: apiDetails.registriesAuthTokens,
+    },
+    async () => {
+      let numPacksDownloaded = 0;
+      logger.startGroup("Downloading packs");
+      for (const language of languages) {
+        const packsWithVersion = packs[language];
+        if (packsWithVersion?.length) {
+          logger.info(`Downloading custom packs for ${language}`);
+          const results = await codeQL.packDownload(
+            packsWithVersion,
+            qlconfigFile
+          );
+          numPacksDownloaded += results.packs.length;
+          logger.info(
+            `Downloaded: ${results.packs
+              .map((r) => `${r.name}@${r.version || "latest"}`)
+              .join(", ")}`
+          );
+        }
+      }
+      if (numPacksDownloaded > 0) {
+        logger.info(
+          `Downloaded ${numPacksDownloaded} ${packs === 1 ? "pack" : "packs"}`
+        );
+      } else {
+        logger.info("No packs to download");
+      }
+      logger.endGroup();
+    }
+  );
+}
+
+async function wrapEnvironment(
+  env: Record<string, string | undefined>,
+  operation: Function
+) {
+  // Remember the original env
+  const oldEnv = { ...process.env };
+
+  // Set the new env
+  for (const [key, value] of Object.entries(env)) {
+    // Ignore undefined keys
+    if (value !== undefined) {
+      process.env[key] = value;
     }
   }
 
-  if (numPacksDownloaded > 0) {
-    logger.info(
-      `Downloaded ${numPacksDownloaded} ${packs === 1 ? "pack" : "packs"}`
-    );
-  } else {
-    logger.info("No packs to download");
+  try {
+    // Run the operation
+    await operation();
+  } finally {
+    // Restore the old env
+    for (const [key, value] of Object.entries(oldEnv)) {
+      process.env[key] = value;
+    }
   }
-  logger.endGroup();
 }

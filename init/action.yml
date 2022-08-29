@@ -10,9 +10,19 @@ inputs:
     description: The languages to be analysed
     required: false
   token:
+    description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use registries-auth-tokens.
     default: ${{ github.token }}
+    required: false
+  registries-auth-tokens:
+    description: |
+      Authenticate to GitHub Enterprise Server Container registries by passing a comma-separated list of <registry_url>=<token> pairs.
+
+      For example, you can pass `https://containers.GHEHOSTNAME1/v2/=TOKEN1,https://containers.GHEHOSTNAME2/v2/=TOKEN2`` to authenticate to two GitHub Enterprise Server instances.
+      This overrides the `token` input for pack downloads.
+    required: false
   matrix:
     default: ${{ toJson(matrix) }}
+    required: false
   config-file:
     description: Path of the config file to use
     required: false
@@ -32,7 +42,7 @@ inputs:
       analyses, you must specify packs in the codeql-config.yml file.
     required: false
   external-repository-token:
-    description: A token for fetching external config files and queries if they reside in a private repository.
+    description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.
     required: false
   setup-python-dependencies:
     description: Try to auto-install your python dependencies

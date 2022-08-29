@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
+import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
@@ -21,6 +22,7 @@ const sampleApiDetails = {
   externalRepoAuth: "token",
   url: "https://github.example.com",
   apiURL: undefined,
+  registriesAuthTokens: undefined,
 };
 
 const gitHubVersion = { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion;
@@ -2208,30 +2210,114 @@ test(
   /"a-pack-without-a-scope" is not a valid pack/
 );
 
-test("downloadPacks", async (t) => {
-  const packDownloadStub = sinon.stub();
-  packDownloadStub.callsFake((packs) => ({
-    packs,
-  }));
-  const codeQL = setCodeQL({
-    packDownload: packDownloadStub,
+test("downloadPacks-no-registries", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const packDownloadStub = sinon.stub();
+    packDownloadStub.callsFake((packs) => ({
+      packs,
+    }));
+    const codeQL = setCodeQL({
+      packDownload: packDownloadStub,
+    });
+    const logger = getRunnerLogger(true);
+
+    // packs are supplied for go, java, and python
+    // analyzed languages are java, javascript, and python
+    await configUtils.downloadPacks(
+      codeQL,
+      [Language.javascript, Language.java, Language.python],
+      {
+        java: ["a", "b"],
+        go: ["c", "d"],
+        python: ["e", "f"],
+      },
+      undefined,
+      sampleApiDetails,
+      tmpDir,
+      logger
+    );
+
+    t.deepEqual(packDownloadStub.callCount, 2);
+    // no config file was created, so pass `undefined` as the config file path
+    t.deepEqual(packDownloadStub.firstCall.args, [["a", "b"], undefined]);
+    t.deepEqual(packDownloadStub.secondCall.args, [["e", "f"], undefined]);
   });
-  const logger = getRunnerLogger(true);
+});
 
-  // packs are supplied for go, java, and python
-  // analyzed languages are java, javascript, and python
-  await configUtils.downloadPacks(
-    codeQL,
-    [Language.javascript, Language.java, Language.python],
-    {
-      java: ["a", "b"],
-      go: ["c", "d"],
-      python: ["e", "f"],
-    },
-    logger
-  );
+test("downloadPacks-with-registries", async (t) => {
+  // same thing, but this time include a registries block and
+  // associated env vars
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env.GITHUB_TOKEN = "not-a-token";
+    process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
+    const logger = getRunnerLogger(true);
 
-  t.deepEqual(packDownloadStub.callCount, 2);
-  t.deepEqual(packDownloadStub.firstCall.args, [["a", "b"]]);
-  t.deepEqual(packDownloadStub.secondCall.args, [["e", "f"]]);
+    const apiDetails = {
+      ...sampleApiDetails,
+      registriesAuthTokens: "registries-auth",
+    };
+    const registries = [
+      {
+        url: "http://ghcr.io",
+        packages: ["codeql/*", "dsp-testing/*"],
+      },
+      {
+        url: "https://containers.GHEHOSTNAME1/v2/",
+        packages: "semmle/*",
+      },
+    ];
+
+    const expectedConfigFile = path.join(tmpDir, "qlconfig.yml");
+    const packDownloadStub = sinon.stub();
+    packDownloadStub.callsFake((packs, configFile) => {
+      t.deepEqual(configFile, expectedConfigFile);
+      // verify the env vars were set correctly
+      t.deepEqual(process.env.GITHUB_TOKEN, "token");
+      t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, "registries-auth");
+
+      // verify the config file contents were set correctly
+      const config = yaml.load(
+        fs.readFileSync(configFile, "utf8")
+      ) as configUtils.UserConfig;
+      t.deepEqual(config.registries, registries);
+      return {
+        packs,
+      };
+    });
+
+    const codeQL = setCodeQL({
+      packDownload: packDownloadStub,
+    });
+
+    // packs are supplied for go, java, and python
+    // analyzed languages are java, javascript, and python
+    await configUtils.downloadPacks(
+      codeQL,
+      [Language.javascript, Language.java, Language.python],
+      {
+        java: ["a", "b"],
+        go: ["c", "d"],
+        python: ["e", "f"],
+      },
+      registries,
+      apiDetails,
+      tmpDir,
+      logger
+    );
+
+    // Same packs are downloaded as in previous test
+    t.deepEqual(packDownloadStub.callCount, 2);
+    t.deepEqual(packDownloadStub.firstCall.args, [
+      ["a", "b"],
+      expectedConfigFile,
+    ]);
+    t.deepEqual(packDownloadStub.secondCall.args, [
+      ["e", "f"],
+      expectedConfigFile,
+    ]);
+
+    // Verify that the env vars were unset.
+    t.deepEqual(process.env.GITHUB_TOKEN, "not-a-token");
+    t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, "not-a-registries-auth");
+  });
 });

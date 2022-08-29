@@ -134,7 +134,10 @@ export interface CodeQL {
   /**
    * Run 'codeql pack download'.
    */
-  packDownload(packs: string[]): Promise<PackDownloadOutput>;
+  packDownload(
+    packs: string[],
+    qlconfigFile: string | undefined
+  ): Promise<PackDownloadOutput>;
 
   /**
    * Run 'codeql database cleanup'.
@@ -1086,11 +1089,22 @@ async function getCodeQLForCmd(
      * If no version is specified, then the latest version is
      * downloaded. The check to determine what the latest version is is done
      * each time this package is requested.
+     *
+     * Optionally, a `qlconfigFile` is included. If used, then this file
+     * is used to determine which registry each pack is downloaded from.
      */
-    async packDownload(packs: string[]): Promise<PackDownloadOutput> {
+    async packDownload(
+      packs: string[],
+      qlconfigFile: string | undefined
+    ): Promise<PackDownloadOutput> {
+      const qlconfigArg = qlconfigFile
+        ? [`--qlconfig-file=${qlconfigFile}`]
+        : ([] as string[]);
+
       const codeqlArgs = [
         "pack",
         "download",
+        ...qlconfigArg,
         "--format=json",
         "--resolve-query-specs",
         ...getExtraOptionsFromEnv(["pack", "download"]),

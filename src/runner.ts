@@ -203,6 +203,7 @@ program
         externalRepoAuth: auth,
         url: parseGitHubUrl(cmd.githubUrl),
         apiURL: undefined,
+        registriesAuthTokens: undefined,
       };
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
@@ -479,6 +480,7 @@ program
         auth,
         url: parseGitHubUrl(cmd.githubUrl),
         apiURL: undefined,
+        registriesAuthTokens: undefined,
       };
 
       const outputDir =
@@ -592,6 +594,7 @@ program
       auth,
       url: parseGitHubUrl(cmd.githubUrl),
       apiURL: undefined,
+      registriesAuthTokens: undefined,
     };
     try {
       const gitHubVersion = await getGitHubVersion(apiDetails);

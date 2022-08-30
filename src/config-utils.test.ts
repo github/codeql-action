@@ -6,7 +6,7 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { getCachedCodeQL, setCodeQL } from "./codeql";
+import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
@@ -78,6 +78,9 @@ test("load empty config", async (t) => {
           multipleDeclaredLanguages: {},
         };
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     const config = await configUtils.initConfig(
@@ -138,6 +141,9 @@ test("loading config saves config", async (t) => {
           noDeclaredLanguage: {},
           multipleDeclaredLanguages: {},
         };
+      },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
       },
     });
 
@@ -311,6 +317,9 @@ test("load non-empty input", async (t) => {
           multipleDeclaredLanguages: {},
         };
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     // Just create a generic config object with non-default values for all fields
@@ -419,6 +428,9 @@ test("Default queries are used", async (t) => {
           multipleDeclaredLanguages: {},
         };
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     // The important point of this config is that it doesn't specify
@@ -504,6 +516,9 @@ test("Queries can be specified in config file", async (t) => {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     const languages = "javascript";
@@ -578,6 +593,9 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     const languages = "javascript";
@@ -650,6 +668,9 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     const languages = "javascript";
@@ -712,6 +733,9 @@ test("Multiple queries can be specified in workflow file, no config file require
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
+      },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
       },
     });
 
@@ -797,6 +821,9 @@ test("Queries in workflow file can be added to the set of queries without overri
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     const languages = "javascript";
@@ -876,6 +903,9 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
           multipleDeclaredLanguages: {},
         };
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     try {
@@ -921,6 +951,9 @@ test("API client used when reading remote config", async (t) => {
           noDeclaredLanguage: {},
           multipleDeclaredLanguages: {},
         };
+      },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
       },
     });
 
@@ -1051,6 +1084,9 @@ test("No detected languages", async (t) => {
       async resolveLanguages() {
         return {};
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     try {
@@ -1124,6 +1160,9 @@ test("Config specifies packages", async (t) => {
           multipleDeclaredLanguages: {},
         };
       },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
     });
 
     const inputFileContents = `
@@ -1174,6 +1213,9 @@ test("Config specifies packages for multiple languages", async (t) => {
           noDeclaredLanguage: {},
           multipleDeclaredLanguages: {},
         };
+      },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
       },
     });
 
@@ -1254,6 +1296,9 @@ function doInvalidInputTest(
             noDeclaredLanguage: {},
             multipleDeclaredLanguages: {},
           };
+        },
+        async packDownload(): Promise<PackDownloadOutput> {
+          return { packs: [] };
         },
       });
 
@@ -1845,6 +1890,9 @@ const mlPoweredQueriesMacro = test.macro({
             multipleDeclaredLanguages: {},
           };
         },
+        async packDownload(): Promise<PackDownloadOutput> {
+          return { packs: [] };
+        },
       });
 
       const { packs } = await configUtils.initConfig(
@@ -2159,3 +2207,31 @@ test(
   [Language.javascript],
   /"a-pack-without-a-scope" is not a valid pack/
 );
+
+test("downloadPacks", async (t) => {
+  const packDownloadStub = sinon.stub();
+  packDownloadStub.callsFake((packs) => ({
+    packs,
+  }));
+  const codeQL = setCodeQL({
+    packDownload: packDownloadStub,
+  });
+  const logger = getRunnerLogger(true);
+
+  // packs are supplied for go, java, and python
+  // analyzed languages are java, javascript, and python
+  await configUtils.downloadPacks(
+    codeQL,
+    [Language.javascript, Language.java, Language.python],
+    {
+      java: ["a", "b"],
+      go: ["c", "d"],
+      python: ["e", "f"],
+    },
+    logger
+  );
+
+  t.deepEqual(packDownloadStub.callCount, 2);
+  t.deepEqual(packDownloadStub.firstCall.args, [["a", "b"]]);
+  t.deepEqual(packDownloadStub.secondCall.args, [["e", "f"]]);
+});

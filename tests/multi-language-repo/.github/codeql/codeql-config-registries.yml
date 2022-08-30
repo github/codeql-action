@@ -1,0 +1,12 @@
+name: Pack testing in the CodeQL Action
+
+disable-default-queries: true
+packs:
+  javascript:
+    - dsp-testing/private-pack
+    - dsp-testing/codeql-pack1
+
+registries:
+  # enforce using the registries block for all packs
+  - url: https://ghcr.io/v2/
+    packages: "*"

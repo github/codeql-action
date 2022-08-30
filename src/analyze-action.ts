@@ -32,12 +32,12 @@ const pkg = require("../package.json");
 
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
-    QueriesStatusReport {}
+  QueriesStatusReport { }
 
 interface FinishStatusReport
   extends actionsUtil.StatusReportBase,
-    actionsUtil.DatabaseCreationTimings,
-    AnalysisStatusReport {}
+  actionsUtil.DatabaseCreationTimings,
+  AnalysisStatusReport { }
 
 interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
   /** Size of TRAP caches that we uploaded, in bytes. */
@@ -71,9 +71,9 @@ export async function sendStatusReport(
     ...statusReportBase,
     ...(config
       ? {
-          ml_powered_javascript_queries:
-            util.getMlPoweredJsQueriesStatus(config),
-        }
+        ml_powered_javascript_queries:
+          util.getMlPoweredJsQueriesStatus(config),
+      }
       : {}),
     ...(stats || {}),
     ...(dbCreationTimings || {}),
@@ -106,15 +106,11 @@ function hasBadExpectErrorInput(): boolean {
  */
 function doesGoExtractionOutputExist(config: Config): boolean {
   const golangDbDirectory = util.getCodeQLDatabasePath(config, Language.go);
-  const extractedFiles = fs
+  return fs
     .readdirSync(golangDbDirectory)
-    .filter(
+    .some(
       (fileName) => fileName.endsWith(".trap") || fileName.endsWith(".trap.gz")
     );
-  if (extractedFiles.length !== 0) {
-    return true;
-  }
-  return false;
 }
 
 async function run() {

@@ -1682,8 +1682,9 @@ export async function initConfig(
     }
   }
 
-  // if using the codescanning config in the CLI, pack downloads
-  // happen in the CLI, so no need to do them here.
+  // When using the codescanning config in the CLI, pack downloads
+  // happen in the CLI during the `database init` command, so no need
+  // to download them here.
   if (!(await useCodeScanningConfigInCli(codeQL))) {
     await downloadPacks(codeQL, config.languages, config.packs, logger);
   }
@@ -1796,26 +1797,28 @@ export async function downloadPacks(
   packs: Packs,
   logger: Logger
 ) {
-  let packsDownloaded = 0;
+  let numPacksDownloaded = 0;
   logger.startGroup("Downloading packs");
   for (const language of languages) {
     const packsWithVersion = packs[language];
     if (packsWithVersion?.length) {
       logger.info(`Downloading custom packs for ${language}`);
       const results = await codeQL.packDownload(packsWithVersion);
-      packsDownloaded += results.packs.length;
+      numPacksDownloaded += results.packs.length;
       logger.info(
         `Downloaded packs: ${results.packs
           .map((r) => `${r.name}@${r.version || "latest"}`)
           .join(", ")}`
       );
     }
-
-    if (packsDownloaded) {
-      logger.info(`Downloaded ${packsDownloaded} packs`);
-    } else {
-      logger.info("No packs to download");
-    }
-    logger.endGroup();
   }
+
+  if (numPacksDownloaded > 0) {
+    logger.info(
+      `Downloaded ${numPacksDownloaded} ${packs === 1 ? "pack" : "packs"}`
+    );
+  } else {
+    logger.info("No packs to download");
+  }
+  logger.endGroup();
 }

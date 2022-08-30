@@ -186,19 +186,31 @@ async function run() {
       logger
     );
 
+    // When Go extraction reconciliation is enabled, either via the feature flag
+    // or an environment variable, we will attempt to autobuild Go to preserve
+    // compatibility for users who have set up Go using a legacy scanning style
+    // CodeQL workflow, i.e. one without an autobuild step or manual build
+    // steps.
+    //
+    // - We detect whether an autobuild step is present by checking the
+    // `CODEQL_ACTION_DID_AUTOBUILD_GOLANG` environment variable, which is set
+    // when the autobuilder is invoked.
+    // - We approximate whether manual build steps are present by looking at
+    // whether any extraction output already exists for Go.
     if (
-      await featureFlags.getValue(
-        FeatureFlag.GolangExtractionReconciliationEnabled
-      )
+      // Only proceed if the beta Go extraction reconciliation behavior is
+      // enabled.
+      (process.env["CODEQL_ACTION_RECONCILE_GO_EXTRACTION"] === "true" ||
+        (await featureFlags.getValue(
+          FeatureFlag.GolangExtractionReconciliationEnabled
+        ))) &&
+      Language.go in config.languages &&
+      // This captures whether the autobuilder has already been invoked
+      process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] !== "true" &&
+      // This captures whether a user has added manual build steps for Go
+      !doesGoExtractionOutputExist(config)
     ) {
-      // Run autobuilder for Go, unless it's already been run or user built manually
-      if (
-        Language.go in config.languages &&
-        process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] !== "true" &&
-        !doesGoExtractionOutputExist(config)
-      ) {
-        await runAutobuild(Language.go, config, logger);
-      }
+      await runAutobuild(Language.go, config, logger);
     }
 
     dbCreationTimings = await runFinalize(

@@ -100,8 +100,11 @@ function hasBadExpectErrorInput(): boolean {
   );
 }
 
-// Check for any .trap[.gz] files under the db-go/ folder
-function didGolangExtraction(config: Config): boolean {
+/**
+ * Returns whether any `.trap[.gz]` files exist under the `db-go` folder,
+ * indicating whether Go extraction has extracted at least one file.
+ */
+function doesGoExtractionOutputExist(config: Config): boolean {
   const golangDbDirectory = util.getCodeQLDatabasePath(config, Language.go);
   const extractedFiles = fs
     .readdirSync(golangDbDirectory)
@@ -192,7 +195,7 @@ async function run() {
       if (
         Language.go in config.languages &&
         process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] !== "true" &&
-        !didGolangExtraction(config)
+        !doesGoExtractionOutputExist(config)
       ) {
         await runAutobuild(Language.go, config, logger);
       }

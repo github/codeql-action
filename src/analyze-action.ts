@@ -19,7 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { FeatureFlag, GitHubFeatureFlags } from "./feature-flags";
+import { FeatureFlag, FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -122,6 +122,57 @@ function doesGoExtractionOutputExist(config: Config): boolean {
     );
 }
 
+/**
+ * When Go extraction reconciliation is enabled, either via the feature flag
+ * or an environment variable, we will attempt to autobuild Go to preserve
+ * compatibility for users who have set up Go using a legacy scanning style
+ * CodeQL workflow, i.e. one without an autobuild step or manual build
+ * steps.
+ *
+ * - We detect whether an autobuild step is present by checking the
+ * `CODEQL_ACTION_DID_AUTOBUILD_GOLANG` environment variable, which is set
+ * when the autobuilder is invoked.
+ * - We approximate whether manual build steps are present by looking at
+ * whether any extraction output already exists for Go.
+ */
+async function runGoAutobuilderIfLegacyWorkflow(
+  config: Config,
+  featureFlags: FeatureFlags,
+  logger: Logger
+) {
+  // Only proceed if the beta Go extraction reconciliation behavior is
+  // enabled.
+  if (
+    process.env["CODEQL_ACTION_RECONCILE_GO_EXTRACTION"] !== "true" &&
+    !(await featureFlags.getValue(
+      FeatureFlag.GolangExtractionReconciliationEnabled
+    ))
+  ) {
+    logger.debug(
+      "Won't run the Go autobuilder since Go extraction reconciliation is not enabled."
+    );
+    return;
+  }
+  if (!(Language.go in config.languages)) {
+    logger.info(
+      "Won't run the Go autobuilder since Go analysis is not enabled."
+    );
+    return;
+  }
+  if (process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] === "true") {
+    logger.info("Won't run the Go autobuilder since it has already been run.");
+    return;
+  }
+  // This captures whether a user has added manual build steps for Go
+  if (doesGoExtractionOutputExist(config)) {
+    logger.info(
+      "Won't run the Go autobuilder since at least one file of Go code has already been extracted."
+    );
+    return;
+  }
+  await runAutobuild(Language.go, config, logger);
+}
+
 async function run() {
   const startedAt = new Date();
   let uploadResult: UploadResult | undefined = undefined;
@@ -191,32 +242,7 @@ async function run() {
       logger
     );
 
-    // When Go extraction reconciliation is enabled, either via the feature flag
-    // or an environment variable, we will attempt to autobuild Go to preserve
-    // compatibility for users who have set up Go using a legacy scanning style
-    // CodeQL workflow, i.e. one without an autobuild step or manual build
-    // steps.
-    //
-    // - We detect whether an autobuild step is present by checking the
-    // `CODEQL_ACTION_DID_AUTOBUILD_GOLANG` environment variable, which is set
-    // when the autobuilder is invoked.
-    // - We approximate whether manual build steps are present by looking at
-    // whether any extraction output already exists for Go.
-    if (
-      // Only proceed if the beta Go extraction reconciliation behavior is
-      // enabled.
-      (process.env["CODEQL_ACTION_RECONCILE_GO_EXTRACTION"] === "true" ||
-        (await featureFlags.getValue(
-          FeatureFlag.GolangExtractionReconciliationEnabled
-        ))) &&
-      Language.go in config.languages &&
-      // This captures whether the autobuilder has already been invoked
-      process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] !== "true" &&
-      // This captures whether a user has added manual build steps for Go
-      !doesGoExtractionOutputExist(config)
-    ) {
-      await runAutobuild(Language.go, config, logger);
-    }
+    await runGoAutobuilderIfLegacyWorkflow(config, featureFlags, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,

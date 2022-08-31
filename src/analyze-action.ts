@@ -1,5 +1,6 @@
-// We need to import `performance` on Node 12
 import * as fs from "fs";
+import path from "path";
+// We need to import `performance` on Node 12
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
@@ -32,12 +33,12 @@ const pkg = require("../package.json");
 
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
-  QueriesStatusReport { }
+    QueriesStatusReport {}
 
 interface FinishStatusReport
   extends actionsUtil.StatusReportBase,
-  actionsUtil.DatabaseCreationTimings,
-  AnalysisStatusReport { }
+    actionsUtil.DatabaseCreationTimings,
+    AnalysisStatusReport {}
 
 interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
   /** Size of TRAP caches that we uploaded, in bytes. */
@@ -71,9 +72,9 @@ export async function sendStatusReport(
     ...statusReportBase,
     ...(config
       ? {
-        ml_powered_javascript_queries:
-          util.getMlPoweredJsQueriesStatus(config),
-      }
+          ml_powered_javascript_queries:
+            util.getMlPoweredJsQueriesStatus(config),
+        }
       : {}),
     ...(stats || {}),
     ...(dbCreationTimings || {}),
@@ -101,15 +102,23 @@ function hasBadExpectErrorInput(): boolean {
 }
 
 /**
- * Returns whether any `.trap[.gz]` files exist under the `db-go` folder,
+ * Returns whether any TRAP files exist under the `db-go` folder,
  * indicating whether Go extraction has extracted at least one file.
  */
 function doesGoExtractionOutputExist(config: Config): boolean {
   const golangDbDirectory = util.getCodeQLDatabasePath(config, Language.go);
+  const trapDirectory = path.join(golangDbDirectory, "trap", Language.go);
   return fs
-    .readdirSync(golangDbDirectory)
-    .some(
-      (fileName) => fileName.endsWith(".trap") || fileName.endsWith(".trap.gz")
+    .readdirSync(trapDirectory)
+    .some((fileName) =>
+      [
+        ".trap",
+        ".trap.gz",
+        ".trap.br",
+        ".trap.tar.gz",
+        ".trap.tar.br",
+        ".trap.tar",
+      ].some((ext) => fileName.endsWith(ext))
     );
 }
 

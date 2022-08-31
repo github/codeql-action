@@ -153,7 +153,7 @@ async function runGoAutobuilderIfLegacyWorkflow(
     );
     return;
   }
-  if (!(Language.go in config.languages)) {
+  if (!config.languages.includes(Language.go)) {
     logger.info(
       "Won't run the Go autobuilder since Go analysis is not enabled."
     );

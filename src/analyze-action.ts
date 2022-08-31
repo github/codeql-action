@@ -108,18 +108,21 @@ function hasBadExpectErrorInput(): boolean {
 function doesGoExtractionOutputExist(config: Config): boolean {
   const golangDbDirectory = util.getCodeQLDatabasePath(config, Language.go);
   const trapDirectory = path.join(golangDbDirectory, "trap", Language.go);
-  return fs
-    .readdirSync(trapDirectory)
-    .some((fileName) =>
-      [
-        ".trap",
-        ".trap.gz",
-        ".trap.br",
-        ".trap.tar.gz",
-        ".trap.tar.br",
-        ".trap.tar",
-      ].some((ext) => fileName.endsWith(ext))
-    );
+  return (
+    fs.existsSync(trapDirectory) &&
+    fs
+      .readdirSync(trapDirectory)
+      .some((fileName) =>
+        [
+          ".trap",
+          ".trap.gz",
+          ".trap.br",
+          ".trap.tar.gz",
+          ".trap.tar.br",
+          ".trap.tar",
+        ].some((ext) => fileName.endsWith(ext))
+      )
+  );
 }
 
 /**

@@ -203,7 +203,6 @@ program
         externalRepoAuth: auth,
         url: parseGitHubUrl(cmd.githubUrl),
         apiURL: undefined,
-        registriesAuthTokens: undefined,
       };
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
@@ -241,6 +240,7 @@ program
         cmd.languages,
         cmd.queries,
         cmd.packs,
+        undefined, // we won't support registries in the runner
         cmd.configFile,
         undefined,
         false,
@@ -480,7 +480,6 @@ program
         auth,
         url: parseGitHubUrl(cmd.githubUrl),
         apiURL: undefined,
-        registriesAuthTokens: undefined,
       };
 
       const outputDir =
@@ -594,7 +593,6 @@ program
       auth,
       url: parseGitHubUrl(cmd.githubUrl),
       apiURL: undefined,
-      registriesAuthTokens: undefined,
     };
     try {
       const gitHubVersion = await getGitHubVersion(apiDetails);

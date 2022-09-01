@@ -280,21 +280,6 @@ export async function runQueries(
         logger.endGroup();
         logger.info(analysisSummary);
       } else {
-        if (hasPackWithCustomQueries) {
-          logger.info("Performing analysis with custom CodeQL Packs.");
-          logger.startGroup(`Downloading custom packs for ${language}`);
-
-          const results = await codeql.packDownload(packsWithVersion);
-
-          logger.info(
-            `Downloaded packs: ${results.packs
-              .map((r) => `${r.name}@${r.version || "latest"}`)
-              .join(", ")}`
-          );
-
-          logger.endGroup();
-        }
-
         logger.startGroup(`Running queries for ${language}`);
         const querySuitePaths: string[] = [];
         if (queries["builtin"].length > 0) {

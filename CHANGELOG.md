@@ -2,6 +2,10 @@
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 2.1.22 - 01 Sep 2022
+
 - Downloading CodeQL packs has been moved to the `init` step. Previously, CodeQL packs were downloaded during the `analyze` step. [#1218](https://github.com/github/codeql-action/pull/1218)
 - Update default CodeQL bundle version to 2.10.4. [#1224](https://github.com/github/codeql-action/pull/1224)
 - The newly released [Poetry 1.2](https://python-poetry.org/blog/announcing-poetry-1.2.0) is not yet supported. In the most common case where the CodeQL Action is automatically installing Python dependencies, it will continue to install and use Poetry 1.1 on its own. However, in certain cases such as with self-hosted runners, you may need to ensure Poetry 1.1 is installed yourself.

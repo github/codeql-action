@@ -57,17 +57,20 @@ export interface UserConfig {
   // Set of query filters to include and exclude extra queries based on
   // codeql query suite `include` and `exclude` properties
   "query-filters"?: QueryFilter[];
-
-  // Set of external registries and which packs to retrieve from each
-  registries?: RegistryConfig[];
 }
 
 export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
 
+export type RegistryConfig = SafeRegistryConfig & {
+  // Token to use when downloading packs from this registry.
+  token: string;
+};
+
 /**
- * The list of registries and the associated pack globs that determine where each pack can be downloaded from.
+ * The list of registries and the associated pack globs that determine where each
+ * pack can be downloaded from.
  */
-export interface RegistryConfig {
+export interface SafeRegistryConfig {
   // URL of a package registry, eg- https://ghcr.io/v2/
   url: string;
 
@@ -1622,6 +1625,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   packsInput: string | undefined,
+  registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
   trapCachingEnabled: boolean,
@@ -1700,11 +1704,12 @@ export async function initConfig(
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
   if (!(await useCodeScanningConfigInCli(codeQL))) {
+    const registries = parseRegistries(registriesInput);
     await downloadPacks(
       codeQL,
       config.languages,
       config.packs,
-      config.originalUserInput.registries,
+      registries,
       apiDetails,
       config.tempDir,
       logger
@@ -1714,6 +1719,18 @@ export async function initConfig(
   // Save the config so we can easily access it again in the future
   await saveConfig(config, logger);
   return config;
+}
+
+function parseRegistries(registriesInput: string | undefined) {
+  try {
+    return registriesInput ? JSON.parse(registriesInput) : undefined;
+  } catch (e) {
+    throw new Error(
+      `Invalid registries input. Must be a JSON string, but got: ${
+        e instanceof Error ? e.message : String(e)
+      }`
+    );
+  }
 }
 
 function isLocal(configPath: string): boolean {
@@ -1823,19 +1840,22 @@ export async function downloadPacks(
   logger: Logger
 ) {
   let qlconfigFile: string | undefined;
+  let registriesAuthTokens: string | undefined;
   if (registries) {
     // generate a qlconfig.yml file to hold the registry configs.
-    const qlconfig = {
-      registries,
-    };
+    const qlconfig = createRegistriesBlock(registries);
     qlconfigFile = path.join(tmpDir, "qlconfig.yml");
     fs.writeFileSync(qlconfigFile, yaml.dump(qlconfig), "utf8");
+
+    registriesAuthTokens = registries
+      .map((registry) => `${registry.url}=${registry.token}`)
+      .join(",");
   }
 
   await wrapEnvironment(
     {
       GITHUB_TOKEN: apiDetails.auth,
-      CODEQL_REGISTRIES_AUTH: apiDetails.registriesAuthTokens,
+      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
     },
     async () => {
       let numPacksDownloaded = 0;
@@ -1866,6 +1886,18 @@ export async function downloadPacks(
       logger.endGroup();
     }
   );
+}
+
+function createRegistriesBlock(registries: RegistryConfig[]) {
+  // be sure to remove the `token` field from the registry before writing it to disk.
+  const safeRegistries = registries.map((registry) => ({
+    url: registry.url,
+    packages: registry.packages,
+  }));
+  const qlconfig = {
+    registries: safeRegistries,
+  };
+  return qlconfig;
 }
 
 async function wrapEnvironment(

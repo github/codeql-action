@@ -14,7 +14,15 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
       config-file: ./.github/codeql/codeql-config-registries.yml
       languages: javascript
-      registries-auth-tokens: https://ghcr.io/v2/=${{ secrets.GITHUB_TOKEN }}
+      registries: |
+        [
+          {
+            "url": "https://ghcr.io/v2/",
+            "packages": "*/*",
+            "token": "${{ secrets.GITHUB_TOKEN }}"
+          }
+        ]
+
     env:
       TEST_MODE: true
   - name: Verify packages installed

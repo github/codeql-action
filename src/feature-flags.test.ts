@@ -24,7 +24,6 @@ const testApiDetails: GitHubApiDetails = {
   auth: "1234",
   url: "https://github.com",
   apiURL: undefined,
-  registriesAuthTokens: undefined,
 };
 
 const testRepositoryNwo = parseRepositoryNwo("github/example");

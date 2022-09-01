@@ -13,7 +13,7 @@ inputs:
     description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use registries-auth-tokens.
     default: ${{ github.token }}
     required: false
-  registries-auth-tokens:
+  registries:
     description: |
       Authenticate to GitHub Enterprise Server Container registries by passing a comma-separated list of <registry_url>=<token> pairs.
 

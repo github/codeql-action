@@ -148,7 +148,6 @@ async function run() {
     externalRepoAuth: getOptionalInput("external-repository-token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
     apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-    registriesAuthTokens: getOptionalInput("registries-auth-tokens"),
   };
 
   const gitHubVersion = await getGitHubVersionActionsOnly();
@@ -197,6 +196,7 @@ async function run() {
       getOptionalInput("languages"),
       getOptionalInput("queries"),
       getOptionalInput("packs"),
+      getOptionalInput("registries"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
       await getTrapCachingEnabled(featureFlags),

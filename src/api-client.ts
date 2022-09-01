@@ -4,7 +4,7 @@ import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
-import { getOptionalInput, getRequiredInput } from "./actions-util";
+import { getRequiredInput } from "./actions-util";
 import * as util from "./util";
 import { getMode, getRequiredEnvParam, GitHubVersion } from "./util";
 
@@ -23,7 +23,6 @@ export interface GitHubApiDetails {
   auth: string;
   url: string;
   apiURL: string | undefined;
-  registriesAuthTokens: string | undefined;
 }
 
 export interface GitHubApiExternalRepoDetails {
@@ -69,9 +68,6 @@ function getApiDetails() {
     auth: getRequiredInput("token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
     apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-
-    // only available in the init action
-    registriesAuthTokens: getOptionalInput("registries-auth-tokens"),
   };
 }
 

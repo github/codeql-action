@@ -91,6 +91,7 @@ test("load empty config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -161,6 +162,7 @@ test("loading config saves config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -193,6 +195,7 @@ test("load input outside of workspace", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -235,6 +238,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         configFile,
         undefined,
         false,
@@ -273,6 +277,7 @@ test("load non-existent input", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         configFile,
@@ -381,6 +386,7 @@ test("load non-empty input", async (t) => {
       languages,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -449,6 +455,7 @@ test("Default queries are used", async (t) => {
 
     await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       configFilePath,
@@ -529,6 +536,7 @@ test("Queries can be specified in config file", async (t) => {
       languages,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -606,6 +614,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       languages,
       testQueries,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -681,6 +690,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       languages,
       testQueries,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -746,6 +756,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const config = await configUtils.initConfig(
       languages,
       testQueries,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -834,6 +845,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       languages,
       testQueries,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -917,6 +929,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -986,6 +999,7 @@ test("API client used when reading remote config", async (t) => {
       languages,
       undefined,
       undefined,
+      undefined,
       configFile,
       undefined,
       false,
@@ -1013,6 +1027,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1051,6 +1066,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1098,6 +1114,7 @@ test("No detected languages", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -1125,6 +1142,7 @@ test("Unknown languages", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1181,6 +1199,7 @@ test("Config specifies packages", async (t) => {
 
     const { packs } = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       configFile,
@@ -1241,6 +1260,7 @@ test("Config specifies packages for multiple languages", async (t) => {
 
     const { packs, queries } = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       configFile,
@@ -1312,6 +1332,7 @@ function doInvalidInputTest(
       try {
         await configUtils.initConfig(
           languages,
+          undefined,
           undefined,
           undefined,
           configFile,
@@ -1903,6 +1924,7 @@ const mlPoweredQueriesMacro = test.macro({
         packsInput,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -2252,18 +2274,16 @@ test("downloadPacks-with-registries", async (t) => {
     process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
     const logger = getRunnerLogger(true);
 
-    const apiDetails = {
-      ...sampleApiDetails,
-      registriesAuthTokens: "registries-auth",
-    };
     const registries = [
       {
         url: "http://ghcr.io",
         packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
       },
       {
         url: "https://containers.GHEHOSTNAME1/v2/",
         packages: "semmle/*",
+        token: "still-a-token",
       },
     ];
 
@@ -2273,13 +2293,19 @@ test("downloadPacks-with-registries", async (t) => {
       t.deepEqual(configFile, expectedConfigFile);
       // verify the env vars were set correctly
       t.deepEqual(process.env.GITHUB_TOKEN, "token");
-      t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, "registries-auth");
+      t.deepEqual(
+        process.env.CODEQL_REGISTRIES_AUTH,
+        "http://ghcr.io=not-a-token,https://containers.GHEHOSTNAME1/v2/=still-a-token"
+      );
 
       // verify the config file contents were set correctly
-      const config = yaml.load(
-        fs.readFileSync(configFile, "utf8")
-      ) as configUtils.UserConfig;
-      t.deepEqual(config.registries, registries);
+      const config = yaml.load(fs.readFileSync(configFile, "utf8")) as {
+        registries: configUtils.SafeRegistryConfig[];
+      };
+      t.deepEqual(
+        config.registries,
+        registries.map((r) => ({ url: r.url, packages: r.packages }))
+      );
       return {
         packs,
       };
@@ -2300,7 +2326,7 @@ test("downloadPacks-with-registries", async (t) => {
         python: ["e", "f"],
       },
       registries,
-      apiDetails,
+      sampleApiDetails,
       tmpDir,
       logger
     );

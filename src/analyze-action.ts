@@ -138,13 +138,14 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * - We approximate whether manual build steps are present by looking at
  * whether any extraction output already exists for Go.
  */
-async function runGoAutobuilderIfLegacyWorkflow(
+async function runAutobuildIfLegacyGoWorkflow(
   config: Config,
   featureFlags: FeatureFlags,
   logger: Logger
 ) {
-  // Only proceed if the beta Go extraction reconciliation behavior is
-  // enabled.
+  if (!config.languages.includes(Language.go)) {
+    return;
+  }
   if (
     process.env["CODEQL_ACTION_RECONCILE_GO_EXTRACTION"] !== "true" &&
     !(await featureFlags.getValue(
@@ -152,24 +153,22 @@ async function runGoAutobuilderIfLegacyWorkflow(
     ))
   ) {
     logger.debug(
-      "Won't run the Go autobuilder since Go extraction reconciliation is not enabled."
-    );
-    return;
-  }
-  if (!config.languages.includes(Language.go)) {
-    logger.info(
-      "Won't run the Go autobuilder since Go analysis is not enabled."
+      "Won't run Go autobuild since Go extraction reconciliation is not enabled."
     );
     return;
   }
   if (process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] === "true") {
-    logger.info("Won't run the Go autobuilder since it has already been run.");
+    // This log line is info level while Go extraction reconciliation is in beta.
+    // We will make it debug level once Go extraction reconciliation is GA.
+    logger.info("Won't run Go autobuild since it has already been run.");
     return;
   }
   // This captures whether a user has added manual build steps for Go
   if (doesGoExtractionOutputExist(config)) {
+    // This log line is info level while Go extraction reconciliation is in beta.
+    // We will make it debug level once Go extraction reconciliation is GA.
     logger.info(
-      "Won't run the Go autobuilder since at least one file of Go code has already been extracted."
+      "Won't run Go autobuild since at least one file of Go code has already been extracted."
     );
     return;
   }
@@ -245,7 +244,7 @@ async function run() {
       logger
     );
 
-    await runGoAutobuilderIfLegacyWorkflow(config, featureFlags, logger);
+    await runAutobuildIfLegacyGoWorkflow(config, featureFlags, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,

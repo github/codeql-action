@@ -251,6 +251,7 @@ const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
+const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL
@@ -795,14 +796,16 @@ async function getCodeQLForCmd(
         ) {
           if (
             (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) &&
-            // There's a bug in Lua tracing for Go on Windows in versions 2.10.3 and earlier,
-            // so don't use Lua tracing when tracing Go on Windows.
-            // Once we've released a fix, we should add a version gate based on the fixed version.
-            !(
-              config.languages.includes(Language.go) &&
-              isTracedLanguage(Language.go, logger) &&
-              process.platform === "win32"
-            )
+            // There's a bug in Lua tracing for Go on Windows in versions earlier than
+            // `CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED`, so don't use Lua tracing
+            // when tracing Go on Windows on these CodeQL versions.
+            (!config.languages.includes(Language.go) ||
+              !isTracedLanguage(Language.go, logger) ||
+              process.platform !== "win32" ||
+              (await util.codeQlVersionAbove(
+                this,
+                CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED
+              )))
           ) {
             extraArgs.push("--internal-use-lua-tracing");
           } else {

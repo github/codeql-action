@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import { ExecOptions } from "@actions/exec";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
@@ -13,7 +15,6 @@ import {
   validateQueryFilters,
 } from "./analyze";
 import { setCodeQL, getCodeQLForTesting } from "./codeql";
-import { stubToolRunnerConstructor } from "./codeql.test";
 import { Config } from "./config-utils";
 import * as count from "./count-loc";
 import { createFeatureFlags, FeatureFlag } from "./feature-flags";
@@ -487,21 +488,31 @@ for (const options of [
   },
 ]) {
   test(`createdDBForScannedLanguages() ${options.name}`, async (t) => {
-    const runnerConstructorStub = stubToolRunnerConstructor();
+    const runnerObjectStub = sinon.createStubInstance(toolrunner.ToolRunner);
+    runnerObjectStub.exec.resolves(0);
+    const runnerConstructorStub = sinon.stub(toolrunner, "ToolRunner");
+    runnerConstructorStub.callsFake(
+      (_toolPath, args, execOptions: ExecOptions) => {
+        // Call listener on `codeql resolve extractor`
+        if (args[0] === "resolve" && args[1] === "extractor") {
+          const func = execOptions.listeners!.stdout as (data: Buffer) => void;
+          t.truthy(func, "stdout listener is defined");
+          func(Buffer.from('"/path/to/extractor"'));
+        }
+        return runnerObjectStub;
+      }
+    );
+
     const codeqlObject = await getCodeQLForTesting("codeql/for-testing");
     sinon.stub(codeqlObject, "getVersion").resolves(options.version);
 
-    const promise = createdDBForScannedLanguages(
+    await createdDBForScannedLanguages(
       codeqlObject,
       stubConfig,
       false, // Disable Go extraction reconciliation
       getRunnerLogger(true),
       createFeatureFlags(options.featureFlags)
     );
-    // call listener on `codeql resolve extractor`
-    const mockToolRunner = runnerConstructorStub.getCall(0);
-    mockToolRunner.args[2].listeners.stdout('"/path/to/extractor"');
-    await promise;
     if (options.yesFlagSet)
       t.true(
         runnerConstructorStub.secondCall.args[1].includes(

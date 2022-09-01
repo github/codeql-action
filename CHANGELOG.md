@@ -1,6 +1,6 @@
 # CodeQL Action Changelog
 
-## [UNRELEASED]
+## 2.1.22 - 01 Sep 2022
 
 - Downloading CodeQL packs has been moved to the `init` step. Previously, CodeQL packs were downloaded during the `analyze` step. [#1218](https://github.com/github/codeql-action/pull/1218)
 - Update default CodeQL bundle version to 2.10.4. [#1224](https://github.com/github/codeql-action/pull/1224)

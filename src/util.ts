@@ -20,6 +20,7 @@ import {
   parsePacksSpecification,
   prettyPrintPack,
 } from "./config-utils";
+import { FeatureFlag, FeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -816,4 +817,15 @@ export function listFolder(dir: string): string[] {
     }
   }
   return files;
+}
+
+export async function isGoExtractionReconciliationEnabled(
+  featureFlags: FeatureFlags
+): Promise<boolean> {
+  return (
+    process.env["CODEQL_ACTION_RECONCILE_GO_EXTRACTION"] === "true" ||
+    (await featureFlags.getValue(
+      FeatureFlag.GolangExtractionReconciliationEnabled
+    ))
+  );
 }

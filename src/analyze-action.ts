@@ -19,7 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { FeatureFlag, FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
+import { FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -146,12 +146,7 @@ async function runAutobuildIfLegacyGoWorkflow(
   if (!config.languages.includes(Language.go)) {
     return;
   }
-  if (
-    process.env["CODEQL_ACTION_RECONCILE_GO_EXTRACTION"] !== "true" &&
-    !(await featureFlags.getValue(
-      FeatureFlag.GolangExtractionReconciliationEnabled
-    ))
-  ) {
+  if (!(await util.isGoExtractionReconciliationEnabled(featureFlags))) {
     logger.debug(
       "Won't run Go autobuild since Go extraction reconciliation is not enabled."
     );

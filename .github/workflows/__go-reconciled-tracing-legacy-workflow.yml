@@ -82,7 +82,5 @@ jobs:
     env:
   # Enable reconciled Go tracing beta functionality
       CODEQL_ACTION_RECONCILE_GO_EXTRACTION: 'true'
-  # Remove this once we start injecting the Go tracer in the init step.
-      CODEQL_EXTRACTOR_GO_BUILD_TRACING: on
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

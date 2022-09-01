@@ -8,6 +8,6 @@ py -3 -m pip install --user --upgrade pip setuptools wheel
 py -2 -m pip install --user 'virtualenv<20.11'
 py -3 -m pip install --user 'virtualenv<20.11'
 
-# poetry 1.0.10 has error (https://github.com/python-poetry/poetry/issues/2711)
-py -3 -m pip install --user poetry!=1.0.10
+# We aren't compatible with poetry 1.2
+py -3 -m pip install --user "poetry>=1.1,<1.2"
 py -3 -m pip install --user pipenv

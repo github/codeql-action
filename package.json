@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "1.1.21",
+  "version": "1.1.22",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -30,7 +30,7 @@
     "@actions/tool-cache": "^2.0.0",
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^3.0.9",
-    "@octokit/types": "^6.21.1",
+    "@octokit/types": "^7.1.1",
     "adm-zip": "^0.5.9",
     "commander": "^8.1.0",
     "console-log-level": "^1.4.1",

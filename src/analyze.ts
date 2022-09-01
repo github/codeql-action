@@ -121,7 +121,6 @@ async function setupPythonExtractor(logger: Logger) {
 export async function createdDBForScannedLanguages(
   codeql: CodeQL,
   config: configUtils.Config,
-  isGoExtractionReconciliationEnabled: boolean,
   logger: Logger,
   featureFlags: FeatureFlags
 ) {
@@ -133,7 +132,7 @@ export async function createdDBForScannedLanguages(
     if (
       isScannedLanguage(
         language,
-        isGoExtractionReconciliationEnabled,
+        await util.isGoExtractionReconciliationEnabled(featureFlags),
         logger
       ) &&
       !dbIsFinalized(config, language, logger)
@@ -179,13 +178,7 @@ async function finalizeDatabaseCreation(
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await createdDBForScannedLanguages(
-    codeql,
-    config,
-    await util.isGoExtractionReconciliationEnabled(featureFlags),
-    logger,
-    featureFlags
-  );
+  await createdDBForScannedLanguages(codeql, config, logger, featureFlags);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();

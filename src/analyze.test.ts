@@ -509,7 +509,6 @@ for (const options of [
     await createdDBForScannedLanguages(
       codeqlObject,
       stubConfig,
-      false, // Disable Go extraction reconciliation
       getRunnerLogger(true),
       createFeatureFlags(options.featureFlags)
     );

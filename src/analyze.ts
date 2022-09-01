@@ -121,6 +121,7 @@ async function setupPythonExtractor(logger: Logger) {
 export async function createdDBForScannedLanguages(
   codeql: CodeQL,
   config: configUtils.Config,
+  isGoExtractionReconciliationEnabled: boolean,
   logger: Logger,
   featureFlags: FeatureFlags
 ) {
@@ -130,7 +131,11 @@ export async function createdDBForScannedLanguages(
 
   for (const language of config.languages) {
     if (
-      isScannedLanguage(language, logger) &&
+      isScannedLanguage(
+        language,
+        isGoExtractionReconciliationEnabled,
+        logger
+      ) &&
       !dbIsFinalized(config, language, logger)
     ) {
       logger.startGroup(`Extracting ${language}`);
@@ -174,7 +179,13 @@ async function finalizeDatabaseCreation(
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await createdDBForScannedLanguages(codeql, config, logger, featureFlags);
+  await createdDBForScannedLanguages(
+    codeql,
+    config,
+    await util.isGoExtractionReconciliationEnabled(featureFlags),
+    logger,
+    featureFlags
+  );
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -519,7 +530,11 @@ export async function runFinalize(
   // step.
   if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
     // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(config, logger);
+    await endTracingForCluster(
+      config,
+      await util.isGoExtractionReconciliationEnabled(featureFlags),
+      logger
+    );
   } else {
     // Delete the tracer config env var to avoid tracing ourselves
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];

@@ -494,6 +494,7 @@ for (const options of [
     const promise = createdDBForScannedLanguages(
       codeqlObject,
       stubConfig,
+      false, // Disable Go extraction reconciliation
       getRunnerLogger(true),
       createFeatureFlags(options.featureFlags)
     );

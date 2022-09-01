@@ -331,7 +331,12 @@ test("getCombinedTracerConfig - return undefined when no languages are traced la
     });
 
     t.deepEqual(
-      await getCombinedTracerConfig(config, codeQL, getRunnerLogger(true)),
+      await getCombinedTracerConfig(
+        config,
+        codeQL,
+        false, // Disable Go extraction reconciliation
+        getRunnerLogger(true)
+      ),
       undefined
     );
   });
@@ -366,6 +371,7 @@ test("getCombinedTracerConfig - valid spec file", async (t) => {
     const result = await getCombinedTracerConfig(
       config,
       codeQL,
+      false, // Disable Go extraction reconciliation
       getRunnerLogger(true)
     );
     t.notDeepEqual(result, undefined);

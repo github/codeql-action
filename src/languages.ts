@@ -40,7 +40,11 @@ export function parseLanguage(language: string): Language | undefined {
   return undefined;
 }
 
-export function isTracedLanguage(language: Language, logger: Logger): boolean {
+export function isTracedLanguage(
+  language: Language,
+  isGoExtractionReconciliationEnabled: boolean,
+  logger: Logger
+): boolean {
   if (process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "true") {
     logger.warning(
       "The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable was set to 'true', but it must " +
@@ -50,13 +54,24 @@ export function isTracedLanguage(language: Language, logger: Logger): boolean {
     core.exportVariable("CODEQL_EXTRACTOR_GO_BUILD_TRACING", "on");
   }
 
+  const shouldTraceGo =
+    process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "on" ||
+    isGoExtractionReconciliationEnabled;
+
   return (
     ["cpp", "java", "csharp", "swift"].includes(language) ||
-    (process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "on" &&
-      language === Language.go)
+    (shouldTraceGo && language === Language.go)
   );
 }
 
-export function isScannedLanguage(language: Language, logger: Logger): boolean {
-  return !isTracedLanguage(language, logger);
+export function isScannedLanguage(
+  language: Language,
+  isGoExtractionReconciliationEnabled: boolean,
+  logger: Logger
+): boolean {
+  return !isTracedLanguage(
+    language,
+    isGoExtractionReconciliationEnabled,
+    logger
+  );
 }

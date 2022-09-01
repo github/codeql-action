@@ -21,7 +21,10 @@ steps:
       TEST_MODE: true
   - shell: bash
     run: |
-      if [[ -v CODEQL_ACTION_DID_AUTOBUILD_GOLANG ]]; then
+      # Once we start running Bash 4.2 in all environments, we can replace the
+      # `! -z` flag with the more elegant `-v` which confirms that the variable
+      # is actually unset and not potentially set to a blank value.
+      if [[ ! -z "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" ]]; then
         echo "Expected the Go autobuilder not to be run, but the" \
           "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was set."
         exit 1

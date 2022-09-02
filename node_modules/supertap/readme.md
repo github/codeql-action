@@ -21,7 +21,7 @@ $ npm install supertap
 ## Usage
 
 ```js
-const supertap = require('supertap');
+import * as supertap from 'supertap';
 
 console.log(supertap.start());
 
@@ -121,8 +121,3 @@ Type: `number`<br>
 Default: `0`
 
 Number of tests that passed, failed, skipped or marked as todo. `crashed` is a special option, which adds to failed test count in the output, but not total test count. AVA uses it to count unhandled exceptions.
-
-
-## License
-
-MIT © [Vadim Demedes](https://github.com/vadimdemedes)

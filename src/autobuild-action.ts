@@ -4,12 +4,11 @@ import {
   createStatusReportBase,
   getActionsStatus,
   getOptionalInput,
-  getRequiredInput,
   getTemporaryDirectory,
   sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersionActionsOnly } from "./api-client";
+import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { GitHubFeatureFlags } from "./feature-flags";
@@ -72,23 +71,13 @@ async function run() {
       return;
     }
 
-    const apiDetails = {
-      auth: getRequiredInput("token"),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-    };
-
     const gitHubVersion = await getGitHubVersionActionsOnly();
     checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
-    const repositoryNwo = parseRepositoryNwo(
-      getRequiredEnvParam("GITHUB_REPOSITORY")
-    );
-
     const featureFlags = new GitHubFeatureFlags(
       gitHubVersion,
-      apiDetails,
-      repositoryNwo,
+      getApiDetails(),
+      parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
       logger
     );
 

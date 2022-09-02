@@ -14,7 +14,7 @@ import {
   runFinalize,
   runQueries,
 } from "./analyze";
-import { getGitHubVersionActionsOnly } from "./api-client";
+import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
@@ -212,11 +212,7 @@ async function run() {
       await getCodeQL(config.codeQLCmd)
     );
 
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      url: util.getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: util.getRequiredEnvParam("GITHUB_API_URL"),
-    };
+    const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],

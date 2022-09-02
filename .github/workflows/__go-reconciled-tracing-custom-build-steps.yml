@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Go: Reconciled tracing with legacy workflow'
+name: 'PR Check - Go: Reconciled tracing with custom build steps'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,7 +21,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-reconciled-tracing-legacy-workflow:
+  go-reconciled-tracing-custom-build-steps:
     strategy:
       matrix:
         include:
@@ -29,27 +29,43 @@ jobs:
           version: stable-20210308
         - os: macos-latest
           version: stable-20210308
+        - os: windows-2019
+          version: stable-20210308
         - os: ubuntu-latest
           version: stable-20210319
         - os: macos-latest
+          version: stable-20210319
+        - os: windows-2019
           version: stable-20210319
         - os: ubuntu-latest
           version: stable-20210809
         - os: macos-latest
           version: stable-20210809
+        - os: windows-2019
+          version: stable-20210809
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
+          version: cached
+        - os: windows-2019
           version: cached
         - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest
+        - os: windows-2019
+          version: latest
+        - os: windows-2022
+          version: latest
         - os: ubuntu-latest
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-    name: 'Go: Reconciled tracing with legacy workflow'
+        - os: windows-2019
+          version: nightly-latest
+        - os: windows-2022
+          version: nightly-latest
+    name: 'Go: Reconciled tracing with custom build steps'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -69,11 +85,22 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         TEST_MODE: true
+    - name: Build code
+      shell: bash
+      run: go build main.go
     - uses: ./../action/analyze
       env:
         TEST_MODE: true
     - shell: bash
       run: |
+        # Once we start running Bash 4.2 in all environments, we can replace the
+        # `! -z` flag with the more elegant `-v` which confirms that the variable
+        # is actually unset and not potentially set to a blank value.
+        if [[ ! -z "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" ]]; then
+          echo "Expected the Go autobuilder not to be run, but the" \
+            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was set."
+          exit 1
+        fi
         cd "$RUNNER_TEMP/codeql_databases"
         if [[ ! -d go ]]; then
           echo "Did not find a Go database"
@@ -82,5 +109,4 @@ jobs:
     env:
   # Enable reconciled Go tracing beta functionality
       CODEQL_ACTION_RECONCILE_GO_EXTRACTION: 'true'
-      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Go: Reconciled tracing with legacy workflow'
+name: 'PR Check - Go: Reconciled tracing with autobuilder'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,7 +21,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-reconciled-tracing-legacy-workflow:
+  go-reconciled-tracing-autobuilder:
     strategy:
       matrix:
         include:
@@ -49,7 +49,7 @@ jobs:
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-    name: 'Go: Reconciled tracing with legacy workflow'
+    name: 'Go: Reconciled tracing with autobuilder'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -69,18 +69,23 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         TEST_MODE: true
+    - uses: ./../action/autobuild
     - uses: ./../action/analyze
       env:
         TEST_MODE: true
     - shell: bash
       run: |
+        if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
+          echo "Expected the Go autobuilder to be run, but the" \
+            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+          exit 1
+        fi
         cd "$RUNNER_TEMP/codeql_databases"
         if [[ ! -d go ]]; then
           echo "Did not find a Go database"
           exit 1
         fi
     env:
-  # Enable reconciled Go tracing beta functionality
       CODEQL_ACTION_RECONCILE_GO_EXTRACTION: 'true'
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

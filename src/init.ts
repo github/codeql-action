@@ -134,7 +134,12 @@ export async function runInit(
       throw e;
     }
   }
-  return await getCombinedTracerConfig(config, codeql, logger);
+  return await getCombinedTracerConfig(
+    config,
+    codeql,
+    await util.isGoExtractionReconciliationEnabled(featureFlags),
+    logger
+  );
 }
 
 // Runs a powershell script to inject the tracer into a parent process

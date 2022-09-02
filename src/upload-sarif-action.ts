@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getGitHubVersionActionsOnly } from "./api-client";
+import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -53,12 +53,7 @@ async function run() {
   }
 
   try {
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-    };
-
+    const apiDetails = getApiDetails();
     const gitHubVersion = await getGitHubVersionActionsOnly();
 
     const uploadResult = await upload_lib.uploadFromActions(

@@ -35,7 +35,7 @@ test("parseLanguage", async (t) => {
 for (const isReconciliationOn of [false, true]) {
   test(`isTracedLanguage (go reconciliation ${
     isReconciliationOn ? "enabled" : "disabled"
-  }`, async (t) => {
+  })`, async (t) => {
     const logger = getRunnerLogger(true);
 
     t.true(isTracedLanguage(Language.cpp, isReconciliationOn, logger));

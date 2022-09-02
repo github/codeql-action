@@ -8,11 +8,20 @@ import {
   sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
+import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
 import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
-import * as config_utils from "./config-utils";
+import * as configUtils from "./config-utils";
+import { GitHubFeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
-import { checkActionVersion, initializeEnvironment, Mode } from "./util";
+import { parseRepositoryNwo } from "./repository";
+import {
+  checkActionVersion,
+  checkGitHubVersionInRange,
+  getRequiredEnvParam,
+  initializeEnvironment,
+  Mode,
+} from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -62,16 +71,24 @@ async function run() {
       return;
     }
 
-    const config = await config_utils.getConfig(
-      getTemporaryDirectory(),
+    const gitHubVersion = await getGitHubVersionActionsOnly();
+    checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
+
+    const featureFlags = new GitHubFeatureFlags(
+      gitHubVersion,
+      getApiDetails(),
+      parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
       logger
     );
+
+    const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
         "Config file could not be found at expected location. Has the 'init' action been called?"
       );
     }
-    language = determineAutobuildLanguage(config, logger);
+
+    language = await determineAutobuildLanguage(config, featureFlags, logger);
     if (language !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {

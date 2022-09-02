@@ -373,7 +373,11 @@ program
           );
         }
       } else {
-        language = determineAutobuildLanguage(config, logger);
+        language = await determineAutobuildLanguage(
+          config,
+          createFeatureFlags([]),
+          logger
+        );
       }
       if (language !== undefined) {
         await runAutobuild(language, config, logger);

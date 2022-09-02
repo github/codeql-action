@@ -12,6 +12,7 @@ export enum FeatureFlag {
   LuaTracerConfigEnabled = "lua_tracer_config_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
+  GolangExtractionReconciliationEnabled = "golang_extraction_reconciliation_enabled",
 }
 
 /**

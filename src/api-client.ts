@@ -63,7 +63,7 @@ function deriveApiUrl(githubUrl: string): string {
   return url.toString();
 }
 
-function getApiDetails() {
+export function getApiDetails() {
   return {
     auth: getRequiredInput("token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),

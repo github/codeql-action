@@ -30,7 +30,7 @@ The return value of the function is a function that will remove the
 handler.
 
 Note that the function *only* fires for signals if the signal would
-cause the proces to exit.  That is, there are no other listeners, and
+cause the process to exit.  That is, there are no other listeners, and
 it is a fatal signal.
 
 ## Options

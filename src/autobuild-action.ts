@@ -81,6 +81,9 @@ async function run() {
         process.chdir(workingDirectory);
       }
       await runAutobuild(language, config, logger);
+      if (language === Language.go) {
+        core.exportVariable("CODEQL_ACTION_DID_AUTOBUILD_GOLANG", "true");
+      }
     }
   } catch (error) {
     core.setFailed(

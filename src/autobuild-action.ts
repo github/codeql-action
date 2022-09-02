@@ -74,7 +74,6 @@ async function run() {
 
     const apiDetails = {
       auth: getRequiredInput("token"),
-      externalRepoAuth: getOptionalInput("external-repository-token"),
       url: getRequiredEnvParam("GITHUB_SERVER_URL"),
       apiURL: getRequiredEnvParam("GITHUB_API_URL"),
     };

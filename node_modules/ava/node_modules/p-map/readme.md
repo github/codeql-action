@@ -78,6 +78,30 @@ When `false`, instead of stopping when a promise rejects, it will wait for all t
 
 Caveat: When `true`, any already-started async mappers will continue to run until they resolve or reject. In the case of infinite concurrency with sync iterables, *all* mappers are invoked on startup and will continue after the first rejection. [Issue #51](https://github.com/sindresorhus/p-map/issues/51) can be implemented for abort control.
 
+##### signal
+
+Type: [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)
+
+You can abort the promises using [`AbortController`](https://developer.mozilla.org/en-US/docs/Web/API/AbortController).
+
+*Requires Node.js 16 or later.*
+
+```js
+import pMap from 'p-map';
+import delay from 'delay';
+
+const abortController = new AbortController();
+
+setTimeout(() => {
+	abortController.abort();
+}, 500);
+
+const mapper = async value => value;
+
+await pMap([delay(1000), delay(1000)], mapper, {signal: abortController.signal});
+// Throws AbortError (DOMException) after 500 ms.
+```
+
 ### pMapSkip
 
 Return this value from a `mapper` function to skip including the value in the returned array.

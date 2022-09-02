@@ -6,7 +6,9 @@ const env = process.env
 
 // Used for testing only
 Object.defineProperty(exports, '_vendors', {
-  value: vendors.map(function (v) { return v.constant })
+  value: vendors.map(function (v) {
+    return v.constant
+  })
 })
 
 exports.name = null

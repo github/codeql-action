@@ -1723,7 +1723,7 @@ export async function initConfig(
 
 function parseRegistries(registriesInput: string | undefined) {
   try {
-    return registriesInput ? JSON.parse(registriesInput) : undefined;
+    return registriesInput ? yaml.l(registriesInput) : undefined;
   } catch (e) {
     throw new Error(
       `Invalid registries input. Must be a JSON string, but got: ${

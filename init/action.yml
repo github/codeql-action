@@ -10,15 +10,31 @@ inputs:
     description: The languages to be analysed
     required: false
   token:
-    description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use registries-auth-tokens.
+    description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
     default: ${{ github.token }}
     required: false
   registries:
     description: |
-      Authenticate to GitHub Enterprise Server Container registries by passing a comma-separated list of <registry_url>=<token> pairs.
+      A YAML string that defines the list of GitHub container registries to use for downloading packs. The string is in the following forma (the | is required on the first line):
 
-      For example, you can pass `https://containers.GHEHOSTNAME1/v2/=TOKEN1,https://containers.GHEHOSTNAME2/v2/=TOKEN2`` to authenticate to two GitHub Enterprise Server instances.
-      This overrides the `token` input for pack downloads.
+      registries: |
+          - url: https://containers.GHEHOSTNAME1/v2/
+            packages:
+              - my-company/*
+              - my-company2/*
+            token: ${{ secrets.GHEHOSTNAME1_TOKEN }}
+
+          - url: https://ghcr.io/v2/
+            packages: */*
+            token: ${{ secrets.GHCR_TOKEN }}
+
+      The url property contains the url to the container registry you want to connect to.
+
+      The packages property contains a single entry or a list of globs specifying packages that can be found in the container registry. Order is important. Earlier entries will match before later entries.
+
+      The token property contains a connection token for this registry.
+
+      If this input is missing, the `token` input is used for all pack downloads.
     required: false
   matrix:
     default: ${{ toJson(matrix) }}

@@ -1,3 +1,4 @@
+import process from 'node:process';
 import escapeStringRegexp from 'escape-string-regexp';
 import isUnicodeSupported from 'is-unicode-supported';
 
@@ -195,21 +196,21 @@ const common = {
 	lineUpDownLeftDoubleRightDouble: '╪',
 	lineCross: '╳',
 	lineBackslash: '╲',
-	lineSlash: '╱'
+	lineSlash: '╱',
 };
 
 export const mainSymbols = {
 	...common,
 	// The main symbols for those do not look that good on Ubuntu.
 	...(
-		platform === 'linux' ?
-			{
+		platform === 'linux'
+			? {
 				circleQuestionMark: '?⃝',
-				questionMarkPrefix: '?⃝'
-			} :
-			{
+				questionMarkPrefix: '?⃝',
+			}
+			: {
 				circleQuestionMark: '?',
-				questionMarkPrefix: '?'
+				questionMarkPrefix: '?',
 			}
 	),
 	tick: '✔',
@@ -245,7 +246,7 @@ export const mainSymbols = {
 	nodejs: '⬢',
 	oneSeventh: '⅐',
 	oneNinth: '⅑',
-	oneTenth: '⅒'
+	oneTenth: '⅒',
 };
 
 export const fallbackSymbols = {
@@ -285,7 +286,7 @@ export const fallbackSymbols = {
 	nodejs: '♦',
 	oneSeventh: '1/7',
 	oneNinth: '1/9',
-	oneTenth: '1/10'
+	oneTenth: '1/10',
 };
 
 const shouldUseMain = isUnicodeSupported();

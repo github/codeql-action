@@ -11,7 +11,7 @@ $ npm install --save code-excerpt
 ## Usage
 
 ```js
-const codeExcerpt = require('code-excerpt');
+import codeExcerpt from 'code-excerpt';
 
 const source = `
 'use strict';

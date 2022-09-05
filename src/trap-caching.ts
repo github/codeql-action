@@ -162,8 +162,20 @@ export async function getLanguagesSupportingCaching(
     return result;
   const resolveResult = await codeql.betterResolveLanguages();
   outer: for (const lang of languages) {
-    if (resolveResult.extractors[lang].length !== 1) continue;
-    const extractor = resolveResult.extractors[lang][0];
+    const extractorsForLanguage = resolveResult.extractors[lang];
+    if (extractorsForLanguage === undefined) {
+      logger.info(
+        `${lang} does not support TRAP caching (couldn't find an extractor)`
+      );
+      continue;
+    }
+    if (extractorsForLanguage.length !== 1) {
+      logger.info(
+        `${lang} does not support TRAP caching (found multiple extractors)`
+      );
+      continue;
+    }
+    const extractor = extractorsForLanguage[0];
     const trapCacheOptions =
       extractor.extractor_options?.trap?.properties?.cache?.properties;
     if (trapCacheOptions === undefined) {

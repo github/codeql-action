@@ -2253,12 +2253,13 @@ test("downloadPacks-no-registries", async (t) => {
         go: ["c", "d"],
         python: ["e", "f"],
       },
-      undefined,
+      undefined, // registries
       sampleApiDetails,
       tmpDir,
       logger
     );
 
+    // Expecting packs to be downloaded once for java and once for python
     t.deepEqual(packDownloadStub.callCount, 2);
     // no config file was created, so pass `undefined` as the config file path
     t.deepEqual(packDownloadStub.firstCall.args, [["a", "b"], undefined]);
@@ -2283,7 +2284,7 @@ test("downloadPacks-with-registries", async (t) => {
       {
         url: "https://containers.GHEHOSTNAME1/v2/",
         packages: "semmle/*",
-        token: "still-a-token",
+        token: "still-not-a-token",
       },
     ];
 
@@ -2292,7 +2293,7 @@ test("downloadPacks-with-registries", async (t) => {
     packDownloadStub.callsFake((packs, configFile) => {
       t.deepEqual(configFile, expectedConfigFile);
       // verify the env vars were set correctly
-      t.deepEqual(process.env.GITHUB_TOKEN, "token");
+      t.deepEqual(process.env.GITHUB_TOKEN, sampleApiDetails.auth);
       t.deepEqual(
         process.env.CODEQL_REGISTRIES_AUTH,
         "http://ghcr.io=not-a-token,https://containers.GHEHOSTNAME1/v2/=still-a-token"
@@ -2300,7 +2301,7 @@ test("downloadPacks-with-registries", async (t) => {
 
       // verify the config file contents were set correctly
       const config = yaml.load(fs.readFileSync(configFile, "utf8")) as {
-        registries: configUtils.SafeRegistryConfig[];
+        registries: configUtils.RegistryConfigNoCredentials[];
       };
       t.deepEqual(
         config.registries,

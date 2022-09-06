@@ -15,7 +15,7 @@ inputs:
     required: false
   registries:
     description: |
-      A YAML string that defines the list of GitHub container registries to use for downloading packs. The string is in the following forma (the | is required on the first line):
+      A YAML string that defines the list of GitHub container registries to use for downloading packs. The string is in the following form (the | is required on the first line):
 
       registries: |
           - url: https://containers.GHEHOSTNAME1/v2/
@@ -28,7 +28,7 @@ inputs:
             packages: */*
             token: ${{ secrets.GHCR_TOKEN }}
 
-      The url property contains the url to the container registry you want to connect to.
+      The url property contains the URL to the container registry you want to connect to.
 
       The packages property contains a single entry or a list of globs specifying packages that can be found in the container registry. Order is important. Earlier entries will match before later entries.
 

@@ -61,7 +61,7 @@ export interface UserConfig {
 
 export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
 
-export type RegistryConfig = SafeRegistryConfig & {
+export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
   token: string;
 };
@@ -70,7 +70,7 @@ export type RegistryConfig = SafeRegistryConfig & {
  * The list of registries and the associated pack globs that determine where each
  * pack can be downloaded from.
  */
-export interface SafeRegistryConfig {
+export interface RegistryConfigNoCredentials {
   // URL of a package registry, eg- https://ghcr.io/v2/
   url: string;
 
@@ -1721,15 +1721,15 @@ export async function initConfig(
   return config;
 }
 
-function parseRegistries(registriesInput: string | undefined) {
+function parseRegistries(
+  registriesInput: string | undefined
+): RegistryConfigWithCredentials[] | undefined {
   try {
-    return registriesInput ? yaml.l(registriesInput) : undefined;
+    return registriesInput
+      ? (yaml.load(registriesInput) as RegistryConfigWithCredentials[])
+      : undefined;
   } catch (e) {
-    throw new Error(
-      `Invalid registries input. Must be a JSON string, but got: ${
-        e instanceof Error ? e.message : String(e)
-      }`
-    );
+    throw new Error("Invalid registries input. Must be a YAML string.");
   }
 }
 
@@ -1834,7 +1834,7 @@ export async function downloadPacks(
   codeQL: CodeQL,
   languages: Language[],
   packs: Packs,
-  registries: RegistryConfig[] | undefined,
+  registries: RegistryConfigWithCredentials[] | undefined,
   apiDetails: api.GitHubApiDetails,
   tmpDir: string,
   logger: Logger
@@ -1888,7 +1888,9 @@ export async function downloadPacks(
   );
 }
 
-function createRegistriesBlock(registries: RegistryConfig[]) {
+function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
+  registries: RegistryConfigNoCredentials[];
+} {
   // be sure to remove the `token` field from the registry before writing it to disk.
   const safeRegistries = registries.map((registry) => ({
     url: registry.url,
@@ -1900,6 +1902,18 @@ function createRegistriesBlock(registries: RegistryConfig[]) {
   return qlconfig;
 }
 
+/**
+ * Create a temporary environment based on the existing environment and overridden
+ * by the given environment variables that are passed in as arguments.
+ *
+ * Use this new environment in the context of the given operation. After completing
+ * the operation, restore the original environment.
+ *
+ * This function does not support un-setting environment variables.
+ *
+ * @param env
+ * @param operation
+ */
 async function wrapEnvironment(
   env: Record<string, string | undefined>,
   operation: Function

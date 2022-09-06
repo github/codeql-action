@@ -15,8 +15,8 @@ steps:
       config-file: ./.github/codeql/codeql-config-registries.yml
       languages: javascript
       registries: |
-          - url: "https://ghcr.io/v2/",
-            packages: "*/*",
+          - url: "https://ghcr.io/v2/"
+            packages: "*/*"
             token: "${{ secrets.GITHUB_TOKEN }}"
 
     env:

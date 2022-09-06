@@ -66,13 +66,9 @@ jobs:
         config-file: ./.github/codeql/codeql-config-registries.yml
         languages: javascript
         registries: |
-          [
-            {
-              "url": "https://ghcr.io/v2/",
-              "packages": "*/*",
-              "token": "${{ secrets.GITHUB_TOKEN }}"
-            }
-          ]
+          - url: "https://ghcr.io/v2/"
+            packages: "*/*"
+            token: "${{ secrets.GITHUB_TOKEN }}"
 
       env:
         TEST_MODE: true

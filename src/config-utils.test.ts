@@ -2296,7 +2296,7 @@ test("downloadPacks-with-registries", async (t) => {
       t.deepEqual(process.env.GITHUB_TOKEN, sampleApiDetails.auth);
       t.deepEqual(
         process.env.CODEQL_REGISTRIES_AUTH,
-        "http://ghcr.io=not-a-token,https://containers.GHEHOSTNAME1/v2/=still-a-token"
+        "http://ghcr.io=not-a-token,https://containers.GHEHOSTNAME1/v2/=still-not-a-token"
       );
 
       // verify the config file contents were set correctly

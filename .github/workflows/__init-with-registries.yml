@@ -26,20 +26,6 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: windows-2019
-          version: latest
-        - os: windows-2022
-          version: latest
-        - os: ubuntu-latest
-          version: cached
-        - os: macos-latest
-          version: cached
-        - os: windows-2019
-          version: cached
-        - os: ubuntu-latest
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
@@ -58,7 +44,7 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - name: Init with registries-auth-tokens
+    - name: Init with registries
       uses: ./../action/init
       with:
         db-location: ${{ runner.temp }}/customDbLocation

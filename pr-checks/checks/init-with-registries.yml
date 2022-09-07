@@ -4,10 +4,10 @@
 # basic mechanics of multi-registry auth is working.
 name: "Packaging: Download using registries"
 description: "Checks that specifying a registries block and associated auth works as expected"
-versions: ["latest", "cached", "nightly-latest"] # This feature is not compatible with old CLIs
+versions: ["nightly-latest"] # This feature is not compatible with old CLIs
 
 steps:
-  - name: Init with registries-auth-tokens
+  - name: Init with registries
     uses: ./../action/init
     with:
       db-location: "${{ runner.temp }}/customDbLocation"

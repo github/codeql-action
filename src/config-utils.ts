@@ -9,6 +9,7 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import {
   CodeQL,
+  CODEQL_VERSION_GHES_PACK_DOWNLOAD,
   CODEQL_VERSION_ML_POWERED_QUERIES,
   CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS,
   ResolveQueriesOutput,
@@ -1842,6 +1843,14 @@ export async function downloadPacks(
   let qlconfigFile: string | undefined;
   let registriesAuthTokens: string | undefined;
   if (registries) {
+    if (
+      !(await codeQlVersionAbove(codeQL, CODEQL_VERSION_GHES_PACK_DOWNLOAD))
+    ) {
+      throw new Error(
+        `'registries' input is not supported on CodeQL versions less than ${CODEQL_VERSION_GHES_PACK_DOWNLOAD}.`
+      );
+    }
+
     // generate a qlconfig.yml file to hold the registry configs.
     const qlconfig = createRegistriesBlock(registries);
     qlconfigFile = path.join(tmpDir, "qlconfig.yml");

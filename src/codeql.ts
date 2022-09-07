@@ -255,6 +255,7 @@ export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
 const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
+export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.5";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL

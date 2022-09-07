@@ -30,14 +30,11 @@ inputs:
             packages: */*
             token: \$\{{ secrets.GHCR_TOKEN }}
 
-      The url property contains the URL to the container registry you want to connect to.
+      The `url` property contains the URL to the container registry you want to connect to.
 
-      The packages property contains a single entry or a list of globs specifying packages that can be found in the container registry. Order is important. Earlier entries will match before later entries.
+      The `packages` property contains a single glob string or a list of glob strings, specifying which packages should be retrieved from this particular container registry. Order is important. Earlier entries will match before later entries.
 
-      The token property contains a connection token for this registry.
-
-      If this input is missing, the `token` input is used for all pack downloads.
-    required: false
+      The `token` property contains a connection token for this registry.    required: false
   matrix:
     default: ${{ toJson(matrix) }}
     required: false

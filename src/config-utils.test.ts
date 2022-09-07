@@ -2314,6 +2314,7 @@ test("downloadPacks-with-registries", async (t) => {
 
     const codeQL = setCodeQL({
       packDownload: packDownloadStub,
+      getVersion: () => Promise.resolve("2.10.5"),
     });
 
     // packs are supplied for go, java, and python
@@ -2346,5 +2347,52 @@ test("downloadPacks-with-registries", async (t) => {
     // Verify that the env vars were unset.
     t.deepEqual(process.env.GITHUB_TOKEN, "not-a-token");
     t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, "not-a-registries-auth");
+  });
+});
+
+test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
+  // same thing, but this time include a registries block and
+  // associated env vars
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env.GITHUB_TOKEN = "not-a-token";
+    process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
+    const logger = getRunnerLogger(true);
+
+    const registries = [
+      {
+        url: "http://ghcr.io",
+        packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
+      },
+      {
+        url: "https://containers.GHEHOSTNAME1/v2/",
+        packages: "semmle/*",
+        token: "still-not-a-token",
+      },
+    ];
+
+    const codeQL = setCodeQL({
+      getVersion: () => Promise.resolve("2.10.3"),
+    });
+    await t.throwsAsync(
+      async () =>
+        // packs are supplied for go, java, and python
+        // analyzed languages are java, javascript, and python
+        {
+          /* packs are supplied for go, java, and python*/
+          /* analyzed languages are java, javascript, and python*/
+          return await configUtils.downloadPacks(
+            codeQL,
+            [Language.javascript, Language.java, Language.python],
+            {},
+            registries,
+            sampleApiDetails,
+            tmpDir,
+            logger
+          );
+        },
+      { instanceOf: Error },
+      "'registries' input is not supported on CodeQL versions less than 2.10.5."
+    );
   });
 });

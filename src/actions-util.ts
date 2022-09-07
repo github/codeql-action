@@ -828,7 +828,7 @@ export function workflowEventName() {
     if (value === undefined || value.length === 0) {
       return process.env["GITHUB_EVENT_NAME"];
     }
-    return value
+    return value;
   }
   return process.env["GITHUB_EVENT_NAME"];
 }

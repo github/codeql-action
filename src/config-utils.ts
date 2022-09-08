@@ -1900,9 +1900,19 @@ export async function downloadPacks(
 function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
   registries: RegistryConfigNoCredentials[];
 } {
+  if (
+    !Array.isArray(registries) ||
+    registries.some((r) => !r.url || !r.packages)
+  ) {
+    throw new Error(
+      "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties."
+    );
+  }
+
   // be sure to remove the `token` field from the registry before writing it to disk.
   const safeRegistries = registries.map((registry) => ({
-    url: registry.url,
+    // ensure the url ends with a slash to avoid a bug in the CLI 2.10.4
+    url: !registry?.url.endsWith("/") ? `${registry.url}/` : registry.url,
     packages: registry.packages,
   }));
   const qlconfig = {

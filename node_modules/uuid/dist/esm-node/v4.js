@@ -1,7 +1,12 @@
+import native from './native.js';
 import rng from './rng.js';
-import stringify from './stringify.js';
+import { unsafeStringify } from './stringify.js';
 
 function v4(options, buf, offset) {
+  if (native.randomUUID && !buf && !options) {
+    return native.randomUUID();
+  }
+
   options = options || {};
   const rnds = options.random || (options.rng || rng)(); // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
 
@@ -18,7 +23,7 @@ function v4(options, buf, offset) {
     return buf;
   }
 
-  return stringify(rnds);
+  return unsafeStringify(rnds);
 }
 
 export default v4;

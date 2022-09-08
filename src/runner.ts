@@ -240,6 +240,7 @@ program
         cmd.languages,
         cmd.queries,
         cmd.packs,
+        undefined, // we won't support registries in the runner
         cmd.configFile,
         undefined,
         false,

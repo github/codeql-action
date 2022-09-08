@@ -26,12 +26,14 @@ const sampleApiDetails = {
   auth: "token",
   url: "https://github.com",
   apiURL: undefined,
+  registriesAuthTokens: undefined,
 };
 
 const sampleGHAEApiDetails = {
   auth: "token",
   url: "https://example.githubenterprise.com",
   apiURL: undefined,
+  registriesAuthTokens: undefined,
 };
 
 let stubConfig: Config;

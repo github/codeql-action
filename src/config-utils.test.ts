@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
+import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
@@ -21,6 +22,7 @@ const sampleApiDetails = {
   externalRepoAuth: "token",
   url: "https://github.example.com",
   apiURL: undefined,
+  registriesAuthTokens: undefined,
 };
 
 const gitHubVersion = { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion;
@@ -85,6 +87,7 @@ test("load empty config", async (t) => {
 
     const config = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -159,6 +162,7 @@ test("loading config saves config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -191,6 +195,7 @@ test("load input outside of workspace", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -233,6 +238,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         configFile,
         undefined,
         false,
@@ -271,6 +277,7 @@ test("load non-existent input", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         configFile,
@@ -379,6 +386,7 @@ test("load non-empty input", async (t) => {
       languages,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -447,6 +455,7 @@ test("Default queries are used", async (t) => {
 
     await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       configFilePath,
@@ -527,6 +536,7 @@ test("Queries can be specified in config file", async (t) => {
       languages,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -604,6 +614,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       languages,
       testQueries,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -679,6 +690,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       languages,
       testQueries,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -744,6 +756,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const config = await configUtils.initConfig(
       languages,
       testQueries,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -832,6 +845,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       languages,
       testQueries,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -915,6 +929,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -984,6 +999,7 @@ test("API client used when reading remote config", async (t) => {
       languages,
       undefined,
       undefined,
+      undefined,
       configFile,
       undefined,
       false,
@@ -1011,6 +1027,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1049,6 +1066,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1096,6 +1114,7 @@ test("No detected languages", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -1123,6 +1142,7 @@ test("Unknown languages", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1179,6 +1199,7 @@ test("Config specifies packages", async (t) => {
 
     const { packs } = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       configFile,
@@ -1239,6 +1260,7 @@ test("Config specifies packages for multiple languages", async (t) => {
 
     const { packs, queries } = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       configFile,
@@ -1310,6 +1332,7 @@ function doInvalidInputTest(
       try {
         await configUtils.initConfig(
           languages,
+          undefined,
           undefined,
           undefined,
           configFile,
@@ -1901,6 +1924,7 @@ const mlPoweredQueriesMacro = test.macro({
         packsInput,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -2208,30 +2232,209 @@ test(
   /"a-pack-without-a-scope" is not a valid pack/
 );
 
-test("downloadPacks", async (t) => {
-  const packDownloadStub = sinon.stub();
-  packDownloadStub.callsFake((packs) => ({
-    packs,
-  }));
-  const codeQL = setCodeQL({
-    packDownload: packDownloadStub,
+test("downloadPacks-no-registries", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const packDownloadStub = sinon.stub();
+    packDownloadStub.callsFake((packs) => ({
+      packs,
+    }));
+    const codeQL = setCodeQL({
+      packDownload: packDownloadStub,
+    });
+    const logger = getRunnerLogger(true);
+
+    // packs are supplied for go, java, and python
+    // analyzed languages are java, javascript, and python
+    await configUtils.downloadPacks(
+      codeQL,
+      [Language.javascript, Language.java, Language.python],
+      {
+        java: ["a", "b"],
+        go: ["c", "d"],
+        python: ["e", "f"],
+      },
+      undefined, // registries
+      sampleApiDetails,
+      tmpDir,
+      logger
+    );
+
+    // Expecting packs to be downloaded once for java and once for python
+    t.deepEqual(packDownloadStub.callCount, 2);
+    // no config file was created, so pass `undefined` as the config file path
+    t.deepEqual(packDownloadStub.firstCall.args, [["a", "b"], undefined]);
+    t.deepEqual(packDownloadStub.secondCall.args, [["e", "f"], undefined]);
   });
-  const logger = getRunnerLogger(true);
+});
 
-  // packs are supplied for go, java, and python
-  // analyzed languages are java, javascript, and python
-  await configUtils.downloadPacks(
-    codeQL,
-    [Language.javascript, Language.java, Language.python],
-    {
-      java: ["a", "b"],
-      go: ["c", "d"],
-      python: ["e", "f"],
-    },
-    logger
-  );
+test("downloadPacks-with-registries", async (t) => {
+  // same thing, but this time include a registries block and
+  // associated env vars
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env.GITHUB_TOKEN = "not-a-token";
+    process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
+    const logger = getRunnerLogger(true);
 
-  t.deepEqual(packDownloadStub.callCount, 2);
-  t.deepEqual(packDownloadStub.firstCall.args, [["a", "b"]]);
-  t.deepEqual(packDownloadStub.secondCall.args, [["e", "f"]]);
+    const registries = [
+      {
+        // no slash
+        url: "http://ghcr.io",
+        packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
+      },
+      {
+        // with slash
+        url: "https://containers.GHEHOSTNAME1/v2/",
+        packages: "semmle/*",
+        token: "still-not-a-token",
+      },
+    ];
+
+    // append a slash to the first url
+    const expectedRegistries = registries.map((r, i) => ({
+      packages: r.packages,
+      url: i === 0 ? `${r.url}/` : r.url,
+    }));
+
+    const expectedConfigFile = path.join(tmpDir, "qlconfig.yml");
+    const packDownloadStub = sinon.stub();
+    packDownloadStub.callsFake((packs, configFile) => {
+      t.deepEqual(configFile, expectedConfigFile);
+      // verify the env vars were set correctly
+      t.deepEqual(process.env.GITHUB_TOKEN, sampleApiDetails.auth);
+      t.deepEqual(
+        process.env.CODEQL_REGISTRIES_AUTH,
+        "http://ghcr.io=not-a-token,https://containers.GHEHOSTNAME1/v2/=still-not-a-token"
+      );
+
+      // verify the config file contents were set correctly
+      const config = yaml.load(fs.readFileSync(configFile, "utf8")) as {
+        registries: configUtils.RegistryConfigNoCredentials[];
+      };
+      t.deepEqual(config.registries, expectedRegistries);
+      return {
+        packs,
+      };
+    });
+
+    const codeQL = setCodeQL({
+      packDownload: packDownloadStub,
+      getVersion: () => Promise.resolve("2.10.5"),
+    });
+
+    // packs are supplied for go, java, and python
+    // analyzed languages are java, javascript, and python
+    await configUtils.downloadPacks(
+      codeQL,
+      [Language.javascript, Language.java, Language.python],
+      {
+        java: ["a", "b"],
+        go: ["c", "d"],
+        python: ["e", "f"],
+      },
+      registries,
+      sampleApiDetails,
+      tmpDir,
+      logger
+    );
+
+    // Same packs are downloaded as in previous test
+    t.deepEqual(packDownloadStub.callCount, 2);
+    t.deepEqual(packDownloadStub.firstCall.args, [
+      ["a", "b"],
+      expectedConfigFile,
+    ]);
+    t.deepEqual(packDownloadStub.secondCall.args, [
+      ["e", "f"],
+      expectedConfigFile,
+    ]);
+
+    // Verify that the env vars were unset.
+    t.deepEqual(process.env.GITHUB_TOKEN, "not-a-token");
+    t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, "not-a-registries-auth");
+  });
+});
+
+test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
+  // same thing, but this time include a registries block and
+  // associated env vars
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env.GITHUB_TOKEN = "not-a-token";
+    process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
+    const logger = getRunnerLogger(true);
+
+    const registries = [
+      {
+        url: "http://ghcr.io",
+        packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
+      },
+      {
+        url: "https://containers.GHEHOSTNAME1/v2/",
+        packages: "semmle/*",
+        token: "still-not-a-token",
+      },
+    ];
+
+    const codeQL = setCodeQL({
+      getVersion: () => Promise.resolve("2.10.3"),
+    });
+    await t.throwsAsync(
+      async () => {
+        return await configUtils.downloadPacks(
+          codeQL,
+          [Language.javascript, Language.java, Language.python],
+          {},
+          registries,
+          sampleApiDetails,
+          tmpDir,
+          logger
+        );
+      },
+      { instanceOf: Error },
+      "'registries' input is not supported on CodeQL versions less than 2.10.4."
+    );
+  });
+});
+
+test("downloadPacks-with-registries fails with invalid registries block", async (t) => {
+  // same thing, but this time include a registries block and
+  // associated env vars
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env.GITHUB_TOKEN = "not-a-token";
+    process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
+    const logger = getRunnerLogger(true);
+
+    const registries = [
+      {
+        // missing url property
+        packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
+      },
+      {
+        url: "https://containers.GHEHOSTNAME1/v2/",
+        packages: "semmle/*",
+        token: "still-not-a-token",
+      },
+    ];
+
+    const codeQL = setCodeQL({
+      getVersion: () => Promise.resolve("2.10.4"),
+    });
+    await t.throwsAsync(
+      async () => {
+        return await configUtils.downloadPacks(
+          codeQL,
+          [Language.javascript, Language.java, Language.python],
+          {},
+          registries as any,
+          sampleApiDetails,
+          tmpDir,
+          logger
+        );
+      },
+      { instanceOf: Error },
+      "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties."
+    );
+  });
 });

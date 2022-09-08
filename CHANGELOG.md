@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - Allow CodeQL packs to be downloaded from GitHub Enterprise Server instances, using the new `registries` input for the `init` action.  [#1221](https://github.com/github/codeql-action/pull/1221)
+- Update default CodeQL bundle version to 2.10.5. [#1240](https://github.com/github/codeql-action/pull/1240)
 
 ## 2.1.22 - 01 Sep 2022
 

@@ -72,6 +72,13 @@ export async function determineAutobuildLanguages(
 
   logger.debug(`Will autobuild ${languages.join(" and ")}.`);
 
+  // In general the autobuilders for other traced languages may conflict with
+  // each other. Therefore if a user has requested more than one non-Go traced
+  // language, we ask for manual build steps.
+  // Matrixing the build would also work, but that would change the SARIF
+  // categories, potentially leading to a "stale tips" situation where alerts
+  // that should be fixed remain on a repo since they are linked to SARIF
+  // categories that are no longer updated.
   if (autobuildLanguagesNoGo.length > 1) {
     logger.warning(
       `We will only automatically build ${languages.join(

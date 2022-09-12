@@ -5,11 +5,11 @@ import { Language, isTracedLanguage } from "./languages";
 import { Logger } from "./logging";
 import * as util from "./util";
 
-export async function determineAutobuildLanguage(
+export async function determineAutobuildLanguages(
   config: configUtils.Config,
   featureFlags: FeatureFlags,
   logger: Logger
-): Promise<Language | undefined> {
+): Promise<Language[] | undefined> {
   const isGoExtractionReconciliationEnabled =
     await util.isGoExtractionReconciliationEnabled(featureFlags);
   // Attempt to find a language to autobuild
@@ -38,7 +38,7 @@ export async function determineAutobuildLanguage(
     );
   }
 
-  return language;
+  return [language];
 }
 
 export async function runAutobuild(

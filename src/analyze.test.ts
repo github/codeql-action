@@ -1,23 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { ExecOptions } from "@actions/exec";
-import * as toolrunner from "@actions/exec/lib/toolrunner";
 import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import {
   convertPackToQuerySuiteEntry,
-  createdDBForScannedLanguages,
   createQuerySuiteContents,
   runQueries,
   validateQueryFilters,
 } from "./analyze";
-import { setCodeQL, getCodeQLForTesting } from "./codeql";
+import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import * as count from "./count-loc";
-import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars } from "./testing-utils";
@@ -431,114 +427,3 @@ test("createQuerySuiteContents", (t) => {
 
   t.deepEqual(yamlResult, expected);
 });
-
-const stubConfig: Config = {
-  languages: [Language.cpp, Language.go],
-  queries: {},
-  pathsIgnore: [],
-  paths: [],
-  originalUserInput: {},
-  tempDir: "",
-  codeQLCmd: "",
-  gitHubVersion: {
-    type: util.GitHubVariant.DOTCOM,
-  } as util.GitHubVersion,
-  dbLocation: "",
-  packs: {},
-  debugMode: false,
-  debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-  debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-  augmentationProperties: {
-    injectedMlQueries: false,
-    packsInputCombines: false,
-    queriesInputCombines: false,
-  },
-  trapCaches: {},
-  trapCacheDownloadTime: 0,
-};
-
-for (const options of [
-  {
-    name: "Lua feature flag enabled, but old CLI",
-    version: "2.9.0",
-    featureFlags: [FeatureFlag.LuaTracerConfigEnabled],
-    yesFlagSet: false,
-    noFlagSet: false,
-  },
-  {
-    name: "Lua feature flag disabled, with old CLI",
-    version: "2.9.0",
-    featureFlags: [],
-    yesFlagSet: false,
-    noFlagSet: false,
-  },
-  {
-    name: "Lua feature flag enabled, with new CLI",
-    version: "2.10.0",
-    featureFlags: [FeatureFlag.LuaTracerConfigEnabled],
-    yesFlagSet: true,
-    noFlagSet: false,
-  },
-  {
-    name: "Lua feature flag disabled, with new CLI",
-    version: "2.10.0",
-    featureFlags: [],
-    yesFlagSet: false,
-    noFlagSet: true,
-  },
-]) {
-  test(`createdDBForScannedLanguages() ${options.name}`, async (t) => {
-    const runnerObjectStub = sinon.createStubInstance(toolrunner.ToolRunner);
-    runnerObjectStub.exec.resolves(0);
-    const runnerConstructorStub = sinon.stub(toolrunner, "ToolRunner");
-    runnerConstructorStub.callsFake(
-      (_toolPath, args, execOptions: ExecOptions) => {
-        // Call listener on `codeql resolve extractor`
-        if (args[0] === "resolve" && args[1] === "extractor") {
-          const func = execOptions.listeners!.stdout as (data: Buffer) => void;
-          t.truthy(func, "stdout listener is defined");
-          func(Buffer.from('"/path/to/extractor"'));
-        }
-        return runnerObjectStub;
-      }
-    );
-
-    const codeqlObject = await getCodeQLForTesting("codeql/for-testing");
-    sinon.stub(codeqlObject, "getVersion").resolves(options.version);
-
-    await createdDBForScannedLanguages(
-      codeqlObject,
-      stubConfig,
-      getRunnerLogger(true),
-      createFeatureFlags(options.featureFlags)
-    );
-    if (options.yesFlagSet)
-      t.true(
-        runnerConstructorStub.secondCall.args[1].includes(
-          "--internal-use-lua-tracing"
-        ),
-        "--internal-use-lua-tracing should be present, but it is absent"
-      );
-    else
-      t.false(
-        runnerConstructorStub.secondCall.args[1].includes(
-          "--internal-use-lua-tracing"
-        ),
-        "--internal-use-lua-tracing should be absent, but it is present"
-      );
-    if (options.noFlagSet)
-      t.true(
-        runnerConstructorStub.secondCall.args[1].includes(
-          "--no-internal-use-lua-tracing"
-        ),
-        "--no-internal-use-lua-tracing should be present, but it is absent"
-      );
-    else
-      t.false(
-        runnerConstructorStub.secondCall.args[1].includes(
-          "--no-internal-use-lua-tracing"
-        ),
-        "--no-internal-use-lua-tracing should be absent, but it is present"
-      );
-  });
-}

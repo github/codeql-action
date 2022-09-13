@@ -102,11 +102,7 @@ export interface CodeQL {
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
    */
-  extractScannedLanguage(
-    config: Config,
-    language: Language,
-    featureFlags: FeatureFlags
-  ): Promise<void>;
+  extractScannedLanguage(config: Config, language: Language): Promise<void>;
   /**
    * Finalize a database using 'codeql database finalize'.
    */
@@ -800,29 +796,26 @@ async function getCodeQLForCmd(
           extraArgs.push(`--trace-process-level=${processLevel || 3}`);
         }
         if (
-          await util.codeQlVersionAbove(this, CODEQL_VERSION_LUA_TRACER_CONFIG)
+          // There's a bug in Lua tracing for Go on Windows in versions earlier than
+          // `CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED`, so don't use Lua tracing
+          // when tracing Go on Windows on these CodeQL versions.
+          (await util.codeQlVersionAbove(
+            this,
+            CODEQL_VERSION_LUA_TRACER_CONFIG
+          )) &&
+          config.languages.includes(Language.go) &&
+          isTracedLanguage(
+            Language.go,
+            isGoExtractionReconciliationEnabled,
+            logger
+          ) &&
+          process.platform === "win32" &&
+          !(await util.codeQlVersionAbove(
+            this,
+            CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED
+          ))
         ) {
-          if (
-            (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) &&
-            // There's a bug in Lua tracing for Go on Windows in versions earlier than
-            // `CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED`, so don't use Lua tracing
-            // when tracing Go on Windows on these CodeQL versions.
-            (!config.languages.includes(Language.go) ||
-              !isTracedLanguage(
-                Language.go,
-                isGoExtractionReconciliationEnabled,
-                logger
-              ) ||
-              process.platform !== "win32" ||
-              (await util.codeQlVersionAbove(
-                this,
-                CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED
-              )))
-          ) {
-            extraArgs.push("--internal-use-lua-tracing");
-          } else {
-            extraArgs.push("--no-internal-use-lua-tracing");
-          }
+          extraArgs.push("--no-internal-use-lua-tracing");
         }
       }
 
@@ -879,11 +872,7 @@ async function getCodeQLForCmd(
       // (https://github.com/actions/runner/pull/416).
       await runTool(autobuildCmd);
     },
-    async extractScannedLanguage(
-      config: Config,
-      language: Language,
-      featureFlags: FeatureFlags
-    ) {
+    async extractScannedLanguage(config: Config, language: Language) {
       const databasePath = util.getCodeQLDatabasePath(config, language);
       // Get extractor location
       let extractorPath = "";
@@ -916,24 +905,12 @@ async function getCodeQLForCmd(
         "tools",
         `autobuild${ext}`
       );
-      const extraArgs: string[] = [];
-      if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_LUA_TRACER_CONFIG)
-      ) {
-        if (await featureFlags.getValue(FeatureFlag.LuaTracerConfigEnabled)) {
-          extraArgs.push("--internal-use-lua-tracing");
-        } else {
-          extraArgs.push("--no-internal-use-lua-tracing");
-        }
-      }
-
       // Run trace command
       await toolrunnerErrorCatcher(
         cmd,
         [
           "database",
           "trace-command",
-          ...extraArgs,
           ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
           ...getExtraOptionsFromEnv(["database", "trace-command"]),
           databasePath,

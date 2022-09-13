@@ -54,19 +54,19 @@ export async function determineAutobuildLanguages(
    * This special case behavior should be removed as part of the next major
    * version of the CodeQL Action.
    */
-  const autobuildLanguagesNoGo = autobuildLanguages.filter(
+  const autobuildLanguagesWithoutGo = autobuildLanguages.filter(
     (l) => l !== Language.go
   );
 
   const languages: Language[] = [];
   // First run the autobuilder for the first non-Go traced language, if one
   // exists.
-  if (autobuildLanguagesNoGo[0] !== undefined) {
-    languages.push(autobuildLanguagesNoGo[0]);
+  if (autobuildLanguagesWithoutGo[0] !== undefined) {
+    languages.push(autobuildLanguagesWithoutGo[0]);
   }
   // If Go is requested, run the Go autobuilder last to ensure it doesn't
   // interfere with the other autobuilder.
-  if (autobuildLanguages.length !== autobuildLanguagesNoGo.length) {
+  if (autobuildLanguages.length !== autobuildLanguagesWithoutGo.length) {
     languages.push(Language.go);
   }
 
@@ -79,11 +79,11 @@ export async function determineAutobuildLanguages(
   // categories, potentially leading to a "stale tips" situation where alerts
   // that should be fixed remain on a repo since they are linked to SARIF
   // categories that are no longer updated.
-  if (autobuildLanguagesNoGo.length > 1) {
+  if (autobuildLanguagesWithoutGo.length > 1) {
     logger.warning(
       `We will only automatically build ${languages.join(
         " and "
-      )} code. If you wish to scan ${autobuildLanguagesNoGo
+      )} code. If you wish to scan ${autobuildLanguagesWithoutGo
         .slice(1)
         .join(" and ")}, you must replace this call with custom build steps.`
     );

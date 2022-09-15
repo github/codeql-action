@@ -1,18 +1,23 @@
 import { getCodeQL } from "./codeql";
-import * as config_utils from "./config-utils";
+import * as configUtils from "./config-utils";
+import { FeatureFlags } from "./feature-flags";
 import { Language, isTracedLanguage } from "./languages";
 import { Logger } from "./logging";
+import * as util from "./util";
 
-export function determineAutobuildLanguage(
-  config: config_utils.Config,
+export async function determineAutobuildLanguage(
+  config: configUtils.Config,
+  featureFlags: FeatureFlags,
   logger: Logger
-): Language | undefined {
+): Promise<Language | undefined> {
+  const isGoExtractionReconciliationEnabled =
+    await util.isGoExtractionReconciliationEnabled(featureFlags);
   // Attempt to find a language to autobuild
   // We want pick the dominant language in the repo from the ones we're able to build
   // The languages are sorted in order specified by user or by lines of code if we got
   // them from the GitHub API, so try to build the first language on the list.
   const autobuildLanguages = config.languages.filter((l) =>
-    isTracedLanguage(l, logger)
+    isTracedLanguage(l, isGoExtractionReconciliationEnabled, logger)
   );
   const language = autobuildLanguages[0];
 
@@ -38,7 +43,7 @@ export function determineAutobuildLanguage(
 
 export async function runAutobuild(
   language: Language,
-  config: config_utils.Config,
+  config: configUtils.Config,
   logger: Logger
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);

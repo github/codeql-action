@@ -775,3 +775,14 @@ test("isAnalyzingDefaultBranch()", async (t) => {
     getAdditionalInputStub.restore();
   });
 });
+
+test("workflowEventName()", async (t) => {
+  process.env["GITHUB_EVENT_NAME"] = "push";
+  t.deepEqual(actionsutil.workflowEventName(), "push");
+
+  process.env["GITHUB_EVENT_NAME"] = "dynamic";
+  t.deepEqual(actionsutil.workflowEventName(), "dynamic");
+
+  process.env["CODESCANNING_EVENT_NAME"] = "push";
+  t.deepEqual(actionsutil.workflowEventName(), "push");
+});

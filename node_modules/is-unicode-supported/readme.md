@@ -8,8 +8,8 @@ Note that the check is quite naive. It just assumes all non-Windows terminals su
 
 ## Install
 
-```
-$ npm install is-unicode-supported
+```sh
+npm install is-unicode-supported
 ```
 
 ## Usage

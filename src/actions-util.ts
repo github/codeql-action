@@ -109,7 +109,7 @@ export const getCommitOid = async function (
 export const determineMergeBaseCommitOid = async function (): Promise<
   string | undefined
 > {
-  if (process.env.GITHUB_EVENT_NAME !== "pull_request") {
+  if (workflowEventName() !== "pull_request") {
     return undefined;
   }
 
@@ -821,9 +821,21 @@ export async function sendStatusReport<S extends StatusReportBase>(
   }
 }
 
+export function workflowEventName() {
+  // If the original event is dynamic CODESCANNING_EVENT_NAME will contain the right info (push/pull_request)
+  if (process.env["GITHUB_EVENT_NAME"] === "dynamic") {
+    const value = process.env["CODESCANNING_EVENT_NAME"];
+    if (value === undefined || value.length === 0) {
+      return process.env["GITHUB_EVENT_NAME"];
+    }
+    return value;
+  }
+  return process.env["GITHUB_EVENT_NAME"];
+}
+
 // Was the workflow run triggered by a `push` event, for example as opposed to a `pull_request` event.
 function workflowIsTriggeredByPushEvent() {
-  return process.env["GITHUB_EVENT_NAME"] === "push";
+  return workflowEventName() === "push";
 }
 
 // Is dependabot the actor that triggered the current workflow run.

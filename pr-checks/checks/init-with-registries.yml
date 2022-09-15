@@ -1,0 +1,44 @@
+# A test for running the init command with a registries block.
+# This test does _not_ validate that the action can authenticate
+# against multiple registries. All it does is validate that the
+# basic mechanics of multi-registry auth is working.
+name: "Packaging: Download using registries"
+description: "Checks that specifying a registries block and associated auth works as expected"
+versions: ["nightly-latest"] # This feature is not compatible with old CLIs
+
+steps:
+  - name: Init with registries
+    uses: ./../action/init
+    with:
+      db-location: "${{ runner.temp }}/customDbLocation"
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+      config-file: ./.github/codeql/codeql-config-registries.yml
+      languages: javascript
+      registries: |
+          - url: "https://ghcr.io/v2/"
+            packages: "*/*"
+            token: "${{ secrets.GITHUB_TOKEN }}"
+
+    env:
+      TEST_MODE: true
+  - name: Verify packages installed
+    shell: bash
+    run: |
+      PRIVATE_PACK="$HOME/.codeql/packages/dsp-testing/private-pack"
+      CODEQL_PACK1="$HOME/.codeql/packages/dsp-testing/codeql-pack1"
+
+      if [[ -d $PRIVATE_PACK ]]
+      then
+          echo "$PRIVATE_PACK was installed."
+      else
+          echo "::error $PRIVATE_PACK pack was not installed."
+          exit 1
+      fi
+
+      if [[ -d $CODEQL_PACK1 ]]
+      then
+          echo "$CODEQL_PACK1 was installed."
+      else
+          echo "::error $CODEQL_PACK1 pack was not installed."
+          exit 1
+      fi

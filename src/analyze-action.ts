@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import path from "path";
 // We need to import `performance` on Node 12
 import { performance } from "perf_hooks";
 
@@ -12,11 +14,13 @@ import {
   runFinalize,
   runQueries,
 } from "./analyze";
-import { getGitHubVersionActionsOnly } from "./api-client";
+import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
+import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { GitHubFeatureFlags } from "./feature-flags";
+import { FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
+import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
@@ -97,6 +101,75 @@ function hasBadExpectErrorInput(): boolean {
   );
 }
 
+/**
+ * Returns whether any TRAP files exist under the `db-go` folder,
+ * indicating whether Go extraction has extracted at least one file.
+ */
+function doesGoExtractionOutputExist(config: Config): boolean {
+  const golangDbDirectory = util.getCodeQLDatabasePath(config, Language.go);
+  const trapDirectory = path.join(golangDbDirectory, "trap", Language.go);
+  return (
+    fs.existsSync(trapDirectory) &&
+    fs
+      .readdirSync(trapDirectory)
+      .some((fileName) =>
+        [
+          ".trap",
+          ".trap.gz",
+          ".trap.br",
+          ".trap.tar.gz",
+          ".trap.tar.br",
+          ".trap.tar",
+        ].some((ext) => fileName.endsWith(ext))
+      )
+  );
+}
+
+/**
+ * When Go extraction reconciliation is enabled, either via the feature flag
+ * or an environment variable, we will attempt to autobuild Go to preserve
+ * compatibility for users who have set up Go using a legacy scanning style
+ * CodeQL workflow, i.e. one without an autobuild step or manual build
+ * steps.
+ *
+ * - We detect whether an autobuild step is present by checking the
+ * `CODEQL_ACTION_DID_AUTOBUILD_GOLANG` environment variable, which is set
+ * when the autobuilder is invoked.
+ * - We approximate whether manual build steps are present by looking at
+ * whether any extraction output already exists for Go.
+ */
+async function runAutobuildIfLegacyGoWorkflow(
+  config: Config,
+  featureFlags: FeatureFlags,
+  logger: Logger
+) {
+  if (!config.languages.includes(Language.go)) {
+    return;
+  }
+  if (!(await util.isGoExtractionReconciliationEnabled(featureFlags))) {
+    logger.debug(
+      "Won't run Go autobuild since Go extraction reconciliation is not enabled."
+    );
+    return;
+  }
+  if (process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] === "true") {
+    // This log line is info level while Go extraction reconciliation is in beta.
+    // We will make it debug level once Go extraction reconciliation is GA.
+    logger.info("Won't run Go autobuild since it has already been run.");
+    return;
+  }
+  // This captures whether a user has added manual build steps for Go
+  if (doesGoExtractionOutputExist(config)) {
+    // This log line is info level while Go extraction reconciliation is in beta.
+    // We will make it debug level once Go extraction reconciliation is GA.
+    logger.info(
+      "Won't run Go autobuild since at least one file of Go code has already been extracted."
+    );
+    return;
+  }
+  await runAutobuild(Language.go, config, logger);
+}
+
 async function run() {
   const startedAt = new Date();
   let uploadResult: UploadResult | undefined = undefined;
@@ -139,11 +212,7 @@ async function run() {
       await getCodeQL(config.codeQLCmd)
     );
 
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      url: util.getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: util.getRequiredEnvParam("GITHUB_API_URL"),
-    };
+    const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
@@ -165,6 +234,8 @@ async function run() {
       repositoryNwo,
       logger
     );
+
+    await runAutobuildIfLegacyGoWorkflow(config, featureFlags, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,

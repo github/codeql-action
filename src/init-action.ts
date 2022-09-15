@@ -196,6 +196,7 @@ async function run() {
       getOptionalInput("languages"),
       getOptionalInput("queries"),
       getOptionalInput("packs"),
+      getOptionalInput("registries"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
       await getTrapCachingEnabled(featureFlags),

@@ -67,7 +67,7 @@ def open_pr(
   body.append('Merging ' + source_branch_short_sha + ' into ' + target_branch)
 
   body.append('')
-  body.append('Conductor for this PR is @' + conductor)
+  body.append(f'Conductor for this PR is @{conductor}.')
 
   # List all PRs merged
   if len(pull_requests) > 0:
@@ -75,15 +75,15 @@ def open_pr(
     body.append('Contains the following pull requests:')
     for pr in pull_requests:
       merger = get_merger_of_pr(repo, pr)
-      body.append('- #' + str(pr.number) + ' - ' + pr.title +' (@' + merger + ')')
+      body.append(f'- #{pr.number} (@{merger})')
 
   # List all commits not part of a PR
   if len(commits_without_pull_requests) > 0:
     body.append('')
     body.append('Contains the following commits not from a pull request:')
     for commit in commits_without_pull_requests:
-      author_description = ' (@' + commit.author.login + ')' if commit.author is not None else ''
-      body.append('- ' + commit.sha + ' - ' + get_truncated_commit_message(commit) + author_description)
+      author_description = f' (@{commit.author.login})' if commit.author is not None else ''
+      body.append(f'- {commit.sha} - {get_truncated_commit_message(commit)}{author_description}')
 
   body.append('')
   body.append('Please review the following:')

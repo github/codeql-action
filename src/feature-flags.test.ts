@@ -153,10 +153,7 @@ test("Feature flags exception is propagated if the API request errors", async (t
   });
 });
 
-const FEATURE_FLAGS = [
-  "ml_powered_queries_enabled",
-  "lua_tracer_config_enabled",
-];
+const FEATURE_FLAGS = ["ml_powered_queries_enabled"];
 
 for (const featureFlag of FEATURE_FLAGS) {
   test(`Feature flag '${featureFlag}' is enabled if enabled in the API response`, async (t) => {
@@ -180,9 +177,6 @@ for (const featureFlag of FEATURE_FLAGS) {
       const actualFeatureFlags: { [flag: string]: boolean } = {
         ml_powered_queries_enabled: await featureFlags.getValue(
           FeatureFlag.MlPoweredQueriesEnabled
-        ),
-        lua_tracer_config_enabled: await featureFlags.getValue(
-          FeatureFlag.LuaTracerConfigEnabled
         ),
       };
 

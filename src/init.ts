@@ -42,6 +42,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   packsInput: string | undefined,
+  registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
   trapCachingEnabled: boolean,
@@ -62,6 +63,7 @@ export async function initConfig(
     languagesInput,
     queriesInput,
     packsInput,
+    registriesInput,
     configFile,
     dbLocation,
     trapCachingEnabled,
@@ -134,7 +136,12 @@ export async function runInit(
       throw e;
     }
   }
-  return await getCombinedTracerConfig(config, codeql, logger);
+  return await getCombinedTracerConfig(
+    config,
+    codeql,
+    await util.isGoExtractionReconciliationEnabled(featureFlags),
+    logger
+  );
 }
 
 // Runs a powershell script to inject the tracer into a parent process

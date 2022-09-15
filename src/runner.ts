@@ -240,6 +240,7 @@ program
         cmd.languages,
         cmd.queries,
         cmd.packs,
+        undefined, // we won't support registries in the runner
         cmd.configFile,
         undefined,
         false,
@@ -373,7 +374,11 @@ program
           );
         }
       } else {
-        language = determineAutobuildLanguage(config, logger);
+        language = await determineAutobuildLanguage(
+          config,
+          createFeatureFlags([]),
+          logger
+        );
       }
       if (language !== undefined) {
         await runAutobuild(language, config, logger);

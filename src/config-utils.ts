@@ -9,6 +9,7 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import {
   CodeQL,
+  CODEQL_VERSION_GHES_PACK_DOWNLOAD,
   CODEQL_VERSION_ML_POWERED_QUERIES,
   CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS,
   ResolveQueriesOutput,
@@ -60,6 +61,23 @@ export interface UserConfig {
 }
 
 export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
+
+export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
+  // Token to use when downloading packs from this registry.
+  token: string;
+};
+
+/**
+ * The list of registries and the associated pack globs that determine where each
+ * pack can be downloaded from.
+ */
+export interface RegistryConfigNoCredentials {
+  // URL of a package registry, eg- https://ghcr.io/v2/
+  url: string;
+
+  // List of globs that determine which packs are associated with this registry.
+  packages: string[] | string;
+}
 
 interface ExcludeQueryFilter {
   exclude: Record<string, string[] | string>;
@@ -1608,6 +1626,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   packsInput: string | undefined,
+  registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
   trapCachingEnabled: boolean,
@@ -1686,12 +1705,33 @@ export async function initConfig(
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
   if (!(await useCodeScanningConfigInCli(codeQL))) {
-    await downloadPacks(codeQL, config.languages, config.packs, logger);
+    const registries = parseRegistries(registriesInput);
+    await downloadPacks(
+      codeQL,
+      config.languages,
+      config.packs,
+      registries,
+      apiDetails,
+      config.tempDir,
+      logger
+    );
   }
 
   // Save the config so we can easily access it again in the future
   await saveConfig(config, logger);
   return config;
+}
+
+function parseRegistries(
+  registriesInput: string | undefined
+): RegistryConfigWithCredentials[] | undefined {
+  try {
+    return registriesInput
+      ? (yaml.load(registriesInput) as RegistryConfigWithCredentials[])
+      : undefined;
+  } catch (e) {
+    throw new Error("Invalid registries input. Must be a YAML string.");
+  }
 }
 
 function isLocal(configPath: string): boolean {
@@ -1795,30 +1835,126 @@ export async function downloadPacks(
   codeQL: CodeQL,
   languages: Language[],
   packs: Packs,
+  registries: RegistryConfigWithCredentials[] | undefined,
+  apiDetails: api.GitHubApiDetails,
+  tmpDir: string,
   logger: Logger
 ) {
-  let numPacksDownloaded = 0;
-  logger.startGroup("Downloading packs");
-  for (const language of languages) {
-    const packsWithVersion = packs[language];
-    if (packsWithVersion?.length) {
-      logger.info(`Downloading custom packs for ${language}`);
-      const results = await codeQL.packDownload(packsWithVersion);
-      numPacksDownloaded += results.packs.length;
-      logger.info(
-        `Downloaded packs: ${results.packs
-          .map((r) => `${r.name}@${r.version || "latest"}`)
-          .join(", ")}`
+  let qlconfigFile: string | undefined;
+  let registriesAuthTokens: string | undefined;
+  if (registries) {
+    if (
+      !(await codeQlVersionAbove(codeQL, CODEQL_VERSION_GHES_PACK_DOWNLOAD))
+    ) {
+      throw new Error(
+        `'registries' input is not supported on CodeQL versions less than ${CODEQL_VERSION_GHES_PACK_DOWNLOAD}.`
       );
+    }
+
+    // generate a qlconfig.yml file to hold the registry configs.
+    const qlconfig = createRegistriesBlock(registries);
+    qlconfigFile = path.join(tmpDir, "qlconfig.yml");
+    fs.writeFileSync(qlconfigFile, yaml.dump(qlconfig), "utf8");
+
+    registriesAuthTokens = registries
+      .map((registry) => `${registry.url}=${registry.token}`)
+      .join(",");
+  }
+
+  await wrapEnvironment(
+    {
+      GITHUB_TOKEN: apiDetails.auth,
+      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+    },
+    async () => {
+      let numPacksDownloaded = 0;
+      logger.startGroup("Downloading packs");
+      for (const language of languages) {
+        const packsWithVersion = packs[language];
+        if (packsWithVersion?.length) {
+          logger.info(`Downloading custom packs for ${language}`);
+          const results = await codeQL.packDownload(
+            packsWithVersion,
+            qlconfigFile
+          );
+          numPacksDownloaded += results.packs.length;
+          logger.info(
+            `Downloaded: ${results.packs
+              .map((r) => `${r.name}@${r.version || "latest"}`)
+              .join(", ")}`
+          );
+        }
+      }
+      if (numPacksDownloaded > 0) {
+        logger.info(
+          `Downloaded ${numPacksDownloaded} ${packs === 1 ? "pack" : "packs"}`
+        );
+      } else {
+        logger.info("No packs to download");
+      }
+      logger.endGroup();
+    }
+  );
+}
+
+function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
+  registries: RegistryConfigNoCredentials[];
+} {
+  if (
+    !Array.isArray(registries) ||
+    registries.some((r) => !r.url || !r.packages)
+  ) {
+    throw new Error(
+      "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties."
+    );
+  }
+
+  // be sure to remove the `token` field from the registry before writing it to disk.
+  const safeRegistries = registries.map((registry) => ({
+    // ensure the url ends with a slash to avoid a bug in the CLI 2.10.4
+    url: !registry?.url.endsWith("/") ? `${registry.url}/` : registry.url,
+    packages: registry.packages,
+  }));
+  const qlconfig = {
+    registries: safeRegistries,
+  };
+  return qlconfig;
+}
+
+/**
+ * Create a temporary environment based on the existing environment and overridden
+ * by the given environment variables that are passed in as arguments.
+ *
+ * Use this new environment in the context of the given operation. After completing
+ * the operation, restore the original environment.
+ *
+ * This function does not support un-setting environment variables.
+ *
+ * @param env
+ * @param operation
+ */
+async function wrapEnvironment(
+  env: Record<string, string | undefined>,
+  operation: Function
+) {
+  // Remember the original env
+  const oldEnv = { ...process.env };
+
+  // Set the new env
+  for (const [key, value] of Object.entries(env)) {
+    // Ignore undefined keys
+    if (value !== undefined) {
+      process.env[key] = value;
     }
   }
 
-  if (numPacksDownloaded > 0) {
-    logger.info(
-      `Downloaded ${numPacksDownloaded} ${packs === 1 ? "pack" : "packs"}`
-    );
-  } else {
-    logger.info("No packs to download");
+  try {
+    // Run the operation
+    await operation();
+  } finally {
+    // Restore the old env
+    for (const [key, value] of Object.entries(oldEnv)) {
+      process.env[key] = value;
+    }
   }
-  logger.endGroup();
 }

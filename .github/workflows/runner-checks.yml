@@ -167,7 +167,6 @@ jobs:
         shell: powershell
         run: |
           cat ./codeql-runner/codeql-env.sh | Invoke-Expression
-          $Env:CODEQL_EXTRACTOR_CSHARP_ROOT = "" # Unset an environment variable to make sure the tracer resists this
           & $Env:CODEQL_RUNNER dotnet build /p:UseSharedCompilation=false
 
       - name: Upload tracer logs

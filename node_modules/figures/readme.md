@@ -27,7 +27,7 @@ console.log(figures.mainSymbols.tick);
 // On all terminals:  ✔︎
 
 console.log(figures.fallbackSymbols.tick);
-// On all terminal:  √
+// On all terminals:  √
 
 console.log(figures.replaceSymbols('✔︎ check'));
 // On terminals with Unicode symbols:  ✔︎ check

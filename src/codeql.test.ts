@@ -26,12 +26,14 @@ const sampleApiDetails = {
   auth: "token",
   url: "https://github.com",
   apiURL: undefined,
+  registriesAuthTokens: undefined,
 };
 
 const sampleGHAEApiDetails = {
   auth: "token",
   url: "https://example.githubenterprise.com",
   apiURL: undefined,
+  registriesAuthTokens: undefined,
 };
 
 let stubConfig: Config;
@@ -437,102 +439,6 @@ test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (
   t.true(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be present, but it is absent"
-  );
-});
-
-test("databaseInitCluster() Lua feature flag enabled, but old CLI", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.9.0");
-
-  await codeqlObject.databaseInitCluster(
-    stubConfig,
-    "",
-    undefined,
-    undefined,
-    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled]),
-    getRunnerLogger(true)
-  );
-  t.false(
-    runnerConstructorStub.firstCall.args[1].includes(
-      "--internal-use-lua-tracing"
-    ),
-    "--internal-use-lua-tracing should be absent, but it is present"
-  );
-  t.false(
-    runnerConstructorStub.firstCall.args[1].includes(
-      "--no-internal-use-lua-tracing"
-    ),
-    "--no-internal-use-lua-tracing should be absent, but it is present"
-  );
-});
-
-test("databaseInitCluster() Lua feature flag disabled, with old CLI", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.9.0");
-
-  await codeqlObject.databaseInitCluster(
-    stubConfig,
-    "",
-    undefined,
-    undefined,
-    createFeatureFlags([]),
-    getRunnerLogger(true)
-  );
-  t.false(
-    runnerConstructorStub.firstCall.args[1].includes(
-      "--internal-use-lua-tracing"
-    ),
-    "--internal-use-lua-tracing should be absent, but it is present"
-  );
-  t.false(
-    runnerConstructorStub.firstCall.args[1].includes(
-      "--no-internal-use-lua-tracing"
-    ),
-    "--no-internal-use-lua-tracing should be absent, but it is present"
-  );
-});
-
-test("databaseInitCluster() Lua feature flag enabled, compatible CLI", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.10.0");
-
-  await codeqlObject.databaseInitCluster(
-    stubConfig,
-    "",
-    undefined,
-    undefined,
-    createFeatureFlags([FeatureFlag.LuaTracerConfigEnabled]),
-    getRunnerLogger(true)
-  );
-  t.true(
-    runnerConstructorStub.firstCall.args[1].includes(
-      "--internal-use-lua-tracing"
-    ),
-    "--internal-use-lua-tracing should be present, but it is absent"
-  );
-});
-
-test("databaseInitCluster() Lua feature flag disabled, compatible CLI", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.10.0");
-
-  await codeqlObject.databaseInitCluster(
-    stubConfig,
-    "",
-    undefined,
-    undefined,
-    createFeatureFlags([]),
-    getRunnerLogger(true)
-  );
-  t.true(
-    runnerConstructorStub.firstCall.args[1].includes(
-      "--no-internal-use-lua-tracing"
-    ),
-    "--no-internal-use-lua-tracing should be present, but it is absent"
   );
 });
 

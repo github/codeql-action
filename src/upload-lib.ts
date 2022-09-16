@@ -325,7 +325,7 @@ export function buildPayload(
       gitHubVersion.type !== util.GitHubVariant.GHES ||
       semver.satisfies(gitHubVersion.version, `>=3.1`)
     ) {
-      if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+      if (actionsUtil.workflowEventName() === "pull_request") {
         if (
           commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
           mergeBaseCommitOid

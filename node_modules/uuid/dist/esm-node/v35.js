@@ -1,4 +1,4 @@
-import stringify from './stringify.js';
+import { unsafeStringify } from './stringify.js';
 import parse from './parse.js';
 
 function stringToBytes(str) {
@@ -15,8 +15,10 @@ function stringToBytes(str) {
 
 export const DNS = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 export const URL = '6ba7b811-9dad-11d1-80b4-00c04fd430c8';
-export default function (name, version, hashfunc) {
+export default function v35(name, version, hashfunc) {
   function generateUUID(value, namespace, buf, offset) {
+    var _namespace;
+
     if (typeof value === 'string') {
       value = stringToBytes(value);
     }
@@ -25,7 +27,7 @@ export default function (name, version, hashfunc) {
       namespace = parse(namespace);
     }
 
-    if (namespace.length !== 16) {
+    if (((_namespace = namespace) === null || _namespace === void 0 ? void 0 : _namespace.length) !== 16) {
       throw TypeError('Namespace must be array-like (16 iterable integer values, 0-255)');
     } // Compute hash of namespace and value, Per 4.3
     // Future: Use spread syntax when supported on all platforms, e.g. `bytes =
@@ -49,7 +51,7 @@ export default function (name, version, hashfunc) {
       return buf;
     }
 
-    return stringify(bytes);
+    return unsafeStringify(bytes);
   } // Function#name is not settable on some platforms (#270)
 
 

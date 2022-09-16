@@ -5,7 +5,7 @@ import { Command } from "commander";
 import del from "del";
 
 import { runFinalize, runQueries } from "./analyze";
-import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
+import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { createFeatureFlags } from "./feature-flags";
@@ -362,9 +362,9 @@ program
       }
       await enrichEnvironment(Mode.runner, await getCodeQL(config.codeQLCmd));
       importTracerEnvironment(config);
-      let language: Language | undefined = undefined;
+      let languages: Language[] | undefined = undefined;
       if (cmd.language !== undefined) {
-        language = parseLanguage(cmd.language);
+        const language = parseLanguage(cmd.language);
         if (language === undefined || !config.languages.includes(language)) {
           throw new Error(
             `"${cmd.language}" is not a recognised language. ` +
@@ -373,15 +373,18 @@ program
               )}.`
           );
         }
+        languages = [language];
       } else {
-        language = await determineAutobuildLanguage(
+        languages = await determineAutobuildLanguages(
           config,
           createFeatureFlags([]),
           logger
         );
       }
-      if (language !== undefined) {
-        await runAutobuild(language, config, logger);
+      if (languages !== undefined) {
+        for (const language of languages) {
+          await runAutobuild(language, config, logger);
+        }
       }
     } catch (e) {
       logger.error("Autobuild failed");

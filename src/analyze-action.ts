@@ -133,7 +133,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * steps.
  *
  * - We detect whether an autobuild step is present by checking the
- * `CODEQL_ACTION_DID_AUTOBUILD_GOLANG` environment variable, which is set
+ * `util.DID_AUTOBUILD_GO_ENV_VAR_NAME` environment variable, which is set
  * when the autobuilder is invoked.
  * - We approximate whether manual build steps are present by looking at
  * whether any extraction output already exists for Go.
@@ -152,7 +152,7 @@ async function runAutobuildIfLegacyGoWorkflow(
     );
     return;
   }
-  if (process.env["CODEQL_ACTION_DID_AUTOBUILD_GOLANG"] === "true") {
+  if (process.env[util.DID_AUTOBUILD_GO_ENV_VAR_NAME] === "true") {
     // This log line is info level while Go extraction reconciliation is in beta.
     // We will make it debug level once Go extraction reconciliation is GA.
     logger.info("Won't run Go autobuild since it has already been run.");

@@ -4,20 +4,20 @@
 
 # uuid [![CI](https://github.com/uuidjs/uuid/workflows/CI/badge.svg)](https://github.com/uuidjs/uuid/actions?query=workflow%3ACI) [![Browser](https://github.com/uuidjs/uuid/workflows/Browser/badge.svg)](https://github.com/uuidjs/uuid/actions?query=workflow%3ABrowser)
 
-For the creation of [RFC4122](http://www.ietf.org/rfc/rfc4122.txt) UUIDs
+For the creation of [RFC4122](https://www.ietf.org/rfc/rfc4122.txt) UUIDs
 
 - **Complete** - Support for RFC4122 version 1, 3, 4, and 5 UUIDs
 - **Cross-platform** - Support for ...
   - CommonJS, [ECMAScript Modules](#ecmascript-modules) and [CDN builds](#cdn-builds)
-  - Node 8, 10, 12, 14
-  - Chrome, Safari, Firefox, Edge, IE 11 browsers
+  - Node 12, 14, 16, 18
+  - Chrome, Safari, Firefox, Edge browsers
   - Webpack and rollup.js module bundlers
   - [React Native / Expo](#react-native--expo)
 - **Secure** - Cryptographically-strong random values
 - **Small** - Zero-dependency, small footprint, plays nice with "tree shaking" packagers
 - **CLI** - Includes the [`uuid` command line](#command-line) utility
 
-**Upgrading from `uuid@3.x`?** Your code is probably okay, but check out [Upgrading From `uuid@3.x`](#upgrading-from-uuid3x) for details.
+**Upgrading from `uuid@3`?** Your code is probably okay, but check out [Upgrading From `uuid@3`](#upgrading-from-uuid3) for details.
 
 ## Quickstart
 
@@ -122,22 +122,7 @@ Example:
 import { stringify as uuidStringify } from 'uuid';
 
 const uuidBytes = [
-  0x6e,
-  0xc0,
-  0xbd,
-  0x7f,
-  0x11,
-  0xc0,
-  0x43,
-  0xda,
-  0x97,
-  0x5e,
-  0x2a,
-  0x8a,
-  0xd9,
-  0xeb,
-  0xae,
-  0x0b,
+  0x6e, 0xc0, 0xbd, 0x7f, 0x11, 0xc0, 0x43, 0xda, 0x97, 0x5e, 0x2a, 0x8a, 0xd9, 0xeb, 0xae, 0x0b,
 ];
 
 uuidStringify(uuidBytes); // ⇨ '6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b'
@@ -223,22 +208,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const v4options = {
   random: [
-    0x10,
-    0x91,
-    0x56,
-    0xbe,
-    0xc4,
-    0xfb,
-    0xc1,
-    0xea,
-    0x71,
-    0xb4,
-    0xef,
-    0xe1,
-    0x67,
-    0x1c,
-    0x58,
-    0x36,
+    0x10, 0x91, 0x56, 0xbe, 0xc4, 0xfb, 0xc1, 0xea, 0x71, 0xb4, 0xef, 0xe1, 0x67, 0x1c, 0x58, 0x36,
   ],
 };
 uuidv4(v4options); // ⇨ '109156be-c4fb-41ea-b1b4-efe1671c5836'
@@ -337,14 +307,14 @@ uuidVersion('6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b'); // ⇨ 4
 UUIDs can be generated from the command line using `uuid`.
 
 ```shell
-$ uuid
+$ npx uuid
 ddeb27fb-d9a0-4624-be4d-4615062daed4
 ```
 
 The default is to generate version 4 UUIDS, however the other versions are supported. Type `uuid --help` for details:
 
 ```shell
-$ uuid --help
+$ npx uuid --help
 
 Usage:
   uuid
@@ -388,37 +358,20 @@ To load this module directly into modern browsers that [support loading ECMAScri
 
 ### UMD
 
-To load this module directly into older browsers you can use the [UMD (Universal Module Definition)](https://github.com/umdjs/umd) builds from any of the following CDNs:
+As of `uuid@9` [UMD (Universal Module Definition)](https://github.com/umdjs/umd) builds are no longer shipped with this library.
 
-**Using [UNPKG](https://unpkg.com/uuid@latest/dist/umd/)**:
+If you need a UMD build of this library, use a bundler like Webpack or Rollup. Alternatively, refer to the documentation of [`uuid@8.3.2`](https://github.com/uuidjs/uuid/blob/v8.3.2/README.md#umd) which was the last version that shipped UMD builds.
 
-```html
-<script src="https://unpkg.com/uuid@latest/dist/umd/uuidv4.min.js"></script>
-```
+## Known issues
 
-**Using [jsDelivr](https://cdn.jsdelivr.net/npm/uuid@latest/dist/umd/)**:
+### Duplicate UUIDs (Googlebot)
 
-```html
-<script src="https://cdn.jsdelivr.net/npm/uuid@latest/dist/umd/uuidv4.min.js"></script>
-```
+This module may generate duplicate UUIDs when run in clients with _deterministic_ random number generators, such as [Googlebot crawlers](https://developers.google.com/search/docs/advanced/crawling/overview-google-crawlers). This can cause problems for apps that expect client-generated UUIDs to always be unique. Developers should be prepared for this and have a strategy for dealing with possible collisions, such as:
 
-**Using [cdnjs](https://cdnjs.com/libraries/uuid)**:
+- Check for duplicate UUIDs, fail gracefully
+- Disable write operations for Googlebot clients
 
-```html
-<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.1.0/uuidv4.min.js"></script>
-```
-
-These CDNs all provide the same [`uuidv4()`](#uuidv4options-buffer-offset) method:
-
-```html
-<script>
-  uuidv4(); // ⇨ '55af1e37-0734-46d8-b070-a1e42e4fc392'
-</script>
-```
-
-Methods for the other algorithms ([`uuidv1()`](#uuidv1options-buffer-offset), [`uuidv3()`](#uuidv3name-namespace-buffer-offset) and [`uuidv5()`](#uuidv5name-namespace-buffer-offset)) are available from the files `uuidv1.min.js`, `uuidv3.min.js` and `uuidv5.min.js` respectively.
-
-## "getRandomValues() not supported"
+### "getRandomValues() not supported"
 
 This error occurs in environments where the standard [`crypto.getRandomValues()`](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues) API is not supported. This issue can be resolved by adding an appropriate polyfill:
 
@@ -438,11 +391,15 @@ Note: If you are using Expo, you must be using at least `react-native-get-random
 
 [In Edge <= 18, Web Crypto is not supported in Web Workers or Service Workers](https://caniuse.com/#feat=cryptography) and we are not aware of a polyfill (let us know if you find one, please).
 
-## Upgrading From `uuid@7.x`
+### IE 11 (Internet Explorer)
+
+Support for IE11 and other legacy browsers has been dropped as of `uuid@9`. If you need to support legacy browsers, you can always transpile the uuid module source yourself (e.g. using [Babel](https://babeljs.io/)).
+
+## Upgrading From `uuid@7`
 
 ### Only Named Exports Supported When Using with Node.js ESM
 
-`uuid@7.x` did not come with native ECMAScript Module (ESM) support for Node.js. Importing it in Node.js ESM consequently imported the CommonJS source with a default export. This library now comes with true Node.js ESM support and only provides named exports.
+`uuid@7` did not come with native ECMAScript Module (ESM) support for Node.js. Importing it in Node.js ESM consequently imported the CommonJS source with a default export. This library now comes with true Node.js ESM support and only provides named exports.
 
 Instead of doing:
 
@@ -460,24 +417,24 @@ uuidv4();
 
 ### Deep Requires No Longer Supported
 
-Deep requires like `require('uuid/v4')` [which have been deprecated in `uuid@7.x`](#deep-requires-now-deprecated) are no longer supported.
+Deep requires like `require('uuid/v4')` [which have been deprecated in `uuid@7`](#deep-requires-now-deprecated) are no longer supported.
 
-## Upgrading From `uuid@3.x`
+## Upgrading From `uuid@3`
 
-"_Wait... what happened to `uuid@4.x` - `uuid@6.x`?!?_"
+"_Wait... what happened to `uuid@4` thru `uuid@6`?!?_"
 
 In order to avoid confusion with RFC [version 4](#uuidv4options-buffer-offset) and [version 5](#uuidv5name-namespace-buffer-offset) UUIDs, and a possible [version 6](http://gh.peabody.io/uuidv6/), releases 4 thru 6 of this module have been skipped.
 
 ### Deep Requires Now Deprecated
 
-`uuid@3.x` encouraged the use of deep requires to minimize the bundle size of browser builds:
+`uuid@3` encouraged the use of deep requires to minimize the bundle size of browser builds:
 
 ```javascript
 const uuidv4 = require('uuid/v4'); // <== NOW DEPRECATED!
 uuidv4();
 ```
 
-As of `uuid@7.x` this library now provides ECMAScript modules builds, which allow packagers like Webpack and Rollup to do "tree-shaking" to remove dead code. Instead, use the `import` syntax:
+As of `uuid@7` this library now provides ECMAScript modules builds, which allow packagers like Webpack and Rollup to do "tree-shaking" to remove dead code. Instead, use the `import` syntax:
 
 ```javascript
 import { v4 as uuidv4 } from 'uuid';
@@ -493,13 +450,13 @@ uuidv4();
 
 ### Default Export Removed
 
-`uuid@3.x` was exporting the Version 4 UUID method as a default export:
+`uuid@3` was exporting the Version 4 UUID method as a default export:
 
 ```javascript
 const uuid = require('uuid'); // <== REMOVED!
 ```
 
-This usage pattern was already discouraged in `uuid@3.x` and has been removed in `uuid@7.x`.
+This usage pattern was already discouraged in `uuid@3` and has been removed in `uuid@7`.
 
 ----
-Markdown generated from [README_js.md](README_js.md) by [![RunMD Logo](http://i.imgur.com/h0FVyzU.png)](https://github.com/broofa/runmd)
+Markdown generated from [README_js.md](README_js.md) by [![RunMD Logo](https://i.imgur.com/h0FVyzU.png)](https://github.com/broofa/runmd)

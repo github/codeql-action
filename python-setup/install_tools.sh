@@ -15,7 +15,7 @@ python3 -m pip install --user --upgrade pip setuptools wheel
 
 # virtualenv is a bit nicer for setting up virtual environment, since it will provide up-to-date versions of
 # pip/setuptools/wheel which basic `python3 -m venv venv` won't
-python3 -m pip install --user 'virtualenv<20.11'
+python3 -m pip install --user virtualenv
 
 # We install poetry with pip instead of the recommended way, since the recommended way
 # caused some problem since `poetry run` gives output like:
@@ -42,5 +42,5 @@ if command -v python2 >/dev/null 2>&1; then
 
 	python2 -m pip install --user --upgrade pip setuptools wheel
 
-	python2 -m pip install --user 'virtualenv<20.11'
+	python2 -m pip install --user 'virtualenv!=20.12.0'
 fi

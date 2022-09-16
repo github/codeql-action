@@ -9,13 +9,14 @@ import {
   StatusReportBase,
 } from "./actions-util";
 import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
-import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
+import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { GitHubFeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
+  DID_AUTOBUILD_GO_ENV_VAR_NAME,
   checkActionVersion,
   checkGitHubVersionInRange,
   getRequiredEnvParam,
@@ -61,7 +62,8 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   await checkActionVersion(pkg.version);
-  let language: Language | undefined = undefined;
+  let currentLanguage: Language | undefined = undefined;
+  let languages: Language[] | undefined = undefined;
   try {
     if (
       !(await sendStatusReport(
@@ -88,8 +90,8 @@ async function run() {
       );
     }
 
-    language = await determineAutobuildLanguage(config, featureFlags, logger);
-    if (language !== undefined) {
+    languages = await determineAutobuildLanguages(config, featureFlags, logger);
+    if (languages !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {
         logger.info(
@@ -97,9 +99,12 @@ async function run() {
         );
         process.chdir(workingDirectory);
       }
-      await runAutobuild(language, config, logger);
-      if (language === Language.go) {
-        core.exportVariable("CODEQL_ACTION_DID_AUTOBUILD_GOLANG", "true");
+      for (const language of languages) {
+        currentLanguage = language;
+        await runAutobuild(language, config, logger);
+        if (language === Language.go) {
+          core.exportVariable(DID_AUTOBUILD_GO_ENV_VAR_NAME, "true");
+        }
       }
     }
   } catch (error) {
@@ -111,14 +116,14 @@ async function run() {
     console.log(error);
     await sendCompletedStatusReport(
       startedAt,
-      language ? [language] : [],
-      language,
+      languages ?? [],
+      currentLanguage,
       error instanceof Error ? error : new Error(String(error))
     );
     return;
   }
 
-  await sendCompletedStatusReport(startedAt, language ? [language] : []);
+  await sendCompletedStatusReport(startedAt, languages ?? []);
 }
 
 async function runWrapper() {

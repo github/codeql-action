@@ -4,6 +4,10 @@
 
 - We will soon be rolling out a feature of the CodeQL Action that stores some information used to make future runs faster in the GitHub Actions cache. Initially, this will only be enabled on JavaScript repositories, but we plan to add more languages to this soon. The new feature can be disabled by passing the `trap-caching: false` option to your workflow's `init` step, for example if you are already using the GitHub Actions cache for a different purpose and are near the storage limit for it.
 
+## 2.1.24 - 16 Sep 2022
+
+No user facing changes.
+
 ## 2.1.23 - 14 Sep 2022
 
 - Allow CodeQL packs to be downloaded from GitHub Enterprise Server instances, using the new `registries` input for the `init` action.  [#1221](https://github.com/github/codeql-action/pull/1221)

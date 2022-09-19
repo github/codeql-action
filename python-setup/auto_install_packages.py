@@ -9,27 +9,49 @@ from typing import Optional
 import extractor_version
 
 
-def _check_call(command):
+def _check_call(command, extra_env=None):
     print('+ {}'.format(' '.join(command)), flush=True)
-    subprocess.check_call(command, stdin=subprocess.DEVNULL)
+
+    # only pass `env` argument if we need to pass in an updated environment
+    kwargs = {}
+    if extra_env:
+        new_env = os.environ.copy()
+        new_env.update(extra_env)
+        kwargs = {"env": new_env}
+
+    subprocess.check_call(command, stdin=subprocess.DEVNULL, **kwargs)
 
 
-def _check_output(command):
+def _check_output(command, extra_env=None):
     print('+ {}'.format(' '.join(command)), flush=True)
-    out = subprocess.check_output(command, stdin=subprocess.DEVNULL)
+
+    # only pass `env` argument if we need to pass in an updated environment
+    kwargs = {}
+    if extra_env:
+        new_env = os.environ.copy()
+        new_env.update(extra_env)
+        kwargs = {"env": new_env}
+
+    out = subprocess.check_output(command, stdin=subprocess.DEVNULL, **kwargs)
     print(out, flush=True)
     sys.stderr.flush()
     return out
 
 
 def install_packages_with_poetry():
+
+    # To handle poetry 1.2, which started to use keyring interaction MUCH more, we need
+    # add a workaround. See
+    # https://github.com/python-poetry/poetry/issues/2692#issuecomment-1235683370
+    extra_poetry_env = {"PYTHON_KEYRING_BACKEND": "keyring.backends.null.Keyring"}
+
     command = [sys.executable, '-m', 'poetry']
     if sys.platform.startswith('win32'):
         # In windows the default path were the deps are installed gets wiped out between steps,
         # so we have to set it up to a folder that will be kept
         os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
-        _check_call(command + ['install', '--no-root'])
+        _check_call(command + ['install', '--no-root'], extra_env=extra_poetry_env)
     except subprocess.CalledProcessError:
         sys.exit('package installation with poetry failed, see error above')
 
@@ -38,7 +60,7 @@ def install_packages_with_poetry():
     # virtualenv for the package, which was the case for using poetry for Python 2 when
     # default system interpreter was Python 3 :/
 
-    poetry_out = _check_output(command + ['run', 'which', 'python'])
+    poetry_out = _check_output(command + ['run', 'which', 'python'], extra_env=extra_poetry_env)
     python_executable_path = poetry_out.decode('utf-8').splitlines()[-1]
 
     if sys.platform.startswith('win32'):

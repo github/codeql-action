@@ -479,6 +479,7 @@ export async function setupCodeQL(
               `CodeQL in cache overriding the default ${CODEQL_BUNDLE_VERSION}`
             );
             codeqlFolder = tmpCodeqlFolder;
+            codeqlURLVersion = codeqlVersions[0];
           }
         }
       }

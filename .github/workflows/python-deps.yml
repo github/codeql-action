@@ -36,6 +36,9 @@ jobs:
             # Python2 and pipenv are not supported since pipenv v2021.11.5
             - python_version: 2
               python_deps_type: pipenv
+            # Python2 is not available on ubuntu-22.04 by default -- see https://github.com/github/codeql-action/pull/1257
+            - python_version: 2
+              os: ubuntu-22.04
 
 
     env:

@@ -15,6 +15,8 @@ def _check_call(command, extra_env={}):
     env = os.environ.copy()
     env.update(extra_env)
     subprocess.check_call(command, stdin=subprocess.DEVNULL, env=env)
+    sys.stdout.flush()
+    sys.stderr.flush()
 
 
 def _check_output(command, extra_env={}):

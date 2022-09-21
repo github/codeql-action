@@ -5,6 +5,7 @@ import os
 import subprocess
 from tempfile import mkdtemp
 from typing import Optional
+import shutil
 
 import extractor_version
 
@@ -167,6 +168,19 @@ def install_packages(codeql_base_dir) -> Optional[str]:
 
     # get_extractor_version returns the Python version the extractor thinks this repo is using
     version = extractor_version.get_extractor_version(codeql_base_dir, quiet=False)
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    if version == 2 and not sys.platform.startswith('win32'):
+        # On Ubuntu 22.04 'python2' is not available by default. We want to give a slightly better
+        # error message than a traceback + `No such file or directory: 'python2'`
+        if shutil.which("python2") is None:
+            sys.exit(
+                "Python package installation failed: we detected this code as Python 2, but the 'python2' executable was not available. "
+                "To enable automatic package installation, please install 'python2' before the 'github/codeql-action/init' step, "
+                "for example by running 'sudo apt install python2' (Ubuntu 22.04). "
+                "If your code is not Python 2, but actually Python 3, please file a bug report at https://github.com/github/codeql-action/issues/new"
+            )
 
     if os.path.exists('requirements.txt'):
         print('Found requirements.txt, will install packages with pip', flush=True)

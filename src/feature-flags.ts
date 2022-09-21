@@ -33,26 +33,29 @@ export class GitHubFeatureFlags implements FeatureFlags {
   ) {}
 
   async getValue(flag: FeatureFlag): Promise<boolean> {
-    // Bypassing the toolcache is disabled in test mode.
-    if (flag === FeatureFlag.BypassToolcacheEnabled && util.isInTestMode()) {
-      return false;
-    }
+    // Always return true for purposes of investigation in this PR.
+    return true;
 
-    const response = await this.getApiResponse();
-    if (response === undefined) {
-      this.logger.debug(
-        `No feature flags API response for ${flag}, considering it disabled.`
-      );
-      return false;
-    }
-    const flagValue = response[flag];
-    if (flagValue === undefined) {
-      this.logger.debug(
-        `Feature flag '${flag}' undefined in API response, considering it disabled.`
-      );
-      return false;
-    }
-    return flagValue;
+    // // Bypassing the toolcache is disabled in test mode.
+    // if (flag === FeatureFlag.BypassToolcacheEnabled && util.isInTestMode()) {
+    //   return false;
+    // }
+
+    // const response = await this.getApiResponse();
+    // if (response === undefined) {
+    //   this.logger.debug(
+    //     `No feature flags API response for ${flag}, considering it disabled.`
+    //   );
+    //   return false;
+    // }
+    // const flagValue = response[flag];
+    // if (flagValue === undefined) {
+    //   this.logger.debug(
+    //     `Feature flag '${flag}' undefined in API response, considering it disabled.`
+    //   );
+    //   return false;
+    // }
+    // return flagValue;
   }
 
   private async getApiResponse(): Promise<FeatureFlagsApiResponse> {

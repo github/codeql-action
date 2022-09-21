@@ -162,9 +162,9 @@ def install_packages(codeql_base_dir) -> Optional[str]:
         # error message than a traceback + `No such file or directory: 'python2'`
         if shutil.which("python2") is None:
             sys.exit(
-                "package installation failed: we detected this code as Python 2, but 'python2' executable was not available. "
+                "Python package installation failed: we detected this code as Python 2, but the 'python2' executable was not available. "
                 "To enable automatic package installation, please install 'python2' before the 'github/codeql-action/init' step, "
-                "such as running 'sudo apt install python2' (Ubuntu 22.04). "
+                "for example by running 'sudo apt install python2' (Ubuntu 22.04). "
                 "If your code is not Python 2, but actually Python 3, please file a bug report at https://github.com/github/codeql-action/issues/new"
             )
 

@@ -114,7 +114,17 @@ jobs:
         run: |
           set -exu
           pr_title="Mergeback ${VERSION} ${HEAD_BRANCH} into ${BASE_BRANCH}"
-          pr_body="Updates version and changelog."
+          pr_body=$(cat << EOF
+            This PR bumps the version number and updates the changelog after the ${VERSION} release.
+
+            Please do the following:
+
+            - [ ] Remove and re-add the "Update dependencies" label to the PR to trigger just this workflow.
+            - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.
+            - [ ] Mark the PR as ready for review to trigger the full set of PR checks.
+            - [ ] Approve and merge the PR.
+          EOF
+          )
 
           # Update the version number ready for the next release
           npm version patch --no-git-tag-version
@@ -134,4 +144,5 @@ jobs:
             --title "${pr_title}" \
             --label "Update dependencies" \
             --body "${pr_body}" \
+            --assignee "${GITHUB_ACTOR}" \
             --draft

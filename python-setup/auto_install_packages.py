@@ -9,30 +9,20 @@ from typing import Optional
 import extractor_version
 
 
-def _check_call(command, extra_env=None):
+def _check_call(command, extra_env={}):
     print('+ {}'.format(' '.join(command)), flush=True)
 
-    # only pass `env` argument if we need to pass in an updated environment
-    kwargs = {}
-    if extra_env:
-        new_env = os.environ.copy()
-        new_env.update(extra_env)
-        kwargs = {"env": new_env}
-
-    subprocess.check_call(command, stdin=subprocess.DEVNULL, **kwargs)
+    env = os.environ.copy()
+    env.update(extra_env)
+    subprocess.check_call(command, stdin=subprocess.DEVNULL, env=env)
 
 
-def _check_output(command, extra_env=None):
+def _check_output(command, extra_env={}):
     print('+ {}'.format(' '.join(command)), flush=True)
 
-    # only pass `env` argument if we need to pass in an updated environment
-    kwargs = {}
-    if extra_env:
-        new_env = os.environ.copy()
-        new_env.update(extra_env)
-        kwargs = {"env": new_env}
-
-    out = subprocess.check_output(command, stdin=subprocess.DEVNULL, **kwargs)
+    env = os.environ.copy()
+    env.update(extra_env)
+    out = subprocess.check_output(command, stdin=subprocess.DEVNULL, env=env)
     print(out, flush=True)
     sys.stderr.flush()
     return out

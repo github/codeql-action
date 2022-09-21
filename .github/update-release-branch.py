@@ -67,7 +67,7 @@ def open_pr(
   body.append('Merging ' + source_branch_short_sha + ' into ' + target_branch)
 
   body.append('')
-  body.append('Conductor for this PR is @' + conductor)
+  body.append(f'Conductor for this PR is @{conductor}.')
 
   # List all PRs merged
   if len(pull_requests) > 0:
@@ -75,32 +75,40 @@ def open_pr(
     body.append('Contains the following pull requests:')
     for pr in pull_requests:
       merger = get_merger_of_pr(repo, pr)
-      body.append('- #' + str(pr.number) + ' - ' + pr.title +' (@' + merger + ')')
+      body.append(f'- #{pr.number} (@{merger})')
 
   # List all commits not part of a PR
   if len(commits_without_pull_requests) > 0:
     body.append('')
     body.append('Contains the following commits not from a pull request:')
     for commit in commits_without_pull_requests:
-      author_description = ' (@' + commit.author.login + ')' if commit.author is not None else ''
-      body.append('- ' + commit.sha + ' - ' + get_truncated_commit_message(commit) + author_description)
+      author_description = f' (@{commit.author.login})' if commit.author is not None else ''
+      body.append(f'- {commit.sha} - {get_truncated_commit_message(commit)}{author_description}')
 
   body.append('')
-  body.append('Please review the following:')
+  body.append('Please do the following:')
   if len(conflicted_files) > 0:
-    body.append(' - [ ] The `package.json` file contains the correct version.')
-    body.append(' - [ ] You have added commits to this branch that resolve the merge conflicts ' +
+    body.append(' - [ ] Ensure `package.json` file contains the correct version.')
+    body.append(' - [ ] Add commits to this branch to resolve the merge conflicts ' +
       'in the following files:')
     body.extend([f'    - [ ] `{file}`' for file in conflicted_files])
-    body.append(' - [ ] Another maintainer has reviewed the additional commits you added to this ' +
+    body.append(' - [ ] Ensure another maintainer has reviewed the additional commits you added to this ' +
       'branch to resolve the merge conflicts.')
-  body.append(' - [ ] The CHANGELOG displays the correct version and date.')
-  body.append(' - [ ] The CHANGELOG includes all relevant, user-facing changes since the last release.')
-  body.append(' - [ ] There are no unexpected commits being merged into the ' + target_branch + ' branch.')
-  body.append(' - [ ] The docs team is aware of any documentation changes that need to be released.')
+  body.append(' - [ ] Ensure the CHANGELOG displays the correct version and date.')
+  body.append(' - [ ] Ensure the CHANGELOG includes all relevant, user-facing changes since the last release.')
+  body.append(' - [ ] Check that there are not any unexpected commits being merged into the ' + target_branch + ' branch.')
+  body.append(' - [ ] Ensure the docs team is aware of any documentation changes that need to be released.')
+
+  if not is_v2_release:
+    body.append(' - [ ] Remove and re-add the "Update dependencies" label to the PR to trigger just this workflow.')
+    body.append(' - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.')
+    body.append(' - [ ] Mark the PR as ready for review to trigger the full set of PR checks.')
+
+  body.append(' - [ ] Approve and merge this PR.')
+
   if is_v2_release:
-    body.append(' - [ ] The mergeback PR is merged back into ' + source_branch + ' after this PR is merged.')
-    body.append(' - [ ] The v1 release PR is merged after this PR is merged.')
+    body.append(' - [ ] Merge the mergeback PR that will automatically be created once this PR is merged.')
+    body.append(' - [ ] Merge the v1 release PR that will automatically be created once this PR is merged.')
 
   title = 'Merge ' + source_branch + ' into ' + target_branch
 

@@ -5,31 +5,46 @@ import os
 import subprocess
 from tempfile import mkdtemp
 from typing import Optional
+import shutil
 
 import extractor_version
 
 
-def _check_call(command):
+def _check_call(command, extra_env={}):
     print('+ {}'.format(' '.join(command)), flush=True)
-    subprocess.check_call(command, stdin=subprocess.DEVNULL)
+
+    env = os.environ.copy()
+    env.update(extra_env)
+    subprocess.check_call(command, stdin=subprocess.DEVNULL, env=env)
+    sys.stdout.flush()
+    sys.stderr.flush()
 
 
-def _check_output(command):
+def _check_output(command, extra_env={}):
     print('+ {}'.format(' '.join(command)), flush=True)
-    out = subprocess.check_output(command, stdin=subprocess.DEVNULL)
+
+    env = os.environ.copy()
+    env.update(extra_env)
+    out = subprocess.check_output(command, stdin=subprocess.DEVNULL, env=env)
     print(out, flush=True)
     sys.stderr.flush()
     return out
 
 
 def install_packages_with_poetry():
+
+    # To handle poetry 1.2, which started to use keyring interaction MUCH more, we need
+    # add a workaround. See
+    # https://github.com/python-poetry/poetry/issues/2692#issuecomment-1235683370
+    extra_poetry_env = {"PYTHON_KEYRING_BACKEND": "keyring.backends.null.Keyring"}
+
     command = [sys.executable, '-m', 'poetry']
     if sys.platform.startswith('win32'):
         # In windows the default path were the deps are installed gets wiped out between steps,
         # so we have to set it up to a folder that will be kept
         os.environ['POETRY_VIRTUALENVS_PATH'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
     try:
-        _check_call(command + ['install', '--no-root'])
+        _check_call(command + ['install', '--no-root'], extra_env=extra_poetry_env)
     except subprocess.CalledProcessError:
         sys.exit('package installation with poetry failed, see error above')
 
@@ -38,7 +53,7 @@ def install_packages_with_poetry():
     # virtualenv for the package, which was the case for using poetry for Python 2 when
     # default system interpreter was Python 3 :/
 
-    poetry_out = _check_output(command + ['run', 'which', 'python'])
+    poetry_out = _check_output(command + ['run', 'which', 'python'], extra_env=extra_poetry_env)
     python_executable_path = poetry_out.decode('utf-8').splitlines()[-1]
 
     if sys.platform.startswith('win32'):
@@ -153,6 +168,19 @@ def install_packages(codeql_base_dir) -> Optional[str]:
 
     # get_extractor_version returns the Python version the extractor thinks this repo is using
     version = extractor_version.get_extractor_version(codeql_base_dir, quiet=False)
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    if version == 2 and not sys.platform.startswith('win32'):
+        # On Ubuntu 22.04 'python2' is not available by default. We want to give a slightly better
+        # error message than a traceback + `No such file or directory: 'python2'`
+        if shutil.which("python2") is None:
+            sys.exit(
+                "Python package installation failed: we detected this code as Python 2, but the 'python2' executable was not available. "
+                "To enable automatic package installation, please install 'python2' before the 'github/codeql-action/init' step, "
+                "for example by running 'sudo apt install python2' (Ubuntu 22.04). "
+                "If your code is not Python 2, but actually Python 3, please file a bug report at https://github.com/github/codeql-action/issues/new"
+            )
 
     if os.path.exists('requirements.txt'):
         print('Found requirements.txt, will install packages with pip', flush=True)

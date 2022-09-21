@@ -24,8 +24,7 @@ python3 -m pip install --user virtualenv
 #       "program uses threads.", RuntimeWarning)
 #     LGTM_PYTHON_SETUP_VERSION=The currently activated Python version 2.7.18 is not supported by the project (^3.5). Trying to find and use a compatible version. Using python3 (3.8.2) 3
 
-# We aren't compatible with poetry 1.2
-python3 -m pip install --user "poetry>=1.1,<1.2"
+python3 -m pip install --user "poetry>=1.1"
 python3 -m pip install --user pipenv
 
 if command -v python2 >/dev/null 2>&1; then

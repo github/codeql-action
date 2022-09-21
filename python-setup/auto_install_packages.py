@@ -154,6 +154,8 @@ def install_packages(codeql_base_dir) -> Optional[str]:
 
     # get_extractor_version returns the Python version the extractor thinks this repo is using
     version = extractor_version.get_extractor_version(codeql_base_dir, quiet=False)
+    sys.stdout.flush()
+    sys.stderr.flush()
 
     if version == 2 and not sys.platform.startswith('win32'):
         # On Ubuntu 22.04 'python2' is not available by default. We want to give a slightly better

@@ -2,9 +2,11 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { Readable } from "stream";
+import { promisify } from "util";
 
 import * as core from "@actions/core";
 import del from "del";
+import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
 import * as api from "./api-client";
@@ -835,4 +837,24 @@ export async function isGoExtractionReconciliationEnabled(
       FeatureFlag.GolangExtractionReconciliationEnabled
     ))
   );
+}
+
+/**
+ * Get the size a folder in bytes. This will log any filesystem errors
+ * as a warning and then return undefined.
+ *
+ * @param cacheDir A directory to get the size of.
+ * @param logger A logger to log any errors to.
+ * @returns The size in bytes of the folder, or undefined if errors occurred.
+ */
+export async function tryGetFolderBytes(
+  cacheDir: string,
+  logger: Logger
+): Promise<number | undefined> {
+  try {
+    return await promisify<string, number>(getFolderSize)(cacheDir);
+  } catch (e) {
+    logger.warning(`Encountered an error while getting size of folder: ${e}`);
+    return undefined;
+  }
 }

@@ -165,6 +165,7 @@ test("upload cache key contains right fields", async (t) => {
   const loggedMessages = [];
   const logger = getRecordingLogger(loggedMessages);
   sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+  sinon.stub(util, "tryGetFolderBytes").resolves(999_999_999);
   const stubSave = sinon.stub(cache, "saveCache");
   process.env.GITHUB_SHA = "somesha";
   await uploadTrapCaches(stubCodeql, testConfigWithoutTmpDir, logger);

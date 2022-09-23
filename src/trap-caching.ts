@@ -1,16 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
-import { promisify } from "util";
 
 import * as cache from "@actions/cache";
-import getFolderSize from "get-folder-size";
 
 import * as actionsUtil from "./actions-util";
 import { CodeQL, CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES } from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { codeQlVersionAbove } from "./util";
+import { codeQlVersionAbove, tryGetFolderBytes } from "./util";
 
 // This constant should be bumped if we make a breaking change
 // to how the CodeQL Action stores or retrieves the TRAP cache,
@@ -21,6 +19,10 @@ const CACHE_VERSION = 1;
 
 // This constant sets the size of each TRAP cache in megabytes.
 const CACHE_SIZE_MB = 1024;
+
+// This constant sets the minimum size in megabytes of a TRAP
+// cache for us to consider it worth uploading.
+const MINIMUM_CACHE_MB_TO_UPLOAD = 10;
 
 export async function getTrapCachingExtractorConfigArgs(
   config: Config
@@ -138,6 +140,19 @@ export async function uploadTrapCaches(
   for (const language of config.languages) {
     const cacheDir = config.trapCaches[language];
     if (cacheDir === undefined) continue;
+    const trapFolderSize = await tryGetFolderBytes(cacheDir, logger);
+    if (trapFolderSize === undefined) {
+      logger.info(
+        `Skipping upload of TRAP cache for ${language} as we couldn't determine its size`
+      );
+      continue;
+    }
+    if (trapFolderSize < MINIMUM_CACHE_MB_TO_UPLOAD * 1_048_576) {
+      logger.info(
+        `Skipping upload of TRAP cache for ${language} as it is too small`
+      );
+      continue;
+    }
     const key = await cacheKey(
       codeql,
       language,
@@ -201,17 +216,12 @@ export async function getTotalCacheSize(
   trapCaches: Partial<Record<Language, string>>,
   logger: Logger
 ): Promise<number> {
-  try {
-    const sizes = await Promise.all(
-      Object.values(trapCaches).map(async (cacheDir) => {
-        return promisify<string, number>(getFolderSize)(cacheDir);
-      })
-    );
-    return sizes.reduce((a, b) => a + b, 0);
-  } catch (e) {
-    logger.warning(`Encountered an error while getting TRAP cache size: ${e}`);
-    return 0;
-  }
+  const sizes = await Promise.all(
+    Object.values(trapCaches).map((cacheDir) =>
+      tryGetFolderBytes(cacheDir, logger)
+    )
+  );
+  return sizes.map((a) => a || 0).reduce((a, b) => a + b, 0);
 }
 
 async function cacheKey(

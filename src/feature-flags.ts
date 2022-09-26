@@ -33,7 +33,7 @@ export class GitHubFeatureFlags implements FeatureFlags {
   ) {}
 
   async getValue(flag: FeatureFlag): Promise<boolean> {
-    // Always return true for purposes of investigation in this PR.
+    // Turn flag on to always true to test PR check.
     return true;
 
     // // Bypassing the toolcache is disabled in test mode.

@@ -16,7 +16,7 @@ import {
 } from "./analyze";
 import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
 import { runAutobuild } from "./autobuild";
-import { getCodeQL } from "./codeql";
+import { CodeQL, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
@@ -139,6 +139,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * whether any extraction output already exists for Go.
  */
 async function runAutobuildIfLegacyGoWorkflow(
+  codeql: CodeQL,
   config: Config,
   featureFlags: FeatureFlags,
   logger: Logger
@@ -167,7 +168,8 @@ async function runAutobuildIfLegacyGoWorkflow(
     );
     return;
   }
-  await runAutobuild(Language.go, config, logger);
+  await codeql.extractScannedLanguage(config, Language.go);
+  // await runAutobuild(Language.go, config, logger);
 }
 
 async function run() {
@@ -235,7 +237,8 @@ async function run() {
       logger
     );
 
-    // await runAutobuildIfLegacyGoWorkflow(config, featureFlags, logger);
+    const codeql = await getCodeQL(config.codeQLCmd);
+    await runAutobuildIfLegacyGoWorkflow(codeql, config, featureFlags, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,
@@ -288,7 +291,6 @@ async function run() {
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();
-    const codeql = await getCodeQL(config.codeQLCmd);
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 

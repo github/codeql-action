@@ -562,9 +562,8 @@ for (const val of ["TRUE", "true", "True"]) {
 
 for (const val of ["FALSE", "false", "False"]) {
   test(`useCodeScanningConfigInCli with env var ${val}`, async (t) => {
-    process.env[util.EnvVar.CODEQL_PASS_CONFIG_TO_CLI] = val;
     // Never turned on when env var is false
-    process.env[util.EnvVar.CODEQL_PASS_CONFIG_TO_CLI] = "false";
+    process.env[util.EnvVar.CODEQL_PASS_CONFIG_TO_CLI] = val;
     t.assert(
       !(await util.useCodeScanningConfigInCli(
         mockVersion("2.10.0"),

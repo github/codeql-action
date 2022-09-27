@@ -80,7 +80,7 @@ jobs:
           exit 1
         fi
         JAVASCRIPT_DB="${{ fromJson(steps.analysis.outputs.db-locations).javascript }}"
-        if [[ ! -d "$JAVASCRIPT_DB" ]] || [[ ! "$JAVASCRIPT_DB" == "${RUNNER_TEMP}/customDbLocation/"*]]; then
+        if [[ ! -d "$JAVASCRIPT_DB" ]] || [[ ! "$JAVASCRIPT_DB" == "${RUNNER_TEMP}/customDbLocation/"* ]]; then
           echo "::error::Did not create a database for Javascript, or created it in the wrong location." \
             "Expected location was '${RUNNER_TEMP}/customDbLocation/*' but actual was '${JAVASCRIPT_DB}'"
           exit 1

@@ -1,4 +1,5 @@
-name: PR Check - Test unsetting environment variables for CLI version > 2.5
+# See `unset-environment-old-cli.yml` for reasoning behind the separate tests.
+name: PR Check - Test unsetting environment variables for CLI version >= 2.5.1
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto

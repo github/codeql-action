@@ -1,4 +1,8 @@
-name: PR Check - Test unsetting environment variables for CLI version < 2.5
+# There was a bug, fixed in CLI v2.5.1, that didn't propagate environment
+# variables that the Java tracer needed. Here we test all languages
+# except Java for these CLI versions. In `unset-environment-new-cli.yml`
+# we test all languages for recent CLI versions.
+name: PR Check - Test unsetting environment variables for CLI version < 2.5.1
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto

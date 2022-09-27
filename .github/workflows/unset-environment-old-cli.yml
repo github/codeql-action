@@ -58,7 +58,10 @@ jobs:
         CPP_DB="${{ fromJson(steps.analysis.outputs.db-locations).cpp }}"
         if [[ ! -d "$CPP_DB" ]] || [[ ! "$CPP_DB" == "${RUNNER_TEMP}/customDbLocation/*" ]]; then
           echo "Did not create a database for CPP, or created it in the wrong location." \
-            "Expected location was '${RUNNER_TEMP}/customDbLocation/*' but actual was '${CPP_DB}'"
+            "Expected location was '${RUNNER_TEMP}/customDbLocation/*' but actual was '${CPP_DB}'" \
+            "RUNNER_TEMP is '${RUNNER_TEMP}'" \
+            "{runner.temp} is '${{ runner.temp }}'" \
+            "CPP_DB" is '${CPP_DB}'"
           exit 1
         fi
         CSHARP_DB="${{ fromJson(steps.analysis.outputs.db-locations).csharp }}"

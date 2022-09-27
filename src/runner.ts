@@ -517,7 +517,8 @@ program
         threads,
         cmd.category,
         config,
-        logger
+        logger,
+        createFeatureFlags([])
       );
 
       if (!cmd.upload) {

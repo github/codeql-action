@@ -819,7 +819,11 @@ async function getCodeQLForCmd(
         }
       }
 
-      const configLocation = await generateCodescanningConfig(codeql, config);
+      const configLocation = await generateCodescanningConfig(
+        codeql,
+        config,
+        featureFlags
+      );
       if (configLocation) {
         extraArgs.push(`--codescanning-config=${configLocation}`);
       }
@@ -1269,9 +1273,10 @@ async function runTool(cmd: string, args: string[] = []) {
  */
 async function generateCodescanningConfig(
   codeql: CodeQL,
-  config: Config
+  config: Config,
+  featureFlags: FeatureFlags
 ): Promise<string | undefined> {
-  if (!(await util.useCodeScanningConfigInCli(codeql))) {
+  if (!(await util.useCodeScanningConfigInCli(codeql, featureFlags))) {
     return;
   }
   const configLocation = path.resolve(config.tempDir, "user-config.yaml");

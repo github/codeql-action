@@ -9,7 +9,9 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
+import { CodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -492,3 +494,111 @@ test("listFolder", async (t) => {
     ]);
   });
 });
+
+test("useCodeScanningConfigInCli with no env var", async (t) => {
+  t.assert(
+    !(await util.useCodeScanningConfigInCli(
+      mockVersion("2.10.0"),
+      createFeatureFlags([])
+    ))
+  );
+
+  t.assert(
+    !(await util.useCodeScanningConfigInCli(
+      mockVersion("2.10.1"),
+      createFeatureFlags([])
+    ))
+  );
+
+  t.assert(
+    !(await util.useCodeScanningConfigInCli(
+      mockVersion("2.10.0"),
+      createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
+    ))
+  );
+
+  // Yay! It works!
+  t.assert(
+    await util.useCodeScanningConfigInCli(
+      mockVersion("2.10.1"),
+      createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
+    )
+  );
+});
+
+for (const val of ["TRUE", "true", "True"]) {
+  test(`useCodeScanningConfigInCli with env var ${val}`, async (t) => {
+    process.env[util.EnvVar.CODEQL_PASS_CONFIG_TO_CLI] = val;
+    t.assert(
+      !(await util.useCodeScanningConfigInCli(
+        mockVersion("2.10.0"),
+        createFeatureFlags([])
+      ))
+    );
+
+    t.assert(
+      !(await util.useCodeScanningConfigInCli(
+        mockVersion("2.10.0"),
+        createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
+      ))
+    );
+
+    // Yay! It works!
+    t.assert(
+      await util.useCodeScanningConfigInCli(
+        mockVersion("2.10.1"),
+        createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
+      )
+    );
+
+    t.assert(
+      await util.useCodeScanningConfigInCli(
+        mockVersion("2.10.1"),
+        createFeatureFlags([])
+      )
+    );
+  });
+}
+
+for (const val of ["FALSE", "false", "False"]) {
+  test(`useCodeScanningConfigInCli with env var ${val}`, async (t) => {
+    process.env[util.EnvVar.CODEQL_PASS_CONFIG_TO_CLI] = val;
+    // Never turned on when env var is false
+    process.env[util.EnvVar.CODEQL_PASS_CONFIG_TO_CLI] = "false";
+    t.assert(
+      !(await util.useCodeScanningConfigInCli(
+        mockVersion("2.10.0"),
+        createFeatureFlags([])
+      ))
+    );
+
+    t.assert(
+      !(await util.useCodeScanningConfigInCli(
+        mockVersion("2.10.0"),
+        createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
+      ))
+    );
+
+    t.assert(
+      !(await util.useCodeScanningConfigInCli(
+        mockVersion("2.10.1"),
+        createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
+      ))
+    );
+
+    t.assert(
+      !(await util.useCodeScanningConfigInCli(
+        mockVersion("2.10.1"),
+        createFeatureFlags([])
+      ))
+    );
+  });
+}
+
+function mockVersion(version) {
+  return {
+    async getVersion() {
+      return version;
+    },
+  } as CodeQL;
+}

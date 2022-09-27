@@ -55,29 +55,34 @@ jobs:
         TEST_MODE: true
     - shell: bash
       run: |
-        CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
-        if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for CPP, or created it in the wrong location."
+        CPP_DB="${{ fromJson(steps.analysis.outputs.db-locations).cpp }}"
+        if [[ ! -d "$CPP_DB" ]] || [[ ! "$CPP_DB" == "${{ runner.temp }}/customDbLocation/*" ]]; then
+          echo "Did not create a database for CPP, or created it in the wrong location." \
+            "Expected location was '${ runner.temp }'/customDbLocation/* but actual was '${ CPP_DB }'"
           exit 1
         fi
-        CSHARP_DB=${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
-        if [[ ! -d $CSHARP_DB ]] || [[ ! $CSHARP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for C Sharp, or created it in the wrong location."
+        CSHARP_DB="${{ fromJson(steps.analysis.outputs.db-locations).csharp }}"
+        if [[ ! -d "$CSHARP_DB" ]] || [[ ! "$CSHARP_DB" == "${{ runner.temp }}/customDbLocation/*" ]]; then
+          echo "Did not create a database for C Sharp, or created it in the wrong location." \
+            "Expected location was '${ runner.temp }'/customDbLocation/* but actual was '${ CSHARP_DB }'"
           exit 1
         fi
-        GO_DB=${{ fromJson(steps.analysis.outputs.db-locations).go }}
-        if [[ ! -d $GO_DB ]] || [[ ! $GO_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Go, or created it in the wrong location."
+        GO_DB="${{ fromJson(steps.analysis.outputs.db-locations).go }}"
+        if [[ ! -d "$GO_DB" ]] || [[ ! "$GO_DB" == "${{ runner.temp }}/customDbLocation/*" ]]; then
+          echo "Did not create a database for Go, or created it in the wrong location." \
+            "Expected location was '${ runner.temp }'/customDbLocation/* but actual was '${ GO_DB }'"
           exit 1
         fi
-        JAVASCRIPT_DB=${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
-        if [[ ! -d $JAVASCRIPT_DB ]] || [[ ! $JAVASCRIPT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Javascript, or created it in the wrong location."
+        JAVASCRIPT_DB="${{ fromJson(steps.analysis.outputs.db-locations).javascript }}"
+        if [[ ! -d "$JAVASCRIPT_DB" ]] || [[ ! "$JAVASCRIPT_DB" == "${{ runner.temp }}/customDbLocation/*" ]]; then
+          echo "Did not create a database for Javascript, or created it in the wrong location." \
+            "Expected location was '${ runner.temp }'/customDbLocation/* but actual was '${ JAVASCRIPT_DB }'"
           exit 1
         fi
-        PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
-        if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Python, or created it in the wrong location."
+        PYTHON_DB="${{ fromJson(steps.analysis.outputs.db-locations).python }}"
+        if [[ ! -d "$PYTHON_DB" ]] || [[ ! "$PYTHON_DB" == "${{ runner.temp }}/customDbLocation/*" ]]; then
+          echo "Did not create a database for Python, or created it in the wrong location." \
+            "Expected location was '${ runner.temp }'/customDbLocation/* but actual was '${ PYTHON_DB }'"
           exit 1
         fi
     env:

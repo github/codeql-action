@@ -34,6 +34,11 @@ export class GitHubFeatureFlags implements FeatureFlags {
   ) {}
 
   async getValue(flag: FeatureFlag): Promise<boolean> {
+    if (flag === FeatureFlag.GolangExtractionReconciliationEnabled) {
+      // Test: Always return true to simulate turning flag on.
+      return true;
+    }
+
     // Bypassing the toolcache is disabled in test mode.
     if (flag === FeatureFlag.BypassToolcacheEnabled && util.isInTestMode()) {
       return false;

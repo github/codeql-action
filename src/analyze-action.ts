@@ -245,6 +245,7 @@ async function run() {
       logger,
       featureFlags
     );
+
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
         outputDir,
@@ -253,7 +254,8 @@ async function run() {
         threads,
         actionsUtil.getOptionalInput("category"),
         config,
-        logger
+        logger,
+        featureFlags
       );
     }
 

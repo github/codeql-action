@@ -162,12 +162,49 @@ export function getMemoryFlagValue(userInput: string | undefined): number {
       throw new Error(`Invalid RAM setting "${userInput}", specified.`);
     }
   } else {
-    const totalMemoryBytes = os.totalmem();
+    const totalMemoryBytes = getTotalMemoryBytes();
     const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
     const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes();
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
   return Math.floor(memoryToUseMegaBytes);
+}
+
+export function getTotalMemoryBytes(): number {
+  const nodeReportedMemory = os.totalmem();
+  console.log(`Node reported ${nodeReportedMemory} bytes of memory.`);
+  if (process.platform === "win32") {
+    console.log("On Windows, so just returning the memory Node reported.");
+    return nodeReportedMemory;
+  }
+  let lowestMemorySeen = nodeReportedMemory;
+  try {
+    const dockerMemoryLimit = parseInt(
+      fs.readFileSync("/sys/fs/cgroup/memory/memory.limit_in_bytes", "utf8")
+    );
+    console.log(`Docker set a limit of ${dockerMemoryLimit} bytes of memory.`);
+    lowestMemorySeen = Math.min(lowestMemorySeen, dockerMemoryLimit);
+  } catch (err) {
+    console.error(err);
+  }
+  try {
+    const memoryInfo = fs.readFileSync("/proc/meminfo", "utf8").split("\n");
+    const relevantLine = /^\s*MemTotal:\s*(\d+)\s*kB\s*$/;
+    for (const line of memoryInfo) {
+      const match = relevantLine.exec(line);
+      if (match) {
+        const memoryFromMemoryInfo = parseInt(match[1]) * 1024;
+        console.log(
+          `Found total memory of ${memoryFromMemoryInfo} in memory info.`
+        );
+        lowestMemorySeen = Math.min(lowestMemorySeen, memoryFromMemoryInfo);
+        break;
+      }
+    }
+  } catch (err) {
+    console.error(err);
+  }
+  return lowestMemorySeen;
 }
 
 /**

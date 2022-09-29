@@ -12,6 +12,7 @@ export enum FeatureFlag {
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
   GolangExtractionReconciliationEnabled = "golang_extraction_reconciliation_enabled",
+  CliConfigFileEnabled = "cli_config_file_enabled",
 }
 
 /**

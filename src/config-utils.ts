@@ -1704,7 +1704,7 @@ export async function initConfig(
   // When using the codescanning config in the CLI, pack downloads
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
-  if (!(await useCodeScanningConfigInCli(codeQL))) {
+  if (!(await useCodeScanningConfigInCli(codeQL, featureFlags))) {
     const registries = parseRegistries(registriesInput);
     await downloadPacks(
       codeQL,

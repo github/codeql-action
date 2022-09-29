@@ -213,7 +213,8 @@ export async function runQueries(
   threadsFlag: string,
   automationDetailsId: string | undefined,
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
+  featureFlags: FeatureFlags
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
@@ -256,7 +257,7 @@ export async function runQueries(
     }
 
     try {
-      if (await util.useCodeScanningConfigInCli(codeql)) {
+      if (await util.useCodeScanningConfigInCli(codeql, featureFlags)) {
         // If we are using the codescanning config in the CLI,
         // much of the work needed to generate the query suites
         // is done in the CLI. We just need to make a single

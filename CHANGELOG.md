@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## 2.1.26 - 29 Sep 2022
+
+- Update default CodeQL bundle version to 2.11.0. [#1267](https://github.com/github/codeql-action/pull/1267)
+
 ## 2.1.25 - 21 Sep 2022
 
 - We will soon be rolling out a feature of the CodeQL Action that stores some information used to make future runs faster in the GitHub Actions cache. Initially, this will only be enabled on JavaScript repositories, but we plan to add more languages to this soon. The new feature can be disabled by passing the `trap-caching: false` option to your workflow's `init` step, for example if you are already using the GitHub Actions cache for a different purpose and are near the storage limit for it.

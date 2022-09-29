@@ -545,7 +545,7 @@ export async function getRef(): Promise<string> {
   // in actions/checkout@v1 this may not be true as it checks out the repository
   // using GITHUB_REF. There is a subtle race condition where
   // git rev-parse GITHUB_REF != GITHUB_SHA, so we must check
-  // git git-parse GITHUB_REF == git rev-parse HEAD instead.
+  // git rev-parse GITHUB_REF == git rev-parse HEAD instead.
   const hasChangedRef =
     sha !== head &&
     (await getCommitOid(

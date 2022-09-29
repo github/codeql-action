@@ -2,9 +2,11 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { Readable } from "stream";
+import { promisify } from "util";
 
 import * as core from "@actions/core";
 import del from "del";
+import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
 import * as api from "./api-client";
@@ -487,7 +489,7 @@ export enum Mode {
  * CLI. These environment variables are relevant for both the runner
  * and the action.
  */
-enum EnvVar {
+export enum EnvVar {
   /**
    * The mode of the codeql-action, either 'actions' or 'runner'.
    */
@@ -589,6 +591,10 @@ export function getRequiredEnvParam(paramName: string): string {
     throw new Error(`${paramName} environment variable must be set`);
   }
   return value;
+}
+
+function getOptionalEnvParam(paramName: string): string {
+  return process.env[paramName] || "";
 }
 
 export class HTTPError extends Error {
@@ -787,12 +793,28 @@ export function isInTestMode(): boolean {
  * that gets passed to the CLI.
  */
 export async function useCodeScanningConfigInCli(
-  codeql: CodeQL
+  codeql: CodeQL,
+  featureFlags: FeatureFlags
 ): Promise<boolean> {
-  return (
-    process.env[EnvVar.CODEQL_PASS_CONFIG_TO_CLI] === "true" &&
-    (await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES))
-  );
+  const envVarIsEnabled = getOptionalEnvParam(EnvVar.CODEQL_PASS_CONFIG_TO_CLI);
+
+  // If the user has explicitly turned off the feature, then don't use it.
+  if (envVarIsEnabled.toLocaleLowerCase() === "false") {
+    return false;
+  }
+
+  // If the user has explicitly turned on the feature, then use it.
+  // Or if the feature flag is enabled, then use it.
+  const isEnabled =
+    envVarIsEnabled.toLocaleLowerCase() === "true" ||
+    (await featureFlags.getValue(FeatureFlag.CliConfigFileEnabled));
+
+  if (!isEnabled) {
+    return false;
+  }
+
+  // If the CLI version is too old, then don't use it.
+  return await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES);
 }
 
 /*
@@ -835,4 +857,24 @@ export async function isGoExtractionReconciliationEnabled(
       FeatureFlag.GolangExtractionReconciliationEnabled
     ))
   );
+}
+
+/**
+ * Get the size a folder in bytes. This will log any filesystem errors
+ * as a warning and then return undefined.
+ *
+ * @param cacheDir A directory to get the size of.
+ * @param logger A logger to log any errors to.
+ * @returns The size in bytes of the folder, or undefined if errors occurred.
+ */
+export async function tryGetFolderBytes(
+  cacheDir: string,
+  logger: Logger
+): Promise<number | undefined> {
+  try {
+    return await promisify<string, number>(getFolderSize)(cacheDir);
+  } catch (e) {
+    logger.warning(`Encountered an error while getting size of folder: ${e}`);
+    return undefined;
+  }
 }

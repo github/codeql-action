@@ -36,6 +36,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
       gitHubVersion,
       languages: [],
       packs: [],
+      trapCaches: {},
     } as unknown as configUtils.Config);
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub.withArgs("token").returns("fake-token");

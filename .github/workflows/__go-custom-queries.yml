@@ -93,4 +93,5 @@ jobs:
       env:
         TEST_MODE: true
     env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

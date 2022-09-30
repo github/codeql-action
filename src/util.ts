@@ -878,3 +878,27 @@ export async function tryGetFolderBytes(
     return undefined;
   }
 }
+
+/**
+ * Run a promise for a given amount of time, and if it doesn't resolve within
+ * that time, call the provided callback and then return undefined.
+ *
+ * @param timeoutMs The timeout in milliseconds.
+ * @param promise The promise to run.
+ * @param onTimeout A callback to call if the promise times out.
+ * @returns The result of the promise, or undefined if the promise times out.
+ */
+export async function withTimeout<T>(
+  timeoutMs: number,
+  promise: Promise<T>,
+  onTimeout: () => void
+): Promise<T | undefined> {
+  const timeout: Promise<undefined> = new Promise((resolve) => {
+    setTimeout(() => {
+      onTimeout();
+      resolve(undefined);
+    }, timeoutMs);
+  });
+
+  return await Promise.race([promise, timeout]);
+}

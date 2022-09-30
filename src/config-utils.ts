@@ -1705,6 +1705,9 @@ export async function initConfig(
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
   if (!(await useCodeScanningConfigInCli(codeQL, featureFlags))) {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql CLI."
+    );
     const registries = parseRegistries(registriesInput);
     await downloadPacks(
       codeQL,
@@ -1714,6 +1717,10 @@ export async function initConfig(
       apiDetails,
       config.tempDir,
       logger
+    );
+  } else {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql-action."
     );
   }
 

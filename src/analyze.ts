@@ -239,6 +239,17 @@ export async function runQueries(
   }
 
   const codeql = await getCodeQL(config.codeQLCmd);
+
+  if (await util.useCodeScanningConfigInCli(codeql, featureFlags)) {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql-action."
+    );
+  } else {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql CLI."
+    );
+  }
+
   for (const language of config.languages) {
     const queries = config.queries[language];
     const queryFilters = validateQueryFilters(

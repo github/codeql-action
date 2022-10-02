@@ -20,16 +20,20 @@ packs:
 query-filters:
 # This should run js/path-injection and js/zipslip
 - include:
-    tags contain: external/cwe/cwe-022
+    tags contain:
+      - external/cwe/cwe-022
 
 # Removes js/path-injection
 - exclude:
-    id: js/path-injection
+    id:
+      - js/path-injection
 
 # Query from extra pack
 - include:
-    id: javascript/example/empty-or-one-block
+    id:
+      - javascript/example/empty-or-one-block
 
 # Local query
 - include:
-    id: inrepo-javascript-querypack/show-ifs
+    id:
+      - inrepo-javascript-querypack/show-ifs

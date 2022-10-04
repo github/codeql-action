@@ -817,6 +817,22 @@ export async function useCodeScanningConfigInCli(
   return await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES);
 }
 
+export async function logCodeScanningConfigInCli(
+  codeql: CodeQL,
+  featureFlags: FeatureFlags,
+  logger: Logger
+) {
+  if (await useCodeScanningConfigInCli(codeql, featureFlags)) {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql CLI."
+    );
+  } else {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql-action."
+    );
+  }
+}
+
 /*
  * Returns whether the path in the argument represents an existing directory.
  */

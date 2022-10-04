@@ -239,6 +239,9 @@ export async function runQueries(
   }
 
   const codeql = await getCodeQL(config.codeQLCmd);
+
+  await util.logCodeScanningConfigInCli(codeql, featureFlags, logger);
+
   for (const language of config.languages) {
     const queries = config.queries[language];
     const queryFilters = validateQueryFilters(

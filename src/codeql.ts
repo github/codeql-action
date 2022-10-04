@@ -421,7 +421,7 @@ async function getCodeQLBundleDownloadURL(
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
- * @returns
+ * @returns a { CodeQL, toolsVersion } object.
  */
 export async function setupCodeQL(
   codeqlURL: string | undefined,

@@ -321,7 +321,9 @@ async function getTrapCachingEnabled(
   featureFlags: FeatureFlags
 ): Promise<boolean> {
   const trapCaching = getOptionalInput("trap-caching");
-  if (trapCaching !== undefined) return trapCaching === "true";
+  if (trapCaching !== undefined) {
+    return trapCaching === "true";
+  }
   return await featureFlags.getValue(FeatureFlag.TrapCachingEnabled);
 }
 

@@ -10,7 +10,6 @@ import * as api from "./api-client";
 import {
   CodeQL,
   CODEQL_VERSION_GHES_PACK_DOWNLOAD,
-  CODEQL_VERSION_ML_POWERED_QUERIES,
   CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS,
   ResolveQueriesOutput,
 } from "./codeql";
@@ -412,8 +411,7 @@ async function addBuiltinSuiteQueries(
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
     !packs.javascript?.some(isMlPoweredJsQueriesPack) &&
-    (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
-    (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
+    (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled, codeQL))
   ) {
     if (!packs.javascript) {
       packs.javascript = [];

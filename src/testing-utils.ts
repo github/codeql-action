@@ -160,3 +160,11 @@ export function mockFeatureFlagApiEndpoint(
 
   sinon.stub(apiClient, "getApiClient").value(() => client);
 }
+
+export function mockCodeQLVersion(version) {
+  return {
+    async getVersion() {
+      return version;
+    },
+  } as CodeQL.CodeQL;
+}

@@ -1,10 +1,11 @@
 import { getApiClient, GitHubApiDetails } from "./api-client";
+import { CodeQL } from "./codeql";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 
 export interface FeatureFlags {
-  getValue(flag: FeatureFlag): Promise<boolean>;
+  getValue(flag: FeatureFlag, codeql?: CodeQL): Promise<boolean>;
 }
 
 export enum FeatureFlag {
@@ -14,6 +15,32 @@ export enum FeatureFlag {
   GolangExtractionReconciliationEnabled = "golang_extraction_reconciliation_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
 }
+
+export const featureFlagConfig: Record<
+  FeatureFlag,
+  { envVar: string; minimumVersion: string | undefined }
+> = {
+  [FeatureFlag.BypassToolcacheEnabled]: {
+    envVar: "CODEQL_BYPASS_TOOLCACHE",
+    minimumVersion: undefined,
+  },
+  [FeatureFlag.MlPoweredQueriesEnabled]: {
+    envVar: "CODEQL_VERSION_ML_POWERED_QUERIES",
+    minimumVersion: "2.7.5",
+  },
+  [FeatureFlag.TrapCachingEnabled]: {
+    envVar: "CODEQL_TRAP_CACHING",
+    minimumVersion: undefined,
+  },
+  [FeatureFlag.GolangExtractionReconciliationEnabled]: {
+    envVar: "CODEQL_GOLANG_EXTRACTION_RECONCILIATION",
+    minimumVersion: undefined,
+  },
+  [FeatureFlag.CliConfigFileEnabled]: {
+    envVar: "CODEQL_PASS_CONFIG_TO_CLI",
+    minimumVersion: "2.10.1",
+  },
+};
 
 /**
  * A response from the GitHub API that contains feature flag enablement information for the CodeQL
@@ -33,12 +60,35 @@ export class GitHubFeatureFlags implements FeatureFlags {
     private logger: Logger
   ) {}
 
-  async getValue(flag: FeatureFlag): Promise<boolean> {
+  async getValue(flag: FeatureFlag, codeql?: CodeQL): Promise<boolean> {
     // Bypassing the toolcache is disabled in test mode.
     if (flag === FeatureFlag.BypassToolcacheEnabled && util.isInTestMode()) {
       return false;
     }
 
+    const envVar = (
+      process.env[featureFlagConfig[flag].envVar] || ""
+    ).toLocaleLowerCase();
+
+    // Do not use this feature if user explicitly disables it via an environment variable.
+    if (envVar === "false") {
+      return false;
+    }
+
+    // Never use this feature if the CLI version explicitly can't support it.
+    const minimumVersion = featureFlagConfig[flag].minimumVersion;
+    if (codeql && minimumVersion) {
+      if (!(await util.codeQlVersionAbove(codeql, minimumVersion))) {
+        return false;
+      }
+    }
+
+    // Use this feature if user explicitly enables it via an environment variable.
+    if (envVar === "true") {
+      return true;
+    }
+
+    // Ask the GitHub API if the feature is enabled.
     const response = await this.getApiResponse();
     if (response === undefined) {
       this.logger.debug(

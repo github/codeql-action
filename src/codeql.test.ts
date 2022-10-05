@@ -505,47 +505,41 @@ const injectedConfigMacro = test.macro({
     configOverride: Partial<Config>,
     expectedConfig: any
   ) => {
-    const origCODEQL_PASS_CONFIG_TO_CLI = process.env.CODEQL_PASS_CONFIG_TO_CLI;
-    process.env["CODEQL_PASS_CONFIG_TO_CLI"] = "true";
-    try {
-      await util.withTmpDir(async (tempDir) => {
-        const runnerConstructorStub = stubToolRunnerConstructor();
-        const codeqlObject = await codeql.getCodeQLForTesting();
-        sinon
-          .stub(codeqlObject, "getVersion")
-          .resolves(codeql.CODEQL_VERSION_CONFIG_FILES);
+    await util.withTmpDir(async (tempDir) => {
+      const runnerConstructorStub = stubToolRunnerConstructor();
+      const codeqlObject = await codeql.getCodeQLForTesting();
+      sinon
+        .stub(codeqlObject, "getVersion")
+        .resolves(codeql.CODEQL_VERSION_CONFIG_FILES);
 
-        const thisStubConfig: Config = {
-          ...stubConfig,
-          ...configOverride,
-          tempDir,
-          augmentationProperties,
-        };
+      const thisStubConfig: Config = {
+        ...stubConfig,
+        ...configOverride,
+        tempDir,
+        augmentationProperties,
+      };
 
-        await codeqlObject.databaseInitCluster(
-          thisStubConfig,
-          "",
-          undefined,
-          undefined,
-          createFeatureFlags([]),
-          getRunnerLogger(true)
-        );
+      await codeqlObject.databaseInitCluster(
+        thisStubConfig,
+        "",
+        undefined,
+        undefined,
+        createFeatureFlags([FeatureFlag.CliConfigFileEnabled]),
+        getRunnerLogger(true)
+      );
 
-        const args = runnerConstructorStub.firstCall.args[1];
-        // should have used an config file
-        const configArg = args.find((arg: string) =>
-          arg.startsWith("--codescanning-config=")
-        );
-        t.truthy(configArg, "Should have injected a codescanning config");
-        const configFile = configArg.split("=")[1];
-        const augmentedConfig = yaml.load(fs.readFileSync(configFile, "utf8"));
-        t.deepEqual(augmentedConfig, expectedConfig);
+      const args = runnerConstructorStub.firstCall.args[1];
+      // should have used an config file
+      const configArg = args.find((arg: string) =>
+        arg.startsWith("--codescanning-config=")
+      );
+      t.truthy(configArg, "Should have injected a codescanning config");
+      const configFile = configArg.split("=")[1];
+      const augmentedConfig = yaml.load(fs.readFileSync(configFile, "utf8"));
+      t.deepEqual(augmentedConfig, expectedConfig);
 
-        await del(configFile, { force: true });
-      });
-    } finally {
-      process.env["CODEQL_PASS_CONFIG_TO_CLI"] = origCODEQL_PASS_CONFIG_TO_CLI;
-    }
+      await del(configFile, { force: true });
+    });
   },
 
   title: (providedTitle = "") =>

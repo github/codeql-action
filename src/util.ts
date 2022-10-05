@@ -12,11 +12,7 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import {
-  CodeQL,
-  CODEQL_VERSION_CONFIG_FILES,
-  CODEQL_VERSION_NEW_TRACING,
-} from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import {
   Config,
   parsePacksSpecification,
@@ -524,13 +520,6 @@ export enum EnvVar {
    * own sandwiched workflow mechanism
    */
   FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
-
-  /**
-   * If set to the "true" string and the codeql CLI version is greater than
-   * `CODEQL_VERSION_CONFIG_FILES`, then the codeql-action will pass the
-   * the codeql-config file to the codeql CLI to be processed there.
-   */
-  CODEQL_PASS_CONFIG_TO_CLI = "CODEQL_PASS_CONFIG_TO_CLI",
 }
 
 const exportVar = (mode: Mode, name: string, value: string) => {
@@ -591,10 +580,6 @@ export function getRequiredEnvParam(paramName: string): string {
     throw new Error(`${paramName} environment variable must be set`);
   }
   return value;
-}
-
-function getOptionalEnvParam(paramName: string): string {
-  return process.env[paramName] || "";
 }
 
 export class HTTPError extends Error {
@@ -796,25 +781,7 @@ export async function useCodeScanningConfigInCli(
   codeql: CodeQL,
   featureFlags: FeatureFlags
 ): Promise<boolean> {
-  const envVarIsEnabled = getOptionalEnvParam(EnvVar.CODEQL_PASS_CONFIG_TO_CLI);
-
-  // If the user has explicitly turned off the feature, then don't use it.
-  if (envVarIsEnabled.toLocaleLowerCase() === "false") {
-    return false;
-  }
-
-  // If the user has explicitly turned on the feature, then use it.
-  // Or if the feature flag is enabled, then use it.
-  const isEnabled =
-    envVarIsEnabled.toLocaleLowerCase() === "true" ||
-    (await featureFlags.getValue(FeatureFlag.CliConfigFileEnabled));
-
-  if (!isEnabled) {
-    return false;
-  }
-
-  // If the CLI version is too old, then don't use it.
-  return await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES);
+  return await featureFlags.getValue(FeatureFlag.CliConfigFileEnabled, codeql);
 }
 
 export async function logCodeScanningConfigInCli(
@@ -867,11 +834,8 @@ export function listFolder(dir: string): string[] {
 export async function isGoExtractionReconciliationEnabled(
   featureFlags: FeatureFlags
 ): Promise<boolean> {
-  return (
-    process.env["CODEQL_ACTION_RECONCILE_GO_EXTRACTION"] === "true" ||
-    (await featureFlags.getValue(
-      FeatureFlag.GolangExtractionReconciliationEnabled
-    ))
+  return await featureFlags.getValue(
+    FeatureFlag.GolangExtractionReconciliationEnabled
   );
 }
 

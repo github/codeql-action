@@ -81,7 +81,7 @@ async function mockApiAndSetupCodeQL({
   tmpDir: string;
   toolsInput?: { input?: string };
   version: string;
-}) {
+}): Promise<{ codeql: codeql.CodeQL; toolsVersion: string }> {
   const platform =
     process.platform === "win32"
       ? "win64"
@@ -104,7 +104,7 @@ async function mockApiAndSetupCodeQL({
       )
     );
 
-  await codeql.setupCodeQL(
+  return await codeql.setupCodeQL(
     toolsInput ? toolsInput.input : `${baseUrl}${relativeUrl}`,
     apiDetails ?? sampleApiDetails,
     tmpDir,
@@ -124,8 +124,9 @@ test("download codeql bundle cache", async (t) => {
     for (let i = 0; i < versions.length; i++) {
       const version = versions[i];
 
-      await mockApiAndSetupCodeQL({ version, tmpDir });
+      const codeQLConfig = await mockApiAndSetupCodeQL({ version, tmpDir });
       t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
+      t.deepEqual(codeQLConfig.toolsVersion, version);
     }
 
     t.is(toolcache.findAllVersions("CodeQL").length, 2);
@@ -136,15 +137,20 @@ test("download codeql bundle cache explicitly requested with pinned different ve
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    await mockApiAndSetupCodeQL({
+    const pinnedCodeQLConfig = await mockApiAndSetupCodeQL({
       version: "20200601",
       isPinned: true,
       tmpDir,
     });
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
+    t.deepEqual(pinnedCodeQLConfig.toolsVersion, "20200601");
 
-    await mockApiAndSetupCodeQL({ version: "20200610", tmpDir });
+    const unpinnedCodeQLConfig = await mockApiAndSetupCodeQL({
+      version: "20200610",
+      tmpDir,
+    });
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
+    t.deepEqual(unpinnedCodeQLConfig.toolsVersion, "20200610");
   });
 });
 
@@ -152,15 +158,16 @@ test("don't download codeql bundle cache with pinned different version cached", 
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    await mockApiAndSetupCodeQL({
+    const pinnedCodeQLConfig = await mockApiAndSetupCodeQL({
       version: "20200601",
       isPinned: true,
       tmpDir,
     });
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
+    t.deepEqual(pinnedCodeQLConfig.toolsVersion, "20200601");
 
-    await codeql.setupCodeQL(
+    const codeQLConfig = await codeql.setupCodeQL(
       undefined,
       sampleApiDetails,
       tmpDir,
@@ -169,6 +176,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       getRunnerLogger(true),
       false
     );
+    t.deepEqual(codeQLConfig.toolsVersion, "0.0.0-20200601");
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
 
@@ -180,16 +188,24 @@ test("download codeql bundle cache with different version cached (not pinned)", 
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    await mockApiAndSetupCodeQL({ version: "20200601", tmpDir });
+    const cachedCodeQLConfig = await mockApiAndSetupCodeQL({
+      version: "20200601",
+      tmpDir,
+    });
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
+    t.deepEqual(cachedCodeQLConfig.toolsVersion, "20200601");
 
-    await mockApiAndSetupCodeQL({
+    const codeQLConfig = await mockApiAndSetupCodeQL({
       version: defaults.bundleVersion,
       tmpDir,
       apiDetails: sampleApiDetails,
       toolsInput: { input: undefined },
     });
+    t.deepEqual(
+      codeQLConfig.toolsVersion,
+      defaults.bundleVersion.replace("codeql-bundle-", "")
+    );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
 
@@ -201,20 +217,25 @@ test('download codeql bundle cache with pinned different version cached if "late
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    await mockApiAndSetupCodeQL({
+    const pinnedCodeQLConfig = await mockApiAndSetupCodeQL({
       version: "20200601",
       isPinned: true,
       tmpDir,
     });
 
     t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
+    t.deepEqual(pinnedCodeQLConfig.toolsVersion, "20200601");
 
-    await mockApiAndSetupCodeQL({
+    const latestCodeQLConfig = await mockApiAndSetupCodeQL({
       version: defaults.bundleVersion,
       apiDetails: sampleApiDetails,
       toolsInput: { input: "latest" },
       tmpDir,
     });
+    t.deepEqual(
+      latestCodeQLConfig.toolsVersion,
+      defaults.bundleVersion.replace("codeql-bundle-", "")
+    );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
 

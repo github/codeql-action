@@ -25,7 +25,7 @@ export const featureFlagConfig: Record<
     minimumVersion: undefined,
   },
   [FeatureFlag.MlPoweredQueriesEnabled]: {
-    envVar: "CODEQL_VERSION_ML_POWERED_QUERIES",
+    envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
   },
   [FeatureFlag.TrapCachingEnabled]: {
@@ -60,7 +60,25 @@ export class GitHubFeatureFlags implements FeatureFlags {
     private logger: Logger
   ) {}
 
+  /**
+   *
+   * @param flag The feature flag to check.
+   * @param codeql An optional CodeQL object. If provided, and a `minimumVersion` is specified for the
+   *        feature flag, the version of the CodeQL CLI will be checked against the minimum version.
+   *        If the version is less than the minimum version, the feature flag will be considered
+   *        disabled. If not provided, and a `minimumVersion` is specified for the feature flag, the
+   *        this function will throw.
+   * @returns true if the feature flag is enabled, false otherwise.
+   *
+   * @throws if a `minimumVersion` is specified for the feature flag, and `codeql` is not provided.
+   */
   async getValue(flag: FeatureFlag, codeql?: CodeQL): Promise<boolean> {
+    if (!codeql && featureFlagConfig[flag].minimumVersion) {
+      throw new Error(
+        `A minimum version is specified for feature flag ${flag}, but no instance of CodeQL was provided.`
+      );
+    }
+
     // Bypassing the toolcache is disabled in test mode.
     if (flag === FeatureFlag.BypassToolcacheEnabled && util.isInTestMode()) {
       return false;

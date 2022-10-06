@@ -1971,15 +1971,6 @@ const mlPoweredQueriesMacro = test.macro({
 });
 
 // macro, codeQLVersion, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, expectedVersionString
-// Test that ML-powered queries aren't run on v2.7.4 of the CLI.
-test(
-  mlPoweredQueriesMacro,
-  "2.7.4",
-  true,
-  undefined,
-  "security-extended",
-  undefined
-);
 // Test that ML-powered queries aren't run when the feature flag is off.
 test(
   mlPoweredQueriesMacro,

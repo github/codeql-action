@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-- We will soon be rolling out a feature of the CodeQL Action that changes the way that Go code is analyzed to be more consistent with other compiled languages. You do not need to change your code scanning workflows. If you encounter any problems, please [file an issue](https://github.com/github/codeql-action/issues) or open a private ticket with GitHub Support and request an escalation to engineering.
+- We are rolling out a change to the way that Go code is analyzed to be more consistent with other compiled languages. You do not need to alter your code scanning workflows. If you encounter any problems, please [file an issue](https://github.com/github/codeql-action/issues) or open a private ticket with GitHub Support and request an escalation to engineering.
 
 ## 2.1.26 - 29 Sep 2022
 

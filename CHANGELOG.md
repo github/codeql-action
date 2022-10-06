@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- We will soon be rolling out a feature of the CodeQL Action that treats Go as a compiled language for the purposes of code scanning, rather than as a scanned language. Once the feature is fully rolled out, additional documentation will be released. If you see issues with your existing workflows that analyze Go, please [file an issue](https://github.com/github/codeql-core/issues) or contact support.
 
 ## 2.1.26 - 29 Sep 2022
 

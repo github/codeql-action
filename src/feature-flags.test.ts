@@ -2,8 +2,8 @@ import test from "ava";
 
 import { GitHubApiDetails } from "./api-client";
 import {
-  FeatureFlag,
-  featureFlagConfig,
+  Feature,
+  featureConfig,
   FeatureFlags,
   GitHubFeatureFlags,
 } from "./feature-flags";
@@ -55,7 +55,7 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
         variant.gitHubVersion
       );
 
-      for (const flag of Object.values(FeatureFlag)) {
+      for (const flag of Object.values(Feature)) {
         t.assert(
           (await featureFlags.getValue(flag, includeCodeQlIfRequired(flag))) ===
             false
@@ -81,7 +81,7 @@ test("API response missing", async (t) => {
 
     mockFeatureFlagApiEndpoint(403, {});
 
-    for (const flag of Object.values(FeatureFlag)) {
+    for (const flag of Object.values(Feature)) {
       t.assert(
         (await featureFlags.getValue(flag, includeCodeQlIfRequired(flag))) ===
           false
@@ -98,7 +98,7 @@ test("Feature flags are disabled if they're not returned in API response", async
 
     mockFeatureFlagApiEndpoint(200, {});
 
-    for (const flag of Object.values(FeatureFlag)) {
+    for (const flag of Object.values(Feature)) {
       t.assert(
         (await featureFlags.getValue(flag, includeCodeQlIfRequired(flag))) ===
           false
@@ -118,8 +118,8 @@ test("Feature flags exception is propagated if the API request errors", async (t
     await t.throwsAsync(
       async () =>
         featureFlags.getValue(
-          FeatureFlag.MlPoweredQueriesEnabled,
-          includeCodeQlIfRequired(FeatureFlag.MlPoweredQueriesEnabled)
+          Feature.MlPoweredQueriesEnabled,
+          includeCodeQlIfRequired(Feature.MlPoweredQueriesEnabled)
         ),
       {
         message:
@@ -129,23 +129,23 @@ test("Feature flags exception is propagated if the API request errors", async (t
   });
 });
 
-for (const featureFlag of Object.keys(featureFlagConfig)) {
+for (const featureFlag of Object.keys(featureConfig)) {
   test(`Only feature flag '${featureFlag}' is enabled if enabled in the API response. Other flags disabled`, async (t) => {
     await withTmpDir(async (tmpDir) => {
       const featureFlags = setUpTests(tmpDir);
 
       // set all feature flags to false except the one we're testing
       const expectedFeatureFlags: { [flag: string]: boolean } = {};
-      for (const f of Object.keys(featureFlagConfig)) {
+      for (const f of Object.keys(featureConfig)) {
         expectedFeatureFlags[f] = f === featureFlag;
       }
       mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
 
       // retrieve the values of the actual feature flags
       const actualFeatureFlags: { [flag: string]: boolean } = {};
-      for (const f of Object.keys(featureFlagConfig)) {
+      for (const f of Object.keys(featureConfig)) {
         actualFeatureFlags[f] = await featureFlags.getValue(
-          f as FeatureFlag,
+          f as Feature,
           includeCodeQlIfRequired(f)
         );
       }
@@ -165,16 +165,16 @@ for (const featureFlag of Object.keys(featureFlagConfig)) {
       // feature flag should be disabled initially
       t.assert(
         !(await featureFlags.getValue(
-          featureFlag as FeatureFlag,
+          featureFlag as Feature,
           includeCodeQlIfRequired(featureFlag)
         ))
       );
 
       // set env var to true and check that the feature flag is now enabled
-      process.env[featureFlagConfig[featureFlag].envVar] = "true";
+      process.env[featureConfig[featureFlag].envVar] = "true";
       t.assert(
         await featureFlags.getValue(
-          featureFlag as FeatureFlag,
+          featureFlag as Feature,
           includeCodeQlIfRequired(featureFlag)
         )
       );
@@ -191,23 +191,23 @@ for (const featureFlag of Object.keys(featureFlagConfig)) {
       // feature flag should be enabled initially
       t.assert(
         await featureFlags.getValue(
-          featureFlag as FeatureFlag,
+          featureFlag as Feature,
           includeCodeQlIfRequired(featureFlag)
         )
       );
 
       // set env var to false and check that the feature flag is now disabled
-      process.env[featureFlagConfig[featureFlag].envVar] = "false";
+      process.env[featureConfig[featureFlag].envVar] = "false";
       t.assert(
         !(await featureFlags.getValue(
-          featureFlag as FeatureFlag,
+          featureFlag as Feature,
           includeCodeQlIfRequired(featureFlag)
         ))
       );
     });
   });
 
-  if (featureFlagConfig[featureFlag].minimumVersion !== undefined) {
+  if (featureConfig[featureFlag].minimumVersion !== undefined) {
     test(`Getting Feature Flag '${featureFlag} should throw if no codeql is provided`, async (t) => {
       await withTmpDir(async (tmpDir) => {
         const featureFlags = setUpTests(tmpDir);
@@ -216,7 +216,7 @@ for (const featureFlag of Object.keys(featureFlagConfig)) {
         mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
 
         await t.throwsAsync(
-          async () => featureFlags.getValue(featureFlag as FeatureFlag),
+          async () => featureFlags.getValue(featureFlag as Feature),
           {
             message: `A minimum version is specified for feature flag ${featureFlag}, but no instance of CodeQL was provided.`,
           }
@@ -225,8 +225,8 @@ for (const featureFlag of Object.keys(featureFlagConfig)) {
     });
   }
 
-  if (featureFlagConfig[featureFlag].minimumVersion !== undefined) {
-    test(`Feature flag '${featureFlag}' is disabled if the minimum CLI version is below ${featureFlagConfig[featureFlag].minimumVersion}`, async (t) => {
+  if (featureConfig[featureFlag].minimumVersion !== undefined) {
+    test(`Feature flag '${featureFlag}' is disabled if the minimum CLI version is below ${featureConfig[featureFlag].minimumVersion}`, async (t) => {
       await withTmpDir(async (tmpDir) => {
         const featureFlags = setUpTests(tmpDir);
 
@@ -236,30 +236,26 @@ for (const featureFlag of Object.keys(featureFlagConfig)) {
         // feature flag should be disabled when an old CLI version is set
         let codeql = mockCodeQLVersion("2.0.0");
         t.assert(
-          !(await featureFlags.getValue(featureFlag as FeatureFlag, codeql))
+          !(await featureFlags.getValue(featureFlag as Feature, codeql))
         );
 
         // even setting the env var to true should not enable the feature flag if
         // the minimum CLI version is not met
-        process.env[featureFlagConfig[featureFlag].envVar] = "true";
+        process.env[featureConfig[featureFlag].envVar] = "true";
         t.assert(
-          !(await featureFlags.getValue(featureFlag as FeatureFlag, codeql))
+          !(await featureFlags.getValue(featureFlag as Feature, codeql))
         );
 
         // feature flag should be enabled when a new CLI version is set
         // and env var is not set
-        process.env[featureFlagConfig[featureFlag].envVar] = "";
-        codeql = mockCodeQLVersion(
-          featureFlagConfig[featureFlag].minimumVersion
-        );
-        t.assert(
-          await featureFlags.getValue(featureFlag as FeatureFlag, codeql)
-        );
+        process.env[featureConfig[featureFlag].envVar] = "";
+        codeql = mockCodeQLVersion(featureConfig[featureFlag].minimumVersion);
+        t.assert(await featureFlags.getValue(featureFlag as Feature, codeql));
 
         // set env var to false and check that the feature flag is now disabled
-        process.env[featureFlagConfig[featureFlag].envVar] = "false";
+        process.env[featureConfig[featureFlag].envVar] = "false";
         t.assert(
-          !(await featureFlags.getValue(featureFlag as FeatureFlag, codeql))
+          !(await featureFlags.getValue(featureFlag as Feature, codeql))
         );
       });
     });
@@ -267,7 +263,7 @@ for (const featureFlag of Object.keys(featureFlagConfig)) {
 }
 
 function assertAllFeaturesUndefinedInApi(t, loggedMessages: LoggedMessage[]) {
-  for (const featureFlag of Object.keys(featureFlagConfig)) {
+  for (const featureFlag of Object.keys(featureConfig)) {
     t.assert(
       loggedMessages.find(
         (v) =>
@@ -280,7 +276,7 @@ function assertAllFeaturesUndefinedInApi(t, loggedMessages: LoggedMessage[]) {
 }
 
 function initializeFeatures(initialValue: boolean) {
-  return Object.keys(featureFlagConfig).reduce((features, key) => {
+  return Object.keys(featureConfig).reduce((features, key) => {
     features[key] = initialValue;
     return features;
   }, {});
@@ -302,7 +298,7 @@ function setUpTests(
 }
 
 function includeCodeQlIfRequired(featureFlag: string) {
-  return featureFlagConfig[featureFlag].minimumVersion !== undefined
+  return featureConfig[featureFlag].minimumVersion !== undefined
     ? mockCodeQLVersion("9.9.9")
     : undefined;
 }

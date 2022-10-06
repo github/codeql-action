@@ -15,7 +15,7 @@ import {
 import { getGitHubVersionActionsOnly } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureFlag, FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
+import { Feature, FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -324,7 +324,7 @@ async function getTrapCachingEnabled(
   if (trapCaching !== undefined) {
     return trapCaching === "true";
   }
-  return await featureFlags.getValue(FeatureFlag.TrapCachingEnabled);
+  return await featureFlags.getValue(Feature.TrapCachingEnabled);
 }
 
 async function runWrapper() {

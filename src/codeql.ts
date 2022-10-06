@@ -15,7 +15,7 @@ import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
-import { FeatureFlag, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureFlags } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
@@ -442,7 +442,7 @@ export async function setupCodeQL(
         // allows us to quickly rollback a broken bundle that has made its way
         // into the toolcache.
         codeqlURL === undefined &&
-          (await featureFlags.getValue(FeatureFlag.BypassToolcacheEnabled))
+          (await featureFlags.getValue(Feature.BypassToolcacheEnabled))
         ? "a specific version of CodeQL was not requested and the bypass toolcache feature flag is enabled"
         : undefined;
     const forceLatest = forceLatestReason !== undefined;

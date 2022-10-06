@@ -56,9 +56,8 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
       );
 
       for (const flag of Object.values(Feature)) {
-        t.assert(
-          (await featureFlags.getValue(flag, includeCodeQlIfRequired(flag))) ===
-            false
+        t.false(
+          await featureFlags.getValue(flag, includeCodeQlIfRequired(flag))
         );
       }
 

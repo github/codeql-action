@@ -75,7 +75,7 @@ export class GitHubFeatureFlags implements FeatureFlags {
   async getValue(flag: Feature, codeql?: CodeQL): Promise<boolean> {
     if (!codeql && featureConfig[flag].minimumVersion) {
       throw new Error(
-        `A minimum version is specified for feature flag ${flag}, but no instance of CodeQL was provided.`
+        `Internal error: A minimum version is specified for feature flag ${flag}, but no instance of CodeQL was provided.`
       );
     }
 

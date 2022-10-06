@@ -14,7 +14,7 @@ import {
   ResolveQueriesOutput,
 } from "./codeql";
 import * as externalQueries from "./external-queries";
-import { FeatureFlag, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureFlags } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -411,7 +411,7 @@ async function addBuiltinSuiteQueries(
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
     !packs.javascript?.some(isMlPoweredJsQueriesPack) &&
-    (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled, codeQL))
+    (await featureFlags.getValue(Feature.MlPoweredQueriesEnabled, codeQL))
   ) {
     if (!packs.javascript) {
       packs.javascript = [];

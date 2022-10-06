@@ -5,10 +5,10 @@ import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 
 export interface FeatureFlags {
-  getValue(flag: FeatureFlag, codeql?: CodeQL): Promise<boolean>;
+  getValue(flag: Feature, codeql?: CodeQL): Promise<boolean>;
 }
 
-export enum FeatureFlag {
+export enum Feature {
   BypassToolcacheEnabled = "bypass_toolcache_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
@@ -16,27 +16,27 @@ export enum FeatureFlag {
   CliConfigFileEnabled = "cli_config_file_enabled",
 }
 
-export const featureFlagConfig: Record<
-  FeatureFlag,
+export const featureConfig: Record<
+  Feature,
   { envVar: string; minimumVersion: string | undefined }
 > = {
-  [FeatureFlag.BypassToolcacheEnabled]: {
+  [Feature.BypassToolcacheEnabled]: {
     envVar: "CODEQL_BYPASS_TOOLCACHE",
     minimumVersion: undefined,
   },
-  [FeatureFlag.MlPoweredQueriesEnabled]: {
+  [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
   },
-  [FeatureFlag.TrapCachingEnabled]: {
+  [Feature.TrapCachingEnabled]: {
     envVar: "CODEQL_TRAP_CACHING",
     minimumVersion: undefined,
   },
-  [FeatureFlag.GolangExtractionReconciliationEnabled]: {
+  [Feature.GolangExtractionReconciliationEnabled]: {
     envVar: "CODEQL_GOLANG_EXTRACTION_RECONCILIATION",
     minimumVersion: undefined,
   },
-  [FeatureFlag.CliConfigFileEnabled]: {
+  [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.10.1",
   },
@@ -48,7 +48,7 @@ export const featureFlagConfig: Record<
  *
  * It maps feature flags to whether they are enabled or not.
  */
-type FeatureFlagsApiResponse = Partial<Record<FeatureFlag, boolean>>;
+type FeatureFlagsApiResponse = Partial<Record<Feature, boolean>>;
 
 export class GitHubFeatureFlags implements FeatureFlags {
   private cachedApiResponse: FeatureFlagsApiResponse | undefined;
@@ -72,20 +72,20 @@ export class GitHubFeatureFlags implements FeatureFlags {
    *
    * @throws if a `minimumVersion` is specified for the feature flag, and `codeql` is not provided.
    */
-  async getValue(flag: FeatureFlag, codeql?: CodeQL): Promise<boolean> {
-    if (!codeql && featureFlagConfig[flag].minimumVersion) {
+  async getValue(flag: Feature, codeql?: CodeQL): Promise<boolean> {
+    if (!codeql && featureConfig[flag].minimumVersion) {
       throw new Error(
         `A minimum version is specified for feature flag ${flag}, but no instance of CodeQL was provided.`
       );
     }
 
     // Bypassing the toolcache is disabled in test mode.
-    if (flag === FeatureFlag.BypassToolcacheEnabled && util.isInTestMode()) {
+    if (flag === Feature.BypassToolcacheEnabled && util.isInTestMode()) {
       return false;
     }
 
     const envVar = (
-      process.env[featureFlagConfig[flag].envVar] || ""
+      process.env[featureConfig[flag].envVar] || ""
     ).toLocaleLowerCase();
 
     // Do not use this feature if user explicitly disables it via an environment variable.
@@ -94,7 +94,7 @@ export class GitHubFeatureFlags implements FeatureFlags {
     }
 
     // Never use this feature if the CLI version explicitly can't support it.
-    const minimumVersion = featureFlagConfig[flag].minimumVersion;
+    const minimumVersion = featureConfig[flag].minimumVersion;
     if (codeql && minimumVersion) {
       if (!(await util.codeQlVersionAbove(codeql, minimumVersion))) {
         return false;
@@ -174,7 +174,7 @@ export class GitHubFeatureFlags implements FeatureFlags {
  *
  * This should be only used within tests.
  */
-export function createFeatureFlags(enabledFlags: FeatureFlag[]): FeatureFlags {
+export function createFeatureFlags(enabledFlags: Feature[]): FeatureFlags {
   return {
     getValue: async (flag) => {
       return enabledFlags.includes(flag);

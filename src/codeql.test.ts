@@ -13,7 +13,7 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { createFeatureFlags, FeatureFlag, FeatureFlags } from "./feature-flags";
+import { createFeatureFlags, Feature, FeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars } from "./testing-utils";
@@ -281,7 +281,7 @@ for (const [
         version: defaults.bundleVersion,
         apiDetails: sampleApiDetails,
         featureFlags: createFeatureFlags(
-          isFeatureFlagEnabled ? [FeatureFlag.BypassToolcacheEnabled] : []
+          isFeatureFlagEnabled ? [Feature.BypassToolcacheEnabled] : []
         ),
         toolsInput: { input: toolsInput },
         tmpDir,
@@ -524,7 +524,7 @@ const injectedConfigMacro = test.macro({
         "",
         undefined,
         undefined,
-        createFeatureFlags([FeatureFlag.CliConfigFileEnabled]),
+        createFeatureFlags([Feature.CliConfigFileEnabled]),
         getRunnerLogger(true)
       );
 

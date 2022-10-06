@@ -18,7 +18,7 @@ import {
   parsePacksSpecification,
   prettyPrintPack,
 } from "./config-utils";
-import { FeatureFlag, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -781,7 +781,7 @@ export async function useCodeScanningConfigInCli(
   codeql: CodeQL,
   featureFlags: FeatureFlags
 ): Promise<boolean> {
-  return await featureFlags.getValue(FeatureFlag.CliConfigFileEnabled, codeql);
+  return await featureFlags.getValue(Feature.CliConfigFileEnabled, codeql);
 }
 
 export async function logCodeScanningConfigInCli(
@@ -835,7 +835,7 @@ export async function isGoExtractionReconciliationEnabled(
   featureFlags: FeatureFlags
 ): Promise<boolean> {
   return await featureFlags.getValue(
-    FeatureFlag.GolangExtractionReconciliationEnabled
+    Feature.GolangExtractionReconciliationEnabled
   );
 }
 

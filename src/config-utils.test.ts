@@ -9,7 +9,7 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { createFeatureFlags, FeatureFlag } from "./feature-flags";
+import { createFeatureFlags, Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
@@ -1936,9 +1936,7 @@ const mlPoweredQueriesMacro = test.macro({
         gitHubVersion,
         sampleApiDetails,
         createFeatureFlags(
-          isMlPoweredQueriesFlagEnabled
-            ? [FeatureFlag.MlPoweredQueriesEnabled]
-            : []
+          isMlPoweredQueriesFlagEnabled ? [Feature.MlPoweredQueriesEnabled] : []
         ),
         getRunnerLogger(true)
       );

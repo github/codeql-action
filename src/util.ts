@@ -817,6 +817,22 @@ export async function useCodeScanningConfigInCli(
   return await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES);
 }
 
+export async function logCodeScanningConfigInCli(
+  codeql: CodeQL,
+  featureFlags: FeatureFlags,
+  logger: Logger
+) {
+  if (await useCodeScanningConfigInCli(codeql, featureFlags)) {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql CLI."
+    );
+  } else {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql-action."
+    );
+  }
+}
+
 /*
  * Returns whether the path in the argument represents an existing directory.
  */
@@ -877,4 +893,28 @@ export async function tryGetFolderBytes(
     logger.warning(`Encountered an error while getting size of folder: ${e}`);
     return undefined;
   }
+}
+
+/**
+ * Run a promise for a given amount of time, and if it doesn't resolve within
+ * that time, call the provided callback and then return undefined.
+ *
+ * @param timeoutMs The timeout in milliseconds.
+ * @param promise The promise to run.
+ * @param onTimeout A callback to call if the promise times out.
+ * @returns The result of the promise, or undefined if the promise times out.
+ */
+export async function withTimeout<T>(
+  timeoutMs: number,
+  promise: Promise<T>,
+  onTimeout: () => void
+): Promise<T | undefined> {
+  const timeout: Promise<undefined> = new Promise((resolve) => {
+    setTimeout(() => {
+      onTimeout();
+      resolve(undefined);
+    }, timeoutMs);
+  });
+
+  return await Promise.race([promise, timeout]);
 }

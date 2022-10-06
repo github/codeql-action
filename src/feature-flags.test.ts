@@ -5,7 +5,7 @@ import {
   Feature,
   featureConfig,
   FeatureFlags,
-  GitHubFeatureFlags,
+  Features,
 } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -217,7 +217,7 @@ for (const featureFlag of Object.keys(featureConfig)) {
         await t.throwsAsync(
           async () => featureFlags.getValue(featureFlag as Feature),
           {
-            message: `A minimum version is specified for feature flag ${featureFlag}, but no instance of CodeQL was provided.`,
+            message: `Internal error: A minimum version is specified for feature flag ${featureFlag}, but no instance of CodeQL was provided.`,
           }
         );
       });
@@ -288,12 +288,7 @@ function setUpTests(
 ): FeatureFlags {
   setupActionsVars(tmpDir, tmpDir);
 
-  return new GitHubFeatureFlags(
-    gitHubVersion,
-    testApiDetails,
-    testRepositoryNwo,
-    logger
-  );
+  return new Features(gitHubVersion, testApiDetails, testRepositoryNwo, logger);
 }
 
 function includeCodeQlIfRequired(featureFlag: string) {

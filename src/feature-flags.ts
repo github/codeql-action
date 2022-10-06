@@ -50,15 +50,27 @@ export const featureConfig: Record<
  */
 type FeatureFlagsApiResponse = Partial<Record<Feature, boolean>>;
 
-export class GitHubFeatureFlags implements FeatureFlags {
-  private cachedApiResponse: FeatureFlagsApiResponse | undefined;
+/**
+ * Determines the enablement status of a number of features.
+ * If feature enablement is not able to be determined locally, a request to the
+ * github API is made to determine the enablement status.
+ */
+export class Features implements FeatureFlags {
+  private gitHubFeatureFlags: GitHubFeatureFlags;
 
   constructor(
-    private gitHubVersion: util.GitHubVersion,
-    private apiDetails: GitHubApiDetails,
-    private repositoryNwo: RepositoryNwo,
-    private logger: Logger
-  ) {}
+    gitHubVersion: util.GitHubVersion,
+    apiDetails: GitHubApiDetails,
+    repositoryNwo: RepositoryNwo,
+    logger: Logger
+  ) {
+    this.gitHubFeatureFlags = new GitHubFeatureFlags(
+      gitHubVersion,
+      apiDetails,
+      repositoryNwo,
+      logger
+    );
+  }
 
   /**
    *
@@ -107,6 +119,23 @@ export class GitHubFeatureFlags implements FeatureFlags {
     }
 
     // Ask the GitHub API if the feature is enabled.
+    return await this.gitHubFeatureFlags.getValue(flag);
+  }
+}
+
+class GitHubFeatureFlags implements FeatureFlags {
+  private cachedApiResponse: FeatureFlagsApiResponse | undefined;
+
+  constructor(
+    private gitHubVersion: util.GitHubVersion,
+    private apiDetails: GitHubApiDetails,
+    private repositoryNwo: RepositoryNwo,
+    private logger: Logger
+  ) {
+    /**/
+  }
+
+  async getValue(flag: Feature): Promise<boolean> {
     const response = await this.getApiResponse();
     if (response === undefined) {
       this.logger.debug(
@@ -121,51 +150,52 @@ export class GitHubFeatureFlags implements FeatureFlags {
       );
       return false;
     }
-    return flagValue;
+    return flagValue || false;
   }
 
   private async getApiResponse(): Promise<FeatureFlagsApiResponse> {
-    const loadApiResponse = async () => {
-      // Do nothing when not running against github.com
-      if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
-        this.logger.debug(
-          "Not running against github.com. Disabling all feature flags."
-        );
-        return {};
-      }
-      const client = getApiClient(this.apiDetails);
-      try {
-        const response = await client.request(
-          "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
-          {
-            owner: this.repositoryNwo.owner,
-            repo: this.repositoryNwo.repo,
-          }
-        );
-        return response.data;
-      } catch (e) {
-        if (util.isHTTPError(e) && e.status === 403) {
-          this.logger.warning(
-            "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
-              "As a result, it will not be opted into any experimental features. " +
-              "This could be because the Action is running on a pull request from a fork. If not, " +
-              `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
-          );
-        } else {
-          // Some feature flags, such as `ml_powered_queries_enabled` affect the produced alerts.
-          // Considering these feature flags disabled in the event of a transient error could
-          // therefore lead to alert churn. As a result, we crash if we cannot determine the value of
-          // the feature flags.
-          throw new Error(
-            `Encountered an error while trying to load feature flags: ${e}`
-          );
-        }
-      }
-    };
-
-    const apiResponse = this.cachedApiResponse || (await loadApiResponse());
+    const apiResponse =
+      this.cachedApiResponse || (await this.loadApiResponse());
     this.cachedApiResponse = apiResponse;
     return apiResponse;
+  }
+
+  private async loadApiResponse() {
+    // Do nothing when not running against github.com
+    if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
+      this.logger.debug(
+        "Not running against github.com. Disabling all feature flags."
+      );
+      return {};
+    }
+    const client = getApiClient(this.apiDetails);
+    try {
+      const response = await client.request(
+        "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
+        {
+          owner: this.repositoryNwo.owner,
+          repo: this.repositoryNwo.repo,
+        }
+      );
+      return response.data;
+    } catch (e) {
+      if (util.isHTTPError(e) && e.status === 403) {
+        this.logger.warning(
+          "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
+            "As a result, it will not be opted into any experimental features. " +
+            "This could be because the Action is running on a pull request from a fork. If not, " +
+            `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
+        );
+      } else {
+        // Some feature flags, such as `ml_powered_queries_enabled` affect the produced alerts.
+        // Considering these feature flags disabled in the event of a transient error could
+        // therefore lead to alert churn. As a result, we crash if we cannot determine the value of
+        // the feature flags.
+        throw new Error(
+          `Encountered an error while trying to load feature flags: ${e}`
+        );
+      }
+    }
   }
 }
 

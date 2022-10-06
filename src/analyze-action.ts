@@ -19,7 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
+import { FeatureFlags, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -228,7 +228,7 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersionActionsOnly();
 
-    const featureFlags = new GitHubFeatureFlags(
+    const featureFlags = new Features(
       gitHubVersion,
       apiDetails,
       repositoryNwo,

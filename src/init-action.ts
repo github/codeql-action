@@ -15,7 +15,7 @@ import {
 import { getGitHubVersionActionsOnly } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Feature, FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
+import { Feature, FeatureFlags, Features } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -157,7 +157,7 @@ async function run() {
     getRequiredEnvParam("GITHUB_REPOSITORY")
   );
 
-  const featureFlags = new GitHubFeatureFlags(
+  const featureFlags = new Features(
     gitHubVersion,
     apiDetails,
     repositoryNwo,

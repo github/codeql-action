@@ -122,7 +122,7 @@ jobs:
             - [ ] Remove and re-add the "Update dependencies" label to the PR to trigger just this workflow.
             - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.
             - [ ] Mark the PR as ready for review to trigger the full set of PR checks.
-            - [ ] Approve and merge the PR.
+            - [ ] Approve and merge the PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.
           EOF
           )
 

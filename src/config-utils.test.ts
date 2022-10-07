@@ -9,10 +9,10 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { createFeatureFlags, Feature } from "./feature-flags";
+import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { setupTests, createFeatureFlags } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);

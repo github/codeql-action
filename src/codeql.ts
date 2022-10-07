@@ -15,7 +15,7 @@ import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
-import { Feature, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
@@ -91,7 +91,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     processLevel: number | undefined,
-    featureFlags: FeatureFlags,
+    featureFlags: FeatureEnablement,
     logger: Logger
   ): Promise<void>;
   /**
@@ -416,7 +416,7 @@ async function getCodeQLBundleDownloadURL(
  * @param apiDetails
  * @param tempDir
  * @param variant
- * @param featureFlags
+ * @param features
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
@@ -427,7 +427,7 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  featureFlags: FeatureFlags,
+  features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
@@ -438,12 +438,12 @@ export async function setupCodeQL(
       codeqlURL === "latest"
         ? '"tools: latest" was requested'
         : // If the user hasn't requested a particular CodeQL version, then bypass
-        // the toolcache when the appropriate feature flag is enabled. This
+        // the toolcache when the appropriate feature is enabled. This
         // allows us to quickly rollback a broken bundle that has made its way
         // into the toolcache.
         codeqlURL === undefined &&
-          (await featureFlags.getValue(Feature.BypassToolcacheEnabled))
-        ? "a specific version of CodeQL was not requested and the bypass toolcache feature flag is enabled"
+          (await features.getValue(Feature.BypassToolcacheEnabled))
+        ? "a specific version of CodeQL was not requested and the bypass toolcache feature is enabled"
         : undefined;
     const forceLatest = forceLatestReason !== undefined;
     if (forceLatest) {
@@ -772,7 +772,7 @@ async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       processLevel: number | undefined,
-      featureFlags: FeatureFlags,
+      featureFlags: FeatureEnablement,
       logger: Logger
     ) {
       const extraArgs = config.languages.map(
@@ -1274,7 +1274,7 @@ async function runTool(cmd: string, args: string[] = []) {
 async function generateCodescanningConfig(
   codeql: CodeQL,
   config: Config,
-  featureFlags: FeatureFlags
+  featureFlags: FeatureEnablement
 ): Promise<string | undefined> {
   if (!(await util.useCodeScanningConfigInCli(codeql, featureFlags))) {
     return;

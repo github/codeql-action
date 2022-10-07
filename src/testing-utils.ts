@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
 import * as CodeQL from "./codeql";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { HTTPError } from "./util";
 
@@ -167,4 +168,19 @@ export function mockCodeQLVersion(version) {
       return version;
     },
   } as CodeQL.CodeQL;
+}
+
+/**
+ * Create a feature enablement instance with the specified set of enabled features.
+ *
+ * This should be only used within tests.
+ */
+export function createFeatureFlags(
+  enabledFeatures: Feature[]
+): FeatureEnablement {
+  return {
+    getValue: async (feature) => {
+      return enabledFeatures.includes(feature);
+    },
+  };
 }

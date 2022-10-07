@@ -8,11 +8,11 @@ import { runFinalize, runQueries } from "./analyze";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
-import { createFeatureFlags } from "./feature-flags";
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
 import { Language, parseLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { createFeatureFlags } from "./testing-utils";
 import * as upload_lib from "./upload-lib";
 import {
   checkGitHubVersionInRange,

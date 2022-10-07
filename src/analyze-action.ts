@@ -19,7 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { FeatureFlags, Features } from "./feature-flags";
+import { FeatureEnablement, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -126,7 +126,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
 }
 
 /**
- * When Go extraction reconciliation is enabled, either via the feature flag
+ * When Go extraction reconciliation is enabled, either via the feature
  * or an environment variable, we will attempt to autobuild Go to preserve
  * compatibility for users who have set up Go using a legacy scanning style
  * CodeQL workflow, i.e. one without an autobuild step or manual build
@@ -140,7 +140,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  */
 async function runAutobuildIfLegacyGoWorkflow(
   config: Config,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ) {
   if (!config.languages.includes(Language.go)) {

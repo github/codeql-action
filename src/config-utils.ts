@@ -14,7 +14,7 @@ import {
   ResolveQueriesOutput,
 } from "./codeql";
 import * as externalQueries from "./external-queries";
-import { Feature, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -389,7 +389,7 @@ async function addBuiltinSuiteQueries(
   resultMap: Queries,
   packs: Packs,
   suiteName: string,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   configFile?: string
 ): Promise<boolean> {
   let injectedMlQueries = false;
@@ -543,7 +543,7 @@ async function parseQueryUses(
   tempDir: string,
   workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger,
   configFile?: string
 ): Promise<boolean> {
@@ -948,7 +948,7 @@ async function addQueriesAndPacksFromWorkflow(
   tempDir: string,
   workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ): Promise<boolean> {
   let injectedMlQueries = false;
@@ -1005,7 +1005,7 @@ export async function getDefaultConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
@@ -1114,7 +1114,7 @@ async function loadConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -1638,7 +1638,7 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ): Promise<Config> {
   let config: Config;

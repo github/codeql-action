@@ -5,7 +5,7 @@ import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 
 export interface FeatureEnablement {
-  getValue(feaature: Feature, codeql?: CodeQL): Promise<boolean>;
+  getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
 }
 
 export enum Feature {
@@ -187,8 +187,8 @@ class GitHubFeatureFlags implements FeatureEnablement {
             `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
         );
       } else {
-        // Some feature, such as `ml_powered_queries_enabled` affect the produced alerts.
-        // Considering these feature disabled in the event of a transient error could
+        // Some features, such as `ml_powered_queries_enabled` affect the produced alerts.
+        // Considering these features disabled in the event of a transient error could
         // therefore lead to alert churn. As a result, we crash if we cannot determine the value of
         // the feature.
         throw new Error(

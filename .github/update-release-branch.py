@@ -104,7 +104,7 @@ def open_pr(
     body.append(' - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.')
     body.append(' - [ ] Mark the PR as ready for review to trigger the full set of PR checks.')
 
-  body.append(' - [ ] Approve and merge this PR.')
+  body.append(' - [ ] Approve and merge this PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.')
 
   if is_v2_release:
     body.append(' - [ ] Merge the mergeback PR that will automatically be created once this PR is merged.')

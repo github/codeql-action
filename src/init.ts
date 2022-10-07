@@ -8,7 +8,7 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureFlags } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
@@ -20,7 +20,7 @@ export async function initCodeQL(
   apiDetails: GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
@@ -55,7 +55,7 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -90,7 +90,7 @@ export async function runInit(
   sourceRoot: string,
   processName: string | undefined,
   processLevel: number | undefined,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });

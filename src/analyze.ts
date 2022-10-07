@@ -16,7 +16,7 @@ import {
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { countLoc } from "./count-loc";
-import { FeatureFlags } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as sharedEnv from "./shared-environment";
@@ -122,7 +122,7 @@ export async function createdDBForScannedLanguages(
   codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
-  featureFlags: FeatureFlags
+  featureFlags: FeatureEnablement
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
@@ -173,7 +173,7 @@ async function finalizeDatabaseCreation(
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
-  featureFlags: FeatureFlags
+  featureFlags: FeatureEnablement
 ): Promise<DatabaseCreationTimings> {
   const codeql = await getCodeQL(config.codeQLCmd);
 
@@ -214,7 +214,7 @@ export async function runQueries(
   automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger,
-  featureFlags: FeatureFlags
+  featureFlags: FeatureEnablement
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
@@ -500,7 +500,7 @@ export async function runFinalize(
   memoryFlag: string,
   config: configUtils.Config,
   logger: Logger,
-  featureFlags: FeatureFlags
+  featureFlags: FeatureEnablement
 ): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });

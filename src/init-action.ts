@@ -15,7 +15,7 @@ import {
 import { getGitHubVersionActionsOnly } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Feature, FeatureFlags, Features } from "./feature-flags";
+import { Feature, FeatureEnablement, Features } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -318,7 +318,7 @@ async function run() {
 }
 
 async function getTrapCachingEnabled(
-  featureFlags: FeatureFlags
+  featureFlags: FeatureEnablement
 ): Promise<boolean> {
   const trapCaching = getOptionalInput("trap-caching");
   if (trapCaching !== undefined) {

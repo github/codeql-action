@@ -4,7 +4,7 @@ import { GitHubApiDetails } from "./api-client";
 import {
   Feature,
   featureConfig,
-  FeatureFlags,
+  FeatureEnablement,
   Features,
 } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
@@ -261,6 +261,24 @@ for (const featureFlag of Object.keys(featureConfig)) {
   }
 }
 
+// If we ever run into a situation where we no longer have any feature flags that
+// specify a minimum version, then we will have a bunch of code no longer being
+// tested. This is unlikely, and this test will fail if that happens.
+// If we do end up in that situation, then we should consider adding a synthetic
+// feature flag with a minium version that is only used for tests.
+test("At least one feature has a minimum version specified", (t) => {
+  t.assert(
+    Object.values(featureConfig).some((f) => f.minimumVersion !== undefined),
+    "At least one feature flag should have a minimum version specified"
+  );
+
+  // An even less likely scenario is that we no longer have any feature flags.
+  t.assert(
+    Object.values(featureConfig).length > 0,
+    "There should be at least one feature flag"
+  );
+});
+
 function assertAllFeaturesUndefinedInApi(t, loggedMessages: LoggedMessage[]) {
   for (const featureFlag of Object.keys(featureConfig)) {
     t.assert(
@@ -285,7 +303,7 @@ function setUpTests(
   tmpDir: string,
   logger = getRunnerLogger(true),
   gitHubVersion = { type: GitHubVariant.DOTCOM } as util.GitHubVersion
-): FeatureFlags {
+): FeatureEnablement {
   setupActionsVars(tmpDir, tmpDir);
 
   return new Features(gitHubVersion, testApiDetails, testRepositoryNwo, logger);

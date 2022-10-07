@@ -13,10 +13,14 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { createFeatureFlags, Feature, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests, setupActionsVars } from "./testing-utils";
+import {
+  setupTests,
+  setupActionsVars,
+  createFeatureFlags,
+} from "./testing-utils";
 import * as util from "./util";
 import { Mode, initializeEnvironment } from "./util";
 
@@ -76,7 +80,7 @@ async function mockApiAndSetupCodeQL({
   version,
 }: {
   apiDetails?: GitHubApiDetails;
-  featureFlags?: FeatureFlags;
+  featureFlags?: FeatureEnablement;
   isPinned?: boolean;
   tmpDir: string;
   toolsInput?: { input?: string };

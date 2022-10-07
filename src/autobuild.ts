@@ -1,13 +1,13 @@
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureFlags } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { Language, isTracedLanguage } from "./languages";
 import { Logger } from "./logging";
 import * as util from "./util";
 
 export async function determineAutobuildLanguages(
   config: configUtils.Config,
-  featureFlags: FeatureFlags,
+  featureFlags: FeatureEnablement,
   logger: Logger
 ): Promise<Language[] | undefined> {
   const isGoExtractionReconciliationEnabled =

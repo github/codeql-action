@@ -265,7 +265,7 @@ for (const featureFlag of Object.keys(featureConfig)) {
 // specify a minimum version, then we will have a bunch of code no longer being
 // tested. This is unlikely, and this test will fail if that happens.
 // If we do end up in that situation, then we should consider adding a synthetic
-// feature flag with a minium version that is only used for tests.
+// feature flag with a minimum version that is only used for tests.
 test("At least one feature has a minimum version specified", (t) => {
   t.assert(
     Object.values(featureConfig).some((f) => f.minimumVersion !== undefined),

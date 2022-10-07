@@ -66,7 +66,7 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
           (v: LoggedMessage) =>
             v.type === "debug" &&
             v.message ===
-              "Not running against github.com. Disabling all feature flags."
+              "Not running against github.com. Disabling all toggleable features."
         ) !== undefined
       );
     });
@@ -122,7 +122,7 @@ test("Feature flags exception is propagated if the API request errors", async (t
         ),
       {
         message:
-          "Encountered an error while trying to load feature flags: Error: some error message",
+          "Encountered an error while trying to determine feature enablement: Error: some error message",
       }
     );
   });
@@ -217,7 +217,7 @@ for (const featureFlag of Object.keys(featureConfig)) {
         await t.throwsAsync(
           async () => featureFlags.getValue(featureFlag as Feature),
           {
-            message: `Internal error: A minimum version is specified for feature flag ${featureFlag}, but no instance of CodeQL was provided.`,
+            message: `Internal error: A minimum version is specified for feature ${featureFlag}, but no instance of CodeQL was provided.`,
           }
         );
       });

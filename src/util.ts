@@ -899,6 +899,9 @@ export async function tryGetFolderBytes(
  * Run a promise for a given amount of time, and if it doesn't resolve within
  * that time, call the provided callback and then return undefined.
  *
+ * Note that this does NOT cancel the original promise, so that promise will
+ * continue in the background even after the timeout has expired.
+ *
  * @param timeoutMs The timeout in milliseconds.
  * @param promise The promise to run.
  * @param onTimeout A callback to call if the promise times out.
@@ -909,12 +912,18 @@ export async function withTimeout<T>(
   promise: Promise<T>,
   onTimeout: () => void
 ): Promise<T | undefined> {
+  let finished = false;
+  const mainTask = async () => {
+    const result = await promise;
+    finished = true;
+    return result;
+  };
   const timeout: Promise<undefined> = new Promise((resolve) => {
     setTimeout(() => {
-      onTimeout();
+      if (!finished) onTimeout();
       resolve(undefined);
     }, timeoutMs);
   });
 
-  return await Promise.race([promise, timeout]);
+  return await Promise.race([mainTask(), timeout]);
 }

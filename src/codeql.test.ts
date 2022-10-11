@@ -262,7 +262,7 @@ for (const [
 ] of TOOLCACHE_BYPASS_TEST_CASES) {
   test(`download codeql bundle ${
     shouldToolcacheBeBypassed ? "bypasses" : "does not bypass"
-  } toolcache when feature flag ${
+  } toolcache when feature ${
     isFeatureEnabled ? "enabled" : "disabled"
   } and tools: ${toolsInput} passed`, async (t) => {
     await util.withTmpDir(async (tmpDir) => {

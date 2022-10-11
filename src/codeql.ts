@@ -91,7 +91,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     processLevel: number | undefined,
-    featureFlags: FeatureEnablement,
+    featureEnablement: FeatureEnablement,
     logger: Logger
   ): Promise<void>;
   /**
@@ -772,14 +772,14 @@ async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       processLevel: number | undefined,
-      featureFlags: FeatureEnablement,
+      featureEnablement: FeatureEnablement,
       logger: Logger
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`
       );
       const isGoExtractionReconciliationEnabled =
-        await util.isGoExtractionReconciliationEnabled(featureFlags);
+        await util.isGoExtractionReconciliationEnabled(featureEnablement);
       if (
         config.languages.filter((l) =>
           isTracedLanguage(l, isGoExtractionReconciliationEnabled, logger)
@@ -822,7 +822,7 @@ async function getCodeQLForCmd(
       const configLocation = await generateCodescanningConfig(
         codeql,
         config,
-        featureFlags
+        featureEnablement
       );
       if (configLocation) {
         extraArgs.push(`--codescanning-config=${configLocation}`);
@@ -1274,9 +1274,9 @@ async function runTool(cmd: string, args: string[] = []) {
 async function generateCodescanningConfig(
   codeql: CodeQL,
   config: Config,
-  featureFlags: FeatureEnablement
+  featureEnablement: FeatureEnablement
 ): Promise<string | undefined> {
-  if (!(await util.useCodeScanningConfigInCli(codeql, featureFlags))) {
+  if (!(await util.useCodeScanningConfigInCli(codeql, featureEnablement))) {
     return;
   }
   const configLocation = path.resolve(config.tempDir, "user-config.yaml");

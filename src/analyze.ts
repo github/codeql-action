@@ -122,7 +122,7 @@ export async function createdDBForScannedLanguages(
   codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
-  featureFlags: FeatureEnablement
+  featureEnablement: FeatureEnablement
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
@@ -132,7 +132,7 @@ export async function createdDBForScannedLanguages(
     if (
       isScannedLanguage(
         language,
-        await util.isGoExtractionReconciliationEnabled(featureFlags),
+        await util.isGoExtractionReconciliationEnabled(featureEnablement),
         logger
       ) &&
       !dbIsFinalized(config, language, logger)
@@ -173,12 +173,12 @@ async function finalizeDatabaseCreation(
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
-  featureFlags: FeatureEnablement
+  featureEnablement: FeatureEnablement
 ): Promise<DatabaseCreationTimings> {
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await createdDBForScannedLanguages(codeql, config, logger, featureFlags);
+  await createdDBForScannedLanguages(codeql, config, logger, featureEnablement);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -214,7 +214,7 @@ export async function runQueries(
   automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger,
-  featureFlags: FeatureEnablement
+  featureEnablement: FeatureEnablement
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
@@ -240,7 +240,7 @@ export async function runQueries(
 
   const codeql = await getCodeQL(config.codeQLCmd);
 
-  await util.logCodeScanningConfigInCli(codeql, featureFlags, logger);
+  await util.logCodeScanningConfigInCli(codeql, featureEnablement, logger);
 
   for (const language of config.languages) {
     const queries = config.queries[language];
@@ -260,7 +260,7 @@ export async function runQueries(
     }
 
     try {
-      if (await util.useCodeScanningConfigInCli(codeql, featureFlags)) {
+      if (await util.useCodeScanningConfigInCli(codeql, featureEnablement)) {
         // If we are using the codescanning config in the CLI,
         // much of the work needed to generate the query suites
         // is done in the CLI. We just need to make a single
@@ -500,7 +500,7 @@ export async function runFinalize(
   memoryFlag: string,
   config: configUtils.Config,
   logger: Logger,
-  featureFlags: FeatureEnablement
+  featureEnablement: FeatureEnablement
 ): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });
@@ -516,7 +516,7 @@ export async function runFinalize(
     threadsFlag,
     memoryFlag,
     logger,
-    featureFlags
+    featureEnablement
   );
 
   const codeql = await getCodeQL(config.codeQLCmd);
@@ -529,7 +529,7 @@ export async function runFinalize(
     // Delete variables as specified by the end-tracing script
     await endTracingForCluster(
       config,
-      await util.isGoExtractionReconciliationEnabled(featureFlags),
+      await util.isGoExtractionReconciliationEnabled(featureEnablement),
       logger
     );
   } else {

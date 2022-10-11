@@ -20,7 +20,7 @@ export async function initCodeQL(
   apiDetails: GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  featureFlags: FeatureEnablement,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
@@ -29,7 +29,7 @@ export async function initCodeQL(
     apiDetails,
     tempDir,
     variant,
-    featureFlags,
+    featureEnablement,
     logger,
     true
   );
@@ -55,7 +55,7 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
-  featureFlags: FeatureEnablement,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -76,7 +76,7 @@ export async function initConfig(
     workspacePath,
     gitHubVersion,
     apiDetails,
-    featureFlags,
+    featureEnablement,
     logger
   );
   analysisPaths.printPathFiltersWarning(config, logger);
@@ -90,7 +90,7 @@ export async function runInit(
   sourceRoot: string,
   processName: string | undefined,
   processLevel: number | undefined,
-  featureFlags: FeatureEnablement,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
@@ -103,7 +103,7 @@ export async function runInit(
         sourceRoot,
         processName,
         processLevel,
-        featureFlags,
+        featureEnablement,
         logger
       );
     } else {
@@ -122,7 +122,7 @@ export async function runInit(
   return await getCombinedTracerConfig(
     config,
     codeql,
-    await util.isGoExtractionReconciliationEnabled(featureFlags),
+    await util.isGoExtractionReconciliationEnabled(featureEnablement),
     logger
   );
 }

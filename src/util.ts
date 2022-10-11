@@ -779,17 +779,17 @@ export function isInTestMode(): boolean {
  */
 export async function useCodeScanningConfigInCli(
   codeql: CodeQL,
-  featureFlags: FeatureEnablement
+  featureEnablement: FeatureEnablement
 ): Promise<boolean> {
-  return await featureFlags.getValue(Feature.CliConfigFileEnabled, codeql);
+  return await featureEnablement.getValue(Feature.CliConfigFileEnabled, codeql);
 }
 
 export async function logCodeScanningConfigInCli(
   codeql: CodeQL,
-  featureFlags: FeatureEnablement,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ) {
-  if (await useCodeScanningConfigInCli(codeql, featureFlags)) {
+  if (await useCodeScanningConfigInCli(codeql, featureEnablement)) {
     logger.info(
       "Code Scanning configuration file being processed in the codeql CLI."
     );
@@ -832,9 +832,9 @@ export function listFolder(dir: string): string[] {
 }
 
 export async function isGoExtractionReconciliationEnabled(
-  featureFlags: FeatureEnablement
+  featureEnablement: FeatureEnablement
 ): Promise<boolean> {
-  return await featureFlags.getValue(
+  return await featureEnablement.getValue(
     Feature.GolangExtractionReconciliationEnabled
   );
 }

@@ -140,13 +140,13 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  */
 async function runAutobuildIfLegacyGoWorkflow(
   config: Config,
-  featureFlags: FeatureEnablement,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
-  if (!(await util.isGoExtractionReconciliationEnabled(featureFlags))) {
+  if (!(await util.isGoExtractionReconciliationEnabled(featureEnablement))) {
     logger.debug(
       "Won't run Go autobuild since Go extraction reconciliation is not enabled."
     );
@@ -228,14 +228,14 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersionActionsOnly();
 
-    const featureFlags = new Features(
+    const features = new Features(
       gitHubVersion,
       apiDetails,
       repositoryNwo,
       logger
     );
 
-    await runAutobuildIfLegacyGoWorkflow(config, featureFlags, logger);
+    await runAutobuildIfLegacyGoWorkflow(config, features, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,
@@ -243,7 +243,7 @@ async function run() {
       memory,
       config,
       logger,
-      featureFlags
+      features
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
@@ -255,7 +255,7 @@ async function run() {
         actionsUtil.getOptionalInput("category"),
         config,
         logger,
-        featureFlags
+        features
       );
     }
 

@@ -175,9 +175,7 @@ export function mockCodeQLVersion(version) {
  *
  * This should be only used within tests.
  */
-export function createFeatureFlags(
-  enabledFeatures: Feature[]
-): FeatureEnablement {
+export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
   return {
     getValue: async (feature) => {
       return enabledFeatures.includes(feature);

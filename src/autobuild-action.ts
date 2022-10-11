@@ -76,7 +76,7 @@ async function run() {
     const gitHubVersion = await getGitHubVersionActionsOnly();
     checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
-    const featureFlags = new Features(
+    const features = new Features(
       gitHubVersion,
       getApiDetails(),
       parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
@@ -90,7 +90,7 @@ async function run() {
       );
     }
 
-    languages = await determineAutobuildLanguages(config, featureFlags, logger);
+    languages = await determineAutobuildLanguages(config, features, logger);
     if (languages !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {

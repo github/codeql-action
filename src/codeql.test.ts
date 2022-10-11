@@ -16,11 +16,7 @@ import * as defaults from "./defaults.json";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import {
-  setupTests,
-  setupActionsVars,
-  createFeatureFlags,
-} from "./testing-utils";
+import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
 import * as util from "./util";
 import { Mode, initializeEnvironment } from "./util";
 
@@ -73,14 +69,14 @@ test.beforeEach(() => {
 
 async function mockApiAndSetupCodeQL({
   apiDetails,
-  featureFlags,
+  featureEnablement,
   isPinned,
   tmpDir,
   toolsInput,
   version,
 }: {
   apiDetails?: GitHubApiDetails;
-  featureFlags?: FeatureEnablement;
+  featureEnablement?: FeatureEnablement;
   isPinned?: boolean;
   tmpDir: string;
   toolsInput?: { input?: string };
@@ -113,7 +109,7 @@ async function mockApiAndSetupCodeQL({
     apiDetails ?? sampleApiDetails,
     tmpDir,
     util.GitHubVariant.DOTCOM,
-    featureFlags ?? createFeatureFlags([]),
+    featureEnablement ?? createFeatures([]),
     getRunnerLogger(true),
     false
   );
@@ -176,7 +172,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true),
       false
     );
@@ -260,14 +256,14 @@ const TOOLCACHE_BYPASS_TEST_CASES: Array<
 ];
 
 for (const [
-  isFeatureFlagEnabled,
+  isFeatureEnabled,
   toolsInput,
   shouldToolcacheBeBypassed,
 ] of TOOLCACHE_BYPASS_TEST_CASES) {
   test(`download codeql bundle ${
     shouldToolcacheBeBypassed ? "bypasses" : "does not bypass"
   } toolcache when feature flag ${
-    isFeatureFlagEnabled ? "enabled" : "disabled"
+    isFeatureEnabled ? "enabled" : "disabled"
   } and tools: ${toolsInput} passed`, async (t) => {
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -284,8 +280,8 @@ for (const [
       await mockApiAndSetupCodeQL({
         version: defaults.bundleVersion,
         apiDetails: sampleApiDetails,
-        featureFlags: createFeatureFlags(
-          isFeatureFlagEnabled ? [Feature.BypassToolcacheEnabled] : []
+        featureEnablement: createFeatures(
+          isFeatureEnabled ? [Feature.BypassToolcacheEnabled] : []
         ),
         toolsInput: { input: toolsInput },
         tmpDir,
@@ -342,7 +338,7 @@ test("download codeql bundle from github ae endpoint", async (t) => {
       sampleGHAEApiDetails,
       tmpDir,
       util.GitHubVariant.GHAE,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true),
       false
     );
@@ -488,7 +484,7 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
       "",
       undefined,
       undefined,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -528,7 +524,7 @@ const injectedConfigMacro = test.macro({
         "",
         undefined,
         undefined,
-        createFeatureFlags([Feature.CliConfigFileEnabled]),
+        createFeatures([Feature.CliConfigFileEnabled]),
         getRunnerLogger(true)
       );
 
@@ -835,7 +831,7 @@ test("does not use injected config", async (t: ExecutionContext<unknown>) => {
       "",
       undefined,
       undefined,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 

@@ -49,7 +49,7 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
   test(`All feature flags are disabled if running against ${variant.description}`, async (t) => {
     await withTmpDir(async (tmpDir) => {
       const loggedMessages = [];
-      const featureFlags = setUpTests(
+      const featureEnablement = setUpTests(
         tmpDir,
         getRecordingLogger(loggedMessages),
         variant.gitHubVersion
@@ -57,7 +57,7 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
 
       for (const flag of Object.values(Feature)) {
         t.false(
-          await featureFlags.getValue(flag, includeCodeQlIfRequired(flag))
+          await featureEnablement.getValue(flag, includeCodeQlIfRequired(flag))
         );
       }
 
@@ -76,14 +76,19 @@ for (const variant of ALL_FEATURE_FLAGS_DISABLED_VARIANTS) {
 test("API response missing", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
-    const featureFlags = setUpTests(tmpDir, getRecordingLogger(loggedMessages));
+    const featureEnablement = setUpTests(
+      tmpDir,
+      getRecordingLogger(loggedMessages)
+    );
 
     mockFeatureFlagApiEndpoint(403, {});
 
     for (const flag of Object.values(Feature)) {
       t.assert(
-        (await featureFlags.getValue(flag, includeCodeQlIfRequired(flag))) ===
-          false
+        (await featureEnablement.getValue(
+          flag,
+          includeCodeQlIfRequired(flag)
+        )) === false
       );
     }
     assertAllFeaturesUndefinedInApi(t, loggedMessages);
@@ -93,14 +98,19 @@ test("API response missing", async (t) => {
 test("Feature flags are disabled if they're not returned in API response", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
-    const featureFlags = setUpTests(tmpDir, getRecordingLogger(loggedMessages));
+    const featureEnablement = setUpTests(
+      tmpDir,
+      getRecordingLogger(loggedMessages)
+    );
 
     mockFeatureFlagApiEndpoint(200, {});
 
     for (const flag of Object.values(Feature)) {
       t.assert(
-        (await featureFlags.getValue(flag, includeCodeQlIfRequired(flag))) ===
-          false
+        (await featureEnablement.getValue(
+          flag,
+          includeCodeQlIfRequired(flag)
+        )) === false
       );
     }
 
@@ -110,13 +120,13 @@ test("Feature flags are disabled if they're not returned in API response", async
 
 test("Feature flags exception is propagated if the API request errors", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const featureFlags = setUpTests(tmpDir);
+    const featureEnablement = setUpTests(tmpDir);
 
     mockFeatureFlagApiEndpoint(500, {});
 
     await t.throwsAsync(
       async () =>
-        featureFlags.getValue(
+        featureEnablement.getValue(
           Feature.MlPoweredQueriesEnabled,
           includeCodeQlIfRequired(Feature.MlPoweredQueriesEnabled)
         ),
@@ -128,133 +138,133 @@ test("Feature flags exception is propagated if the API request errors", async (t
   });
 });
 
-for (const featureFlag of Object.keys(featureConfig)) {
-  test(`Only feature flag '${featureFlag}' is enabled if enabled in the API response. Other flags disabled`, async (t) => {
+for (const feature of Object.keys(featureConfig)) {
+  test(`Only feature flag '${feature}' is enabled if enabled in the API response. Other flags disabled`, async (t) => {
     await withTmpDir(async (tmpDir) => {
-      const featureFlags = setUpTests(tmpDir);
+      const featureEnablement = setUpTests(tmpDir);
 
       // set all feature flags to false except the one we're testing
-      const expectedFeatureFlags: { [flag: string]: boolean } = {};
+      const expectedFeatureEnablement: { [flag: string]: boolean } = {};
       for (const f of Object.keys(featureConfig)) {
-        expectedFeatureFlags[f] = f === featureFlag;
+        expectedFeatureEnablement[f] = f === feature;
       }
-      mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
+      mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
       // retrieve the values of the actual feature flags
-      const actualFeatureFlags: { [flag: string]: boolean } = {};
+      const actualFeatureEnablement: { [flag: string]: boolean } = {};
       for (const f of Object.keys(featureConfig)) {
-        actualFeatureFlags[f] = await featureFlags.getValue(
+        actualFeatureEnablement[f] = await featureEnablement.getValue(
           f as Feature,
           includeCodeQlIfRequired(f)
         );
       }
 
       // Alls flags should be false except the one we're testing
-      t.deepEqual(actualFeatureFlags, expectedFeatureFlags);
+      t.deepEqual(actualFeatureEnablement, expectedFeatureEnablement);
     });
   });
 
-  test(`Only feature flag '${featureFlag}' is enabled if the associated environment variable is true. Others disabled.`, async (t) => {
+  test(`Only feature flag '${feature}' is enabled if the associated environment variable is true. Others disabled.`, async (t) => {
     await withTmpDir(async (tmpDir) => {
-      const featureFlags = setUpTests(tmpDir);
+      const featureEnablement = setUpTests(tmpDir);
 
-      const expectedFeatureFlags = initializeFeatures(false);
-      mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
+      const expectedFeatureEnablement = initializeFeatures(false);
+      mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
       // feature flag should be disabled initially
       t.assert(
-        !(await featureFlags.getValue(
-          featureFlag as Feature,
-          includeCodeQlIfRequired(featureFlag)
+        !(await featureEnablement.getValue(
+          feature as Feature,
+          includeCodeQlIfRequired(feature)
         ))
       );
 
       // set env var to true and check that the feature flag is now enabled
-      process.env[featureConfig[featureFlag].envVar] = "true";
+      process.env[featureConfig[feature].envVar] = "true";
       t.assert(
-        await featureFlags.getValue(
-          featureFlag as Feature,
-          includeCodeQlIfRequired(featureFlag)
+        await featureEnablement.getValue(
+          feature as Feature,
+          includeCodeQlIfRequired(feature)
         )
       );
     });
   });
 
-  test(`Feature flag '${featureFlag}' is disabled if the associated environment variable is false, even if enabled in API`, async (t) => {
+  test(`Feature flag '${feature}' is disabled if the associated environment variable is false, even if enabled in API`, async (t) => {
     await withTmpDir(async (tmpDir) => {
-      const featureFlags = setUpTests(tmpDir);
+      const featureEnablement = setUpTests(tmpDir);
 
-      const expectedFeatureFlags = initializeFeatures(true);
-      mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
+      const expectedFeatureEnablement = initializeFeatures(true);
+      mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
       // feature flag should be enabled initially
       t.assert(
-        await featureFlags.getValue(
-          featureFlag as Feature,
-          includeCodeQlIfRequired(featureFlag)
+        await featureEnablement.getValue(
+          feature as Feature,
+          includeCodeQlIfRequired(feature)
         )
       );
 
       // set env var to false and check that the feature flag is now disabled
-      process.env[featureConfig[featureFlag].envVar] = "false";
+      process.env[featureConfig[feature].envVar] = "false";
       t.assert(
-        !(await featureFlags.getValue(
-          featureFlag as Feature,
-          includeCodeQlIfRequired(featureFlag)
+        !(await featureEnablement.getValue(
+          feature as Feature,
+          includeCodeQlIfRequired(feature)
         ))
       );
     });
   });
 
-  if (featureConfig[featureFlag].minimumVersion !== undefined) {
-    test(`Getting Feature Flag '${featureFlag} should throw if no codeql is provided`, async (t) => {
+  if (featureConfig[feature].minimumVersion !== undefined) {
+    test(`Getting Feature Flag '${feature} should throw if no codeql is provided`, async (t) => {
       await withTmpDir(async (tmpDir) => {
-        const featureFlags = setUpTests(tmpDir);
+        const featureEnablement = setUpTests(tmpDir);
 
-        const expectedFeatureFlags = initializeFeatures(true);
-        mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
+        const expectedFeatureEnablement = initializeFeatures(true);
+        mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
         await t.throwsAsync(
-          async () => featureFlags.getValue(featureFlag as Feature),
+          async () => featureEnablement.getValue(feature as Feature),
           {
-            message: `Internal error: A minimum version is specified for feature ${featureFlag}, but no instance of CodeQL was provided.`,
+            message: `Internal error: A minimum version is specified for feature ${feature}, but no instance of CodeQL was provided.`,
           }
         );
       });
     });
   }
 
-  if (featureConfig[featureFlag].minimumVersion !== undefined) {
-    test(`Feature flag '${featureFlag}' is disabled if the minimum CLI version is below ${featureConfig[featureFlag].minimumVersion}`, async (t) => {
+  if (featureConfig[feature].minimumVersion !== undefined) {
+    test(`Feature flag '${feature}' is disabled if the minimum CLI version is below ${featureConfig[feature].minimumVersion}`, async (t) => {
       await withTmpDir(async (tmpDir) => {
-        const featureFlags = setUpTests(tmpDir);
+        const featureEnablement = setUpTests(tmpDir);
 
-        const expectedFeatureFlags = initializeFeatures(true);
-        mockFeatureFlagApiEndpoint(200, expectedFeatureFlags);
+        const expectedFeatureEnablement = initializeFeatures(true);
+        mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
         // feature flag should be disabled when an old CLI version is set
         let codeql = mockCodeQLVersion("2.0.0");
         t.assert(
-          !(await featureFlags.getValue(featureFlag as Feature, codeql))
+          !(await featureEnablement.getValue(feature as Feature, codeql))
         );
 
         // even setting the env var to true should not enable the feature flag if
         // the minimum CLI version is not met
-        process.env[featureConfig[featureFlag].envVar] = "true";
+        process.env[featureConfig[feature].envVar] = "true";
         t.assert(
-          !(await featureFlags.getValue(featureFlag as Feature, codeql))
+          !(await featureEnablement.getValue(feature as Feature, codeql))
         );
 
         // feature flag should be enabled when a new CLI version is set
         // and env var is not set
-        process.env[featureConfig[featureFlag].envVar] = "";
-        codeql = mockCodeQLVersion(featureConfig[featureFlag].minimumVersion);
-        t.assert(await featureFlags.getValue(featureFlag as Feature, codeql));
+        process.env[featureConfig[feature].envVar] = "";
+        codeql = mockCodeQLVersion(featureConfig[feature].minimumVersion);
+        t.assert(await featureEnablement.getValue(feature as Feature, codeql));
 
         // set env var to false and check that the feature flag is now disabled
-        process.env[featureConfig[featureFlag].envVar] = "false";
+        process.env[featureConfig[feature].envVar] = "false";
         t.assert(
-          !(await featureFlags.getValue(featureFlag as Feature, codeql))
+          !(await featureEnablement.getValue(feature as Feature, codeql))
         );
       });
     });
@@ -280,12 +290,12 @@ test("At least one feature has a minimum version specified", (t) => {
 });
 
 function assertAllFeaturesUndefinedInApi(t, loggedMessages: LoggedMessage[]) {
-  for (const featureFlag of Object.keys(featureConfig)) {
+  for (const feature of Object.keys(featureConfig)) {
     t.assert(
       loggedMessages.find(
         (v) =>
           v.type === "debug" &&
-          (v.message as string).includes(featureFlag) &&
+          (v.message as string).includes(feature) &&
           (v.message as string).includes("considering it disabled")
       ) !== undefined
     );

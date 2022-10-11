@@ -909,12 +909,18 @@ export async function withTimeout<T>(
   promise: Promise<T>,
   onTimeout: () => void
 ): Promise<T | undefined> {
+  let finished = false;
+  const mainTask = async () => {
+    const result = await promise;
+    finished = true;
+    return result;
+  };
   const timeout: Promise<undefined> = new Promise((resolve) => {
     setTimeout(() => {
-      onTimeout();
+      if (!finished) onTimeout();
       resolve(undefined);
     }, timeoutMs);
   });
 
-  return await Promise.race([promise, timeout]);
+  return await Promise.race([mainTask(), timeout]);
 }

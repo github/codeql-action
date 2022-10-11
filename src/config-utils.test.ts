@@ -1894,7 +1894,7 @@ const mlPoweredQueriesMacro = test.macro({
   exec: async (
     t: ExecutionContext,
     codeQLVersion: string,
-    isMlPoweredQueriesFlagEnabled: boolean,
+    isMlPoweredQueriesEnabled: boolean,
     packsInput: string | undefined,
     queriesInput: string | undefined,
     expectedVersionString: string | undefined
@@ -1936,7 +1936,7 @@ const mlPoweredQueriesMacro = test.macro({
         gitHubVersion,
         sampleApiDetails,
         createFeatures(
-          isMlPoweredQueriesFlagEnabled ? [Feature.MlPoweredQueriesEnabled] : []
+          isMlPoweredQueriesEnabled ? [Feature.MlPoweredQueriesEnabled] : []
         ),
         getRunnerLogger(true)
       );
@@ -1954,7 +1954,7 @@ const mlPoweredQueriesMacro = test.macro({
   title: (
     _providedTitle: string | undefined,
     codeQLVersion: string,
-    isMlPoweredQueriesFlagEnabled: boolean,
+    isMlPoweredQueriesEnabled: boolean,
     packsInput: string | undefined,
     queriesInput: string | undefined,
     expectedVersionString: string | undefined
@@ -1963,13 +1963,13 @@ const mlPoweredQueriesMacro = test.macro({
       expectedVersionString !== undefined
         ? `${expectedVersionString} are`
         : "aren't"
-    } loaded for packs: ${packsInput}, queries: ${queriesInput} using CLI v${codeQLVersion} when feature flag is ${
-      isMlPoweredQueriesFlagEnabled ? "enabled" : "disabled"
+    } loaded for packs: ${packsInput}, queries: ${queriesInput} using CLI v${codeQLVersion} when feature is ${
+      isMlPoweredQueriesEnabled ? "enabled" : "disabled"
     }`,
 });
 
-// macro, codeQLVersion, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, expectedVersionString
-// Test that ML-powered queries aren't run when the feature flag is off.
+// macro, codeQLVersion, isMlPoweredQueriesEnabled, packsInput, queriesInput, expectedVersionString
+// Test that ML-powered queries aren't run when the feature is off.
 test(
   mlPoweredQueriesMacro,
   "2.7.5",

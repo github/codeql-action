@@ -53,7 +53,7 @@ type GitHubFeatureFlagsApiResponse = Partial<Record<Feature, boolean>>;
 /**
  * Determines the enablement status of a number of features.
  * If feature enablement is not able to be determined locally, a request to the
- * github API is made to determine the enablement status.
+ * GitHub API is made to determine the enablement status.
  */
 export class Features implements FeatureEnablement {
   private gitHubFeatureFlags: GitHubFeatureFlags;
@@ -74,15 +74,15 @@ export class Features implements FeatureEnablement {
 
   /**
    *
-   * @param feature The feature flag to check.
+   * @param feature The feature to check.
    * @param codeql An optional CodeQL object. If provided, and a `minimumVersion` is specified for the
-   *        feature flag, the version of the CodeQL CLI will be checked against the minimum version.
-   *        If the version is less than the minimum version, the feature flag will be considered
-   *        disabled. If not provided, and a `minimumVersion` is specified for the feature flag, the
+   *        feature, the version of the CodeQL CLI will be checked against the minimum version.
+   *        If the version is less than the minimum version, the feature will be considered
+   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, the
    *        this function will throw.
-   * @returns true if the feature flag is enabled, false otherwise.
+   * @returns true if the feature is enabled, false otherwise.
    *
-   * @throws if a `minimumVersion` is specified for the feature flag, and `codeql` is not provided.
+   * @throws if a `minimumVersion` is specified for the feature, and `codeql` is not provided.
    */
   async getValue(feature: Feature, codeql?: CodeQL): Promise<boolean> {
     if (!codeql && featureConfig[feature].minimumVersion) {

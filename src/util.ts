@@ -5,6 +5,7 @@ import { Readable } from "stream";
 import { promisify } from "util";
 
 import * as core from "@actions/core";
+import * as bluebird from "bluebird";
 import del from "del";
 import getFolderSize from "get-folder-size";
 import * as semver from "semver";
@@ -909,18 +910,18 @@ export async function withTimeout<T>(
   promise: Promise<T>,
   onTimeout: () => void
 ): Promise<T | undefined> {
-  let finished = false;
-  const mainTask = async () => {
-    const result = await promise;
-    finished = true;
-    return result;
-  };
-  const timeout: Promise<undefined> = new Promise((resolve) => {
-    setTimeout(() => {
-      if (!finished) onTimeout();
-      resolve(undefined);
-    }, timeoutMs);
+  bluebird.Promise.config({
+    cancellation: true,
   });
-
-  return await Promise.race([mainTask(), timeout]);
+  const promiseWithTimeout = new bluebird.Promise<T>(function (resolve) {
+    resolve(promise);
+  }).timeout(timeoutMs);
+  try {
+    return await promiseWithTimeout;
+  } catch (e) {
+    if (!(e instanceof bluebird.TimeoutError)) throw e;
+    promiseWithTimeout.cancel();
+    onTimeout();
+    return undefined;
+  }
 }

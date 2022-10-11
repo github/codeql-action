@@ -40,6 +40,7 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   Mode,
+  withTimeout,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -136,6 +137,14 @@ async function sendSuccessStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
+  const longTask = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, 999_999_999);
+  });
+  await withTimeout(10, longTask, () => {
+    logger.info("Long task timed out");
+  });
   initializeEnvironment(Mode.actions, pkg.version);
   await checkActionVersion(pkg.version);
 
@@ -328,6 +337,7 @@ async function getTrapCachingEnabled(
 async function runWrapper() {
   try {
     await run();
+    process.exit();
   } catch (error) {
     core.setFailed(`init action failed: ${error}`);
     console.log(error);

@@ -632,3 +632,18 @@ test("withTimeout on short task", async (t) => {
   t.deepEqual(shortTaskTimedOut, false);
   t.deepEqual(result, 99);
 });
+
+test("withTimeout doesn't call callback if promise resolves", async (t) => {
+  let shortTaskTimedOut = false;
+  const shortTask = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(99);
+    }, shortTime);
+  });
+  const result = await util.withTimeout(100, shortTask, () => {
+    shortTaskTimedOut = true;
+  });
+  await new Promise((r) => setTimeout(r, 200));
+  t.deepEqual(shortTaskTimedOut, false);
+  t.deepEqual(result, 99);
+});

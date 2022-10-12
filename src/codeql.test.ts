@@ -13,10 +13,10 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { createFeatureFlags, FeatureFlag, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests, setupActionsVars } from "./testing-utils";
+import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
 import * as util from "./util";
 import { Mode, initializeEnvironment } from "./util";
 
@@ -69,14 +69,14 @@ test.beforeEach(() => {
 
 async function mockApiAndSetupCodeQL({
   apiDetails,
-  featureFlags,
+  featureEnablement,
   isPinned,
   tmpDir,
   toolsInput,
   version,
 }: {
   apiDetails?: GitHubApiDetails;
-  featureFlags?: FeatureFlags;
+  featureEnablement?: FeatureEnablement;
   isPinned?: boolean;
   tmpDir: string;
   toolsInput?: { input?: string };
@@ -109,7 +109,7 @@ async function mockApiAndSetupCodeQL({
     apiDetails ?? sampleApiDetails,
     tmpDir,
     util.GitHubVariant.DOTCOM,
-    featureFlags ?? createFeatureFlags([]),
+    featureEnablement ?? createFeatures([]),
     getRunnerLogger(true),
     false
   );
@@ -172,7 +172,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true),
       false
     );
@@ -256,14 +256,14 @@ const TOOLCACHE_BYPASS_TEST_CASES: Array<
 ];
 
 for (const [
-  isFeatureFlagEnabled,
+  isFeatureEnabled,
   toolsInput,
   shouldToolcacheBeBypassed,
 ] of TOOLCACHE_BYPASS_TEST_CASES) {
   test(`download codeql bundle ${
     shouldToolcacheBeBypassed ? "bypasses" : "does not bypass"
-  } toolcache when feature flag ${
-    isFeatureFlagEnabled ? "enabled" : "disabled"
+  } toolcache when feature ${
+    isFeatureEnabled ? "enabled" : "disabled"
   } and tools: ${toolsInput} passed`, async (t) => {
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -280,8 +280,8 @@ for (const [
       await mockApiAndSetupCodeQL({
         version: defaults.bundleVersion,
         apiDetails: sampleApiDetails,
-        featureFlags: createFeatureFlags(
-          isFeatureFlagEnabled ? [FeatureFlag.BypassToolcacheEnabled] : []
+        featureEnablement: createFeatures(
+          isFeatureEnabled ? [Feature.BypassToolcacheEnabled] : []
         ),
         toolsInput: { input: toolsInput },
         tmpDir,
@@ -338,7 +338,7 @@ test("download codeql bundle from github ae endpoint", async (t) => {
       sampleGHAEApiDetails,
       tmpDir,
       util.GitHubVariant.GHAE,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true),
       false
     );
@@ -484,7 +484,7 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
       "",
       undefined,
       undefined,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -505,47 +505,41 @@ const injectedConfigMacro = test.macro({
     configOverride: Partial<Config>,
     expectedConfig: any
   ) => {
-    const origCODEQL_PASS_CONFIG_TO_CLI = process.env.CODEQL_PASS_CONFIG_TO_CLI;
-    process.env["CODEQL_PASS_CONFIG_TO_CLI"] = "true";
-    try {
-      await util.withTmpDir(async (tempDir) => {
-        const runnerConstructorStub = stubToolRunnerConstructor();
-        const codeqlObject = await codeql.getCodeQLForTesting();
-        sinon
-          .stub(codeqlObject, "getVersion")
-          .resolves(codeql.CODEQL_VERSION_CONFIG_FILES);
+    await util.withTmpDir(async (tempDir) => {
+      const runnerConstructorStub = stubToolRunnerConstructor();
+      const codeqlObject = await codeql.getCodeQLForTesting();
+      sinon
+        .stub(codeqlObject, "getVersion")
+        .resolves(codeql.CODEQL_VERSION_CONFIG_FILES);
 
-        const thisStubConfig: Config = {
-          ...stubConfig,
-          ...configOverride,
-          tempDir,
-          augmentationProperties,
-        };
+      const thisStubConfig: Config = {
+        ...stubConfig,
+        ...configOverride,
+        tempDir,
+        augmentationProperties,
+      };
 
-        await codeqlObject.databaseInitCluster(
-          thisStubConfig,
-          "",
-          undefined,
-          undefined,
-          createFeatureFlags([]),
-          getRunnerLogger(true)
-        );
+      await codeqlObject.databaseInitCluster(
+        thisStubConfig,
+        "",
+        undefined,
+        undefined,
+        createFeatures([Feature.CliConfigFileEnabled]),
+        getRunnerLogger(true)
+      );
 
-        const args = runnerConstructorStub.firstCall.args[1];
-        // should have used an config file
-        const configArg = args.find((arg: string) =>
-          arg.startsWith("--codescanning-config=")
-        );
-        t.truthy(configArg, "Should have injected a codescanning config");
-        const configFile = configArg.split("=")[1];
-        const augmentedConfig = yaml.load(fs.readFileSync(configFile, "utf8"));
-        t.deepEqual(augmentedConfig, expectedConfig);
+      const args = runnerConstructorStub.firstCall.args[1];
+      // should have used an config file
+      const configArg = args.find((arg: string) =>
+        arg.startsWith("--codescanning-config=")
+      );
+      t.truthy(configArg, "Should have injected a codescanning config");
+      const configFile = configArg.split("=")[1];
+      const augmentedConfig = yaml.load(fs.readFileSync(configFile, "utf8"));
+      t.deepEqual(augmentedConfig, expectedConfig);
 
-        await del(configFile, { force: true });
-      });
-    } finally {
-      process.env["CODEQL_PASS_CONFIG_TO_CLI"] = origCODEQL_PASS_CONFIG_TO_CLI;
-    }
+      await del(configFile, { force: true });
+    });
   },
 
   title: (providedTitle = "") =>
@@ -837,7 +831,7 @@ test("does not use injected config", async (t: ExecutionContext<unknown>) => {
       "",
       undefined,
       undefined,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 

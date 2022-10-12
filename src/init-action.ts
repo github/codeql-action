@@ -15,7 +15,7 @@ import {
 import { getGitHubVersionActionsOnly } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureFlag, FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement, Features } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -157,7 +157,7 @@ async function run() {
     getRequiredEnvParam("GITHUB_REPOSITORY")
   );
 
-  const featureFlags = new GitHubFeatureFlags(
+  const features = new Features(
     gitHubVersion,
     apiDetails,
     repositoryNwo,
@@ -185,7 +185,7 @@ async function run() {
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
-      featureFlags,
+      features,
       logger
     );
     codeql = initCodeQLResult.codeql;
@@ -199,7 +199,7 @@ async function run() {
       getOptionalInput("registries"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
-      await getTrapCachingEnabled(featureFlags),
+      await getTrapCachingEnabled(features),
       // Debug mode is enabled if:
       // - The `init` Action is passed `debug: true`.
       // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
@@ -213,7 +213,7 @@ async function run() {
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       gitHubVersion,
       apiDetails,
-      featureFlags,
+      features,
       logger
     );
 
@@ -276,7 +276,7 @@ async function run() {
       sourceRoot,
       "Runner.Worker.exe",
       undefined,
-      featureFlags,
+      features,
       logger
     );
     if (tracerConfig !== undefined) {
@@ -318,11 +318,13 @@ async function run() {
 }
 
 async function getTrapCachingEnabled(
-  featureFlags: FeatureFlags
+  featureEnablement: FeatureEnablement
 ): Promise<boolean> {
   const trapCaching = getOptionalInput("trap-caching");
-  if (trapCaching !== undefined) return trapCaching === "true";
-  return await featureFlags.getValue(FeatureFlag.TrapCachingEnabled);
+  if (trapCaching !== undefined) {
+    return trapCaching === "true";
+  }
+  return await featureEnablement.getValue(Feature.TrapCachingEnabled);
 }
 
 async function runWrapper() {

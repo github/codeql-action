@@ -899,8 +899,9 @@ export async function tryGetFolderBytes(
  * Run a promise for a given amount of time, and if it doesn't resolve within
  * that time, call the provided callback and then return undefined.
  *
- * Note that this does NOT cancel the original promise, so that promise will
- * continue in the background even after the timeout has expired.
+ * Important: This does NOT cancel the original promise, so that promise will
+ * continue in the background even after the timeout has expired. If the
+ * original promise hangs, then this will prevent the process terminating.
  *
  * @param timeoutMs The timeout in milliseconds.
  * @param promise The promise to run.

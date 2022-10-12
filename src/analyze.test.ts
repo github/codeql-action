@@ -14,10 +14,9 @@ import {
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import * as count from "./count-loc";
-import { createFeatureFlags } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests, setupActionsVars } from "./testing-utils";
+import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -140,7 +139,7 @@ test("status report fields and search path setting", async (t) => {
         undefined,
         config,
         getRunnerLogger(true),
-        createFeatureFlags([])
+        createFeatures([])
       );
       const hasPacks = language in packs;
       const statusReportKeys = Object.keys(builtinStatusReport).sort();
@@ -190,7 +189,7 @@ test("status report fields and search path setting", async (t) => {
         undefined,
         config,
         getRunnerLogger(true),
-        createFeatureFlags([])
+        createFeatures([])
       );
       t.deepEqual(Object.keys(customStatusReport).length, 2);
       t.true(

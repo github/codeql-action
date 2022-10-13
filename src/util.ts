@@ -892,3 +892,24 @@ export async function withTimeout<T>(
 
   return await Promise.race([mainTask(), timeout]);
 }
+
+/**
+ * This function implements a heuristic to determine whether the
+ * runner we are on is hosted by GitHub. It does this by checking
+ * the name of the runner against the list of known GitHub-hosted
+ * runner names. It also checks for the presence of a toolcache
+ * directory with the name hostedtoolcache which is present on
+ * GitHub-hosted runners.
+ *
+ * @returns true iff the runner is hosted by GitHub
+ */
+export function isHostedRunner() {
+  return (
+    // Name of the runner on hosted Windows runners
+    process.env["RUNNER_NAME"]?.includes("Hosted Agent") ||
+    // Name of the runner on hosted POSIX runners
+    process.env["RUNNER_NAME"]?.includes("GitHub Actions") ||
+    // Segment of the path to the tool cache on all hosted runners
+    process.env["RUNNER_TOOL_CACHE"]?.includes("hostedtoolcache")
+  );
+}

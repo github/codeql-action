@@ -30,7 +30,7 @@
     "@actions/tool-cache": "^2.0.0",
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^3.0.9",
-    "@octokit/types": "^7.1.1",
+    "@octokit/types": "^8.0.0",
     "adm-zip": "^0.5.9",
     "commander": "^8.1.0",
     "console-log-level": "^1.4.1",

@@ -39,6 +39,7 @@ import {
   getRequiredEnvParam,
   getThreadsFlagValue,
   initializeEnvironment,
+  isHostedRunner,
   Mode,
 } from "./util";
 
@@ -320,10 +321,14 @@ async function run() {
 async function getTrapCachingEnabled(
   featureEnablement: FeatureEnablement
 ): Promise<boolean> {
+  // If the workflow specified something always respect that
   const trapCaching = getOptionalInput("trap-caching");
-  if (trapCaching !== undefined) {
-    return trapCaching === "true";
-  }
+  if (trapCaching !== undefined) return trapCaching === "true";
+
+  // On self-hosted runners which may have slow network access, disable TRAP caching by default
+  if (!isHostedRunner()) return false;
+
+  // On hosted runners, respect the feature flag
   return await featureEnablement.getValue(Feature.TrapCachingEnabled);
 }
 

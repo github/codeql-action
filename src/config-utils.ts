@@ -24,7 +24,6 @@ import {
   codeQlVersionAbove,
   getMlPoweredJsQueriesPack,
   GitHubVersion,
-  logCodeScanningConfigInCli,
   ML_POWERED_JS_QUERIES_PACK_NAME,
   useCodeScanningConfigInCli,
 } from "./util";
@@ -1705,8 +1704,6 @@ export async function initConfig(
   // When using the codescanning config in the CLI, pack downloads
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
-  await logCodeScanningConfigInCli(codeQL, featureFlags, logger);
-
   if (!(await useCodeScanningConfigInCli(codeQL, featureFlags))) {
     const registries = parseRegistries(registriesInput);
     await downloadPacks(

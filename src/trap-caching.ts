@@ -8,7 +8,7 @@ import { CodeQL, CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES } from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { codeQlVersionAbove, tryGetFolderBytes, withTimeout } from "./util";
+import { codeQlVersionAbove, tryGetFolderBytes } from "./util";
 
 // This constant should be bumped if we make a breaking change
 // to how the CodeQL Action stores or retrieves the TRAP cache,
@@ -23,12 +23,6 @@ const CACHE_SIZE_MB = 1024;
 // This constant sets the minimum size in megabytes of a TRAP
 // cache for us to consider it worth uploading.
 const MINIMUM_CACHE_MB_TO_UPLOAD = 10;
-
-// The maximum number of milliseconds to wait for TRAP cache
-// uploads or downloads to complete before continuing. Note
-// this timeout is per operation, so will be run as many
-// times as there are languages with TRAP caching enabled.
-const MAX_CACHE_OPERATION_MS = 120_000; // Two minutes
 
 export async function getTrapCachingExtractorConfigArgs(
   config: Config
@@ -113,17 +107,9 @@ export async function downloadTrapCaches(
     logger.info(
       `Looking in Actions cache for TRAP cache with key ${preferredKey}`
     );
-    const found = await withTimeout(
-      MAX_CACHE_OPERATION_MS,
-      cache.restoreCache([cacheDir], preferredKey, [
-        await cachePrefix(codeql, language), // Fall back to any cache with the right key prefix
-      ]),
-      () => {
-        logger.info(
-          `Timed out waiting for TRAP cache download for ${language}, will continue without it`
-        );
-      }
-    );
+    const found = await cache.restoreCache([cacheDir], preferredKey, [
+      await cachePrefix(codeql, language), // Fall back to any cache with the right key prefix
+    ]);
     if (found === undefined) {
       // We didn't find a TRAP cache in the Actions cache, so the directory on disk is
       // still just an empty directory. There's no reason to tell the extractor to use it,
@@ -150,6 +136,7 @@ export async function uploadTrapCaches(
 ): Promise<boolean> {
   if (!(await actionsUtil.isAnalyzingDefaultBranch())) return false; // Only upload caches from the default branch
 
+  const toAwait: Array<Promise<number>> = [];
   for (const language of config.languages) {
     const cacheDir = config.trapCaches[language];
     if (cacheDir === undefined) continue;
@@ -172,16 +159,9 @@ export async function uploadTrapCaches(
       process.env.GITHUB_SHA || "unknown"
     );
     logger.info(`Uploading TRAP cache to Actions cache with key ${key}`);
-    await withTimeout(
-      MAX_CACHE_OPERATION_MS,
-      cache.saveCache([cacheDir], key),
-      () => {
-        logger.info(
-          `Timed out waiting for TRAP cache for ${language} to upload, will continue without uploading`
-        );
-      }
-    );
+    toAwait.push(cache.saveCache([cacheDir], key));
   }
+  await Promise.all(toAwait);
   return true;
 }
 

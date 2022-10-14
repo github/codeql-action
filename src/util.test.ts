@@ -601,34 +601,3 @@ function mockVersion(version) {
     },
   } as CodeQL;
 }
-
-const longTime = 999_999;
-const shortTime = 10;
-
-test("withTimeout on long task", async (t) => {
-  let longTaskTimedOut = false;
-  const longTask = new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(42);
-    }, longTime);
-  });
-  const result = await util.withTimeout(shortTime, longTask, () => {
-    longTaskTimedOut = true;
-  });
-  t.deepEqual(longTaskTimedOut, true);
-  t.deepEqual(result, undefined);
-});
-
-test("withTimeout on short task", async (t) => {
-  let shortTaskTimedOut = false;
-  const shortTask = new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(99);
-    }, shortTime);
-  });
-  const result = await util.withTimeout(longTime, shortTask, () => {
-    shortTaskTimedOut = true;
-  });
-  t.deepEqual(shortTaskTimedOut, false);
-  t.deepEqual(result, 99);
-});

@@ -22,17 +22,17 @@ runs:
       run: |
         if [[ ${{ inputs.version }} == "nightly-latest" ]]; then
           export LATEST=`gh release list --repo dsp-testing/codeql-cli-nightlies -L 1 | cut -f 3`
-          echo "::set-output name=tools-url::https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$LATEST/codeql-bundle.tar.gz"
+          echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$LATEST/codeql-bundle.tar.gz" >> $GITHUB_OUTPUT
         elif [[ ${{ inputs.version }} == *"nightly"* ]]; then
           export VERSION=`echo ${{ inputs.version }} | sed -e 's/^.*\-//'`
-          echo "::set-output name=tools-url::https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-$VERSION-manual/codeql-bundle.tar.gz"
+          echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-$VERSION-manual/codeql-bundle.tar.gz" >> $GITHUB_OUTPUT
         elif [[ ${{ inputs.version }} == *"stable"* ]]; then
           export VERSION=`echo ${{ inputs.version }} | sed -e 's/^.*\-//'`
-          echo "::set-output name=tools-url::https://github.com/github/codeql-action/releases/download/codeql-bundle-$VERSION/codeql-bundle.tar.gz"
+          echo "tools-url=https://github.com/github/codeql-action/releases/download/codeql-bundle-$VERSION/codeql-bundle.tar.gz" >> $GITHUB_OUTPUT
         elif [[ ${{ inputs.version }} == "latest" ]]; then
-          echo "::set-output name=tools-url::latest"
+          echo "tools-url=latest" >> $GITHUB_OUTPUT
         elif [[ ${{ inputs.version }} == "cached" ]]; then
-          echo "::set-output name=tools-url::"
+          echo "tools-url=" >> $GITHUB_OUTPUT
         else
           echo "::error Unrecognized version specified!"
         fi

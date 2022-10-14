@@ -79,7 +79,7 @@ jobs:
                 echo "Missing database initialization logs"
                 exit 1
               fi
-              if [[ ! -d "$language/log" ]] ; then
+              if [[ ! "$language" == "go" ]] && [[ ! -d "$language/log" ]] ; then
                 echo "Missing logs for $language"
                 exit 1
               fi

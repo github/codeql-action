@@ -12,17 +12,13 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import {
-  CodeQL,
-  CODEQL_VERSION_CONFIG_FILES,
-  CODEQL_VERSION_NEW_TRACING,
-} from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import {
   Config,
   parsePacksSpecification,
   prettyPrintPack,
 } from "./config-utils";
-import { FeatureFlag, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -524,13 +520,6 @@ export enum EnvVar {
    * own sandwiched workflow mechanism
    */
   FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
-
-  /**
-   * If set to the "true" string and the codeql CLI version is greater than
-   * `CODEQL_VERSION_CONFIG_FILES`, then the codeql-action will pass the
-   * the codeql-config file to the codeql CLI to be processed there.
-   */
-  CODEQL_PASS_CONFIG_TO_CLI = "CODEQL_PASS_CONFIG_TO_CLI",
 }
 
 const exportVar = (mode: Mode, name: string, value: string) => {
@@ -591,10 +580,6 @@ export function getRequiredEnvParam(paramName: string): string {
     throw new Error(`${paramName} environment variable must be set`);
   }
   return value;
-}
-
-function getOptionalEnvParam(paramName: string): string {
-  return process.env[paramName] || "";
 }
 
 export class HTTPError extends Error {
@@ -794,27 +779,25 @@ export function isInTestMode(): boolean {
  */
 export async function useCodeScanningConfigInCli(
   codeql: CodeQL,
-  featureFlags: FeatureFlags
+  featureEnablement: FeatureEnablement
 ): Promise<boolean> {
-  const envVarIsEnabled = getOptionalEnvParam(EnvVar.CODEQL_PASS_CONFIG_TO_CLI);
+  return await featureEnablement.getValue(Feature.CliConfigFileEnabled, codeql);
+}
 
-  // If the user has explicitly turned off the feature, then don't use it.
-  if (envVarIsEnabled.toLocaleLowerCase() === "false") {
-    return false;
+export async function logCodeScanningConfigInCli(
+  codeql: CodeQL,
+  featureEnablement: FeatureEnablement,
+  logger: Logger
+) {
+  if (await useCodeScanningConfigInCli(codeql, featureEnablement)) {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql CLI."
+    );
+  } else {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql-action."
+    );
   }
-
-  // If the user has explicitly turned on the feature, then use it.
-  // Or if the feature flag is enabled, then use it.
-  const isEnabled =
-    envVarIsEnabled.toLocaleLowerCase() === "true" ||
-    (await featureFlags.getValue(FeatureFlag.CliConfigFileEnabled));
-
-  if (!isEnabled) {
-    return false;
-  }
-
-  // If the CLI version is too old, then don't use it.
-  return await codeQlVersionAbove(codeql, CODEQL_VERSION_CONFIG_FILES);
 }
 
 /*
@@ -849,13 +832,10 @@ export function listFolder(dir: string): string[] {
 }
 
 export async function isGoExtractionReconciliationEnabled(
-  featureFlags: FeatureFlags
+  featureEnablement: FeatureEnablement
 ): Promise<boolean> {
-  return (
-    process.env["CODEQL_ACTION_RECONCILE_GO_EXTRACTION"] === "true" ||
-    (await featureFlags.getValue(
-      FeatureFlag.GolangExtractionReconciliationEnabled
-    ))
+  return await featureEnablement.getValue(
+    Feature.GolangExtractionReconciliationEnabled
   );
 }
 
@@ -877,4 +857,59 @@ export async function tryGetFolderBytes(
     logger.warning(`Encountered an error while getting size of folder: ${e}`);
     return undefined;
   }
+}
+
+/**
+ * Run a promise for a given amount of time, and if it doesn't resolve within
+ * that time, call the provided callback and then return undefined.
+ *
+ * Important: This does NOT cancel the original promise, so that promise will
+ * continue in the background even after the timeout has expired. If the
+ * original promise hangs, then this will prevent the process terminating.
+ *
+ * @param timeoutMs The timeout in milliseconds.
+ * @param promise The promise to run.
+ * @param onTimeout A callback to call if the promise times out.
+ * @returns The result of the promise, or undefined if the promise times out.
+ */
+export async function withTimeout<T>(
+  timeoutMs: number,
+  promise: Promise<T>,
+  onTimeout: () => void
+): Promise<T | undefined> {
+  let finished = false;
+  const mainTask = async () => {
+    const result = await promise;
+    finished = true;
+    return result;
+  };
+  const timeout: Promise<undefined> = new Promise((resolve) => {
+    setTimeout(() => {
+      if (!finished) onTimeout();
+      resolve(undefined);
+    }, timeoutMs);
+  });
+
+  return await Promise.race([mainTask(), timeout]);
+}
+
+/**
+ * This function implements a heuristic to determine whether the
+ * runner we are on is hosted by GitHub. It does this by checking
+ * the name of the runner against the list of known GitHub-hosted
+ * runner names. It also checks for the presence of a toolcache
+ * directory with the name hostedtoolcache which is present on
+ * GitHub-hosted runners.
+ *
+ * @returns true iff the runner is hosted by GitHub
+ */
+export function isHostedRunner() {
+  return (
+    // Name of the runner on hosted Windows runners
+    process.env["RUNNER_NAME"]?.includes("Hosted Agent") ||
+    // Name of the runner on hosted POSIX runners
+    process.env["RUNNER_NAME"]?.includes("GitHub Actions") ||
+    // Segment of the path to the tool cache on all hosted runners
+    process.env["RUNNER_TOOL_CACHE"]?.includes("hostedtoolcache")
+  );
 }

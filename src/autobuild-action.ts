@@ -11,7 +11,7 @@ import {
 import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
-import { GitHubFeatureFlags } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -76,7 +76,7 @@ async function run() {
     const gitHubVersion = await getGitHubVersionActionsOnly();
     checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
-    const featureFlags = new GitHubFeatureFlags(
+    const features = new Features(
       gitHubVersion,
       getApiDetails(),
       parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
@@ -90,7 +90,7 @@ async function run() {
       );
     }
 
-    languages = await determineAutobuildLanguages(config, featureFlags, logger);
+    languages = await determineAutobuildLanguages(config, features, logger);
     if (languages !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {

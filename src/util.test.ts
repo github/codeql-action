@@ -9,9 +9,7 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { CodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { createFeatureFlags, FeatureFlag } from "./feature-flags";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -495,109 +493,48 @@ test("listFolder", async (t) => {
   });
 });
 
-test("useCodeScanningConfigInCli with no env var", async (t) => {
-  t.assert(
-    !(await util.useCodeScanningConfigInCli(
-      mockVersion("2.10.0"),
-      createFeatureFlags([])
-    ))
-  );
+const longTime = 999_999;
+const shortTime = 10;
 
-  t.assert(
-    !(await util.useCodeScanningConfigInCli(
-      mockVersion("2.10.1"),
-      createFeatureFlags([])
-    ))
-  );
-
-  t.assert(
-    !(await util.useCodeScanningConfigInCli(
-      mockVersion("2.10.0"),
-      createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
-    ))
-  );
-
-  // Yay! It works!
-  t.assert(
-    await util.useCodeScanningConfigInCli(
-      mockVersion("2.10.1"),
-      createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
-    )
-  );
+test("withTimeout on long task", async (t) => {
+  let longTaskTimedOut = false;
+  const longTask = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(42);
+    }, longTime);
+  });
+  const result = await util.withTimeout(shortTime, longTask, () => {
+    longTaskTimedOut = true;
+  });
+  t.deepEqual(longTaskTimedOut, true);
+  t.deepEqual(result, undefined);
 });
 
-for (const val of ["TRUE", "true", "True"]) {
-  test(`useCodeScanningConfigInCli with env var ${val}`, async (t) => {
-    process.env[util.EnvVar.CODEQL_PASS_CONFIG_TO_CLI] = val;
-    t.assert(
-      !(await util.useCodeScanningConfigInCli(
-        mockVersion("2.10.0"),
-        createFeatureFlags([])
-      ))
-    );
-
-    t.assert(
-      !(await util.useCodeScanningConfigInCli(
-        mockVersion("2.10.0"),
-        createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
-      ))
-    );
-
-    // Yay! It works!
-    t.assert(
-      await util.useCodeScanningConfigInCli(
-        mockVersion("2.10.1"),
-        createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
-      )
-    );
-
-    t.assert(
-      await util.useCodeScanningConfigInCli(
-        mockVersion("2.10.1"),
-        createFeatureFlags([])
-      )
-    );
+test("withTimeout on short task", async (t) => {
+  let shortTaskTimedOut = false;
+  const shortTask = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(99);
+    }, shortTime);
   });
-}
-
-for (const val of ["FALSE", "false", "False"]) {
-  test(`useCodeScanningConfigInCli with env var ${val}`, async (t) => {
-    // Never turned on when env var is false
-    process.env[util.EnvVar.CODEQL_PASS_CONFIG_TO_CLI] = val;
-    t.assert(
-      !(await util.useCodeScanningConfigInCli(
-        mockVersion("2.10.0"),
-        createFeatureFlags([])
-      ))
-    );
-
-    t.assert(
-      !(await util.useCodeScanningConfigInCli(
-        mockVersion("2.10.0"),
-        createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
-      ))
-    );
-
-    t.assert(
-      !(await util.useCodeScanningConfigInCli(
-        mockVersion("2.10.1"),
-        createFeatureFlags([FeatureFlag.CliConfigFileEnabled])
-      ))
-    );
-
-    t.assert(
-      !(await util.useCodeScanningConfigInCli(
-        mockVersion("2.10.1"),
-        createFeatureFlags([])
-      ))
-    );
+  const result = await util.withTimeout(longTime, shortTask, () => {
+    shortTaskTimedOut = true;
   });
-}
+  t.deepEqual(shortTaskTimedOut, false);
+  t.deepEqual(result, 99);
+});
 
-function mockVersion(version) {
-  return {
-    async getVersion() {
-      return version;
-    },
-  } as CodeQL;
-}
+test("withTimeout doesn't call callback if promise resolves", async (t) => {
+  let shortTaskTimedOut = false;
+  const shortTask = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(99);
+    }, shortTime);
+  });
+  const result = await util.withTimeout(100, shortTask, () => {
+    shortTaskTimedOut = true;
+  });
+  await new Promise((r) => setTimeout(r, 200));
+  t.deepEqual(shortTaskTimedOut, false);
+  t.deepEqual(result, 99);
+});

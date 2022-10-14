@@ -3,10 +3,8 @@ name: "Check SARIF for default queries with Single include, Single exclude"
 query-filters:
 # This should run js/path-injection and js/zipslip
 - include:
-    tags contain:
-        - external/cwe/cwe-022
+    tags contain: external/cwe/cwe-022
 
 # Removes js/path-injection
 - exclude:
-    id:
-        - js/path-injection
+    id: js/path-injection

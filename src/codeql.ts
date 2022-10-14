@@ -421,7 +421,7 @@ async function getCodeQLBundleDownloadURL(
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
- * @returns a { CodeQL, toolsVersion } object.
+ * @returns
  */
 export async function setupCodeQL(
   codeqlURL: string | undefined,
@@ -479,7 +479,6 @@ export async function setupCodeQL(
               `CodeQL in cache overriding the default ${CODEQL_BUNDLE_VERSION}`
             );
             codeqlFolder = tmpCodeqlFolder;
-            codeqlURLVersion = codeqlVersions[0];
           }
         }
       }

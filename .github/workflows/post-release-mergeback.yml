@@ -47,11 +47,10 @@ jobs:
         id: getVersion
         run: |
           VERSION="v$(jq '.version' -r 'package.json')"
-          echo "::set-output name=version::${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
           short_sha="${GITHUB_SHA:0:8}"
           NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
-          echo "::set-output name=newBranch::${NEW_BRANCH}"
-
+          echo "newBranch=${NEW_BRANCH}" >> $GITHUB_OUTPUT
 
       - name: Dump branches
         env:
@@ -77,7 +76,7 @@ jobs:
           exists="$?"
           if [ "${exists}" -eq 0 ]; then
             echo "Tag ${VERSION} exists. Not going to re-release."
-            echo "::set-output name=exists::true"
+            echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "Tag ${VERSION} does not exist yet."
           fi
@@ -122,7 +121,7 @@ jobs:
             - [ ] Remove and re-add the "Update dependencies" label to the PR to trigger just this workflow.
             - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.
             - [ ] Mark the PR as ready for review to trigger the full set of PR checks.
-            - [ ] Approve and merge the PR.
+            - [ ] Approve and merge the PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.
           EOF
           )
 

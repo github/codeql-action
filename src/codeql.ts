@@ -15,7 +15,7 @@ import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
-import { FeatureFlag, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
@@ -91,7 +91,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     processLevel: number | undefined,
-    featureFlags: FeatureFlags,
+    featureEnablement: FeatureEnablement,
     logger: Logger
   ): Promise<void>;
   /**
@@ -247,7 +247,6 @@ const CODEQL_VERSION_GROUP_RULES = "2.5.5";
 const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
 export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
-export const CODEQL_VERSION_ML_POWERED_QUERIES = "2.7.5";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
 const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
@@ -417,7 +416,7 @@ async function getCodeQLBundleDownloadURL(
  * @param apiDetails
  * @param tempDir
  * @param variant
- * @param featureFlags
+ * @param features
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
@@ -428,7 +427,7 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  featureFlags: FeatureFlags,
+  features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
@@ -439,12 +438,12 @@ export async function setupCodeQL(
       codeqlURL === "latest"
         ? '"tools: latest" was requested'
         : // If the user hasn't requested a particular CodeQL version, then bypass
-        // the toolcache when the appropriate feature flag is enabled. This
+        // the toolcache when the appropriate feature is enabled. This
         // allows us to quickly rollback a broken bundle that has made its way
         // into the toolcache.
         codeqlURL === undefined &&
-          (await featureFlags.getValue(FeatureFlag.BypassToolcacheEnabled))
-        ? "a specific version of CodeQL was not requested and the bypass toolcache feature flag is enabled"
+          (await features.getValue(Feature.BypassToolcacheEnabled))
+        ? "a specific version of CodeQL was not requested and the bypass toolcache feature is enabled"
         : undefined;
     const forceLatest = forceLatestReason !== undefined;
     if (forceLatest) {
@@ -773,14 +772,14 @@ async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       processLevel: number | undefined,
-      featureFlags: FeatureFlags,
+      featureEnablement: FeatureEnablement,
       logger: Logger
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`
       );
       const isGoExtractionReconciliationEnabled =
-        await util.isGoExtractionReconciliationEnabled(featureFlags);
+        await util.isGoExtractionReconciliationEnabled(featureEnablement);
       if (
         config.languages.filter((l) =>
           isTracedLanguage(l, isGoExtractionReconciliationEnabled, logger)
@@ -823,7 +822,7 @@ async function getCodeQLForCmd(
       const configLocation = await generateCodescanningConfig(
         codeql,
         config,
-        featureFlags
+        featureEnablement
       );
       if (configLocation) {
         extraArgs.push(`--codescanning-config=${configLocation}`);
@@ -1275,9 +1274,9 @@ async function runTool(cmd: string, args: string[] = []) {
 async function generateCodescanningConfig(
   codeql: CodeQL,
   config: Config,
-  featureFlags: FeatureFlags
+  featureEnablement: FeatureEnablement
 ): Promise<string | undefined> {
-  if (!(await util.useCodeScanningConfigInCli(codeql, featureFlags))) {
+  if (!(await util.useCodeScanningConfigInCli(codeql, featureEnablement))) {
     return;
   }
   const configLocation = path.resolve(config.tempDir, "user-config.yaml");

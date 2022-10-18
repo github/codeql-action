@@ -1,17 +1,17 @@
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureFlags } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { Language, isTracedLanguage } from "./languages";
 import { Logger } from "./logging";
 import * as util from "./util";
 
 export async function determineAutobuildLanguages(
   config: configUtils.Config,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<Language[] | undefined> {
   const isGoExtractionReconciliationEnabled =
-    await util.isGoExtractionReconciliationEnabled(featureFlags);
+    await util.isGoExtractionReconciliationEnabled(featureEnablement);
   // Attempt to find a language to autobuild
   // We want pick the dominant language in the repo from the ones we're able to build
   // The languages are sorted in order specified by user or by lines of code if we got

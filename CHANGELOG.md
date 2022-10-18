@@ -1,5 +1,10 @@
 # CodeQL Action Changelog
 
+## 1.1.28 - 18 Oct 2022
+
+- Update default CodeQL bundle version to 2.11.1. [#1294](https://github.com/github/codeql-action/pull/1294)
+- Replace uses of GitHub Actions command `set-output` because it is now deprecated. See more information in the [GitHub Changelog](https://github.blog/changelog/2022-10-11-github-actions-deprecating-save-state-and-set-output-commands/). [#1301](https://github.com/github/codeql-action/pull/1301)
+
 ## 1.1.27 - 06 Oct 2022
 
 - We are rolling out a feature of the CodeQL Action in October 2022 that changes the way that Go code is analyzed to be more consistent with other compiled languages like C/C++, C#, and Java. You do not need to alter your code scanning workflows. If you encounter any problems, please [file an issue](https://github.com/github/codeql-action/issues) or open a private ticket with GitHub Support and request an escalation to engineering.

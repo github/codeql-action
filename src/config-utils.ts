@@ -10,12 +10,11 @@ import * as api from "./api-client";
 import {
   CodeQL,
   CODEQL_VERSION_GHES_PACK_DOWNLOAD,
-  CODEQL_VERSION_ML_POWERED_QUERIES,
   CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS,
   ResolveQueriesOutput,
 } from "./codeql";
 import * as externalQueries from "./external-queries";
-import { FeatureFlag, FeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -390,7 +389,7 @@ async function addBuiltinSuiteQueries(
   resultMap: Queries,
   packs: Packs,
   suiteName: string,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   configFile?: string
 ): Promise<boolean> {
   let injectedMlQueries = false;
@@ -412,8 +411,7 @@ async function addBuiltinSuiteQueries(
     languages.includes("javascript") &&
     (found === "security-extended" || found === "security-and-quality") &&
     !packs.javascript?.some(isMlPoweredJsQueriesPack) &&
-    (await featureFlags.getValue(FeatureFlag.MlPoweredQueriesEnabled)) &&
-    (await codeQlVersionAbove(codeQL, CODEQL_VERSION_ML_POWERED_QUERIES))
+    (await featureEnablement.getValue(Feature.MlPoweredQueriesEnabled, codeQL))
   ) {
     if (!packs.javascript) {
       packs.javascript = [];
@@ -545,7 +543,7 @@ async function parseQueryUses(
   tempDir: string,
   workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   logger: Logger,
   configFile?: string
 ): Promise<boolean> {
@@ -574,7 +572,7 @@ async function parseQueryUses(
       resultMap,
       packs,
       queryUses,
-      featureFlags,
+      featureEnablement,
       configFile
     );
   }
@@ -950,7 +948,7 @@ async function addQueriesAndPacksFromWorkflow(
   tempDir: string,
   workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<boolean> {
   let injectedMlQueries = false;
@@ -968,7 +966,7 @@ async function addQueriesAndPacksFromWorkflow(
       tempDir,
       workspacePath,
       apiDetails,
-      featureFlags,
+      featureEnablement,
       logger
     );
     injectedMlQueries = injectedMlQueries || didInject;
@@ -1007,7 +1005,7 @@ export async function getDefaultConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<Config> {
   const languages = await getLanguages(
@@ -1046,7 +1044,7 @@ export async function getDefaultConfig(
         tempDir,
         workspacePath,
         apiDetails,
-        featureFlags,
+        featureEnablement,
         logger
       );
   }
@@ -1116,7 +1114,7 @@ async function loadConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -1197,7 +1195,7 @@ async function loadConfig(
         tempDir,
         workspacePath,
         apiDetails,
-        featureFlags,
+        featureEnablement,
         logger
       );
   }
@@ -1222,7 +1220,7 @@ async function loadConfig(
         tempDir,
         workspacePath,
         apiDetails,
-        featureFlags,
+        featureEnablement,
         logger,
         configFile
       );
@@ -1640,7 +1638,7 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<Config> {
   let config: Config;
@@ -1663,7 +1661,7 @@ export async function initConfig(
       workspacePath,
       gitHubVersion,
       apiDetails,
-      featureFlags,
+      featureEnablement,
       logger
     );
   } else {
@@ -1683,7 +1681,7 @@ export async function initConfig(
       workspacePath,
       gitHubVersion,
       apiDetails,
-      featureFlags,
+      featureEnablement,
       logger
     );
   }
@@ -1705,9 +1703,9 @@ export async function initConfig(
   // When using the codescanning config in the CLI, pack downloads
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
-  await logCodeScanningConfigInCli(codeQL, featureFlags, logger);
+  await logCodeScanningConfigInCli(codeQL, featureEnablement, logger);
 
-  if (!(await useCodeScanningConfigInCli(codeQL, featureFlags))) {
+  if (!(await useCodeScanningConfigInCli(codeQL, featureEnablement))) {
     const registries = parseRegistries(registriesInput);
     await downloadPacks(
       codeQL,

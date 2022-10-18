@@ -19,7 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { FeatureFlags, GitHubFeatureFlags } from "./feature-flags";
+import { FeatureEnablement, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -126,7 +126,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
 }
 
 /**
- * When Go extraction reconciliation is enabled, either via the feature flag
+ * When Go extraction reconciliation is enabled, either via the feature
  * or an environment variable, we will attempt to autobuild Go to preserve
  * compatibility for users who have set up Go using a legacy scanning style
  * CodeQL workflow, i.e. one without an autobuild step or manual build
@@ -140,13 +140,13 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  */
 async function runAutobuildIfLegacyGoWorkflow(
   config: Config,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
-  if (!(await util.isGoExtractionReconciliationEnabled(featureFlags))) {
+  if (!(await util.isGoExtractionReconciliationEnabled(featureEnablement))) {
     logger.debug(
       "Won't run Go autobuild since Go extraction reconciliation is not enabled."
     );
@@ -228,14 +228,14 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersionActionsOnly();
 
-    const featureFlags = new GitHubFeatureFlags(
+    const features = new Features(
       gitHubVersion,
       apiDetails,
       repositoryNwo,
       logger
     );
 
-    await runAutobuildIfLegacyGoWorkflow(config, featureFlags, logger);
+    await runAutobuildIfLegacyGoWorkflow(config, features, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,
@@ -243,7 +243,7 @@ async function run() {
       memory,
       config,
       logger,
-      featureFlags
+      features
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
@@ -255,7 +255,7 @@ async function run() {
         actionsUtil.getOptionalInput("category"),
         config,
         logger,
-        featureFlags
+        features
       );
     }
 

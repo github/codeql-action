@@ -9,10 +9,10 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { createFeatureFlags, FeatureFlag } from "./feature-flags";
+import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { setupTests, createFeatures } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -102,7 +102,7 @@ test("load empty config", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       logger
     );
 
@@ -123,7 +123,7 @@ test("load empty config", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         logger
       )
     );
@@ -173,7 +173,7 @@ test("loading config saves config", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       logger
     );
 
@@ -211,7 +211,7 @@ test("load input outside of workspace", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -251,7 +251,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -292,7 +292,7 @@ test("load non-existent input", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -399,7 +399,7 @@ test("load non-empty input", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -470,7 +470,7 @@ test("Default queries are used", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -549,7 +549,7 @@ test("Queries can be specified in config file", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -627,7 +627,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -703,7 +703,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -770,7 +770,7 @@ test("Multiple queries can be specified in workflow file, no config file require
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -858,7 +858,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
 
@@ -940,7 +940,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         getRunnerLogger(true)
       );
       t.fail("initConfig did not throw error");
@@ -1012,7 +1012,7 @@ test("API client used when reading remote config", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
     t.assert(spyGetContents.called);
@@ -1043,7 +1043,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -1082,7 +1082,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -1125,7 +1125,7 @@ test("No detected languages", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -1157,7 +1157,7 @@ test("Unknown languages", async (t) => {
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         getRunnerLogger(true)
       );
       throw new Error("initConfig did not throw error");
@@ -1214,7 +1214,7 @@ test("Config specifies packages", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
     t.deepEqual(packs as unknown, {
@@ -1275,7 +1275,7 @@ test("Config specifies packages for multiple languages", async (t) => {
       tmpDir,
       gitHubVersion,
       sampleApiDetails,
-      createFeatureFlags([]),
+      createFeatures([]),
       getRunnerLogger(true)
     );
     t.deepEqual(packs as unknown, {
@@ -1347,7 +1347,7 @@ function doInvalidInputTest(
           tmpDir,
           gitHubVersion,
           sampleApiDetails,
-          createFeatureFlags([]),
+          createFeatures([]),
           getRunnerLogger(true)
         );
         throw new Error("initConfig did not throw error");
@@ -1894,7 +1894,7 @@ const mlPoweredQueriesMacro = test.macro({
   exec: async (
     t: ExecutionContext,
     codeQLVersion: string,
-    isMlPoweredQueriesFlagEnabled: boolean,
+    isMlPoweredQueriesEnabled: boolean,
     packsInput: string | undefined,
     queriesInput: string | undefined,
     expectedVersionString: string | undefined
@@ -1935,10 +1935,8 @@ const mlPoweredQueriesMacro = test.macro({
         tmpDir,
         gitHubVersion,
         sampleApiDetails,
-        createFeatureFlags(
-          isMlPoweredQueriesFlagEnabled
-            ? [FeatureFlag.MlPoweredQueriesEnabled]
-            : []
+        createFeatures(
+          isMlPoweredQueriesEnabled ? [Feature.MlPoweredQueriesEnabled] : []
         ),
         getRunnerLogger(true)
       );
@@ -1956,7 +1954,7 @@ const mlPoweredQueriesMacro = test.macro({
   title: (
     _providedTitle: string | undefined,
     codeQLVersion: string,
-    isMlPoweredQueriesFlagEnabled: boolean,
+    isMlPoweredQueriesEnabled: boolean,
     packsInput: string | undefined,
     queriesInput: string | undefined,
     expectedVersionString: string | undefined
@@ -1965,22 +1963,13 @@ const mlPoweredQueriesMacro = test.macro({
       expectedVersionString !== undefined
         ? `${expectedVersionString} are`
         : "aren't"
-    } loaded for packs: ${packsInput}, queries: ${queriesInput} using CLI v${codeQLVersion} when feature flag is ${
-      isMlPoweredQueriesFlagEnabled ? "enabled" : "disabled"
+    } loaded for packs: ${packsInput}, queries: ${queriesInput} using CLI v${codeQLVersion} when feature is ${
+      isMlPoweredQueriesEnabled ? "enabled" : "disabled"
     }`,
 });
 
-// macro, codeQLVersion, isMlPoweredQueriesFlagEnabled, packsInput, queriesInput, expectedVersionString
-// Test that ML-powered queries aren't run on v2.7.4 of the CLI.
-test(
-  mlPoweredQueriesMacro,
-  "2.7.4",
-  true,
-  undefined,
-  "security-extended",
-  undefined
-);
-// Test that ML-powered queries aren't run when the feature flag is off.
+// macro, codeQLVersion, isMlPoweredQueriesEnabled, packsInput, queriesInput, expectedVersionString
+// Test that ML-powered queries aren't run when the feature is off.
 test(
   mlPoweredQueriesMacro,
   "2.7.5",

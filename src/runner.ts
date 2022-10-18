@@ -8,11 +8,11 @@ import { runFinalize, runQueries } from "./analyze";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
-import { createFeatureFlags } from "./feature-flags";
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
 import { Language, parseLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { createFeatures } from "./testing-utils";
 import * as upload_lib from "./upload-lib";
 import {
   checkGitHubVersionInRange,
@@ -229,7 +229,7 @@ program
             apiDetails,
             tempDir,
             gitHubVersion.type,
-            createFeatureFlags([]),
+            createFeatures([]),
             logger
           )
         ).codeql;
@@ -253,7 +253,7 @@ program
         workspacePath,
         gitHubVersion,
         apiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         logger
       );
 
@@ -264,7 +264,7 @@ program
         sourceRoot,
         parseTraceProcessName(),
         parseTraceProcessLevel(),
-        createFeatureFlags([]),
+        createFeatures([]),
         logger
       );
       if (tracerConfig === undefined) {
@@ -377,7 +377,7 @@ program
       } else {
         languages = await determineAutobuildLanguages(
           config,
-          createFeatureFlags([]),
+          createFeatures([]),
           logger
         );
       }
@@ -508,7 +508,7 @@ program
         memory,
         config,
         logger,
-        createFeatureFlags([])
+        createFeatures([])
       );
       await runQueries(
         outputDir,
@@ -518,7 +518,7 @@ program
         cmd.category,
         config,
         logger,
-        createFeatureFlags([])
+        createFeatures([])
       );
 
       if (!cmd.upload) {

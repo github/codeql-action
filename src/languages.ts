@@ -45,22 +45,15 @@ export function isTracedLanguage(
   isGoExtractionReconciliationEnabled: boolean,
   logger: Logger
 ): boolean {
-  if (process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "true") {
+  if ("CODEQL_EXTRACTOR_GO_BUILD_TRACING" in process.env) {
     logger.warning(
-      "The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable was set to 'true', but it must " +
-        "be 'on' to enable Go build tracing. Setting it to 'on'."
+      "The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable is deprecated and its behavior is now the default behavior."
     );
-    process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] = "on";
-    core.exportVariable("CODEQL_EXTRACTOR_GO_BUILD_TRACING", "on");
   }
-
-  const shouldTraceGo =
-    process.env["CODEQL_EXTRACTOR_GO_BUILD_TRACING"] === "on" ||
-    isGoExtractionReconciliationEnabled;
 
   return (
     ["cpp", "java", "csharp", "swift"].includes(language) ||
-    (shouldTraceGo && language === Language.go)
+    (isGoExtractionReconciliationEnabled && language === Language.go)
   );
 }
 

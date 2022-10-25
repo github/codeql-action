@@ -1,5 +1,3 @@
-import * as core from "@actions/core";
-
 import { Logger } from "./logging";
 
 // All the languages supported by CodeQL

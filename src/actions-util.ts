@@ -601,6 +601,12 @@ export interface StatusReportBase {
   /** State this action is currently in. */
   status: ActionStatus;
   /**
+   * Testing environment: Set if non-production environment.
+   * The server accepts one of the following values:
+   *  ["", "qa-rc", "qa-rc-1", "qa-rc-2", "qa-experiment-1", "qa-experiment-2", "qa-experiment-3"].
+   */
+  testing_environment: string;
+  /**
    * Information about the enablement of the ML-powered JS query pack.
    *
    * @see {@link util.getMlPoweredJsQueriesStatus}
@@ -675,6 +681,8 @@ export async function createStatusReportBase(
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
   const codeQlCliVersion = getCachedCodeQlVersion();
   const actionRef = process.env["GITHUB_ACTION_REF"];
+  const testingEnvironment =
+    process.env["CODEQL_ACTION_TESTING_ENVIRONMENT"] || "";
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
@@ -689,6 +697,7 @@ export async function createStatusReportBase(
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),
     status,
+    testing_environment: testingEnvironment,
     runner_os: runnerOs,
     action_version: pkg.version,
   };

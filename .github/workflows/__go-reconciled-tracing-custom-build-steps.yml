@@ -103,6 +103,4 @@ jobs:
           exit 1
         fi
     env:
-  # Enable reconciled Go tracing beta functionality
-      CODEQL_ACTION_RECONCILE_GO_EXTRACTION: 'true'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

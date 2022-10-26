@@ -26,7 +26,7 @@ export const featureConfig: Record<
   },
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
-    minimumVersion: "2.10.1",
+    minimumVersion: "2.11.1",
   },
   [Feature.GolangExtractionReconciliationEnabled]: {
     envVar: "CODEQL_GOLANG_EXTRACTION_RECONCILIATION",

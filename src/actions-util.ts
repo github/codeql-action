@@ -16,7 +16,6 @@ import {
   getCodeQLDatabasePath,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
-  isGitHubGhesVersionBelow,
   isHTTPError,
   isInTestMode,
   UserError,
@@ -749,14 +748,6 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S
 ): Promise<boolean> {
-  const gitHubVersion = await api.getGitHubVersionActionsOnly();
-  if (isGitHubGhesVersionBelow(gitHubVersion, "3.2.0")) {
-    // GHES 3.1 and earlier versions reject unexpected properties, which means
-    // that they will reject status reports with newly added properties.
-    // Inhibiting status reporting for GHES < 3.2 avoids such failures.
-    return true;
-  }
-
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
   // If in test mode we don't want to upload the results

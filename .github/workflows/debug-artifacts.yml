@@ -19,8 +19,31 @@ jobs:
   upload-artifacts:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        version: [stable-20210308, stable-20210319, stable-20210809, cached, latest, nightly-latest]
+        include:
+          - os: ubuntu-20.04
+            version: stable-20210308
+          - os: macos-latest
+            version: stable-20210308
+          - os: ubuntu-20.04
+            version: stable-20210319
+          - os: macos-latest
+            version: stable-20210319
+          - os: ubuntu-20.04
+            version: stable-20210809
+          - os: macos-latest
+            version: stable-20210809
+          - os: ubuntu-latest
+            version: cached
+          - os: macos-latest
+            version: cached
+          - os: ubuntu-latest
+            version: latest
+          - os: macos-latest
+            version: latest
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
     name: Upload debug artifacts
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -58,11 +81,15 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          OPERATING_SYSTEMS="ubuntu-latest macos-latest"
           VERSIONS="stable-20210308 stable-20210319 stable-20210809 cached latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
-          for os in $OPERATING_SYSTEMS; do
-            for version in $VERSIONS; do
+          for version in $VERSIONS; do
+            if [[ "$version" =~ stable-(20210308|20210319|20210809) ]]; then
+              OPERATING_SYSTEMS="ubuntu-20.04 macos-latest"
+            else
+              OPERATING_SYSTEMS="ubuntu-latest macos-latest"
+            fi
+            for os in $OPERATING_SYSTEMS; do
               pushd "./my-debug-artifacts-$os-$version"
               echo "Artifacts from version $version on $os:"
               for language in $LANGUAGES; do

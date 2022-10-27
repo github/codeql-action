@@ -85,7 +85,9 @@ jobs:
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             if [[ "$version" =~ stable-(20210308|20210319|20210809) ]]; then
-              OPERATING_SYSTEMS="ubuntu-20.04 macos-latest"
+              # Note the absence of the period in "ubuntu-2004": this is present in the image name
+              # but not the artifact name
+              OPERATING_SYSTEMS="ubuntu-2004 macos-latest"
             else
               OPERATING_SYSTEMS="ubuntu-latest macos-latest"
             fi

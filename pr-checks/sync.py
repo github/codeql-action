@@ -22,8 +22,8 @@ def isCompatibleWithLatestImages(version):
     if version in ["cached", "latest", "nightly-latest"]:
         return True
     date = version.split("-")[1]
-    # The first version of the CodeQL CLI compatible with the latest runner images is 2.7.3.
-    # This appears in CodeQL Bundle version codeql-bundle-20211208.
+    # The first version of the CodeQL CLI compatible with `ubuntu-22.04` and `windows-2022` is
+    # 2.7.3. This appears in CodeQL Bundle version codeql-bundle-20211208.
     return date >= "20211208"
 
 

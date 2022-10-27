@@ -1,6 +1,6 @@
 name: "Go: Reconciled tracing with legacy workflow"
 description: "Checks that we run the autobuilder in legacy workflows with neither an autobuild step nor manual build steps"
-os: ["ubuntu-latest", "macos-latest"]
+operatingSystems: ["ubuntu", "macos"]
 env:
   # Enable reconciled Go tracing beta functionality
   CODEQL_ACTION_RECONCILE_GO_EXTRACTION: "true"

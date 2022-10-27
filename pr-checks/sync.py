@@ -1,6 +1,7 @@
 import ruamel.yaml
 import os
 
+# The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
     # The oldest supported CodeQL version: 2.4.5. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
     "stable-20210308",
@@ -15,13 +16,31 @@ defaultTestVersions = [
     # A nightly build directly from the our private repo, built in the last 24 hours.
     "nightly-latest"
 ]
-defaultOperatingSystems = ["ubuntu-latest", "macos-latest", "windows-2019"]
+
+
+def isCompatibleWithLatestImages(version):
+    if version in ["cached", "latest", "nightly-latest"]:
+        return True
+    date = version.split("-")[1]
+    # The first version of the CodeQL CLI compatible with the latest runner images is 2.7.3.
+    # This appears in CodeQL Bundle version codeql-bundle-20211208.
+    return date >= "20211208"
+
+
+def operatingSystemsForVersion(version):
+    if isCompatibleWithLatestImages(version):
+        return ["ubuntu-latest", "macos-latest", "windows-latest"]
+    else:
+        return ["ubuntu-20.04", "macos-latest", "windows-2019"]
+
+
 header = """# Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
 """
+
 
 class NonAliasingRTRepresenter(ruamel.yaml.representer.RoundTripRepresenter):
     def ignore_aliases(self, data):
@@ -38,13 +57,6 @@ allJobs = {}
 for file in os.listdir('checks'):
     with open(f"checks/{file}", 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
-
-    versions = defaultTestVersions
-    if 'versions' in checkSpecification:
-        versions = checkSpecification['versions']
-    operatingSystems = defaultOperatingSystems
-    if 'os' in checkSpecification:
-        operatingSystems = checkSpecification['os']
 
     steps = [
         {
@@ -63,20 +75,17 @@ for file in os.listdir('checks'):
     steps.extend(checkSpecification['steps'])
 
     matrix = []
-    for version in versions:
-        for os in operatingSystems:
+    for version in checkSpecification.get('versions', defaultTestVersions):
+        runnerImages = operatingSystemsForVersion(version)
+        if checkSpecification.get('operatingSystems', None):
+            runnerImages = [image for image in runnerImages for operatingSystem in checkSpecification['operatingSystems']
+                            if image.startswith(operatingSystem)]
+
+        for runnerImage in runnerImages:
             matrix.append({
-                'os': os,
+                'os': runnerImage,
                 'version': version
             })
-            if (version == 'latest' or version == 'nightly-latest') and os == 'windows-2019':
-                # New versions of the CLI should also work with Windows Server 2022.
-                # Once all versions of the CLI that we test against work with Windows Server 2022,
-                # we should remove this logic and instead just add windows-2022 to the test matrix.
-                matrix.append({
-                    'os': 'windows-2022',
-                    'version': version
-                })
 
     checkJob = {
         'strategy': {

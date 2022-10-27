@@ -1,7 +1,7 @@
 name: "Proxy test"
 description: "Tests using a proxy specified by the https_proxy environment variable"
 versions: ["latest"]
-os: ["ubuntu-latest"]
+operatingSystems: ["ubuntu"]
 container:
   image: ubuntu:18.04
   options: --dns 127.0.0.1

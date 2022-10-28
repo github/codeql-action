@@ -52,7 +52,8 @@ export class CommandInvocationError extends Error {
     cmd: string,
     args: string[],
     exitCode: number,
-    public error: string
+    error: string,
+    public output: string
   ) {
     super(
       `Failure invoking ${cmd} with arguments ${args}.\n
@@ -766,7 +767,7 @@ async function getCodeQLForCmd(
       } catch (e) {
         if (
           e instanceof CommandInvocationError &&
-          e.error.includes(
+          e.output.includes(
             "undefined symbol: __libc_dlopen_mode, version GLIBC_PRIVATE"
           ) &&
           process.platform === "linux" &&
@@ -1294,7 +1295,7 @@ async function runTool(cmd: string, args: string[] = []) {
     ignoreReturnCode: true,
   }).exec();
   if (exitCode !== 0)
-    throw new CommandInvocationError(cmd, args, exitCode, error);
+    throw new CommandInvocationError(cmd, args, exitCode, error, output);
   return output;
 }
 

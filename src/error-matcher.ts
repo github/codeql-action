@@ -13,7 +13,9 @@ export const namedMatchersForTesting: { [key: string]: ErrorMatcher } = {
   */
   noSourceCodeFound: {
     exitCode: 32,
-    outputRegex: new RegExp("No JavaScript or TypeScript code found\\."),
+    outputRegex: new RegExp(
+      "Only found JavaScript or TypeScript files that were empty or contained syntax errors\\."
+    ),
     message:
       "No code found during the build. Please see:\n" +
       "https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning#no-code-found-during-the-build",

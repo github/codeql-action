@@ -1,7 +1,7 @@
 name: "Autobuild working directory"
 description: "Tests working-directory input of autobuild action"
 versions: ["latest"]
-os: ["ubuntu-latest"]
+operatingSystems: ["ubuntu"]
 steps:
   - name: Test setup
     shell: bash

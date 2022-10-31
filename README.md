@@ -37,6 +37,11 @@ on:
     #        *  * * * *
     - cron: '30 1 * * 0'
 
+# We cancel any in-progess scans on the same ref/pr, as they are unnecessary.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   CodeQL-Build:
     # CodeQL runs on ubuntu-latest, windows-latest, and macos-latest

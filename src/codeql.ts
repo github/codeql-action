@@ -780,8 +780,8 @@ async function getCodeQLForCmd(
             "The CodeQL CLI is incompatible with the version of glibc on your system. " +
               `Please upgrade to CodeQL CLI version ${CODEQL_VERSION_TRACING_GLIBC_2_34} or ` +
               "later. If you cannot upgrade to a newer version of the CodeQL CLI, you can " +
-              "alternatively use glibc 2.33 or earlier, for instance by running your workflow on " +
-              `the "ubuntu-20.04" runner image.`
+              `alternatively run your workflow on another runner image such as "ubuntu-20.04" ` +
+              "that has glibc 2.33 or earlier installed."
           );
         } else {
           throw e;

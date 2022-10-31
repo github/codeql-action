@@ -216,7 +216,7 @@ export const mainSymbols = {
 	tick: '✔',
 	info: 'ℹ',
 	warning: '⚠',
-	cross: '✖',
+	cross: '✘',
 	squareSmall: '◻',
 	squareSmallFilled: '◼',
 	circle: '◯',

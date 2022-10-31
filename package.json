@@ -29,7 +29,7 @@
     "@actions/io": "^1.1.2",
     "@actions/tool-cache": "^2.0.1",
     "@chrisgavin/safe-which": "^1.0.2",
-    "@octokit/plugin-retry": "^3.0.9",
+    "@octokit/plugin-retry": "^4.0.3",
     "@octokit/types": "^8.0.0",
     "adm-zip": "^0.5.9",
     "commander": "^8.1.0",

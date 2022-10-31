@@ -26,17 +26,7 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20210308
-        - os: ubuntu-latest
-          version: stable-20210319
-        - os: ubuntu-latest
-          version: stable-20210809
-        - os: ubuntu-latest
           version: cached
-        - os: ubuntu-latest
-          version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
     name: RuboCop multi-language
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}

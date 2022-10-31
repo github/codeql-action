@@ -24,7 +24,6 @@ jobs:
     continue-on-error: true
 
     strategy:
-      fail-fast: true
       matrix:
         include:
         - os: ubuntu-latest

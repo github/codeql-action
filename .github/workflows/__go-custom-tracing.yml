@@ -25,19 +25,19 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
+        - os: ubuntu-20.04
           version: stable-20210308
         - os: macos-latest
           version: stable-20210308
         - os: windows-2019
           version: stable-20210308
-        - os: ubuntu-latest
+        - os: ubuntu-20.04
           version: stable-20210319
         - os: macos-latest
           version: stable-20210319
         - os: windows-2019
           version: stable-20210319
-        - os: ubuntu-latest
+        - os: ubuntu-20.04
           version: stable-20210809
         - os: macos-latest
           version: stable-20210809
@@ -47,23 +47,19 @@ jobs:
           version: cached
         - os: macos-latest
           version: cached
-        - os: windows-2019
+        - os: windows-latest
           version: cached
         - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest
-        - os: windows-2019
-          version: latest
-        - os: windows-2022
+        - os: windows-latest
           version: latest
         - os: ubuntu-latest
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-        - os: windows-2019
-          version: nightly-latest
-        - os: windows-2022
+        - os: windows-latest
           version: nightly-latest
     name: 'Go: Custom tracing'
     timeout-minutes: 45

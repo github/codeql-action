@@ -16,7 +16,6 @@ jobs:
     timeout-minutes: 45
 
     strategy:
-      fail-fast: true
       matrix:
         node-types-version: [12.12, current]
 

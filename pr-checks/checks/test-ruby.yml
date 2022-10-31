@@ -1,7 +1,7 @@
 name: "Ruby analysis"
 description: "Tests creation of a Ruby database"
 versions: ["latest", "cached", "nightly-latest"]
-os: ["ubuntu-latest", "macos-latest"]
+operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES: "true"
 steps:

@@ -1,7 +1,7 @@
 name: "Custom source root"
 description: "Checks that the argument specifying a non-default source root works"
 versions: ["latest", "cached", "nightly-latest"] # This feature is not compatible with old CLIs
-os: ["ubuntu-latest"]
+operatingSystems: ["ubuntu"]
 steps:
   - name: Move codeql-action
     shell: bash

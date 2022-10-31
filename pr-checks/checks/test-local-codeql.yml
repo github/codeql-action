@@ -1,7 +1,7 @@
 name: "Local CodeQL bundle"
 description: "Tests using a CodeQL bundle from a local file rather than a URL"
 versions: ["nightly-latest"]
-os: ["ubuntu-latest"]
+operatingSystems: ["ubuntu"]
 steps:
   - name: Fetch a CodeQL bundle
     shell: bash

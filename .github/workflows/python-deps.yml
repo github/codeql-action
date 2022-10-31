@@ -26,7 +26,7 @@ jobs:
     strategy:
         fail-fast: false
         matrix:
-          os: [ubuntu-latest, ubuntu-22.04, macos-latest]
+          os: [ubuntu-20.04, ubuntu-22.04, macos-latest]
           python_deps_type: [pipenv, poetry, requirements, setup_py]
           python_version: [2, 3]
           exclude:
@@ -65,7 +65,7 @@ jobs:
         cd $GITHUB_WORKSPACE/python-setup/tests/${PYTHON_DEPS_TYPE}/requests-${PYTHON_VERSION}
 
         case ${{ matrix.os }} in
-            ubuntu-latest*)     basePath="/opt";;
+            ubuntu-20.04*)     basePath="/opt";;
             ubuntu-22.04*)     basePath="/opt";;
             macos-latest*)    basePath="/Users/runner";;
         esac
@@ -90,7 +90,7 @@ jobs:
     strategy:
         fail-fast: false
         matrix:
-          os: [ubuntu-latest, ubuntu-22.04, macos-latest]
+          os: [ubuntu-20.04, ubuntu-22.04, macos-latest]
 
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -112,7 +112,7 @@ jobs:
         cd $GITHUB_WORKSPACE/python-setup/tests/requirements/non-standard-location
 
         case ${{ matrix.os }} in
-            ubuntu-latest*)     basePath="/opt";;
+            ubuntu-20.04*)     basePath="/opt";;
             ubuntu-22.04*)     basePath="/opt";;
             macos-latest*)    basePath="/Users/runner";;
         esac

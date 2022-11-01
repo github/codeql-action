@@ -682,7 +682,15 @@ export async function createStatusReportBase(
   const codeQlCliVersion = getCachedCodeQlVersion();
   const actionRef = process.env["GITHUB_ACTION_REF"];
   const testingEnvironment =
-    process.env["CODEQL_ACTION_TESTING_ENVIRONMENT"] || "";
+    process.env[sharedEnv.CODEQL_ACTION_TESTING_ENVIRONMENT] || "";
+  // re-export the testing environment variable so that it is available to subsequent steps,
+  // even if it was only set for this step
+  if (testingEnvironment !== "") {
+    core.exportVariable(
+      sharedEnv.CODEQL_ACTION_TESTING_ENVIRONMENT,
+      testingEnvironment
+    );
+  }
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,

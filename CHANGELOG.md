@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Improve the error message when using CodeQL bundle version 2.7.2 and earlier in a workflow that runs on a runner image such as `ubuntu-22.04` that uses glibc version 2.34 and later. [#1334](https://github.com/github/codeql-action/pull/1334)
 
 ## 2.1.29 - 26 Oct 2022
 

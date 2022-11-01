@@ -603,7 +603,7 @@ export interface StatusReportBase {
   /**
    * Testing environment: Set if non-production environment.
    * The server accepts one of the following values:
-   *  ["", "qa-rc", "qa-rc-1", "qa-rc-2", "qa-experiment-1", "qa-experiment-2", "qa-experiment-3"].
+   *  `["", "qa-rc", "qa-rc-1", "qa-rc-2", "qa-experiment-1", "qa-experiment-2", "qa-experiment-3"]`.
    */
   testing_environment: string;
   /**

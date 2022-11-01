@@ -48,7 +48,13 @@ interface ExtraOptions {
 }
 
 export class CommandInvocationError extends Error {
-  constructor(cmd: string, args: string[], exitCode: number, error: string) {
+  constructor(
+    cmd: string,
+    args: string[],
+    exitCode: number,
+    error: string,
+    public output: string
+  ) {
     super(
       `Failure invoking ${cmd} with arguments ${args}.\n
       Exit code ${exitCode} and error was:\n
@@ -262,6 +268,12 @@ export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
  * versions above that.
  */
 export const CODEQL_VERSION_NEW_TRACING = "2.7.0";
+
+/**
+ * Versions 2.7.3+ of the CodeQL CLI support build tracing with glibc 2.34 on Linux. Versions before
+ * this cannot perform build tracing when running on the Actions `ubuntu-22.04` runner image.
+ */
+export const CODEQL_VERSION_TRACING_GLIBC_2_34 = "2.7.3";
 
 /**
  * Versions 2.9.0+ of the CodeQL CLI run machine learning models from a temporary directory, which
@@ -742,15 +754,39 @@ async function getCodeQLForCmd(
       // _and_ is present in the latest supported CLI release.)
       const envFile = path.resolve(databasePath, "working", "env.tmp");
 
-      await runTool(cmd, [
-        "database",
-        "trace-command",
-        databasePath,
-        ...getExtraOptionsFromEnv(["database", "trace-command"]),
-        process.execPath,
-        tracerEnvJs,
-        envFile,
-      ]);
+      try {
+        await runTool(cmd, [
+          "database",
+          "trace-command",
+          databasePath,
+          ...getExtraOptionsFromEnv(["database", "trace-command"]),
+          process.execPath,
+          tracerEnvJs,
+          envFile,
+        ]);
+      } catch (e) {
+        if (
+          e instanceof CommandInvocationError &&
+          e.output.includes(
+            "undefined symbol: __libc_dlopen_mode, version GLIBC_PRIVATE"
+          ) &&
+          process.platform === "linux" &&
+          !(await util.codeQlVersionAbove(
+            this,
+            CODEQL_VERSION_TRACING_GLIBC_2_34
+          ))
+        ) {
+          throw new util.UserError(
+            "The CodeQL CLI is incompatible with the version of glibc on your system. " +
+              `Please upgrade to CodeQL CLI version ${CODEQL_VERSION_TRACING_GLIBC_2_34} or ` +
+              "later. If you cannot upgrade to a newer version of the CodeQL CLI, you can " +
+              `alternatively run your workflow on another runner image such as "ubuntu-20.04" ` +
+              "that has glibc 2.33 or earlier installed."
+          );
+        } else {
+          throw e;
+        }
+      }
       return JSON.parse(fs.readFileSync(envFile, "utf-8"));
     },
     async databaseInit(
@@ -1259,7 +1295,7 @@ async function runTool(cmd: string, args: string[] = []) {
     ignoreReturnCode: true,
   }).exec();
   if (exitCode !== 0)
-    throw new CommandInvocationError(cmd, args, exitCode, error);
+    throw new CommandInvocationError(cmd, args, exitCode, error, output);
   return output;
 }
 

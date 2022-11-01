@@ -51,10 +51,10 @@ jobs:
       https_proxy: http://squid-proxy:3128
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
     container:
-      image: ubuntu:18.04
+      image: ubuntu:22.04
       options: --dns 127.0.0.1
     services:
       squid-proxy:
-        image: datadog/squid:latest
+        image: ubuntu/squid:latest
         ports:
         - 3128:3128

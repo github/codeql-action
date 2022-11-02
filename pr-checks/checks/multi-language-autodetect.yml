@@ -1,6 +1,6 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
-os: ["ubuntu-latest", "macos-latest"]
+operatingSystems: ["ubuntu", "macos"]
 steps:
   - uses: ./../action/init
     with:

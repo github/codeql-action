@@ -1,6 +1,6 @@
 name: "Go: Reconciled tracing with autobuilder"
 description: "Checks that Go reconciled tracing works when using an autobuilder step"
-os: ["ubuntu-latest", "macos-latest"]
+operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ACTION_RECONCILE_GO_EXTRACTION: "true"
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"

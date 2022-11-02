@@ -61,7 +61,7 @@ jobs:
         # with:
         #   languages: go, javascript, csharp, python, cpp, java
 
-      # Autobuild attempts to build any compiled languages (C/C++, C#, or Java).
+      # Autobuild attempts to build any compiled languages (C/C++, C#, Go, or Java).
       # If this step fails, then you should remove it and run the build manually (see below).
       - name: Autobuild
         uses: github/codeql-action/autobuild@v2

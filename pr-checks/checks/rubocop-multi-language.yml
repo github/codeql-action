@@ -1,6 +1,8 @@
 name: "RuboCop multi-language"
 description: "Tests using RuboCop to analyze a multi-language repository and then using the CodeQL Action to upload the resulting SARIF"
-os: ["ubuntu-latest"]
+operatingSystems: ["ubuntu"]
+# This check doesn't use CodeQL, so the `version` matrix variable is unused.
+versions: ["cached"]
 steps:
   - name: Set up Ruby
     uses: ruby/setup-ruby@v1

@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
+        - os: ubuntu-20.04
           version: stable-20210809
         - os: ubuntu-latest
           version: cached

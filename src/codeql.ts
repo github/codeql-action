@@ -815,12 +815,8 @@ async function getCodeQLForCmd(
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`
       );
-      const isGoExtractionReconciliationEnabled =
-        await util.isGoExtractionReconciliationEnabled(featureEnablement);
       if (
-        config.languages.filter((l) =>
-          isTracedLanguage(l, isGoExtractionReconciliationEnabled, logger)
-        ).length > 0
+        config.languages.filter((l) => isTracedLanguage(l, logger)).length > 0
       ) {
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
@@ -841,11 +837,7 @@ async function getCodeQLForCmd(
             CODEQL_VERSION_LUA_TRACER_CONFIG
           )) &&
           config.languages.includes(Language.go) &&
-          isTracedLanguage(
-            Language.go,
-            isGoExtractionReconciliationEnabled,
-            logger
-          ) &&
+          isTracedLanguage(Language.go, logger) &&
           process.platform === "win32" &&
           !(await util.codeQlVersionAbove(
             this,

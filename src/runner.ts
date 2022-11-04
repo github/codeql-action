@@ -375,11 +375,7 @@ program
         }
         languages = [language];
       } else {
-        languages = await determineAutobuildLanguages(
-          config,
-          createFeatures([]),
-          logger
-        );
+        languages = await determineAutobuildLanguages(config, logger);
       }
       if (languages !== undefined) {
         for (const language of languages) {
@@ -502,14 +498,7 @@ program
         logger
       );
       const memory = getMemoryFlag(cmd.ram || initEnv["CODEQL_RAM"]);
-      await runFinalize(
-        outputDir,
-        threads,
-        memory,
-        config,
-        logger,
-        createFeatures([])
-      );
+      await runFinalize(outputDir, threads, memory, config, logger);
       await runQueries(
         outputDir,
         memory,

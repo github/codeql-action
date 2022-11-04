@@ -14,6 +14,7 @@ No user facing changes.
 
 ## 2.1.29 - 26 Oct 2022
 
+- We have completed rollout of the feature described in [CodeQL Action version 2.1.27](#2127---06-oct-2022): the way Go code is extracted for analysis is now consistent with that of other compiled languages such as C/C++, C#, and Java. The `CODEQL_EXTRACTOR_GO_BUILD_TRACING` environment variable, which was previously used to manually enable this behavior, is now deprecated; if your code scanning workflow uses this environment variable, we recommend that you remove it. Otherwise, you do not need to alter your code scanning workflows.
 - Update default CodeQL bundle version to 2.11.2. [#1320](https://github.com/github/codeql-action/pull/1320)
 
 ## 2.1.28 - 18 Oct 2022

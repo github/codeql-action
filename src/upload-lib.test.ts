@@ -3,14 +3,16 @@ import * as path from "path";
 
 import test from "ava";
 
-import { getRunnerLogger } from "./logging";
+import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
+import { pruneInvalidResults } from "./upload-lib";
 import {
+  GitHubVariant,
+  GitHubVersion,
   initializeEnvironment,
   Mode,
-  GitHubVersion,
-  GitHubVariant,
+  SarifFile,
   withTmpDir,
 } from "./util";
 
@@ -343,6 +345,116 @@ test("validateUniqueCategory for multiple runs", (t) => {
   t.throws(() => uploadLib.validateUniqueCategory(sarif1));
   t.throws(() => uploadLib.validateUniqueCategory(sarif2));
 });
+
+test("pruneInvalidResults", (t) => {
+  const loggedMessages: string[] = [];
+  const mockLogger = {
+    info: (message: string) => {
+      loggedMessages.push(message);
+    },
+  } as Logger;
+
+  const sarif: SarifFile = {
+    runs: [
+      {
+        tool: otherTool,
+        results: [resultWithBadMessage1, resultWithGoodMessage],
+      },
+      {
+        tool: affectedCodeQLVersion,
+        results: [
+          resultWithOtherRuleId,
+          resultWithBadMessage1,
+          resultWithBadMessage2,
+          resultWithGoodMessage,
+        ],
+      },
+      {
+        tool: unaffectedCodeQLVersion,
+        results: [resultWithBadMessage1, resultWithGoodMessage],
+      },
+    ],
+  };
+  const result = pruneInvalidResults(sarif, mockLogger);
+
+  const expected: SarifFile = {
+    runs: [
+      {
+        tool: otherTool,
+        results: [resultWithBadMessage1, resultWithGoodMessage],
+      },
+      {
+        tool: affectedCodeQLVersion,
+        results: [resultWithOtherRuleId, resultWithGoodMessage],
+      },
+      {
+        tool: unaffectedCodeQLVersion,
+        results: [resultWithBadMessage1, resultWithGoodMessage],
+      },
+    ],
+  };
+
+  t.deepEqual(result, expected);
+  t.deepEqual(loggedMessages.length, 1);
+  t.assert(loggedMessages[0].includes("Pruned 2 results"));
+});
+
+const affectedCodeQLVersion = {
+  driver: {
+    name: "CodeQL",
+    semanticVersion: "2.11.2",
+  },
+};
+
+const unaffectedCodeQLVersion = {
+  driver: {
+    name: "CodeQL",
+    semanticVersion: "2.11.3",
+  },
+};
+
+const otherTool = {
+  driver: {
+    name: "Some other tool",
+    semanticVersion: "2.11.2",
+  },
+};
+
+const resultWithOtherRuleId = {
+  ruleId: "doNotPrune",
+  message: {
+    text: "should not be pruned even though it says MD5 in it",
+  },
+  locations: [],
+  partialFingerprints: {},
+};
+
+const resultWithGoodMessage = {
+  ruleId: "rb/weak-cryptographic-algorithm",
+  message: {
+    text: "should not be pruned SHA128 is not a FP",
+  },
+  locations: [],
+  partialFingerprints: {},
+};
+
+const resultWithBadMessage1 = {
+  ruleId: "rb/weak-cryptographic-algorithm",
+  message: {
+    text: "should be pruned MD5 is a FP",
+  },
+  locations: [],
+  partialFingerprints: {},
+};
+
+const resultWithBadMessage2 = {
+  ruleId: "rb/weak-cryptographic-algorithm",
+  message: {
+    text: "should be pruned SHA1 is a FP",
+  },
+  locations: [],
+  partialFingerprints: {},
+};
 
 function createMockSarif(id?: string, tool?: string) {
   return {

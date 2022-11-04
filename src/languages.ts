@@ -38,31 +38,16 @@ export function parseLanguage(language: string): Language | undefined {
   return undefined;
 }
 
-export function isTracedLanguage(
-  language: Language,
-  isGoExtractionReconciliationEnabled: boolean,
-  logger: Logger
-): boolean {
+export function isTracedLanguage(language: Language, logger: Logger): boolean {
   if ("CODEQL_EXTRACTOR_GO_BUILD_TRACING" in process.env) {
     logger.warning(
       "The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable is deprecated and its behavior is now the default behavior."
     );
   }
 
-  return (
-    ["cpp", "java", "csharp", "swift"].includes(language) ||
-    (isGoExtractionReconciliationEnabled && language === Language.go)
-  );
+  return ["cpp", "csharp", "go", "java", "swift"].includes(language);
 }
 
-export function isScannedLanguage(
-  language: Language,
-  isGoExtractionReconciliationEnabled: boolean,
-  logger: Logger
-): boolean {
-  return !isTracedLanguage(
-    language,
-    isGoExtractionReconciliationEnabled,
-    logger
-  );
+export function isScannedLanguage(language: Language, logger: Logger): boolean {
+  return !isTracedLanguage(language, logger);
 }

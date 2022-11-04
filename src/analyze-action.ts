@@ -19,7 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { FeatureEnablement, Features } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -139,18 +139,8 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * - We approximate whether manual build steps are present by looking at
  * whether any extraction output already exists for Go.
  */
-async function runAutobuildIfLegacyGoWorkflow(
-  config: Config,
-  featureEnablement: FeatureEnablement,
-  logger: Logger
-) {
+async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   if (!config.languages.includes(Language.go)) {
-    return;
-  }
-  if (!(await util.isGoExtractionReconciliationEnabled(featureEnablement))) {
-    logger.debug(
-      "Won't run Go autobuild since Go extraction reconciliation is not enabled."
-    );
     return;
   }
   if (process.env[util.DID_AUTOBUILD_GO_ENV_VAR_NAME] === "true") {
@@ -236,15 +226,14 @@ async function run() {
       logger
     );
 
-    await runAutobuildIfLegacyGoWorkflow(config, features, logger);
+    await runAutobuildIfLegacyGoWorkflow(config, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,
       threads,
       memory,
       config,
-      logger,
-      features
+      logger
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {

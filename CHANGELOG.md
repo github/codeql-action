@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## 2.1.31 - 04 Nov 2022
+
+- The `rb/weak-cryptographic-algorithm` Ruby query has been updated to no longer report uses of hash functions such as `MD5` and `SHA1` even if they are known to be weak. These hash algorithms are used very often in non-sensitive contexts, making the query too imprecise in practice. For more information, see the corresponding change in the [github/codeql repository](https://github.com/github/codeql/pull/11129). [#1344](https://github.com/github/codeql-action/pull/1344)
+
 ## 2.1.30 - 02 Nov 2022
 
 - Improve the error message when using CodeQL bundle version 2.7.2 and earlier in a workflow that runs on a runner image such as `ubuntu-22.04` that uses glibc version 2.34 and later. [#1334](https://github.com/github/codeql-action/pull/1334)

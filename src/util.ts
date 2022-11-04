@@ -52,21 +52,28 @@ export const DID_AUTOBUILD_GO_ENV_VAR_NAME =
 
 export interface SarifFile {
   version?: string | null;
-  runs: Array<{
-    tool?: {
-      driver?: {
-        name?: string;
-      };
+  runs: SarifRun[];
+}
+
+export interface SarifRun {
+  tool?: {
+    driver?: {
+      name?: string;
+      semanticVersion?: string;
     };
-    automationDetails?: {
-      id?: string;
-    };
-    artifacts?: string[];
-    results?: SarifResult[];
-  }>;
+  };
+  automationDetails?: {
+    id?: string;
+  };
+  artifacts?: string[];
+  results?: SarifResult[];
 }
 
 export interface SarifResult {
+  ruleId?: string;
+  message?: {
+    text?: string;
+  };
   locations: Array<{
     physicalLocation: {
       artifactLocation: {

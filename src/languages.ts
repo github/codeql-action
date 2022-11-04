@@ -41,7 +41,7 @@ export function parseLanguage(language: string): Language | undefined {
 export function isTracedLanguage(language: Language, logger: Logger): boolean {
   if ("CODEQL_EXTRACTOR_GO_BUILD_TRACING" in process.env) {
     logger.warning(
-      "The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable is deprecated and its behavior is now the default behavior."
+      "Go build tracing is now enabled by default, so the CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable which was previously used to manually enable Go build tracing is now deprecated. We recommend that you remove this environment variable from your workflow."
     );
   }
 

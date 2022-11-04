@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Go: tracing with autobuilder step'
+name: 'PR Check - Go: tracing with autobuilder'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -49,7 +49,7 @@ jobs:
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-    name: 'Go: tracing with autobuilder step'
+    name: 'Go: tracing with autobuilder'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

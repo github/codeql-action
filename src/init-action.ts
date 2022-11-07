@@ -223,9 +223,9 @@ async function run() {
         "Go build tracing is now enabled by default, so the CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable which was previously used to manually enable Go build tracing is now deprecated. We recommend that you remove this environment variable from your workflow."
       );
     }
-    if (config.languages.includes(Language.go)) {
-      core.exportVariable("CODEQL_EXTRACTOR_GO_BUILD_TRACING", "on");
-    }
+    // if (config.languages.includes(Language.go)) {
+    //   core.exportVariable("CODEQL_EXTRACTOR_GO_BUILD_TRACING", "on");
+    // }
 
     if (
       config.languages.includes(Language.python) &&

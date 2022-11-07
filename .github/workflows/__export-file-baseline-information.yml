@@ -13,6 +13,7 @@ on:
     - main
     - releases/v1
     - releases/v2
+    - henrymercer/henrymercer/file-baseline-info-enablement-pr-debug
   pull_request:
     types:
     - opened

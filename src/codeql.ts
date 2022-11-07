@@ -878,8 +878,10 @@ async function getCodeQLForCmd(
     async runAutobuild(language: Language) {
       const cmdName =
         process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh";
+      const experimentalFolderName = "experimental";
       const autobuildCmd = path.join(
         path.dirname(cmd),
+        language === Language.swift ? experimentalFolderName : "",
         language,
         "tools",
         cmdName

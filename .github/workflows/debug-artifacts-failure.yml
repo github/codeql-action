@@ -35,6 +35,9 @@ jobs:
         uses: ./.github/prepare-test
         with:
           version: latest
+      - uses: actions/setup-go@v3
+        with:
+        go-version: ^1.13.1
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}

@@ -218,6 +218,10 @@ async function run() {
       logger
     );
 
+    if (config.languages.includes(Language.go)) {
+      core.exportVariable("CODEQL_EXTRACTOR_GO_BUILD_TRACING", "on");
+    }
+
     if (
       config.languages.includes(Language.python) &&
       getRequiredInput("setup-python-dependencies") === "true"

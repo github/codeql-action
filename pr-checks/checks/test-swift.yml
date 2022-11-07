@@ -1,0 +1,25 @@
+name: "Swift analysis"
+description: "Tests creation of a Swift database"
+versions: ["latest", "cached", "nightly-latest"]
+operatingSystems: ["ubuntu", "macos"]
+env:
+  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true"
+steps:
+  - uses: ./../action/init
+    with:
+      languages: swift
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
+  - uses: ./../action/analyze
+    id: analysis
+    env:
+      TEST_MODE: true
+  - name: Check database
+    shell: bash
+    run: |
+      SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+      if [[ ! -d "$SWIFT_DB" ]]; then
+        echo "Did not create a database for Swift."
+        exit 1
+      fi

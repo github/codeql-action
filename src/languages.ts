@@ -1,5 +1,3 @@
-import * as core from "@actions/core";
-
 import { Logger } from "./logging";
 
 // All the languages supported by CodeQL
@@ -45,10 +43,6 @@ export function isTracedLanguage(language: Language, logger: Logger): boolean {
     logger.warning(
       "Go build tracing is now enabled by default, so the CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable which was previously used to manually enable Go build tracing is now deprecated. We recommend that you remove this environment variable from your workflow."
     );
-  }
-
-  if (language === Language.go) {
-    core.exportVariable("CODEQL_EXTRACTOR_GO_BUILD_TRACING", "on");
   }
 
   return [

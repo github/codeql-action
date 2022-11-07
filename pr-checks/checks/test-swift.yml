@@ -11,6 +11,9 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
     env:
       TEST_MODE: true
+  - name: Build code
+    shell: bash
+    run: ./build.sh
   - uses: ./../action/analyze
     id: analysis
     env:

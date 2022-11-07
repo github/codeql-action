@@ -1,9 +1,10 @@
 name: "Export file baseline information"
-description: "Tests that exporting file baseline information works"
+description: "Tests that file baseline information is exported when the feature is enabled"
 versions: ["nightly-latest"]
 steps:
   - uses: ./../action/init
     with:
+      languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
     env:
       CODEQL_FILE_BASELINE_INFORMATION: true
@@ -23,3 +24,20 @@ steps:
       name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
       path: "${{ runner.temp }}/results/javascript.sarif"
       retention-days: 7
+  - name: Check results
+    shell: bash
+    run: |
+      cd "$RUNNER_TEMP/results"
+      expected_baseline_languages="cpp csharp go java js python ruby"
+
+      for lang in ${expected_baseline_languages}; do
+        rule_name="${lang}/baseline/expected-extracted-files"
+        found_notification=$(jq --arg rule_name "${rule_name}" '[.runs[0].tool.driver.notifications |
+          select(. != null) | flatten | .[].id] | any(. == $rule_name)' javascript.sarif)
+        if [[ "${found_notification}" != "true" ]]; then
+          echo "Expected SARIF output to contain notification '${rule_name}', but found no such notification."
+          exit 1
+        else
+          echo "Found notification '${rule_name}'."
+        fi
+      done

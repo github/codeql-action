@@ -12,7 +12,7 @@ export async function determineAutobuildLanguages(
   // The languages are sorted in order specified by user or by lines of code if we got
   // them from the GitHub API, so try to build the first language on the list.
   const autobuildLanguages = config.languages.filter((l) =>
-    isTracedLanguage(l, logger)
+    isTracedLanguage(l)
   );
 
   if (!autobuildLanguages) {

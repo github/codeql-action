@@ -4,7 +4,6 @@ import * as path from "path";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language, isTracedLanguage } from "./languages";
-import { Logger } from "./logging";
 import * as util from "./util";
 import { codeQlVersionAbove } from "./util";
 
@@ -22,11 +21,10 @@ const CRITICAL_TRACER_VARS = new Set([
 ]);
 
 export async function endTracingForCluster(
-  config: configUtils.Config,
-  logger: Logger
+  config: configUtils.Config
 ): Promise<void> {
   // If there are no traced languages, we don't need to do anything.
-  if (!config.languages.some((l) => isTracedLanguage(l, logger))) return;
+  if (!config.languages.some((l) => isTracedLanguage(l))) return;
 
   const envVariablesFile = path.resolve(
     config.dbLocation,
@@ -225,13 +223,10 @@ export function concatTracerConfigs(
 
 export async function getCombinedTracerConfig(
   config: configUtils.Config,
-  codeql: CodeQL,
-  logger: Logger
+  codeql: CodeQL
 ): Promise<TracerConfig | undefined> {
   // Abort if there are no traced languages as there's nothing to do
-  const tracedLanguages = config.languages.filter((l) =>
-    isTracedLanguage(l, logger)
-  );
+  const tracedLanguages = config.languages.filter((l) => isTracedLanguage(l));
   if (tracedLanguages.length === 0) {
     return undefined;
   }

@@ -1,5 +1,3 @@
-import { Logger } from "./logging";
-
 // All the languages supported by CodeQL
 export enum Language {
   csharp = "csharp",
@@ -38,13 +36,7 @@ export function parseLanguage(language: string): Language | undefined {
   return undefined;
 }
 
-export function isTracedLanguage(language: Language, logger: Logger): boolean {
-  if ("CODEQL_EXTRACTOR_GO_BUILD_TRACING" in process.env) {
-    logger.warning(
-      "Go build tracing is now enabled by default, so the CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable which was previously used to manually enable Go build tracing is now deprecated. We recommend that you remove this environment variable from your workflow."
-    );
-  }
-
+export function isTracedLanguage(language: Language): boolean {
   return [
     Language.cpp,
     Language.csharp,
@@ -54,6 +46,6 @@ export function isTracedLanguage(language: Language, logger: Logger): boolean {
   ].includes(language);
 }
 
-export function isScannedLanguage(language: Language, logger: Logger): boolean {
-  return !isTracedLanguage(language, logger);
+export function isScannedLanguage(language: Language): boolean {
+  return !isTracedLanguage(language);
 }

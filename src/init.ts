@@ -119,7 +119,7 @@ export async function runInit(
   } catch (e) {
     throw processError(e);
   }
-  return await getCombinedTracerConfig(config, codeql, logger);
+  return await getCombinedTracerConfig(config, codeql);
 }
 
 /**

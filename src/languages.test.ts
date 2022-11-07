@@ -6,7 +6,6 @@ import {
   isTracedLanguage,
   parseLanguage,
 } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 
 setupTests(test);
@@ -33,29 +32,25 @@ test("parseLanguage", async (t) => {
 });
 
 test("isTracedLanguage", async (t) => {
-  const logger = getRunnerLogger(true);
+  t.true(isTracedLanguage(Language.cpp));
+  t.true(isTracedLanguage(Language.csharp));
+  t.true(isTracedLanguage(Language.go));
+  t.true(isTracedLanguage(Language.java));
+  t.true(isTracedLanguage(Language.swift));
 
-  t.true(isTracedLanguage(Language.cpp, logger));
-  t.true(isTracedLanguage(Language.csharp, logger));
-  t.true(isTracedLanguage(Language.go, logger));
-  t.true(isTracedLanguage(Language.java, logger));
-  t.true(isTracedLanguage(Language.swift, logger));
-
-  t.false(isTracedLanguage(Language.javascript, logger));
-  t.false(isTracedLanguage(Language.python, logger));
-  t.false(isTracedLanguage(Language.ruby, logger));
+  t.false(isTracedLanguage(Language.javascript));
+  t.false(isTracedLanguage(Language.python));
+  t.false(isTracedLanguage(Language.ruby));
 });
 
 test("isScannedLanguage", async (t) => {
-  const logger = getRunnerLogger(true);
+  t.false(isScannedLanguage(Language.cpp));
+  t.false(isScannedLanguage(Language.csharp));
+  t.false(isScannedLanguage(Language.go));
+  t.false(isScannedLanguage(Language.java));
+  t.false(isScannedLanguage(Language.swift));
 
-  t.false(isScannedLanguage(Language.cpp, logger));
-  t.false(isScannedLanguage(Language.csharp, logger));
-  t.false(isScannedLanguage(Language.go, logger));
-  t.false(isScannedLanguage(Language.java, logger));
-  t.false(isScannedLanguage(Language.swift, logger));
-
-  t.true(isScannedLanguage(Language.javascript, logger));
-  t.true(isScannedLanguage(Language.python, logger));
-  t.true(isScannedLanguage(Language.ruby, logger));
+  t.true(isScannedLanguage(Language.javascript));
+  t.true(isScannedLanguage(Language.python));
+  t.true(isScannedLanguage(Language.ruby));
 });

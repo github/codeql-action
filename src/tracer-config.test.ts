@@ -6,7 +6,6 @@ import test from "ava";
 import { setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import {
   concatTracerConfigs,
@@ -330,10 +329,7 @@ test("getCombinedTracerConfig - return undefined when no languages are traced la
       },
     });
 
-    t.deepEqual(
-      await getCombinedTracerConfig(config, codeQL, getRunnerLogger(true)),
-      undefined
-    );
+    t.deepEqual(await getCombinedTracerConfig(config, codeQL), undefined);
   });
 });
 
@@ -363,11 +359,7 @@ test("getCombinedTracerConfig - valid spec file", async (t) => {
       },
     });
 
-    const result = await getCombinedTracerConfig(
-      config,
-      codeQL,
-      getRunnerLogger(true)
-    );
+    const result = await getCombinedTracerConfig(config, codeQL);
     t.notDeepEqual(result, undefined);
 
     const expectedEnv = {

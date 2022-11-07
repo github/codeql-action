@@ -1,0 +1,25 @@
+name: "Export file baseline information"
+description: "Tests that exporting file baseline information works"
+versions: ["nightly-latest"]
+steps:
+  - uses: ./../action/init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      CODEQL_FILE_BASELINE_INFORMATION: true
+      TEST_MODE: true
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+    env:
+      CODEQL_FILE_BASELINE_INFORMATION: true
+      TEST_MODE: true
+  - name: Upload SARIF
+    uses: actions/upload-artifact@v3
+    with:
+      name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+      path: "${{ runner.temp }}/results/javascript.sarif"
+      retention-days: 7

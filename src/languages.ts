@@ -1,3 +1,5 @@
+import * as core from "@actions/core";
+
 import { Logger } from "./logging";
 
 // All the languages supported by CodeQL
@@ -45,7 +47,17 @@ export function isTracedLanguage(language: Language, logger: Logger): boolean {
     );
   }
 
-  return ["cpp", "csharp", "go", "java", "swift"].includes(language);
+  if (language === Language.go) {
+    core.exportVariable("CODEQL_EXTRACTOR_GO_BUILD_TRACING", "on");
+  }
+
+  return [
+    Language.cpp,
+    Language.csharp,
+    Language.go,
+    Language.java,
+    Language.swift,
+  ].includes(language);
 }
 
 export function isScannedLanguage(language: Language, logger: Logger): boolean {

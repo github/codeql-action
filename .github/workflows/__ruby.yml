@@ -21,7 +21,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  test-ruby:
+  ruby:
     strategy:
       matrix:
         include:

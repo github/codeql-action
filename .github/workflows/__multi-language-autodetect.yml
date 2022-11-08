@@ -105,10 +105,5 @@ jobs:
           echo "Did not create a database for Python, or created it in the wrong location."
           exit 1
         fi
-        RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
-        if [[ ! -d $RUBY_DB ]] || [[ ! $RUBY_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Ruby, or created it in the wrong location."
-          exit 1
-        fi
     env:
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

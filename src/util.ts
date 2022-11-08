@@ -672,7 +672,9 @@ export async function getMlPoweredJsQueriesPack(
   codeQL: CodeQL
 ): Promise<string> {
   let version;
-  if (await codeQlVersionAbove(codeQL, "2.9.3")) {
+  if (await codeQlVersionAbove(codeQL, "2.11.3")) {
+    version = "~0.4.0";
+  } else if (await codeQlVersionAbove(codeQL, "2.9.3")) {
     version = `~0.3.0`;
   } else if (await codeQlVersionAbove(codeQL, "2.8.4")) {
     version = `~0.2.0`;

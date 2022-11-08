@@ -1,3 +1,5 @@
+# This check should be combined into `multi-language-autodetect.yml` once Ruby is GA'ed 
+# and the `CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT` environment variable is not needed.
 name: "Swift analysis using autodetect"
 description: "Tests creation of a Swift database when language isn't specified in init"
 versions: ["latest", "cached", "nightly-latest"]

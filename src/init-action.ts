@@ -220,7 +220,8 @@ async function run() {
 
     if ("CODEQL_EXTRACTOR_GO_BUILD_TRACING" in process.env) {
       logger.warning(
-        "Go build tracing is now enabled by default, so the CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable which was previously used to manually enable Go build tracing is now deprecated. We recommend that you remove this environment variable from your workflow."
+        `Go is now analyzed as a compiled language by default, so the CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable is deprecated. We recommend that you remove this environment variable from your workflow. 
+          For more information, see https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-the-codeql-workflow-for-compiled-languages`
       );
     }
     if (config.languages.includes(Language.go)) {

@@ -6,4 +6,6 @@ dotnet build -p:UseSharedCompilation=false
 
 javac Main.java
 
+echo $OSTYPE
+
 swift build

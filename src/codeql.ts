@@ -878,10 +878,12 @@ async function getCodeQLForCmd(
     async runAutobuild(language: Language) {
       const cmdName =
         process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh";
-      const experimentalFolderName = "experimental";
+      // The autobuilder for Swift is located in the experimental/ directory.
+      const possibleExperimentalDir =
+        language === Language.swift ? "experimental" : "";
       const autobuildCmd = path.join(
         path.dirname(cmd),
-        language === Language.swift ? experimentalFolderName : "",
+        possibleExperimentalDir,
         language,
         "tools",
         cmdName

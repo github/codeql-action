@@ -3,7 +3,7 @@ public struct main {
 
     public init() {
         if (true) {
-            print("Hello, world!")
+            print(text)
         }
     }
 }

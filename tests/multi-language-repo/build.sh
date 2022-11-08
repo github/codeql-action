@@ -6,6 +6,6 @@ dotnet build -p:UseSharedCompilation=false
 
 javac Main.java
 
-echo $OSTYPE
-
-swift build
+if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
+    swift build
+fi

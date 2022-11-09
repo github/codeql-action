@@ -6,6 +6,6 @@ dotnet build -p:UseSharedCompilation=false
 
 javac Main.java
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    xcodebuild build ARCH=x86_64
+if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux-gnu"* ]]; then
+    swiftc -c Main.swift
 fi

@@ -858,6 +858,8 @@ export async function tryGetFolderBytes(
   }
 }
 
+let hadTimeout = false;
+
 /**
  * Run a promise for a given amount of time, and if it doesn't resolve within
  * that time, call the provided callback and then return undefined. Due to the
@@ -895,7 +897,7 @@ export async function withTimeout<T>(
         // to continue, the process won't normally exit until the asynchronous
         // task in the background has finished. We set this variable to force
         // an exit at the end of our code.
-        globalThis.hadTimeout = true;
+        hadTimeout = true;
         onTimeout();
       }
       resolve(undefined);
@@ -912,7 +914,7 @@ export async function withTimeout<T>(
  * `withTimeout` function has been used.
  */
 export async function checkForTimeout() {
-  if (globalThis.hadTimeout === true) {
+  if (hadTimeout === true) {
     core.info(
       "A timeout occurred, force exiting the process after 30 seconds to prevent hanging."
     );

@@ -68,6 +68,14 @@ export async function downloadTrapCaches(
   languages: Language[],
   logger: Logger
 ): Promise<Partial<Record<Language, string>>> {
+  const longTask = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, 999_999_999);
+  });
+  await withTimeout(10, longTask, () => {
+    logger.info("Long task timed out");
+  });
   const result = {};
   const languagesSupportingCaching = await getLanguagesSupportingCaching(
     codeql,

@@ -179,6 +179,13 @@ export interface CodeQL {
    * Run 'codeql database print-baseline'.
    */
   databasePrintBaseline(databasePath: string): Promise<string>;
+  /**
+   * Run 'codeql diagnostics export'.
+   */
+  diagnosticsExport(
+    sarifFile: string,
+    automationDetailsId: string | undefined
+  ): Promise<void>;
 }
 
 export interface ResolveLanguagesOutput {
@@ -634,6 +641,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "databasePrintBaseline"
     ),
+    diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
   };
   return cachedCodeQL;
 }
@@ -675,7 +683,7 @@ async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean
 ): Promise<CodeQL> {
-  const codeql = {
+  const codeql: CodeQL = {
     getPath() {
       return cmd;
     },
@@ -1149,6 +1157,22 @@ async function getCodeQLForCmd(
         `--name=${databaseName}`,
         ...getExtraOptionsFromEnv(["database", "bundle"]),
       ];
+      await new toolrunner.ToolRunner(cmd, args).exec();
+    },
+    async diagnosticsExport(
+      sarifFile: string,
+      automationDetailsId: string | undefined
+    ): Promise<void> {
+      const args = [
+        "diagnostics",
+        "export",
+        "--format=sarif-latest",
+        `--output=${sarifFile}`,
+        ...getExtraOptionsFromEnv(["diagnostics", "export"]),
+      ];
+      if (automationDetailsId !== undefined) {
+        args.push("--sarif-category", automationDetailsId);
+      }
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };

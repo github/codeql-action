@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Update the ML-powered additional query pack for JavaScript to version 0.4.0.
 
 ## 2.1.31 - 04 Nov 2022
 

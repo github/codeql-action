@@ -6,6 +6,7 @@ versions: ["latest", "cached", "nightly-latest"]
 operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true"
+  CODEQL_PASS_CONFIG_TO_CLI: "false" # Swift autodetection is not yet implemented in the CLI. Remove this when it is.
 steps:
   - uses: ./../action/init
     with:

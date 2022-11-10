@@ -1,6 +1,7 @@
 # Checks logs, SARIF, and database bundle debug artifacts exist.
 name: PR Check - Debug artifact upload
 env:
+  CODEQL_PASS_CONFIG_TO_CLI: false
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
   push:

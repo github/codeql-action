@@ -9,6 +9,7 @@ on:
     - main
     - releases/v1
     - releases/v2
+    - henrymercer/deprecate-go-env-var-testing
   pull_request:
     types:
     - opened

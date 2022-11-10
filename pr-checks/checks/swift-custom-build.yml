@@ -4,6 +4,7 @@ versions: ["latest", "cached", "nightly-latest"]
 operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true"
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
   - uses: ./../action/init
     with:

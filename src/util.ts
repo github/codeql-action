@@ -858,13 +858,22 @@ export async function tryGetFolderBytes(
   }
 }
 
+let hadTimeout = false;
+
 /**
  * Run a promise for a given amount of time, and if it doesn't resolve within
- * that time, call the provided callback and then return undefined.
+ * that time, call the provided callback and then return undefined. Due to the
+ * limitation outlined below, using this helper function is not recommended
+ * unless there is no other option for adding a timeout (e.g. the code that
+ * would need the timeout added is an external library).
  *
  * Important: This does NOT cancel the original promise, so that promise will
  * continue in the background even after the timeout has expired. If the
  * original promise hangs, then this will prevent the process terminating.
+ * If a timeout has occurred then the global hadTimeout variable will get set
+ * to true, and the caller is responsible for forcing the process to exit
+ * if this is the case by calling the `checkForTimeout` function at the end
+ * of execution.
  *
  * @param timeoutMs The timeout in milliseconds.
  * @param promise The promise to run.
@@ -884,12 +893,35 @@ export async function withTimeout<T>(
   };
   const timeout: Promise<undefined> = new Promise((resolve) => {
     setTimeout(() => {
-      if (!finished) onTimeout();
+      if (!finished) {
+        // Workaround: While the promise racing below will allow the main code
+        // to continue, the process won't normally exit until the asynchronous
+        // task in the background has finished. We set this variable to force
+        // an exit at the end of our code when `checkForTimeout` is called.
+        hadTimeout = true;
+        onTimeout();
+      }
       resolve(undefined);
     }, timeoutMs);
   });
 
   return await Promise.race([mainTask(), timeout]);
+}
+
+/**
+ * Check if the global hadTimeout variable has been set, and if so then
+ * exit the process to ensure any background tasks that are still running
+ * are killed. This should be called at the end of execution if the
+ * `withTimeout` function has been used.
+ */
+export async function checkForTimeout() {
+  if (hadTimeout === true) {
+    core.info(
+      "A timeout occurred, force exiting the process after 30 seconds to prevent hanging."
+    );
+    await delay(30_000);
+    process.exit();
+  }
 }
 
 /**

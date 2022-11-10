@@ -25,10 +25,16 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: macos-latest
+        - os: ubuntu-latest
           version: latest
         - os: macos-latest
+          version: latest
+        - os: ubuntu-latest
           version: cached
+        - os: macos-latest
+          version: cached
+        - os: ubuntu-latest
+          version: nightly-latest
         - os: macos-latest
           version: nightly-latest
     name: Swift analysis using a custom build command

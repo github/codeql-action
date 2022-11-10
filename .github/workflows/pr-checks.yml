@@ -59,6 +59,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
+        with:
+          node-version: 16.18.0
       - name: Check node modules up to date
         run: .github/workflows/script/check-node-modules.sh
 

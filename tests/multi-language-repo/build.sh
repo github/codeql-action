@@ -6,3 +6,4 @@ dotnet build -p:UseSharedCompilation=false
 
 javac Main.java
 
+go build main.go

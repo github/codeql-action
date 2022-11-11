@@ -246,12 +246,6 @@ const CODEQL_MINIMUM_VERSION = "2.6.3";
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
  */
-const CODEQL_VERSION_RAM_FINALIZE = "2.5.8";
-const CODEQL_VERSION_DIAGNOSTICS = "2.5.6";
-const CODEQL_VERSION_METRICS = "2.5.5";
-const CODEQL_VERSION_GROUP_RULES = "2.5.5";
-const CODEQL_VERSION_SARIF_GROUP = "2.5.3";
-export const CODEQL_VERSION_COUNTS_LINES = "2.6.2";
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
@@ -970,11 +964,10 @@ async function getCodeQLForCmd(
         "finalize",
         "--finalize-dataset",
         threadsFlag,
+        memoryFlag,
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
-      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_RAM_FINALIZE))
-        args.push(memoryFlag);
       await toolrunnerErrorCatcher(cmd, args, errorMatchers);
     },
     async resolveLanguages() {
@@ -1077,20 +1070,14 @@ async function getCodeQLForCmd(
         verbosityFlag,
         `--output=${sarifFile}`,
         addSnippetsFlag,
+        "--print-diagnostics-summary",
+        "--print-metrics-summary",
+        "--sarif-group-rules-by-pack",
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
-      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_DIAGNOSTICS))
-        codeqlArgs.push("--print-diagnostics-summary");
-      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_METRICS))
-        codeqlArgs.push("--print-metrics-summary");
-      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_GROUP_RULES))
-        codeqlArgs.push("--sarif-group-rules-by-pack");
       if (await util.codeQlVersionAbove(this, CODEQL_VERSION_CUSTOM_QUERY_HELP))
         codeqlArgs.push("--sarif-add-query-help");
-      if (
-        automationDetailsId !== undefined &&
-        (await util.codeQlVersionAbove(this, CODEQL_VERSION_SARIF_GROUP))
-      ) {
+      if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       if (

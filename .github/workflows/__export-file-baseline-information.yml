@@ -68,7 +68,7 @@ jobs:
       shell: bash
       run: |
         cd "$RUNNER_TEMP/results"
-        expected_baseline_languages="cpp csharp go java js python ruby"
+        expected_baseline_languages="cpp csharp go java js py ruby"
 
         for lang in ${expected_baseline_languages}; do
           rule_name="${lang}/baseline/expected-extracted-files"

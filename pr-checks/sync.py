@@ -3,12 +3,12 @@ import os
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
-    # The oldest supported CodeQL version: 2.4.5. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-20210308",
-    # The last CodeQL release in the 2.4 series: 2.4.6.
-    "stable-20210319",
-    # The last CodeQL release in the 2.5 series: 2.5.9.
-    "stable-20210809",
+    # The oldest supported CodeQL version: 2.6.3. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
+    "stable-20211005",
+    # The last CodeQL release in the 2.7 series: 2.7.6.
+    "stable-20220120",
+    # The last CodeQL release in the 2.8 series: 2.8.5.
+    "stable-20220401",
     # The version of CodeQL currently in the toolcache. Typically either the latest release or the one before.
     "cached",
     # The latest release of CodeQL.

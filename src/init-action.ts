@@ -224,9 +224,6 @@ async function run() {
           For more information, see https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-the-codeql-workflow-for-compiled-languages`
       );
     }
-    if (config.languages.includes(Language.go)) {
-      core.exportVariable("CODEQL_EXTRACTOR_GO_BUILD_TRACING", "on");
-    }
 
     if (
       config.languages.includes(Language.python) &&

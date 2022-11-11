@@ -8,12 +8,7 @@ import * as yaml from "js-yaml";
 
 import { DatabaseCreationTimings } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
-import {
-  CodeQL,
-  CODEQL_VERSION_COUNTS_LINES,
-  CODEQL_VERSION_NEW_TRACING,
-  getCodeQL,
-} from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { countLoc } from "./count-loc";
 import { FeatureEnablement } from "./feature-flags";
@@ -221,10 +216,9 @@ export async function runQueries(
   let locPromise: Promise<Partial<Record<Language, number>>> = Promise.resolve(
     {}
   );
-  const cliCanCountBaseline = await cliCanCountLoC();
   const countLocDebugMode =
     process.env["INTERNAL_CODEQL_ACTION_DEBUG_LOC"] || config.debugMode;
-  if (!cliCanCountBaseline || countLocDebugMode) {
+  if (countLocDebugMode) {
     // count the number of lines in the background
     locPromise = countLoc(
       path.resolve(),
@@ -346,20 +340,15 @@ export async function runQueries(
           sarifFile,
           config.debugMode
         );
-        if (!cliCanCountBaseline) {
-          await injectLinesOfCode(sarifFile, language, locPromise);
-        }
         statusReport[`interpret_results_${language}_duration_ms`] =
           new Date().getTime() - startTimeInterpretResults;
         logger.endGroup();
         logger.info(analysisSummary);
       }
-      if (!cliCanCountBaseline || countLocDebugMode) {
+      if (countLocDebugMode) {
         printLinesOfCodeSummary(logger, language, await locPromise);
       }
-      if (cliCanCountBaseline) {
-        logger.info(await runPrintLinesOfCode(language));
-      }
+      logger.info(await runPrintLinesOfCode(language));
     } catch (e) {
       logger.info(String(e));
       if (e instanceof Error) {
@@ -391,13 +380,6 @@ export async function runQueries(
       enableDebugLogging ? "-vv" : "-v",
       automationDetailsId,
       featureEnablement
-    );
-  }
-
-  async function cliCanCountLoC() {
-    return await util.codeQlVersionAbove(
-      await getCodeQL(config.codeQLCmd),
-      CODEQL_VERSION_COUNTS_LINES
     );
   }
 
@@ -552,38 +534,6 @@ export async function runCleanup(
     await codeql.databaseCleanup(databasePath, cleanupLevel);
   }
   logger.endGroup();
-}
-
-async function injectLinesOfCode(
-  sarifFile: string,
-  language: Language,
-  locPromise: Promise<Partial<Record<Language, number>>>
-) {
-  const lineCounts = await locPromise;
-  if (language in lineCounts) {
-    const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
-
-    if (Array.isArray(sarif.runs)) {
-      for (const run of sarif.runs) {
-        run.properties = run.properties || {};
-        run.properties.metricResults = run.properties.metricResults || [];
-        for (const metric of run.properties.metricResults) {
-          // Baseline is inserted when matching rule has tag lines-of-code
-          if (metric.rule && metric.rule.toolComponent) {
-            const matchingRule =
-              run.tool.extensions[metric.rule.toolComponent.index].rules[
-                metric.rule.index
-              ];
-            if (matchingRule.properties.tags?.includes("lines-of-code")) {
-              metric.baseline = lineCounts[language];
-            }
-          }
-        }
-      }
-    }
-
-    fs.writeFileSync(sarifFile, JSON.stringify(sarif));
-  }
 }
 
 function printLinesOfCodeSummary(

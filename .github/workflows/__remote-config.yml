@@ -26,23 +26,23 @@ jobs:
       matrix:
         include:
         - os: ubuntu-20.04
-          version: stable-20210308
+          version: stable-20211005
         - os: macos-latest
-          version: stable-20210308
+          version: stable-20211005
         - os: windows-2019
-          version: stable-20210308
-        - os: ubuntu-20.04
-          version: stable-20210319
+          version: stable-20211005
+        - os: ubuntu-latest
+          version: stable-20220120
         - os: macos-latest
-          version: stable-20210319
-        - os: windows-2019
-          version: stable-20210319
-        - os: ubuntu-20.04
-          version: stable-20210809
+          version: stable-20220120
+        - os: windows-latest
+          version: stable-20220120
+        - os: ubuntu-latest
+          version: stable-20220401
         - os: macos-latest
-          version: stable-20210809
-        - os: windows-2019
-          version: stable-20210809
+          version: stable-20220401
+        - os: windows-latest
+          version: stable-20220401
         - os: ubuntu-latest
           version: cached
         - os: macos-latest

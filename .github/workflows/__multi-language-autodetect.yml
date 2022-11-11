@@ -29,7 +29,7 @@ jobs:
           version: stable-20211005
         - os: macos-latest
           version: stable-20211005
-        - os: ubuntu-latest
+        - os: ubuntu-20.04
           version: stable-20220120
         - os: macos-latest
           version: stable-20220120

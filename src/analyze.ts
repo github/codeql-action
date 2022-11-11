@@ -389,7 +389,8 @@ export async function runQueries(
       addSnippetsFlag,
       threadsFlag,
       enableDebugLogging ? "-vv" : "-v",
-      automationDetailsId
+      automationDetailsId,
+      featureEnablement
     );
   }
 

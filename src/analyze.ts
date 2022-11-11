@@ -10,7 +10,6 @@ import { DatabaseCreationTimings } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { countLoc } from "./count-loc";
 import { FeatureEnablement } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -213,25 +212,6 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
-  let locPromise: Promise<Partial<Record<Language, number>>> = Promise.resolve(
-    {}
-  );
-  const countLocDebugMode =
-    process.env["INTERNAL_CODEQL_ACTION_DEBUG_LOC"] || config.debugMode;
-  if (countLocDebugMode) {
-    // count the number of lines in the background
-    locPromise = countLoc(
-      path.resolve(),
-      // config.paths specifies external directories. the current
-      // directory is included in the analysis by default. Replicate
-      // that here.
-      config.paths,
-      config.pathsIgnore,
-      config.languages,
-      logger
-    );
-  }
-
   const codeql = await getCodeQL(config.codeQLCmd);
 
   await util.logCodeScanningConfigInCli(codeql, featureEnablement, logger);
@@ -249,7 +229,7 @@ export async function runQueries(
 
     if (!hasBuiltinQueries && !hasCustomQueries && !hasPackWithCustomQueries) {
       throw new Error(
-        `Unable to analyse ${language} as no queries were selected for this language`
+        `Unable to analyze ${language} as no queries were selected for this language`
       );
     }
 
@@ -344,9 +324,6 @@ export async function runQueries(
           new Date().getTime() - startTimeInterpretResults;
         logger.endGroup();
         logger.info(analysisSummary);
-      }
-      if (countLocDebugMode) {
-        printLinesOfCodeSummary(logger, language, await locPromise);
       }
       logger.info(await runPrintLinesOfCode(language));
     } catch (e) {
@@ -534,18 +511,6 @@ export async function runCleanup(
     await codeql.databaseCleanup(databasePath, cleanupLevel);
   }
   logger.endGroup();
-}
-
-function printLinesOfCodeSummary(
-  logger: Logger,
-  language: Language,
-  lineCounts: Partial<Record<Language, number>>
-) {
-  if (language in lineCounts) {
-    logger.info(
-      `Counted a baseline of ${lineCounts[language]} lines of code for ${language}.`
-    );
-  }
 }
 
 // exported for testing

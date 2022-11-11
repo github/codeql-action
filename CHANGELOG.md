@@ -2,6 +2,7 @@
 
 ## [UNRELEASED]
 
+- Go is now analyzed in the same way as other compiled languages such as C/C++, C#, and Java. This completes the rollout of the feature described in [CodeQL Action version 2.1.27](#2127---06-oct-2022).
 - Update the ML-powered additional query pack for JavaScript to version 0.4.0.
 - Go is now analyzed in the same way as other compiled languages such as C/C++, C#, and Java. This completes the rollout of the feature described in [CodeQL Action version 2.1.27](#2127---06-oct-2022). As a result, the `CODEQL_EXTRACTOR_GO_BUILD_TRACING` environment variable, which was previously used to manually enable this behavior, is now deprecated. If your code scanning workflow uses this environment variable, we recommend that you remove it. Otherwise, you do not need to alter your code scanning workflows.
 

@@ -127,11 +127,9 @@ function doesGoExtractionOutputExist(config: Config): boolean {
 }
 
 /**
- * When Go extraction reconciliation is enabled, either via the feature
- * or an environment variable, we will attempt to autobuild Go to preserve
- * compatibility for users who have set up Go using a legacy scanning style
- * CodeQL workflow, i.e. one without an autobuild step or manual build
- * steps.
+ * We attempt to autobuild Go to preserve compatibility for users who have 
+ * set up Go using a legacy scanning style CodeQL workflow, i.e. one without
+ * an autobuild step or manual build steps.
  *
  * - We detect whether an autobuild step is present by checking the
  * `util.DID_AUTOBUILD_GO_ENV_VAR_NAME` environment variable, which is set
@@ -156,6 +154,13 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
     logger.info(
       "Won't run Go autobuild since at least one file of Go code has already been extracted."
     );
+    // If the user has run the manual build step, and has set the `CODEQL_EXTRACTOR_GO_BUILD_TRACING`
+    // variable, we suggest they remove it from their workflow.
+    if ("CODEQL_EXTRACTOR_GO_BUILD_TRACING" in process.env) {
+      logger.warning(
+        `The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable has no effect on workflows with manual build steps, so we recommend that you remove it from your workflow.`
+      );
+    }
     return;
   }
   await runAutobuild(Language.go, config, logger);

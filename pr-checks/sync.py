@@ -23,8 +23,8 @@ def isCompatibleWithLatestImages(version):
         return True
     date = version.split("-")[1]
     # The first version of the CodeQL CLI compatible with `ubuntu-22.04` and `windows-2022` is
-    # 2.7.3. This appears in CodeQL Bundle version codeql-bundle-20211208.
-    return date >= "20211208"
+    # 2.8.2. This appears in CodeQL Bundle version codeql-bundle-20220224.
+    return date >= "20220224"
 
 
 def operatingSystemsForVersion(version):

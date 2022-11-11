@@ -24,7 +24,7 @@ jobs:
           version: stable-20211005
         - os: macos-latest
           version: stable-20211005
-        - os: ubuntu-latest
+        - os: ubuntu-20.04
           version: stable-20220120
         - os: macos-latest
           version: stable-20220120
@@ -84,7 +84,7 @@ jobs:
           VERSIONS="stable-20211005 stable-20220120 stable-20220401 cached latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
-            if [[ "$version" == stable-20211005 ]]; then
+            if [[ "$version" =~ stable-(20211005|20220120|20210809) ]]; then
               # Note the absence of the period in "ubuntu-2004": this is present in the image name
               # but not the artifact name
               OPERATING_SYSTEMS="ubuntu-2004 macos-latest"

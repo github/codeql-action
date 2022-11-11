@@ -821,7 +821,7 @@ async function getCodeQLForCmd(
           extraArgs.push(`--trace-process-name=${processName}`);
         } else {
           // We default to 3 if no other arguments are provided since this was the default
-          // behaviour of the Runner. Note this path never happens in the CodeQL Action
+          // behavior of the Runner. Note this path never happens in the CodeQL Action
           // because that always passes in a process name.
           extraArgs.push(`--trace-process-level=${processLevel || 3}`);
         }
@@ -849,7 +849,7 @@ async function getCodeQLForCmd(
         }
       }
 
-      const configLocation = await generateCodescanningConfig(
+      const configLocation = await generateCodeScanningConfig(
         codeql,
         config,
         featureEnablement
@@ -1186,8 +1186,8 @@ async function getCodeQLForCmd(
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
-  // To ensure that status reports include the CodeQL CLI version whereever
-  // possbile, we want to call getVersion(), which populates the version value
+  // To ensure that status reports include the CodeQL CLI version wherever
+  // possible, we want to call getVersion(), which populates the version value
   // used by status reporting, at the earliest opportunity. But invoking
   // getVersion() directly here breaks tests that only pretend to create a
   // CodeQL object. So instead we rely on the assumption that all non-test
@@ -1303,7 +1303,7 @@ async function runTool(cmd: string, args: string[] = []) {
  * @param config The configuration to use.
  * @returns the path to the generated user configuration file.
  */
-async function generateCodescanningConfig(
+async function generateCodeScanningConfig(
   codeql: CodeQL,
   config: Config,
   featureEnablement: FeatureEnablement

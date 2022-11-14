@@ -415,8 +415,7 @@ export function assertNever(value: never): never {
 
 /**
  * Environment variables to be set by codeql-action and used by the
- * CLI. These environment variables are relevant for both the runner
- * and the action.
+ * CLI.
  */
 export enum EnvVar {
   /**

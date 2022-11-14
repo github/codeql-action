@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Go: Custom tracing'
+name: 'PR Check - Go: tracing with legacy workflow'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,7 +21,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-custom-tracing:
+  go-tracing-legacy-workflow:
     strategy:
       matrix:
         include:
@@ -29,39 +29,27 @@ jobs:
           version: stable-20210308
         - os: macos-latest
           version: stable-20210308
-        - os: windows-2019
-          version: stable-20210308
         - os: ubuntu-20.04
           version: stable-20210319
         - os: macos-latest
-          version: stable-20210319
-        - os: windows-2019
           version: stable-20210319
         - os: ubuntu-20.04
           version: stable-20210809
         - os: macos-latest
           version: stable-20210809
-        - os: windows-2019
-          version: stable-20210809
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
-          version: cached
-        - os: windows-latest
           version: cached
         - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest
-        - os: windows-latest
-          version: latest
         - os: ubuntu-latest
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-        - os: windows-latest
-          version: nightly-latest
-    name: 'Go: Custom tracing'
+    name: 'Go: tracing with legacy workflow'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -81,12 +69,16 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         TEST_MODE: true
-    - name: Build code
-      shell: bash
-      run: go build main.go
     - uses: ./../action/analyze
       env:
         TEST_MODE: true
+    - shell: bash
+      run: |
+        cd "$RUNNER_TEMP/codeql_databases"
+        if [[ ! -d go ]]; then
+          echo "Did not find a Go database"
+          exit 1
+        fi
     env:
-      CODEQL_EXTRACTOR_GO_BUILD_TRACING: on
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

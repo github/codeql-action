@@ -1,8 +1,7 @@
-name: "Go: Autobuild custom tracing"
-description: "Checks that Go tracing works in conjunction with the autobuilder"
+name: "Go: tracing with autobuilder step"
+description: "Checks that Go tracing works when using an autobuilder step"
 operatingSystems: ["ubuntu", "macos"]
 env:
-  CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
   - uses: actions/setup-go@v3
@@ -20,6 +19,11 @@ steps:
       TEST_MODE: true
   - shell: bash
     run: |
+      if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
+        echo "Expected the Go autobuilder to be run, but the" \
+          "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+        exit 1
+      fi
       cd "$RUNNER_TEMP/codeql_databases"
       if [[ ! -d go ]]; then
         echo "Did not find a Go database"

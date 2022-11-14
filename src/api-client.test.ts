@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 
 import { getApiClient } from "./api-client";
 import { setupTests } from "./testing-utils";
-import { Mode, initializeEnvironment } from "./util";
+import { initializeEnvironment } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -18,7 +18,7 @@ test.beforeEach(() => {
   pluginStub = sinon.stub(githubUtils.GitHub, "plugin");
   githubStub = sinon.stub();
   pluginStub.returns(githubStub);
-  initializeEnvironment(Mode.actions, pkg.version);
+  initializeEnvironment(pkg.version);
 });
 
 test("Get the client API", async (t) => {

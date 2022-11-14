@@ -115,14 +115,14 @@ async function uploadPayload(
 
   const client = api.getApiClient(apiDetails);
 
-  const reqURL = util.isActions()
-    ? "PUT /repos/:owner/:repo/code-scanning/analysis"
-    : "POST /repos/:owner/:repo/code-scanning/sarifs";
-  const response = await client.request(reqURL, {
-    owner: repositoryNwo.owner,
-    repo: repositoryNwo.repo,
-    data: payload,
-  });
+  const response = await client.request(
+    "PUT /repos/:owner/:repo/code-scanning/analysis",
+    {
+      owner: repositoryNwo.owner,
+      repo: repositoryNwo.repo,
+      data: payload,
+    }
+  );
 
   logger.debug(`response status: ${response.status}`);
   logger.info("Successfully uploaded results");
@@ -305,61 +305,51 @@ export function buildPayload(
   gitHubVersion: util.GitHubVersion,
   mergeBaseCommitOid: string | undefined
 ) {
-  if (util.isActions()) {
-    const payloadObj = {
-      commit_oid: commitOid,
-      ref,
-      analysis_key: analysisKey,
-      analysis_name: analysisName,
-      sarif: zippedSarif,
-      workflow_run_id: workflowRunID,
-      checkout_uri: checkoutURI,
-      environment,
-      started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
-      tool_names: toolNames,
-      base_ref: undefined as undefined | string,
-      base_sha: undefined as undefined | string,
-    };
+  const payloadObj = {
+    commit_oid: commitOid,
+    ref,
+    analysis_key: analysisKey,
+    analysis_name: analysisName,
+    sarif: zippedSarif,
+    workflow_run_id: workflowRunID,
+    checkout_uri: checkoutURI,
+    environment,
+    started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
+    tool_names: toolNames,
+    base_ref: undefined as undefined | string,
+    base_sha: undefined as undefined | string,
+  };
 
-    // This behaviour can be made the default when support for GHES 3.0 is discontinued.
-    if (
-      gitHubVersion.type !== util.GitHubVariant.GHES ||
-      semver.satisfies(gitHubVersion.version, `>=3.1`)
-    ) {
-      if (actionsUtil.workflowEventName() === "pull_request") {
-        if (
-          commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
-          mergeBaseCommitOid
-        ) {
-          // We're uploading results for the merge commit
-          // and were able to determine the merge base.
-          // So we use that as the most accurate base.
-          payloadObj.base_ref = `refs/heads/${util.getRequiredEnvParam(
-            "GITHUB_BASE_REF"
-          )}`;
-          payloadObj.base_sha = mergeBaseCommitOid;
-        } else if (process.env.GITHUB_EVENT_PATH) {
-          // Either we're not uploading results for the merge commit
-          // or we could not determine the merge base.
-          // Using the PR base is the only option here
-          const githubEvent = JSON.parse(
-            fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
-          );
-          payloadObj.base_ref = `refs/heads/${githubEvent.pull_request.base.ref}`;
-          payloadObj.base_sha = githubEvent.pull_request.base.sha;
-        }
+  // This behaviour can be made the default when support for GHES 3.0 is discontinued.
+  if (
+    gitHubVersion.type !== util.GitHubVariant.GHES ||
+    semver.satisfies(gitHubVersion.version, `>=3.1`)
+  ) {
+    if (actionsUtil.workflowEventName() === "pull_request") {
+      if (
+        commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
+        mergeBaseCommitOid
+      ) {
+        // We're uploading results for the merge commit
+        // and were able to determine the merge base.
+        // So we use that as the most accurate base.
+        payloadObj.base_ref = `refs/heads/${util.getRequiredEnvParam(
+          "GITHUB_BASE_REF"
+        )}`;
+        payloadObj.base_sha = mergeBaseCommitOid;
+      } else if (process.env.GITHUB_EVENT_PATH) {
+        // Either we're not uploading results for the merge commit
+        // or we could not determine the merge base.
+        // Using the PR base is the only option here
+        const githubEvent = JSON.parse(
+          fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
+        );
+        payloadObj.base_ref = `refs/heads/${githubEvent.pull_request.base.ref}`;
+        payloadObj.base_sha = githubEvent.pull_request.base.sha;
       }
     }
-    return payloadObj;
-  } else {
-    return {
-      commit_sha: commitOid,
-      ref,
-      sarif: zippedSarif,
-      checkout_uri: checkoutURI,
-      tool_name: toolNames[0],
-    };
   }
+  return payloadObj;
 }
 
 // Uploads the given set of sarif files.
@@ -510,31 +500,28 @@ export async function waitForProcessing(
 }
 
 export function validateUniqueCategory(sarif: SarifFile): void {
-  // This check only works on actions as env vars don't persist between calls to the runner
-  if (util.isActions()) {
-    // duplicate categories are allowed in the same sarif file
-    // but not across multiple sarif files
-    const categories = {} as Record<string, { id?: string; tool?: string }>;
+  // duplicate categories are allowed in the same sarif file
+  // but not across multiple sarif files
+  const categories = {} as Record<string, { id?: string; tool?: string }>;
 
-    for (const run of sarif.runs) {
-      const id = run?.automationDetails?.id;
-      const tool = run.tool?.driver?.name;
-      const category = `${sanitize(id)}_${sanitize(tool)}`;
-      categories[category] = { id, tool };
-    }
+  for (const run of sarif.runs) {
+    const id = run?.automationDetails?.id;
+    const tool = run.tool?.driver?.name;
+    const category = `${sanitize(id)}_${sanitize(tool)}`;
+    categories[category] = { id, tool };
+  }
 
-    for (const [category, { id, tool }] of Object.entries(categories)) {
-      const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
-      if (process.env[sentinelEnvVar]) {
-        throw new Error(
-          "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
-            "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
-            "in the sarif file, that will take precedence over your configured `category`. " +
-            `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`
-        );
-      }
-      core.exportVariable(sentinelEnvVar, sentinelEnvVar);
+  for (const [category, { id, tool }] of Object.entries(categories)) {
+    const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
+    if (process.env[sentinelEnvVar]) {
+      throw new Error(
+        "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
+          "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
+          "in the sarif file, that will take precedence over your configured `category`. " +
+          `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`
+      );
     }
+    core.exportVariable(sentinelEnvVar, sentinelEnvVar);
   }
 }
 

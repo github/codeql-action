@@ -406,9 +406,8 @@ for (const [
   test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {
     const warningSpy = sinon.spy(core, "warning");
     const versionStub = sinon
-      .stub(api, "getGitHubVersionActionsOnly")
+      .stub(api, "getGitHubVersion")
       .resolves(githubVersion);
-    const isActionsStub = sinon.stub(util, "isActions").returns(true);
     await util.checkActionVersion(version);
     if (shouldReportWarning) {
       t.true(
@@ -420,7 +419,6 @@ for (const [
       t.false(warningSpy.called);
     }
     versionStub.restore();
-    isActionsStub.restore();
   });
 }
 

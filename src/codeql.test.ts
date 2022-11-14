@@ -497,7 +497,6 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
       thisStubConfig,
       "",
       undefined,
-      undefined,
       createFeatures([]),
       getRunnerLogger(true)
     );
@@ -536,7 +535,6 @@ const injectedConfigMacro = test.macro({
       await codeqlObject.databaseInitCluster(
         thisStubConfig,
         "",
-        undefined,
         undefined,
         createFeatures([Feature.CliConfigFileEnabled]),
         getRunnerLogger(true)
@@ -843,7 +841,6 @@ test("does not use injected config", async (t: ExecutionContext<unknown>) => {
     await codeqlObject.databaseInitCluster(
       stubConfig,
       "",
-      undefined,
       undefined,
       createFeatures([]),
       getRunnerLogger(true)

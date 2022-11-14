@@ -96,7 +96,6 @@ export interface CodeQL {
     config: Config,
     sourceRoot: string,
     processName: string | undefined,
-    processLevel: number | undefined,
     featureEnablement: FeatureEnablement,
     logger: Logger
   ): Promise<void>;
@@ -800,7 +799,6 @@ async function getCodeQLForCmd(
       config: Config,
       sourceRoot: string,
       processName: string | undefined,
-      processLevel: number | undefined,
       featureEnablement: FeatureEnablement,
       logger: Logger
     ) {
@@ -816,14 +814,7 @@ async function getCodeQLForCmd(
       ) {
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
-        if (processName !== undefined) {
-          extraArgs.push(`--trace-process-name=${processName}`);
-        } else {
-          // We default to 3 if no other arguments are provided since this was the default
-          // behaviour of the Runner. Note this path never happens in the CodeQL Action
-          // because that always passes in a process name.
-          extraArgs.push(`--trace-process-level=${processLevel || 3}`);
-        }
+        extraArgs.push(`--trace-process-name=${processName}`);
         if (
           // There's a bug in Lua tracing for Go on Windows in versions earlier than
           // `CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED`, so don't use Lua tracing

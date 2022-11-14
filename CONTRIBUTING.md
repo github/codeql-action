@@ -38,10 +38,6 @@ To see the effect of your changes and to test them, push your changes in a branc
 
 As well as the unit tests (see _Common tasks_ above), there are integration tests, defined in `.github/workflows/integration-testing.yml`.  These are run by a CI check.  Depending on the change you’re making, you may want to add a test to this file or extend an existing one.
 
-### Building the CodeQL runner
-
-Navigate to the `runner` directory and run `npm install` to install dependencies needed only for compiling the CodeQL runner. Run `npm run build-runner` to output files to the `runner/dist` directory.
-
 ## Submitting a pull request
 
 1. [Fork][fork] and clone the repository

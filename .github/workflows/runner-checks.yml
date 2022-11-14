@@ -10,58 +10,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  runner-analyze-javascript-windows:
-    name: Runner windows JS analyze
-    timeout-minutes: 45
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build runner
-        run: |
-          cd runner
-          npm install
-          npm run build-runner
-
-      - name: Run init
-        run: |
-          runner/dist/codeql-runner-win.exe init --repository $Env:GITHUB_REPOSITORY --languages javascript --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
-        env:
-          TEST_MODE: true
-
-      - name: Run analyze
-        run: |
-          runner/dist/codeql-runner-win.exe analyze --repository $Env:GITHUB_REPOSITORY --commit $Env:GITHUB_SHA --ref $Env:GITHUB_REF --github-url $Env:GITHUB_SERVER_URL --github-auth ${{ github.token }}
-        env:
-          TEST_MODE: true
-
-  runner-analyze-javascript-macos:
-    name: Runner macos JS analyze
-    timeout-minutes: 45
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build runner
-        run: |
-          cd runner
-          npm install
-          npm run build-runner
-
-      - name: Run init
-        run: |
-          runner/dist/codeql-runner-macos init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-        env:
-          TEST_MODE: true
-
-      - name: Run analyze
-        run: |
-          runner/dist/codeql-runner-macos analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-        env:
-          TEST_MODE: true
-
   runner-analyze-csharp-ubuntu:
     name: Runner ubuntu C# analyze
     timeout-minutes: 45

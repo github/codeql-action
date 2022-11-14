@@ -28,7 +28,7 @@ steps:
     shell: bash
     run: |
       cd "$RUNNER_TEMP/results"
-      expected_baseline_languages="cpp csharp go java js py ruby"
+      expected_baseline_languages="cpp cs go java js py rb swift"
 
       for lang in ${expected_baseline_languages}; do
         rule_name="${lang}/baseline/expected-extracted-files"

@@ -2,7 +2,7 @@ import * as githubUtils from "@actions/github/lib/utils";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
-import { getApiClient } from "./api-client";
+import { getApiClient, GitHubApiCombinedDetails } from "./api-client";
 import { setupTests } from "./testing-utils";
 import { initializeEnvironment } from "./util";
 
@@ -19,72 +19,6 @@ test.beforeEach(() => {
   githubStub = sinon.stub();
   pluginStub.returns(githubStub);
   initializeEnvironment(pkg.version);
-});
-
-test("Get the client API", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      externalRepoAuth: "abc",
-      url: "http://hucairz",
-    },
-    undefined,
-    {
-      auth: "token xyz",
-      baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL-Action/${pkg.version}`,
-    }
-  );
-});
-
-test("Get the client API external", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      externalRepoAuth: "abc",
-      url: "http://hucairz",
-    },
-    { allowExternal: true },
-    {
-      auth: "token abc",
-      baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL-Action/${pkg.version}`,
-    }
-  );
-});
-
-test("Get the client API external not present", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      url: "http://hucairz",
-    },
-    { allowExternal: true },
-    {
-      auth: "token xyz",
-      baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL-Action/${pkg.version}`,
-    }
-  );
-});
-
-test("Get the client API with github url", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      url: "https://github.com/some/invalid/url",
-    },
-    undefined,
-    {
-      auth: "token xyz",
-      baseUrl: "https://api.github.com",
-      userAgent: `CodeQL-Action/${pkg.version}`,
-    }
-  );
 });
 
 test("Get the API with an API URL directly", async (t) => {
@@ -106,7 +40,7 @@ test("Get the API with an API URL directly", async (t) => {
 
 function doTest(
   t: ExecutionContext<unknown>,
-  clientArgs: any,
+  clientArgs: GitHubApiCombinedDetails,
   clientOptions: any,
   expected: any
 ) {

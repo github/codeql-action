@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: PR Check - Ruby analysis
+name: PR Check - Swift analysis using a custom build command
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,7 +21,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  test-ruby:
+  swift-custom-build:
     strategy:
       matrix:
         include:
@@ -37,7 +37,7 @@ jobs:
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-    name: Ruby analysis
+    name: Swift analysis using a custom build command
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -50,10 +50,13 @@ jobs:
         version: ${{ matrix.version }}
     - uses: ./../action/init
       with:
-        languages: ruby
+        languages: swift
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         TEST_MODE: true
+    - name: Build code
+      shell: bash
+      run: ./build.sh
     - uses: ./../action/analyze
       id: analysis
       env:
@@ -61,11 +64,12 @@ jobs:
     - name: Check database
       shell: bash
       run: |
-        RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
-        if [[ ! -d "$RUBY_DB" ]]; then
-          echo "Did not create a database for Ruby."
+        SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+        if [[ ! -d "$SWIFT_DB" ]]; then
+          echo "Did not create a database for Swift."
           exit 1
         fi
     env:
-      CODEQL_ENABLE_EXPERIMENTAL_FEATURES: 'true'
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true'
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

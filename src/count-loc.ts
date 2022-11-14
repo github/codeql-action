@@ -13,6 +13,7 @@ const linguistToMetrics: Record<string, Language> = {
   javascript: Language.javascript,
   python: Language.python,
   ruby: Language.ruby,
+  swift: Language.swift,
   typescript: Language.javascript,
 };
 

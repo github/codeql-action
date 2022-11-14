@@ -50,7 +50,7 @@ export function combineSarifFiles(sarifFiles: string[]): SarifFile {
 export function populateRunAutomationDetails(
   sarif: SarifFile,
   category: string | undefined,
-  analysis_key: string | undefined,
+  analysis_key: string,
   environment: string | undefined
 ): SarifFile {
   const automationID = getAutomationID(category, analysis_key, environment);
@@ -70,7 +70,7 @@ export function populateRunAutomationDetails(
 
 function getAutomationID(
   category: string | undefined,
-  analysis_key: string | undefined,
+  analysis_key: string,
   environment: string | undefined
 ): string | undefined {
   if (category !== undefined) {
@@ -81,12 +81,7 @@ function getAutomationID(
     return automationID;
   }
 
-  // analysis_key is undefined for the runner.
-  if (analysis_key !== undefined) {
-    return actionsUtil.computeAutomationID(analysis_key, environment);
-  }
-
-  return undefined;
+  return actionsUtil.computeAutomationID(analysis_key, environment);
 }
 
 // Upload the given payload.
@@ -184,37 +179,6 @@ export async function uploadFromActions(
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
     actionsUtil.getRequiredInput("matrix"),
-    gitHubVersion,
-    apiDetails,
-    logger
-  );
-}
-
-// Uploads a single sarif file or a directory of sarif files
-// depending on what the path happens to refer to.
-// Returns true iff the upload occurred and succeeded
-export async function uploadFromRunner(
-  sarifPath: string,
-  repositoryNwo: RepositoryNwo,
-  commitOid: string,
-  ref: string,
-  category: string | undefined,
-  sourceRoot: string,
-  gitHubVersion: util.GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
-  logger: Logger
-): Promise<UploadResult> {
-  return await uploadFiles(
-    getSarifFilePaths(sarifPath),
-    repositoryNwo,
-    commitOid,
-    ref,
-    undefined,
-    category,
-    undefined,
-    undefined,
-    sourceRoot,
-    undefined,
     gitHubVersion,
     apiDetails,
     logger
@@ -359,7 +323,7 @@ async function uploadFiles(
   repositoryNwo: RepositoryNwo,
   commitOid: string,
   ref: string,
-  analysisKey: string | undefined,
+  analysisKey: string,
   category: string | undefined,
   analysisName: string | undefined,
   workflowRunID: number | undefined,

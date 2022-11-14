@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-- Go is now analyzed in the same way as other compiled languages such as C/C++, C#, and Java. This completes the rollout of the feature described in [CodeQL Action version 2.1.27](#2127---06-oct-2022).
+- Go is now analyzed in the same way as other compiled languages such as C/C++, C#, and Java. This completes the rollout of the feature described in [CodeQL Action version 2.1.27](#2127---06-oct-2022). [#1322](https://github.com/github/codeql-action/pull/1322)
 
 ## 2.1.32 - 14 Nov 2022
 

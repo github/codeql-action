@@ -1,5 +1,3 @@
-import * as path from "path";
-
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
@@ -38,30 +36,14 @@ export const getApiClient = function (
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
-  const apiURL = apiDetails.apiURL || deriveApiUrl(apiDetails.url);
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
-      baseUrl: apiURL,
+      baseUrl: apiDetails.apiURL,
       userAgent: `CodeQL-Action/${pkg.version}`,
       log: consoleLogLevel({ level: "debug" }),
     })
   );
 };
-
-// Once the runner is deleted, this can also be removed since the GitHub API URL is always available in an environment variable on Actions.
-function deriveApiUrl(githubUrl: string): string {
-  const url = new URL(githubUrl);
-
-  // If we detect this is trying to connect to github.com
-  // then return with a fixed canonical URL.
-  if (url.hostname === "github.com" || url.hostname === "api.github.com") {
-    return "https://api.github.com";
-  }
-
-  // Add the /api/v3 API prefix
-  url.pathname = path.join(url.pathname, "api", "v3");
-  return url.toString();
-}
 
 export function getApiDetails() {
   return {

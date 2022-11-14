@@ -49,6 +49,8 @@ export interface QueriesStatusReport {
   analyze_builtin_queries_python_duration_ms?: number;
   /** Time taken in ms to run builtin queries for ruby (or undefined if this language was not analyzed). */
   analyze_builtin_queries_ruby_duration_ms?: number;
+  /** Time taken in ms to run builtin queries for swift (or undefined if this language was not analyzed). */
+  analyze_builtin_queries_swift_duration_ms?: number;
   /** Time taken in ms to run custom queries for cpp (or undefined if this language was not analyzed). */
   analyze_custom_queries_cpp_duration_ms?: number;
   /** Time taken in ms to run custom queries for csharp (or undefined if this language was not analyzed). */
@@ -63,6 +65,8 @@ export interface QueriesStatusReport {
   analyze_custom_queries_python_duration_ms?: number;
   /** Time taken in ms to run custom queries for ruby (or undefined if this language was not analyzed). */
   analyze_custom_queries_ruby_duration_ms?: number;
+  /** Time taken in ms to run custom queries for swift (or undefined if this language was not analyzed). */
+  analyze_custom_queries_swift_duration_ms?: number;
   /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
   interpret_results_cpp_duration_ms?: number;
   /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */
@@ -77,6 +81,8 @@ export interface QueriesStatusReport {
   interpret_results_python_duration_ms?: number;
   /** Time taken in ms to interpret results for ruby (or undefined if this language was not analyzed). */
   interpret_results_ruby_duration_ms?: number;
+  /** Time taken in ms to interpret results for swift (or undefined if this language was not analyzed). */
+  interpret_results_swift_duration_ms?: number;
   /** Name of language that errored during analysis (or undefined if no language failed). */
   analyze_failure_language?: string;
 }

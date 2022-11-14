@@ -13,8 +13,8 @@ export async function run(
 
   const config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
   if (config === undefined) {
-    throw new Error(
-      "Config file could not be found at expected location. Did the 'init' action fail to start?"
+    logger.warning(
+      "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any."
     );
   }
 

@@ -127,7 +127,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
 }
 
 /**
- * We attempt to autobuild Go to preserve compatibility for users who have 
+ * We attempt to autobuild Go to preserve compatibility for users who have
  * set up Go using a legacy scanning style CodeQL workflow, i.e. one without
  * an autobuild step or manual build steps.
  *

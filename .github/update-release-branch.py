@@ -5,7 +5,7 @@ import json
 import os
 import subprocess
 
-EMPTY_CHANGELOG = """# CodeQL Action and CodeQL Runner Changelog
+EMPTY_CHANGELOG = """# CodeQL Action Changelog
 
 ## [UNRELEASED]
 

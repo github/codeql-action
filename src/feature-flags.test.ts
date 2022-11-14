@@ -18,12 +18,12 @@ import {
   setupTests,
 } from "./testing-utils";
 import * as util from "./util";
-import { GitHubVariant, initializeEnvironment, Mode, withTmpDir } from "./util";
+import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment(Mode.actions, "1.2.3");
+  initializeEnvironment("1.2.3");
 });
 
 const testApiDetails: GitHubApiDetails = {

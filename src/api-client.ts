@@ -6,7 +6,7 @@ import consoleLogLevel from "console-log-level";
 
 import { getRequiredInput } from "./actions-util";
 import * as util from "./util";
-import { getMode, getRequiredEnvParam, GitHubVersion } from "./util";
+import { getRequiredEnvParam, GitHubVersion } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -42,7 +42,7 @@ export const getApiClient = function (
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiURL,
-      userAgent: `CodeQL-${getMode()}/${pkg.version}`,
+      userAgent: `CodeQL-Action/${pkg.version}`,
       log: consoleLogLevel({ level: "debug" }),
     })
   );
@@ -83,15 +83,11 @@ let cachedGitHubVersion: GitHubVersion | undefined = undefined;
 /**
  * Report the GitHub server version. This is a wrapper around
  * util.getGitHubVersion() that automatically supplies GitHub API details using
- * GitHub Action inputs. If you need to get the GitHub server version from the
- * Runner, please call util.getGitHubVersion() instead.
+ * GitHub Action inputs.
  *
  * @returns GitHub version
  */
-export async function getGitHubVersionActionsOnly(): Promise<GitHubVersion> {
-  if (!util.isActions()) {
-    throw new Error("getGitHubVersionActionsOnly() works only in an action");
-  }
+export async function getGitHubVersion(): Promise<GitHubVersion> {
   if (cachedGitHubVersion === undefined) {
     cachedGitHubVersion = await util.getGitHubVersion(getApiDetails());
   }

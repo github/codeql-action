@@ -304,14 +304,6 @@ function getCodeQLBundleName(): string {
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
-  if (!util.isActions()) {
-    return CODEQL_DEFAULT_ACTION_REPOSITORY;
-  } else {
-    return getActionsCodeQLActionRepository(logger);
-  }
-}
-
-function getActionsCodeQLActionRepository(logger: Logger): string {
   if (process.env["GITHUB_ACTION_REPOSITORY"] !== undefined) {
     return process.env["GITHUB_ACTION_REPOSITORY"];
   }

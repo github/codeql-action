@@ -14,7 +14,7 @@ import {
   runFinalize,
   runQueries,
 } from "./analyze";
-import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
+import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
@@ -179,7 +179,7 @@ async function run() {
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
-  util.initializeEnvironment(util.Mode.actions, pkg.version);
+  util.initializeEnvironment(pkg.version);
   await util.checkActionVersion(pkg.version);
 
   const logger = getActionsLogger();
@@ -208,10 +208,7 @@ async function run() {
       );
     }
 
-    await util.enrichEnvironment(
-      util.Mode.actions,
-      await getCodeQL(config.codeQLCmd)
-    );
+    await util.enrichEnvironment(await getCodeQL(config.codeQLCmd));
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
@@ -227,7 +224,7 @@ async function run() {
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
     );
 
-    const gitHubVersion = await getGitHubVersionActionsOnly();
+    const gitHubVersion = await getGitHubVersion();
 
     const features = new Features(
       gitHubVersion,

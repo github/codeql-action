@@ -348,8 +348,7 @@ export async function getGitHubVersion(
 
 export function checkGitHubVersionInRange(
   version: GitHubVersion,
-  logger: Logger,
-  toolName: Mode
+  logger: Logger
 ) {
   if (hasBeenWarnedAboutVersion || version.type !== GitHubVariant.GHES) {
     return;
@@ -365,20 +364,18 @@ export function checkGitHubVersionInRange(
     disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_OLD
   ) {
     logger.warning(
-      `The CodeQL ${toolName} version you are using is too old to be compatible with GitHub Enterprise ${version.version}. If you experience issues, please upgrade to a more recent version of the CodeQL ${toolName}.`
+      `The CodeQL Action version you are using is too old to be compatible with GitHub Enterprise ${version.version}. If you experience issues, please upgrade to a more recent version of the CodeQL Action.`
     );
   }
   if (
     disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_NEW
   ) {
     logger.warning(
-      `GitHub Enterprise ${version.version} is too old to be compatible with this version of the CodeQL ${toolName}. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL ${toolName}.`
+      `GitHub Enterprise ${version.version} is too old to be compatible with this version of the CodeQL Action. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL Action.`
     );
   }
   hasBeenWarnedAboutVersion = true;
-  if (isActions()) {
-    core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
-  }
+  core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
 }
 
 export enum DisallowedAPIVersionReason {
@@ -482,22 +479,12 @@ export function assertNever(value: never): never {
   throw new ExhaustivityCheckingError(value);
 }
 
-export enum Mode {
-  actions = "Action",
-  runner = "Runner",
-}
-
 /**
  * Environment variables to be set by codeql-action and used by the
  * CLI. These environment variables are relevant for both the runner
  * and the action.
  */
 export enum EnvVar {
-  /**
-   * The mode of the codeql-action, either 'actions' or 'runner'.
-   */
-  RUN_MODE = "CODEQL_ACTION_RUN_MODE",
-
   /**
    * Semver of the codeql-action as specified in package.json.
    */
@@ -529,53 +516,28 @@ export enum EnvVar {
   FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
 }
 
-const exportVar = (mode: Mode, name: string, value: string) => {
-  if (mode === Mode.actions) {
-    core.exportVariable(name, value);
-  } else {
-    process.env[name] = value;
-  }
-};
-
 /**
  * Set some initial environment variables that we can set even without
  * knowing what version of CodeQL we're running.
  */
-export function initializeEnvironment(mode: Mode, version: string) {
-  exportVar(mode, EnvVar.RUN_MODE, mode);
-  exportVar(mode, EnvVar.VERSION, version);
-  exportVar(mode, EnvVar.FEATURE_SARIF_COMBINE, "true");
-  exportVar(mode, EnvVar.FEATURE_WILL_UPLOAD, "true");
+export function initializeEnvironment(version: string) {
+  core.exportVariable(EnvVar.VERSION, version);
+  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
 }
 
 /**
  * Enrich the environment variables with further flags that we cannot
  * know the value of until we know what version of CodeQL we're running.
  */
-export async function enrichEnvironment(mode: Mode, codeql: CodeQL) {
+export async function enrichEnvironment(codeql: CodeQL) {
   if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    exportVar(mode, EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-    exportVar(mode, EnvVar.FEATURE_SANDWICH, "false");
+    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+    core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
   } else {
-    exportVar(mode, EnvVar.FEATURE_MULTI_LANGUAGE, "true");
-    exportVar(mode, EnvVar.FEATURE_SANDWICH, "true");
+    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
   }
-}
-
-export function getMode(): Mode {
-  // Make sure we fail fast if the env var is missing. This should
-  // only happen if there is a bug in our code and we neglected
-  // to set the mode early in the process.
-  const mode = getRequiredEnvParam(EnvVar.RUN_MODE);
-
-  if (mode !== Mode.actions && mode !== Mode.runner) {
-    throw new Error(`Unknown mode: ${mode}.`);
-  }
-  return mode;
-}
-
-export function isActions(): boolean {
-  return getMode() === Mode.actions;
 }
 
 /**
@@ -739,7 +701,7 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
  */
 export async function checkActionVersion(version: string) {
   if (!semver.satisfies(version, ">=2")) {
-    const githubVersion = await api.getGitHubVersionActionsOnly();
+    const githubVersion = await api.getGitHubVersion();
     // Only log a warning for versions of GHES that are compatible with CodeQL Action version 2.
     //
     // GHES 3.4 shipped without the v2 tag, but it also shipped without this warning message code.

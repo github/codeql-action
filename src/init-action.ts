@@ -275,7 +275,6 @@ async function run() {
       config,
       sourceRoot,
       "Runner.Worker.exe",
-      undefined,
       features,
       logger
     );

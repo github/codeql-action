@@ -28,8 +28,7 @@ const pkg = require("../package.json");
  * Wrapper around core.getInput for inputs that always have a value.
  * Also see getOptionalInput.
  *
- * This allows us to get stronger type checking of required/optional inputs
- * and make behaviour more consistent between actions and the runner.
+ * This allows us to get stronger type checking of required/optional inputs.
  */
 export function getRequiredInput(name: string): string {
   return core.getInput(name, { required: true });
@@ -39,8 +38,7 @@ export function getRequiredInput(name: string): string {
  * Wrapper around core.getInput that converts empty inputs to undefined.
  * Also see getRequiredInput.
  *
- * This allows us to get stronger type checking of required/optional inputs
- * and make behaviour more consistent between actions and the runner.
+ * This allows us to get stronger type checking of required/optional inputs.
  */
 export const getOptionalInput = function (name: string): string | undefined {
   const value = core.getInput(name);

@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Go: Reconciled tracing with autobuilder'
+name: PR Check - Swift analysis using a custom build command
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,35 +21,23 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-reconciled-tracing-autobuilder:
+  swift-custom-build:
     strategy:
       matrix:
         include:
-        - os: ubuntu-20.04
-          version: stable-20211005
-        - os: macos-latest
-          version: stable-20211005
-        - os: ubuntu-20.04
-          version: stable-20220120
-        - os: macos-latest
-          version: stable-20220120
-        - os: ubuntu-latest
-          version: stable-20220401
-        - os: macos-latest
-          version: stable-20220401
-        - os: ubuntu-latest
-          version: cached
-        - os: macos-latest
-          version: cached
         - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest
         - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: ubuntu-latest
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-    name: 'Go: Reconciled tracing with autobuilder'
+    name: Swift analysis using a custom build command
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -60,32 +48,28 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - uses: actions/setup-go@v3
-      with:
-        go-version: ^1.13.1
     - uses: ./../action/init
       with:
-        languages: go
+        languages: swift
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         TEST_MODE: true
-    - uses: ./../action/autobuild
+    - name: Build code
+      shell: bash
+      run: ./build.sh
     - uses: ./../action/analyze
+      id: analysis
       env:
         TEST_MODE: true
-    - shell: bash
+    - name: Check database
+      shell: bash
       run: |
-        if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
-          echo "Expected the Go autobuilder to be run, but the" \
-            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
-          exit 1
-        fi
-        cd "$RUNNER_TEMP/codeql_databases"
-        if [[ ! -d go ]]; then
-          echo "Did not find a Go database"
+        SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+        if [[ ! -d "$SWIFT_DB" ]]; then
+          echo "Did not create a database for Swift."
           exit 1
         fi
     env:
-      CODEQL_ACTION_RECONCILE_GO_EXTRACTION: 'true'
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true'
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

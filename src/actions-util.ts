@@ -25,11 +25,6 @@ import {
 const pkg = require("../package.json");
 
 /**
- * The utils in this module are meant to be run inside of the action only.
- * Code paths from the runner should not enter this module.
- */
-
-/**
  * Wrapper around core.getInput for inputs that always have a value.
  * Also see getOptionalInput.
  *

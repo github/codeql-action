@@ -8,18 +8,15 @@ import {
   sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
+import { getGitHubVersionActionsOnly } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
-import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
 import {
   DID_AUTOBUILD_GO_ENV_VAR_NAME,
   checkActionVersion,
   checkGitHubVersionInRange,
-  getRequiredEnvParam,
   initializeEnvironment,
   Mode,
 } from "./util";
@@ -76,13 +73,6 @@ async function run() {
     const gitHubVersion = await getGitHubVersionActionsOnly();
     checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
 
-    const features = new Features(
-      gitHubVersion,
-      getApiDetails(),
-      parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
-      logger
-    );
-
     const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
@@ -90,7 +80,7 @@ async function run() {
       );
     }
 
-    languages = await determineAutobuildLanguages(config, features, logger);
+    languages = await determineAutobuildLanguages(config, logger);
     if (languages !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {

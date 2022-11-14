@@ -10,37 +10,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  runner-analyze-javascript-ubuntu:
-    name: Runner ubuntu JS analyze
-
-    timeout-minutes: 45
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build runner
-        run: |
-          cd runner
-          npm install
-          npm run build-runner
-
-      - name: Run init
-        run: |
-          # Pass --config-file here, but not for other jobs in this workflow.
-          # This means we're testing the config file parsing in the runner
-          # but not slowing down all jobs unnecessarily as it doesn't add much
-          # testing the parsing on different operating systems and languages.
-          runner/dist/codeql-runner-linux init --repository $GITHUB_REPOSITORY --languages javascript --config-file ./.github/codeql/codeql-config.yml --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-        env:
-          TEST_MODE: true
-
-      - name: Run analyze
-        run: |
-          runner/dist/codeql-runner-linux analyze --repository $GITHUB_REPOSITORY --commit $GITHUB_SHA --ref $GITHUB_REF --github-url $GITHUB_SERVER_URL --github-auth ${{ github.token }}
-        env:
-          TEST_MODE: true
-
   runner-analyze-javascript-windows:
     name: Runner windows JS analyze
     timeout-minutes: 45

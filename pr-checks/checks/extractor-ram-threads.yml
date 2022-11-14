@@ -1,13 +1,15 @@
 name: "Extractor ram and threads options test"
 description: "Tests passing RAM and threads limits to extractors"
 versions: ["latest"]
-os: ["ubuntu-latest"]
+operatingSystems: ["ubuntu"]
 steps:
   - uses: ./../action/init
     with:
       languages: java
       ram: 230
       threads: 1
+    env:
+      TEST_MODE: true
   - name: Assert Results
     shell: bash
     run: |

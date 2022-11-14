@@ -10,9 +10,34 @@ inputs:
     description: The languages to be analysed
     required: false
   token:
+    description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
     default: ${{ github.token }}
+    required: false
+  registries:
+    description: |
+      Use this input only when you need to download CodeQL packages from another instance of GitHub. If you only need to download packages from this GitHub instance, use the token input instead.
+
+      A YAML string that defines the list of GitHub container registries to use for downloading packs. The string is in the following form (the | is required on the first line):
+
+      registries: |
+          - url: https://containers.GHEHOSTNAME1/v2/
+            packages:
+              - my-company/*
+              - my-company2/*
+            token: \$\{{ secrets.GHEHOSTNAME1_TOKEN }}
+
+          - url: https://ghcr.io/v2/
+            packages: */*
+            token: \$\{{ secrets.GHCR_TOKEN }}
+
+      The `url` property contains the URL to the container registry you want to connect to.
+
+      The `packages` property contains a single glob string or a list of glob strings, specifying which packages should be retrieved from this particular container registry. Order is important. Earlier entries will match before later entries.
+
+      The `token` property contains a connection token for this registry.    required: false
   matrix:
     default: ${{ toJson(matrix) }}
+    required: false
   config-file:
     description: Path of the config file to use
     required: false
@@ -32,7 +57,7 @@ inputs:
       analyses, you must specify packs in the codeql-config.yml file.
     required: false
   external-repository-token:
-    description: A token for fetching external config files and queries if they reside in a private repository.
+    description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.
     required: false
   setup-python-dependencies:
     description: Try to auto-install your python dependencies
@@ -56,7 +81,10 @@ inputs:
       This input also sets the number of threads that can later be used by the "analyze" action.
     required: false
   debug:
-    description: Enable debugging mode. This will result in more output being produced which may be useful when debugging certain issues.
+    description: >-
+      Enable debugging mode.
+      This will result in more output being produced which may be useful when debugging certain issues.
+      Debugging mode is enabled automatically when step debug logging is turned on.
     required: false
     default: 'false'
   debug-artifact-name:
@@ -69,9 +97,14 @@ inputs:
       The name of the database uploaded to the debugging artifact.
       This is only used when debug mode is enabled.
     required: false
+  trap-caching:
+    description: >-
+      Explicitly enable or disable TRAP caching rather than respecting the feature flag for it.
+    required: false
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis
 runs:
   using: 'node16'
   main: '../lib/init-action.js'
+  post: '../lib/init-action-post.js'

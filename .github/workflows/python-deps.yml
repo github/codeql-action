@@ -7,6 +7,17 @@ on:
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      # Changes to this workflow.
+      - '.github/workflows/python-deps.yml'
+      # Changes to the Python package installation scripts and their tests.
+      - 'python-setup/**'
+      # Changes to the default CodeQL bundle version.
+      - '**/defaults.json'
+  schedule:
+    # Weekly on Monday.
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
 
 jobs:
   test-setup-python-scripts:
@@ -15,9 +26,20 @@ jobs:
     strategy:
         fail-fast: false
         matrix:
-          os: [ubuntu-latest, macos-latest]
+          os: [ubuntu-20.04, ubuntu-22.04, macos-latest]
           python_deps_type: [pipenv, poetry, requirements, setup_py]
           python_version: [2, 3]
+          exclude:
+            # Python2 and poetry are not supported. See https://github.com/actions/setup-python/issues/374
+            - python_version: 2
+              python_deps_type: poetry
+            # Python2 and pipenv are not supported since pipenv v2021.11.5
+            - python_version: 2
+              python_deps_type: pipenv
+            # Python2 is not available on ubuntu-22.04 by default -- see https://github.com/github/codeql-action/pull/1257
+            - python_version: 2
+              os: ubuntu-22.04
+
 
     env:
       PYTHON_DEPS_TYPE: ${{ matrix.python_deps_type }}
@@ -43,7 +65,8 @@ jobs:
         cd $GITHUB_WORKSPACE/python-setup/tests/${PYTHON_DEPS_TYPE}/requests-${PYTHON_VERSION}
 
         case ${{ matrix.os }} in
-            ubuntu-latest*)     basePath="/opt";;
+            ubuntu-20.04*)     basePath="/opt";;
+            ubuntu-22.04*)     basePath="/opt";;
             macos-latest*)    basePath="/Users/runner";;
         esac
         echo ${basePath}
@@ -67,7 +90,7 @@ jobs:
     strategy:
         fail-fast: false
         matrix:
-          os: [ubuntu-latest, macos-latest]
+          os: [ubuntu-20.04, ubuntu-22.04, macos-latest]
 
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -89,7 +112,8 @@ jobs:
         cd $GITHUB_WORKSPACE/python-setup/tests/requirements/non-standard-location
 
         case ${{ matrix.os }} in
-            ubuntu-latest*)     basePath="/opt";;
+            ubuntu-20.04*)     basePath="/opt";;
+            ubuntu-22.04*)     basePath="/opt";;
             macos-latest*)    basePath="/Users/runner";;
         esac
         echo ${basePath}
@@ -115,6 +139,13 @@ jobs:
         matrix:
           python_deps_type: [pipenv, poetry, requirements, setup_py]
           python_version: [2, 3]
+          exclude:
+            # Python2 and poetry are not supported. See https://github.com/actions/setup-python/issues/374
+            - python_version: 2
+              python_deps_type: poetry
+            # Python2 and pipenv are not supported since pipenv v2021.11.5
+            - python_version: 2
+              python_deps_type: pipenv
 
     env:
       PYTHON_DEPS_TYPE: ${{ matrix.python_deps_type }}
@@ -134,6 +165,8 @@ jobs:
         tools: latest
         languages: python
         setup-python-dependencies: false
+      env:
+        TEST_MODE: true
 
     - name: Test Auto Package Installation
       run: |

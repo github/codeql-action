@@ -1,11 +1,13 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
-os: ["ubuntu-latest", "macos-latest"]
+operatingSystems: ["ubuntu", "macos"]
 steps:
   - uses: ./../action/init
     with:
       db-location: "${{ runner.temp }}/customDbLocation"
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
   - name: Build code
     shell: bash
     run: ./build.sh

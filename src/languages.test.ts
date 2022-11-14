@@ -6,6 +6,7 @@ import {
   isTracedLanguage,
   parseLanguage,
 } from "./languages";
+import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 
 setupTests(test);
@@ -31,22 +32,40 @@ test("parseLanguage", async (t) => {
   t.deepEqual(parseLanguage(""), undefined);
 });
 
-test("isTracedLanguage", async (t) => {
-  t.true(isTracedLanguage(Language.cpp));
-  t.true(isTracedLanguage(Language.java));
-  t.true(isTracedLanguage(Language.csharp));
+for (const isReconciliationOn of [false, true]) {
+  test(`isTracedLanguage (go reconciliation ${
+    isReconciliationOn ? "enabled" : "disabled"
+  })`, async (t) => {
+    const logger = getRunnerLogger(true);
 
-  t.false(isTracedLanguage(Language.go));
-  t.false(isTracedLanguage(Language.javascript));
-  t.false(isTracedLanguage(Language.python));
-});
+    t.true(isTracedLanguage(Language.cpp, isReconciliationOn, logger));
+    t.true(isTracedLanguage(Language.java, isReconciliationOn, logger));
+    t.true(isTracedLanguage(Language.csharp, isReconciliationOn, logger));
 
-test("isScannedLanguage", async (t) => {
-  t.false(isScannedLanguage(Language.cpp));
-  t.false(isScannedLanguage(Language.java));
-  t.false(isScannedLanguage(Language.csharp));
+    t.is(
+      isTracedLanguage(Language.go, isReconciliationOn, logger),
+      isReconciliationOn
+    );
 
-  t.true(isScannedLanguage(Language.go));
-  t.true(isScannedLanguage(Language.javascript));
-  t.true(isScannedLanguage(Language.python));
-});
+    t.false(isTracedLanguage(Language.javascript, isReconciliationOn, logger));
+    t.false(isTracedLanguage(Language.python, isReconciliationOn, logger));
+  });
+
+  test(`isScannedLanguage (go reconciliation ${
+    isReconciliationOn ? "enabled" : "disabled"
+  }`, async (t) => {
+    const logger = getRunnerLogger(true);
+
+    t.false(isScannedLanguage(Language.cpp, isReconciliationOn, logger));
+    t.false(isScannedLanguage(Language.java, isReconciliationOn, logger));
+    t.false(isScannedLanguage(Language.csharp, isReconciliationOn, logger));
+
+    t.is(
+      isScannedLanguage(Language.go, isReconciliationOn, logger),
+      !isReconciliationOn
+    );
+
+    t.true(isScannedLanguage(Language.javascript, isReconciliationOn, logger));
+    t.true(isScannedLanguage(Language.python, isReconciliationOn, logger));
+  });
+}

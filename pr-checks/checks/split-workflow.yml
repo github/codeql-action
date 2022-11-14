@@ -1,6 +1,6 @@
 name: "Split workflow"
 description: "Tests a split-up workflow in which we first build a database and later analyze it"
-os: ["ubuntu-latest", "macos-latest"]
+operatingSystems: ["ubuntu", "macos"]
 versions: ["latest", "cached", "nightly-latest"] # This feature is not compatible with old CLIs
 steps:
   - uses: ./../action/init
@@ -9,6 +9,8 @@ steps:
       packs: +dsp-testing/codeql-pack1@1.0.0
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
   - name: Build code
     shell: bash
     run: ./build.sh
@@ -18,6 +20,7 @@ steps:
       output: "${{ runner.temp }}/results"
     env:
       TEST_MODE: true
+
   - name: Assert No Results
     shell: bash
     run: |

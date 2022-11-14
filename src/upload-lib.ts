@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { env } from "process";
 import zlib from "zlib";
 
 import * as core from "@actions/core";
@@ -15,7 +16,7 @@ import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as sharedEnv from "./shared-environment";
 import * as util from "./util";
-import { SarifFile } from "./util";
+import { SarifFile, SarifResult, SarifRun } from "./util";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
@@ -325,7 +326,7 @@ export function buildPayload(
       gitHubVersion.type !== util.GitHubVariant.GHES ||
       semver.satisfies(gitHubVersion.version, `>=3.1`)
     ) {
-      if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+      if (actionsUtil.workflowEventName() === "pull_request") {
         if (
           commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
           mergeBaseCommitOid
@@ -395,6 +396,9 @@ async function uploadFiles(
     analysisKey,
     environment
   );
+
+  if (env["CODEQL_DISABLE_SARIF_PRUNING"] !== "true")
+    sarif = pruneInvalidResults(sarif, logger);
 
   const toolNames = util.getToolNames(sarif);
 
@@ -524,7 +528,8 @@ export function validateUniqueCategory(sarif: SarifFile): void {
       if (process.env[sentinelEnvVar]) {
         throw new Error(
           "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
-            "The easiest fix is to specify a unique value for the `category` input. " +
+            "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
+            "in the sarif file, that will take precedence over your configured `category`. " +
             `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`
         );
       }
@@ -544,4 +549,43 @@ export function validateUniqueCategory(sarif: SarifFile): void {
  */
 function sanitize(str?: string) {
   return (str ?? "_").replace(/[^a-zA-Z0-9_]/g, "_").toLocaleUpperCase();
+}
+
+export function pruneInvalidResults(
+  sarif: SarifFile,
+  logger: Logger
+): SarifFile {
+  let pruned = 0;
+  const newRuns: SarifRun[] = [];
+  for (const run of sarif.runs || []) {
+    if (
+      run.tool?.driver?.name === "CodeQL" &&
+      run.tool?.driver?.semanticVersion === "2.11.2"
+    ) {
+      // Version 2.11.2 of the CodeQL CLI had many false positives in the
+      // rb/weak-cryptographic-algorithm query which we prune here. The
+      // issue is tracked in https://github.com/github/codeql/issues/11107.
+      const newResults: SarifResult[] = [];
+      for (const result of run.results || []) {
+        if (
+          result.ruleId === "rb/weak-cryptographic-algorithm" &&
+          (result.message?.text?.includes(" MD5 ") ||
+            result.message?.text?.includes(" SHA1 "))
+        ) {
+          pruned += 1;
+          continue;
+        }
+        newResults.push(result);
+      }
+      newRuns.push({ ...run, results: newResults });
+    } else {
+      newRuns.push(run);
+    }
+  }
+  if (pruned > 0) {
+    logger.info(
+      `Pruned ${pruned} results believed to be invalid from SARIF file.`
+    );
+  }
+  return { ...sarif, runs: newRuns };
 }

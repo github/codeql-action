@@ -6,6 +6,7 @@ import test from "ava";
 import { setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
+import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import {
   concatTracerConfigs,
@@ -24,7 +25,6 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     paths: [],
     originalUserInput: {},
     tempDir: tmpDir,
-    toolCacheDir: tmpDir,
     codeQLCmd: "",
     gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
     dbLocation: path.resolve(tmpDir, "codeql_databases"),
@@ -32,7 +32,9 @@ function getTestConfig(tmpDir: string): configUtils.Config {
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    injectedMlQueries: false,
+    augmentationProperties: configUtils.defaultAugmentationProperties,
+    trapCaches: {},
+    trapCacheDownloadTime: 0,
   };
 }
 
@@ -328,7 +330,15 @@ test("getCombinedTracerConfig - return undefined when no languages are traced la
       },
     });
 
-    t.deepEqual(await getCombinedTracerConfig(config, codeQL), undefined);
+    t.deepEqual(
+      await getCombinedTracerConfig(
+        config,
+        codeQL,
+        false, // Disable Go extraction reconciliation
+        getRunnerLogger(true)
+      ),
+      undefined
+    );
   });
 });
 
@@ -358,7 +368,12 @@ test("getCombinedTracerConfig - valid spec file", async (t) => {
       },
     });
 
-    const result = await getCombinedTracerConfig(config, codeQL);
+    const result = await getCombinedTracerConfig(
+      config,
+      codeQL,
+      false, // Disable Go extraction reconciliation
+      getRunnerLogger(true)
+    );
     t.notDeepEqual(result, undefined);
 
     const expectedEnv = {

@@ -1,5 +1,7 @@
 name: "Go: Custom queries"
 description: "Checks that Go works in conjunction with a config file specifying custom queries"
+env: 
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
   - uses: actions/setup-go@v3
     with:
@@ -9,6 +11,8 @@ steps:
       languages: go
       config-file: ./.github/codeql/custom-queries.yml
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
   - name: Build code
     shell: bash
     run: ./build.sh

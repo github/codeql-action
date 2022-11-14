@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as os from "os";
+import path from "path";
 import * as stream from "stream";
 
 import * as core from "@actions/core";
@@ -207,6 +208,7 @@ test("getGitHubVersion", async (t) => {
   const v = await util.getGitHubVersion({
     auth: "",
     url: "https://github.com",
+    apiURL: undefined,
   });
   t.deepEqual(util.GitHubVariant.DOTCOM, v.type);
 
@@ -214,6 +216,7 @@ test("getGitHubVersion", async (t) => {
   const v2 = await util.getGitHubVersion({
     auth: "",
     url: "https://ghe.example.com",
+    apiURL: undefined,
   });
   t.deepEqual(
     { type: util.GitHubVariant.GHES, version: "2.0" } as util.GitHubVersion,
@@ -224,6 +227,7 @@ test("getGitHubVersion", async (t) => {
   const ghae = await util.getGitHubVersion({
     auth: "",
     url: "https://example.githubenterprise.com",
+    apiURL: undefined,
   });
   t.deepEqual({ type: util.GitHubVariant.GHAE }, ghae);
 
@@ -231,6 +235,7 @@ test("getGitHubVersion", async (t) => {
   const v3 = await util.getGitHubVersion({
     auth: "",
     url: "https://ghe.example.com",
+    apiURL: undefined,
   });
   t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
 });
@@ -298,13 +303,13 @@ const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
   // If no packs are loaded, status is false.
   [[], "false"],
   // If another pack is loaded but not the ML-powered query pack, status is false.
-  [["someOtherPack"], "false"],
+  [["some-other/pack"], "false"],
   // If the ML-powered query pack is loaded with a specific version, status is that version.
   [[`${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
   // If the ML-powered query pack is loaded with a specific version and another pack is loaded, the
   // status is the version of the ML-powered query pack.
   [
-    ["someOtherPack", `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`],
+    ["some-other/pack", `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`],
     "~0.1.0",
   ],
   // If the ML-powered query pack is loaded without a version, the status is "latest".
@@ -319,7 +324,7 @@ const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
   ],
   // If the ML-powered query pack is loaded with no specific version, and another pack is loaded,
   // the status is "latest".
-  [["someOtherPack", util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
+  [["some-other/pack", util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
 ];
 
 for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
@@ -335,7 +340,6 @@ for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
         pathsIgnore: [],
         originalUserInput: {},
         tempDir: tmpDir,
-        toolCacheDir: tmpDir,
         codeQLCmd: "",
         gitHubVersion: {
           type: util.GitHubVariant.DOTCOM,
@@ -347,40 +351,19 @@ for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
         debugMode: false,
         debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
         debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-        injectedMlQueries: false,
+        augmentationProperties: {
+          injectedMlQueries: false,
+          packsInputCombines: false,
+          queriesInputCombines: false,
+        },
+        trapCaches: {},
+        trapCacheDownloadTime: 0,
       };
 
       t.is(util.getMlPoweredJsQueriesStatus(config), expectedStatus);
     });
   });
 }
-
-test("isGitHubGhesVersionBelow", async (t) => {
-  t.falsy(
-    util.isGitHubGhesVersionBelow({ type: util.GitHubVariant.DOTCOM }, "3.2.0")
-  );
-  t.falsy(
-    util.isGitHubGhesVersionBelow({ type: util.GitHubVariant.GHAE }, "3.2.0")
-  );
-  t.falsy(
-    util.isGitHubGhesVersionBelow(
-      { type: util.GitHubVariant.GHES, version: "3.3.0" },
-      "3.2.0"
-    )
-  );
-  t.falsy(
-    util.isGitHubGhesVersionBelow(
-      { type: util.GitHubVariant.GHES, version: "3.2.0" },
-      "3.2.0"
-    )
-  );
-  t.true(
-    util.isGitHubGhesVersionBelow(
-      { type: util.GitHubVariant.GHES, version: "3.1.2" },
-      "3.2.0"
-    )
-  );
-});
 
 function formatGitHubVersion(version: util.GitHubVersion): string {
   switch (version.type) {
@@ -440,3 +423,91 @@ for (const [
     isActionsStub.restore();
   });
 }
+
+test("doesDirectoryExist", async (t) => {
+  // Returns false if no file/dir of this name exists
+  t.false(util.doesDirectoryExist("non-existent-file.txt"));
+
+  await util.withTmpDir(async (tmpDir: string) => {
+    // Returns false if file
+    const testFile = `${tmpDir}/test-file.txt`;
+    fs.writeFileSync(testFile, "");
+    t.false(util.doesDirectoryExist(testFile));
+
+    // Returns true if directory
+    fs.writeFileSync(`${tmpDir}/nested-test-file.txt`, "");
+    t.true(util.doesDirectoryExist(tmpDir));
+  });
+});
+
+test("listFolder", async (t) => {
+  // Returns empty if not a directory
+  t.deepEqual(util.listFolder("not-a-directory"), []);
+
+  // Returns empty if directory is empty
+  await util.withTmpDir(async (emptyTmpDir: string) => {
+    t.deepEqual(util.listFolder(emptyTmpDir), []);
+  });
+
+  // Returns all file names in directory
+  await util.withTmpDir(async (tmpDir: string) => {
+    const nestedDir = fs.mkdtempSync(path.join(tmpDir, "nested-"));
+    fs.writeFileSync(path.resolve(nestedDir, "nested-test-file.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-1.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-2.txt"), "");
+    fs.writeFileSync(path.resolve(tmpDir, "test-file-3.txt"), "");
+
+    t.deepEqual(util.listFolder(tmpDir), [
+      path.resolve(nestedDir, "nested-test-file.txt"),
+      path.resolve(tmpDir, "test-file-1.txt"),
+      path.resolve(tmpDir, "test-file-2.txt"),
+      path.resolve(tmpDir, "test-file-3.txt"),
+    ]);
+  });
+});
+
+const longTime = 999_999;
+const shortTime = 10;
+
+test("withTimeout on long task", async (t) => {
+  let longTaskTimedOut = false;
+  const longTask = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(42);
+    }, longTime);
+  });
+  const result = await util.withTimeout(shortTime, longTask, () => {
+    longTaskTimedOut = true;
+  });
+  t.deepEqual(longTaskTimedOut, true);
+  t.deepEqual(result, undefined);
+});
+
+test("withTimeout on short task", async (t) => {
+  let shortTaskTimedOut = false;
+  const shortTask = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(99);
+    }, shortTime);
+  });
+  const result = await util.withTimeout(longTime, shortTask, () => {
+    shortTaskTimedOut = true;
+  });
+  t.deepEqual(shortTaskTimedOut, false);
+  t.deepEqual(result, 99);
+});
+
+test("withTimeout doesn't call callback if promise resolves", async (t) => {
+  let shortTaskTimedOut = false;
+  const shortTask = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(99);
+    }, shortTime);
+  });
+  const result = await util.withTimeout(100, shortTask, () => {
+    shortTaskTimedOut = true;
+  });
+  await new Promise((r) => setTimeout(r, 200));
+  t.deepEqual(shortTaskTimedOut, false);
+  t.deepEqual(result, 99);
+});

@@ -8,12 +8,14 @@ import * as safeWhich from "@chrisgavin/safe-which";
 import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
+import { Config } from "./config-utils";
 import * as sharedEnv from "./shared-environment";
 import {
+  doesDirectoryExist,
   getCachedCodeQlVersion,
+  getCodeQLDatabasePath,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
-  isGitHubGhesVersionBelow,
   isHTTPError,
   isInTestMode,
   UserError,
@@ -55,13 +57,6 @@ export function getTemporaryDirectory(): string {
   return value !== undefined && value !== ""
     ? value
     : getRequiredEnvParam("RUNNER_TEMP");
-}
-
-export function getToolCacheDirectory(): string {
-  const value = process.env["CODEQL_ACTION_TOOL_CACHE"];
-  return value !== undefined && value !== ""
-    ? value
-    : getRequiredEnvParam("RUNNER_TOOL_CACHE");
 }
 
 /**
@@ -113,7 +108,7 @@ export const getCommitOid = async function (
 export const determineMergeBaseCommitOid = async function (): Promise<
   string | undefined
 > {
-  if (process.env.GITHUB_EVENT_NAME !== "pull_request") {
+  if (workflowEventName() !== "pull_request") {
     return undefined;
   }
 
@@ -191,7 +186,7 @@ interface WorkflowTriggers {
   pull_request?: WorkflowTrigger | null;
 }
 
-interface Workflow {
+export interface Workflow {
   jobs?: { [key: string]: WorkflowJob };
   on?: string | string[] | WorkflowTriggers;
 }
@@ -411,7 +406,7 @@ export async function getWorkflow(): Promise<Workflow> {
     relativePath
   );
 
-  return yaml.load(fs.readFileSync(absolutePath, "utf-8"));
+  return yaml.load(fs.readFileSync(absolutePath, "utf-8")) as Workflow;
 }
 
 /**
@@ -549,7 +544,7 @@ export async function getRef(): Promise<string> {
   // in actions/checkout@v1 this may not be true as it checks out the repository
   // using GITHUB_REF. There is a subtle race condition where
   // git rev-parse GITHUB_REF != GITHUB_SHA, so we must check
-  // git git-parse GITHUB_REF == git rev-parse HEAD instead.
+  // git rev-parse GITHUB_REF == git rev-parse HEAD instead.
   const hasChangedRef =
     sha !== head &&
     (await getCommitOid(
@@ -606,6 +601,12 @@ export interface StatusReportBase {
   /** State this action is currently in. */
   status: ActionStatus;
   /**
+   * Testing environment: Set if non-production environment.
+   * The server accepts one of the following values:
+   *  `["", "qa-rc", "qa-rc-1", "qa-rc-2", "qa-experiment-1", "qa-experiment-2", "qa-experiment-3"]`.
+   */
+  testing_environment: string;
+  /**
    * Information about the enablement of the ML-powered JS query pack.
    *
    * @see {@link util.getMlPoweredJsQueriesStatus}
@@ -625,6 +626,11 @@ export interface StatusReportBase {
   action_version: string;
   /** CodeQL CLI version (x.y.z from the CLI). */
   codeql_version?: string;
+}
+
+export interface DatabaseCreationTimings {
+  scanned_language_extraction_duration_ms?: number;
+  trap_import_duration_ms?: number;
 }
 
 export function getActionsStatus(
@@ -674,12 +680,17 @@ export async function createStatusReportBase(
   }
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
   const codeQlCliVersion = getCachedCodeQlVersion();
-
-  // If running locally then the GITHUB_ACTION_REF cannot be trusted as it may be for the previous action
-  // See https://github.com/actions/runner/issues/803
-  const actionRef = isRunningLocalAction()
-    ? undefined
-    : process.env["GITHUB_ACTION_REF"];
+  const actionRef = process.env["GITHUB_ACTION_REF"];
+  const testingEnvironment =
+    process.env[sharedEnv.CODEQL_ACTION_TESTING_ENVIRONMENT] || "";
+  // re-export the testing environment variable so that it is available to subsequent steps,
+  // even if it was only set for this step
+  if (testingEnvironment !== "") {
+    core.exportVariable(
+      sharedEnv.CODEQL_ACTION_TESTING_ENVIRONMENT,
+      testingEnvironment
+    );
+  }
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
@@ -694,6 +705,7 @@ export async function createStatusReportBase(
     started_at: workflowStartedAt,
     action_started_at: actionStartedAt.toISOString(),
     status,
+    testing_environment: testingEnvironment,
     runner_os: runnerOs,
     action_version: pkg.version,
   };
@@ -753,14 +765,6 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S
 ): Promise<boolean> {
-  const gitHubVersion = await api.getGitHubVersionActionsOnly();
-  if (isGitHubGhesVersionBelow(gitHubVersion, "3.2.0")) {
-    // GHES 3.1 and earlier versions reject unexpected properties, which means
-    // that they will reject status reports with newly added properties.
-    // Inhibiting status reporting for GHES < 3.2 avoids such failures.
-    return true;
-  }
-
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
   // If in test mode we don't want to upload the results
@@ -825,9 +829,21 @@ export async function sendStatusReport<S extends StatusReportBase>(
   }
 }
 
+export function workflowEventName() {
+  // If the original event is dynamic CODESCANNING_EVENT_NAME will contain the right info (push/pull_request)
+  if (process.env["GITHUB_EVENT_NAME"] === "dynamic") {
+    const value = process.env["CODESCANNING_EVENT_NAME"];
+    if (value === undefined || value.length === 0) {
+      return process.env["GITHUB_EVENT_NAME"];
+    }
+    return value;
+  }
+  return process.env["GITHUB_EVENT_NAME"];
+}
+
 // Was the workflow run triggered by a `push` event, for example as opposed to a `pull_request` event.
 function workflowIsTriggeredByPushEvent() {
-  return process.env["GITHUB_EVENT_NAME"] === "push";
+  return workflowEventName() === "push";
 }
 
 // Is dependabot the actor that triggered the current workflow run.
@@ -864,21 +880,54 @@ function getWorkflowEvent(): any {
   }
 }
 
+function removeRefsHeadsPrefix(ref: string): string {
+  return ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : ref;
+}
+
 // Is the version of the repository we are currently analyzing from the default branch,
 // or alternatively from another branch or a pull request.
 export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   // Get the current ref and trim and refs/heads/ prefix
   let currentRef = await getRef();
-  currentRef = currentRef.startsWith("refs/heads/")
-    ? currentRef.slice("refs/heads/".length)
-    : currentRef;
+  currentRef = removeRefsHeadsPrefix(currentRef);
 
   const event = getWorkflowEvent();
-  const defaultBranch = event?.repository?.default_branch;
+  let defaultBranch = event?.repository?.default_branch;
+
+  if (process.env.GITHUB_EVENT_NAME === "schedule") {
+    defaultBranch = removeRefsHeadsPrefix(getRequiredEnvParam("GITHUB_REF"));
+  }
 
   return currentRef === defaultBranch;
 }
 
-export function sanitizeArifactName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
+export async function printDebugLogs(config: Config) {
+  for (const language of config.languages) {
+    const databaseDirectory = getCodeQLDatabasePath(config, language);
+    const logsDirectory = path.join(databaseDirectory, "log");
+    if (!doesDirectoryExist(logsDirectory)) {
+      core.info(`Directory ${logsDirectory} does not exist.`);
+      continue; // Skip this language database.
+    }
+
+    const walkLogFiles = (dir: string) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      if (entries.length === 0) {
+        core.info(`No debug logs found at directory ${logsDirectory}.`);
+      }
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          const absolutePath = path.resolve(dir, entry.name);
+          core.startGroup(
+            `CodeQL Debug Logs - ${language} - ${entry.name} from file at path ${absolutePath}`
+          );
+          process.stdout.write(fs.readFileSync(absolutePath));
+          core.endGroup();
+        } else if (entry.isDirectory()) {
+          walkLogFiles(path.resolve(dir, entry.name));
+        }
+      }
+    };
+    walkLogFiles(logsDirectory);
+  }
 }

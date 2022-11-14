@@ -1,0 +1,90 @@
+# Checks logs, SARIF, and database bundle debug artifacts exist
+# when the analyze step fails.
+name: PR Check - Debug artifacts after failure
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+on:
+  push:
+    branches:
+    - main
+    - releases/v1
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  upload-artifacts:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    name: Upload debug artifacts after failure in analyze
+    continue-on-error: true
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Dump GitHub event
+        run: cat "${GITHUB_EVENT_PATH}"
+      - name: Check out repository
+        uses: actions/checkout@v3
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/prepare-test
+        with:
+          version: latest
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          debug: true
+          debug-artifact-name: my-debug-artifacts
+          debug-database-name: my-db
+        env:
+          TEST_MODE: true
+      - name: Build code
+        shell: bash
+        run: ./build.sh
+      - uses: ./../action/analyze
+        id: analysis  
+        with:
+          expect-error: true
+          ram: 1
+        env:
+          TEST_MODE: true
+  download-and-check-artifacts:
+    name: Download and check debug artifacts after failure in analyze
+    needs: upload-artifacts
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+      - name: Check expected artifacts exist
+        shell: bash
+        run: |
+          OPERATING_SYSTEMS="ubuntu-latest macos-latest"
+          LANGUAGES="cpp csharp go java javascript python"
+          for os in $OPERATING_SYSTEMS; do
+            pushd "./my-debug-artifacts-$os"
+            echo "Artifacts from run on $os:"
+            for language in $LANGUAGES; do
+              echo "- Checking $language"
+              if [[ ! -f "my-db-$language-partial.zip" ]] ; then
+                echo "Missing a partial database bundle for $language"
+                exit 1
+              fi
+              if [[ ! -d "log" ]] ; then
+                echo "Missing database initialization logs"
+                exit 1
+              fi
+              if [[ ! "$language" == "go" ]] && [[ ! -d "$language/log" ]] ; then
+                echo "Missing logs for $language"
+                exit 1
+              fi
+            done
+            popd
+          done
+        env:
+          INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

@@ -29,23 +29,19 @@ jobs:
           version: latest
         - os: macos-latest
           version: latest
-        - os: windows-2019
-          version: latest
-        - os: windows-2022
+        - os: windows-latest
           version: latest
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
           version: cached
-        - os: windows-2019
+        - os: windows-latest
           version: cached
         - os: ubuntu-latest
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-        - os: windows-2019
-          version: nightly-latest
-        - os: windows-2022
+        - os: windows-latest
           version: nightly-latest
     name: 'Packaging: Config and input'
     timeout-minutes: 45
@@ -64,6 +60,8 @@ jobs:
         packs: +dsp-testing/codeql-pack1@1.0.0
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -72,6 +70,14 @@ jobs:
         output: ${{ runner.temp }}/results
       env:
         TEST_MODE: true
+
+    - name: Check results
+      uses: ./../action/.github/check-sarif
+      with:
+        sarif-file: ${{ runner.temp }}/results/javascript.sarif
+        queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+        queries-not-run: foo,bar
+
     - name: Assert Results
       shell: bash
       run: |

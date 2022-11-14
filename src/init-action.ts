@@ -8,7 +8,6 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  getToolCacheDirectory,
   sendStatusReport,
   StatusReportBase,
   validateWorkflow,
@@ -16,7 +15,7 @@ import {
 import { getGitHubVersionActionsOnly } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
-import { GitHubFeatureFlags } from "./feature-flags";
+import { Feature, FeatureEnablement, Features } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -25,21 +24,23 @@ import {
   runInit,
 } from "./init";
 import { Language } from "./languages";
-import { getActionsLogger } from "./logging";
+import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { getTotalCacheSize } from "./trap-caching";
 import {
-  getRequiredEnvParam,
-  initializeEnvironment,
-  Mode,
+  checkActionVersion,
   checkGitHubVersionInRange,
   codeQlVersionAbove,
-  enrichEnvironment,
-  getMemoryFlagValue,
-  getThreadsFlagValue,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
+  enrichEnvironment,
+  getMemoryFlagValue,
   getMlPoweredJsQueriesStatus,
-  checkActionVersion,
+  getRequiredEnvParam,
+  getThreadsFlagValue,
+  initializeEnvironment,
+  isHostedRunner,
+  Mode,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -66,12 +67,19 @@ interface InitSuccessStatusReport extends StatusReportBase {
   tools_resolved_version: string;
   /** Comma-separated list of languages specified explicitly in the workflow file. */
   workflow_languages: string;
+  /** Comma-separated list of languages for which we are using TRAP caching. */
+  trap_cache_languages: string;
+  /** Size of TRAP caches that we downloaded, in bytes. */
+  trap_cache_download_size_bytes: number;
+  /** Time taken to download TRAP caches, in milliseconds. */
+  trap_cache_download_duration_ms: number;
 }
 
 async function sendSuccessStatusReport(
   startedAt: Date,
   config: configUtils.Config,
-  toolsVersion: string
+  toolsVersion: string,
+  logger: Logger
 ) {
   const statusReportBase = await createStatusReportBase(
     "init",
@@ -116,6 +124,11 @@ async function sendSuccessStatusReport(
     tools_input: getOptionalInput("tools") || "",
     tools_resolved_version: toolsVersion,
     workflow_languages: workflowLanguages || "",
+    trap_cache_languages: Object.keys(config.trapCaches).join(","),
+    trap_cache_download_size_bytes: Math.round(
+      await getTotalCacheSize(config.trapCaches, logger)
+    ),
+    trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
   };
 
   await sendStatusReport(statusReport);
@@ -135,6 +148,7 @@ async function run() {
     auth: getRequiredInput("token"),
     externalRepoAuth: getOptionalInput("external-repository-token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
   };
 
   const gitHubVersion = await getGitHubVersionActionsOnly();
@@ -144,7 +158,7 @@ async function run() {
     getRequiredEnvParam("GITHUB_REPOSITORY")
   );
 
-  const featureFlags = new GitHubFeatureFlags(
+  const features = new Features(
     gitHubVersion,
     apiDetails,
     repositoryNwo,
@@ -171,8 +185,8 @@ async function run() {
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
-      getToolCacheDirectory(),
       gitHubVersion.type,
+      features,
       logger
     );
     codeql = initCodeQLResult.codeql;
@@ -183,19 +197,24 @@ async function run() {
       getOptionalInput("languages"),
       getOptionalInput("queries"),
       getOptionalInput("packs"),
+      getOptionalInput("registries"),
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
-      getOptionalInput("debug") === "true",
+      await getTrapCachingEnabled(features),
+      // Debug mode is enabled if:
+      // - The `init` Action is passed `debug: true`.
+      // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
+      //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
+      getOptionalInput("debug") === "true" || core.isDebug(),
       getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
       getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
       repositoryNwo,
       getTemporaryDirectory(),
-      getRequiredEnvParam("RUNNER_TOOL_CACHE"),
       codeql,
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       gitHubVersion,
       apiDetails,
-      featureFlags,
+      features,
       logger
     );
 
@@ -257,7 +276,9 @@ async function run() {
       config,
       sourceRoot,
       "Runner.Worker.exe",
-      undefined
+      undefined,
+      features,
+      logger
     );
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
@@ -294,7 +315,21 @@ async function run() {
     );
     return;
   }
-  await sendSuccessStatusReport(startedAt, config, toolsVersion);
+  await sendSuccessStatusReport(startedAt, config, toolsVersion, logger);
+}
+
+async function getTrapCachingEnabled(
+  featureEnablement: FeatureEnablement
+): Promise<boolean> {
+  // If the workflow specified something always respect that
+  const trapCaching = getOptionalInput("trap-caching");
+  if (trapCaching !== undefined) return trapCaching === "true";
+
+  // On self-hosted runners which may have slow network access, disable TRAP caching by default
+  if (!isHostedRunner()) return false;
+
+  // On hosted runners, respect the feature flag
+  return await featureEnablement.getValue(Feature.TrapCachingEnabled);
 }
 
 async function runWrapper() {

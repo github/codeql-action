@@ -61,7 +61,7 @@ jobs:
 
         # Output a JSON-encoded list with the distinct versions to test against.
         echo "Suggested matrix config for analysis job: $VERSIONS_JSON"
-        echo "::set-output name=versions::${VERSIONS_JSON}"
+        echo "versions=${VERSIONS_JSON}" >> $GITHUB_OUTPUT
 
   build:
     needs: [check-codeql-versions]

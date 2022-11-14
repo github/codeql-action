@@ -269,7 +269,7 @@ test("getWorkflowErrors() when on.push is correct with empty objects", (t) => {
 on:
   push:
   pull_request:
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -441,7 +441,7 @@ on:
   push:
     branches: ["main"]
   pull_request:
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(
@@ -559,7 +559,7 @@ test("getWorkflowErrors() when branches contain dots", (t) => {
     pull_request:
       # The branches below must be a subset of the branches above
       branches: [4.1, master]
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -575,7 +575,7 @@ on:
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [master]
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -604,7 +604,7 @@ jobs:
 
   test3:
     steps: []
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(
@@ -635,7 +635,7 @@ jobs:
 
   test3:
     steps: []
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -645,7 +645,7 @@ test("getWorkflowErrors() when on is missing", (t) => {
   const errors = actionsutil.getWorkflowErrors(
     yaml.load(`
 name: "CodeQL"
-`)
+`) as actionsutil.Workflow
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -658,7 +658,7 @@ test("getWorkflowErrors() with a different on setup", (t) => {
         yaml.load(`
 name: "CodeQL"
 on: "workflow_dispatch"
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -670,7 +670,7 @@ on: "workflow_dispatch"
         yaml.load(`
 name: "CodeQL"
 on: [workflow_dispatch]
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -683,7 +683,7 @@ on: [workflow_dispatch]
 name: "CodeQL"
 on:
   workflow_dispatch: {}
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -699,7 +699,7 @@ name: "CodeQL"
 on:
   push:
     branches: [master]
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -711,7 +711,7 @@ on:
         yaml.load(`
 name: "CodeQL"
 on: ["push"]
-`)
+`) as actionsutil.Workflow
       ),
       []
     )
@@ -751,15 +751,38 @@ test("isAnalyzingDefaultBranch()", async (t) => {
 
     process.env["GITHUB_REF"] = "feature";
     t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), false);
+
+    fs.writeFileSync(
+      envFile,
+      JSON.stringify({
+        schedule: "0 0 * * *",
+      })
+    );
+    process.env["GITHUB_EVENT_NAME"] = "schedule";
+    process.env["GITHUB_REF"] = "refs/heads/main";
+    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
+
+    const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+    getAdditionalInputStub
+      .withArgs("ref")
+      .resolves("refs/heads/something-else");
+    getAdditionalInputStub
+      .withArgs("sha")
+      .resolves("0000000000000000000000000000000000000000");
+    process.env["GITHUB_EVENT_NAME"] = "schedule";
+    process.env["GITHUB_REF"] = "refs/heads/main";
+    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), false);
+    getAdditionalInputStub.restore();
   });
 });
 
-test("sanitizeArifactName", (t) => {
-  t.deepEqual(actionsutil.sanitizeArifactName("hello-world_"), "hello-world_");
-  t.deepEqual(actionsutil.sanitizeArifactName("hello`world`"), "helloworld");
-  t.deepEqual(actionsutil.sanitizeArifactName("hello===123"), "hello123");
-  t.deepEqual(
-    actionsutil.sanitizeArifactName("*m)a&n^y%i££n+v!a:l[i]d"),
-    "manyinvalid"
-  );
+test("workflowEventName()", async (t) => {
+  process.env["GITHUB_EVENT_NAME"] = "push";
+  t.deepEqual(actionsutil.workflowEventName(), "push");
+
+  process.env["GITHUB_EVENT_NAME"] = "dynamic";
+  t.deepEqual(actionsutil.workflowEventName(), "dynamic");
+
+  process.env["CODESCANNING_EVENT_NAME"] = "push";
+  t.deepEqual(actionsutil.workflowEventName(), "push");
 });

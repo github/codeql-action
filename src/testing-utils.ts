@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
 import * as CodeQL from "./codeql";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { HTTPError } from "./util";
 
@@ -62,6 +63,16 @@ export function setupTests(test: TestFn<any>) {
     const processStderrWrite = process.stderr.write.bind(process.stderr);
     t.context.stderrWrite = processStderrWrite;
     process.stderr.write = wrapOutput(t.context) as any;
+
+    // Workaround an issue in tests where the case insensitivity of the `$PATH`
+    // environment variable on Windows isn't preserved, i.e. `process.env.PATH`
+    // is not the same as `process.env.Path`.
+    const pathKeys = Object.keys(process.env).filter(
+      (k) => k.toLowerCase() === "path"
+    );
+    if (pathKeys.length > 0) {
+      process.env.PATH = process.env[pathKeys[0]];
+    }
 
     // Many tests modify environment variables. Take a copy now so that
     // we reset them after the test to keep tests independent of each other.
@@ -149,4 +160,25 @@ export function mockFeatureFlagApiEndpoint(
   }
 
   sinon.stub(apiClient, "getApiClient").value(() => client);
+}
+
+export function mockCodeQLVersion(version) {
+  return {
+    async getVersion() {
+      return version;
+    },
+  } as CodeQL.CodeQL;
+}
+
+/**
+ * Create a feature enablement instance with the specified set of enabled features.
+ *
+ * This should be only used within tests.
+ */
+export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
+  return {
+    getValue: async (feature) => {
+      return enabledFeatures.includes(feature);
+    },
+  };
 }

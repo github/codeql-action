@@ -8,7 +8,7 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureFlags } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
@@ -19,8 +19,8 @@ export async function initCodeQL(
   codeqlURL: string | undefined,
   apiDetails: GitHubApiDetails,
   tempDir: string,
-  toolCacheDir: string,
   variant: util.GitHubVariant,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
@@ -28,8 +28,8 @@ export async function initCodeQL(
     codeqlURL,
     apiDetails,
     tempDir,
-    toolCacheDir,
     variant,
+    featureEnablement,
     logger,
     true
   );
@@ -42,19 +42,20 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   packsInput: string | undefined,
+  registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
   debugDatabaseName: string,
   repository: RepositoryNwo,
   tempDir: string,
-  toolCacheDir: string,
   codeQL: CodeQL,
   workspacePath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
-  featureFlags: FeatureFlags,
+  featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -62,19 +63,20 @@ export async function initConfig(
     languagesInput,
     queriesInput,
     packsInput,
+    registriesInput,
     configFile,
     dbLocation,
+    trapCachingEnabled,
     debugMode,
     debugArtifactName,
     debugDatabaseName,
     repository,
     tempDir,
-    toolCacheDir,
     codeQL,
     workspacePath,
     gitHubVersion,
     apiDetails,
-    featureFlags,
+    featureEnablement,
     logger
   );
   analysisPaths.printPathFiltersWarning(config, logger);
@@ -87,7 +89,9 @@ export async function runInit(
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
-  processLevel: number | undefined
+  processLevel: number | undefined,
+  featureEnablement: FeatureEnablement,
+  logger: Logger
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
@@ -98,7 +102,9 @@ export async function runInit(
         config,
         sourceRoot,
         processName,
-        processLevel
+        processLevel,
+        featureEnablement,
+        logger
       );
     } else {
       for (const language of config.languages) {
@@ -111,26 +117,50 @@ export async function runInit(
       }
     }
   } catch (e) {
-    // Handle the situation where init is called twice
-    // for the same database in the same job.
-    if (
-      e instanceof Error &&
-      e.message?.includes("Refusing to create databases") &&
-      e.message.includes("exists and is not an empty directory.")
-    ) {
-      throw new util.UserError(
-        `Is the "init" action called twice in the same job? ${e.message}`
-      );
-    } else if (
-      e instanceof Error &&
-      e.message?.includes("is not compatible with this CodeQL CLI")
-    ) {
-      throw new util.UserError(e.message);
-    } else {
-      throw e;
-    }
+    throw processError(e);
   }
-  return await getCombinedTracerConfig(config, codeql);
+  return await getCombinedTracerConfig(
+    config,
+    codeql,
+    await util.isGoExtractionReconciliationEnabled(featureEnablement),
+    logger
+  );
+}
+
+/**
+ * Possibly convert this error into a UserError in order to avoid
+ * counting this error towards our internal error budget.
+ *
+ * @param e The error to possibly convert to a UserError.
+ *
+ * @returns A UserError if the error is a known error that can be
+ *         attributed to the user, otherwise the original error.
+ */
+function processError(e: any): Error {
+  if (!(e instanceof Error)) {
+    return e;
+  }
+
+  if (
+    // Init action called twice
+    e.message?.includes("Refusing to create databases") &&
+    e.message?.includes("exists and is not an empty directory.")
+  ) {
+    return new util.UserError(
+      `Is the "init" action called twice in the same job? ${e.message}`
+    );
+  }
+
+  if (
+    // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
+    e.message?.includes("is not compatible with this CodeQL CLI") ||
+    // Expected source location for database creation does not exist
+    e.message?.includes("Invalid source root")
+  ) {
+    return new util.UserError(e.message);
+  }
+
+  return e;
 }
 
 // Runs a powershell script to inject the tracer into a parent process
@@ -251,11 +281,14 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
     if (process.platform === "win32") {
       await new toolrunner.ToolRunner(await safeWhich.safeWhich("py"), [
         "-3",
+        "-B",
         path.join(scriptsFolder, script),
         path.dirname(codeql.getPath()),
       ]).exec();
     } else {
-      await new toolrunner.ToolRunner(path.join(scriptsFolder, script), [
+      await new toolrunner.ToolRunner(await safeWhich.safeWhich("python3"), [
+        "-B",
+        path.join(scriptsFolder, script),
         path.dirname(codeql.getPath()),
       ]).exec();
     }

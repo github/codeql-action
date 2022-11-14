@@ -1,7 +1,7 @@
 name: "Local CodeQL bundle"
 description: "Tests using a CodeQL bundle from a local file rather than a URL"
 versions: ["nightly-latest"]
-os: ["ubuntu-latest"]
+operatingSystems: ["ubuntu"]
 steps:
   - name: Fetch a CodeQL bundle
     shell: bash
@@ -12,6 +12,8 @@ steps:
   - uses: ./../action/init
     with:
       tools: ./codeql-bundle.tar.gz
+    env:
+      TEST_MODE: true
   - name: Build code
     shell: bash
     run: ./build.sh

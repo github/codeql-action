@@ -1,19 +1,18 @@
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
 import { Command } from "commander";
 import del from "del";
 
 import { runFinalize, runQueries } from "./analyze";
-import { determineAutobuildLanguage, runAutobuild } from "./autobuild";
+import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
-import { createFeatureFlags } from "./feature-flags";
 import { initCodeQL, initConfig, injectWindowsTracer, runInit } from "./init";
 import { Language, parseLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { createFeatures } from "./testing-utils";
 import * as upload_lib from "./upload-lib";
 import {
   checkGitHubVersionInRange,
@@ -45,14 +44,6 @@ function getTempDir(userInput: string | undefined): string {
     fs.mkdirSync(tempDir, { recursive: true });
   }
   return tempDir;
-}
-
-function getToolsDir(userInput: string | undefined): string {
-  const toolsDir = userInput || path.join(os.homedir(), "codeql-runner-tools");
-  if (!fs.existsSync(toolsDir)) {
-    fs.mkdirSync(toolsDir, { recursive: true });
-  }
-  return toolsDir;
 }
 
 const codeqlEnvJsonFilename = "codeql-env.json";
@@ -194,7 +185,6 @@ program
 
     try {
       const tempDir = getTempDir(cmd.tempDir);
-      const toolsDir = getToolsDir(cmd.toolsDir);
       const checkoutPath = cmd.checkoutPath || process.cwd();
 
       // Wipe the temp dir
@@ -212,6 +202,7 @@ program
         auth,
         externalRepoAuth: auth,
         url: parseGitHubUrl(cmd.githubUrl),
+        apiURL: undefined,
       };
 
       const gitHubVersion = await getGitHubVersion(apiDetails);
@@ -237,8 +228,8 @@ program
             undefined,
             apiDetails,
             tempDir,
-            toolsDir,
             gitHubVersion.type,
+            createFeatures([]),
             logger
           )
         ).codeql;
@@ -249,19 +240,20 @@ program
         cmd.languages,
         cmd.queries,
         cmd.packs,
+        undefined, // we won't support registries in the runner
         cmd.configFile,
         undefined,
+        false,
         false,
         "",
         "",
         parseRepositoryNwo(cmd.repository),
         tempDir,
-        toolsDir,
         codeql,
         workspacePath,
         gitHubVersion,
         apiDetails,
-        createFeatureFlags([]),
+        createFeatures([]),
         logger
       );
 
@@ -271,7 +263,9 @@ program
         config,
         sourceRoot,
         parseTraceProcessName(),
-        parseTraceProcessLevel()
+        parseTraceProcessLevel(),
+        createFeatures([]),
+        logger
       );
       if (tracerConfig === undefined) {
         return;
@@ -368,9 +362,9 @@ program
       }
       await enrichEnvironment(Mode.runner, await getCodeQL(config.codeQLCmd));
       importTracerEnvironment(config);
-      let language: Language | undefined = undefined;
+      let languages: Language[] | undefined = undefined;
       if (cmd.language !== undefined) {
-        language = parseLanguage(cmd.language);
+        const language = parseLanguage(cmd.language);
         if (language === undefined || !config.languages.includes(language)) {
           throw new Error(
             `"${cmd.language}" is not a recognised language. ` +
@@ -379,11 +373,18 @@ program
               )}.`
           );
         }
+        languages = [language];
       } else {
-        language = determineAutobuildLanguage(config, logger);
+        languages = await determineAutobuildLanguages(
+          config,
+          createFeatures([]),
+          logger
+        );
       }
-      if (language !== undefined) {
-        await runAutobuild(language, config, logger);
+      if (languages !== undefined) {
+        for (const language of languages) {
+          await runAutobuild(language, config, logger);
+        }
       }
     } catch (e) {
       logger.error("Autobuild failed");
@@ -485,6 +486,7 @@ program
       const apiDetails = {
         auth,
         url: parseGitHubUrl(cmd.githubUrl),
+        apiURL: undefined,
       };
 
       const outputDir =
@@ -500,7 +502,14 @@ program
         logger
       );
       const memory = getMemoryFlag(cmd.ram || initEnv["CODEQL_RAM"]);
-      await runFinalize(outputDir, threads, memory, config, logger);
+      await runFinalize(
+        outputDir,
+        threads,
+        memory,
+        config,
+        logger,
+        createFeatures([])
+      );
       await runQueries(
         outputDir,
         memory,
@@ -508,7 +517,8 @@ program
         threads,
         cmd.category,
         config,
-        logger
+        logger,
+        createFeatures([])
       );
 
       if (!cmd.upload) {
@@ -590,6 +600,7 @@ program
     const apiDetails = {
       auth,
       url: parseGitHubUrl(cmd.githubUrl),
+      apiURL: undefined,
     };
     try {
       const gitHubVersion = await getGitHubVersion(apiDetails);

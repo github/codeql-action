@@ -1,0 +1,219 @@
+# Tests that the generated code scanning config file contains the expected contents
+
+name: Code-Scanning config CLI tests
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  CODEQL_PASS_CONFIG_TO_CLI: true
+
+on:
+  push:
+    branches:
+    - main
+    - releases/v1
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+
+jobs:
+  code-scanning-config-tests:
+    continue-on-error: true
+
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+
+    # Code-Scanning config not created because environment variable is not set
+    name: Code Scanning Configuration tests
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+
+    - name: Empty file
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: "{}"
+        languages: javascript
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Packs from input
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "packs": ["dsp-testing/codeql-pack1@1.0.0", "dsp-testing/codeql-pack2" ]
+          }
+        languages: javascript
+        packs: dsp-testing/codeql-pack1@1.0.0, dsp-testing/codeql-pack2
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Packs from input with +
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "packs": ["dsp-testing/codeql-pack1@1.0.0", "dsp-testing/codeql-pack2" ]
+          }
+        languages: javascript
+        packs: + dsp-testing/codeql-pack1@1.0.0, dsp-testing/codeql-pack2
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Queries from input
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "queries": [{ "uses": "./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql" }]
+          }
+        languages: javascript
+        queries: ./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Queries from input with +
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "queries": [{ "uses": "./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql" }]
+          }
+        languages: javascript
+        queries: + ./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Queries and packs from input with +
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "queries": [{ "uses": "./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql" }],
+            "packs": ["dsp-testing/codeql-pack1@1.0.0", "dsp-testing/codeql-pack2" ]
+          }
+        languages: javascript
+        queries: + ./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql
+        packs: + dsp-testing/codeql-pack1@1.0.0, dsp-testing/codeql-pack2
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Queries and packs from config
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "queries": [{ "uses": "./codeql-qlpacks/complex-javascript-qlpack/foo2/show_ifs.ql" }],
+            "packs": {
+              "javascript": ["dsp-testing/codeql-pack1@1.0.0", "dsp-testing/codeql-pack2" ]
+            }
+          }
+        languages: javascript
+        config-file-test: .github/codeql/queries-and-packs-config.yml
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Queries and packs from config overriden by input
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "queries": [{ "uses": "./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql" }],
+            "packs": ["codeql/javascript-queries"]
+          }
+        languages: javascript
+        queries: ./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql
+        packs: codeql/javascript-queries
+        config-file-test: .github/codeql/queries-and-packs-config.yml
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Queries and packs from config merging with input
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "queries": [
+              { "uses": "./codeql-qlpacks/complex-javascript-qlpack/foo2/show_ifs.ql" },
+              { "uses": "./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql" }
+            ],
+            "packs": {
+              "javascript": ["dsp-testing/codeql-pack1@1.0.0", "dsp-testing/codeql-pack2", "codeql/javascript-queries" ]
+            }
+          }
+        languages: javascript
+        queries: + ./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql
+        packs: + codeql/javascript-queries
+        config-file-test: .github/codeql/queries-and-packs-config.yml
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Multi-language packs from config
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "packs": {
+              "javascript": ["dsp-testing/codeql-pack1@1.0.0", "dsp-testing/codeql-pack2" ],
+              "ruby": ["codeql/ruby-queries"]
+            },
+            "queries": [
+              { "uses": "./codeql-qlpacks/complex-javascript-qlpack/foo2/show_ifs.ql" }
+            ]
+          }
+        languages: javascript,ruby
+        config-file-test: .github/codeql/multi-language-packs-config.yml
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Other config properties
+      if: success() || failure()
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "name": "Config using all properties",
+            "packs": ["codeql/javascript-queries" ],
+            "disable-default-queries": true,
+            "paths-ignore": ["xxx"],
+            "paths": ["yyy"]
+          }
+        languages: javascript
+        packs: + codeql/javascript-queries
+        config-file-test: .github/codeql/other-config-properties.yml
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Config not generated when env var is not set
+      if: success() || failure()
+      env:
+        CODEQL_PASS_CONFIG_TO_CLI: false
+      uses: ./../action/.github/check-codescanning-config
+      with:
+        expected-config-file-contents: ""
+        languages: javascript
+        packs: + codeql/javascript-queries
+        config-file-test: .github/codeql/other-config-properties.yml
+        tools: ${{ steps.prepare-test.outputs.tools-url }}

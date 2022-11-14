@@ -1,0 +1,81 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: 'PR Check - Packaging: Download using registries'
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - releases/v1
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  init-with-registries:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+        - os: windows-latest
+          version: nightly-latest
+    name: 'Packaging: Download using registries'
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - name: Init with registries
+      uses: ./../action/init
+      with:
+        db-location: ${{ runner.temp }}/customDbLocation
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+        config-file: ./.github/codeql/codeql-config-registries.yml
+        languages: javascript
+        registries: |
+          - url: "https://ghcr.io/v2/"
+            packages: "*/*"
+            token: "${{ secrets.GITHUB_TOKEN }}"
+
+      env:
+        TEST_MODE: true
+    - name: Verify packages installed
+      shell: bash
+      run: |
+        PRIVATE_PACK="$HOME/.codeql/packages/dsp-testing/private-pack"
+        CODEQL_PACK1="$HOME/.codeql/packages/dsp-testing/codeql-pack1"
+
+        if [[ -d $PRIVATE_PACK ]]
+        then
+            echo "$PRIVATE_PACK was installed."
+        else
+            echo "::error $PRIVATE_PACK pack was not installed."
+            exit 1
+        fi
+
+        if [[ -d $CODEQL_PACK1 ]]
+        then
+            echo "$CODEQL_PACK1 was installed."
+        else
+            echo "::error $CODEQL_PACK1 pack was not installed."
+            exit 1
+        fi
+    env:
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

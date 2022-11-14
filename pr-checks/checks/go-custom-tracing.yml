@@ -1,7 +1,7 @@
 name: "Go: Custom tracing"
 description: "Checks that Go tracing works"
 env:
-  CODEQL_EXTRACTOR_GO_BUILD_TRACING: "true"
+  CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
 steps:
   - uses: actions/setup-go@v3
     with:
@@ -10,6 +10,8 @@ steps:
     with:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
   - name: Build code
     shell: bash
     run: go build main.go

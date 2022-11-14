@@ -1,8 +1,6 @@
-name: "Go: Reconciled tracing with custom build steps"
-description: "Checks that reconciled Go tracing traces the build when using custom build steps"
-env:
-  # Enable reconciled Go tracing beta functionality
-  CODEQL_ACTION_RECONCILE_GO_EXTRACTION: "true"
+name: "Go: tracing with custom build steps"
+description: "Checks that Go tracing traces the build when using custom build steps"
+operatingSystems: ["ubuntu", "macos"]
 steps:
   - uses: actions/setup-go@v3
     with:

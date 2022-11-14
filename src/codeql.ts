@@ -173,7 +173,8 @@ export interface CodeQL {
     addSnippetsFlag: string,
     threadsFlag: string,
     verbosityFlag: string | undefined,
-    automationDetailsId: string | undefined
+    automationDetailsId: string | undefined,
+    featureEnablement: FeatureEnablement
   ): Promise<string>;
   /**
    * Run 'codeql database print-baseline'.
@@ -1066,7 +1067,8 @@ async function getCodeQLForCmd(
       addSnippetsFlag: string,
       threadsFlag: string,
       verbosityFlag: string,
-      automationDetailsId: string | undefined
+      automationDetailsId: string | undefined,
+      featureEnablement: FeatureEnablement
     ): Promise<string> {
       const codeqlArgs = [
         "database",
@@ -1091,6 +1093,14 @@ async function getCodeQLForCmd(
         (await util.codeQlVersionAbove(this, CODEQL_VERSION_SARIF_GROUP))
       ) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
+      }
+      if (
+        await featureEnablement.getValue(
+          Feature.FileBaselineInformationEnabled,
+          this
+        )
+      ) {
+        codeqlArgs.push("--sarif-add-baseline-file-info");
       }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {

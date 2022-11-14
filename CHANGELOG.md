@@ -1,5 +1,10 @@
 # CodeQL Action Changelog
 
+## 2.1.32 - 14 Nov 2022
+
+- Update default CodeQL bundle version to 2.11.3. [#1348](https://github.com/github/codeql-action/pull/1348)
+- Update the ML-powered additional query pack for JavaScript to version 0.4.0. [#1351](https://github.com/github/codeql-action/pull/1351)
+
 ## 2.1.31 - 04 Nov 2022
 
 - The `rb/weak-cryptographic-algorithm` Ruby query has been updated to no longer report uses of hash functions such as `MD5` and `SHA1` even if they are known to be weak. These hash algorithms are used very often in non-sensitive contexts, making the query too imprecise in practice. For more information, see the corresponding change in the [github/codeql repository](https://github.com/github/codeql/pull/11129). [#1344](https://github.com/github/codeql-action/pull/1344)

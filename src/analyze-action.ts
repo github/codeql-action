@@ -27,6 +27,7 @@ import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
+import { checkForTimeout } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -402,6 +403,7 @@ async function runWrapper() {
     core.setFailed(`analyze action failed: ${error}`);
     console.log(error);
   }
+  await checkForTimeout();
 }
 
 void runWrapper();

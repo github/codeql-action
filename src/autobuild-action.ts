@@ -8,7 +8,7 @@ import {
   sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getApiDetails, getGitHubVersion } from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { Features } from "./feature-flags";
@@ -77,7 +77,6 @@ async function run() {
 
     const features = new Features(
       gitHubVersion,
-      getApiDetails(),
       parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
       logger
     );

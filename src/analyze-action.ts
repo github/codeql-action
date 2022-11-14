@@ -226,12 +226,7 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion();
 
-    const features = new Features(
-      gitHubVersion,
-      apiDetails,
-      repositoryNwo,
-      logger
-    );
+    const features = new Features(gitHubVersion, repositoryNwo, logger);
 
     await runAutobuildIfLegacyGoWorkflow(config, features, logger);
 
@@ -275,7 +270,6 @@ async function run() {
       uploadResult = await upload_lib.uploadFromActions(
         outputDir,
         config.gitHubVersion,
-        apiDetails,
         logger
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
@@ -302,7 +296,6 @@ async function run() {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,
-        apiDetails,
         getActionsLogger()
       );
     }

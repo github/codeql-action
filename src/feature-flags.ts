@@ -1,4 +1,4 @@
-import { getApiClient, GitHubApiDetails } from "./api-client";
+import { getApiClient } from "./api-client";
 import { CodeQL } from "./codeql";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -65,13 +65,11 @@ export class Features implements FeatureEnablement {
 
   constructor(
     gitHubVersion: util.GitHubVersion,
-    apiDetails: GitHubApiDetails,
     repositoryNwo: RepositoryNwo,
     logger: Logger
   ) {
     this.gitHubFeatureFlags = new GitHubFeatureFlags(
       gitHubVersion,
-      apiDetails,
       repositoryNwo,
       logger
     );
@@ -133,7 +131,6 @@ class GitHubFeatureFlags implements FeatureEnablement {
 
   constructor(
     private gitHubVersion: util.GitHubVersion,
-    private apiDetails: GitHubApiDetails,
     private repositoryNwo: RepositoryNwo,
     private logger: Logger
   ) {
@@ -173,9 +170,8 @@ class GitHubFeatureFlags implements FeatureEnablement {
       );
       return {};
     }
-    const client = getApiClient(this.apiDetails);
     try {
-      const response = await client.request(
+      const response = await getApiClient().request(
         "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
         {
           owner: this.repositoryNwo.owner,

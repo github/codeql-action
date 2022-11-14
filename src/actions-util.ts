@@ -411,7 +411,7 @@ async function getWorkflowPath(): Promise<string> {
   const repo = repo_nwo[1];
   const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
 
-  const apiClient = api.getActionsApiClient();
+  const apiClient = api.getApiClient();
   const runsResponse = await apiClient.request(
     "GET /repos/:owner/:repo/actions/runs/:run_id?exclude_pull_requests=true",
     {
@@ -768,7 +768,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
-  const client = api.getActionsApiClient();
+  const client = api.getApiClient();
 
   try {
     await client.request(

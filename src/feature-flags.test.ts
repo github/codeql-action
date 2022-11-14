@@ -1,6 +1,5 @@
 import test from "ava";
 
-import { GitHubApiDetails } from "./api-client";
 import {
   Feature,
   featureConfig,
@@ -25,12 +24,6 @@ setupTests(test);
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 });
-
-const testApiDetails: GitHubApiDetails = {
-  auth: "1234",
-  url: "https://github.com",
-  apiURL: undefined,
-};
 
 const testRepositoryNwo = parseRepositoryNwo("github/example");
 
@@ -319,7 +312,7 @@ function setUpTests(
 ): FeatureEnablement {
   setupActionsVars(tmpDir, tmpDir);
 
-  return new Features(gitHubVersion, testApiDetails, testRepositoryNwo, logger);
+  return new Features(gitHubVersion, testRepositoryNwo, logger);
 }
 
 function includeCodeQlIfRequired(feature: string) {

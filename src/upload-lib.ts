@@ -89,7 +89,6 @@ function getAutomationID(
 async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ) {
   logger.info("Uploading results");
@@ -108,7 +107,7 @@ async function uploadPayload(
     return;
   }
 
-  const client = api.getApiClient(apiDetails);
+  const client = api.getApiClient();
 
   const response = await client.request(
     "PUT /repos/:owner/:repo/code-scanning/analysis",
@@ -163,7 +162,6 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 export async function uploadFromActions(
   sarifPath: string,
   gitHubVersion: util.GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
@@ -180,7 +178,6 @@ export async function uploadFromActions(
     actionsUtil.getRequiredInput("checkout_path"),
     actionsUtil.getRequiredInput("matrix"),
     gitHubVersion,
-    apiDetails,
     logger
   );
 }
@@ -330,7 +327,6 @@ async function uploadFiles(
   sourceRoot: string,
   environment: string | undefined,
   gitHubVersion: util.GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<UploadResult> {
   logger.startGroup("Uploading results");
@@ -384,12 +380,7 @@ async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  const sarifID = await uploadPayload(
-    payload,
-    repositoryNwo,
-    apiDetails,
-    logger
-  );
+  const sarifID = await uploadPayload(payload, repositoryNwo, logger);
 
   logger.endGroup();
 
@@ -410,11 +401,10 @@ const STATUS_CHECK_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
 export async function waitForProcessing(
   repositoryNwo: RepositoryNwo,
   sarifID: string,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<void> {
   logger.startGroup("Waiting for processing to finish");
-  const client = api.getApiClient(apiDetails);
+  const client = api.getApiClient();
 
   const statusCheckingStarted = Date.now();
   // eslint-disable-next-line no-constant-condition

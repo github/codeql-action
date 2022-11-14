@@ -29,7 +29,7 @@ export interface GitHubApiExternalRepoDetails {
   apiURL: string | undefined;
 }
 
-export const getApiClient = function (
+function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
   { allowExternal = false } = {}
 ) {
@@ -43,7 +43,7 @@ export const getApiClient = function (
       log: consoleLogLevel({ level: "debug" }),
     })
   );
-};
+}
 
 export function getApiDetails() {
   return {
@@ -53,11 +53,14 @@ export function getApiDetails() {
   };
 }
 
-// Temporary function to aid in the transition to running on and off of github actions.
-// Once all code has been converted this function should be removed or made canonical
-// and called only from the action entrypoints.
-export function getActionsApiClient() {
-  return getApiClient(getApiDetails());
+export function getApiClient() {
+  return createApiClientWithDetails(getApiDetails());
+}
+
+export function getApiClientWithExternalAuth(
+  apiDetails: GitHubApiCombinedDetails
+) {
+  return createApiClientWithDetails(apiDetails, { allowExternal: true });
 }
 
 let cachedGitHubVersion: GitHubVersion | undefined = undefined;

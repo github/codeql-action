@@ -350,14 +350,14 @@ async function getCodeQLBundleDownloadURL(
   if (variant === util.GitHubVariant.GHAE) {
     try {
       const release = await api
-        .getApiClient(apiDetails)
+        .getApiClient()
         .request("GET /enterprise/code-scanning/codeql-bundle/find/{tag}", {
           tag: CODEQL_BUNDLE_VERSION,
         });
       const assetID = release.data.assets[codeQLBundleName];
       if (assetID !== undefined) {
         const download = await api
-          .getApiClient(apiDetails)
+          .getApiClient()
           .request(
             "GET /enterprise/code-scanning/codeql-bundle/download/{asset_id}",
             { asset_id: assetID }
@@ -391,7 +391,7 @@ async function getCodeQLBundleDownloadURL(
     }
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {
-      const release = await api.getApiClient(apiDetails).repos.getReleaseByTag({
+      const release = await api.getApiClient().repos.getReleaseByTag({
         owner: repositoryOwner,
         repo: repositoryName,
         tag: CODEQL_BUNDLE_VERSION,

@@ -725,14 +725,6 @@ export function listFolder(dir: string): string[] {
   return files;
 }
 
-export async function isGoExtractionReconciliationEnabled(
-  featureEnablement: FeatureEnablement
-): Promise<boolean> {
-  return await featureEnablement.getValue(
-    Feature.GolangExtractionReconciliationEnabled
-  );
-}
-
 /**
  * Get the size a folder in bytes. This will log any filesystem errors
  * as a warning and then return undefined.

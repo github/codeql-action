@@ -520,7 +520,11 @@ export async function getRef(): Promise<string> {
     );
   }
 
-  const ref = refInput || getRequiredEnvParam("GITHUB_REF");
+  // Workaround for a limitation of Actions dynamic workflows not setting
+  // the GITHUB_REF in some cases
+  const maybeCSRef = process.env["CODE_SCANNING_REF"];
+
+  const ref = refInput || maybeCSRef || getRequiredEnvParam("GITHUB_REF");
   const sha = shaInput || getRequiredEnvParam("GITHUB_SHA");
 
   // If the ref is a user-provided input, we have to skip logic

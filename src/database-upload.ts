@@ -32,7 +32,7 @@ export async function uploadDatabases(
     return;
   }
 
-  const client = getApiClient(apiDetails);
+  const client = getApiClient();
   const codeql = await getCodeQL(config.codeQLCmd);
 
   for (const language of config.languages) {

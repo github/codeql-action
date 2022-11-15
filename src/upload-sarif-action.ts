@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -10,7 +10,6 @@ import {
   getRequiredEnvParam,
   initializeEnvironment,
   isInTestMode,
-  Mode,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -38,7 +37,7 @@ async function sendSuccessStatusReport(
 
 async function run() {
   const startedAt = new Date();
-  initializeEnvironment(Mode.actions, pkg.version);
+  initializeEnvironment(pkg.version);
   await checkActionVersion(pkg.version);
   if (
     !(await actionsUtil.sendStatusReport(
@@ -53,13 +52,11 @@ async function run() {
   }
 
   try {
-    const apiDetails = getApiDetails();
-    const gitHubVersion = await getGitHubVersionActionsOnly();
+    const gitHubVersion = await getGitHubVersion();
 
     const uploadResult = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
       gitHubVersion,
-      apiDetails,
       getActionsLogger()
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
@@ -71,7 +68,6 @@ async function run() {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,
-        apiDetails,
         getActionsLogger()
       );
     }

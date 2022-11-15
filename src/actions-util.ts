@@ -25,16 +25,10 @@ import {
 const pkg = require("../package.json");
 
 /**
- * The utils in this module are meant to be run inside of the action only.
- * Code paths from the runner should not enter this module.
- */
-
-/**
  * Wrapper around core.getInput for inputs that always have a value.
  * Also see getOptionalInput.
  *
- * This allows us to get stronger type checking of required/optional inputs
- * and make behaviour more consistent between actions and the runner.
+ * This allows us to get stronger type checking of required/optional inputs.
  */
 export function getRequiredInput(name: string): string {
   return core.getInput(name, { required: true });
@@ -44,8 +38,7 @@ export function getRequiredInput(name: string): string {
  * Wrapper around core.getInput that converts empty inputs to undefined.
  * Also see getRequiredInput.
  *
- * This allows us to get stronger type checking of required/optional inputs
- * and make behaviour more consistent between actions and the runner.
+ * This allows us to get stronger type checking of required/optional inputs.
  */
 export const getOptionalInput = function (name: string): string | undefined {
   const value = core.getInput(name);
@@ -418,7 +411,7 @@ async function getWorkflowPath(): Promise<string> {
   const repo = repo_nwo[1];
   const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
 
-  const apiClient = api.getActionsApiClient();
+  const apiClient = api.getApiClient();
   const runsResponse = await apiClient.request(
     "GET /repos/:owner/:repo/actions/runs/:run_id?exclude_pull_requests=true",
     {
@@ -779,7 +772,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
-  const client = api.getActionsApiClient();
+  const client = api.getApiClient();
 
   try {
     await client.request(

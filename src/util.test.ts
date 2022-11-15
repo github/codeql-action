@@ -1,16 +1,15 @@
 import * as fs from "fs";
 import * as os from "os";
 import path from "path";
-import * as stream from "stream";
 
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import test, { ExecutionContext } from "ava";
+import test from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
-import { getRunnerLogger, Logger } from "./logging";
+import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -240,65 +239,6 @@ test("getGitHubVersion", async (t) => {
   t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
 });
 
-test("getGitHubAuth", async (t) => {
-  const msgs: string[] = [];
-  const mockLogger = {
-    warning: (msg: string) => msgs.push(msg),
-  } as unknown as Logger;
-
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  t.throwsAsync(async () => util.getGitHubAuth(mockLogger, "abc", true));
-
-  process.env.GITHUB_TOKEN = "123";
-  t.is("123", await util.getGitHubAuth(mockLogger, undefined, undefined));
-  t.is(msgs.length, 0);
-  t.is("abc", await util.getGitHubAuth(mockLogger, "abc", undefined));
-  t.is(msgs.length, 1); // warning expected
-
-  msgs.length = 0;
-  await mockStdInForAuth(t, mockLogger, "def", "def");
-  await mockStdInForAuth(t, mockLogger, "def", "", "def");
-  await mockStdInForAuth(
-    t,
-    mockLogger,
-    "def",
-    "def\n some extra garbage",
-    "ghi"
-  );
-  await mockStdInForAuth(t, mockLogger, "defghi", "def", "ghi\n123");
-
-  await mockStdInForAuthExpectError(t, mockLogger, "");
-  await mockStdInForAuthExpectError(t, mockLogger, "", " ", "abc");
-  await mockStdInForAuthExpectError(
-    t,
-    mockLogger,
-    "  def\n some extra garbage",
-    "ghi"
-  );
-  t.is(msgs.length, 0);
-});
-
-async function mockStdInForAuth(
-  t: ExecutionContext<any>,
-  mockLogger: Logger,
-  expected: string,
-  ...text: string[]
-) {
-  const stdin = stream.Readable.from(text) as any;
-  t.is(expected, await util.getGitHubAuth(mockLogger, undefined, true, stdin));
-}
-
-async function mockStdInForAuthExpectError(
-  t: ExecutionContext<unknown>,
-  mockLogger: Logger,
-  ...text: string[]
-) {
-  const stdin = stream.Readable.from(text) as any;
-  await t.throwsAsync(async () =>
-    util.getGitHubAuth(mockLogger, undefined, true, stdin)
-  );
-}
-
 const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
   // If no packs are loaded, status is false.
   [[], "false"],
@@ -406,9 +346,8 @@ for (const [
   test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {
     const warningSpy = sinon.spy(core, "warning");
     const versionStub = sinon
-      .stub(api, "getGitHubVersionActionsOnly")
+      .stub(api, "getGitHubVersion")
       .resolves(githubVersion);
-    const isActionsStub = sinon.stub(util, "isActions").returns(true);
     await util.checkActionVersion(version);
     if (shouldReportWarning) {
       t.true(
@@ -420,7 +359,6 @@ for (const [
       t.false(warningSpy.called);
     }
     versionStub.restore();
-    isActionsStub.restore();
   });
 }
 

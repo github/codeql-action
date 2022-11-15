@@ -1,10 +1,11 @@
 import * as githubUtils from "@actions/github/lib/utils";
-import test, { ExecutionContext } from "ava";
+import test from "ava";
 import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import { getApiClient } from "./api-client";
 import { setupTests } from "./testing-utils";
-import { Mode, initializeEnvironment } from "./util";
+import * as util from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -18,102 +19,27 @@ test.beforeEach(() => {
   pluginStub = sinon.stub(githubUtils.GitHub, "plugin");
   githubStub = sinon.stub();
   pluginStub.returns(githubStub);
-  initializeEnvironment(Mode.actions, pkg.version);
+  util.initializeEnvironment(pkg.version);
 });
 
-test("Get the client API", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      externalRepoAuth: "abc",
-      url: "http://hucairz",
-    },
-    undefined,
-    {
-      auth: "token xyz",
-      baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL-Action/${pkg.version}`,
-    }
-  );
-});
+test("getApiClient", async (t) => {
+  sinon.stub(actionsUtil, "getRequiredInput").withArgs("token").returns("xyz");
+  const requiredEnvParamStub = sinon.stub(util, "getRequiredEnvParam");
+  requiredEnvParamStub
+    .withArgs("GITHUB_SERVER_URL")
+    .returns("http://github.localhost");
+  requiredEnvParamStub
+    .withArgs("GITHUB_API_URL")
+    .returns("http://api.github.localhost");
 
-test("Get the client API external", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      externalRepoAuth: "abc",
-      url: "http://hucairz",
-    },
-    { allowExternal: true },
-    {
-      auth: "token abc",
-      baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL-Action/${pkg.version}`,
-    }
-  );
-});
+  getApiClient();
 
-test("Get the client API external not present", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      url: "http://hucairz",
-    },
-    { allowExternal: true },
-    {
-      auth: "token xyz",
-      baseUrl: "http://hucairz/api/v3",
-      userAgent: `CodeQL-Action/${pkg.version}`,
-    }
-  );
-});
-
-test("Get the client API with github url", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      url: "https://github.com/some/invalid/url",
-    },
-    undefined,
-    {
-      auth: "token xyz",
-      baseUrl: "https://api.github.com",
-      userAgent: `CodeQL-Action/${pkg.version}`,
-    }
-  );
-});
-
-test("Get the API with an API URL directly", async (t) => {
-  doTest(
-    t,
-    {
-      auth: "xyz",
-      url: "http://github.localhost",
-      apiURL: "http://api.github.localhost",
-    },
-    undefined,
-    {
+  t.assert(
+    githubStub.calledOnceWithExactly({
       auth: "token xyz",
       baseUrl: "http://api.github.localhost",
+      log: sinon.match.any,
       userAgent: `CodeQL-Action/${pkg.version}`,
-    }
+    })
   );
 });
-
-function doTest(
-  t: ExecutionContext<unknown>,
-  clientArgs: any,
-  clientOptions: any,
-  expected: any
-) {
-  getApiClient(clientArgs, clientOptions);
-
-  const firstCallArgs = githubStub.args[0];
-  // log is a function, so we don't need to test for equality of it
-  delete firstCallArgs[0].log;
-  t.deepEqual(firstCallArgs, [expected]);
-}

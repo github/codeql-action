@@ -11,7 +11,6 @@ import {
   GitHubVariant,
   GitHubVersion,
   initializeEnvironment,
-  Mode,
   SarifFile,
   withTmpDir,
 } from "./util";
@@ -19,7 +18,7 @@ import {
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment(Mode.actions, "1.2.3");
+  initializeEnvironment("1.2.3");
 });
 
 test("validateSarifFileSchema - valid", (t) => {

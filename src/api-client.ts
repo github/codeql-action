@@ -1,12 +1,10 @@
-import * as path from "path";
-
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getRequiredInput } from "./actions-util";
 import * as util from "./util";
-import { getMode, getRequiredEnvParam, GitHubVersion } from "./util";
+import { getRequiredEnvParam, GitHubVersion } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");
@@ -31,36 +29,20 @@ export interface GitHubApiExternalRepoDetails {
   apiURL: string | undefined;
 }
 
-export const getApiClient = function (
+function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
   { allowExternal = false } = {}
 ) {
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
-  const apiURL = apiDetails.apiURL || deriveApiUrl(apiDetails.url);
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
-      baseUrl: apiURL,
-      userAgent: `CodeQL-${getMode()}/${pkg.version}`,
+      baseUrl: apiDetails.apiURL,
+      userAgent: `CodeQL-Action/${pkg.version}`,
       log: consoleLogLevel({ level: "debug" }),
     })
   );
-};
-
-// Once the runner is deleted, this can also be removed since the GitHub API URL is always available in an environment variable on Actions.
-function deriveApiUrl(githubUrl: string): string {
-  const url = new URL(githubUrl);
-
-  // If we detect this is trying to connect to github.com
-  // then return with a fixed canonical URL.
-  if (url.hostname === "github.com" || url.hostname === "api.github.com") {
-    return "https://api.github.com";
-  }
-
-  // Add the /api/v3 API prefix
-  url.pathname = path.join(url.pathname, "api", "v3");
-  return url.toString();
 }
 
 export function getApiDetails() {
@@ -71,11 +53,14 @@ export function getApiDetails() {
   };
 }
 
-// Temporary function to aid in the transition to running on and off of github actions.
-// Once all code has been converted this function should be removed or made canonical
-// and called only from the action entrypoints.
-export function getActionsApiClient() {
-  return getApiClient(getApiDetails());
+export function getApiClient() {
+  return createApiClientWithDetails(getApiDetails());
+}
+
+export function getApiClientWithExternalAuth(
+  apiDetails: GitHubApiCombinedDetails
+) {
+  return createApiClientWithDetails(apiDetails, { allowExternal: true });
 }
 
 let cachedGitHubVersion: GitHubVersion | undefined = undefined;
@@ -83,15 +68,11 @@ let cachedGitHubVersion: GitHubVersion | undefined = undefined;
 /**
  * Report the GitHub server version. This is a wrapper around
  * util.getGitHubVersion() that automatically supplies GitHub API details using
- * GitHub Action inputs. If you need to get the GitHub server version from the
- * Runner, please call util.getGitHubVersion() instead.
+ * GitHub Action inputs.
  *
  * @returns GitHub version
  */
-export async function getGitHubVersionActionsOnly(): Promise<GitHubVersion> {
-  if (!util.isActions()) {
-    throw new Error("getGitHubVersionActionsOnly() works only in an action");
-  }
+export async function getGitHubVersion(): Promise<GitHubVersion> {
   if (cachedGitHubVersion === undefined) {
     cachedGitHubVersion = await util.getGitHubVersion(getApiDetails());
   }

@@ -1,0 +1,13 @@
+name: "Kotlin extraction is disabled with `CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN`"
+description: "Tests Kotlin extraction failure when `CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN` is set"
+versions: ["latest", "cached", "nightly-latest"]
+env:
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: "true"
+steps:
+  - uses: ./../action/init
+    with:
+      expect-error: true
+      languages: kotlin
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true

@@ -1,0 +1,66 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Kotlin extraction is disabled with `CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN`
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+    - main
+    - releases/v1
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  kotlin-disable:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: windows-latest
+          version: latest
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: windows-latest
+          version: cached
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+        - os: windows-latest
+          version: nightly-latest
+    name: Kotlin extraction is disabled with `CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN`
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: ./../action/init
+      with:
+        expect-error: true
+        languages: kotlin
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
+    env:
+      CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

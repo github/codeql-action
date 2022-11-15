@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Go: Reconciled tracing with autobuilder'
+name: 'PR Check - Go: tracing with custom build steps'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,7 +21,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-reconciled-tracing-autobuilder:
+  go-tracing-custom-build-steps:
     strategy:
       matrix:
         include:
@@ -49,7 +49,7 @@ jobs:
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-    name: 'Go: Reconciled tracing with autobuilder'
+    name: 'Go: tracing with custom build steps'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -69,15 +69,20 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         TEST_MODE: true
-    - uses: ./../action/autobuild
+    - name: Build code
+      shell: bash
+      run: go build main.go
     - uses: ./../action/analyze
       env:
         TEST_MODE: true
     - shell: bash
       run: |
-        if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
-          echo "Expected the Go autobuilder to be run, but the" \
-            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+        # Once we start running Bash 4.2 in all environments, we can replace the
+        # `! -z` flag with the more elegant `-v` which confirms that the variable
+        # is actually unset and not potentially set to a blank value.
+        if [[ ! -z "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" ]]; then
+          echo "Expected the Go autobuilder not to be run, but the" \
+            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was set."
           exit 1
         fi
         cd "$RUNNER_TEMP/codeql_databases"
@@ -86,6 +91,4 @@ jobs:
           exit 1
         fi
     env:
-      CODEQL_ACTION_RECONCILE_GO_EXTRACTION: 'true'
-      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

@@ -48,6 +48,7 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
+        CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
         TEST_MODE: true
     - name: Build code
       shell: bash
@@ -57,6 +58,7 @@ jobs:
         output: ${{ runner.temp }}/results
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
+        CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
         TEST_MODE: true
     - name: Upload SARIF
       uses: actions/upload-artifact@v3
@@ -68,7 +70,7 @@ jobs:
       shell: bash
       run: |
         cd "$RUNNER_TEMP/results"
-        expected_baseline_languages="cpp csharp go java js py ruby"
+        expected_baseline_languages="cpp cs go java js py rb swift"
 
         for lang in ${expected_baseline_languages}; do
           rule_name="${lang}/baseline/expected-extracted-files"

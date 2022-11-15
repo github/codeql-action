@@ -11,8 +11,8 @@ export interface FeatureEnablement {
 export enum Feature {
   BypassToolcacheEnabled = "bypass_toolcache_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
+  DisableKotlinEnabled = "disable_kotlin_enabled",
   FileBaselineInformationEnabled = "file_baseline_information_enabled",
-  GolangExtractionReconciliationEnabled = "golang_extraction_reconciliation_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
 }
@@ -25,6 +25,10 @@ export const featureConfig: Record<
     envVar: "CODEQL_BYPASS_TOOLCACHE",
     minimumVersion: undefined,
   },
+  [Feature.DisableKotlinEnabled]: {
+    envVar: "CODEQL_DISABLE_KOTLIN",
+    minimumVersion: "2.11.4",
+  },
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.1",
@@ -32,10 +36,6 @@ export const featureConfig: Record<
   [Feature.FileBaselineInformationEnabled]: {
     envVar: "CODEQL_FILE_BASELINE_INFORMATION",
     minimumVersion: "2.11.3",
-  },
-  [Feature.GolangExtractionReconciliationEnabled]: {
-    envVar: "CODEQL_GOLANG_EXTRACTION_RECONCILIATION",
-    minimumVersion: undefined,
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",

@@ -96,7 +96,6 @@ export interface CodeQL {
     config: Config,
     sourceRoot: string,
     processName: string | undefined,
-    processLevel: number | undefined,
     featureEnablement: FeatureEnablement,
     logger: Logger
   ): Promise<void>;
@@ -297,14 +296,6 @@ function getCodeQLBundleName(): string {
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
-  if (!util.isActions()) {
-    return CODEQL_DEFAULT_ACTION_REPOSITORY;
-  } else {
-    return getActionsCodeQLActionRepository(logger);
-  }
-}
-
-function getActionsCodeQLActionRepository(logger: Logger): string {
   if (process.env["GITHUB_ACTION_REPOSITORY"] !== undefined) {
     return process.env["GITHUB_ACTION_REPOSITORY"];
   }
@@ -352,14 +343,14 @@ async function getCodeQLBundleDownloadURL(
   if (variant === util.GitHubVariant.GHAE) {
     try {
       const release = await api
-        .getApiClient(apiDetails)
+        .getApiClient()
         .request("GET /enterprise/code-scanning/codeql-bundle/find/{tag}", {
           tag: CODEQL_BUNDLE_VERSION,
         });
       const assetID = release.data.assets[codeQLBundleName];
       if (assetID !== undefined) {
         const download = await api
-          .getApiClient(apiDetails)
+          .getApiClient()
           .request(
             "GET /enterprise/code-scanning/codeql-bundle/download/{asset_id}",
             { asset_id: assetID }
@@ -393,7 +384,7 @@ async function getCodeQLBundleDownloadURL(
     }
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {
-      const release = await api.getApiClient(apiDetails).repos.getReleaseByTag({
+      const release = await api.getApiClient().repos.getReleaseByTag({
         owner: repositoryOwner,
         repo: repositoryName,
         tag: CODEQL_BUNDLE_VERSION,
@@ -801,7 +792,6 @@ async function getCodeQLForCmd(
       config: Config,
       sourceRoot: string,
       processName: string | undefined,
-      processLevel: number | undefined,
       featureEnablement: FeatureEnablement
     ) {
       const extraArgs = config.languages.map(
@@ -810,14 +800,7 @@ async function getCodeQLForCmd(
       if (config.languages.filter((l) => isTracedLanguage(l)).length > 0) {
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
-        if (processName !== undefined) {
-          extraArgs.push(`--trace-process-name=${processName}`);
-        } else {
-          // We default to 3 if no other arguments are provided since this was the default
-          // behavior of the Runner. Note this path never happens in the CodeQL Action
-          // because that always passes in a process name.
-          extraArgs.push(`--trace-process-level=${processLevel || 3}`);
-        }
+        extraArgs.push(`--trace-process-name=${processName}`);
         if (
           // There's a bug in Lua tracing for Go on Windows in versions earlier than
           // `CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED`, so don't use Lua tracing

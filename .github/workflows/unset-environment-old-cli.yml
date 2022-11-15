@@ -39,6 +39,9 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
+    - uses: actions/setup-go@v3
+      with:
+        go-version: ^1.13.1
     - uses: ./../action/init
       with:
         languages: csharp,cpp,go,javascript,python

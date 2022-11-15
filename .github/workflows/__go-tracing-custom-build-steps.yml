@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: 'PR Check - Go: Reconciled tracing with custom build steps'
+name: 'PR Check - Go: tracing with custom build steps'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,7 +21,7 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-reconciled-tracing-custom-build-steps:
+  go-tracing-custom-build-steps:
     strategy:
       matrix:
         include:
@@ -29,39 +29,27 @@ jobs:
           version: stable-20210308
         - os: macos-latest
           version: stable-20210308
-        - os: windows-2019
-          version: stable-20210308
         - os: ubuntu-20.04
           version: stable-20210319
         - os: macos-latest
-          version: stable-20210319
-        - os: windows-2019
           version: stable-20210319
         - os: ubuntu-20.04
           version: stable-20210809
         - os: macos-latest
           version: stable-20210809
-        - os: windows-2019
-          version: stable-20210809
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
-          version: cached
-        - os: windows-latest
           version: cached
         - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest
-        - os: windows-latest
-          version: latest
         - os: ubuntu-latest
           version: nightly-latest
         - os: macos-latest
           version: nightly-latest
-        - os: windows-latest
-          version: nightly-latest
-    name: 'Go: Reconciled tracing with custom build steps'
+    name: 'Go: tracing with custom build steps'
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -103,6 +91,4 @@ jobs:
           exit 1
         fi
     env:
-  # Enable reconciled Go tracing beta functionality
-      CODEQL_ACTION_RECONCILE_GO_EXTRACTION: 'true'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

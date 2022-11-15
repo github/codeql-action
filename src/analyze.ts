@@ -49,6 +49,8 @@ export interface QueriesStatusReport {
   analyze_builtin_queries_python_duration_ms?: number;
   /** Time taken in ms to run builtin queries for ruby (or undefined if this language was not analyzed). */
   analyze_builtin_queries_ruby_duration_ms?: number;
+  /** Time taken in ms to run builtin queries for swift (or undefined if this language was not analyzed). */
+  analyze_builtin_queries_swift_duration_ms?: number;
   /** Time taken in ms to run custom queries for cpp (or undefined if this language was not analyzed). */
   analyze_custom_queries_cpp_duration_ms?: number;
   /** Time taken in ms to run custom queries for csharp (or undefined if this language was not analyzed). */
@@ -63,6 +65,8 @@ export interface QueriesStatusReport {
   analyze_custom_queries_python_duration_ms?: number;
   /** Time taken in ms to run custom queries for ruby (or undefined if this language was not analyzed). */
   analyze_custom_queries_ruby_duration_ms?: number;
+  /** Time taken in ms to run custom queries for swift (or undefined if this language was not analyzed). */
+  analyze_custom_queries_swift_duration_ms?: number;
   /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
   interpret_results_cpp_duration_ms?: number;
   /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */
@@ -77,6 +81,8 @@ export interface QueriesStatusReport {
   interpret_results_python_duration_ms?: number;
   /** Time taken in ms to interpret results for ruby (or undefined if this language was not analyzed). */
   interpret_results_ruby_duration_ms?: number;
+  /** Time taken in ms to interpret results for swift (or undefined if this language was not analyzed). */
+  interpret_results_swift_duration_ms?: number;
   /** Name of language that errored during analysis (or undefined if no language failed). */
   analyze_failure_language?: string;
 }
@@ -121,8 +127,7 @@ async function setupPythonExtractor(logger: Logger) {
 export async function createdDBForScannedLanguages(
   codeql: CodeQL,
   config: configUtils.Config,
-  logger: Logger,
-  featureEnablement: FeatureEnablement
+  logger: Logger
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
@@ -130,11 +135,7 @@ export async function createdDBForScannedLanguages(
 
   for (const language of config.languages) {
     if (
-      isScannedLanguage(
-        language,
-        await util.isGoExtractionReconciliationEnabled(featureEnablement),
-        logger
-      ) &&
+      isScannedLanguage(language) &&
       !dbIsFinalized(config, language, logger)
     ) {
       logger.startGroup(`Extracting ${language}`);
@@ -172,13 +173,12 @@ async function finalizeDatabaseCreation(
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
-  logger: Logger,
-  featureEnablement: FeatureEnablement
+  logger: Logger
 ): Promise<DatabaseCreationTimings> {
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await createdDBForScannedLanguages(codeql, config, logger, featureEnablement);
+  await createdDBForScannedLanguages(codeql, config, logger);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -500,8 +500,7 @@ export async function runFinalize(
   threadsFlag: string,
   memoryFlag: string,
   config: configUtils.Config,
-  logger: Logger,
-  featureEnablement: FeatureEnablement
+  logger: Logger
 ): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });
@@ -516,8 +515,7 @@ export async function runFinalize(
     config,
     threadsFlag,
     memoryFlag,
-    logger,
-    featureEnablement
+    logger
   );
 
   const codeql = await getCodeQL(config.codeQLCmd);
@@ -528,11 +526,7 @@ export async function runFinalize(
   // step.
   if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
     // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(
-      config,
-      await util.isGoExtractionReconciliationEnabled(featureEnablement),
-      logger
-    );
+    await endTracingForCluster(config);
   } else {
     // Delete the tracer config env var to avoid tracing ourselves
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];

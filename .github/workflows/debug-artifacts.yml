@@ -55,6 +55,9 @@ jobs:
         uses: ./.github/prepare-test
         with:
           version: ${{ matrix.version }}
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.13.1
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -113,4 +116,5 @@ jobs:
             done
           done
         env:
+          GO111MODULE: auto
           INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

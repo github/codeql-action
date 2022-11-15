@@ -260,6 +260,11 @@ async function run() {
       getThreadsFlagValue(getOptionalInput("threads"), logger).toString()
     );
 
+    // Disable Kotlin extractor if feature flag set
+    if (await features.getValue(Feature.DisableKotlinEnabled)) {
+      core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
+    }
+
     const sourceRoot = path.resolve(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       getOptionalInput("source-root") || ""

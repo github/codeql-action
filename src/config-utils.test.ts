@@ -48,6 +48,7 @@ function mockGetContents(
     .stub(client.repos, "getContent")
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
+  sinon.stub(api, "getApiClientWithExternalAuth").value(() => client);
   return spyGetContents;
 }
 

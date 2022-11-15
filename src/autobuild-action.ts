@@ -8,7 +8,7 @@ import {
   sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersionActionsOnly } from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
@@ -18,7 +18,6 @@ import {
   checkActionVersion,
   checkGitHubVersionInRange,
   initializeEnvironment,
-  Mode,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -37,7 +36,7 @@ async function sendCompletedStatusReport(
   failingLanguage?: string,
   cause?: Error
 ) {
-  initializeEnvironment(Mode.actions, pkg.version);
+  initializeEnvironment(pkg.version);
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
@@ -70,8 +69,8 @@ async function run() {
       return;
     }
 
-    const gitHubVersion = await getGitHubVersionActionsOnly();
-    checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
+    const gitHubVersion = await getGitHubVersion();
+    checkGitHubVersionInRange(gitHubVersion, logger);
 
     const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {

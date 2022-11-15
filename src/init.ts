@@ -89,7 +89,6 @@ export async function runInit(
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
-  processLevel: number | undefined,
   featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<TracerConfig | undefined> {
@@ -102,7 +101,6 @@ export async function runInit(
         config,
         sourceRoot,
         processName,
-        processLevel,
         featureEnablement,
         logger
       );

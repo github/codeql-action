@@ -12,7 +12,7 @@ import {
   StatusReportBase,
   validateWorkflow,
 } from "./actions-util";
-import { getGitHubVersionActionsOnly } from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature, FeatureEnablement, Features } from "./feature-flags";
@@ -40,7 +40,6 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
-  Mode,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -137,7 +136,7 @@ async function sendSuccessStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  initializeEnvironment(Mode.actions, pkg.version);
+  initializeEnvironment(pkg.version);
   await checkActionVersion(pkg.version);
 
   let config: configUtils.Config;
@@ -151,19 +150,14 @@ async function run() {
     apiURL: getRequiredEnvParam("GITHUB_API_URL"),
   };
 
-  const gitHubVersion = await getGitHubVersionActionsOnly();
-  checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
+  const gitHubVersion = await getGitHubVersion();
+  checkGitHubVersionInRange(gitHubVersion, logger);
 
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY")
   );
 
-  const features = new Features(
-    gitHubVersion,
-    apiDetails,
-    repositoryNwo,
-    logger
-  );
+  const features = new Features(gitHubVersion, repositoryNwo, logger);
 
   try {
     const workflowErrors = await validateWorkflow();
@@ -191,7 +185,7 @@ async function run() {
     );
     codeql = initCodeQLResult.codeql;
     toolsVersion = initCodeQLResult.toolsVersion;
-    await enrichEnvironment(Mode.actions, codeql);
+    await enrichEnvironment(codeql);
 
     config = await initConfig(
       getOptionalInput("languages"),
@@ -276,7 +270,6 @@ async function run() {
       config,
       sourceRoot,
       "Runner.Worker.exe",
-      undefined,
       features,
       logger
     );

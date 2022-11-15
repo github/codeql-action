@@ -58,6 +58,19 @@ for file in os.listdir('checks'):
     with open(f"checks/{file}", 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
 
+    matrix = []
+    for version in checkSpecification.get('versions', defaultTestVersions):
+        runnerImages = operatingSystemsForVersion(version)
+        if checkSpecification.get('operatingSystems', None):
+            runnerImages = [image for image in runnerImages for operatingSystem in checkSpecification['operatingSystems']
+                            if image.startswith(operatingSystem)]
+
+        for runnerImage in runnerImages:
+            matrix.append({
+                'os': runnerImage,
+                'version': version
+            })
+
     steps = [
         {
             'name': 'Check out repository',
@@ -72,20 +85,18 @@ for file in os.listdir('checks'):
             }
         }
     ]
+
+    if any(not isCompatibleWithLatestImages(m['version']) for m in matrix):
+        steps.append({
+            'name': 'Set up Go',
+            'if': "matrix.os == 'ubuntu-20.04' || matrix.os == 'windows-2019'",
+            'uses': 'actions/setup-go@v3',
+            'with': {
+                'go-version': '^1.13.1'
+            }
+        })
+
     steps.extend(checkSpecification['steps'])
-
-    matrix = []
-    for version in checkSpecification.get('versions', defaultTestVersions):
-        runnerImages = operatingSystemsForVersion(version)
-        if checkSpecification.get('operatingSystems', None):
-            runnerImages = [image for image in runnerImages for operatingSystem in checkSpecification['operatingSystems']
-                            if image.startswith(operatingSystem)]
-
-        for runnerImage in runnerImages:
-            matrix.append({
-                'os': runnerImage,
-                'version': version
-            })
 
     checkJob = {
         'strategy': {

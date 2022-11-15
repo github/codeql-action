@@ -4,9 +4,6 @@ operatingSystems: ["ubuntu", "macos"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
-  - uses: actions/setup-go@v3
-    with:
-      go-version: "^1.13.1"
   - uses: ./../action/init
     with:
       languages: go

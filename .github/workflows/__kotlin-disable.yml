@@ -56,9 +56,15 @@ jobs:
         version: ${{ matrix.version }}
     - uses: ./../action/init
       with:
-        expect-error: true
         languages: kotlin
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+      env:
+        TEST_MODE: true
+    - uses: ./../action/autobuild
+    - uses: ./../action/analyze
+      id: analysis
+      with:
+        expect-error: true
       env:
         TEST_MODE: true
     env:

@@ -28,7 +28,7 @@ export const featureConfig: Record<
   },
   [Feature.DisableKotlinEnabled]: {
     envVar: "CODEQL_DISABLE_KOTLIN",
-    minimumVersion: "2.11.4",
+    minimumVersion: undefined,
   },
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",

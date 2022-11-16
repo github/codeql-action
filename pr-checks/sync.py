@@ -115,7 +115,6 @@ for file in os.listdir('checks'):
             checkJob[key] = checkSpecification[key]
 
     checkJob['env'] = checkJob.get('env', {})
-    checkJob['env']['INTERNAL_CODEQL_ACTION_DEBUG_LOC'] = True
     checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
     checkName = file[:len(file) - 4]
 

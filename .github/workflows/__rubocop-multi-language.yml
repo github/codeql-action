@@ -59,5 +59,4 @@ jobs:
       with:
         sarif_file: rubocop.sarif
     env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
       CODEQL_ACTION_TEST_MODE: true

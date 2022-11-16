@@ -91,5 +91,4 @@ jobs:
     env:
       CODEQL_PASS_CONFIG_TO_CLI: true
 
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
       CODEQL_ACTION_TEST_MODE: true

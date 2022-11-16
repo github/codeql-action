@@ -89,4 +89,3 @@ jobs:
           done
         env:
           GO111MODULE: auto
-          INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

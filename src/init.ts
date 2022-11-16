@@ -89,7 +89,6 @@ export async function runInit(
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
-  processLevel: number | undefined,
   featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<TracerConfig | undefined> {
@@ -102,7 +101,6 @@ export async function runInit(
         config,
         sourceRoot,
         processName,
-        processLevel,
         featureEnablement,
         logger
       );
@@ -119,12 +117,7 @@ export async function runInit(
   } catch (e) {
     throw processError(e);
   }
-  return await getCombinedTracerConfig(
-    config,
-    codeql,
-    await util.isGoExtractionReconciliationEnabled(featureEnablement),
-    logger
-  );
+  return await getCombinedTracerConfig(config, codeql);
 }
 
 /**

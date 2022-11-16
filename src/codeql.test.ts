@@ -18,7 +18,7 @@ import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
 import * as util from "./util";
-import { Mode, initializeEnvironment } from "./util";
+import { initializeEnvironment } from "./util";
 
 setupTests(test);
 
@@ -39,7 +39,7 @@ const sampleGHAEApiDetails = {
 let stubConfig: Config;
 
 test.beforeEach(() => {
-  initializeEnvironment(Mode.actions, "1.2.3");
+  initializeEnvironment("1.2.3");
 
   stubConfig = {
     languages: [Language.cpp],
@@ -424,11 +424,7 @@ test("getExtraOptions throws for bad content", (t) => {
 test("getCodeQLActionRepository", (t) => {
   const logger = getRunnerLogger(true);
 
-  initializeEnvironment(Mode.runner, "1.2.3");
-  const repoActions = codeql.getCodeQLActionRepository(logger);
-  t.deepEqual(repoActions, "github/codeql-action");
-
-  initializeEnvironment(Mode.actions, "1.2.3");
+  initializeEnvironment("1.2.3");
 
   // isRunningLocalAction() === true
   delete process.env["GITHUB_ACTION_REPOSITORY"];
@@ -501,7 +497,6 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
       thisStubConfig,
       "",
       undefined,
-      undefined,
       createFeatures([]),
       getRunnerLogger(true)
     );
@@ -540,7 +535,6 @@ const injectedConfigMacro = test.macro({
       await codeqlObject.databaseInitCluster(
         thisStubConfig,
         "",
-        undefined,
         undefined,
         createFeatures([Feature.CliConfigFileEnabled]),
         getRunnerLogger(true)
@@ -847,7 +841,6 @@ test("does not use injected config", async (t: ExecutionContext<unknown>) => {
     await codeqlObject.databaseInitCluster(
       stubConfig,
       "",
-      undefined,
       undefined,
       createFeatures([]),
       getRunnerLogger(true)

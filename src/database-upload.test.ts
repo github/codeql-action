@@ -24,14 +24,13 @@ import {
   GitHubVariant,
   HTTPError,
   initializeEnvironment,
-  Mode,
   withTmpDir,
 } from "./util";
 
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment(Mode.actions, "1.2.3");
+  initializeEnvironment("1.2.3");
 });
 
 const testRepoName: RepositoryNwo = { owner: "github", repo: "example" };

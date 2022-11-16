@@ -856,11 +856,10 @@ export function getUnknownLanguagesError(languages: string[]): string {
  */
 async function getLanguagesInRepo(
   repository: RepositoryNwo,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
-  const response = await api.getApiClient(apiDetails).repos.listLanguages({
+  const response = await api.getApiClient().repos.listLanguages({
     owner: repository.owner,
     repo: repository.repo,
   });
@@ -895,7 +894,6 @@ async function getLanguages(
   codeQL: CodeQL,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Language[]> {
   // Obtain from action input 'languages' if set
@@ -907,7 +905,7 @@ async function getLanguages(
 
   if (languages.length === 0) {
     // Obtain languages as all languages in the repo that can be analysed
-    languages = await getLanguagesInRepo(repository, apiDetails, logger);
+    languages = await getLanguagesInRepo(repository, logger);
     const availableLanguages = await codeQL.resolveLanguages();
     languages = languages.filter((value) => value in availableLanguages);
     logger.info(
@@ -1012,7 +1010,6 @@ export async function getDefaultConfig(
     codeQL,
     languagesInput,
     repository,
-    apiDetails,
     logger
   );
   const queries: Queries = {};
@@ -1142,7 +1139,6 @@ async function loadConfig(
     codeQL,
     languagesInput,
     repository,
-    apiDetails,
     logger
   );
 
@@ -1773,7 +1769,7 @@ async function getRemoteConfig(
   }
 
   const response = await api
-    .getApiClient(apiDetails, { allowExternal: true })
+    .getApiClientWithExternalAuth(apiDetails)
     .repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,

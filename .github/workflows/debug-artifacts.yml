@@ -20,30 +20,30 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
-            version: stable-20210308
-          - os: macos-latest
-            version: stable-20210308
-          - os: ubuntu-20.04
-            version: stable-20210319
-          - os: macos-latest
-            version: stable-20210319
-          - os: ubuntu-20.04
-            version: stable-20210809
-          - os: macos-latest
-            version: stable-20210809
-          - os: ubuntu-latest
-            version: cached
-          - os: macos-latest
-            version: cached
-          - os: ubuntu-latest
-            version: latest
-          - os: macos-latest
-            version: latest
-          - os: ubuntu-latest
-            version: nightly-latest
-          - os: macos-latest
-            version: nightly-latest
+        - os: ubuntu-20.04
+          version: stable-20211005
+        - os: macos-latest
+          version: stable-20211005
+        - os: ubuntu-20.04
+          version: stable-20220120
+        - os: macos-latest
+          version: stable-20220120
+        - os: ubuntu-latest
+          version: stable-20220401
+        - os: macos-latest
+          version: stable-20220401
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
     name: Upload debug artifacts
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -55,6 +55,9 @@ jobs:
         uses: ./.github/prepare-test
         with:
           version: ${{ matrix.version }}
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.13.1
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -81,10 +84,10 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20210308 stable-20210319 stable-20210809 cached latest nightly-latest"
+          VERSIONS="stable-20211005 stable-20220120 stable-20220401 cached latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
-            if [[ "$version" =~ stable-(20210308|20210319|20210809) ]]; then
+            if [[ "$version" =~ stable-(20211005|20220120|20210809) ]]; then
               # Note the absence of the period in "ubuntu-2004": this is present in the image name
               # but not the artifact name
               OPERATING_SYSTEMS="ubuntu-2004 macos-latest"
@@ -113,4 +116,5 @@ jobs:
             done
           done
         env:
+          GO111MODULE: auto
           INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

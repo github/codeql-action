@@ -1,0 +1,26 @@
+# This check should be combined into `multi-language-autodetect.yml` once Ruby is GA'ed 
+# and the `CODEQL_ENABLE_EXPERIMENTAL_FEATURES` environment variable is not needed.
+name: "Ruby analysis using autodetect"
+description: "Tests creation of a Ruby database when language isn't specified in init"
+versions: ["latest", "cached", "nightly-latest"]
+operatingSystems: ["ubuntu", "macos"]
+env:
+  CODEQL_ENABLE_EXPERIMENTAL_FEATURES: "true"
+steps:
+  - uses: ./../action/init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      TEST_MODE: true
+  - uses: ./../action/analyze
+    id: analysis
+    env:
+      TEST_MODE: true
+  - name: Check database
+    shell: bash
+    run: |
+      RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
+      if [[ ! -d "$RUBY_DB" ]]; then
+        echo "Did not create a database for Ruby."
+        exit 1
+      fi

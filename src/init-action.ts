@@ -262,7 +262,7 @@ async function run() {
     );
 
     // Disable Kotlin extractor if feature flag set
-    if (await features.getValue(Feature.DisableKotlinEnabled)) {
+    if (await features.getValue(Feature.DisableKotlinCliEnabled)) {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 

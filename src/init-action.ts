@@ -29,6 +29,7 @@ import { parseRepositoryNwo } from "./repository";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkActionVersion,
+  checkForTimeout,
   checkGitHubVersionInRange,
   codeQlVersionAbove,
   DEFAULT_DEBUG_ARTIFACT_NAME,
@@ -337,6 +338,7 @@ async function runWrapper() {
     core.setFailed(`init action failed: ${error}`);
     console.log(error);
   }
+  await checkForTimeout();
 }
 
 void runWrapper();

@@ -1,8 +1,9 @@
-# There was a bug, fixed in CLI v2.5.1, that didn't propagate environment
-# variables that the Java tracer needed. Here we test all languages
-# except Java for these CLI versions. In `unset-environment-new-cli.yml`
-# we test all languages for recent CLI versions.
-name: PR Check - Test unsetting environment variables for CLI version < 2.5.1
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Test unsetting environment variables
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -25,9 +26,17 @@ jobs:
       matrix:
         include:
         - os: ubuntu-20.04
-          version: stable-20210308
+          version: stable-20211005
         - os: ubuntu-20.04
-          version: stable-20210319
+          version: stable-20220120
+        - os: ubuntu-latest
+          version: stable-20220401
+        - os: ubuntu-latest
+          version: cached
+        - os: ubuntu-latest
+          version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
     name: Test unsetting environment variables
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -39,12 +48,13 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - uses: actions/setup-go@v3
+    - name: Set up Go
+      if: matrix.os == 'ubuntu-20.04' || matrix.os == 'windows-2019'
+      uses: actions/setup-go@v3
       with:
         go-version: ^1.13.1
     - uses: ./../action/init
       with:
-        languages: csharp,cpp,go,javascript,python
         db-location: ${{ runner.temp }}/customDbLocation
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
@@ -74,6 +84,12 @@ jobs:
         if [[ ! -d "$GO_DB" ]] || [[ ! "$GO_DB" == "${RUNNER_TEMP}/customDbLocation/go" ]]; then
           echo "::error::Did not create a database for Go, or created it in the wrong location." \
             "Expected location was '${RUNNER_TEMP}/customDbLocation/go' but actual was '${GO_DB}'"
+          exit 1
+        fi
+        JAVA_DB="${{ fromJson(steps.analysis.outputs.db-locations).java }}"
+        if [[ ! -d "$JAVA_DB" ]] || [[ ! "$JAVA_DB" == "${RUNNER_TEMP}/customDbLocation/java" ]]; then
+          echo "::error::Did not create a database for Java, or created it in the wrong location." \
+            "Expected location was '${RUNNER_TEMP}/customDbLocation/java' but actual was '${JAVA_DB}'"
           exit 1
         fi
         JAVASCRIPT_DB="${{ fromJson(steps.analysis.outputs.db-locations).javascript }}"

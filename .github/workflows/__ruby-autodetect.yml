@@ -51,12 +51,8 @@ jobs:
     - uses: ./../action/init
       with:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - uses: ./../action/analyze
       id: analysis
-      env:
-        TEST_MODE: true
     - name: Check database
       shell: bash
       run: |
@@ -68,3 +64,4 @@ jobs:
     env:
       CODEQL_ENABLE_EXPERIMENTAL_FEATURES: 'true'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

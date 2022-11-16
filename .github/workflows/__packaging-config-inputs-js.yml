@@ -60,16 +60,12 @@ jobs:
         packs: +dsp-testing/codeql-pack1@1.0.0
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - name: Build code
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
-      env:
-        TEST_MODE: true
 
     - name: Check results
       uses: ./../action/.github/check-sarif
@@ -94,3 +90,4 @@ jobs:
         fi
     env:
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

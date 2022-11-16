@@ -69,12 +69,8 @@ jobs:
       with:
         languages: go
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - uses: ./../action/autobuild
     - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
     - shell: bash
       run: |
         if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
@@ -90,3 +86,4 @@ jobs:
     env:
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

@@ -10,13 +10,9 @@ steps:
     with:
       languages: swift
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      TEST_MODE: true
   - uses: ./../action/autobuild
   - uses: ./../action/analyze
     id: analysis
-    env:
-      TEST_MODE: true
   - name: Check database
     shell: bash
     run: |

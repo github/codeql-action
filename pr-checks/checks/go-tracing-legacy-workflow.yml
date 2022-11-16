@@ -8,11 +8,7 @@ steps:
     with:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      TEST_MODE: true
   - uses: ./../action/analyze
-    env:
-      TEST_MODE: true
   - shell: bash
     run: |
       cd "$RUNNER_TEMP/codeql_databases"

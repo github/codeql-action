@@ -96,5 +96,4 @@ jobs:
         ref: refs/heads/main
         sha: 5e235361806c361d4d3f8859e3c897658025a9a2
     env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
       CODEQL_ACTION_TEST_MODE: true

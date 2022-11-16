@@ -69,15 +69,11 @@ jobs:
       with:
         db-location: ${{ runner.temp }}/customDbLocation
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - name: Build code
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
       id: analysis
-      env:
-        TEST_MODE: true
     - shell: bash
       run: |
         CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
@@ -112,3 +108,4 @@ jobs:
         fi
     env:
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

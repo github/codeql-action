@@ -20,6 +20,7 @@ import {
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import { CODEQL_ACTION_TEST_MODE } from "./shared-environment";
 
 /**
  * Specifies bundle versions that are known to be broken
@@ -664,7 +665,7 @@ export async function checkActionVersion(version: string) {
  * In test mode, we don't upload SARIF results or status reports to the GitHub API.
  */
 export function isInTestMode(): boolean {
-  return process.env["TEST_MODE"] === "true";
+  return process.env[CODEQL_ACTION_TEST_MODE] === "true";
 }
 
 /**

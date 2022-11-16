@@ -71,15 +71,11 @@ jobs:
         queries: security-extended
         source-root: ./../action/tests/ml-powered-queries-repo
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
 
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
         upload-database: false
-      env:
-        TEST_MODE: true
 
     - name: Upload SARIF
       uses: actions/upload-artifact@v3
@@ -138,3 +134,4 @@ jobs:
         fi
     env:
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

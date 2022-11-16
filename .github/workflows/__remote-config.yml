@@ -83,13 +83,10 @@ jobs:
         languages: cpp,csharp,java,javascript,python
         config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
           github.sha }}
-      env:
-        TEST_MODE: true
     - name: Build code
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
     env:
       INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

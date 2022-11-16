@@ -69,11 +69,7 @@ jobs:
       with:
         languages: go
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
     - shell: bash
       run: |
         cd "$RUNNER_TEMP/codeql_databases"
@@ -83,4 +79,4 @@ jobs:
         fi
     env:
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

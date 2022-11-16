@@ -9,7 +9,6 @@ steps:
     env:
       CODEQL_FILE_BASELINE_INFORMATION: true
       CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
-      TEST_MODE: true
   - name: Build code
     shell: bash
     run: ./build.sh
@@ -19,7 +18,6 @@ steps:
     env:
       CODEQL_FILE_BASELINE_INFORMATION: true
       CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
-      TEST_MODE: true
   - name: Upload SARIF
     uses: actions/upload-artifact@v3
     with:

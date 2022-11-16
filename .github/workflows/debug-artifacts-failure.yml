@@ -23,6 +23,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     name: Upload debug artifacts after failure in analyze
     continue-on-error: true
+    env:
+      CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,8 +46,6 @@ jobs:
           debug: true
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
-        env:
-          TEST_MODE: true
       - name: Build code
         shell: bash
         run: ./build.sh
@@ -54,8 +54,6 @@ jobs:
         with:
           expect-error: true
           ram: 1
-        env:
-          TEST_MODE: true
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts
@@ -91,4 +89,3 @@ jobs:
           done
         env:
           GO111MODULE: auto
-          INTERNAL_CODEQL_ACTION_DEBUG_LOC: true

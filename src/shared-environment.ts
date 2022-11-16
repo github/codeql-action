@@ -8,3 +8,6 @@ export const CODEQL_WORKFLOW_STARTED_AT = "CODEQL_WORKFLOW_STARTED_AT";
 
 export const CODEQL_ACTION_TESTING_ENVIRONMENT =
   "CODEQL_ACTION_TESTING_ENVIRONMENT";
+
+/** Used to disable uploading SARIF results or status reports to the GitHub API */
+export const CODEQL_ACTION_TEST_MODE = "CODEQL_ACTION_TEST_MODE";

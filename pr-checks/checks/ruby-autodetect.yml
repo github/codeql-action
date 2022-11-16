@@ -10,12 +10,8 @@ steps:
   - uses: ./../action/init
     with:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      TEST_MODE: true
   - uses: ./../action/analyze
     id: analysis
-    env:
-      TEST_MODE: true
   - name: Check database
     shell: bash
     run: |

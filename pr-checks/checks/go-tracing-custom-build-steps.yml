@@ -2,9 +2,6 @@ name: "Go: tracing with custom build steps"
 description: "Checks that Go tracing traces the build when using custom build steps"
 operatingSystems: ["ubuntu", "macos"]
 steps:
-  - uses: actions/setup-go@v3
-    with:
-      go-version: "^1.13.1"
   - uses: ./../action/init
     with:
       languages: go

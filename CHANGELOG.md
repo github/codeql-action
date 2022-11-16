@@ -8,6 +8,7 @@
 
 - Update default CodeQL bundle version to 2.11.3. [#1348](https://github.com/github/codeql-action/pull/1348)
 - Update the ML-powered additional query pack for JavaScript to version 0.4.0. [#1351](https://github.com/github/codeql-action/pull/1351)
+- Bump the minimum CodeQL bundle version to 2.6.3. [#1358](https://github.com/github/codeql-action/pull/1358)
 
 ## 2.1.31 - 04 Nov 2022
 

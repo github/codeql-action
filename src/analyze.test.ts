@@ -3,7 +3,6 @@ import * as path from "path";
 
 import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
-import * as sinon from "sinon";
 
 import {
   convertPackToQuerySuiteEntry,
@@ -13,7 +12,6 @@ import {
 } from "./analyze";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import * as count from "./count-loc";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
@@ -25,12 +23,6 @@ setupTests(test);
 // and correct case of builtin or custom. Also checks the correct search
 // paths are set in the database analyze invocation.
 test("status report fields and search path setting", async (t) => {
-  const mockLinesOfCode = Object.values(Language).reduce((obj, lang, i) => {
-    // use a different line count for each language
-    obj[lang] = i + 1;
-    return obj;
-  }, {});
-  sinon.stub(count, "countLoc").resolves(mockLinesOfCode);
   let searchPathsUsed: Array<string | undefined> = [];
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
@@ -96,6 +88,7 @@ test("status report fields and search path setting", async (t) => {
           );
           return "";
         },
+        databasePrintBaseline: async () => "",
       });
 
       searchPathsUsed = [];
@@ -202,34 +195,8 @@ test("status report fields and search path setting", async (t) => {
       t.true(`interpret_results_${language}_duration_ms` in customStatusReport);
     }
 
-    verifyLineCounts(tmpDir);
     verifyQuerySuites(tmpDir);
   });
-
-  function verifyLineCounts(tmpDir: string) {
-    // eslint-disable-next-line github/array-foreach
-    Object.keys(Language).forEach((lang, i) => {
-      verifyLineCountForFile(path.join(tmpDir, `${lang}.sarif`), i + 1);
-    });
-  }
-
-  function verifyLineCountForFile(filePath: string, lineCount: number) {
-    const sarif = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    t.deepEqual(sarif.runs[0].properties.metricResults, [
-      {
-        rule: {
-          index: 0,
-          toolComponent: {
-            index: 0,
-          },
-        },
-        value: 123,
-        baseline: lineCount,
-      },
-    ]);
-    // when the rule doesn't exist, it should not be added
-    t.deepEqual(sarif.runs[1].properties.metricResults, []);
-  }
 
   function verifyQuerySuites(tmpDir: string) {
     const qlsContent = [

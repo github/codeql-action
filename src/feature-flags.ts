@@ -1,4 +1,4 @@
-import { getApiClient, GitHubApiDetails } from "./api-client";
+import { getApiClient } from "./api-client";
 import { CodeQL } from "./codeql";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -12,7 +12,6 @@ export enum Feature {
   BypassToolcacheEnabled = "bypass_toolcache_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
   FileBaselineInformationEnabled = "file_baseline_information_enabled",
-  GolangExtractionReconciliationEnabled = "golang_extraction_reconciliation_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
 }
@@ -32,10 +31,6 @@ export const featureConfig: Record<
   [Feature.FileBaselineInformationEnabled]: {
     envVar: "CODEQL_FILE_BASELINE_INFORMATION",
     minimumVersion: "2.11.3",
-  },
-  [Feature.GolangExtractionReconciliationEnabled]: {
-    envVar: "CODEQL_GOLANG_EXTRACTION_RECONCILIATION",
-    minimumVersion: undefined,
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
@@ -65,13 +60,11 @@ export class Features implements FeatureEnablement {
 
   constructor(
     gitHubVersion: util.GitHubVersion,
-    apiDetails: GitHubApiDetails,
     repositoryNwo: RepositoryNwo,
     logger: Logger
   ) {
     this.gitHubFeatureFlags = new GitHubFeatureFlags(
       gitHubVersion,
-      apiDetails,
       repositoryNwo,
       logger
     );
@@ -133,7 +126,6 @@ class GitHubFeatureFlags implements FeatureEnablement {
 
   constructor(
     private gitHubVersion: util.GitHubVersion,
-    private apiDetails: GitHubApiDetails,
     private repositoryNwo: RepositoryNwo,
     private logger: Logger
   ) {
@@ -173,9 +165,8 @@ class GitHubFeatureFlags implements FeatureEnablement {
       );
       return {};
     }
-    const client = getApiClient(this.apiDetails);
     try {
-      const response = await client.request(
+      const response = await getApiClient().request(
         "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
         {
           owner: this.repositoryNwo.owner,

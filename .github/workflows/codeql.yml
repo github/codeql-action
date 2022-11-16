@@ -9,6 +9,9 @@ on:
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
 
+env:
+  CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
+
 jobs:
   # Identify the CodeQL tool versions to use in the analysis job.
   check-codeql-versions:

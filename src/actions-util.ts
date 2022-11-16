@@ -513,11 +513,7 @@ export async function getRef(): Promise<string> {
     );
   }
 
-  // Workaround for a limitation of Actions dynamic workflows not setting
-  // the GITHUB_REF in some cases
-  const maybeCSRef = process.env["CODE_SCANNING_REF"];
-
-  const ref = refInput || maybeCSRef || getRequiredEnvParam("GITHUB_REF");
+  const ref = refInput || getRefFromEnv();
   const sha = shaInput || getRequiredEnvParam("GITHUB_SHA");
 
   // If the ref is a user-provided input, we have to skip logic
@@ -558,6 +554,26 @@ export async function getRef(): Promise<string> {
   } else {
     return ref;
   }
+}
+
+function getRefFromEnv(): string {
+  // To workaround a limitation of Actions dynamic workflows not setting
+  // the GITHUB_REF in some cases, we accept also the ref within the
+  // CODE_SCANNING_REF variable. When possible, however, we prefer to use
+  // the GITHUB_REF as that is a protected variable and cannot be overwritten.
+  let refEnv: string;
+  try {
+    refEnv = getRequiredEnvParam("GITHUB_REF");
+  } catch (e) {
+    // If the GITHUB_REF is not set, we try to rescue by getting the
+    // CODE_SCANNING_REF.
+    const maybeRef = process.env["CODE_SCANNING_REF"];
+    if (maybeRef === undefined || maybeRef.length === 0) {
+      throw e;
+    }
+    refEnv = maybeRef;
+  }
+  return refEnv;
 }
 
 type ActionName = "init" | "autobuild" | "finish" | "upload-sarif";

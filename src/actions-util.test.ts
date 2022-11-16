@@ -7,7 +7,7 @@ import * as sinon from "sinon";
 
 import * as actionsutil from "./actions-util";
 import { setupActionsVars, setupTests } from "./testing-utils";
-import { getMode, initializeEnvironment, Mode, withTmpDir } from "./util";
+import { initializeEnvironment, withTmpDir } from "./util";
 
 function errorCodes(
   actual: actionsutil.CodedError[],
@@ -719,13 +719,8 @@ on: ["push"]
 });
 
 test("initializeEnvironment", (t) => {
-  initializeEnvironment(Mode.actions, "1.2.3");
-  t.deepEqual(getMode(), Mode.actions);
+  initializeEnvironment("1.2.3");
   t.deepEqual(process.env.CODEQL_ACTION_VERSION, "1.2.3");
-
-  initializeEnvironment(Mode.runner, "4.5.6");
-  t.deepEqual(getMode(), Mode.runner);
-  t.deepEqual(process.env.CODEQL_ACTION_VERSION, "4.5.6");
 });
 
 test("isAnalyzingDefaultBranch()", async (t) => {

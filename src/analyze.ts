@@ -8,14 +8,8 @@ import * as yaml from "js-yaml";
 
 import { DatabaseCreationTimings } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
-import {
-  CodeQL,
-  CODEQL_VERSION_COUNTS_LINES,
-  CODEQL_VERSION_NEW_TRACING,
-  getCodeQL,
-} from "./codeql";
+import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { countLoc } from "./count-loc";
 import { FeatureEnablement } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -49,6 +43,8 @@ export interface QueriesStatusReport {
   analyze_builtin_queries_python_duration_ms?: number;
   /** Time taken in ms to run builtin queries for ruby (or undefined if this language was not analyzed). */
   analyze_builtin_queries_ruby_duration_ms?: number;
+  /** Time taken in ms to run builtin queries for swift (or undefined if this language was not analyzed). */
+  analyze_builtin_queries_swift_duration_ms?: number;
   /** Time taken in ms to run custom queries for cpp (or undefined if this language was not analyzed). */
   analyze_custom_queries_cpp_duration_ms?: number;
   /** Time taken in ms to run custom queries for csharp (or undefined if this language was not analyzed). */
@@ -63,6 +59,8 @@ export interface QueriesStatusReport {
   analyze_custom_queries_python_duration_ms?: number;
   /** Time taken in ms to run custom queries for ruby (or undefined if this language was not analyzed). */
   analyze_custom_queries_ruby_duration_ms?: number;
+  /** Time taken in ms to run custom queries for swift (or undefined if this language was not analyzed). */
+  analyze_custom_queries_swift_duration_ms?: number;
   /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
   interpret_results_cpp_duration_ms?: number;
   /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */
@@ -77,6 +75,8 @@ export interface QueriesStatusReport {
   interpret_results_python_duration_ms?: number;
   /** Time taken in ms to interpret results for ruby (or undefined if this language was not analyzed). */
   interpret_results_ruby_duration_ms?: number;
+  /** Time taken in ms to interpret results for swift (or undefined if this language was not analyzed). */
+  interpret_results_swift_duration_ms?: number;
   /** Name of language that errored during analysis (or undefined if no language failed). */
   analyze_failure_language?: string;
 }
@@ -121,8 +121,7 @@ async function setupPythonExtractor(logger: Logger) {
 export async function createdDBForScannedLanguages(
   codeql: CodeQL,
   config: configUtils.Config,
-  logger: Logger,
-  featureEnablement: FeatureEnablement
+  logger: Logger
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
@@ -130,11 +129,7 @@ export async function createdDBForScannedLanguages(
 
   for (const language of config.languages) {
     if (
-      isScannedLanguage(
-        language,
-        await util.isGoExtractionReconciliationEnabled(featureEnablement),
-        logger
-      ) &&
+      isScannedLanguage(language) &&
       !dbIsFinalized(config, language, logger)
     ) {
       logger.startGroup(`Extracting ${language}`);
@@ -172,13 +167,12 @@ async function finalizeDatabaseCreation(
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
-  logger: Logger,
-  featureEnablement: FeatureEnablement
+  logger: Logger
 ): Promise<DatabaseCreationTimings> {
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await createdDBForScannedLanguages(codeql, config, logger, featureEnablement);
+  await createdDBForScannedLanguages(codeql, config, logger);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -218,26 +212,6 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
-  let locPromise: Promise<Partial<Record<Language, number>>> = Promise.resolve(
-    {}
-  );
-  const cliCanCountBaseline = await cliCanCountLoC();
-  const countLocDebugMode =
-    process.env["INTERNAL_CODEQL_ACTION_DEBUG_LOC"] || config.debugMode;
-  if (!cliCanCountBaseline || countLocDebugMode) {
-    // count the number of lines in the background
-    locPromise = countLoc(
-      path.resolve(),
-      // config.paths specifies external directories. the current
-      // directory is included in the analysis by default. Replicate
-      // that here.
-      config.paths,
-      config.pathsIgnore,
-      config.languages,
-      logger
-    );
-  }
-
   const codeql = await getCodeQL(config.codeQLCmd);
 
   await util.logCodeScanningConfigInCli(codeql, featureEnablement, logger);
@@ -255,13 +229,13 @@ export async function runQueries(
 
     if (!hasBuiltinQueries && !hasCustomQueries && !hasPackWithCustomQueries) {
       throw new Error(
-        `Unable to analyse ${language} as no queries were selected for this language`
+        `Unable to analyze ${language} as no queries were selected for this language`
       );
     }
 
     try {
       if (await util.useCodeScanningConfigInCli(codeql, featureEnablement)) {
-        // If we are using the codescanning config in the CLI,
+        // If we are using the code scanning config in the CLI,
         // much of the work needed to generate the query suites
         // is done in the CLI. We just need to make a single
         // call to run all the queries for each language and
@@ -346,20 +320,12 @@ export async function runQueries(
           sarifFile,
           config.debugMode
         );
-        if (!cliCanCountBaseline) {
-          await injectLinesOfCode(sarifFile, language, locPromise);
-        }
         statusReport[`interpret_results_${language}_duration_ms`] =
           new Date().getTime() - startTimeInterpretResults;
         logger.endGroup();
         logger.info(analysisSummary);
       }
-      if (!cliCanCountBaseline || countLocDebugMode) {
-        printLinesOfCodeSummary(logger, language, await locPromise);
-      }
-      if (cliCanCountBaseline) {
-        logger.info(await runPrintLinesOfCode(language));
-      }
+      logger.info(await runPrintLinesOfCode(language));
     } catch (e) {
       logger.info(String(e));
       if (e instanceof Error) {
@@ -391,13 +357,6 @@ export async function runQueries(
       enableDebugLogging ? "-vv" : "-v",
       automationDetailsId,
       featureEnablement
-    );
-  }
-
-  async function cliCanCountLoC() {
-    return await util.codeQlVersionAbove(
-      await getCodeQL(config.codeQLCmd),
-      CODEQL_VERSION_COUNTS_LINES
     );
   }
 
@@ -500,8 +459,7 @@ export async function runFinalize(
   threadsFlag: string,
   memoryFlag: string,
   config: configUtils.Config,
-  logger: Logger,
-  featureEnablement: FeatureEnablement
+  logger: Logger
 ): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });
@@ -516,8 +474,7 @@ export async function runFinalize(
     config,
     threadsFlag,
     memoryFlag,
-    logger,
-    featureEnablement
+    logger
   );
 
   const codeql = await getCodeQL(config.codeQLCmd);
@@ -528,11 +485,7 @@ export async function runFinalize(
   // step.
   if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
     // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(
-      config,
-      await util.isGoExtractionReconciliationEnabled(featureEnablement),
-      logger
-    );
+    await endTracingForCluster(config);
   } else {
     // Delete the tracer config env var to avoid tracing ourselves
     delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
@@ -552,50 +505,6 @@ export async function runCleanup(
     await codeql.databaseCleanup(databasePath, cleanupLevel);
   }
   logger.endGroup();
-}
-
-async function injectLinesOfCode(
-  sarifFile: string,
-  language: Language,
-  locPromise: Promise<Partial<Record<Language, number>>>
-) {
-  const lineCounts = await locPromise;
-  if (language in lineCounts) {
-    const sarif = JSON.parse(fs.readFileSync(sarifFile, "utf8"));
-
-    if (Array.isArray(sarif.runs)) {
-      for (const run of sarif.runs) {
-        run.properties = run.properties || {};
-        run.properties.metricResults = run.properties.metricResults || [];
-        for (const metric of run.properties.metricResults) {
-          // Baseline is inserted when matching rule has tag lines-of-code
-          if (metric.rule && metric.rule.toolComponent) {
-            const matchingRule =
-              run.tool.extensions[metric.rule.toolComponent.index].rules[
-                metric.rule.index
-              ];
-            if (matchingRule.properties.tags?.includes("lines-of-code")) {
-              metric.baseline = lineCounts[language];
-            }
-          }
-        }
-      }
-    }
-
-    fs.writeFileSync(sarifFile, JSON.stringify(sarif));
-  }
-}
-
-function printLinesOfCodeSummary(
-  logger: Logger,
-  language: Language,
-  lineCounts: Partial<Record<Language, number>>
-) {
-  if (language in lineCounts) {
-    logger.info(
-      `Counted a baseline of ${lineCounts[language]} lines of code for ${language}.`
-    );
-  }
 }
 
 // exported for testing

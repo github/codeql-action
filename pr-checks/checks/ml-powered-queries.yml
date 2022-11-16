@@ -14,15 +14,11 @@ steps:
       queries: security-extended
       source-root: ./../action/tests/ml-powered-queries-repo
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      TEST_MODE: true
 
   - uses: ./../action/analyze
     with:
       output: "${{ runner.temp }}/results"
       upload-database: false
-    env:
-      TEST_MODE: true
 
   - name: Upload SARIF
     uses: actions/upload-artifact@v3
@@ -33,22 +29,17 @@ steps:
 
   - name: Check sarif
     uses: ./../action/.github/check-sarif
-    if: matrix.os != 'windows-latest' || matrix.version == 'latest' || matrix.version == 'nightly-latest'
+    # Running on Windows requires CodeQL CLI 2.9.0+.
+    if: "!(matrix.version == 'stable-20220120' && (matrix.os == 'windows-latest' || matrix.os == 'windows-2019'))"
     with:
       sarif-file: ${{ runner.temp }}/results/javascript.sarif
       queries-run: js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
       queries-not-run: foo,bar
 
   - name: Check results
-    # Running ML-powered queries on Windows requires CodeQL CLI 2.9.0+. We don't run these checks
-    # against Windows and `cached` while CodeQL CLI 2.9.0 makes its way into `cached` to avoid the
-    # test starting to fail when the cached CodeQL Bundle gets updated. Once the CodeQL Bundle
-    # containing CodeQL CLI 2.9.0 has been fully released, we can drop this line and start running
-    # these checks on Windows and `cached`.
-    if: matrix.os != 'windows-latest' || matrix.version != 'cached'
     env:
-      # Running on Windows requires CodeQL CLI 2.9.0+, which has so far only made it to 'latest'.
-      SHOULD_RUN_ML_POWERED_QUERIES: ${{ matrix.os != 'windows-latest' || matrix.version == 'latest' || matrix.version == 'nightly-latest' }}
+      # Running on Windows requires CodeQL CLI 2.9.0+.
+      SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220120' && (matrix.os == 'windows-latest' || matrix.os == 'windows-2019')) }}
     shell: bash
     run: |
       echo "Expecting ML-powered queries to be run: ${SHOULD_RUN_ML_POWERED_QUERIES}"

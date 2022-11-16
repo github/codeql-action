@@ -6,8 +6,6 @@ steps:
     with:
       languages: csharp
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      TEST_MODE: true
   - uses: ./../action/autobuild
     env:
       # Explicitly disable the CLR tracer.
@@ -18,8 +16,6 @@ steps:
       CORECLR_PROFILER: ""
       CORECLR_PROFILER_PATH_64: ""
   - uses: ./../action/analyze
-    env:
-      TEST_MODE: true
   - name: Check database
     shell: bash
     run: |

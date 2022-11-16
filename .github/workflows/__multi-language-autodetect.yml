@@ -26,17 +26,17 @@ jobs:
       matrix:
         include:
         - os: ubuntu-20.04
-          version: stable-20210308
+          version: stable-20211005
         - os: macos-latest
-          version: stable-20210308
+          version: stable-20211005
         - os: ubuntu-20.04
-          version: stable-20210319
+          version: stable-20220120
         - os: macos-latest
-          version: stable-20210319
-        - os: ubuntu-20.04
-          version: stable-20210809
+          version: stable-20220120
+        - os: ubuntu-latest
+          version: stable-20220401
         - os: macos-latest
-          version: stable-20210809
+          version: stable-20220401
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
@@ -60,19 +60,20 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
+    - name: Set up Go
+      if: matrix.os == 'ubuntu-20.04' || matrix.os == 'windows-2019'
+      uses: actions/setup-go@v3
+      with:
+        go-version: ^1.13.1
     - uses: ./../action/init
       with:
         db-location: ${{ runner.temp }}/customDbLocation
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - name: Build code
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
       id: analysis
-      env:
-        TEST_MODE: true
     - shell: bash
       run: |
         CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
@@ -106,4 +107,4 @@ jobs:
           exit 1
         fi
     env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

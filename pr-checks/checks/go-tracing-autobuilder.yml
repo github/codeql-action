@@ -4,19 +4,12 @@ operatingSystems: ["ubuntu", "macos"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
-  - uses: actions/setup-go@v3
-    with:
-      go-version: "^1.13.1"
   - uses: ./../action/init
     with:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      TEST_MODE: true
   - uses: ./../action/autobuild
   - uses: ./../action/analyze
-    env:
-      TEST_MODE: true
   - shell: bash
     run: |
       if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then

@@ -35,14 +35,14 @@ runs:
         tools: ${{ inputs.tools }}
         db-location: ${{ runner.temp }}/query-filter-test
       env:
-        TEST_MODE: "true"
+        CODEQL_ACTION_TEST_MODE: "true"
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
         upload-database: false
         upload: false
       env:
-        TEST_MODE: "true"
+        CODEQL_ACTION_TEST_MODE: "true"
     - name: Check SARIF
       uses: ./../action/.github/check-sarif
       with:

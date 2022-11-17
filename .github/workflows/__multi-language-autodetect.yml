@@ -74,7 +74,10 @@ jobs:
       run: ./build.sh
     - uses: ./../action/analyze
       id: analysis
-    - shell: bash
+    - name: Check language autodetect for all languages excluding Ruby, Swift
+      if: (matrix.version == 'stable-20211005' || matrix.version == 'stable-20220120'
+        || matrix.version == 'stable-20220401')
+      shell: bash
       run: |
         CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
         if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
@@ -106,5 +109,21 @@ jobs:
           echo "Did not create a database for Python, or created it in the wrong location."
           exit 1
         fi
+    - name: Check language autodetect for Ruby, Swift
+      if: (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version
+        == 'nightly-latest')
+      shell: bash
+      run: |-
+        RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
+        if [[ ! -d $RUBY_DB ]] || [[ ! $RUBY_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+          echo "Did not create a database for Ruby, or created it in the wrong location."
+          exit 1
+        fi
+        SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
+        if [[ ! -d $SWIFT_DB ]] || [[ ! $SWIFT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+          echo "Did not create a database for Swift, or created it in the wrong location."
+          exit 1
+        fi
     env:
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

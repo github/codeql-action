@@ -23,6 +23,7 @@ test("parseLanguage", async (t) => {
   t.deepEqual(parseLanguage("c"), Language.cpp);
   t.deepEqual(parseLanguage("c++"), Language.cpp);
   t.deepEqual(parseLanguage("c#"), Language.csharp);
+  t.deepEqual(parseLanguage("kotlin"), Language.java);
   t.deepEqual(parseLanguage("typescript"), Language.javascript);
 
   // Not matches

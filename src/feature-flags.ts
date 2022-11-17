@@ -11,6 +11,7 @@ export interface FeatureEnablement {
 export enum Feature {
   BypassToolcacheEnabled = "bypass_toolcache_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
+  DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   FileBaselineInformationEnabled = "file_baseline_information_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
@@ -22,6 +23,10 @@ export const featureConfig: Record<
 > = {
   [Feature.BypassToolcacheEnabled]: {
     envVar: "CODEQL_BYPASS_TOOLCACHE",
+    minimumVersion: undefined,
+  },
+  [Feature.DisableKotlinAnalysisEnabled]: {
+    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
     minimumVersion: undefined,
   },
   [Feature.CliConfigFileEnabled]: {

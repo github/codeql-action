@@ -15,6 +15,7 @@ const LANGUAGE_ALIASES: { [lang: string]: Language } = {
   c: Language.cpp,
   "c++": Language.cpp,
   "c#": Language.csharp,
+  kotlin: Language.java,
   typescript: Language.javascript,
 };
 

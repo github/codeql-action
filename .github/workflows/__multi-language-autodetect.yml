@@ -75,8 +75,6 @@ jobs:
     - uses: ./../action/analyze
       id: analysis
     - name: Check language autodetect for all languages excluding Ruby, Swift
-      if: (matrix.version == 'stable-20211005' || matrix.version == 'stable-20220120'
-        || matrix.version == 'stable-20220401')
       shell: bash
       run: |
         CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}

@@ -340,6 +340,37 @@ test("Feature flags are saved to disk", async (t) => {
   });
 });
 
+test("Environment variable can override feature flag cache", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const featureEnablement = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    const cachedFeatureFlags = path.join(tmpDir, FEATURE_FLAGS_FILE_NAME);
+    t.true(
+      await featureEnablement.getValue(
+        Feature.CliConfigFileEnabled,
+        includeCodeQlIfRequired(Feature.CliConfigFileEnabled)
+      ),
+      "Feature flag should be enabled initially"
+    );
+
+    t.true(
+      fs.existsSync(cachedFeatureFlags),
+      "Feature flag cached file should exist after getting feature flags"
+    );
+    process.env.CODEQL_PASS_CONFIG_TO_CLI = "false";
+
+    t.false(
+      await featureEnablement.getValue(
+        Feature.CliConfigFileEnabled,
+        includeCodeQlIfRequired(Feature.CliConfigFileEnabled)
+      ),
+      "Feature flag should be disabled after setting env var"
+    );
+  });
+});
+
 function assertAllFeaturesUndefinedInApi(t, loggedMessages: LoggedMessage[]) {
   for (const feature of Object.keys(featureConfig)) {
     t.assert(

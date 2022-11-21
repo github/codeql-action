@@ -58,7 +58,7 @@ export const featureConfig: Record<
  */
 type GitHubFeatureFlagsApiResponse = Partial<Record<Feature, boolean>>;
 
-export const FEATURE_FLAGS_FILE_NAME = "feature-flags.json";
+export const FEATURE_FLAGS_FILE_NAME = "cached-feature-flags.json";
 
 /**
  * Determines the enablement status of a number of features.

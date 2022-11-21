@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import { getApiClient } from "./api-client";
 import { CodeQL } from "./codeql";
 import { Logger } from "./logging";
@@ -55,6 +58,8 @@ export const featureConfig: Record<
  */
 type GitHubFeatureFlagsApiResponse = Partial<Record<Feature, boolean>>;
 
+export const FEATURE_FLAGS_FILE_NAME = "feature-flags.json";
+
 /**
  * Determines the enablement status of a number of features.
  * If feature enablement is not able to be determined locally, a request to the
@@ -66,11 +71,13 @@ export class Features implements FeatureEnablement {
   constructor(
     gitHubVersion: util.GitHubVersion,
     repositoryNwo: RepositoryNwo,
+    tempDir: string,
     logger: Logger
   ) {
     this.gitHubFeatureFlags = new GitHubFeatureFlags(
       gitHubVersion,
       repositoryNwo,
+      path.join(tempDir, FEATURE_FLAGS_FILE_NAME),
       logger
     );
   }
@@ -120,7 +127,6 @@ export class Features implements FeatureEnablement {
     if (envVar === "true") {
       return true;
     }
-
     // Ask the GitHub API if the feature is enabled.
     return await this.gitHubFeatureFlags.getValue(feature);
   }
@@ -130,15 +136,16 @@ class GitHubFeatureFlags implements FeatureEnablement {
   private cachedApiResponse: GitHubFeatureFlagsApiResponse | undefined;
 
   constructor(
-    private gitHubVersion: util.GitHubVersion,
-    private repositoryNwo: RepositoryNwo,
-    private logger: Logger
+    private readonly gitHubVersion: util.GitHubVersion,
+    private readonly repositoryNwo: RepositoryNwo,
+    private readonly featureFlagsFile: string,
+    private readonly logger: Logger
   ) {
     /**/
   }
 
   async getValue(feature: Feature): Promise<boolean> {
-    const response = await this.getApiResponse();
+    const response = await this.getAllFeatures();
     if (response === undefined) {
       this.logger.debug(
         `No feature flags API response for ${feature}, considering it disabled.`
@@ -155,11 +162,63 @@ class GitHubFeatureFlags implements FeatureEnablement {
     return !!featureEnablement;
   }
 
-  private async getApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
-    const apiResponse =
-      this.cachedApiResponse || (await this.loadApiResponse());
-    this.cachedApiResponse = apiResponse;
-    return apiResponse;
+  private async getAllFeatures(): Promise<GitHubFeatureFlagsApiResponse> {
+    // if we have an in memory cache, use that
+    if (this.cachedApiResponse !== undefined) {
+      return this.cachedApiResponse;
+    }
+
+    // if a previous step has written a feature flags file to disk, use that
+    const fileFlags = await this.readLocalFlags();
+    if (fileFlags !== undefined) {
+      this.cachedApiResponse = fileFlags;
+      return fileFlags;
+    }
+
+    // if not, request flags from the server
+    let remoteFlags = await this.loadApiResponse();
+    if (remoteFlags === undefined) {
+      remoteFlags = {};
+    }
+
+    // cache the response in memory
+    this.cachedApiResponse = remoteFlags;
+
+    // and cache them to disk so future workflow steps can use them
+    await this.writeLocalFlags(remoteFlags);
+
+    return remoteFlags;
+  }
+
+  private async readLocalFlags(): Promise<
+    GitHubFeatureFlagsApiResponse | undefined
+  > {
+    try {
+      if (fs.existsSync(this.featureFlagsFile)) {
+        this.logger.debug(
+          `Loading feature flags from ${this.featureFlagsFile}`
+        );
+        return JSON.parse(fs.readFileSync(this.featureFlagsFile, "utf8"));
+      }
+    } catch (e) {
+      this.logger.warning(
+        `Error reading cached feature flags file ${this.featureFlagsFile}: ${e}. Requesting from GitHub instead.`
+      );
+    }
+    return undefined;
+  }
+
+  private async writeLocalFlags(
+    flags: GitHubFeatureFlagsApiResponse
+  ): Promise<void> {
+    try {
+      this.logger.debug(`Writing feature flags to ${this.featureFlagsFile}`);
+      fs.writeFileSync(this.featureFlagsFile, JSON.stringify(flags));
+    } catch (e) {
+      this.logger.warning(
+        `Error writing cached feature flags file ${this.featureFlagsFile}: ${e}.`
+      );
+    }
   }
 
   private async loadApiResponse() {

@@ -1,6 +1,8 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
 operatingSystems: ["ubuntu", "macos"]
+env:
+  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
 steps:
   - uses: ./../action/init
     with:
@@ -11,7 +13,8 @@ steps:
     run: ./build.sh
   - uses: ./../action/analyze
     id: analysis
-  - shell: bash
+  - name: Check language autodetect for all languages excluding Ruby, Swift
+    shell: bash
     run: |
       CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
       if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
@@ -41,5 +44,19 @@ steps:
       PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
       if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
         echo "Did not create a database for Python, or created it in the wrong location."
+        exit 1
+      fi
+  - name: Check language autodetect for Ruby, Swift
+    if: "(matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+    shell: bash
+    run: |
+      RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
+      if [[ ! -d $RUBY_DB ]] || [[ ! $RUBY_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+        echo "Did not create a database for Ruby, or created it in the wrong location."
+        exit 1
+      fi
+      SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
+      if [[ ! -d $SWIFT_DB ]] || [[ ! $SWIFT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+        echo "Did not create a database for Swift, or created it in the wrong location."
         exit 1
       fi

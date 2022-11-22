@@ -9,6 +9,8 @@ import { getRequiredEnvParam } from "./util";
 
 interface WorkflowJobStep {
   run: any;
+  uses?: string;
+  with?: { [key: string]: string };
 }
 
 interface WorkflowJob {
@@ -289,4 +291,44 @@ export function getWorkflowRunID(): number {
     throw new Error("GITHUB_RUN_ID must define a non NaN workflow run ID");
   }
   return workflowRunID;
+}
+
+export function getAnalyzeSteps(job: WorkflowJob): WorkflowJobStep[] {
+  const steps = job.steps;
+  if (!Array.isArray(steps)) {
+    throw new Error(
+      "Could not get analyze steps since job.steps was not an array."
+    );
+  }
+  return steps.filter((step) =>
+    step.uses?.includes("github/codeql-action/analyze")
+  );
+}
+
+export function getCategoryInput(workflow: Workflow): string | undefined {
+  if (!workflow.jobs) {
+    throw new Error(
+      "Could not get category input since workflow.jobs was undefined."
+    );
+  }
+  const categories: string[] = Object.values(workflow.jobs)
+    .map((job) => getAnalyzeSteps(job).map((step) => step.with?.category))
+    .flat()
+    .filter((category) => category !== undefined)
+    .map((category) => category!);
+
+  if (categories.length === 0) {
+    return undefined;
+  }
+  if (!categories.every((category) => category === categories[0])) {
+    throw new Error(
+      "Could not get category input since multiple categories were specified by the analysis step."
+    );
+  }
+  if (categories[0].includes("${{")) {
+    throw new Error(
+      "Could not get category input since it contained a dynamic value."
+    );
+  }
+  return categories[0];
 }

@@ -15,7 +15,7 @@ import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { featureConfig, Feature, FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
@@ -1035,8 +1035,7 @@ async function getCodeQLForCmd(
       addSnippetsFlag: string,
       threadsFlag: string,
       verbosityFlag: string,
-      automationDetailsId: string | undefined,
-      featureEnablement: FeatureEnablement
+      automationDetailsId: string | undefined
     ): Promise<string> {
       const codeqlArgs = [
         "database",
@@ -1056,10 +1055,11 @@ async function getCodeQLForCmd(
       if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
+      // Testing: Always enable the FileBaselineInformationEnabled feature flag
       if (
-        await featureEnablement.getValue(
-          Feature.FileBaselineInformationEnabled,
-          this
+        await util.codeQlVersionAbove(
+          this,
+          featureConfig[Feature.FileBaselineInformationEnabled].minimumVersion!
         )
       ) {
         codeqlArgs.push("--sarif-add-baseline-file-info");

@@ -10,6 +10,7 @@ env:
 on:
   push:
     branches:
+    - henrymercer/test-swift-checks
     - main
     - releases/v1
     - releases/v2
@@ -23,6 +24,7 @@ on:
 jobs:
   swift-custom-build:
     strategy:
+      fail-fast: false
       matrix:
         include:
         - os: ubuntu-latest

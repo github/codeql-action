@@ -158,7 +158,12 @@ async function run() {
     getRequiredEnvParam("GITHUB_REPOSITORY")
   );
 
-  const features = new Features(gitHubVersion, repositoryNwo, logger);
+  const features = new Features(
+    gitHubVersion,
+    repositoryNwo,
+    getTemporaryDirectory(),
+    logger
+  );
 
   try {
     const workflowErrors = await validateWorkflow();

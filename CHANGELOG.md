@@ -2,6 +2,7 @@
 
 ## [UNRELEASED]
 
+- Fixed a bug where some the `init` action and the `analyze` action would have different sets of experimental feature flags enabled. [#1384](https://github.com/github/codeql-action/pull/1384)
 - Update default CodeQL bundle version to 2.11.4. [#1382](https://github.com/github/codeql-action/pull/1382)
 
 ## 2.1.33 - 16 Nov 2022

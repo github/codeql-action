@@ -217,7 +217,12 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion();
 
-    const features = new Features(gitHubVersion, repositoryNwo, logger);
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      actionsUtil.getTemporaryDirectory(),
+      logger
+    );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 

@@ -17,6 +17,7 @@ async function runWrapper() {
       debugArtifacts.uploadLogsDebugArtifact,
       actionsUtil.printDebugLogs
     );
+    console.log(actionsUtil.getRequiredInput("matrix"));
   } catch (error) {
     core.setFailed(`init post-action step failed: ${error}`);
     console.log(error);

@@ -87,11 +87,13 @@ export interface CodedError {
   code: string;
 }
 
-function toCodedErrors<T>(errors: T): Record<keyof T, CodedError> {
-  return Object.entries(errors).reduce((acc, [key, value]) => {
-    acc[key] = { message: value, code: key };
+function toCodedErrors(errors: {
+  [code: string]: string;
+}): Record<string, CodedError> {
+  return Object.entries(errors).reduce((acc, [code, message]) => {
+    acc[code] = { message, code };
     return acc;
-  }, {} as Record<keyof T, CodedError>);
+  }, {} as Record<string, CodedError>);
 }
 
 // code to send back via status report

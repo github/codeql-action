@@ -1,0 +1,14 @@
+name: Test reporting a failed run
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ./init
+      with:
+        languages: javascript
+    - name: Fail
+      run: exit 1
+    - uses: ./analyze

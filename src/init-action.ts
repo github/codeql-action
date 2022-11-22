@@ -10,7 +10,6 @@ import {
   getTemporaryDirectory,
   sendStatusReport,
   StatusReportBase,
-  validateWorkflow,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
@@ -42,6 +41,7 @@ import {
   initializeEnvironment,
   isHostedRunner,
 } from "./util";
+import { validateWorkflow } from "./workflow";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json");

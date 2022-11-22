@@ -16,6 +16,7 @@ import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as sharedEnv from "./shared-environment";
 import * as util from "./util";
 import { SarifFile, SarifResult, SarifRun } from "./util";
+import * as workflow from "./workflow";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
@@ -172,7 +173,7 @@ export async function uploadFromActions(
     await actionsUtil.getAnalysisKey(),
     actionsUtil.getOptionalInput("category"),
     util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-    actionsUtil.getWorkflowRunID(),
+    workflow.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
     actionsUtil.getRequiredInput("matrix"),
     logger

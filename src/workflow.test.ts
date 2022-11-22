@@ -6,6 +6,7 @@ import {
   CodedError,
   formatWorkflowCause,
   formatWorkflowErrors,
+  getCategoryInput,
   getWorkflowErrors,
   patternIsSuperset,
   Workflow,
@@ -520,5 +521,95 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
       ),
       []
     )
+  );
+});
+
+test("getCategoryInput returns category for simple workflow with category", (t) => {
+  t.is(
+    getCategoryInput(
+      yaml.load(`
+        jobs:
+          analysis:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v2
+              - uses: github/codeql-action/init@v2
+              - uses: github/codeql-action/analyze@v2
+                with:
+                  category: some-category
+    `) as Workflow
+    ),
+    "some-category"
+  );
+});
+
+test("getCategoryInput returns undefined for simple workflow without category", (t) => {
+  t.is(
+    getCategoryInput(
+      yaml.load(`
+        jobs:
+          analysis:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v2
+              - uses: github/codeql-action/init@v2
+              - uses: github/codeql-action/analyze@v2
+    `) as Workflow
+    ),
+    undefined
+  );
+});
+
+test("getCategoryInput throws error for workflow with dynamic category", (t) => {
+  t.throws(
+    () =>
+      getCategoryInput(
+        yaml.load(`
+          jobs:
+            analysis:
+              runs-on: ubuntu-latest
+              strategy:
+                matrix:
+                  language: [javascript, python]
+              steps:
+                - uses: actions/checkout@v2
+                - uses: github/codeql-action/init@v2
+                  with:
+                    language: \${{ matrix.language }}
+                - uses: github/codeql-action/analyze@v2
+                  with:
+                    category: "/language:\${{ matrix.language }}"
+    `) as Workflow
+      ),
+    {
+      message:
+        "Could not get category input since it contained a dynamic value.",
+    }
+  );
+});
+
+test("getCategoryInput throws error for workflow with multiple categories", (t) => {
+  t.throws(
+    () =>
+      getCategoryInput(
+        yaml.load(`
+          jobs:
+            analysis:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v2
+                - uses: github/codeql-action/init@v2
+                - uses: github/codeql-action/analyze@v2
+                  with:
+                    category: some-category
+                - uses: github/codeql-action/analyze@v2
+                  with:
+                    category: another-category
+      `) as Workflow
+      ),
+    {
+      message:
+        "Could not get category input since multiple categories were specified by the analysis step.",
+    }
   );
 });

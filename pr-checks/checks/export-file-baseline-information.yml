@@ -2,6 +2,10 @@ name: "Export file baseline information"
 description: "Tests that file baseline information is exported when the feature is enabled"
 versions: ["nightly-latest"]
 steps:
+  - uses: swift-actions/setup-swift@v1
+    if: "!startsWith(matrix.os, 'windows')"
+    with:
+      swift-version: 5.7
   - uses: ./../action/init
     with:
       languages: javascript

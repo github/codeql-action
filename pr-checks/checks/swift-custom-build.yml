@@ -6,6 +6,9 @@ env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true"
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
+  - uses: swift-actions/setup-swift@v1
+    with:
+      swift-version: 5.7
   - uses: ./../action/init
     with:
       languages: swift

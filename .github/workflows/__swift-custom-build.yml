@@ -48,6 +48,9 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
+    - uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: 5.7
     - uses: ./../action/init
       with:
         languages: swift

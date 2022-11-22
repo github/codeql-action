@@ -305,7 +305,17 @@ export function getAnalyzeSteps(job: WorkflowJob): WorkflowJobStep[] {
   );
 }
 
-export function getCategoryInput(workflow: Workflow): string | undefined {
+/**
+ * Makes a best effort attempt to retrieve the category input for the particular job,
+ * given a set of matrix variables.
+ *
+ * @returns the category input, or undefined if the category input is not defined
+ * @throws an error if the category input could not be determined
+ */
+export function tryGetCategoryInput(
+  workflow: Workflow,
+  matrixVars: { [key: string]: string }
+): string | undefined {
   if (!workflow.jobs) {
     throw new Error(
       "Could not get category input since workflow.jobs was undefined."
@@ -325,10 +335,18 @@ export function getCategoryInput(workflow: Workflow): string | undefined {
       "Could not get category input since multiple categories were specified by the analysis step."
     );
   }
-  if (categories[0].includes("${{")) {
+
+  // Make a basic attempt to substitute matrix variables
+  // First normalize by removing whitespace
+  let category = categories[0].replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
+  for (const [key, value] of Object.entries(matrixVars)) {
+    category = category.replace(`\${{matrix.${key}}}`, value);
+  }
+
+  if (category.includes("${{")) {
     throw new Error(
-      "Could not get category input since it contained a dynamic value."
+      "Could not get category input since it contained an unrecognized dynamic value."
     );
   }
-  return categories[0];
+  return category;
 }

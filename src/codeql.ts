@@ -415,7 +415,7 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  features: FeatureEnablement,
+  bypassToolcache: boolean,
   logger: Logger,
   checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
@@ -429,8 +429,7 @@ export async function setupCodeQL(
         // the toolcache when the appropriate feature is enabled. This
         // allows us to quickly rollback a broken bundle that has made its way
         // into the toolcache.
-        codeqlURL === undefined &&
-          (await features.getValue(Feature.BypassToolcacheEnabled))
+        codeqlURL === undefined && bypassToolcache
         ? "a specific version of CodeQL was not requested and the bypass toolcache feature is enabled"
         : undefined;
     const forceLatest = forceLatestReason !== undefined;

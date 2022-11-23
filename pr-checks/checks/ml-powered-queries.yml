@@ -30,7 +30,7 @@ steps:
   - name: Check sarif
     uses: ./../action/.github/check-sarif
     # Running on Windows requires CodeQL CLI 2.9.0+.
-    if: "!(matrix.version == 'stable-20220120' && (matrix.os == 'windows-latest' || matrix.os == 'windows-2019'))"
+    if: "!(matrix.version == 'stable-20220120' && runner.os == 'Windows')"
     with:
       sarif-file: ${{ runner.temp }}/results/javascript.sarif
       queries-run: js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
@@ -39,7 +39,7 @@ steps:
   - name: Check results
     env:
       # Running on Windows requires CodeQL CLI 2.9.0+.
-      SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220120' && (matrix.os == 'windows-latest' || matrix.os == 'windows-2019')) }}
+      SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220120' && runner.os == 'Windows') }}
     shell: bash
     run: |
       echo "Expecting ML-powered queries to be run: ${SHOULD_RUN_ML_POWERED_QUERIES}"

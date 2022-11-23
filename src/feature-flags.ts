@@ -19,6 +19,7 @@ export enum Feature {
   FileBaselineInformationEnabled = "file_baseline_information_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
+  UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
 export const featureConfig: Record<
@@ -56,6 +57,10 @@ export const featureConfig: Record<
   [Feature.TrapCachingEnabled]: {
     envVar: "CODEQL_TRAP_CACHING",
     minimumVersion: undefined,
+  },
+  [Feature.UploadFailedSarifEnabled]: {
+    envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
+    minimumVersion: "2.11.3",
   },
 };
 

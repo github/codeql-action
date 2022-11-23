@@ -382,3 +382,26 @@ export function getCategoryInputOrThrow(
     matrixVars
   );
 }
+
+/**
+ * Makes a best effort attempt to retrieve the upload input for the particular job,
+ * given a set of matrix variables.
+ *
+ * @returns the upload input
+ * @throws an error if the upload input could not be determined
+ */
+export function getUploadInputOrThrow(
+  workflow: Workflow,
+  jobName: string,
+  matrixVars: { [key: string]: string }
+): string {
+  return (
+    getInputOrThrow(
+      workflow,
+      jobName,
+      "github/codeql-action/analyze",
+      "upload",
+      matrixVars
+    ) || "true" // if unspecified, upload defaults to true
+  );
+}

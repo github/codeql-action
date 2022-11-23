@@ -7,7 +7,6 @@ import * as core from "@actions/core";
 import { OctokitResponse } from "@octokit/types";
 import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
-import * as semver from "semver";
 
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
@@ -161,7 +160,6 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 // Returns true iff the upload occurred and succeeded
 export async function uploadFromActions(
   sarifPath: string,
-  gitHubVersion: util.GitHubVersion,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
@@ -177,7 +175,6 @@ export async function uploadFromActions(
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getRequiredInput("checkout_path"),
     actionsUtil.getRequiredInput("matrix"),
-    gitHubVersion,
     logger
   );
 }
@@ -263,7 +260,6 @@ export function buildPayload(
   checkoutURI: string,
   environment: string | undefined,
   toolNames: string[],
-  gitHubVersion: util.GitHubVersion,
   mergeBaseCommitOid: string | undefined
 ) {
   const payloadObj = {
@@ -281,33 +277,27 @@ export function buildPayload(
     base_sha: undefined as undefined | string,
   };
 
-  // This behaviour can be made the default when support for GHES 3.0 is discontinued.
-  if (
-    gitHubVersion.type !== util.GitHubVariant.GHES ||
-    semver.satisfies(gitHubVersion.version, `>=3.1`)
-  ) {
-    if (actionsUtil.workflowEventName() === "pull_request") {
-      if (
-        commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
-        mergeBaseCommitOid
-      ) {
-        // We're uploading results for the merge commit
-        // and were able to determine the merge base.
-        // So we use that as the most accurate base.
-        payloadObj.base_ref = `refs/heads/${util.getRequiredEnvParam(
-          "GITHUB_BASE_REF"
-        )}`;
-        payloadObj.base_sha = mergeBaseCommitOid;
-      } else if (process.env.GITHUB_EVENT_PATH) {
-        // Either we're not uploading results for the merge commit
-        // or we could not determine the merge base.
-        // Using the PR base is the only option here
-        const githubEvent = JSON.parse(
-          fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
-        );
-        payloadObj.base_ref = `refs/heads/${githubEvent.pull_request.base.ref}`;
-        payloadObj.base_sha = githubEvent.pull_request.base.sha;
-      }
+  if (actionsUtil.workflowEventName() === "pull_request") {
+    if (
+      commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
+      mergeBaseCommitOid
+    ) {
+      // We're uploading results for the merge commit
+      // and were able to determine the merge base.
+      // So we use that as the most accurate base.
+      payloadObj.base_ref = `refs/heads/${util.getRequiredEnvParam(
+        "GITHUB_BASE_REF"
+      )}`;
+      payloadObj.base_sha = mergeBaseCommitOid;
+    } else if (process.env.GITHUB_EVENT_PATH) {
+      // Either we're not uploading results for the merge commit
+      // or we could not determine the merge base.
+      // Using the PR base is the only option here
+      const githubEvent = JSON.parse(
+        fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
+      );
+      payloadObj.base_ref = `refs/heads/${githubEvent.pull_request.base.ref}`;
+      payloadObj.base_sha = githubEvent.pull_request.base.sha;
     }
   }
   return payloadObj;
@@ -326,7 +316,6 @@ async function uploadFiles(
   workflowRunID: number | undefined,
   sourceRoot: string,
   environment: string | undefined,
-  gitHubVersion: util.GitHubVersion,
   logger: Logger
 ): Promise<UploadResult> {
   logger.startGroup("Uploading results");
@@ -367,7 +356,6 @@ async function uploadFiles(
     checkoutURI,
     environment,
     toolNames,
-    gitHubVersion,
     await actionsUtil.determineMergeBaseCommitOid()
   );
 

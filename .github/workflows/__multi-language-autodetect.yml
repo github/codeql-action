@@ -66,7 +66,7 @@ jobs:
       with:
         go-version: ^1.13.1
     - uses: swift-actions/setup-swift@5cdaa9161ad1f55ae39a5ea1784ef96de72f95d9
-      if: runner.os != 'Windows'
+      if: matrix.version == 'cached'
       with:
         swift-version: '5.7'
 

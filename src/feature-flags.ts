@@ -18,6 +18,7 @@ export enum Feature {
   FileBaselineInformationEnabled = "file_baseline_information_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
+  BypassToolcacheKotlinSwiftEnabled = "bypass_toolcache_kotlin_switft_enabled",
 }
 
 export const featureConfig: Record<
@@ -46,6 +47,10 @@ export const featureConfig: Record<
   },
   [Feature.TrapCachingEnabled]: {
     envVar: "CODEQL_TRAP_CACHING",
+    minimumVersion: undefined,
+  },
+  [Feature.BypassToolcacheKotlinSwiftEnabled]: {
+    envVar: "CODEQL_BYPASS_TOOLCACHE_KOTLIN_SWIFT",
     minimumVersion: undefined,
   },
 };

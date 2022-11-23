@@ -1,6 +1,9 @@
 name: Test reporting a failed run
 on: push
 
+env:
+  CODEQL_ACTION_UPLOAD_FAILED_SARIF: true
+
 jobs:
   test:
     runs-on: ubuntu-latest

@@ -158,23 +158,22 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 
 // Uploads a single sarif file or a directory of sarif files
 // depending on what the path happens to refer to.
-// Returns true iff the upload occurred and succeeded
 export async function uploadFromActions(
   sarifPath: string,
+  checkoutPath: string,
+  category: string | undefined,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
     parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    await actionsUtil.getCommitOid(
-      actionsUtil.getRequiredInput("checkout_path")
-    ),
+    await actionsUtil.getCommitOid(checkoutPath),
     await actionsUtil.getRef(),
     await actionsUtil.getAnalysisKey(),
-    actionsUtil.getOptionalInput("category"),
+    category,
     util.getRequiredEnvParam("GITHUB_WORKFLOW"),
     workflow.getWorkflowRunID(),
-    actionsUtil.getRequiredInput("checkout_path"),
+    checkoutPath,
     actionsUtil.getRequiredInput("matrix"),
     logger
   );

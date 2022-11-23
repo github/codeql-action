@@ -262,7 +262,12 @@ async function run() {
     core.setOutput("db-locations", dbLocations);
 
     if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
-      uploadResult = await upload_lib.uploadFromActions(outputDir, logger);
+      uploadResult = await upload_lib.uploadFromActions(
+        outputDir,
+        actionsUtil.getRequiredInput("checkout_path"),
+        actionsUtil.getOptionalInput("category"),
+        logger
+      );
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {
       logger.info("Not uploading results");

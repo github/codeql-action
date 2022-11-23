@@ -3,7 +3,9 @@ import * as sinon from "sinon";
 
 import * as configUtils from "./config-utils";
 import * as initActionPostHelper from "./init-action-post-helper";
-import { setupTests } from "./testing-utils";
+import { getRunnerLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
+import { createFeatures, setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -29,7 +31,10 @@ test("post: init action with debug mode off", async (t) => {
     await initActionPostHelper.run(
       uploadDatabaseBundleSpy,
       uploadLogsSpy,
-      printDebugLogsSpy
+      printDebugLogsSpy,
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([]),
+      getRunnerLogger(true)
     );
 
     t.assert(uploadDatabaseBundleSpy.notCalled);
@@ -59,7 +64,10 @@ test("post: init action with debug mode on", async (t) => {
     await initActionPostHelper.run(
       uploadDatabaseBundleSpy,
       uploadLogsSpy,
-      printDebugLogsSpy
+      printDebugLogsSpy,
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([]),
+      getRunnerLogger(true)
     );
 
     t.assert(uploadDatabaseBundleSpy.called);

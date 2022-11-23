@@ -6,7 +6,7 @@ import {
   CodedError,
   formatWorkflowCause,
   formatWorkflowErrors,
-  tryGetCategoryInput,
+  getCategoryInputOrThrow,
   getWorkflowErrors,
   patternIsSuperset,
   Workflow,
@@ -524,9 +524,9 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
   );
 });
 
-test("tryGetCategoryInput returns category for simple workflow with category", (t) => {
+test("getCategoryInputOrThrow returns category for simple workflow with category", (t) => {
   t.is(
-    tryGetCategoryInput(
+    getCategoryInputOrThrow(
       yaml.load(`
         jobs:
           analysis:
@@ -544,9 +544,9 @@ test("tryGetCategoryInput returns category for simple workflow with category", (
   );
 });
 
-test("tryGetCategoryInput returns undefined for simple workflow without category", (t) => {
+test("getCategoryInputOrThrow returns undefined for simple workflow without category", (t) => {
   t.is(
-    tryGetCategoryInput(
+    getCategoryInputOrThrow(
       yaml.load(`
         jobs:
           analysis:
@@ -562,9 +562,9 @@ test("tryGetCategoryInput returns undefined for simple workflow without category
   );
 });
 
-test("tryGetCategoryInput finds category for workflow with language matrix", (t) => {
+test("getCategoryInputOrThrow finds category for workflow with language matrix", (t) => {
   t.is(
-    tryGetCategoryInput(
+    getCategoryInputOrThrow(
       yaml.load(`
         jobs:
           analysis:
@@ -587,10 +587,10 @@ test("tryGetCategoryInput finds category for workflow with language matrix", (t)
   );
 });
 
-test("tryGetCategoryInput throws error for workflow with dynamic category", (t) => {
+test("getCategoryInputOrThrow throws error for workflow with dynamic category", (t) => {
   t.throws(
     () =>
-      tryGetCategoryInput(
+      getCategoryInputOrThrow(
         yaml.load(`
           jobs:
             analysis:
@@ -605,15 +605,16 @@ test("tryGetCategoryInput throws error for workflow with dynamic category", (t) 
       ),
     {
       message:
-        "Could not get category input since it contained an unrecognized dynamic value.",
+        "Could not get category input to github/codeql-action/analyze since it contained " +
+        "an unrecognized dynamic value.",
     }
   );
 });
 
-test("tryGetCategoryInput throws error for workflow with multiple categories", (t) => {
+test("getCategoryInputOrThrow throws error for workflow with multiple categories", (t) => {
   t.throws(
     () =>
-      tryGetCategoryInput(
+      getCategoryInputOrThrow(
         yaml.load(`
           jobs:
             analysis:
@@ -632,7 +633,8 @@ test("tryGetCategoryInput throws error for workflow with multiple categories", (
       ),
     {
       message:
-        "Could not get category input since multiple categories were specified by the analysis step.",
+        "Could not get category input to github/codeql-action/analyze since there were multiple steps " +
+        "calling github/codeql-action/analyze with different values for category.",
     }
   );
 });

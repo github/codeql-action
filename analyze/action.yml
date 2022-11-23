@@ -45,6 +45,7 @@ inputs:
   checkout_path:
     description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
     required: false
+    # If changing this, make sure to update workflow.ts accordingly.
     default: ${{ github.workspace }}
   ref:
     description: "The ref where results will be uploaded. If not provided, the Action will use the GITHUB_REF environment variable. If provided, the sha input must be provided as well. This input is not available in pull requests from forks."
@@ -62,6 +63,7 @@ inputs:
   wait-for-processing:
     description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
     required: true
+    # If changing this, make sure to update workflow.ts accordingly.
     default: "true"
   token:
     default: ${{ github.token }}

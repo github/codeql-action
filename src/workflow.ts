@@ -319,7 +319,7 @@ function getInputOrThrow(
   jobName: string,
   actionName: string,
   inputName: string,
-  matrixVars: { [key: string]: string }
+  matrixVars: { [key: string]: string } | undefined
 ) {
   if (!workflow.jobs) {
     throw new Error(
@@ -347,11 +347,15 @@ function getInputOrThrow(
     );
   }
 
-  // Make a basic attempt to substitute matrix variables
-  // First normalize by removing whitespace
-  let input = inputs[0].replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
-  for (const [key, value] of Object.entries(matrixVars)) {
-    input = input.replace(`\${{matrix.${key}}}`, value);
+  let input = inputs[0];
+
+  if (matrixVars !== undefined) {
+    // Make a basic attempt to substitute matrix variables
+    // First normalize by removing whitespace
+    input = input.replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
+    for (const [key, value] of Object.entries(matrixVars)) {
+      input = input.replace(`\${{matrix.${key}}}`, value);
+    }
   }
 
   if (input.includes("${{")) {
@@ -372,7 +376,7 @@ function getInputOrThrow(
 export function getCategoryInputOrThrow(
   workflow: Workflow,
   jobName: string,
-  matrixVars: { [key: string]: string }
+  matrixVars: { [key: string]: string } | undefined
 ): string | undefined {
   return getInputOrThrow(
     workflow,
@@ -393,7 +397,7 @@ export function getCategoryInputOrThrow(
 export function getUploadInputOrThrow(
   workflow: Workflow,
   jobName: string,
-  matrixVars: { [key: string]: string }
+  matrixVars: { [key: string]: string } | undefined
 ): string {
   return (
     getInputOrThrow(
@@ -403,5 +407,51 @@ export function getUploadInputOrThrow(
       "upload",
       matrixVars
     ) || "true" // if unspecified, upload defaults to true
+  );
+}
+
+/**
+ * Makes a best effort attempt to retrieve the wait-for-processing input for the
+ * particular job, given a set of matrix variables.
+ *
+ * @returns the wait-for-processing input
+ * @throws an error if the wait-for-processing input could not be determined
+ */
+export function getWaitForProcessingInputOrThrow(
+  workflow: Workflow,
+  jobName: string,
+  matrixVars: { [key: string]: string } | undefined
+): string {
+  return (
+    getInputOrThrow(
+      workflow,
+      jobName,
+      "github/codeql-action/analyze",
+      "wait-for-processing",
+      matrixVars
+    ) || "true" // if unspecified, wait-for-processing defaults to true
+  );
+}
+
+/**
+ * Makes a best effort attempt to retrieve the checkout_path input for the
+ * particular job, given a set of matrix variables.
+ *
+ * @returns the checkout_path input
+ * @throws an error if the checkout_path input could not be determined
+ */
+export function getCheckoutPathInputOrThrow(
+  workflow: Workflow,
+  jobName: string,
+  matrixVars: { [key: string]: string } | undefined
+): string {
+  return (
+    getInputOrThrow(
+      workflow,
+      jobName,
+      "github/codeql-action/analyze",
+      "checkout_path",
+      matrixVars
+    ) || getRequiredEnvParam("GITHUB_WORKSPACE") // if unspecified, checkout_path defaults to ${{ github.workspace }}
   );
 }

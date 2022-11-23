@@ -3,7 +3,8 @@ description: "Tests that file baseline information is exported when the feature 
 versions: ["nightly-latest"]
 steps:
   - uses: swift-actions/setup-swift@5cdaa9161ad1f55ae39a5ea1784ef96de72f95d9
-    if: runner.os != 'Windows' && matrix.version == 'cached'
+    # Windows doesn't support Swift, and only macOS latest and nightly-latest support Swift 5.7.1.
+    if: runner.os == 'Linux' || (runner.os == 'macOS' && matrix.version == 'cached')
     with:
       swift-version: "5.7"
   - uses: ./../action/init

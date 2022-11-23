@@ -14,7 +14,7 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
@@ -70,14 +70,14 @@ test.beforeEach(() => {
 
 async function mockApiAndSetupCodeQL({
   apiDetails,
-  featureEnablement,
+  bypassToolcache,
   isPinned,
   tmpDir,
   toolsInput,
   version,
 }: {
   apiDetails?: GitHubApiDetails;
-  featureEnablement?: FeatureEnablement;
+  bypassToolcache?: boolean;
   isPinned?: boolean;
   tmpDir: string;
   toolsInput?: { input?: string };
@@ -110,7 +110,7 @@ async function mockApiAndSetupCodeQL({
     apiDetails ?? sampleApiDetails,
     tmpDir,
     util.GitHubVariant.DOTCOM,
-    featureEnablement ?? createFeatures([]),
+    !!bypassToolcache,
     getRunnerLogger(true),
     false
   );
@@ -173,7 +173,7 @@ test("don't download codeql bundle cache with pinned different version cached", 
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      createFeatures([]),
+      false,
       getRunnerLogger(true),
       false
     );
@@ -281,9 +281,7 @@ for (const [
       await mockApiAndSetupCodeQL({
         version: defaults.bundleVersion,
         apiDetails: sampleApiDetails,
-        featureEnablement: createFeatures(
-          isFeatureEnabled ? [Feature.BypassToolcacheEnabled] : []
-        ),
+        bypassToolcache: isFeatureEnabled,
         toolsInput: { input: toolsInput },
         tmpDir,
       });
@@ -339,7 +337,7 @@ test("download codeql bundle from github ae endpoint", async (t) => {
       sampleGHAEApiDetails,
       tmpDir,
       util.GitHubVariant.GHAE,
-      createFeatures([]),
+      false,
       getRunnerLogger(true),
       false
     );

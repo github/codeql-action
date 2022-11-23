@@ -11,7 +11,7 @@ export enum Language {
 }
 
 // Additional names for languages
-const LANGUAGE_ALIASES: { [lang: string]: Language } = {
+export const LANGUAGE_ALIASES: { [lang: string]: Language } = {
   c: Language.cpp,
   "c++": Language.cpp,
   "c#": Language.csharp,
@@ -19,8 +19,12 @@ const LANGUAGE_ALIASES: { [lang: string]: Language } = {
   typescript: Language.javascript,
 };
 
+export type LanguageOrAlias = Language | keyof typeof LANGUAGE_ALIASES;
+
+export const KOTLIN_SWIFT_BYPASS = ["kotlin", "swift"];
+
 // Translate from user input or GitHub's API names for languages to CodeQL's names for languages
-export function parseLanguage(language: string): Language | undefined {
+export function parseLanguage(language: string): LanguageOrAlias | undefined {
   // Normalise to lower case
   language = language.toLowerCase();
 
@@ -31,7 +35,7 @@ export function parseLanguage(language: string): Language | undefined {
 
   // Check language aliases
   if (language in LANGUAGE_ALIASES) {
-    return LANGUAGE_ALIASES[language];
+    return language;
   }
 
   return undefined;

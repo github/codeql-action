@@ -9,8 +9,15 @@ import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
+import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { parseRepositoryNwo } from "./repository";
+import {
+  createFeatures,
+  getRecordingLogger,
+  mockLangaugesInRepo,
+  setupTests,
+} from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -448,4 +455,106 @@ test("withTimeout doesn't call callback if promise resolves", async (t) => {
   await new Promise((r) => setTimeout(r, 200));
   t.deepEqual(shortTaskTimedOut, false);
   t.deepEqual(result, 99);
+});
+
+const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
+// eslint-disable-next-line github/array-foreach
+[
+  {
+    name: "disabled",
+    features: [],
+    hasCustomCodeQL: false,
+    languagesInput: undefined,
+    languagesInRepository: [],
+    expected: false,
+    expectedApiCall: false,
+  },
+  {
+    name: "disabled even though swift kotlin bypassed",
+    features: [Feature.BypassToolcacheKotlinSwiftEnabled],
+    hasCustomCodeQL: false,
+    languagesInput: undefined,
+    languagesInRepository: [],
+    expected: false,
+    expectedApiCall: true,
+  },
+  {
+    name: "disabled even though swift kotlin analyzed",
+    features: [],
+    hasCustomCodeQL: false,
+    languagesInput: " sWiFt , KoTlIn ",
+    languagesInRepository: [],
+    expected: false,
+    expectedApiCall: false,
+  },
+  {
+    name: "toolcache bypass all",
+    features: [Feature.BypassToolcacheEnabled],
+    hasCustomCodeQL: false,
+    languagesInput: undefined,
+    languagesInRepository: [],
+    expected: true,
+    expectedApiCall: false,
+  },
+  {
+    name: "custom CodeQL",
+    features: [],
+    hasCustomCodeQL: true,
+    languagesInput: undefined,
+    languagesInRepository: [],
+    expected: true,
+    expectedApiCall: false,
+  },
+  {
+    name: "bypass swift",
+    features: [Feature.BypassToolcacheKotlinSwiftEnabled],
+    hasCustomCodeQL: false,
+    languagesInput: " sWiFt ,other",
+    languagesInRepository: [],
+    expected: true,
+    expectedApiCall: false,
+  },
+  {
+    name: "bypass kotlin",
+    features: [Feature.BypassToolcacheKotlinSwiftEnabled],
+    hasCustomCodeQL: false,
+    languagesInput: "other, KoTlIn ",
+    languagesInRepository: [],
+    expected: true,
+    expectedApiCall: false,
+  },
+  {
+    name: "bypass kotlin language from repository",
+    features: [Feature.BypassToolcacheKotlinSwiftEnabled],
+    hasCustomCodeQL: false,
+    languagesInput: "",
+    languagesInRepository: ["KoTlIn", "other"],
+    expected: true,
+    expectedApiCall: true,
+  },
+  {
+    name: "bypass swift language from repository",
+    features: [Feature.BypassToolcacheKotlinSwiftEnabled],
+    hasCustomCodeQL: false,
+    languagesInput: "",
+    languagesInRepository: ["SwiFt", "other"],
+    expected: true,
+    expectedApiCall: true,
+  },
+].forEach((args) => {
+  test(`shouldBypassToolcache: ${args.name}`, async (t) => {
+    const mockRequest = mockLangaugesInRepo(args.languagesInRepository);
+    const mockLogger = getRecordingLogger([]);
+    const featureEnablement = createFeatures(args.features);
+    const codeqlUrl = args.hasCustomCodeQL ? "custom-codeql-url" : undefined;
+    const actual = await util.shouldBypassToolcache(
+      featureEnablement,
+      codeqlUrl,
+      args.languagesInput,
+      mockRepositoryNwo,
+      mockLogger
+    );
+    t.deepEqual(actual, args.expected);
+    t.deepEqual(mockRequest.called, args.expectedApiCall);
+  });
 });

@@ -293,16 +293,71 @@ export function getWorkflowRunID(): number {
   return workflowRunID;
 }
 
-export function getAnalyzeSteps(job: WorkflowJob): WorkflowJobStep[] {
+export function getStepsCallingAction(
+  job: WorkflowJob,
+  actionName: string
+): WorkflowJobStep[] {
   const steps = job.steps;
   if (!Array.isArray(steps)) {
     throw new Error(
-      "Could not get analyze steps since job.steps was not an array."
+      `Could not get steps calling ${actionName} since job.steps was not an array.`
     );
   }
-  return steps.filter((step) =>
-    step.uses?.includes("github/codeql-action/analyze")
-  );
+  return steps.filter((step) => step.uses?.includes(actionName));
+}
+
+/**
+ * Makes a best effort attempt to retrieve the value of a particular input with which
+ * an Action in the workflow would be invoked.
+ *
+ * @returns the value of the input, or undefined if no such input is passed to the Action
+ * @throws an error if the value of the input could not be determined, or we could not
+ * determine that no such input is passed to the Action.
+ */
+function getInputOrThrow(
+  workflow: Workflow,
+  actionName: string,
+  inputName: string,
+  matrixVars: { [key: string]: string }
+) {
+  if (!workflow.jobs) {
+    throw new Error(
+      `Could not get ${inputName} input to ${actionName} since the workflow has no jobs.`
+    );
+  }
+  const inputs: string[] = Object.values(workflow.jobs)
+    .map((job) =>
+      getStepsCallingAction(job, actionName).map(
+        (step) => step.with?.[inputName]
+      )
+    )
+    .flat()
+    .filter((input) => input !== undefined)
+    .map((input) => input!);
+
+  if (inputs.length === 0) {
+    return undefined;
+  }
+  if (!inputs.every((input) => input === inputs[0])) {
+    throw new Error(
+      `Could not get ${inputName} input to ${actionName} since there were multiple steps calling ` +
+        `${actionName} with different values for ${inputName}.`
+    );
+  }
+
+  // Make a basic attempt to substitute matrix variables
+  // First normalize by removing whitespace
+  let input = inputs[0].replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
+  for (const [key, value] of Object.entries(matrixVars)) {
+    input = input.replace(`\${{matrix.${key}}}`, value);
+  }
+
+  if (input.includes("${{")) {
+    throw new Error(
+      `Could not get ${inputName} input to ${actionName} since it contained an unrecognized dynamic value.`
+    );
+  }
+  return input;
 }
 
 /**
@@ -312,41 +367,14 @@ export function getAnalyzeSteps(job: WorkflowJob): WorkflowJobStep[] {
  * @returns the category input, or undefined if the category input is not defined
  * @throws an error if the category input could not be determined
  */
-export function tryGetCategoryInput(
+export function getCategoryInputOrThrow(
   workflow: Workflow,
   matrixVars: { [key: string]: string }
 ): string | undefined {
-  if (!workflow.jobs) {
-    throw new Error(
-      "Could not get category input since workflow.jobs was undefined."
-    );
-  }
-  const categories: string[] = Object.values(workflow.jobs)
-    .map((job) => getAnalyzeSteps(job).map((step) => step.with?.category))
-    .flat()
-    .filter((category) => category !== undefined)
-    .map((category) => category!);
-
-  if (categories.length === 0) {
-    return undefined;
-  }
-  if (!categories.every((category) => category === categories[0])) {
-    throw new Error(
-      "Could not get category input since multiple categories were specified by the analysis step."
-    );
-  }
-
-  // Make a basic attempt to substitute matrix variables
-  // First normalize by removing whitespace
-  let category = categories[0].replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
-  for (const [key, value] of Object.entries(matrixVars)) {
-    category = category.replace(`\${{matrix.${key}}}`, value);
-  }
-
-  if (category.includes("${{")) {
-    throw new Error(
-      "Could not get category input since it contained an unrecognized dynamic value."
-    );
-  }
-  return category;
+  return getInputOrThrow(
+    workflow,
+    "github/codeql-action/analyze",
+    "category",
+    matrixVars
+  );
 }

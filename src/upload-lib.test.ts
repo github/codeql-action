@@ -7,13 +7,7 @@ import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { pruneInvalidResults } from "./upload-lib";
-import {
-  GitHubVariant,
-  GitHubVersion,
-  initializeEnvironment,
-  SarifFile,
-  withTmpDir,
-} from "./util";
+import { initializeEnvironment, SarifFile, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -35,36 +29,23 @@ test("validateSarifFileSchema - invalid", (t) => {
   );
 });
 
-test("validate correct payload used per version", async (t) => {
-  const newVersions: GitHubVersion[] = [
-    { type: GitHubVariant.DOTCOM },
-    { type: GitHubVariant.GHES, version: "3.1.0" },
-  ];
-  const oldVersions: GitHubVersion[] = [
-    { type: GitHubVariant.GHES, version: "2.22.1" },
-    { type: GitHubVariant.GHES, version: "3.0.0" },
-  ];
-  const allVersions = newVersions.concat(oldVersions);
-
+test("validate correct payload used for push, PR merge commit, and PR head", async (t) => {
   process.env["GITHUB_EVENT_NAME"] = "push";
-  for (const version of allVersions) {
-    const payload: any = uploadLib.buildPayload(
-      "commit",
-      "refs/heads/master",
-      "key",
-      undefined,
-      "",
-      undefined,
-      "/opt/src",
-      undefined,
-      ["CodeQL", "eslint"],
-      version,
-      "mergeBaseCommit"
-    );
-    // Not triggered by a pull request
-    t.falsy(payload.base_ref);
-    t.falsy(payload.base_sha);
-  }
+  const pushPayload: any = uploadLib.buildPayload(
+    "commit",
+    "refs/heads/master",
+    "key",
+    undefined,
+    "",
+    undefined,
+    "/opt/src",
+    undefined,
+    ["CodeQL", "eslint"],
+    "mergeBaseCommit"
+  );
+  // Not triggered by a pull request
+  t.falsy(pushPayload.base_ref);
+  t.falsy(pushPayload.base_sha);
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "commit";
@@ -72,62 +53,40 @@ test("validate correct payload used per version", async (t) => {
   process.env[
     "GITHUB_EVENT_PATH"
   ] = `${__dirname}/../src/testdata/pull_request.json`;
-  for (const version of newVersions) {
-    const payload: any = uploadLib.buildPayload(
-      "commit",
-      "refs/pull/123/merge",
-      "key",
-      undefined,
-      "",
-      undefined,
-      "/opt/src",
-      undefined,
-      ["CodeQL", "eslint"],
-      version,
-      "mergeBaseCommit"
-    );
-    // Uploads for a merge commit use the merge base
-    t.deepEqual(payload.base_ref, "refs/heads/master");
-    t.deepEqual(payload.base_sha, "mergeBaseCommit");
-  }
+  const prMergePayload: any = uploadLib.buildPayload(
+    "commit",
+    "refs/pull/123/merge",
+    "key",
+    undefined,
+    "",
+    undefined,
+    "/opt/src",
+    undefined,
+    ["CodeQL", "eslint"],
+    "mergeBaseCommit"
+  );
+  // Uploads for a merge commit use the merge base
+  t.deepEqual(prMergePayload.base_ref, "refs/heads/master");
+  t.deepEqual(prMergePayload.base_sha, "mergeBaseCommit");
 
-  for (const version of newVersions) {
-    const payload: any = uploadLib.buildPayload(
-      "headCommit",
-      "refs/pull/123/head",
-      "key",
-      undefined,
-      "",
-      undefined,
-      "/opt/src",
-      undefined,
-      ["CodeQL", "eslint"],
-      version,
-      "mergeBaseCommit"
-    );
-    // Uploads for the head use the PR base
-    t.deepEqual(payload.base_ref, "refs/heads/master");
-    t.deepEqual(payload.base_sha, "f95f852bd8fca8fcc58a9a2d6c842781e32a215e");
-  }
-
-  for (const version of oldVersions) {
-    const payload: any = uploadLib.buildPayload(
-      "commit",
-      "refs/pull/123/merge",
-      "key",
-      undefined,
-      "",
-      undefined,
-      "/opt/src",
-      undefined,
-      ["CodeQL", "eslint"],
-      version,
-      "mergeBaseCommit"
-    );
-    // These older versions won't expect these values
-    t.falsy(payload.base_ref);
-    t.falsy(payload.base_sha);
-  }
+  const prHeadPayload: any = uploadLib.buildPayload(
+    "headCommit",
+    "refs/pull/123/head",
+    "key",
+    undefined,
+    "",
+    undefined,
+    "/opt/src",
+    undefined,
+    ["CodeQL", "eslint"],
+    "mergeBaseCommit"
+  );
+  // Uploads for the head use the PR base
+  t.deepEqual(prHeadPayload.base_ref, "refs/heads/master");
+  t.deepEqual(
+    prHeadPayload.base_sha,
+    "f95f852bd8fca8fcc58a9a2d6c842781e32a215e"
+  );
 });
 
 test("finding SARIF files", async (t) => {

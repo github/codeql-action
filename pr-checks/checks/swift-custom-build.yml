@@ -7,7 +7,8 @@ env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
   - uses: swift-actions/setup-swift@5cdaa9161ad1f55ae39a5ea1784ef96de72f95d9
-    if: matrix.version == 'cached'
+    # Only macOS latest and nightly-latest support Swift 5.7.1
+    if: runner.os == 'Linux' || matrix.version == 'cached'
     with:
       swift-version: "5.7"
   - uses: ./../action/init

@@ -1764,14 +1764,7 @@ function parseInputAndConfigMacro(
 parseInputAndConfigMacro.title = (providedTitle: string) =>
   `Parse Packs input and config: ${providedTitle}`;
 
-const mockLogger = {
-  info: (message: string) => {
-    console.log("info:", message);
-  },
-  debug: (message: string) => {
-    console.log("debug:", message);
-  },
-} as Logger;
+const mockLogger = getRunnerLogger(true);
 
 function parseInputAndConfigErrorMacro(
   t: ExecutionContext<unknown>,
@@ -2503,33 +2496,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedLanguages: ["javascript", "csharp", "cpp"],
     expectedApiCall: true,
   },
-].forEach((args) => {
-  test(`getLanguages: ${args.name}`, async (t) => {
-    const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
-    const languages = args.codeqlResolvedLanguages.reduce(
-      (acc, lang) => ({
-        ...acc,
-        [lang]: true,
-      }),
-      {}
-    );
-    const codeQL = setCodeQL({
-      resolveLanguages: () => Promise.resolve(languages),
-    });
-
-    const actualLanguages = await configUtils.getLanguages(
-      codeQL,
-      args.languagesInput,
-      mockRepositoryNwo,
-      mockLogger
-    );
-    t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
-    t.deepEqual(mockRequest.called, args.expectedApiCall);
-  });
-});
-
-// eslint-disable-next-line github/array-foreach
-[
   {
     name: "no languages",
     codeqlResolvedLanguages: ["javascript", "java", "python"],
@@ -2547,7 +2513,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedError: configUtils.getUnknownLanguagesError(["a", "b"]),
   },
 ].forEach((args) => {
-  test(`getLanguages (error when empty): ${args.name}`, async (t) => {
+  test(`getLanguages: ${args.name}`, async (t) => {
     const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
     const languages = args.codeqlResolvedLanguages.reduce(
       (acc, lang) => ({
@@ -2560,16 +2526,29 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
       resolveLanguages: () => Promise.resolve(languages),
     });
 
-    await t.throwsAsync(
-      async () =>
-        await configUtils.getLanguages(
-          codeQL,
-          args.languagesInput,
-          mockRepositoryNwo,
-          mockLogger
-        ),
-      { message: args.expectedError }
-    );
+    if (args.expectedLanguages) {
+      // happy path
+      const actualLanguages = await configUtils.getLanguages(
+        codeQL,
+        args.languagesInput,
+        mockRepositoryNwo,
+        mockLogger
+      );
+
+      t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
+    } else {
+      // there is an error
+      await t.throwsAsync(
+        async () =>
+          await configUtils.getLanguages(
+            codeQL,
+            args.languagesInput,
+            mockRepositoryNwo,
+            mockLogger
+          ),
+        { message: args.expectedError }
+      );
+    }
     t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
 });

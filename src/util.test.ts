@@ -15,7 +15,7 @@ import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
   getRecordingLogger,
-  mockLangaugesInRepo,
+  mockLanguagesInRepo,
   setupTests,
 } from "./testing-utils";
 import * as util from "./util";
@@ -543,7 +543,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
 ].forEach((args) => {
   test(`shouldBypassToolcache: ${args.name}`, async (t) => {
-    const mockRequest = mockLangaugesInRepo(args.languagesInRepository);
+    const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
     const mockLogger = getRecordingLogger([]);
     const featureEnablement = createFeatures(args.features);
     const codeqlUrl = args.hasCustomCodeQL ? "custom-codeql-url" : undefined;

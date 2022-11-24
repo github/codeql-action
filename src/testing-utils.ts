@@ -162,7 +162,7 @@ export function mockFeatureFlagApiEndpoint(
   sinon.stub(apiClient, "getApiClient").value(() => client);
 }
 
-export function mockLangaugesInRepo(languages: string[]) {
+export function mockLanguagesInRepo(languages: string[]) {
   const mockClient = sinon.stub(apiClient, "getApiClient");
   const listLanguages = sinon.stub().resolves({
     status: 200,

@@ -14,6 +14,7 @@ import * as apiCompatibility from "./api-compatibility.json";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import {
   Config,
+  getLanguagesInRepo,
   getRawLanguages,
   parsePacksSpecification,
   prettyPrintPack,
@@ -860,25 +861,31 @@ export async function shouldBypassToolcache(
     return true;
   }
 
+  let bypass = false;
   // Check if the toolcache is disabled for kotlin and swift.
   if (
     await featuresEnablement.getValue(Feature.BypassToolcacheKotlinSwiftEnabled)
   ) {
     // Now check to see if kotlin or swift is one of the languages being analyzed.
-    const { rawLanguages } = await getRawLanguages(
+    const { rawLanguages, autodetected } = await getRawLanguages(
       languagesInput,
       repository,
       logger
     );
-    const bypass = rawLanguages.some((lang) =>
-      KOTLIN_SWIFT_BYPASS.includes(lang)
-    );
+    bypass = rawLanguages.some((lang) => KOTLIN_SWIFT_BYPASS.includes(lang));
     if (bypass) {
       logger.info(
         `Bypassing toolcache for kotlin or swift. Languages: ${rawLanguages}`
       );
+    } else if (!autodetected && rawLanguages.includes(Language.java)) {
+      // special case: java was explicitly specified, but there might be
+      // some kotlin in the repository, so we need to make a request for that.
+      const langsInRepo = await getLanguagesInRepo(repository, logger);
+      if (langsInRepo.includes("kotlin")) {
+        logger.info(`Bypassing toolcache for kotlin.`);
+        bypass = true;
+      }
     }
-    return bypass;
   }
-  return false;
+  return bypass;
 }

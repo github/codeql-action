@@ -14,7 +14,6 @@ import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
-  getRecordingLogger,
   mockLanguagesInRepo,
   setupTests,
 } from "./testing-utils";
@@ -541,10 +540,28 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expected: true,
     expectedApiCall: true,
   },
+  {
+    name: "bypass java from input if there is kotlin in repository",
+    features: [Feature.BypassToolcacheKotlinSwiftEnabled],
+    hasCustomCodeQL: false,
+    languagesInput: "java",
+    languagesInRepository: ["kotlin", "other"],
+    expected: true,
+    expectedApiCall: true,
+  },
+  {
+    name: "don't bypass java from input if there is no kotlin in repository",
+    features: [Feature.BypassToolcacheKotlinSwiftEnabled],
+    hasCustomCodeQL: false,
+    languagesInput: "java",
+    languagesInRepository: ["java", "other"],
+    expected: false,
+    expectedApiCall: true,
+  },
 ].forEach((args) => {
   test(`shouldBypassToolcache: ${args.name}`, async (t) => {
     const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
-    const mockLogger = getRecordingLogger([]);
+    const mockLogger = getRunnerLogger(true);
     const featureEnablement = createFeatures(args.features);
     const codeqlUrl = args.hasCustomCodeQL ? "custom-codeql-url" : undefined;
     const actual = await util.shouldBypassToolcache(

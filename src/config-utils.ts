@@ -860,7 +860,7 @@ export function getUnknownLanguagesError(languages: string[]): string {
  * Gets the set of languages in the current repository that are
  * scannable by CodeQL.
  */
-async function getLanguagesInRepo(
+export async function getLanguagesInRepo(
   repository: RepositoryNwo,
   logger: Logger
 ): Promise<LanguageOrAlias[]> {
@@ -937,6 +937,9 @@ export async function getLanguages(
       parsedLanguages.push(parsedLanguage);
     }
   }
+
+  // Any unknown languages here would have come directly from the input
+  // since we filter unknown languages coming from the GitHub API.
   if (unknownLanguages.length > 0) {
     throw new Error(getUnknownLanguagesError(unknownLanguages));
   }

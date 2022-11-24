@@ -9,6 +9,7 @@ import * as yaml from "js-yaml";
 import nock from "nock";
 import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
@@ -432,6 +433,8 @@ test("getCodeQLActionRepository", (t) => {
   const repoLocalRunner = codeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoLocalRunner, "github/codeql-action");
 
+  // isRunningLocalAction() === false
+  sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
   process.env["GITHUB_ACTION_REPOSITORY"] = "xxx/yyy";
   const repoEnv = codeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoEnv, "xxx/yyy");

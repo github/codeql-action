@@ -861,30 +861,33 @@ export async function shouldBypassToolcache(
     return true;
   }
 
-  let bypass = false;
   // Check if the toolcache is disabled for kotlin and swift.
   if (
-    await featuresEnablement.getValue(Feature.BypassToolcacheKotlinSwiftEnabled)
+    !(await featuresEnablement.getValue(
+      Feature.BypassToolcacheKotlinSwiftEnabled
+    ))
   ) {
-    // Now check to see if kotlin or swift is one of the languages being analyzed.
-    const { rawLanguages, autodetected } = await getRawLanguages(
-      languagesInput,
-      repository,
-      logger
+    return false;
+  }
+
+  // Now check to see if kotlin or swift is one of the languages being analyzed.
+  const { rawLanguages, autodetected } = await getRawLanguages(
+    languagesInput,
+    repository,
+    logger
+  );
+  let bypass = rawLanguages.some((lang) => KOTLIN_SWIFT_BYPASS.includes(lang));
+  if (bypass) {
+    logger.info(
+      `Bypassing toolcache for kotlin or swift. Languages: ${rawLanguages}`
     );
-    bypass = rawLanguages.some((lang) => KOTLIN_SWIFT_BYPASS.includes(lang));
-    if (bypass) {
-      logger.info(
-        `Bypassing toolcache for kotlin or swift. Languages: ${rawLanguages}`
-      );
-    } else if (!autodetected && rawLanguages.includes(Language.java)) {
-      // special case: java was explicitly specified, but there might be
-      // some kotlin in the repository, so we need to make a request for that.
-      const langsInRepo = await getLanguagesInRepo(repository, logger);
-      if (langsInRepo.includes("kotlin")) {
-        logger.info(`Bypassing toolcache for kotlin.`);
-        bypass = true;
-      }
+  } else if (!autodetected && rawLanguages.includes(Language.java)) {
+    // special case: java was explicitly specified, but there might be
+    // some kotlin in the repository, so we need to make a request for that.
+    const langsInRepo = await getLanguagesInRepo(repository, logger);
+    if (langsInRepo.includes("kotlin")) {
+      logger.info(`Bypassing toolcache for kotlin.`);
+      bypass = true;
     }
   }
   return bypass;

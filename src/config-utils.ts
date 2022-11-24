@@ -18,8 +18,8 @@ import { Feature, FeatureEnablement } from "./feature-flags";
 import {
   Language,
   LanguageOrAlias,
-  LANGUAGE_ALIASES,
   parseLanguage,
+  resolveAlias,
 } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -857,7 +857,8 @@ export function getUnknownLanguagesError(languages: string[]): string {
 }
 
 /**
- * Gets the set of languages in the current repository
+ * Gets the set of languages in the current repository that are
+ * scannable by CodeQL.
  */
 async function getLanguagesInRepo(
   repository: RepositoryNwo,
@@ -895,7 +896,7 @@ async function getLanguagesInRepo(
  * If no languages could be detected from either the workflow or the repository
  * then throw an error.
  */
-async function getLanguages(
+export async function getLanguages(
   codeQL: CodeQL,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
@@ -908,13 +909,13 @@ async function getLanguages(
     logger
   );
 
-  let languages: string[];
+  let languages = rawLanguages.map(resolveAlias);
+
   if (autodetected) {
     const availableLanguages = await codeQL.resolveLanguages();
-    languages = rawLanguages.filter((value) => value in availableLanguages);
+    languages = languages.filter((value) => value in availableLanguages);
     logger.info(`Automatically detected languages: ${languages.join(", ")}`);
   } else {
-    languages = rawLanguages;
     logger.info(`Languages from configuration: ${languages.join(", ")}`);
   }
 
@@ -928,15 +929,12 @@ async function getLanguages(
   const parsedLanguages: Language[] = [];
   const unknownLanguages: string[] = [];
   for (const language of languages) {
-    const parsedLanguage = parseLanguage(language);
-    const dealiasedLanguage =
-      parsedLanguage && parsedLanguage in LANGUAGE_ALIASES
-        ? LANGUAGE_ALIASES[parsedLanguage]
-        : (parsedLanguage as Language);
+    // We know this is not an alias since we resolved it above.
+    const parsedLanguage = parseLanguage(language) as Language;
     if (parsedLanguage === undefined) {
       unknownLanguages.push(language);
-    } else if (!parsedLanguages.includes(dealiasedLanguage)) {
-      parsedLanguages.push(dealiasedLanguage);
+    } else if (!parsedLanguages.includes(parsedLanguage)) {
+      parsedLanguages.push(parsedLanguage);
     }
   }
   if (unknownLanguages.length > 0) {

@@ -870,7 +870,15 @@ export async function shouldBypassToolcache(
       repository,
       logger
     );
-    return rawLanguages.some((lang) => KOTLIN_SWIFT_BYPASS.includes(lang));
+    const bypass = rawLanguages.some((lang) =>
+      KOTLIN_SWIFT_BYPASS.includes(lang)
+    );
+    if (bypass) {
+      logger.info(
+        `Bypassing toolcache for kotlin or swift. Languages: ${rawLanguages}`
+      );
+    }
+    return bypass;
   }
   return false;
 }

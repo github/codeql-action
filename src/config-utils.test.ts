@@ -12,7 +12,12 @@ import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
-import { setupTests, createFeatures } from "./testing-utils";
+import { parseRepositoryNwo } from "./repository";
+import {
+  setupTests,
+  createFeatures,
+  mockLanguagesInRepo as mockLanguagesInRepo,
+} from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -1761,7 +1766,10 @@ parseInputAndConfigMacro.title = (providedTitle: string) =>
 
 const mockLogger = {
   info: (message: string) => {
-    console.log(message);
+    console.log("info:", message);
+  },
+  debug: (message: string) => {
+    console.log("debug:", message);
   },
 } as Logger;
 
@@ -2447,5 +2455,121 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
       { instanceOf: Error },
       "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties."
     );
+  });
+});
+
+// getLanguages
+
+const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
+// eslint-disable-next-line github/array-foreach
+[
+  {
+    name: "languages from input",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "jAvAscript, \n jaVa",
+    languagesInRepository: ["SwiFt", "other"],
+    expectedLanguages: ["javascript", "java"],
+    expectedApiCall: false,
+  },
+  {
+    name: "languages from github api",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "",
+    languagesInRepository: ["  jAvAscript\n \t", " jaVa", "SwiFt", "other"],
+    expectedLanguages: ["javascript", "java"],
+    expectedApiCall: true,
+  },
+  {
+    name: "aliases from input",
+    codeqlResolvedLanguages: ["javascript", "csharp", "cpp", "java", "python"],
+    languagesInput: "  typEscript\n \t, C#, c , KoTlin",
+    languagesInRepository: ["SwiFt", "other"],
+    expectedLanguages: ["javascript", "csharp", "cpp", "java"],
+    expectedApiCall: false,
+  },
+  {
+    name: "duplicate languages from input",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "jAvAscript, \n jaVa, kotlin, typescript",
+    languagesInRepository: ["SwiFt", "other"],
+    expectedLanguages: ["javascript", "java"],
+    expectedApiCall: false,
+  },
+  {
+    name: "aliases from github api",
+    codeqlResolvedLanguages: ["javascript", "csharp", "cpp", "java", "python"],
+    languagesInput: "",
+    languagesInRepository: ["  typEscript\n \t", " C#", "c", "other"],
+    expectedLanguages: ["javascript", "csharp", "cpp"],
+    expectedApiCall: true,
+  },
+].forEach((args) => {
+  test(`getLanguages: ${args.name}`, async (t) => {
+    const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
+    const languages = args.codeqlResolvedLanguages.reduce(
+      (acc, lang) => ({
+        ...acc,
+        [lang]: true,
+      }),
+      {}
+    );
+    const codeQL = setCodeQL({
+      resolveLanguages: () => Promise.resolve(languages),
+    });
+
+    const actualLanguages = await configUtils.getLanguages(
+      codeQL,
+      args.languagesInput,
+      mockRepositoryNwo,
+      mockLogger
+    );
+    t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
+    t.deepEqual(mockRequest.called, args.expectedApiCall);
+  });
+});
+
+// eslint-disable-next-line github/array-foreach
+[
+  {
+    name: "no languages",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "",
+    languagesInRepository: [],
+    expectedApiCall: true,
+    expectedError: configUtils.getNoLanguagesError(),
+  },
+  {
+    name: "unrecognized languages from input",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "a, b, c, javascript",
+    languagesInRepository: [],
+    expectedApiCall: false,
+    expectedError: configUtils.getUnknownLanguagesError(["a", "b"]),
+  },
+].forEach((args) => {
+  test(`getLanguages (error when empty): ${args.name}`, async (t) => {
+    const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
+    const languages = args.codeqlResolvedLanguages.reduce(
+      (acc, lang) => ({
+        ...acc,
+        [lang]: true,
+      }),
+      {}
+    );
+    const codeQL = setCodeQL({
+      resolveLanguages: () => Promise.resolve(languages),
+    });
+
+    await t.throwsAsync(
+      async () =>
+        await configUtils.getLanguages(
+          codeQL,
+          args.languagesInput,
+          mockRepositoryNwo,
+          mockLogger
+        ),
+      { message: args.expectedError }
+    );
+    t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
 });

@@ -24,5 +24,3 @@ steps:
   - uses: ./../action/upload-sarif
     with:
       sarif_file: rubocop.sarif
-    env:
-      TEST_MODE: true

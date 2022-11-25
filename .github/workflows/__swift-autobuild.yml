@@ -42,17 +42,18 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
+    - uses: swift-actions/setup-swift@5cdaa9161ad1f55ae39a5ea1784ef96de72f95d9
+    # Only macOS latest and nightly-latest support Swift 5.7.1
+      if: runner.os == 'Linux' || matrix.version == 'cached'
+      with:
+        swift-version: '5.7'
     - uses: ./../action/init
       with:
         languages: swift
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - uses: ./../action/autobuild
     - uses: ./../action/analyze
       id: analysis
-      env:
-        TEST_MODE: true
     - name: Check database
       shell: bash
       run: |
@@ -63,4 +64,4 @@ jobs:
         fi
     env:
       CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true'
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

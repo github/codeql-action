@@ -537,7 +537,8 @@ test("getCategoryInputOrThrow returns category for simple workflow with category
               - uses: github/codeql-action/analyze@v2
                 with:
                   category: some-category
-    `) as Workflow,
+      `) as Workflow,
+      "analysis",
       {}
     ),
     "some-category"
@@ -555,10 +556,42 @@ test("getCategoryInputOrThrow returns undefined for simple workflow without cate
               - uses: actions/checkout@v2
               - uses: github/codeql-action/init@v2
               - uses: github/codeql-action/analyze@v2
-    `) as Workflow,
+      `) as Workflow,
+      "analysis",
       {}
     ),
     undefined
+  );
+});
+
+test("getCategoryInputOrThrow returns category for workflow with multiple jobs", (t) => {
+  t.is(
+    getCategoryInputOrThrow(
+      yaml.load(`
+        jobs:
+          foo:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v2
+              - uses: github/codeql-action/init@v2
+              - runs: ./build foo
+              - uses: github/codeql-action/analyze@v2
+                with:
+                  category: foo-category
+          bar:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v2
+              - uses: github/codeql-action/init@v2
+              - runs: ./build bar
+              - uses: github/codeql-action/analyze@v2
+                with:
+                  category: bar-category
+      `) as Workflow,
+      "bar",
+      {}
+    ),
+    "bar-category"
   );
 });
 
@@ -580,7 +613,8 @@ test("getCategoryInputOrThrow finds category for workflow with language matrix",
               - uses: github/codeql-action/analyze@v2
                 with:
                   category: "/language:\${{ matrix.language }}"
-    `) as Workflow,
+      `) as Workflow,
+      "analysis",
       { language: "javascript" }
     ),
     "/language:javascript"
@@ -600,7 +634,8 @@ test("getCategoryInputOrThrow throws error for workflow with dynamic category", 
                 - uses: github/codeql-action/analyze@v2
                   with:
                     category: "\${{ github.workflow }}"
-    `) as Workflow,
+        `) as Workflow,
+        "analysis",
         {}
       ),
     {
@@ -628,7 +663,8 @@ test("getCategoryInputOrThrow throws error for workflow with multiple categories
                 - uses: github/codeql-action/analyze@v2
                   with:
                     category: another-category
-      `) as Workflow,
+        `) as Workflow,
+        "analysis",
         {}
       ),
     {

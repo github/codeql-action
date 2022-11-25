@@ -1,4 +1,3 @@
-import * as artifact from "@actions/artifact";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -7,6 +6,7 @@ import { Config, getConfig } from "./config-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF } from "./shared-environment";
 import * as uploadLib from "./upload-lib";
 import { getRequiredEnvParam, isInTestMode, parseMatrixInput } from "./util";
 import {
@@ -56,11 +56,8 @@ async function uploadFailedSarif(
   const waitForProcessing =
     getWaitForProcessingInputOrThrow(workflow, jobName, matrix) === "true";
 
-  const sarifFile = "../failed-run.sarif";
+  const sarifFile = "../codeql-failed-run.sarif";
   await codeql.diagnosticsExport(sarifFile, category);
-
-  // Upload for debugging
-  await artifact.create().uploadArtifact("failed-run.sarif", [sarifFile], "..");
 
   core.info(`Uploading failed SARIF file ${sarifFile}`);
   const uploadResult = await uploadLib.uploadFromActions(
@@ -94,7 +91,15 @@ export async function run(
     return;
   }
 
-  await uploadFailedSarif(config, repositoryNwo, featureEnablement, logger);
+  if (process.env[CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF] !== "true") {
+    try {
+      await uploadFailedSarif(config, repositoryNwo, featureEnablement, logger);
+    } catch (e) {
+      logger.warning(
+        `Failed to upload a SARIF file for the failed run. Error: ${e}`
+      );
+    }
+  }
 
   // Upload appropriate Actions artifacts for debugging
   if (config.debugMode) {

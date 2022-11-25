@@ -23,6 +23,7 @@ import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF } from "./shared-environment";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
@@ -269,6 +270,7 @@ async function run() {
         logger
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
+      core.exportVariable(CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF, "true");
     } else {
       logger.info("Not uploading results");
     }

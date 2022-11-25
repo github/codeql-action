@@ -40,6 +40,7 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
+  shouldBypassToolcache,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -186,7 +187,13 @@ async function run() {
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
-      features,
+      await shouldBypassToolcache(
+        features,
+        getOptionalInput("tools"),
+        getOptionalInput("languages"),
+        repositoryNwo,
+        logger
+      ),
       logger
     );
     codeql = initCodeQLResult.codeql;

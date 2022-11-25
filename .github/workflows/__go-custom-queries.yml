@@ -82,14 +82,10 @@ jobs:
         languages: go
         config-file: ./.github/codeql/custom-queries.yml
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - name: Build code
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
-      env:
-        TEST_MODE: true
     env:
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

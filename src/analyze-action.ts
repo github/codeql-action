@@ -217,7 +217,12 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion();
 
-    const features = new Features(gitHubVersion, repositoryNwo, logger);
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      actionsUtil.getTemporaryDirectory(),
+      logger
+    );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 
@@ -257,11 +262,7 @@ async function run() {
     core.setOutput("db-locations", dbLocations);
 
     if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
-      uploadResult = await upload_lib.uploadFromActions(
-        outputDir,
-        config.gitHubVersion,
-        logger
-      );
+      uploadResult = await upload_lib.uploadFromActions(outputDir, logger);
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {
       logger.info("Not uploading results");

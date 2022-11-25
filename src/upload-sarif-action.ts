@@ -1,7 +1,6 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getGitHubVersion } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -52,11 +51,8 @@ async function run() {
   }
 
   try {
-    const gitHubVersion = await getGitHubVersion();
-
     const uploadResult = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
-      gitHubVersion,
       getActionsLogger()
     );
     core.setOutput("sarif-id", uploadResult.sarifID);

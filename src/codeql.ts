@@ -10,7 +10,7 @@ import { default as queryString } from "query-string";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { getRelativeScriptPath, isRunningLocalAction } from "./actions-util";
+import { isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
@@ -296,26 +296,17 @@ function getCodeQLBundleName(): string {
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
-  if (process.env["GITHUB_ACTION_REPOSITORY"] !== undefined) {
-    return process.env["GITHUB_ACTION_REPOSITORY"];
-  }
-
-  // The Actions Runner used with GitHub Enterprise Server 2.22 did not set the GITHUB_ACTION_REPOSITORY variable.
-  // This fallback logic can be removed after the end-of-support for 2.22 on 2021-09-23.
-
   if (isRunningLocalAction()) {
     // This handles the case where the Action does not come from an Action repository,
     // e.g. our integration tests which use the Action code from the current checkout.
+    // In these cases, the GITHUB_ACTION_REPOSITORY environment variable is not set.
     logger.info(
       "The CodeQL Action is checked out locally. Using the default CodeQL Action repository."
     );
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   }
-  logger.info(
-    "GITHUB_ACTION_REPOSITORY environment variable was not set. Falling back to legacy method of finding the GitHub Action."
-  );
-  const relativeScriptPathParts = getRelativeScriptPath().split(path.sep);
-  return `${relativeScriptPathParts[0]}/${relativeScriptPathParts[1]}`;
+
+  return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
 }
 
 async function getCodeQLBundleDownloadURL(
@@ -424,7 +415,7 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  features: FeatureEnablement,
+  bypassToolcache: boolean,
   logger: Logger,
   checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
@@ -438,8 +429,7 @@ export async function setupCodeQL(
         // the toolcache when the appropriate feature is enabled. This
         // allows us to quickly rollback a broken bundle that has made its way
         // into the toolcache.
-        codeqlURL === undefined &&
-          (await features.getValue(Feature.BypassToolcacheEnabled))
+        codeqlURL === undefined && bypassToolcache
         ? "a specific version of CodeQL was not requested and the bypass toolcache feature is enabled"
         : undefined;
     const forceLatest = forceLatestReason !== undefined;

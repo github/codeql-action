@@ -6,15 +6,11 @@ steps:
     with:
       db-location: ${{ runner.temp }}/customDbLocation
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      TEST_MODE: true
   - name: Build code
     shell: bash
     run: env -i PATH="$PATH" HOME="$HOME" ./build.sh
   - uses: ./../action/analyze
     id: analysis
-    env:
-      TEST_MODE: true
   - shell: bash
     run: |
       CPP_DB="${{ fromJson(steps.analysis.outputs.db-locations).cpp }}"

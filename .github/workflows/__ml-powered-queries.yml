@@ -71,15 +71,11 @@ jobs:
         queries: security-extended
         source-root: ./../action/tests/ml-powered-queries-repo
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
 
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
         upload-database: false
-      env:
-        TEST_MODE: true
 
     - name: Upload SARIF
       uses: actions/upload-artifact@v3
@@ -91,8 +87,7 @@ jobs:
     - name: Check sarif
       uses: ./../action/.github/check-sarif
     # Running on Windows requires CodeQL CLI 2.9.0+.
-      if: "!(matrix.version == 'stable-20220120' && (matrix.os == 'windows-latest'\
-        \ || matrix.os == 'windows-2019'))"
+      if: "!(matrix.version == 'stable-20220120' && runner.os == 'Windows')"
       with:
         sarif-file: ${{ runner.temp }}/results/javascript.sarif
         queries-run: js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
@@ -102,7 +97,7 @@ jobs:
       env:
       # Running on Windows requires CodeQL CLI 2.9.0+.
         SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220120' &&
-          (matrix.os == 'windows-latest' || matrix.os == 'windows-2019')) }}
+          runner.os == 'Windows') }}
       shell: bash
       run: |
         echo "Expecting ML-powered queries to be run: ${SHOULD_RUN_ML_POWERED_QUERIES}"
@@ -137,4 +132,4 @@ jobs:
           exit 1
         fi
     env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

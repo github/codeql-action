@@ -20,10 +20,15 @@ test("parseLanguage", async (t) => {
   t.deepEqual(parseLanguage("python"), Language.python);
 
   // Aliases
-  t.deepEqual(parseLanguage("c"), Language.cpp);
-  t.deepEqual(parseLanguage("c++"), Language.cpp);
-  t.deepEqual(parseLanguage("c#"), Language.csharp);
-  t.deepEqual(parseLanguage("typescript"), Language.javascript);
+  t.deepEqual(parseLanguage("c"), "c");
+  t.deepEqual(parseLanguage("c++"), "c++");
+  t.deepEqual(parseLanguage("c#"), "c#");
+  t.deepEqual(parseLanguage("kotlin"), "kotlin");
+  t.deepEqual(parseLanguage("typescript"), "typescript");
+
+  // spaces and case-insensitivity
+  t.deepEqual(parseLanguage("  \t\nCsHaRp\t\t"), Language.csharp);
+  t.deepEqual(parseLanguage("  \t\nkOtLin\t\t"), "kotlin");
 
   // Not matches
   t.deepEqual(parseLanguage("foo"), undefined);

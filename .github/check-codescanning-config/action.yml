@@ -42,6 +42,8 @@ runs:
         packs: ${{ inputs.packs }}
         tools: ${{ inputs.tools }}
         db-location: ${{ runner.temp }}/codescanning-config-cli-test
+      env:
+        CODEQL_ACTION_TEST_MODE: 'true'
 
     - name: Install dependencies
       shell: bash

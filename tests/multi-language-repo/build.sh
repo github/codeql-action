@@ -11,3 +11,5 @@ go build main.go
 if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux-gnu"* ]]; then
     swift build
 fi
+
+kotlinc main.kt

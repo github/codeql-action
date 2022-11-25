@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import test from "ava";
 
 import {
@@ -5,6 +8,7 @@ import {
   featureConfig,
   FeatureEnablement,
   Features,
+  FEATURE_FLAGS_FILE_NAME,
 } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -42,7 +46,7 @@ for (const variant of ALL_FEATURES_DISABLED_VARIANTS) {
   test(`All features are disabled if running against ${variant.description}`, async (t) => {
     await withTmpDir(async (tmpDir) => {
       const loggedMessages = [];
-      const featureEnablement = setUpTests(
+      const featureEnablement = setUpFeatureFlagTests(
         tmpDir,
         getRecordingLogger(loggedMessages),
         variant.gitHubVersion
@@ -72,7 +76,7 @@ for (const variant of ALL_FEATURES_DISABLED_VARIANTS) {
 test("API response missing", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
-    const featureEnablement = setUpTests(
+    const featureEnablement = setUpFeatureFlagTests(
       tmpDir,
       getRecordingLogger(loggedMessages)
     );
@@ -94,7 +98,7 @@ test("API response missing", async (t) => {
 test("Features are disabled if they're not returned in API response", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
-    const featureEnablement = setUpTests(
+    const featureEnablement = setUpFeatureFlagTests(
       tmpDir,
       getRecordingLogger(loggedMessages)
     );
@@ -116,7 +120,7 @@ test("Features are disabled if they're not returned in API response", async (t) 
 
 test("Feature flags exception is propagated if the API request errors", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const featureEnablement = setUpTests(tmpDir);
+    const featureEnablement = setUpFeatureFlagTests(tmpDir);
 
     mockFeatureFlagApiEndpoint(500, {});
 
@@ -137,7 +141,7 @@ test("Feature flags exception is propagated if the API request errors", async (t
 for (const feature of Object.keys(featureConfig)) {
   test(`Only feature '${feature}' is enabled if enabled in the API response. Other features disabled`, async (t) => {
     await withTmpDir(async (tmpDir) => {
-      const featureEnablement = setUpTests(tmpDir);
+      const featureEnablement = setUpFeatureFlagTests(tmpDir);
 
       // set all features to false except the one we're testing
       const expectedFeatureEnablement: { [feature: string]: boolean } = {};
@@ -162,7 +166,7 @@ for (const feature of Object.keys(featureConfig)) {
 
   test(`Only feature '${feature}' is enabled if the associated environment variable is true. Others disabled.`, async (t) => {
     await withTmpDir(async (tmpDir) => {
-      const featureEnablement = setUpTests(tmpDir);
+      const featureEnablement = setUpFeatureFlagTests(tmpDir);
 
       const expectedFeatureEnablement = initializeFeatures(false);
       mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
@@ -188,7 +192,7 @@ for (const feature of Object.keys(featureConfig)) {
 
   test(`Feature '${feature}' is disabled if the associated environment variable is false, even if enabled in API`, async (t) => {
     await withTmpDir(async (tmpDir) => {
-      const featureEnablement = setUpTests(tmpDir);
+      const featureEnablement = setUpFeatureFlagTests(tmpDir);
 
       const expectedFeatureEnablement = initializeFeatures(true);
       mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
@@ -215,7 +219,7 @@ for (const feature of Object.keys(featureConfig)) {
   if (featureConfig[feature].minimumVersion !== undefined) {
     test(`Getting feature '${feature} should throw if no codeql is provided`, async (t) => {
       await withTmpDir(async (tmpDir) => {
-        const featureEnablement = setUpTests(tmpDir);
+        const featureEnablement = setUpFeatureFlagTests(tmpDir);
 
         const expectedFeatureEnablement = initializeFeatures(true);
         mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
@@ -233,7 +237,7 @@ for (const feature of Object.keys(featureConfig)) {
   if (featureConfig[feature].minimumVersion !== undefined) {
     test(`Feature '${feature}' is disabled if the minimum CLI version is below ${featureConfig[feature].minimumVersion}`, async (t) => {
       await withTmpDir(async (tmpDir) => {
-        const featureEnablement = setUpTests(tmpDir);
+        const featureEnablement = setUpFeatureFlagTests(tmpDir);
 
         const expectedFeatureEnablement = initializeFeatures(true);
         mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
@@ -285,6 +289,88 @@ test("At least one feature has a minimum version specified", (t) => {
   );
 });
 
+test("Feature flags are saved to disk", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const featureEnablement = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    const cachedFeatureFlags = path.join(tmpDir, FEATURE_FLAGS_FILE_NAME);
+
+    t.false(
+      fs.existsSync(cachedFeatureFlags),
+      "Feature flag cached file should not exist before getting feature flags"
+    );
+
+    t.true(
+      await featureEnablement.getValue(
+        Feature.CliConfigFileEnabled,
+        includeCodeQlIfRequired(Feature.CliConfigFileEnabled)
+      ),
+      "Feature flag should be enabled initially"
+    );
+
+    t.true(
+      fs.existsSync(cachedFeatureFlags),
+      "Feature flag cached file should exist after getting feature flags"
+    );
+
+    const actualFeatureEnablement = JSON.parse(
+      fs.readFileSync(cachedFeatureFlags, "utf8")
+    );
+    t.deepEqual(actualFeatureEnablement, expectedFeatureEnablement);
+
+    // now test that we actually use the feature flag cache instead of the server
+    actualFeatureEnablement[Feature.CliConfigFileEnabled] = false;
+    fs.writeFileSync(
+      cachedFeatureFlags,
+      JSON.stringify(actualFeatureEnablement)
+    );
+
+    // delete the in memory cache so that we are forced to use the cached file
+    (featureEnablement as any).gitHubFeatureFlags.cachedApiResponse = undefined;
+
+    t.false(
+      await featureEnablement.getValue(
+        Feature.CliConfigFileEnabled,
+        includeCodeQlIfRequired(Feature.CliConfigFileEnabled)
+      ),
+      "Feature flag should be enabled after reading from cached file"
+    );
+  });
+});
+
+test("Environment variable can override feature flag cache", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const featureEnablement = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    const cachedFeatureFlags = path.join(tmpDir, FEATURE_FLAGS_FILE_NAME);
+    t.true(
+      await featureEnablement.getValue(
+        Feature.CliConfigFileEnabled,
+        includeCodeQlIfRequired(Feature.CliConfigFileEnabled)
+      ),
+      "Feature flag should be enabled initially"
+    );
+
+    t.true(
+      fs.existsSync(cachedFeatureFlags),
+      "Feature flag cached file should exist after getting feature flags"
+    );
+    process.env.CODEQL_PASS_CONFIG_TO_CLI = "false";
+
+    t.false(
+      await featureEnablement.getValue(
+        Feature.CliConfigFileEnabled,
+        includeCodeQlIfRequired(Feature.CliConfigFileEnabled)
+      ),
+      "Feature flag should be disabled after setting env var"
+    );
+  });
+});
+
 function assertAllFeaturesUndefinedInApi(t, loggedMessages: LoggedMessage[]) {
   for (const feature of Object.keys(featureConfig)) {
     t.assert(
@@ -305,14 +391,14 @@ function initializeFeatures(initialValue: boolean) {
   }, {});
 }
 
-function setUpTests(
+function setUpFeatureFlagTests(
   tmpDir: string,
   logger = getRunnerLogger(true),
   gitHubVersion = { type: GitHubVariant.DOTCOM } as util.GitHubVersion
 ): FeatureEnablement {
   setupActionsVars(tmpDir, tmpDir);
 
-  return new Features(gitHubVersion, testRepositoryNwo, logger);
+  return new Features(gitHubVersion, testRepositoryNwo, tmpDir, logger);
 }
 
 function includeCodeQlIfRequired(feature: string) {

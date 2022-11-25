@@ -29,6 +29,7 @@ import { parseRepositoryNwo } from "./repository";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkActionVersion,
+  checkForTimeout,
   checkGitHubVersionInRange,
   codeQlVersionAbove,
   DEFAULT_DEBUG_ARTIFACT_NAME,
@@ -40,6 +41,7 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
+  shouldBypassToolcache,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -157,7 +159,12 @@ async function run() {
     getRequiredEnvParam("GITHUB_REPOSITORY")
   );
 
-  const features = new Features(gitHubVersion, repositoryNwo, logger);
+  const features = new Features(
+    gitHubVersion,
+    repositoryNwo,
+    getTemporaryDirectory(),
+    logger
+  );
 
   try {
     const workflowErrors = await validateWorkflow();
@@ -180,7 +187,13 @@ async function run() {
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
-      features,
+      await shouldBypassToolcache(
+        features,
+        getOptionalInput("tools"),
+        getOptionalInput("languages"),
+        repositoryNwo,
+        logger
+      ),
       logger
     );
     codeql = initCodeQLResult.codeql;
@@ -260,6 +273,11 @@ async function run() {
       getThreadsFlagValue(getOptionalInput("threads"), logger).toString()
     );
 
+    // Disable Kotlin extractor if feature flag set
+    if (await features.getValue(Feature.DisableKotlinAnalysisEnabled)) {
+      core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
+    }
+
     const sourceRoot = path.resolve(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       getOptionalInput("source-root") || ""
@@ -332,6 +350,7 @@ async function runWrapper() {
     core.setFailed(`init action failed: ${error}`);
     console.log(error);
   }
+  await checkForTimeout();
 }
 
 void runWrapper();

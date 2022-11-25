@@ -2,6 +2,10 @@
 
 ## [UNRELEASED]
 
+- Add a step that tries to upload a SARIF file for the workflow run when that workflow run fails. This will help better surface failed code scanning workflow runs. [#1393](https://github.com/github/codeql-action/pull/1393)
+
+## 2.1.34 - 25 Nov 2022
+
 - Update default CodeQL bundle version to 2.11.4. [#1391](https://github.com/github/codeql-action/pull/1391)
 - Fixed a bug where some the `init` action and the `analyze` action would have different sets of experimental feature flags enabled. [#1384](https://github.com/github/codeql-action/pull/1384)
 

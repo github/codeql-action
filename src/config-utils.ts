@@ -15,7 +15,12 @@ import {
 } from "./codeql";
 import * as externalQueries from "./external-queries";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { Language, parseLanguage } from "./languages";
+import {
+  Language,
+  LanguageOrAlias,
+  parseLanguage,
+  resolveAlias,
+} from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
@@ -852,12 +857,13 @@ export function getUnknownLanguagesError(languages: string[]): string {
 }
 
 /**
- * Gets the set of languages in the current repository
+ * Gets the set of languages in the current repository that are
+ * scannable by CodeQL.
  */
-async function getLanguagesInRepo(
+export async function getLanguagesInRepo(
   repository: RepositoryNwo,
   logger: Logger
-): Promise<Language[]> {
+): Promise<LanguageOrAlias[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
   const response = await api.getApiClient().repos.listLanguages({
     owner: repository.owner,
@@ -870,7 +876,7 @@ async function getLanguagesInRepo(
   // When we pick a language to autobuild we want to pick the most popular traced language
   // Since sets in javascript maintain insertion order, using a set here and then splatting it
   // into an array gives us an array of languages ordered by popularity
-  const languages: Set<Language> = new Set();
+  const languages: Set<LanguageOrAlias> = new Set();
   for (const lang of Object.keys(response.data)) {
     const parsedLang = parseLanguage(lang);
     if (parsedLang !== undefined) {
@@ -890,27 +896,27 @@ async function getLanguagesInRepo(
  * If no languages could be detected from either the workflow or the repository
  * then throw an error.
  */
-async function getLanguages(
+export async function getLanguages(
   codeQL: CodeQL,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   logger: Logger
 ): Promise<Language[]> {
-  // Obtain from action input 'languages' if set
-  let languages = (languagesInput || "")
-    .split(",")
-    .map((x) => x.trim())
-    .filter((x) => x.length > 0);
-  logger.info(`Languages from configuration: ${JSON.stringify(languages)}`);
+  // Obtain languages without filtering them.
+  const { rawLanguages, autodetected } = await getRawLanguages(
+    languagesInput,
+    repository,
+    logger
+  );
 
-  if (languages.length === 0) {
-    // Obtain languages as all languages in the repo that can be analysed
-    languages = await getLanguagesInRepo(repository, logger);
+  let languages = rawLanguages.map(resolveAlias);
+
+  if (autodetected) {
     const availableLanguages = await codeQL.resolveLanguages();
     languages = languages.filter((value) => value in availableLanguages);
-    logger.info(
-      `Automatically detected languages: ${JSON.stringify(languages)}`
-    );
+    logger.info(`Automatically detected languages: ${languages.join(", ")}`);
+  } else {
+    logger.info(`Languages from configuration: ${languages.join(", ")}`);
   }
 
   // If the languages parameter was not given and no languages were
@@ -923,18 +929,54 @@ async function getLanguages(
   const parsedLanguages: Language[] = [];
   const unknownLanguages: string[] = [];
   for (const language of languages) {
-    const parsedLanguage = parseLanguage(language);
+    // We know this is not an alias since we resolved it above.
+    const parsedLanguage = parseLanguage(language) as Language;
     if (parsedLanguage === undefined) {
       unknownLanguages.push(language);
-    } else if (parsedLanguages.indexOf(parsedLanguage) === -1) {
+    } else if (!parsedLanguages.includes(parsedLanguage)) {
       parsedLanguages.push(parsedLanguage);
     }
   }
+
+  // Any unknown languages here would have come directly from the input
+  // since we filter unknown languages coming from the GitHub API.
   if (unknownLanguages.length > 0) {
     throw new Error(getUnknownLanguagesError(unknownLanguages));
   }
 
   return parsedLanguages;
+}
+
+/**
+ * Gets the set of languages in the current repository without checking to
+ * see if these languages are actually supported by CodeQL.
+ *
+ * @param languagesInput The languages from the workflow input
+ * @param repository the owner/name of the repository
+ * @param logger a logger
+ * @returns A tuple containing a list of languages in this repository that might be
+ * analyzable and whether or not this list was determined automatically.
+ */
+export async function getRawLanguages(
+  languagesInput: string | undefined,
+  repository: RepositoryNwo,
+  logger: Logger
+) {
+  // Obtain from action input 'languages' if set
+  let rawLanguages = (languagesInput || "")
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter((x) => x.length > 0);
+  let autodetected: boolean;
+  if (rawLanguages.length) {
+    autodetected = false;
+  } else {
+    autodetected = true;
+
+    // Obtain all languages in the repo that can be analysed
+    rawLanguages = (await getLanguagesInRepo(repository, logger)) as string[];
+  }
+  return { rawLanguages, autodetected };
 }
 
 async function addQueriesAndPacksFromWorkflow(

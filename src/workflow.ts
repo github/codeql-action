@@ -316,6 +316,7 @@ export function getStepsCallingAction(
  */
 function getInputOrThrow(
   workflow: Workflow,
+  jobName: string,
   actionName: string,
   inputName: string,
   matrixVars: { [key: string]: string }
@@ -325,13 +326,14 @@ function getInputOrThrow(
       `Could not get ${inputName} input to ${actionName} since the workflow has no jobs.`
     );
   }
-  const inputs: string[] = Object.values(workflow.jobs)
-    .map((job) =>
-      getStepsCallingAction(job, actionName).map(
-        (step) => step.with?.[inputName]
-      )
-    )
-    .flat()
+  if (!workflow.jobs[jobName]) {
+    throw new Error(
+      `Could not get ${inputName} input to ${actionName} since the workflow has no job named ${jobName}.`
+    );
+  }
+
+  const inputs = getStepsCallingAction(workflow.jobs[jobName], actionName)
+    .map((step) => step.with?.[inputName])
     .filter((input) => input !== undefined)
     .map((input) => input!);
 
@@ -369,10 +371,12 @@ function getInputOrThrow(
  */
 export function getCategoryInputOrThrow(
   workflow: Workflow,
+  jobName: string,
   matrixVars: { [key: string]: string }
 ): string | undefined {
   return getInputOrThrow(
     workflow,
+    jobName,
     "github/codeql-action/analyze",
     "category",
     matrixVars

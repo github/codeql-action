@@ -91,14 +91,28 @@ export async function run(
     return;
   }
 
+  // Environment variable used to integration test uploading a SARIF file for failed runs
+  const expectFailedSarifUpload =
+    process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true";
+
   if (process.env[CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF] !== "true") {
     try {
       await uploadFailedSarif(config, repositoryNwo, featureEnablement, logger);
     } catch (e) {
+      if (expectFailedSarifUpload) {
+        throw new Error(
+          "Expected to upload a SARIF file for the failed run, but encountered " +
+            `the following error: ${e}`
+        );
+      }
       logger.warning(
         `Failed to upload a SARIF file for the failed run. Error: ${e}`
       );
     }
+  } else if (expectFailedSarifUpload) {
+    throw new Error(
+      "Expected to upload a SARIF file for the failed run, but didn't."
+    );
   }
 
   // Upload appropriate Actions artifacts for debugging

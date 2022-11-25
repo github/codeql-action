@@ -13,6 +13,7 @@ export interface FeatureEnablement {
 
 export enum Feature {
   BypassToolcacheEnabled = "bypass_toolcache_enabled",
+  BypassToolcacheKotlinSwiftEnabled = "bypass_toolcache_kotlin_swift_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   FileBaselineInformationEnabled = "file_baseline_information_enabled",
@@ -26,6 +27,14 @@ export const featureConfig: Record<
 > = {
   [Feature.BypassToolcacheEnabled]: {
     envVar: "CODEQL_BYPASS_TOOLCACHE",
+    // Cannot specify a minimum version because this flag is checked before we have
+    // access to the CodeQL instance.
+    minimumVersion: undefined,
+  },
+  [Feature.BypassToolcacheKotlinSwiftEnabled]: {
+    envVar: "CODEQL_BYPASS_TOOLCACHE_KOTLIN_SWIFT",
+    // Cannot specify a minimum version because this flag is checked before we have
+    // access to the CodeQL instance.
     minimumVersion: undefined,
   },
   [Feature.DisableKotlinAnalysisEnabled]: {

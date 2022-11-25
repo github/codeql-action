@@ -59,7 +59,7 @@ jobs:
         uses: github/codeql-action/init@v2
         # Override language selection by uncommenting this and choosing your languages
         # with:
-        #   languages: go, javascript, csharp, python, cpp, java
+        #   languages: go, javascript, csharp, python, cpp, java, ruby
 
       # Autobuild attempts to build any compiled languages (C/C++, C#, Go, or Java).
       # If this step fails, then you should remove it and run the build manually (see below).

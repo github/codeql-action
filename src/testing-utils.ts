@@ -162,6 +162,26 @@ export function mockFeatureFlagApiEndpoint(
   sinon.stub(apiClient, "getApiClient").value(() => client);
 }
 
+export function mockLanguagesInRepo(languages: string[]) {
+  const mockClient = sinon.stub(apiClient, "getApiClient");
+  const listLanguages = sinon.stub().resolves({
+    status: 200,
+    data: languages.reduce((acc, lang) => {
+      acc[lang] = 1;
+      return acc;
+    }, {}),
+    headers: {},
+    url: "GET /repos/:owner/:repo/languages",
+  });
+
+  mockClient.returns({
+    repos: {
+      listLanguages,
+    },
+  } as any);
+  return listLanguages;
+}
+
 export function mockCodeQLVersion(version) {
   return {
     async getVersion() {

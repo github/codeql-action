@@ -113,15 +113,16 @@ export async function downloadTrapCaches(
     logger.info(
       `Looking in Actions cache for TRAP cache with key ${preferredKey}`
     );
-    const found = await cache.restoreCache(
-      [cacheDir],
-      preferredKey,
-      [
+    const found = await withTimeout(
+      MAX_CACHE_OPERATION_MS,
+      cache.restoreCache([cacheDir], preferredKey, [
         // Fall back to any cache with the right key prefix
         await cachePrefix(codeql, language),
-      ],
-      {
-        segmentTimeoutInMs: MAX_CACHE_OPERATION_MS,
+      ]),
+      () => {
+        logger.info(
+          `Timed out downloading cache for ${language}, will continue without it`
+        );
       }
     );
     if (found === undefined) {

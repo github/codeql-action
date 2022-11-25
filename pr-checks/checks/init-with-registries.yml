@@ -19,8 +19,6 @@ steps:
             packages: "*/*"
             token: "${{ secrets.GITHUB_TOKEN }}"
 
-    env:
-      TEST_MODE: true
   - name: Verify packages installed
     shell: bash
     run: |

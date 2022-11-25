@@ -148,6 +148,7 @@ jobs:
               python_deps_type: pipenv
 
     env:
+      CODEQL_ACTION_TEST_MODE: true
       PYTHON_DEPS_TYPE: ${{ matrix.python_deps_type }}
       PYTHON_VERSION: ${{ matrix.python_version }}
 
@@ -165,8 +166,6 @@ jobs:
         tools: latest
         languages: python
         setup-python-dependencies: false
-      env:
-        TEST_MODE: true
 
     - name: Test Auto Package Installation
       run: |

@@ -14,12 +14,16 @@ import * as apiCompatibility from "./api-compatibility.json";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import {
   Config,
+  getLanguagesInRepo,
+  getRawLanguages,
   parsePacksSpecification,
   prettyPrintPack,
 } from "./config-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { Language } from "./languages";
+import { KOTLIN_SWIFT_BYPASS, Language } from "./languages";
 import { Logger } from "./logging";
+import { RepositoryNwo } from "./repository";
+import { CODEQL_ACTION_TEST_MODE } from "./shared-environment";
 
 /**
  * Specifies bundle versions that are known to be broken
@@ -650,7 +654,7 @@ export async function checkActionVersion(version: string) {
         ))
     ) {
       core.warning(
-        "CodeQL Action v1 will be deprecated on December 7th, 2022. Please upgrade to v2. For " +
+        "CodeQL Action v1 will be deprecated on January 18th, 2023. Please upgrade to v2. For " +
           "more information, see " +
           "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/"
       );
@@ -664,7 +668,7 @@ export async function checkActionVersion(version: string) {
  * In test mode, we don't upload SARIF results or status reports to the GitHub API.
  */
 export function isInTestMode(): boolean {
-  return process.env["TEST_MODE"] === "true";
+  return process.env[CODEQL_ACTION_TEST_MODE] === "true";
 }
 
 /**
@@ -830,4 +834,61 @@ export function isHostedRunner() {
     // Segment of the path to the tool cache on all hosted runners
     process.env["RUNNER_TOOL_CACHE"]?.includes("hostedtoolcache")
   );
+}
+
+/**
+ *
+ * @param featuresEnablement The features enabled for the current run
+ * @param languagesInput Languages input from the workflow
+ * @param repository The owner/name of the repository
+ * @param logger A logger
+ * @returns A boolean indicating whether or not the toolcache should be bypassed and the latest codeql should be downloaded.
+ */
+export async function shouldBypassToolcache(
+  featuresEnablement: FeatureEnablement,
+  codeqlUrl: string | undefined,
+  languagesInput: string | undefined,
+  repository: RepositoryNwo,
+  logger: Logger
+): Promise<boolean> {
+  // An explicit codeql url is specified, that means the toolcache will not be used.
+  if (codeqlUrl) {
+    return true;
+  }
+
+  // Check if the toolcache is disabled for all languages
+  if (await featuresEnablement.getValue(Feature.BypassToolcacheEnabled)) {
+    return true;
+  }
+
+  // Check if the toolcache is disabled for kotlin and swift.
+  if (
+    !(await featuresEnablement.getValue(
+      Feature.BypassToolcacheKotlinSwiftEnabled
+    ))
+  ) {
+    return false;
+  }
+
+  // Now check to see if kotlin or swift is one of the languages being analyzed.
+  const { rawLanguages, autodetected } = await getRawLanguages(
+    languagesInput,
+    repository,
+    logger
+  );
+  let bypass = rawLanguages.some((lang) => KOTLIN_SWIFT_BYPASS.includes(lang));
+  if (bypass) {
+    logger.info(
+      `Bypassing toolcache for kotlin or swift. Languages: ${rawLanguages}`
+    );
+  } else if (!autodetected && rawLanguages.includes(Language.java)) {
+    // special case: java was explicitly specified, but there might be
+    // some kotlin in the repository, so we need to make a request for that.
+    const langsInRepo = await getLanguagesInRepo(repository, logger);
+    if (langsInRepo.includes("kotlin")) {
+      logger.info(`Bypassing toolcache for kotlin.`);
+      bypass = true;
+    }
+  }
+  return bypass;
 }

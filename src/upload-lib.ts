@@ -392,53 +392,56 @@ export async function waitForProcessing(
   logger: Logger
 ): Promise<void> {
   logger.startGroup("Waiting for processing to finish");
-  const client = api.getApiClient();
+  try {
+    const client = api.getApiClient();
 
-  const statusCheckingStarted = Date.now();
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    if (
-      Date.now() >
-      statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
-    ) {
-      // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
-      // It's possible the analysis will eventually finish processing, but it's not worth spending more Actions time waiting.
-      logger.warning(
-        "Timed out waiting for analysis to finish processing. Continuing."
-      );
-      break;
-    }
-    let response: OctokitResponse<any> | undefined = undefined;
-    try {
-      response = await client.request(
-        "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
-        {
-          owner: repositoryNwo.owner,
-          repo: repositoryNwo.repo,
-          sarif_id: sarifID,
-        }
-      );
-    } catch (e) {
-      logger.warning(
-        `An error occurred checking the status of the delivery. ${e} It should still be processed in the background, but errors that occur during processing may not be reported.`
-      );
-      break;
-    }
-    const status = response.data.processing_status;
-    logger.info(`Analysis upload status is ${status}.`);
-    if (status === "complete") {
-      break;
-    } else if (status === "pending") {
-      logger.debug("Analysis processing is still pending...");
-    } else if (status === "failed") {
-      throw new Error(
-        `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
-      );
-    }
+    const statusCheckingStarted = Date.now();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if (
+        Date.now() >
+        statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
+      ) {
+        // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
+        // It's possible the analysis will eventually finish processing, but it's not worth spending more Actions time waiting.
+        logger.warning(
+          "Timed out waiting for analysis to finish processing. Continuing."
+        );
+        break;
+      }
+      let response: OctokitResponse<any> | undefined = undefined;
+      try {
+        response = await client.request(
+          "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
+          {
+            owner: repositoryNwo.owner,
+            repo: repositoryNwo.repo,
+            sarif_id: sarifID,
+          }
+        );
+      } catch (e) {
+        logger.warning(
+          `An error occurred checking the status of the delivery. ${e} It should still be processed in the background, but errors that occur during processing may not be reported.`
+        );
+        break;
+      }
+      const status = response.data.processing_status;
+      logger.info(`Analysis upload status is ${status}.`);
+      if (status === "complete") {
+        break;
+      } else if (status === "pending") {
+        logger.debug("Analysis processing is still pending...");
+      } else if (status === "failed") {
+        throw new Error(
+          `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
+        );
+      }
 
-    await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
+      await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
+    }
+  } finally {
+    logger.endGroup();
   }
-  logger.endGroup();
 }
 
 export function validateUniqueCategory(sarif: SarifFile): void {

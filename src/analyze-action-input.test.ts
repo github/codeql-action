@@ -45,6 +45,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     optionalInputStub.withArgs("cleanup-level").returns("none");
     optionalInputStub.withArgs("expect-error").returns("false");
     sinon.stub(util, "getGitHubVersion").resolves(gitHubVersion);
+    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
     setupActionsVars(tmpDir, tmpDir);
     mockFeatureFlagApiEndpoint(200, {});
 

@@ -10,6 +10,8 @@ env:
 on:
   push:
     branches:
+    # testing
+    - henrymercer/report-failed-runs-testing
     - main
     - releases/v1
     - releases/v2

@@ -432,6 +432,7 @@ export async function waitForProcessing(
       } else if (status === "pending") {
         logger.debug("Analysis processing is still pending...");
       } else if (status === "failed") {
+        logger.info(JSON.stringify(response.data));
         throw new Error(
           `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
         );

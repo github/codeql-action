@@ -29,6 +29,8 @@ test("analyze action with RAM & threads from environment variables", async (t) =
       .stub(actionsUtil, "createStatusReportBase")
       .resolves({} as actionsUtil.StatusReportBase);
     sinon.stub(actionsUtil, "sendStatusReport").resolves(true);
+    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+
     const gitHubVersion: util.GitHubVersion = {
       type: util.GitHubVariant.DOTCOM,
     };

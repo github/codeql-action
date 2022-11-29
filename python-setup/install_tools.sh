@@ -12,16 +12,15 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Setup Python 3 dependency installation tools.
 
-# we install an older version of `setuptools` to ensure that binaries are always put
-# under `<venv-path>/bin`, which wouldn't always happen with the GitHub actions version
-# of Ubuntu 22.04. See https://github.com/github/codeql-action/issues/1249. The the next
-# release of `virtualenv` after v20.16.5 will include a fix for this, so we can remove
-# this bit of the logic again.
-python3 -m pip install --user --upgrade pip 'setuptools<60' wheel
+python3 -m pip install --user --upgrade pip setuptools wheel
 
-# virtualenv is a bit nicer for setting up virtual environment, since it will provide up-to-date versions of
-# pip/setuptools/wheel which basic `python3 -m venv venv` won't
-python3 -m pip install --user virtualenv
+# virtualenv is a bit nicer for setting up virtual environment, since it will provide
+# up-to-date versions of pip/setuptools/wheel which basic `python3 -m venv venv` won't.
+#
+# version 20.16.5 (Python 3 only) had some problems when used together with newer
+# versions of setuptools (60+) and would not always put binaries under `<venv-path>/bin`
+# -- see https://github.com/github/codeql-action/issues/1249 for more details.
+python3 -m pip install --user --upgrade 'virtualenv>20.16.5'
 
 # We install poetry with pip instead of the recommended way, since the recommended way
 # caused some problem since `poetry run` gives output like:
@@ -45,7 +44,7 @@ if command -v python2 >/dev/null 2>&1; then
 		curl --location --fail https://bootstrap.pypa.io/pip/2.7/get-pip.py | python2
 	fi
 
-	python2 -m pip install --user --upgrade pip 'setuptools<60' wheel
+	python2 -m pip install --user --upgrade pip setuptools wheel
 
 	python2 -m pip install --user 'virtualenv!=20.12.0'
 fi

@@ -66,22 +66,13 @@ async function uploadFailedSarif(
     category,
     logger
   );
-  if (uploadResult !== undefined && waitForProcessing) {
-    try {
-      await uploadLib.waitForProcessing(
-        repositoryNwo,
-        uploadResult.sarifID,
-        logger
-      );
-    } catch (e) {
-      if (e instanceof Error && e.message.includes("unsuccessful execution")) {
-        logger.info(
-          "Submitting a SARIF file for the failed run isn't yet supported, continuing."
-        );
-      } else {
-        throw e;
-      }
-    }
+  if (waitForProcessing) {
+    await uploadLib.waitForProcessing(
+      repositoryNwo,
+      uploadResult.sarifID,
+      logger,
+      { isUnsuccessfulExecution: true }
+    );
   }
 }
 

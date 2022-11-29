@@ -389,7 +389,10 @@ const STATUS_CHECK_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
 export async function waitForProcessing(
   repositoryNwo: RepositoryNwo,
   sarifID: string,
-  logger: Logger
+  logger: Logger,
+  options: { isUnsuccessfulExecution: boolean } = {
+    isUnsuccessfulExecution: false,
+  }
 ): Promise<void> {
   logger.startGroup("Waiting for processing to finish");
   try {
@@ -427,6 +430,28 @@ export async function waitForProcessing(
       }
       const status = response.data.processing_status;
       logger.info(`Analysis upload status is ${status}.`);
+
+      if (
+        options.isUnsuccessfulExecution &&
+        status === "failed" &&
+        Array.isArray(response.data.errors) &&
+        response.data.errors.length === 1 &&
+        response.data.errors[0].toString().startsWith("unsuccessful execution")
+      ) {
+        logger.debug(
+          "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
+            '"unsuccessful execution" error, and no other errors.'
+        );
+        break;
+      } else if (options.isUnsuccessfulExecution && status !== "pending") {
+        throw new Error(
+          `${
+            "Did not receive expected 'unsuccessful execution' error from the API. " +
+            "Code scanning status information may be out of date."
+          }${status === "failed" ? `\n${response.data.errors}` : ""}`
+        );
+      }
+
       if (status === "complete") {
         break;
       } else if (status === "pending") {

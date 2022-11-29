@@ -293,7 +293,7 @@ export function getWorkflowRunID(): number {
   return workflowRunID;
 }
 
-export function getStepsCallingAction(
+function getStepsCallingAction(
   job: WorkflowJob,
   actionName: string
 ): WorkflowJobStep[] {
@@ -309,6 +309,8 @@ export function getStepsCallingAction(
 /**
  * Makes a best effort attempt to retrieve the value of a particular input with which
  * an Action in the workflow would be invoked.
+ *
+ * Typically you'll want to wrap this function in a try/catch block and handle the error.
  *
  * @returns the value of the input, or undefined if no such input is passed to the Action
  * @throws an error if the value of the input could not be determined, or we could not
@@ -365,6 +367,8 @@ function getInputOrThrow(
 /**
  * Makes a best effort attempt to retrieve the category input for the particular job,
  * given a set of matrix variables.
+ *
+ * Typically you'll want to wrap this function in a try/catch block and handle the error.
  *
  * @returns the category input, or undefined if the category input is not defined
  * @throws an error if the category input could not be determined

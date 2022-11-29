@@ -411,29 +411,6 @@ export function getUploadInputOrThrow(
 }
 
 /**
- * Makes a best effort attempt to retrieve the wait-for-processing input for the
- * particular job, given a set of matrix variables.
- *
- * @returns the wait-for-processing input
- * @throws an error if the wait-for-processing input could not be determined
- */
-export function getWaitForProcessingInputOrThrow(
-  workflow: Workflow,
-  jobName: string,
-  matrixVars: { [key: string]: string } | undefined
-): string {
-  return (
-    getInputOrThrow(
-      workflow,
-      jobName,
-      "github/codeql-action/analyze",
-      "wait-for-processing",
-      matrixVars
-    ) || "true" // if unspecified, wait-for-processing defaults to true
-  );
-}
-
-/**
  * Makes a best effort attempt to retrieve the checkout_path input for the
  * particular job, given a set of matrix variables.
  *

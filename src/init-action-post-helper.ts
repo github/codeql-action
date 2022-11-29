@@ -13,7 +13,6 @@ import {
   getCategoryInputOrThrow,
   getCheckoutPathInputOrThrow,
   getUploadInputOrThrow,
-  getWaitForProcessingInputOrThrow,
   getWorkflow,
 } from "./workflow";
 
@@ -53,8 +52,6 @@ async function uploadFailedSarif(
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
-  const waitForProcessing =
-    getWaitForProcessingInputOrThrow(workflow, jobName, matrix) === "true";
 
   const sarifFile = "../codeql-failed-run.sarif";
   await codeql.diagnosticsExport(sarifFile, category);
@@ -66,14 +63,12 @@ async function uploadFailedSarif(
     category,
     logger
   );
-  if (waitForProcessing) {
-    await uploadLib.waitForProcessing(
-      repositoryNwo,
-      uploadResult.sarifID,
-      logger,
-      { isUnsuccessfulExecution: true }
-    );
-  }
+  await uploadLib.waitForProcessing(
+    repositoryNwo,
+    uploadResult.sarifID,
+    logger,
+    { isUnsuccessfulExecution: true }
+  );
 }
 
 export async function run(

@@ -16,7 +16,7 @@ import {
   getWorkflow,
 } from "./workflow";
 
-async function uploadFailedSarif(
+export async function uploadFailedSarif(
   config: Config,
   repositoryNwo: RepositoryNwo,
   featureEnablement: FeatureEnablement,

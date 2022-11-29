@@ -8,12 +8,15 @@ import * as api from "./api-client";
 import { getRequiredEnvParam } from "./util";
 
 interface WorkflowJobStep {
-  run: any;
+  name?: string;
+  run?: any;
   uses?: string;
   with?: { [key: string]: string };
 }
 
 interface WorkflowJob {
+  name?: string;
+  "runs-on"?: string;
   steps?: WorkflowJobStep[];
 }
 
@@ -33,6 +36,7 @@ interface WorkflowTriggers {
 }
 
 export interface Workflow {
+  name?: string;
   jobs?: { [key: string]: WorkflowJob };
   on?: string | string[] | WorkflowTriggers;
 }

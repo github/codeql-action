@@ -67,4 +67,6 @@ jobs:
       CODEQL_ACTION_UPLOAD_FAILED_SARIF: true
   # Upload the failed SARIF file as an integration test of the API endpoint.
       CODEQL_ACTION_TEST_MODE: false
+  # Mark telemetry for this workflow so it can be treated separately.
+      CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
 

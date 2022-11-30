@@ -385,7 +385,16 @@ async function uploadFiles(
 const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;
 const STATUS_CHECK_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
 
-// Waits until either the analysis is successfully processed, a processing error is reported, or STATUS_CHECK_TIMEOUT_MILLISECONDS elapses.
+type ProcessingStatus = "pending" | "complete" | "failed";
+
+/**
+ * Waits until either the analysis is successfully processed, a processing error
+ * is reported, or `STATUS_CHECK_TIMEOUT_MILLISECONDS` elapses.
+ *
+ * If `isUnsuccessfulExecution` is passed, will throw an error if the analysis
+ * processing does not produce a single error mentioning the unsuccessful
+ * execution.
+ */
 export async function waitForProcessing(
   repositoryNwo: RepositoryNwo,
   sarifID: string,
@@ -428,44 +437,67 @@ export async function waitForProcessing(
         );
         break;
       }
-      const status = response.data.processing_status;
+      const status = response.data.processing_status as ProcessingStatus;
       logger.info(`Analysis upload status is ${status}.`);
 
-      if (
-        options.isUnsuccessfulExecution &&
-        status === "failed" &&
-        Array.isArray(response.data.errors) &&
-        response.data.errors.length === 1 &&
-        response.data.errors[0].toString().startsWith("unsuccessful execution")
-      ) {
-        logger.debug(
-          "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
-            '"unsuccessful execution" error, and no other errors.'
-        );
-        break;
-      } else if (options.isUnsuccessfulExecution && status !== "pending") {
-        throw new Error(
-          `${
-            "Did not receive expected 'unsuccessful execution' error from the API. " +
-            "Code scanning status information may be out of date."
-          }${status === "failed" ? `\n${response.data.errors}` : ""}`
-        );
-      }
-
-      if (status === "complete") {
-        break;
-      } else if (status === "pending") {
+      if (status === "pending") {
         logger.debug("Analysis processing is still pending...");
+      } else if (options.isUnsuccessfulExecution) {
+        // We expect a specific processing error for unsuccessful executions, so
+        // handle these separately.
+        handleProcessingResultForUnsuccessfulExecution(
+          response,
+          status,
+          logger
+        );
+        break;
+      } else if (status === "complete") {
+        break;
       } else if (status === "failed") {
         throw new Error(
           `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
         );
+      } else {
+        util.assertNever(status);
       }
 
       await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
     }
   } finally {
     logger.endGroup();
+  }
+}
+
+/**
+ * Checks the processing result for an unsuccessful execution. Throws if the
+ * result is not a failure with a single "unsuccessful execution" error.
+ */
+function handleProcessingResultForUnsuccessfulExecution(
+  response: OctokitResponse<any, number>,
+  status: Exclude<ProcessingStatus, "pending">,
+  logger: Logger
+): void {
+  if (
+    status === "failed" &&
+    Array.isArray(response.data.errors) &&
+    response.data.errors.length === 1 &&
+    response.data.errors[0].toString().startsWith("unsuccessful execution")
+  ) {
+    logger.debug(
+      "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
+        '"unsuccessful execution" error, and no other errors.'
+    );
+  } else {
+    throw new Error(
+      `${
+        "Failed to upload a SARIF file for the unsuccessful execution. Code scanning status " +
+        "information for the repository may be out of date as a result. "
+      }${
+        status === "failed"
+          ? `Processing errors: ${response.data.errors}`
+          : 'Encountered no processing errors, but expected to receive an "unsuccessful execution" error.'
+      }`
+    );
   }
 }
 

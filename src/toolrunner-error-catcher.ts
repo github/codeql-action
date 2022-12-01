@@ -4,7 +4,7 @@ import * as safeWhich from "@chrisgavin/safe-which";
 
 import { ErrorMatcher } from "./error-matcher";
 
-interface ReturnState {
+export interface ReturnState {
   cliReturnState: Error | number;
   stdout: string;
 }

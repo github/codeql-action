@@ -1016,7 +1016,7 @@ async function getCodeQLForCmd(
       if (querySuitePath) {
         codeqlArgs.push(querySuitePath);
       }
-      await runTool(cmd, codeqlArgs);
+      await toolrunnerErrorCatcher(cmd, codeqlArgs, errorMatchers);
     },
     async databaseInterpretResults(
       databasePath: string,
@@ -1059,7 +1059,12 @@ async function getCodeQLForCmd(
         codeqlArgs.push(...querySuitePaths);
       }
       // capture stdout, which contains analysis summaries
-      return await runTool(cmd, codeqlArgs);
+      const returnState = await toolrunnerErrorCatcher(
+        cmd,
+        codeqlArgs,
+        errorMatchers
+      );
+      return returnState.stdout;
     },
     async databasePrintBaseline(databasePath: string): Promise<string> {
       const codeqlArgs = [
@@ -1245,13 +1250,19 @@ async function runTool(cmd: string, args: string[] = []) {
   let output = "";
   let error = "";
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
+    silent: true,
     listeners: {
       stdout: (data: Buffer) => {
-        output += data.toString();
+        output += data.toString("utf8");
       },
       stderr: (data: Buffer) => {
-        const toRead = Math.min(maxErrorSize - error.length, data.length);
-        error += data.toString("utf8", 0, toRead);
+        let readStartIndex = 0;
+        // If the error is too large, then we only take the last 20,000
+        if (data.length - maxErrorSize > 0) {
+          // Eg: if we have 20,000 the start index should be 2.
+          readStartIndex = data.length - maxErrorSize + 1;
+        }
+        error += data.toString("utf8", readStartIndex);
       },
     },
     ignoreReturnCode: true,

@@ -4,6 +4,11 @@ import * as safeWhich from "@chrisgavin/safe-which";
 
 import { ErrorMatcher } from "./error-matcher";
 
+interface ErrorState {
+  returnState: Error | number;
+  stdout: string;
+}
+
 /**
  * Wrapper for toolrunner.Toolrunner which checks for specific return code and/or regex matches in console output.
  * Output will be streamed to the live console as well as captured for subsequent processing.
@@ -13,14 +18,14 @@ import { ErrorMatcher } from "./error-matcher";
  * @param     args               optional arguments for tool. Escaping is handled by the lib.
  * @param     matchers           defines specific codes and/or regexes that should lead to return of a custom error
  * @param     options            optional exec options.  See ExecOptions
- * @returns   Promise<number>    exit code
+ * @returns   ErrorState         exit code and stdout output, if applicable
  */
 export async function toolrunnerErrorCatcher(
   commandLine: string,
   args?: string[],
   matchers?: ErrorMatcher[],
   options?: im.ExecOptions
-): Promise<number> {
+): Promise<ErrorState> {
   let stdout = "";
   let stderr = "";
 
@@ -56,7 +61,7 @@ export async function toolrunnerErrorCatcher(
   }
 
   // if there is a zero return code then we do not apply the matchers
-  if (returnState === 0) return returnState;
+  if (returnState === 0) return { returnState, stdout };
 
   if (matchers) {
     for (const matcher of matchers) {
@@ -73,7 +78,7 @@ export async function toolrunnerErrorCatcher(
   if (typeof returnState === "number") {
     // only if we were instructed to ignore the return code do we ever return it non-zero
     if (options?.ignoreReturnCode) {
-      return returnState;
+      return { returnState, stdout };
     } else {
       throw new Error(
         `The process '${commandLine}' failed with exit code ${returnState}`

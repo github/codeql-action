@@ -9,6 +9,7 @@ import * as actionsUtil from "./actions-util";
 import { DatabaseCreationTimings } from "./actions-util";
 import {
   CodeQLAnalysisError,
+  dbIsFinalized,
   QueriesStatusReport,
   runCleanup,
   runFinalize,
@@ -134,6 +135,8 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * - We detect whether an autobuild step is present by checking the
  * `util.DID_AUTOBUILD_GO_ENV_VAR_NAME` environment variable, which is set
  * when the autobuilder is invoked.
+ * - We detect whether the Go database has already been finalized in case it
+ * has been manually set in a prior Action step.
  * - We approximate whether manual build steps are present by looking at
  * whether any extraction output already exists for Go.
  */
@@ -143,6 +146,12 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   }
   if (process.env[util.DID_AUTOBUILD_GO_ENV_VAR_NAME] === "true") {
     logger.debug("Won't run Go autobuild since it has already been run.");
+    return;
+  }
+  if (dbIsFinalized(config, Language.go, logger)) {
+    logger.debug(
+      "Won't run Go autobuild since there is already a finalized database for Go."
+    );
     return;
   }
   // This captures whether a user has added manual build steps for Go

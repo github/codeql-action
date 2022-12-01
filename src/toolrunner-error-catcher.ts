@@ -4,8 +4,8 @@ import * as safeWhich from "@chrisgavin/safe-which";
 
 import { ErrorMatcher } from "./error-matcher";
 
-interface ErrorState {
-  returnState: Error | number;
+interface ReturnState {
+  cliReturnState: Error | number;
   stdout: string;
 }
 
@@ -25,7 +25,7 @@ export async function toolrunnerErrorCatcher(
   args?: string[],
   matchers?: ErrorMatcher[],
   options?: im.ExecOptions
-): Promise<ErrorState> {
+): Promise<ReturnState> {
   let stdout = "";
   let stderr = "";
 
@@ -45,9 +45,9 @@ export async function toolrunnerErrorCatcher(
   };
 
   // we capture the original return code or error so that if no match is found we can duplicate the behavior
-  let returnState: Error | number;
+  let cliReturnState: Error | number;
   try {
-    returnState = await new toolrunner.ToolRunner(
+    cliReturnState = await new toolrunner.ToolRunner(
       await safeWhich.safeWhich(commandLine),
       args,
       {
@@ -57,16 +57,16 @@ export async function toolrunnerErrorCatcher(
       }
     ).exec();
   } catch (e) {
-    returnState = e instanceof Error ? e : new Error(String(e));
+    cliReturnState = e instanceof Error ? e : new Error(String(e));
   }
 
   // if there is a zero return code then we do not apply the matchers
-  if (returnState === 0) return { returnState, stdout };
+  if (cliReturnState === 0) return { cliReturnState, stdout };
 
   if (matchers) {
     for (const matcher of matchers) {
       if (
-        matcher.exitCode === returnState ||
+        matcher.exitCode === cliReturnState ||
         matcher.outputRegex?.test(stderr) ||
         matcher.outputRegex?.test(stdout)
       ) {
@@ -75,16 +75,16 @@ export async function toolrunnerErrorCatcher(
     }
   }
 
-  if (typeof returnState === "number") {
+  if (typeof cliReturnState === "number") {
     // only if we were instructed to ignore the return code do we ever return it non-zero
     if (options?.ignoreReturnCode) {
-      return { returnState, stdout };
+      return { cliReturnState, stdout };
     } else {
       throw new Error(
-        `The process '${commandLine}' failed with exit code ${returnState}`
+        `The process '${commandLine}' failed with exit code ${cliReturnState}`
       );
     }
   } else {
-    throw returnState;
+    throw cliReturnState;
   }
 }

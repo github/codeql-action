@@ -20,6 +20,15 @@ test("noSourceCodeFound matches against example javascript output", async (t) =>
   );
 });
 
+test("fatalError matches against example log output", async (t) => {
+  t.assert(
+    testErrorMatcher(
+      "fatalError",
+      "A fatal error occurred: Could not process query metadata for test-query.ql"
+    )
+  );
+});
+
 function testErrorMatcher(matcherName: string, logSample: string): boolean {
   if (!(matcherName in namedMatchersForTesting)) {
     throw new Error(`Unknown matcher ${matcherName}`);

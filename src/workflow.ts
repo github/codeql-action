@@ -8,12 +8,15 @@ import * as api from "./api-client";
 import { getRequiredEnvParam } from "./util";
 
 interface WorkflowJobStep {
-  run: any;
+  name?: string;
+  run?: any;
   uses?: string;
   with?: { [key: string]: string };
 }
 
 interface WorkflowJob {
+  name?: string;
+  "runs-on"?: string;
   steps?: WorkflowJobStep[];
 }
 
@@ -33,6 +36,7 @@ interface WorkflowTriggers {
 }
 
 export interface Workflow {
+  name?: string;
   jobs?: { [key: string]: WorkflowJob };
   on?: string | string[] | WorkflowTriggers;
 }
@@ -321,7 +325,7 @@ function getInputOrThrow(
   jobName: string,
   actionName: string,
   inputName: string,
-  matrixVars: { [key: string]: string }
+  matrixVars: { [key: string]: string } | undefined
 ) {
   if (!workflow.jobs) {
     throw new Error(
@@ -349,11 +353,15 @@ function getInputOrThrow(
     );
   }
 
-  // Make a basic attempt to substitute matrix variables
-  // First normalize by removing whitespace
-  let input = inputs[0].replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
-  for (const [key, value] of Object.entries(matrixVars)) {
-    input = input.replace(`\${{matrix.${key}}}`, value);
+  let input = inputs[0];
+
+  if (matrixVars !== undefined) {
+    // Make a basic attempt to substitute matrix variables
+    // First normalize by removing whitespace
+    input = input.replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
+    for (const [key, value] of Object.entries(matrixVars)) {
+      input = input.replace(`\${{matrix.${key}}}`, value);
+    }
   }
 
   if (input.includes("${{")) {
@@ -376,7 +384,7 @@ function getInputOrThrow(
 export function getCategoryInputOrThrow(
   workflow: Workflow,
   jobName: string,
-  matrixVars: { [key: string]: string }
+  matrixVars: { [key: string]: string } | undefined
 ): string | undefined {
   return getInputOrThrow(
     workflow,
@@ -384,5 +392,55 @@ export function getCategoryInputOrThrow(
     "github/codeql-action/analyze",
     "category",
     matrixVars
+  );
+}
+
+/**
+ * Makes a best effort attempt to retrieve the upload input for the particular job,
+ * given a set of matrix variables.
+ *
+ * Typically you'll want to wrap this function in a try/catch block and handle the error.
+ *
+ * @returns the upload input
+ * @throws an error if the upload input could not be determined
+ */
+export function getUploadInputOrThrow(
+  workflow: Workflow,
+  jobName: string,
+  matrixVars: { [key: string]: string } | undefined
+): string {
+  return (
+    getInputOrThrow(
+      workflow,
+      jobName,
+      "github/codeql-action/analyze",
+      "upload",
+      matrixVars
+    ) || "true" // if unspecified, upload defaults to true
+  );
+}
+
+/**
+ * Makes a best effort attempt to retrieve the checkout_path input for the
+ * particular job, given a set of matrix variables.
+ *
+ * Typically you'll want to wrap this function in a try/catch block and handle the error.
+ *
+ * @returns the checkout_path input
+ * @throws an error if the checkout_path input could not be determined
+ */
+export function getCheckoutPathInputOrThrow(
+  workflow: Workflow,
+  jobName: string,
+  matrixVars: { [key: string]: string } | undefined
+): string {
+  return (
+    getInputOrThrow(
+      workflow,
+      jobName,
+      "github/codeql-action/analyze",
+      "checkout_path",
+      matrixVars
+    ) || getRequiredEnvParam("GITHUB_WORKSPACE") // if unspecified, checkout_path defaults to ${{ github.workspace }}
   );
 }

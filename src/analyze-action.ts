@@ -322,8 +322,6 @@ async function run() {
       core.setFailed(error.message);
     }
 
-    console.log(error);
-
     if (error instanceof CodeQLAnalysisError) {
       const stats = { ...error.queriesStatusReport };
       await sendStatusReport(
@@ -398,7 +396,6 @@ async function runWrapper() {
     await runPromise;
   } catch (error) {
     core.setFailed(`analyze action failed: ${error}`);
-    console.log(error);
   }
   await checkForTimeout();
 }

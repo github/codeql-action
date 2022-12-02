@@ -17,6 +17,7 @@ import {
   GITHUB_DOTCOM_URL,
   isHTTPError,
   isInTestMode,
+  parseMatrixInput,
   UserError,
 } from "./util";
 import { getWorkflowPath } from "./workflow";
@@ -192,10 +193,10 @@ export function computeAutomationID(
 ): string {
   let automationID = `${analysis_key}/`;
 
-  // the id has to be deterministic so we sort the fields
-  if (environment !== undefined && environment !== "null") {
-    const environmentObject = JSON.parse(environment);
-    for (const entry of Object.entries(environmentObject).sort()) {
+  const matrix = parseMatrixInput(environment);
+  if (matrix !== undefined) {
+    // the id has to be deterministic so we sort the fields
+    for (const entry of Object.entries(matrix).sort()) {
       if (typeof entry[1] === "string") {
         automationID += `${entry[0]}:${entry[1]}/`;
       } else {

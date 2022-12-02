@@ -1,23 +1,11 @@
----
 version: 2
 updates:
 - package-ecosystem: npm
   directory: "/"
   schedule:
-    interval: weekly
-    day: thursday
+    interval: daily
   labels:
   - Update dependencies
-  ignore:
-  - dependency-name: "*"
-    update-types:
-    - version-update:semver-minor
-    - version-update:semver-patch
-- package-ecosystem: npm
-  directory: "/runner"
-  schedule:
-    interval: weekly
-    day: thursday
   ignore:
   - dependency-name: "*"
     update-types:

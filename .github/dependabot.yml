@@ -1,17 +1,17 @@
 version: 2
 updates:
-- package-ecosystem: npm
-  directory: "/"
-  schedule:
-    interval: daily
-  labels:
-  - Update dependencies
-  ignore:
-  - dependency-name: "*"
-    update-types:
-    - version-update:semver-minor
-    - version-update:semver-patch
-- package-ecosystem: github-actions
-  directory: "/"
-  schedule:
-    interval: daily
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: daily
+    labels:
+      - Update dependencies
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily

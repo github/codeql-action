@@ -1257,7 +1257,7 @@ async function runTool(cmd: string, args: string[] = []) {
       },
       stderr: (data: Buffer) => {
         let readStartIndex = 0;
-        // If the error is too large, then we only take the last 20,000
+        // If the error is too large, then we only take the last 20,000 characters
         if (data.length - maxErrorSize > 0) {
           // Eg: if we have 20,000 the start index should be 2.
           readStartIndex = data.length - maxErrorSize + 1;

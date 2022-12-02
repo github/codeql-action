@@ -21,7 +21,8 @@ test("matchers are never applied if non-error exit", async (t) => {
 
   t.deepEqual(await exec.exec("node", testArgs), 0);
 
-  t.deepEqual(await toolrunnerErrorCatcher("node", testArgs, matchers), 0);
+  const returnState = await toolrunnerErrorCatcher("node", testArgs, matchers);
+  t.deepEqual(returnState.exitCode, 0);
 });
 
 test("regex matchers are applied to stdout for non-zero exit code", async (t) => {
@@ -150,12 +151,11 @@ test("execErrorCatcher respects the ignoreReturnValue option", async (t) => {
     { instanceOf: Error }
   );
 
-  t.deepEqual(
-    await toolrunnerErrorCatcher("node", testArgs, [], {
-      ignoreReturnCode: true,
-    }),
-    199
-  );
+  const returnState = await toolrunnerErrorCatcher("node", testArgs, [], {
+    ignoreReturnCode: true,
+  });
+
+  t.deepEqual(returnState.exitCode, 199);
 });
 
 test("execErrorCatcher preserves behavior of provided listeners", async (t) => {
@@ -176,12 +176,10 @@ test("execErrorCatcher preserves behavior of provided listeners", async (t) => {
 
   const testArgs = buildDummyArgs(stdoutExpected, stderrExpected, "", 0);
 
-  t.deepEqual(
-    await toolrunnerErrorCatcher("node", testArgs, [], {
-      listeners,
-    }),
-    0
-  );
+  const returnState = await toolrunnerErrorCatcher("node", testArgs, [], {
+    listeners,
+  });
+  t.deepEqual(returnState.exitCode, 0);
 
   t.deepEqual(stdoutActual, `${stdoutExpected}\n`);
   t.deepEqual(stderrActual, `${stderrExpected}\n`);

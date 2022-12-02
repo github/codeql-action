@@ -488,16 +488,15 @@ function handleProcessingResultForUnsuccessfulExecution(
         '"unsuccessful execution" error, and no other errors.'
     );
   } else {
-    throw new Error(
-      `${
-        "Failed to upload a SARIF file for the unsuccessful execution. Code scanning status " +
-        "information for the repository may be out of date as a result. "
-      }${
-        status === "failed"
-          ? `Processing errors: ${response.data.errors}`
-          : 'Encountered no processing errors, but expected to receive an "unsuccessful execution" error.'
-      }`
-    );
+    const shortMessage =
+      "Failed to upload a SARIF file for the unsuccessful execution. Code scanning status " +
+      "information for the repository may be out of date as a result.";
+    const longMessage =
+      shortMessage + status === "failed"
+        ? ` Processing errors: ${response.data.errors}`
+        : ' Encountered no processing errors, but expected to receive an "unsuccessful execution" error.';
+    logger.debug(longMessage);
+    throw new Error(shortMessage);
   }
 }
 

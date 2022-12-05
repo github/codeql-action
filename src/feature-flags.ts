@@ -16,7 +16,6 @@ export enum Feature {
   BypassToolcacheKotlinSwiftEnabled = "bypass_toolcache_kotlin_swift_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
-  FileBaselineInformationEnabled = "file_baseline_information_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   TrapCachingEnabled = "trap_caching_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
@@ -45,10 +44,6 @@ export const featureConfig: Record<
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.1",
-  },
-  [Feature.FileBaselineInformationEnabled]: {
-    envVar: "CODEQL_FILE_BASELINE_INFORMATION",
-    minimumVersion: "2.11.3",
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",

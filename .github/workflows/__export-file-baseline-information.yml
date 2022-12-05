@@ -46,7 +46,7 @@ jobs:
     # Windows doesn't support Swift, and only macOS latest and nightly-latest support Swift 5.7.1.
       if: runner.os == 'Linux' || (runner.os == 'macOS' && matrix.version == 'cached')
       with:
-        swift-version: '5.7'
+        swift-version: 5.7.0
     - uses: ./../action/init
       with:
         languages: javascript

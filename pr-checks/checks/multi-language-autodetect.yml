@@ -8,7 +8,7 @@ steps:
     # Only macOS latest and nightly-latest support Swift 5.7.1
     if: runner.os == 'Linux' || matrix.version == 'cached'
     with:
-      swift-version: "5.7"
+      swift-version: "5.7.0"
 
   - uses: ./../action/init
     with:

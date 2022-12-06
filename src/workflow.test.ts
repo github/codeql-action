@@ -525,6 +525,7 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
 });
 
 test("getCategoryInputOrThrow returns category for simple workflow with category", (t) => {
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   t.is(
     getCategoryInputOrThrow(
       yaml.load(`
@@ -546,6 +547,7 @@ test("getCategoryInputOrThrow returns category for simple workflow with category
 });
 
 test("getCategoryInputOrThrow returns undefined for simple workflow without category", (t) => {
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   t.is(
     getCategoryInputOrThrow(
       yaml.load(`
@@ -565,6 +567,7 @@ test("getCategoryInputOrThrow returns undefined for simple workflow without cate
 });
 
 test("getCategoryInputOrThrow returns category for workflow with multiple jobs", (t) => {
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   t.is(
     getCategoryInputOrThrow(
       yaml.load(`
@@ -596,6 +599,7 @@ test("getCategoryInputOrThrow returns category for workflow with multiple jobs",
 });
 
 test("getCategoryInputOrThrow finds category for workflow with language matrix", (t) => {
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   t.is(
     getCategoryInputOrThrow(
       yaml.load(`
@@ -622,6 +626,7 @@ test("getCategoryInputOrThrow finds category for workflow with language matrix",
 });
 
 test("getCategoryInputOrThrow throws error for workflow with dynamic category", (t) => {
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   t.throws(
     () =>
       getCategoryInputOrThrow(
@@ -647,6 +652,7 @@ test("getCategoryInputOrThrow throws error for workflow with dynamic category", 
 });
 
 test("getCategoryInputOrThrow throws error for workflow with multiple calls to analyze", (t) => {
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   t.throws(
     () =>
       getCategoryInputOrThrow(

@@ -21,6 +21,7 @@ setupTests(test);
 
 test("post: init action with debug mode off", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
 
     const gitHubVersion: util.GitHubVersion = {
@@ -54,6 +55,7 @@ test("post: init action with debug mode off", async (t) => {
 
 test("post: init action with debug mode on", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
 
     const gitHubVersion: util.GitHubVersion = {
@@ -157,6 +159,7 @@ async function testFailedSarifUpload(
   } as unknown as configUtils.Config;
   const messages = [];
   process.env["GITHUB_JOB"] = "analyze";
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   process.env["GITHUB_WORKSPACE"] =
     "/home/runner/work/codeql-action/codeql-action";
   sinon.stub(actionsUtil, "getRequiredInput").withArgs("matrix").returns("{}");

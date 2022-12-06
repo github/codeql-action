@@ -369,6 +369,19 @@ function getInputOrThrow(
 }
 
 /**
+ * Get the expected name of the analyze Action.
+ *
+ * This allows us to test workflow parsing functionality as a CodeQL Action PR check.
+ */
+function getAnalyzeActionName() {
+  if (getRequiredEnvParam("GITHUB_REPOSITORY") === "github/codeql-action") {
+    return "./analyze";
+  } else {
+    return "github/codeql-action/analyze";
+  }
+}
+
+/**
  * Makes a best effort attempt to retrieve the category input for the particular job,
  * given a set of matrix variables.
  *
@@ -385,7 +398,7 @@ export function getCategoryInputOrThrow(
   return getInputOrThrow(
     workflow,
     jobName,
-    "github/codeql-action/analyze",
+    getAnalyzeActionName(),
     "category",
     matrixVars
   );
@@ -409,7 +422,7 @@ export function getUploadInputOrThrow(
     getInputOrThrow(
       workflow,
       jobName,
-      "github/codeql-action/analyze",
+      getAnalyzeActionName(),
       "upload",
       matrixVars
     ) || "true" // if unspecified, upload defaults to true
@@ -434,7 +447,7 @@ export function getCheckoutPathInputOrThrow(
     getInputOrThrow(
       workflow,
       jobName,
-      "github/codeql-action/analyze",
+      getAnalyzeActionName(),
       "checkout_path",
       matrixVars
     ) || getRequiredEnvParam("GITHUB_WORKSPACE") // if unspecified, checkout_path defaults to ${{ github.workspace }}

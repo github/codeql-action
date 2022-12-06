@@ -38,10 +38,10 @@ def install_packages_with_poetry():
         # add a workaround. See
         # https://github.com/python-poetry/poetry/issues/2692#issuecomment-1235683370
         "PYTHON_KEYRING_BACKEND": "keyring.backends.null.Keyring",
-        # Projects that specify `in-project = true` in their poetry.toml would get the
-        # venv created inside the repo directory, which would cause CodeQL to consider
-        # it as user-written code. We don't want this to happen.
-        # see https://python-poetry.org/docs/configuration/#virtualenvsin-project
+        # Projects that specify `virtualenvs.in-project = true` in their poetry.toml
+        # would get the venv created inside the repo directory, which would cause CodeQL
+        # to consider it as user-written code. We don't want this to happen. see
+        # https://python-poetry.org/docs/configuration/#virtualenvsin-project
         "POETRY_VIRTUALENVS_IN_PROJECT": "False",
     }
 

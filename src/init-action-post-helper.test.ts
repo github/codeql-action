@@ -86,48 +86,45 @@ test("post: init action with debug mode on", async (t) => {
 });
 
 test("uploads failed SARIF run for typical workflow", async (t) => {
-  const actionsWorkflow: workflow.Workflow = {
-    name: "CodeQL",
-    on: {
-      push: {
-        branches: ["main"],
-      },
-      pull_request: {
-        branches: ["main"],
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
       },
     },
-    jobs: {
-      analyze: {
-        name: "CodeQL Analysis",
-        "runs-on": "ubuntu-latest",
-        steps: [
-          {
-            name: "Checkout repository",
-            uses: "actions/checkout@v3",
-          },
-          {
-            name: "Initialize CodeQL",
-            uses: "github/codeql-action/init@v2",
-            with: {
-              languages: "javascript",
-            },
-          },
-          {
-            name: "Perform CodeQL Analysis",
-            uses: "github/codeql-action/analyze@v2",
-            with: {
-              category: "my-category",
-            },
-          },
-        ],
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
       },
     },
-  };
+  ]);
   await testFailedSarifUpload(t, actionsWorkflow, { category: "my-category" });
 });
 
 test("uploading failed SARIF run fails when workflow does not reference github/codeql-action", async (t) => {
-  const actionsWorkflow: workflow.Workflow = {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+  ]);
+  await t.throwsAsync(
+    async () => await testFailedSarifUpload(t, actionsWorkflow)
+  );
+});
+
+function createTestWorkflow(
+  steps: workflow.WorkflowJobStep[]
+): workflow.Workflow {
+  return {
     name: "CodeQL",
     on: {
       push: {
@@ -141,19 +138,11 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
       analyze: {
         name: "CodeQL Analysis",
         "runs-on": "ubuntu-latest",
-        steps: [
-          {
-            name: "Checkout repository",
-            uses: "actions/checkout@v3",
-          },
-        ],
+        steps,
       },
     },
   };
-  await t.throwsAsync(
-    async () => await testFailedSarifUpload(t, actionsWorkflow)
-  );
-});
+}
 
 async function testFailedSarifUpload(
   t: ExecutionContext<unknown>,

@@ -1,4 +1,4 @@
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
@@ -86,23 +86,7 @@ test("post: init action with debug mode on", async (t) => {
 });
 
 test("uploads failed SARIF run for typical workflow", async (t) => {
-  const config = {
-    codeQLCmd: "codeql",
-    debugMode: true,
-    languages: [],
-    packs: [],
-  } as unknown as configUtils.Config;
-  const messages = [];
-  process.env["GITHUB_JOB"] = "analyze";
-  process.env["GITHUB_WORKSPACE"] =
-    "/home/runner/work/codeql-action/codeql-action";
-  sinon.stub(actionsUtil, "getRequiredInput").withArgs("matrix").returns("{}");
-
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
-  const diagnosticsExportStub = sinon.stub(codeqlObject, "diagnosticsExport");
-
-  sinon.stub(workflow, "getWorkflow").resolves({
+  const actionsWorkflow: workflow.Workflow = {
     name: "CodeQL",
     on: {
       push: {
@@ -138,7 +122,61 @@ test("uploads failed SARIF run for typical workflow", async (t) => {
         ],
       },
     },
-  });
+  };
+  await testFailedSarifUpload(t, actionsWorkflow, { category: "my-category" });
+});
+
+test("uploading failed SARIF run fails when workflow does not reference github/codeql-action", async (t) => {
+  const actionsWorkflow: workflow.Workflow = {
+    name: "CodeQL",
+    on: {
+      push: {
+        branches: ["main"],
+      },
+      pull_request: {
+        branches: ["main"],
+      },
+    },
+    jobs: {
+      analyze: {
+        name: "CodeQL Analysis",
+        "runs-on": "ubuntu-latest",
+        steps: [
+          {
+            name: "Checkout repository",
+            uses: "actions/checkout@v3",
+          },
+        ],
+      },
+    },
+  };
+  await t.throwsAsync(
+    async () => await testFailedSarifUpload(t, actionsWorkflow)
+  );
+});
+
+async function testFailedSarifUpload(
+  t: ExecutionContext<unknown>,
+  actionsWorkflow: workflow.Workflow,
+  { category }: { category?: string } = {}
+): Promise<void> {
+  const config = {
+    codeQLCmd: "codeql",
+    debugMode: true,
+    languages: [],
+    packs: [],
+  } as unknown as configUtils.Config;
+  const messages = [];
+  process.env["GITHUB_JOB"] = "analyze";
+  process.env["GITHUB_WORKSPACE"] =
+    "/home/runner/work/codeql-action/codeql-action";
+  sinon.stub(actionsUtil, "getRequiredInput").withArgs("matrix").returns("{}");
+
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+  const diagnosticsExportStub = sinon.stub(codeqlObject, "diagnosticsExport");
+
+  sinon.stub(workflow, "getWorkflow").resolves(actionsWorkflow);
 
   const uploadFromActions = sinon.stub(uploadLib, "uploadFromActions");
   uploadFromActions.resolves({ sarifID: "42" } as uploadLib.UploadResult);
@@ -152,19 +190,21 @@ test("uploads failed SARIF run for typical workflow", async (t) => {
   );
   t.deepEqual(messages, []);
   t.true(
-    diagnosticsExportStub.calledOnceWith(sinon.match.string, "my-category")
+    diagnosticsExportStub.calledOnceWith(sinon.match.string, category),
+    `Actual args were: ${diagnosticsExportStub.args}`
   );
   t.true(
     uploadFromActions.calledOnceWith(
       sinon.match.string,
       sinon.match.string,
-      "my-category",
+      category,
       sinon.match.any
-    )
+    ),
+    `Actual args were: ${uploadFromActions.args}`
   );
   t.true(
     waitForProcessing.calledOnceWith(sinon.match.any, "42", sinon.match.any, {
       isUnsuccessfulExecution: true,
     })
   );
-});
+}

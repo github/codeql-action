@@ -15,7 +15,7 @@ import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { errorMatchers } from "./error-matcher";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
@@ -172,8 +172,7 @@ export interface CodeQL {
     addSnippetsFlag: string,
     threadsFlag: string,
     verbosityFlag: string | undefined,
-    automationDetailsId: string | undefined,
-    featureEnablement: FeatureEnablement
+    automationDetailsId: string | undefined
   ): Promise<string>;
   /**
    * Run 'codeql database print-baseline'.
@@ -257,6 +256,7 @@ const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
 const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
 export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
+const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
 
 /**
  * This variable controls using the new style of tracing from the CodeQL
@@ -1033,8 +1033,7 @@ async function getCodeQLForCmd(
       addSnippetsFlag: string,
       threadsFlag: string,
       verbosityFlag: string,
-      automationDetailsId: string | undefined,
-      featureEnablement: FeatureEnablement
+      automationDetailsId: string | undefined
     ): Promise<string> {
       const codeqlArgs = [
         "database",
@@ -1055,9 +1054,9 @@ async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
       if (
-        await featureEnablement.getValue(
-          Feature.FileBaselineInformationEnabled,
-          this
+        await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_FILE_BASELINE_INFORMATION
         )
       ) {
         codeqlArgs.push("--sarif-add-baseline-file-info");

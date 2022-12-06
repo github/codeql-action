@@ -7,7 +7,7 @@ import * as yaml from "js-yaml";
 import * as api from "./api-client";
 import { getRequiredEnvParam } from "./util";
 
-interface WorkflowJobStep {
+export interface WorkflowJobStep {
   name?: string;
   run?: any;
   uses?: string;

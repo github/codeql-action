@@ -41,6 +41,7 @@ def install_packages_with_poetry():
         # Projects that specify `in-project = true` in their poetry.toml would get the
         # venv created inside the repo directory, which would cause CodeQL to consider
         # it as user-written code. We don't want this to happen.
+        # see https://python-poetry.org/docs/configuration/#virtualenvsin-project
         "POETRY_VIRTUALENVS_IN_PROJECT": "False",
     }
 

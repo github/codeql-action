@@ -327,35 +327,32 @@ function getInputOrThrow(
   inputName: string,
   matrixVars: { [key: string]: string } | undefined
 ) {
+  const preamble = `Could not get ${inputName} input to ${actionName} since`;
   if (!workflow.jobs) {
-    throw new Error(
-      `Could not get ${inputName} input to ${actionName} since the workflow has no jobs.`
-    );
+    throw new Error(`${preamble} the workflow has no jobs.`);
   }
   if (!workflow.jobs[jobName]) {
+    throw new Error(`${preamble} the workflow has no job named ${jobName}.`);
+  }
+
+  const stepsCallingAction = getStepsCallingAction(
+    workflow.jobs[jobName],
+    actionName
+  );
+
+  if (stepsCallingAction.length === 0) {
     throw new Error(
-      `Could not get ${inputName} input to ${actionName} since the workflow has no job named ${jobName}.`
+      `${preamble} the ${jobName} job does not call ${actionName}.`
+    );
+  } else if (stepsCallingAction.length > 1) {
+    throw new Error(
+      `${preamble} the ${jobName} job calls ${actionName} multiple times.`
     );
   }
 
-  const inputs = getStepsCallingAction(workflow.jobs[jobName], actionName)
-    .map((step) => step.with?.[inputName])
-    .filter((input) => input !== undefined)
-    .map((input) => input!);
+  let input = stepsCallingAction[0].with?.[inputName];
 
-  if (inputs.length === 0) {
-    return undefined;
-  }
-  if (!inputs.every((input) => input === inputs[0])) {
-    throw new Error(
-      `Could not get ${inputName} input to ${actionName} since there were multiple steps calling ` +
-        `${actionName} with different values for ${inputName}.`
-    );
-  }
-
-  let input = inputs[0];
-
-  if (matrixVars !== undefined) {
+  if (input !== undefined && matrixVars !== undefined) {
     // Make a basic attempt to substitute matrix variables
     // First normalize by removing whitespace
     input = input.replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
@@ -363,8 +360,7 @@ function getInputOrThrow(
       input = input.replace(`\${{matrix.${key}}}`, value);
     }
   }
-
-  if (input.includes("${{")) {
+  if (input !== undefined && input.includes("${{")) {
     throw new Error(
       `Could not get ${inputName} input to ${actionName} since it contained an unrecognized dynamic value.`
     );

@@ -646,7 +646,7 @@ test("getCategoryInputOrThrow throws error for workflow with dynamic category", 
   );
 });
 
-test("getCategoryInputOrThrow throws error for workflow with multiple categories", (t) => {
+test("getCategoryInputOrThrow throws error for workflow with multiple calls to analyze", (t) => {
   t.throws(
     () =>
       getCategoryInputOrThrow(
@@ -669,8 +669,8 @@ test("getCategoryInputOrThrow throws error for workflow with multiple categories
       ),
     {
       message:
-        "Could not get category input to github/codeql-action/analyze since there were multiple steps " +
-        "calling github/codeql-action/analyze with different values for category.",
+        "Could not get category input to github/codeql-action/analyze since the analysis job " +
+        "calls github/codeql-action/analyze multiple times.",
     }
   );
 });

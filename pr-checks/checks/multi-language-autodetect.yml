@@ -1,5 +1,7 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
+# Temporarily exclude nightly-latest to unblock release
+versions: ["stable-20211005", "stable-20220120", "stable-20220401", "cached", "latest"]
 operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.

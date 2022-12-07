@@ -1,20 +1,17 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
+  - package-ecosystem: npm
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "thursday" # Gives us a working day to merge this before our typical release
+      interval: weekly
     labels:
-      - "Update dependencies"
+      - Update dependencies
     ignore:
       - dependency-name: "*"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-  - package-ecosystem: "npm"
-    directory: "/runner"
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+  - package-ecosystem: github-actions
+    directory: "/"
     schedule:
-      interval: "weekly"
-      day: "thursday" # Gives us a working day to merge this before our typical release
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      interval: weekly

@@ -45,10 +45,6 @@ jobs:
           version: latest
         - os: macos-latest
           version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
     name: Multi-language repository
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}

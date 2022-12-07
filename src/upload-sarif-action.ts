@@ -53,6 +53,8 @@ async function run() {
   try {
     const uploadResult = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
+      actionsUtil.getRequiredInput("checkout_path"),
+      actionsUtil.getOptionalInput("category"),
       getActionsLogger()
     );
     core.setOutput("sarif-id", uploadResult.sarifID);

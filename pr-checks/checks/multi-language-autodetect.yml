@@ -4,11 +4,11 @@ operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
 steps:
-  - uses: swift-actions/setup-swift@5cdaa9161ad1f55ae39a5ea1784ef96de72f95d9
+  - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
     # Only macOS latest and nightly-latest support Swift 5.7.1
     if: runner.os == 'Linux' || matrix.version == 'cached'
     with:
-      swift-version: "5.7"
+      swift-version: "5.7.0"
 
   - uses: ./../action/init
     with:

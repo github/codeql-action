@@ -158,23 +158,22 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 
 // Uploads a single sarif file or a directory of sarif files
 // depending on what the path happens to refer to.
-// Returns true iff the upload occurred and succeeded
 export async function uploadFromActions(
   sarifPath: string,
+  checkoutPath: string,
+  category: string | undefined,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
     parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    await actionsUtil.getCommitOid(
-      actionsUtil.getRequiredInput("checkout_path")
-    ),
+    await actionsUtil.getCommitOid(checkoutPath),
     await actionsUtil.getRef(),
     await actionsUtil.getAnalysisKey(),
-    actionsUtil.getOptionalInput("category"),
+    category,
     util.getRequiredEnvParam("GITHUB_WORKFLOW"),
     workflow.getWorkflowRunID(),
-    actionsUtil.getRequiredInput("checkout_path"),
+    checkoutPath,
     actionsUtil.getRequiredInput("matrix"),
     logger
   );
@@ -386,60 +385,119 @@ async function uploadFiles(
 const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;
 const STATUS_CHECK_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
 
-// Waits until either the analysis is successfully processed, a processing error is reported, or STATUS_CHECK_TIMEOUT_MILLISECONDS elapses.
+type ProcessingStatus = "pending" | "complete" | "failed";
+
+/**
+ * Waits until either the analysis is successfully processed, a processing error
+ * is reported, or `STATUS_CHECK_TIMEOUT_MILLISECONDS` elapses.
+ *
+ * If `isUnsuccessfulExecution` is passed, will throw an error if the analysis
+ * processing does not produce a single error mentioning the unsuccessful
+ * execution.
+ */
 export async function waitForProcessing(
   repositoryNwo: RepositoryNwo,
   sarifID: string,
-  logger: Logger
+  logger: Logger,
+  options: { isUnsuccessfulExecution: boolean } = {
+    isUnsuccessfulExecution: false,
+  }
 ): Promise<void> {
   logger.startGroup("Waiting for processing to finish");
-  const client = api.getApiClient();
+  try {
+    const client = api.getApiClient();
 
-  const statusCheckingStarted = Date.now();
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    if (
-      Date.now() >
-      statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
-    ) {
-      // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
-      // It's possible the analysis will eventually finish processing, but it's not worth spending more Actions time waiting.
-      logger.warning(
-        "Timed out waiting for analysis to finish processing. Continuing."
-      );
-      break;
-    }
-    let response: OctokitResponse<any> | undefined = undefined;
-    try {
-      response = await client.request(
-        "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
-        {
-          owner: repositoryNwo.owner,
-          repo: repositoryNwo.repo,
-          sarif_id: sarifID,
-        }
-      );
-    } catch (e) {
-      logger.warning(
-        `An error occurred checking the status of the delivery. ${e} It should still be processed in the background, but errors that occur during processing may not be reported.`
-      );
-      break;
-    }
-    const status = response.data.processing_status;
-    logger.info(`Analysis upload status is ${status}.`);
-    if (status === "complete") {
-      break;
-    } else if (status === "pending") {
-      logger.debug("Analysis processing is still pending...");
-    } else if (status === "failed") {
-      throw new Error(
-        `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
-      );
-    }
+    const statusCheckingStarted = Date.now();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if (
+        Date.now() >
+        statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
+      ) {
+        // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
+        // It's possible the analysis will eventually finish processing, but it's not worth spending more Actions time waiting.
+        logger.warning(
+          "Timed out waiting for analysis to finish processing. Continuing."
+        );
+        break;
+      }
+      let response: OctokitResponse<any> | undefined = undefined;
+      try {
+        response = await client.request(
+          "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
+          {
+            owner: repositoryNwo.owner,
+            repo: repositoryNwo.repo,
+            sarif_id: sarifID,
+          }
+        );
+      } catch (e) {
+        logger.warning(
+          `An error occurred checking the status of the delivery. ${e} It should still be processed in the background, but errors that occur during processing may not be reported.`
+        );
+        break;
+      }
+      const status = response.data.processing_status as ProcessingStatus;
+      logger.info(`Analysis upload status is ${status}.`);
 
-    await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
+      if (status === "pending") {
+        logger.debug("Analysis processing is still pending...");
+      } else if (options.isUnsuccessfulExecution) {
+        // We expect a specific processing error for unsuccessful executions, so
+        // handle these separately.
+        handleProcessingResultForUnsuccessfulExecution(
+          response,
+          status,
+          logger
+        );
+        break;
+      } else if (status === "complete") {
+        break;
+      } else if (status === "failed") {
+        throw new Error(
+          `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
+        );
+      } else {
+        util.assertNever(status);
+      }
+
+      await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
+    }
+  } finally {
+    logger.endGroup();
   }
-  logger.endGroup();
+}
+
+/**
+ * Checks the processing result for an unsuccessful execution. Throws if the
+ * result is not a failure with a single "unsuccessful execution" error.
+ */
+function handleProcessingResultForUnsuccessfulExecution(
+  response: OctokitResponse<any, number>,
+  status: Exclude<ProcessingStatus, "pending">,
+  logger: Logger
+): void {
+  if (
+    status === "failed" &&
+    Array.isArray(response.data.errors) &&
+    response.data.errors.length === 1 &&
+    response.data.errors[0].toString().startsWith("unsuccessful execution")
+  ) {
+    logger.debug(
+      "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
+        '"unsuccessful execution" error, and no other errors.'
+    );
+  } else {
+    const shortMessage =
+      "Failed to upload a SARIF file for the unsuccessful execution. Code scanning status " +
+      "information for the repository may be out of date as a result.";
+    const longMessage =
+      shortMessage + status === "failed"
+        ? ` Processing errors: ${response.data.errors}`
+        : ' Encountered no processing errors, but expected to receive an "unsuccessful execution" error.';
+    logger.debug(longMessage);
+    throw new Error(shortMessage);
+  }
 }
 
 export function validateUniqueCategory(sarif: SarifFile): void {

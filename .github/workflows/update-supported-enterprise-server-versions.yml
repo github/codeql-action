@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: "3.7"
       - name: Checkout CodeQL Action
@@ -35,7 +35,7 @@ jobs:
         env:
           ENTERPRISE_RELEASES_PATH: ${{ github.workspace }}/enterprise-releases/
       - name: Commit Changes
-        uses: peter-evans/create-pull-request@c7f493a8000b8aeb17a1332e326ba76b57cb83eb # v3.4.1
+        uses: peter-evans/create-pull-request@2b011faafdcbc9ceb11414d64d0573f37c774b04 # v4.2.3
         with:
           commit-message: Update supported GitHub Enterprise Server versions.
           title: Update supported GitHub Enterprise Server versions.

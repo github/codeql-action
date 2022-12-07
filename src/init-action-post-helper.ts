@@ -101,7 +101,7 @@ export async function run(
             `the following error: ${e}`
         );
       }
-      logger.warning(
+      logger.info(
         `Failed to upload a SARIF file for the failed run. Error: ${e}`
       );
     }

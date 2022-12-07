@@ -10,7 +10,7 @@ fi
 
 if [ "$#" -eq 1 ]; then
   # If we were passed an argument, use that as the SHA
-  GITHUB_SHA="$0"
+  GITHUB_SHA="$1"
 elif [ "$#" -gt 1 ]; then
   echo "Usage: $0 [SHA]"
   echo "Update the required checks based on the SHA, or main."

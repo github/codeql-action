@@ -43,10 +43,10 @@ jobs:
       with:
         version: ${{ matrix.version }}
     - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
-    # Windows doesn't support Swift, and only macOS latest and nightly-latest support Swift 5.7.1.
-      if: runner.os == 'Linux' || (runner.os == 'macOS' && matrix.version == 'cached')
+    # Windows doesn't support Swift
+      if: runner.os != 'Windows
       with:
-        swift-version: 5.7.0
+        swift-version: 5.7.1
     - uses: ./../action/init
       with:
         languages: javascript

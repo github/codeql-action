@@ -45,6 +45,10 @@ jobs:
           version: latest
         - os: macos-latest
           version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
     name: Multi-language repository
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -62,10 +66,8 @@ jobs:
       with:
         go-version: ^1.13.1
     - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
-    # Only macOS latest and nightly-latest support Swift 5.7.1
-      if: runner.os == 'Linux' || matrix.version == 'cached'
       with:
-        swift-version: 5.7.0
+        swift-version: 5.7.1
 
     - uses: ./../action/init
       with:

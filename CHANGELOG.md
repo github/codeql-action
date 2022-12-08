@@ -1,6 +1,6 @@
 # CodeQL Action Changelog
 
-## [UNRELEASED]
+## 2.1.36 - 08 Dec 2022
 
 - Update default CodeQL bundle version to 2.11.5. [#1412](https://github.com/github/codeql-action/pull/1412)
 - Add a step that tries to upload a SARIF file for the workflow run when that workflow run fails. This will help better surface failed code scanning workflow runs. [#1393](https://github.com/github/codeql-action/pull/1393)

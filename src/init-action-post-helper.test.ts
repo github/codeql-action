@@ -11,6 +11,7 @@ import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
   getRecordingLogger,
+  LoggedMessage,
   setupTests,
 } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
@@ -111,6 +112,40 @@ test("uploads failed SARIF run for typical workflow", async (t) => {
   await testFailedSarifUpload(t, actionsWorkflow, { category: "my-category" });
 });
 
+test("doesn't upload failed SARIF for workflow with upload: false", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
+        upload: false,
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    expectedLogs: [
+      {
+        message:
+          "Won't upload a failed SARIF file since SARIF upload is disabled.",
+        type: "debug",
+      },
+    ],
+    expectUpload: false,
+  });
+});
+
 test("uploading failed SARIF run fails when workflow does not reference github/codeql-action", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
@@ -149,7 +184,15 @@ function createTestWorkflow(
 async function testFailedSarifUpload(
   t: ExecutionContext<unknown>,
   actionsWorkflow: workflow.Workflow,
-  { category }: { category?: string } = {}
+  {
+    category,
+    expectedLogs = [],
+    expectUpload = true,
+  }: {
+    category?: string;
+    expectedLogs?: LoggedMessage[];
+    expectUpload?: boolean;
+  } = {}
 ): Promise<void> {
   const config = {
     codeQLCmd: "codeql",
@@ -180,23 +223,29 @@ async function testFailedSarifUpload(
     createFeatures([Feature.UploadFailedSarifEnabled]),
     getRecordingLogger(messages)
   );
-  t.deepEqual(messages, []);
-  t.true(
-    diagnosticsExportStub.calledOnceWith(sinon.match.string, category),
-    `Actual args were: ${diagnosticsExportStub.args}`
-  );
-  t.true(
-    uploadFromActions.calledOnceWith(
-      sinon.match.string,
-      sinon.match.string,
-      category,
-      sinon.match.any
-    ),
-    `Actual args were: ${uploadFromActions.args}`
-  );
-  t.true(
-    waitForProcessing.calledOnceWith(sinon.match.any, "42", sinon.match.any, {
-      isUnsuccessfulExecution: true,
-    })
-  );
+  t.deepEqual(messages, expectedLogs);
+  if (expectUpload) {
+    t.true(
+      diagnosticsExportStub.calledOnceWith(sinon.match.string, category),
+      `Actual args were: ${diagnosticsExportStub.args}`
+    );
+    t.true(
+      uploadFromActions.calledOnceWith(
+        sinon.match.string,
+        sinon.match.string,
+        category,
+        sinon.match.any
+      ),
+      `Actual args were: ${uploadFromActions.args}`
+    );
+    t.true(
+      waitForProcessing.calledOnceWith(sinon.match.any, "42", sinon.match.any, {
+        isUnsuccessfulExecution: true,
+      })
+    );
+  } else {
+    t.true(diagnosticsExportStub.notCalled);
+    t.true(uploadFromActions.notCalled);
+    t.true(waitForProcessing.notCalled);
+  }
 }

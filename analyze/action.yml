@@ -12,6 +12,7 @@ inputs:
   upload:
     description: Upload the SARIF file to Code Scanning
     required: false
+    # If changing this, make sure to update workflow.ts accordingly.
     default: "true"
   cleanup-level:
     description: "Level of cleanup to perform on CodeQL databases at the end of the analyze step. This should either be 'none' to skip cleanup, or be a valid argument for the --mode flag of the CodeQL CLI command 'codeql database cleanup' as documented at https://codeql.github.com/docs/codeql-cli/manual/database-cleanup"
@@ -44,6 +45,7 @@ inputs:
   checkout_path:
     description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
     required: false
+    # If changing this, make sure to update workflow.ts accordingly.
     default: ${{ github.workspace }}
   ref:
     description: "The ref where results will be uploaded. If not provided, the Action will use the GITHUB_REF environment variable. If provided, the sha input must be provided as well. This input is not available in pull requests from forks."

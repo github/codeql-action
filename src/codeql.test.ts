@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
+import * as safeWhich from "@chrisgavin/safe-which";
 import test, { ExecutionContext } from "ava";
 import del from "del";
 import * as yaml from "js-yaml";
@@ -442,16 +443,9 @@ test("databaseInterpretResults() does not set --sarif-add-query-help for 2.7.0",
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves("2.7.0");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    createFeatures([])
-  );
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
   t.false(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be absent, but it is present"
@@ -462,16 +456,9 @@ test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves("2.7.1");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    createFeatures([])
-  );
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
   t.true(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be present, but it is absent"
@@ -483,6 +470,8 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
     sinon.stub(codeqlObject, "getVersion").resolves("2.8.1");
+    // safeWhich throws because of the test CodeQL object.
+    sinon.stub(safeWhich, "safeWhich").resolves("");
 
     const thisStubConfig: Config = {
       ...stubConfig,
@@ -858,23 +847,13 @@ test("does not use injected config", async (t: ExecutionContext<unknown>) => {
   }
 });
 
-test("databaseInterpretResults() sets --sarif-add-baseline-file-info when feature enabled", async (t) => {
+test("databaseInterpretResults() sets --sarif-add-baseline-file-info for 2.11.3", async (t) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
-  // We need to set a CodeQL version such that running `databaseInterpretResults` does not crash.
-  // The version of CodeQL is checked separately to determine feature enablement, and does not
-  // otherwise impact this test, so set it to 0.0.0.
-  sinon.stub(codeqlObject, "getVersion").resolves("0.0.0");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    createFeatures([Feature.FileBaselineInformationEnabled])
-  );
+  sinon.stub(codeqlObject, "getVersion").resolves("2.11.3");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
   t.true(
     runnerConstructorStub.firstCall.args[1].includes(
       "--sarif-add-baseline-file-info"
@@ -883,23 +862,13 @@ test("databaseInterpretResults() sets --sarif-add-baseline-file-info when featur
   );
 });
 
-test("databaseInterpretResults() does not set --sarif-add-baseline-file-info if feature disabled", async (t) => {
+test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for 2.11.2", async (t) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
-  // We need to set a CodeQL version such that running `databaseInterpretResults` does not crash.
-  // The version of CodeQL is checked upstream to determine feature enablement, so it does not
-  // affect this test.
-  sinon.stub(codeqlObject, "getVersion").resolves("0.0.0");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    createFeatures([])
-  );
+  sinon.stub(codeqlObject, "getVersion").resolves("2.11.2");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
   t.false(
     runnerConstructorStub.firstCall.args[1].includes(
       "--sarif-add-baseline-file-info"

@@ -24,6 +24,7 @@ import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF } from "./shared-environment";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
@@ -271,8 +272,14 @@ async function run() {
     core.setOutput("db-locations", dbLocations);
 
     if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
-      uploadResult = await upload_lib.uploadFromActions(outputDir, logger);
+      uploadResult = await upload_lib.uploadFromActions(
+        outputDir,
+        actionsUtil.getRequiredInput("checkout_path"),
+        actionsUtil.getOptionalInput("category"),
+        logger
+      );
       core.setOutput("sarif-id", uploadResult.sarifID);
+      core.exportVariable(CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF, "true");
     } else {
       logger.info("Not uploading results");
     }
@@ -314,8 +321,6 @@ async function run() {
     ) {
       core.setFailed(error.message);
     }
-
-    console.log(error);
 
     if (error instanceof CodeQLAnalysisError) {
       const stats = { ...error.queriesStatusReport };
@@ -391,7 +396,6 @@ async function runWrapper() {
     await runPromise;
   } catch (error) {
     core.setFailed(`analyze action failed: ${error}`);
-    console.log(error);
   }
   await checkForTimeout();
 }

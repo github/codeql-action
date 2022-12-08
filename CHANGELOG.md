@@ -1,5 +1,11 @@
 # CodeQL Action Changelog
 
+## 1.1.36 - 08 Dec 2022
+
+- Update default CodeQL bundle version to 2.11.5. [#1412](https://github.com/github/codeql-action/pull/1412)
+- Add a step that tries to upload a SARIF file for the workflow run when that workflow run fails. This will help better surface failed code scanning workflow runs. [#1393](https://github.com/github/codeql-action/pull/1393)
+- Python automatic dependency installation will no longer consider dependecy code installed in venv as user-written, for projects using Poetry that specify `virtualenvs.in-project = true` in their `poetry.toml`. [#1419](https://github.com/github/codeql-action/pull/1419).
+
 ## 1.1.35 - 01 Dec 2022
 
 No user facing changes.

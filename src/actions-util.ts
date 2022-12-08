@@ -295,7 +295,12 @@ function getRefFromEnv(): string {
   return refEnv;
 }
 
-type ActionName = "init" | "autobuild" | "finish" | "upload-sarif";
+type ActionName =
+  | "init"
+  | "autobuild"
+  | "finish"
+  | "upload-sarif"
+  | "init-post";
 type ActionStatus =
   | "starting"
   | "aborted"

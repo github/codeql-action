@@ -4,9 +4,16 @@ operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
 steps:
+  - name: Get Swift version
+    id: get_swift_version
+    shell: bash
+    run: |
+      codeql/experimental/swift/tools/*/extractor --version | awk '/version/ { print $3 }'
+      echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
+
   - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
     with:
-      swift-version: "5.7.1"
+      swift-version: "${{steps.get_swift_version.outputs.version}}"
 
   - uses: ./../action/init
     with:

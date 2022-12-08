@@ -115,7 +115,8 @@ for file in os.listdir('checks'):
             checkJob[key] = checkSpecification[key]
 
     checkJob['env'] = checkJob.get('env', {})
-    checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
+    if 'CODEQL_ACTION_TEST_MODE' not in checkJob['env']:
+        checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
     checkName = file[:len(file) - 4]
 
     with open(f"../.github/workflows/__{checkName}.yml", 'w') as output_stream:

@@ -892,3 +892,12 @@ export async function shouldBypassToolcache(
   }
   return bypass;
 }
+
+export function parseMatrixInput(
+  matrixInput: string | undefined
+): { [key: string]: string } | undefined {
+  if (matrixInput === undefined || matrixInput === "null") {
+    return undefined;
+  }
+  return JSON.parse(matrixInput);
+}

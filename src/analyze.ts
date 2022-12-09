@@ -88,6 +88,8 @@ async function setupPythonExtractor(logger: Logger) {
     return;
   }
 
+  const scriptsFolder = path.resolve(__dirname, "../python-setup");
+
   let output = "";
   const options = {
     listeners: {
@@ -100,8 +102,7 @@ async function setupPythonExtractor(logger: Logger) {
   await new toolrunner.ToolRunner(
     codeqlPython,
     [
-      "-c",
-      "import os; import pip; print(os.path.dirname(os.path.dirname(pip.__file__)))",
+      path.join(scriptsFolder, "find_site_packages.py"),
     ],
     options
   ).exec();

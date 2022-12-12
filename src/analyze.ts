@@ -101,9 +101,7 @@ async function setupPythonExtractor(logger: Logger) {
 
   await new toolrunner.ToolRunner(
     codeqlPython,
-    [
-      path.join(scriptsFolder, "find_site_packages.py"),
-    ],
+    [path.join(scriptsFolder, "find_site_packages.py")],
     options
   ).exec();
   logger.info(`Setting LGTM_INDEX_IMPORT_PATH=${output}`);

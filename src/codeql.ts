@@ -6,7 +6,6 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import * as yaml from "js-yaml";
-import { default as queryString } from "query-string";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
@@ -489,7 +488,6 @@ export async function setupCodeQL(
         }
 
         const parsedCodeQLURL = new URL(codeqlURL);
-        const parsedQueryString = queryString.parse(parsedCodeQLURL.search);
         const headers: OutgoingHttpHeaders = {
           accept: "application/octet-stream",
         };
@@ -499,7 +497,7 @@ export async function setupCodeQL(
         // We also don't want to send an authorization header if there's already a token provided in the URL.
         if (
           codeqlURL.startsWith(`${apiDetails.url}/`) &&
-          parsedQueryString["token"] === undefined
+          new URLSearchParams(parsedCodeQLURL.search).get("token") === undefined
         ) {
           logger.debug("Downloading CodeQL bundle with token.");
           headers.authorization = `token ${apiDetails.auth}`;

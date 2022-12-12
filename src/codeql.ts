@@ -488,6 +488,7 @@ export async function setupCodeQL(
         }
 
         const parsedCodeQLURL = new URL(codeqlURL);
+        const searchParams = new URLSearchParams(parsedCodeQLURL.search);
         const headers: OutgoingHttpHeaders = {
           accept: "application/octet-stream",
         };
@@ -497,7 +498,7 @@ export async function setupCodeQL(
         // We also don't want to send an authorization header if there's already a token provided in the URL.
         if (
           codeqlURL.startsWith(`${apiDetails.url}/`) &&
-          new URLSearchParams(parsedCodeQLURL.search).get("token") === undefined
+          !searchParams.has("token")
         ) {
           logger.debug("Downloading CodeQL bundle with token.");
           headers.authorization = `token ${apiDetails.auth}`;

@@ -16,18 +16,7 @@ import {
   getWorkflow,
 } from "./workflow";
 
-export interface UploadFailedSarifResult {
-  /**
-   * If a SARIF file was uploaded for a failed run, this is the size in bytes of the unzipped
-   * SARIF payload.
-   */
-  upload_failed_run_raw_upload_size_bytes?: number;
-  /**
-   * If a SARIF file was uploaded for a failed run, this is the size in bytes of the actual
-   * zipped payload.
-   */
-  upload_failed_run_zipped_upload_size_bytes?: number;
-
+export interface UploadFailedSarifResult extends uploadLib.UploadStatusReport {
   /** If there was an error while uploading a failed run, this is its message. */
   upload_failed_run_error?: string;
   /** If there was an error while uploading a failed run, this is its stack trace. */
@@ -100,12 +89,7 @@ export async function uploadFailedSarif(
     logger,
     { isUnsuccessfulExecution: true }
   );
-  return {
-    upload_failed_run_raw_upload_size_bytes:
-      uploadResult?.statusReport?.raw_upload_size_bytes,
-    upload_failed_run_zipped_upload_size_bytes:
-      uploadResult?.statusReport?.zipped_upload_size_bytes,
-  };
+  return uploadResult?.statusReport ?? {};
 }
 
 export async function uploadSarifIfRunFailed(

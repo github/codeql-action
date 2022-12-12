@@ -9,7 +9,7 @@ def get_details(path_to_python_exe: str) -> Tuple[str, str]:
     import_path = subprocess.check_output(
         [
             path_to_python_exe,
-            os.path.join(os.path.dirname(__file__), "find_site_packages.py")
+            os.path.join(os.path.dirname(__file__), "..", "find_site_packages.py")
         ],
         stdin=subprocess.DEVNULL,
     )

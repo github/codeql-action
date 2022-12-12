@@ -78,8 +78,6 @@ async function runWrapper() {
     ...statusReportBase,
     ...uploadFailedSarifResult,
   };
-  console.log("status report");
-  console.log(statusReport);
   await sendStatusReport(statusReport);
 }
 

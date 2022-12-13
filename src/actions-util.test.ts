@@ -88,6 +88,34 @@ test("getRef() returns ref provided as an input and ignores current HEAD", async
   });
 });
 
+test("getRef() returns CODE_SCANNING_REF as a fallback for GITHUB_REF", async (t) => {
+  await withTmpDir(async (tmpDir: string) => {
+    setupActionsVars(tmpDir, tmpDir);
+    const expectedRef = "refs/pull/1/HEAD";
+    const currentSha = "a".repeat(40);
+    process.env["CODE_SCANNING_REF"] = expectedRef;
+    process.env["GITHUB_REF"] = "";
+    process.env["GITHUB_SHA"] = currentSha;
+
+    const actualRef = await actionsutil.getRef();
+    t.deepEqual(actualRef, expectedRef);
+  });
+});
+
+test("getRef() returns GITHUB_REF over CODE_SCANNING_REF if both are provided", async (t) => {
+  await withTmpDir(async (tmpDir: string) => {
+    setupActionsVars(tmpDir, tmpDir);
+    const expectedRef = "refs/pull/1/merge";
+    const currentSha = "a".repeat(40);
+    process.env["CODE_SCANNING_REF"] = "refs/pull/1/HEAD";
+    process.env["GITHUB_REF"] = expectedRef;
+    process.env["GITHUB_SHA"] = currentSha;
+
+    const actualRef = await actionsutil.getRef();
+    t.deepEqual(actualRef, expectedRef);
+  });
+});
+
 test("getRef() throws an error if only `ref` is provided as an input", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupActionsVars(tmpDir, tmpDir);

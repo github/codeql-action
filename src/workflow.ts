@@ -11,7 +11,7 @@ export interface WorkflowJobStep {
   name?: string;
   run?: any;
   uses?: string;
-  with?: { [key: string]: string };
+  with?: { [key: string]: boolean | number | string };
 }
 
 interface WorkflowJob {
@@ -350,12 +350,12 @@ function getInputOrThrow(
     );
   }
 
-  let input = stepsCallingAction[0].with?.[inputName];
+  let input = stepsCallingAction[0].with?.[inputName]?.toString();
 
   if (input !== undefined && matrixVars !== undefined) {
-    // Make a basic attempt to substitute matrix variables
-    // First normalize by removing whitespace
+    // Normalize by removing whitespace
     input = input.replace(/\${{\s+/, "${{").replace(/\s+}}/, "}}");
+    // Make a basic attempt to substitute matrix variables
     for (const [key, value] of Object.entries(matrixVars)) {
       input = input.replace(`\${{matrix.${key}}}`, value);
     }

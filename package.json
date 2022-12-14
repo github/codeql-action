@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "1.1.36",
+  "version": "1.1.37",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -45,7 +45,6 @@
     "long": "^5.2.0",
     "md5": "^2.3.0",
     "path": "^0.12.7",
-    "query-string": "^7.0.1",
     "semver": "^7.3.2",
     "uuid": "^9.0.0",
     "zlib": "^1.0.5"

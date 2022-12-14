@@ -6,7 +6,14 @@
 
 import * as core from "@actions/core";
 
-import * as actionsUtil from "./actions-util";
+import {
+  createStatusReportBase,
+  getActionsStatus,
+  getTemporaryDirectory,
+  printDebugLogs,
+  sendStatusReport,
+  StatusReportBase,
+} from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
 import { Features } from "./feature-flags";
@@ -15,7 +22,15 @@ import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { checkGitHubVersionInRange, getRequiredEnvParam } from "./util";
 
+interface InitPostStatusReport
+  extends StatusReportBase,
+    initActionPostHelper.UploadFailedSarifResult {}
+
 async function runWrapper() {
+  const startedAt = new Date();
+  let uploadFailedSarifResult:
+    | initActionPostHelper.UploadFailedSarifResult
+    | undefined;
   try {
     const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();
@@ -27,22 +42,43 @@ async function runWrapper() {
     const features = new Features(
       gitHubVersion,
       repositoryNwo,
-      actionsUtil.getTemporaryDirectory(),
+      getTemporaryDirectory(),
       logger
     );
 
-    await initActionPostHelper.run(
+    uploadFailedSarifResult = await initActionPostHelper.run(
       debugArtifacts.uploadDatabaseBundleDebugArtifact,
       debugArtifacts.uploadLogsDebugArtifact,
-      actionsUtil.printDebugLogs,
+      printDebugLogs,
       repositoryNwo,
       features,
       logger
     );
-  } catch (error) {
-    core.setFailed(`init post-action step failed: ${error}`);
-    console.log(error);
+  } catch (e) {
+    core.setFailed(e instanceof Error ? e.message : String(e));
+
+    console.log(e);
+    await sendStatusReport(
+      await createStatusReportBase(
+        "init-post",
+        getActionsStatus(e),
+        startedAt,
+        String(e),
+        e instanceof Error ? e.stack : undefined
+      )
+    );
+    return;
   }
+  const statusReportBase = await createStatusReportBase(
+    "init-post",
+    "success",
+    startedAt
+  );
+  const statusReport: InitPostStatusReport = {
+    ...statusReportBase,
+    ...uploadFailedSarifResult,
+  };
+  await sendStatusReport(statusReport);
 }
 
 void runWrapper();

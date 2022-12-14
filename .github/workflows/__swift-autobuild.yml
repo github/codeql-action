@@ -28,8 +28,6 @@ jobs:
         - os: macos-latest
           version: latest
         - os: macos-latest
-          version: cached
-        - os: macos-latest
           version: nightly-latest
     name: Swift analysis using autobuild
     timeout-minutes: 45
@@ -42,15 +40,9 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - name: Get Swift version
-      id: get_swift_version
-      shell: bash
-      run: |
-        codeql/experimental/swift/tools/*/extractor --version | awk '/version/ { print $3 }'
-        echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
     - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
       with:
-        swift-version: ${{steps.get_swift_version.outputs.version}}
+        swift-version: 5.7.1
     - uses: ./../action/init
       with:
         languages: swift

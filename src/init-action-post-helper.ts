@@ -16,17 +16,37 @@ import {
   getWorkflow,
 } from "./workflow";
 
+export interface UploadFailedSarifResult extends uploadLib.UploadStatusReport {
+  /** If there was an error while uploading a failed run, this is its message. */
+  upload_failed_run_error?: string;
+  /** If there was an error while uploading a failed run, this is its stack trace. */
+  upload_failed_run_stack_trace?: string;
+  /** Reason why we did not upload a SARIF payload with `executionSuccessful: false`. */
+  upload_failed_run_skipped_because?: string;
+}
+
+function createFailedUploadFailedSarifResult(
+  error: unknown
+): UploadFailedSarifResult {
+  return {
+    upload_failed_run_error:
+      error instanceof Error ? error.message : String(error),
+    upload_failed_run_stack_trace:
+      error instanceof Error ? error.stack : undefined,
+  };
+}
+
 export async function uploadFailedSarif(
   config: Config,
   repositoryNwo: RepositoryNwo,
   featureEnablement: FeatureEnablement,
   logger: Logger
-) {
+): Promise<UploadFailedSarifResult> {
   if (!config.codeQLCmd) {
     logger.warning(
       "CodeQL command not found. Unable to upload failed SARIF file."
     );
-    return;
+    return { upload_failed_run_skipped_because: "CodeQL command not found" };
   }
   const codeql = await getCodeQL(config.codeQLCmd);
   if (
@@ -36,7 +56,7 @@ export async function uploadFailedSarif(
     ))
   ) {
     logger.debug("Uploading failed SARIF is disabled.");
-    return;
+    return { upload_failed_run_skipped_because: "Feature disabled" };
   }
   const workflow = await getWorkflow();
   const jobName = getRequiredEnvParam("GITHUB_JOB");
@@ -48,7 +68,7 @@ export async function uploadFailedSarif(
     logger.debug(
       "Won't upload a failed SARIF file since SARIF upload is disabled."
     );
-    return;
+    return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
@@ -69,6 +89,48 @@ export async function uploadFailedSarif(
     logger,
     { isUnsuccessfulExecution: true }
   );
+  return uploadResult?.statusReport ?? {};
+}
+
+export async function uploadSarifIfRunFailed(
+  config: Config,
+  repositoryNwo: RepositoryNwo,
+  featureEnablement: FeatureEnablement,
+  logger: Logger
+): Promise<UploadFailedSarifResult> {
+  // Environment variable used to integration test uploading a SARIF file for failed runs
+  const expectFailedSarifUpload =
+    process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true";
+
+  if (process.env[CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF] !== "true") {
+    try {
+      return await uploadFailedSarif(
+        config,
+        repositoryNwo,
+        featureEnablement,
+        logger
+      );
+    } catch (e) {
+      if (expectFailedSarifUpload) {
+        throw new Error(
+          "Expected to upload a SARIF file for the failed run, but encountered " +
+            `the following error: ${e}`
+        );
+      }
+      logger.info(
+        `Failed to upload a SARIF file for the failed run. Error: ${e}`
+      );
+      return createFailedUploadFailedSarifResult(e);
+    }
+  } else if (expectFailedSarifUpload) {
+    throw new Error(
+      "Expected to upload a SARIF file for the failed run, but didn't."
+    );
+  } else {
+    return {
+      upload_failed_run_skipped_because: "SARIF file already uploaded",
+    };
+  }
 }
 
 export async function run(
@@ -87,29 +149,12 @@ export async function run(
     return;
   }
 
-  // Environment variable used to integration test uploading a SARIF file for failed runs
-  const expectFailedSarifUpload =
-    process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true";
-
-  if (process.env[CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF] !== "true") {
-    try {
-      await uploadFailedSarif(config, repositoryNwo, featureEnablement, logger);
-    } catch (e) {
-      if (expectFailedSarifUpload) {
-        throw new Error(
-          "Expected to upload a SARIF file for the failed run, but encountered " +
-            `the following error: ${e}`
-        );
-      }
-      logger.info(
-        `Failed to upload a SARIF file for the failed run. Error: ${e}`
-      );
-    }
-  } else if (expectFailedSarifUpload) {
-    throw new Error(
-      "Expected to upload a SARIF file for the failed run, but didn't."
-    );
-  }
+  const uploadFailedSarifResult = await uploadSarifIfRunFailed(
+    config,
+    repositoryNwo,
+    featureEnablement,
+    logger
+  );
 
   // Upload appropriate Actions artifacts for debugging
   if (config.debugMode) {
@@ -121,4 +166,6 @@ export async function run(
 
     await printDebugLogs(config);
   }
+
+  return uploadFailedSarifResult;
 }

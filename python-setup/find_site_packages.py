@@ -1,6 +1,7 @@
 """
 Print the path to the site-packages directory for the current Python environment.
 """
+from __future__ import print_function
 
 try:
     import pip

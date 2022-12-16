@@ -76,7 +76,7 @@ steps:
       fi
 
   - name: Check language autodetect for Swift
-    if: "!startsWith(matrix.os, 'windows') && (matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+    if: "!startsWith(matrix.os, 'windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
     shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

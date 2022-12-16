@@ -1,6 +1,6 @@
 name: "Swift analysis using a custom build command"
 description: "Tests creation of a Swift database using custom build"
-versions: ["latest", "nightly-latest"]
+versions: ["latest", "cached", "nightly-latest"]
 operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true"

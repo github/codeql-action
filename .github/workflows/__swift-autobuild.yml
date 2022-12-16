@@ -28,6 +28,8 @@ jobs:
         - os: macos-latest
           version: latest
         - os: macos-latest
+          version: cached
+        - os: macos-latest
           version: nightly-latest
     name: Swift analysis using autobuild
     timeout-minutes: 45

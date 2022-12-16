@@ -1,6 +1,6 @@
 name: "Swift analysis using autobuild"
 description: "Tests creation of a Swift database using autobuild"
-versions: ["latest", "nightly-latest"]
+versions: ["latest", "cached", "nightly-latest"]
 # Swift autobuilder is only supported on MacOS for private beta
 operatingSystems: ["macos"]
 env:

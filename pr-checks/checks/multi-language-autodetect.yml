@@ -16,7 +16,7 @@ steps:
     env: 
       CODEQL_PATH: ${{steps.init.outputs.codeql-path}}
     run: |
-      SWIFT_EXTRACTOR_DIR="$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]'
+      SWIFT_EXTRACTOR_DIR=$("$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]')
       $SWIFT_EXTRACTOR_DIR/tools/*/extractor --version | awk '/version/ { print $3 }'
       echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
     

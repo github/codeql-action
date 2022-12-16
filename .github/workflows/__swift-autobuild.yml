@@ -71,5 +71,5 @@ jobs:
           exit 1
         fi
     env:
-      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true'
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

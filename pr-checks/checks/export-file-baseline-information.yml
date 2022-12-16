@@ -1,6 +1,8 @@
 name: "Export file baseline information"
 description: "Tests that file baseline information is exported when the feature is enabled"
 versions: ["nightly-latest"]
+env: 
+  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true # Remove when Swift is GA.
 steps:
   - uses: ./../action/init
     id: init
@@ -9,7 +11,6 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
     env:
       CODEQL_FILE_BASELINE_INFORMATION: true
-      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
   - name: Get Swift version
     id: get_swift_version
     # We don't support Swift on Windows

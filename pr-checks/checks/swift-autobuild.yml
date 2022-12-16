@@ -6,26 +6,15 @@ operatingSystems: ["macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
 steps:
+  - uses: actions/checkout@v3
   - uses: ./../action/init
     id: init
     with:
       languages: swift
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-  - name: Get Swift version
-    id: get_swift_version
-    shell: bash
-    env: 
-      CODEQL_PATH: ${{steps.init.outputs.codeql-path}}
-    run: |
-      SWIFT_EXTRACTOR_DIR=$("$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]')
-      VERSION=$($SWIFT_EXTRACTOR_DIR/tools/osx64/extractor --version | awk '/version/ { print $3 }') # Update platform if more operating systems are added to this test.
-      if [ $VERSION = "5.7" ]; then
-        VERSION="5.7.0"
-      fi
-      echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
-  - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
+  - uses: ./.github/setup-swift
     with:
-      swift-version: "${{steps.get_swift_version.outputs.version}}"
+      codeql-path: ${{steps.init.outputs.codeql-path}}
   - uses: ./../action/autobuild
   - uses: ./../action/analyze
     id: analysis

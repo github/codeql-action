@@ -65,37 +65,17 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version: ^1.13.1
+    - uses: actions/checkout@v3
+
     - uses: ./../action/init
       id: init
       with:
         db-location: ${{ runner.temp }}/customDbLocation
         tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-    - name: Get Swift version
-      id: get_swift_version
-      if: (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version
-        == 'nightly-latest')
-      shell: bash
-      env:
-        CODEQL_PATH: ${{steps.init.outputs.codeql-path}}
-      run: |
-        if [ $RUNNER_OS = "macOS" ]; then
-          PLATFORM="osx64"
-        else # We do not run this test on Windows.
-          PLATFORM="linux64"
-        fi 
-        SWIFT_EXTRACTOR_DIR=$("$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]')
-        VERSION=$($SWIFT_EXTRACTOR_DIR/tools/$PLATFORM/extractor --version | awk '/version/ { print $3 }')
-        if [ $VERSION = "5.7" ]; then
-          VERSION="5.7.0"
-        fi
-        echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
-            
-    - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
-      if: (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version
-        == 'nightly-latest')
+    - uses: ./.github/setup-swift
       with:
-        swift-version: ${{steps.get_swift_version.outputs.version}}
+        codeql-path: ${{steps.init.outputs.codeql-path}}
 
     - name: Build code
       shell: bash

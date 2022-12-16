@@ -54,7 +54,7 @@ jobs:
         CODEQL_PATH: ${{steps.init.outputs.codeql-path}}
       run: |
         SWIFT_EXTRACTOR_DIR=$("$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]')
-        VERSION=$($SWIFT_EXTRACTOR_DIR/tools/*/extractor --version | awk '/version/ { print $3 }')
+        VERSION=$($SWIFT_EXTRACTOR_DIR/tools/osx64/extractor --version | awk '/version/ { print $3 }') # Update platform if more operating systems are added to this test.
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
     - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
       with:

@@ -12,6 +12,7 @@ steps:
 
   - name: Get Swift version
     id: get_swift_version
+    if: "(matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
     shell: bash
     env: 
       CODEQL_PATH: ${{steps.init.outputs.codeql-path}}
@@ -22,6 +23,7 @@ steps:
       echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
           
   - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
+    if: "(matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
     with:
       swift-version: "${{steps.get_swift_version.outputs.version}}"
 
@@ -77,7 +79,7 @@ steps:
       fi
 
   - name: Check language autodetect for Swift
-    if: "!startsWith(matrix.os, 'windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+    if: "(matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
     shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

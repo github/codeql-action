@@ -11,14 +11,9 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
     env:
       CODEQL_FILE_BASELINE_INFORMATION: true
-  # We check out the repo again in order to access the setup-swift composite action.
-  - uses: actions/checkout@v3
   - uses: ./.github/setup-swift
     with:
       codeql-path: ${{steps.init.outputs.codeql-path}}
-  - name: Check working directory
-    shell: bash
-    run: pwd
   - name: Build code
     shell: bash
     run: ./build.sh

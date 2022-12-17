@@ -42,7 +42,6 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - uses: actions/checkout@v3
     - uses: ./../action/init
       id: init
       with:
@@ -50,6 +49,8 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
+  # We check out the repo again in order to access the setup-swift composite action.
+    - uses: actions/checkout@v3
     - uses: ./.github/setup-swift
       with:
         codeql-path: ${{steps.init.outputs.codeql-path}}

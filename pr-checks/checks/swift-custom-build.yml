@@ -6,12 +6,13 @@ env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
-  - uses: actions/checkout@v3
   - uses: ./../action/init
     id: init
     with:
       languages: swift
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+  # We check out the repo again in order to access the setup-swift composite action.
+  - uses: actions/checkout@v3
   - uses: ./.github/setup-swift
     with:
       codeql-path: ${{steps.init.outputs.codeql-path}}

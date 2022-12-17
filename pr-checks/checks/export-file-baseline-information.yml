@@ -4,7 +4,6 @@ versions: ["nightly-latest"]
 env: 
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true # Remove when Swift is GA.
 steps:
-  - uses: actions/checkout@v3
   - uses: ./../action/init
     id: init
     with:
@@ -12,6 +11,8 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
     env:
       CODEQL_FILE_BASELINE_INFORMATION: true
+  # We check out the repo again in order to access the setup-swift composite action.
+  - uses: actions/checkout@v3
   - uses: ./.github/setup-swift
     with:
       codeql-path: ${{steps.init.outputs.codeql-path}}

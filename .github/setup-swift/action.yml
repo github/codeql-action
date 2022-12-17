@@ -30,3 +30,7 @@ runs:
       if: "(runner.os != 'Windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
       with:
         swift-version: "${{steps.get_swift_version.outputs.version}}"
+     # We run prepare-test again to return to the appropriate directory before building.
+    - uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}

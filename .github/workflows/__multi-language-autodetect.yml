@@ -78,6 +78,10 @@ jobs:
       with:
         codeql-path: ${{steps.init.outputs.codeql-path}}
 
+    - name: Check working directory
+      shell: bash
+      run: pwd
+
     - name: Build code
       shell: bash
       run: ./build.sh

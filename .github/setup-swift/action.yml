@@ -1,4 +1,4 @@
-name: "Setup Swift"
+name: "Set up Swift"
 description: Performs necessary steps to set up appropriate Swift version.
 inputs:
   codeql-path:
@@ -26,8 +26,6 @@ runs:
           VERSION="5.7.0"
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
-        # We return to the appropriate directory for the rest of the workflow.
-        cd ../action
     - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
       if: "(runner.os != 'Windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
       with:

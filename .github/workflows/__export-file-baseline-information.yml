@@ -54,6 +54,9 @@ jobs:
     - uses: ./.github/setup-swift
       with:
         codeql-path: ${{steps.init.outputs.codeql-path}}
+    - name: Check working directory
+      shell: bash
+      run: pwd
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -62,7 +65,6 @@ jobs:
         output: ${{ runner.temp }}/results
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
-        CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
     - name: Upload SARIF
       uses: actions/upload-artifact@v3
       with:

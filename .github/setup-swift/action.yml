@@ -19,8 +19,8 @@ runs:
         else # We do not run this step on Windows.
           PLATFORM="linux64"
         fi 
-        SWIFT_EXTRACTOR_DIR=$("$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]')
-        VERSION=$($SWIFT_EXTRACTOR_DIR/tools/$PLATFORM/extractor --version | awk '/version/ { print $3 }')
+        SWIFT_EXTRACTOR_DIR="$("$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]')"
+        VERSION="$("$SWIFT_EXTRACTOR_DIR/tools/$PLATFORM/extractor" --version | awk '/version/ { print $3 }')"
         # Specify 5.7.0, otherwise setup Action will default to latest minor version. 
         if [ $VERSION = "5.7" ]; then
           VERSION="5.7.0"

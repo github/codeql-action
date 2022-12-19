@@ -49,7 +49,7 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
-    - uses: ../action/.github/setup-swift
+    - uses: ./../action/.github/setup-swift
       with:
         codeql-path: ${{steps.init.outputs.codeql-path}}
     - name: Build code

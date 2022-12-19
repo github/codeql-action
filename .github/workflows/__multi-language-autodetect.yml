@@ -71,7 +71,7 @@ jobs:
         db-location: ${{ runner.temp }}/customDbLocation
         tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-    - uses: ./.github/setup-swift
+    - uses: ../action/.github/setup-swift
       with:
         codeql-path: ${{steps.init.outputs.codeql-path}}
 

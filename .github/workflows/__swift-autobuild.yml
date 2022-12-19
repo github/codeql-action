@@ -42,15 +42,17 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
-    # Only macOS latest and nightly-latest support Swift 5.7.1
-      if: runner.os == 'Linux' || matrix.version == 'cached'
-      with:
-        swift-version: 5.7.0
     - uses: ./../action/init
+      id: init
       with:
         languages: swift
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/.github/setup-swift
+      with:
+        codeql-path: ${{steps.init.outputs.codeql-path}}
+    - name: Check working directory
+      shell: bash
+      run: pwd
     - uses: ./../action/autobuild
     - uses: ./../action/analyze
       id: analysis
@@ -63,5 +65,5 @@ jobs:
           exit 1
         fi
     env:
-      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true'
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

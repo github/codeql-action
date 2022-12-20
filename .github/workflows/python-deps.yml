@@ -28,17 +28,7 @@ jobs:
         matrix:
           os: [ubuntu-20.04, ubuntu-22.04, macos-latest]
           python_deps_type: [pipenv, poetry, requirements, setup_py]
-          python_version: [2, 3]
-          exclude:
-            # Python2 and poetry are not supported. See https://github.com/actions/setup-python/issues/374
-            - python_version: 2
-              python_deps_type: poetry
-            # Python2 and pipenv are not supported since pipenv v2021.11.5
-            - python_version: 2
-              python_deps_type: pipenv
-            # Python2 is not available on ubuntu-22.04 by default -- see https://github.com/github/codeql-action/pull/1257
-            - python_version: 2
-              os: ubuntu-22.04
+          python_version: [3]
 
 
     env:
@@ -138,14 +128,7 @@ jobs:
         fail-fast: false
         matrix:
           python_deps_type: [pipenv, poetry, requirements, setup_py]
-          python_version: [2, 3]
-          exclude:
-            # Python2 and poetry are not supported. See https://github.com/actions/setup-python/issues/374
-            - python_version: 2
-              python_deps_type: poetry
-            # Python2 and pipenv are not supported since pipenv v2021.11.5
-            - python_version: 2
-              python_deps_type: pipenv
+          python_version: [3]
 
     env:
       CODEQL_ACTION_TEST_MODE: true

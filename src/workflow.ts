@@ -259,7 +259,17 @@ export async function getWorkflow(): Promise<Workflow> {
     relativePath
   );
 
-  return yaml.load(fs.readFileSync(absolutePath, "utf-8")) as Workflow;
+  try {
+    return yaml.load(fs.readFileSync(absolutePath, "utf-8")) as Workflow;
+  } catch (e) {
+    if (e instanceof Error && e["code"] === "ENOENT") {
+      throw new Error(
+        `Unable to load code scanning workflow from ${absolutePath}. This can happen if the currently ` +
+          "running workflow checks out a branch that doesn't contain the corresponding workflow file."
+      );
+    }
+    throw e;
+  }
 }
 
 /**

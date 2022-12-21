@@ -6,7 +6,7 @@ import { Config, getConfig } from "./config-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF } from "./shared-environment";
+import { CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY } from "./shared-environment";
 import * as uploadLib from "./upload-lib";
 import { getRequiredEnvParam, isInTestMode, parseMatrixInput } from "./util";
 import {
@@ -98,11 +98,11 @@ export async function uploadSarifIfRunFailed(
   featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<UploadFailedSarifResult> {
-  // Environment variable used to integration test uploading a SARIF file for failed runs
+  // This environment variable is used to integration test uploading a SARIF file for failed runs
   const expectFailedSarifUpload =
     process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true";
 
-  if (process.env[CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF] !== "true") {
+  if (process.env[CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
     try {
       return await uploadFailedSarif(
         config,
@@ -113,22 +113,23 @@ export async function uploadSarifIfRunFailed(
     } catch (e) {
       if (expectFailedSarifUpload) {
         throw new Error(
-          "Expected to upload a SARIF file for the failed run, but encountered " +
+          "Expected to upload a SARIF file for this failed CodeQL code scanning run, but encountered " +
             `the following error: ${e}`
         );
       }
       logger.info(
-        `Failed to upload a SARIF file for the failed run. Error: ${e}`
+        `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`
       );
       return createFailedUploadFailedSarifResult(e);
     }
   } else if (expectFailedSarifUpload) {
     throw new Error(
-      "Expected to upload a SARIF file for the failed run, but didn't."
+      "Expected to upload a SARIF file for this failed CodeQL code scanning run, but didn't."
     );
   } else {
     return {
-      upload_failed_run_skipped_because: "SARIF file already uploaded",
+      upload_failed_run_skipped_because:
+        "Analyze Action completed successfully",
     };
   }
 }

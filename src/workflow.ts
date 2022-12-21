@@ -18,6 +18,7 @@ interface WorkflowJob {
   name?: string;
   "runs-on"?: string;
   steps?: WorkflowJobStep[];
+  uses?: string;
 }
 
 interface WorkflowTrigger {
@@ -301,6 +302,11 @@ function getStepsCallingAction(
   job: WorkflowJob,
   actionName: string
 ): WorkflowJobStep[] {
+  if (job.uses) {
+    throw new Error(
+      `Could not get steps calling ${actionName} since the job calls a reusable workflow.`
+    );
+  }
   const steps = job.steps;
   if (!Array.isArray(steps)) {
     throw new Error(

@@ -117,7 +117,7 @@ export async function uploadSarifIfRunFailed(
             `the following error: ${e}`
         );
       }
-      logger.info(
+      logger.debug(
         `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`
       );
       return createFailedUploadFailedSarifResult(e);

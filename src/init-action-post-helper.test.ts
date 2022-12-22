@@ -8,12 +8,7 @@ import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import {
-  createFeatures,
-  getRecordingLogger,
-  LoggedMessage,
-  setupTests,
-} from "./testing-utils";
+import { createFeatures, setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 import * as workflow from "./workflow";
@@ -135,16 +130,67 @@ test("doesn't upload failed SARIF for workflow with upload: false", async (t) =>
     },
   ]);
   const result = await testFailedSarifUpload(t, actionsWorkflow, {
-    expectedLogs: [
-      {
-        message:
-          "Won't upload a failed SARIF file since SARIF upload is disabled.",
-        type: "debug",
-      },
-    ],
     expectUpload: false,
   });
   t.is(result.upload_failed_run_skipped_because, "SARIF upload is disabled");
+});
+
+test("uploading failed SARIF run succeeds when workflow uses an input with a matrix var", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "/language:${{ matrix.language }}",
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "/language:csharp",
+    matrix: { language: "csharp" },
+  });
+});
+
+test("uploading failed SARIF run fails when workflow uses a complex upload input", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        upload: "${{ matrix.language != 'csharp' }}",
+      },
+    },
+  ]);
+  const result = await testFailedSarifUpload(t, actionsWorkflow, {
+    expectUpload: false,
+  });
+  t.is(
+    result.upload_failed_run_error,
+    "Could not get upload input to github/codeql-action/analyze since it contained an " +
+      "unrecognized dynamic value."
+  );
 });
 
 test("uploading failed SARIF run fails when workflow does not reference github/codeql-action", async (t) => {
@@ -154,19 +200,14 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
       uses: "actions/checkout@v3",
     },
   ]);
-  const expectedError =
-    "Could not get upload input to github/codeql-action/analyze since the analyze job does not " +
-    "call github/codeql-action/analyze.";
   const result = await testFailedSarifUpload(t, actionsWorkflow, {
-    expectedLogs: [
-      {
-        message: `Failed to upload a SARIF file for this failed CodeQL code scanning run. Error: ${expectedError}`,
-        type: "debug",
-      },
-    ],
     expectUpload: false,
   });
-  t.is(result.upload_failed_run_error, expectedError);
+  t.is(
+    result.upload_failed_run_error,
+    "Could not get upload input to github/codeql-action/analyze since the analyze job does not " +
+      "call github/codeql-action/analyze."
+  );
   t.truthy(result.upload_failed_run_stack_trace);
 });
 
@@ -198,12 +239,12 @@ async function testFailedSarifUpload(
   actionsWorkflow: workflow.Workflow,
   {
     category,
-    expectedLogs = [],
     expectUpload = true,
+    matrix = {},
   }: {
     category?: string;
-    expectedLogs?: LoggedMessage[];
     expectUpload?: boolean;
+    matrix?: { [key: string]: string };
   } = {}
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
   const config = {
@@ -212,12 +253,14 @@ async function testFailedSarifUpload(
     languages: [],
     packs: [],
   } as unknown as configUtils.Config;
-  const messages = [];
   process.env["GITHUB_JOB"] = "analyze";
   process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   process.env["GITHUB_WORKSPACE"] =
     "/home/runner/work/codeql-action/codeql-action";
-  sinon.stub(actionsUtil, "getRequiredInput").withArgs("matrix").returns("{}");
+  sinon
+    .stub(actionsUtil, "getRequiredInput")
+    .withArgs("matrix")
+    .returns(JSON.stringify(matrix));
 
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
@@ -236,7 +279,7 @@ async function testFailedSarifUpload(
     config,
     parseRepositoryNwo("github/codeql-action"),
     createFeatures([Feature.UploadFailedSarifEnabled]),
-    getRecordingLogger(messages)
+    getRunnerLogger(true)
   );
   if (expectUpload) {
     t.deepEqual(result, {
@@ -244,7 +287,6 @@ async function testFailedSarifUpload(
       zipped_upload_size_bytes: 10,
     });
   }
-  t.deepEqual(messages, expectedLogs);
   if (expectUpload) {
     t.true(
       diagnosticsExportStub.calledOnceWith(sinon.match.string, category),

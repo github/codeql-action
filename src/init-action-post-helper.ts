@@ -47,9 +47,6 @@ async function maybeUploadFailedSarif(
   logger: Logger
 ): Promise<UploadFailedSarifResult> {
   if (!config.codeQLCmd) {
-    logger.warning(
-      "CodeQL command not found. Unable to upload failed SARIF file."
-    );
     return { upload_failed_run_skipped_because: "CodeQL command not found" };
   }
   const codeql = await getCodeQL(config.codeQLCmd);
@@ -59,7 +56,6 @@ async function maybeUploadFailedSarif(
       codeql
     ))
   ) {
-    logger.debug("Uploading failed SARIF is disabled.");
     return { upload_failed_run_skipped_because: "Feature disabled" };
   }
   const workflow = await getWorkflow();
@@ -69,9 +65,6 @@ async function maybeUploadFailedSarif(
     getUploadInputOrThrow(workflow, jobName, matrix) !== "true" ||
     isInTestMode()
   ) {
-    logger.debug(
-      "Won't upload a failed SARIF file since SARIF upload is disabled."
-    );
     return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);
@@ -148,7 +141,7 @@ export async function run(
   );
   if (uploadFailedSarifResult.upload_failed_run_skipped_because) {
     logger.debug(
-      "Skipped uploading a failed SARIF file for this CodeQL code scanning run because: " +
+      "Won't upload a failed SARIF file for this CodeQL code scanning run because: " +
         `${uploadFailedSarifResult.upload_failed_run_skipped_because}.`
     );
   }

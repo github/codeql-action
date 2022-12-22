@@ -134,7 +134,7 @@ test("doesn't upload failed SARIF for workflow with upload: false", async (t) =>
       },
     },
   ]);
-  await testFailedSarifUpload(t, actionsWorkflow, {
+  const result = await testFailedSarifUpload(t, actionsWorkflow, {
     expectedLogs: [
       {
         message:
@@ -144,6 +144,7 @@ test("doesn't upload failed SARIF for workflow with upload: false", async (t) =>
     ],
     expectUpload: false,
   });
+  t.is(result.upload_failed_run_skipped_because, "SARIF upload is disabled");
 });
 
 test("uploading failed SARIF run fails when workflow does not reference github/codeql-action", async (t) => {
@@ -153,9 +154,20 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
       uses: "actions/checkout@v3",
     },
   ]);
-  await t.throwsAsync(
-    async () => await testFailedSarifUpload(t, actionsWorkflow)
-  );
+  const expectedError =
+    "Could not get upload input to github/codeql-action/analyze since the analyze job does not " +
+    "call github/codeql-action/analyze.";
+  const result = await testFailedSarifUpload(t, actionsWorkflow, {
+    expectedLogs: [
+      {
+        message: `Failed to upload a SARIF file for this failed CodeQL code scanning run. Error: ${expectedError}`,
+        type: "debug",
+      },
+    ],
+    expectUpload: false,
+  });
+  t.is(result.upload_failed_run_error, expectedError);
+  t.truthy(result.upload_failed_run_stack_trace);
 });
 
 function createTestWorkflow(
@@ -193,7 +205,7 @@ async function testFailedSarifUpload(
     expectedLogs?: LoggedMessage[];
     expectUpload?: boolean;
   } = {}
-): Promise<void> {
+): Promise<initActionPostHelper.UploadFailedSarifResult> {
   const config = {
     codeQLCmd: "codeql",
     debugMode: true,
@@ -214,15 +226,24 @@ async function testFailedSarifUpload(
   sinon.stub(workflow, "getWorkflow").resolves(actionsWorkflow);
 
   const uploadFromActions = sinon.stub(uploadLib, "uploadFromActions");
-  uploadFromActions.resolves({ sarifID: "42" } as uploadLib.UploadResult);
+  uploadFromActions.resolves({
+    sarifID: "42",
+    statusReport: { raw_upload_size_bytes: 20, zipped_upload_size_bytes: 10 },
+  } as uploadLib.UploadResult);
   const waitForProcessing = sinon.stub(uploadLib, "waitForProcessing");
 
-  await initActionPostHelper.uploadFailedSarif(
+  const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
     config,
     parseRepositoryNwo("github/codeql-action"),
     createFeatures([Feature.UploadFailedSarifEnabled]),
     getRecordingLogger(messages)
   );
+  if (expectUpload) {
+    t.deepEqual(result, {
+      raw_upload_size_bytes: 20,
+      zipped_upload_size_bytes: 10,
+    });
+  }
   t.deepEqual(messages, expectedLogs);
   if (expectUpload) {
     t.true(
@@ -248,4 +269,5 @@ async function testFailedSarifUpload(
     t.true(uploadFromActions.notCalled);
     t.true(waitForProcessing.notCalled);
   }
+  return result;
 }

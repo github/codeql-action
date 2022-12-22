@@ -36,7 +36,11 @@ function createFailedUploadFailedSarifResult(
   };
 }
 
-export async function uploadFailedSarif(
+/**
+ * Upload a failed SARIF file if we can verify that SARIF upload is enabled and determine the SARIF
+ * category for the workflow.
+ */
+async function maybeUploadFailedSarif(
   config: Config,
   repositoryNwo: RepositoryNwo,
   featureEnablement: FeatureEnablement,
@@ -92,40 +96,26 @@ export async function uploadFailedSarif(
   return uploadResult?.statusReport ?? {};
 }
 
-export async function uploadSarifIfRunFailed(
+export async function tryUploadSarifIfRunFailed(
   config: Config,
   repositoryNwo: RepositoryNwo,
   featureEnablement: FeatureEnablement,
   logger: Logger
 ): Promise<UploadFailedSarifResult> {
-  // This environment variable is used to integration test uploading a SARIF file for failed runs
-  const expectFailedSarifUpload =
-    process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true";
-
   if (process.env[CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
     try {
-      return await uploadFailedSarif(
+      return await maybeUploadFailedSarif(
         config,
         repositoryNwo,
         featureEnablement,
         logger
       );
     } catch (e) {
-      if (expectFailedSarifUpload) {
-        throw new Error(
-          "Expected to upload a SARIF file for this failed CodeQL code scanning run, but encountered " +
-            `the following error: ${e}`
-        );
-      }
       logger.debug(
         `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`
       );
       return createFailedUploadFailedSarifResult(e);
     }
-  } else if (expectFailedSarifUpload) {
-    throw new Error(
-      "Expected to upload a SARIF file for this failed CodeQL code scanning run, but didn't."
-    );
   } else {
     return {
       upload_failed_run_skipped_because:
@@ -150,12 +140,29 @@ export async function run(
     return;
   }
 
-  const uploadFailedSarifResult = await uploadSarifIfRunFailed(
+  const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
     repositoryNwo,
     featureEnablement,
     logger
   );
+  if (uploadFailedSarifResult.upload_failed_run_skipped_because) {
+    logger.debug(
+      "Skipped uploading a failed SARIF file for this CodeQL code scanning run because: " +
+        `${uploadFailedSarifResult.upload_failed_run_skipped_because}.`
+    );
+  }
+  // Throw an error if in integration tests, we expected to upload a SARIF file for a failed run
+  // but we didn't upload anything.
+  if (
+    process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true" &&
+    !uploadFailedSarifResult.raw_upload_size_bytes
+  ) {
+    throw new Error(
+      "Expected to upload a failed SARIF file for this CodeQL code scanning run, " +
+        `but the result was instead ${uploadFailedSarifResult}.`
+    );
+  }
 
   // Upload appropriate Actions artifacts for debugging
   if (config.debugMode) {

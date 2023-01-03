@@ -81,8 +81,10 @@ jobs:
       security-events: write
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: ./init
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Initialize CodeQL
+      uses: ./init
       id: init
       with:
         languages: javascript
@@ -91,4 +93,5 @@ jobs:
     # confirm steps.init.outputs.codeql-path points to the codeql binary
     - name: Print CodeQL Version
       run: ${{steps.init.outputs.codeql-path}} version --format=json
-    - uses: ./analyze
+    - name: Perform CodeQL Analysis
+      uses: ./analyze

@@ -1,10 +1,9 @@
 /**
  * This environment variable is set to true when the `analyze` Action
- * successfully uploads a SARIF file. It does NOT indicate whether the
- * SARIF file was processed successfully.
+ * completes successfully.
  */
-export const CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF =
-  "CODEQL_ACTION_ANALYZE_DID_UPLOAD_SARIF";
+export const CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY =
+  "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY";
 
 export const CODEQL_ACTION_TESTING_ENVIRONMENT =
   "CODEQL_ACTION_TESTING_ENVIRONMENT";

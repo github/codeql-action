@@ -423,6 +423,38 @@ test(`selects CLI v2.11.6 on Dotcom when no default version feature flags are en
   });
 });
 
+test("ignores invalid version numbers in default version feature flags", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const loggedMessages = [];
+    const featureEnablement = setUpFeatureFlagTests(
+      tmpDir,
+      getRecordingLogger(loggedMessages)
+    );
+    const expectedFeatureEnablement = initializeFeatures(true);
+    expectedFeatureEnablement["default_codeql_version_2_12_0_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_12_1_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_12_invalid_enabled"] =
+      true;
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    t.deepEqual(
+      await featureEnablement.getDefaultCliVersion(GitHubVariant.DOTCOM),
+      {
+        cliVersion: "2.12.1",
+        variant: GitHubVariant.DOTCOM,
+      }
+    );
+    t.assert(
+      loggedMessages.find(
+        (v: LoggedMessage) =>
+          v.type === "warning" &&
+          v.message ===
+            "Ignoring feature flag default_codeql_version_2_12_invalid_enabled as it does not specify a valid CodeQL version."
+      ) !== undefined
+    );
+  });
+});
+
 function assertAllFeaturesUndefinedInApi(
   t: ExecutionContext<unknown>,
   loggedMessages: LoggedMessage[]

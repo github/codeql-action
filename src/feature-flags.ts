@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as semver from "semver";
+
 import { getApiClient } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
@@ -179,19 +181,27 @@ class GitHubFeatureFlags implements FeatureEnablement {
     /**/
   }
 
-  private static getCliVersionFromFeatureFlag(f: string): string | undefined {
+  private getCliVersionFromFeatureFlag(f: string): string | undefined {
     if (
       !f.startsWith(DEFAULT_VERSION_FEATURE_FLAG_PREFIX) ||
       !f.endsWith(DEFAULT_VERSION_FEATURE_FLAG_SUFFIX)
     ) {
       return undefined;
     }
-    return f
+    const version = f
       .substring(
         DEFAULT_VERSION_FEATURE_FLAG_PREFIX.length,
         f.length - DEFAULT_VERSION_FEATURE_FLAG_SUFFIX.length
       )
       .replace(/_/g, ".");
+
+    if (!semver.valid(version)) {
+      this.logger.warning(
+        `Ignoring feature flag ${f} as it does not specify a valid CodeQL version.`
+      );
+      return undefined;
+    }
+    return version;
   }
 
   async getDefaultCliVersion(
@@ -215,9 +225,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
       .map(([f, isEnabled]) =>
-        isEnabled
-          ? GitHubFeatureFlags.getCliVersionFromFeatureFlag(f)
-          : undefined
+        isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined
       )
       .filter((f) => f !== undefined)
       .map((f) => f as string);

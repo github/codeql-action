@@ -314,6 +314,45 @@ export function getCodeQLActionRepository(logger: Logger): string {
   return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
 }
 
+export async function findCodeQLBundleTagDotcomOnly(
+  cliVersion: string,
+  logger: Logger
+): Promise<string> {
+  const apiClient = api.getApiClient();
+  const codeQLActionRepository = getCodeQLActionRepository(logger);
+  const releases = await apiClient.paginate(apiClient.repos.listReleases, {
+    owner: codeQLActionRepository.split("/")[0],
+    repo: codeQLActionRepository.split("/")[1],
+  });
+  logger.debug(`Found ${releases.length} releases.`);
+
+  for (const release of releases) {
+    const cliVersionFileVersions = release.assets
+      .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
+      .filter((v) => v)
+      .map((v) => v as string);
+
+    if (cliVersionFileVersions.length === 0) {
+      logger.debug(
+        `Ignoring release ${release.tag_name} with no CLI version marker file.`
+      );
+      continue;
+    }
+    if (cliVersionFileVersions.length > 1) {
+      logger.warning(
+        `Ignoring release ${release.tag_name} with multiple CLI version marker files.`
+      );
+      continue;
+    }
+    if (cliVersionFileVersions[0] === cliVersion) {
+      return release.tag_name;
+    }
+  }
+  throw new Error(
+    `Failed to find a CodeQL bundle release for CLI version ${cliVersion}.`
+  );
+}
+
 async function getCodeQLBundleDownloadURL(
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,

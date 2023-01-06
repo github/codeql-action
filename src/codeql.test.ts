@@ -11,6 +11,7 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import * as api from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
@@ -926,6 +927,60 @@ test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for
       "--sarif-add-baseline-file-info"
     ),
     "--sarif-add-baseline-file-info must be absent, but it is present"
+  );
+});
+
+test("findCodeQLBundleTagDotcomOnly() matches GitHub Release with marker file", async (t) => {
+  // Look for GitHub Releases in github/codeql-action
+  sinon.stub(actionsUtil, "isRunningLocalAction").resolves(true);
+  sinon.stub(api, "getApiClient").value(() => ({
+    repos: {
+      listReleases: sinon.stub().resolves(undefined),
+    },
+    paginate: sinon.stub().resolves([
+      {
+        assets: [
+          {
+            name: "cli-version-2.12.0.txt",
+          },
+        ],
+        tag_name: "codeql-bundle-20230106",
+      },
+    ]),
+  }));
+  t.is(
+    await codeql.findCodeQLBundleTagDotcomOnly("2.12.0", getRunnerLogger(true)),
+    "codeql-bundle-20230106"
+  );
+});
+
+test("findCodeQLBundleTagDotcomOnly() errors if no GitHub Release matches marker file", async (t) => {
+  // Look for GitHub Releases in github/codeql-action
+  sinon.stub(actionsUtil, "isRunningLocalAction").resolves(true);
+  sinon.stub(api, "getApiClient").value(() => ({
+    repos: {
+      listReleases: sinon.stub().resolves(undefined),
+    },
+    paginate: sinon.stub().resolves([
+      {
+        assets: [
+          {
+            name: "cli-version-2.12.0.txt",
+          },
+        ],
+        tag_name: "codeql-bundle-20230106",
+      },
+    ]),
+  }));
+  await t.throwsAsync(
+    async () =>
+      await codeql.findCodeQLBundleTagDotcomOnly(
+        "2.12.1",
+        getRunnerLogger(true)
+      ),
+    {
+      message: "Failed to find a CodeQL bundle release for CLI version 2.12.1.",
+    }
   );
 });
 

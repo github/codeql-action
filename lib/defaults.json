@@ -1,3 +1,4 @@
 {
-    "bundleVersion": "codeql-bundle-20221211"
+    "bundleVersion": "codeql-bundle-20221211",
+    "cliVersion": "2.11.6"
 }

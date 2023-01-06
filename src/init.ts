@@ -16,7 +16,7 @@ import * as util from "./util";
 import { codeQlVersionAbove } from "./util";
 
 export async function initCodeQL(
-  codeqlURL: string | undefined,
+  toolsInput: string | undefined,
   apiDetails: GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
@@ -25,7 +25,7 @@ export async function initCodeQL(
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
   const { codeql, toolsVersion } = await setupCodeQL(
-    codeqlURL,
+    toolsInput,
     apiDetails,
     tempDir,
     variant,

@@ -36,12 +36,13 @@ export async function uploadDatabases(
   const codeql = await getCodeQL(config.codeQLCmd);
 
   for (const language of config.languages) {
-    // Upload the database bundle.
-    // Although we are uploading arbitrary file contents to the API, it's worth
-    // noting that it's the API's job to validate that the contents is acceptable.
-    // This API method is available to anyone with write access to the repo.
-    const bundledDb = await bundleDb(config, language, codeql, language);
     try {
+      // Upload the database bundle.
+      // Although we are uploading arbitrary file contents to the API, it's worth
+      // noting that it's the API's job to validate that the contents is acceptable.
+      // This API method is available to anyone with write access to the repo.
+      const bundledDb = await bundleDb(config, language, codeql, language);
+
       await client.request(
         `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
         {

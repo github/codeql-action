@@ -582,16 +582,20 @@ async function parseQueryUses(
     );
   }
 
-  // Otherwise, must be a reference to another repo
-  await addRemoteQueries(
-    codeQL,
-    resultMap,
-    queryUses,
-    tempDir,
-    apiDetails,
-    logger,
-    configFile
-  );
+  // Otherwise, must be a reference to another repo.
+  // If config parsing is handled in CLI, then this repo will be downloaded
+  // later by the CLI.
+  if (!(await useCodeScanningConfigInCli(codeQL, featureEnablement))) {
+    await addRemoteQueries(
+      codeQL,
+      resultMap,
+      queryUses,
+      tempDir,
+      apiDetails,
+      logger,
+      configFile
+    );
+  }
   return false;
 }
 
@@ -1724,26 +1728,27 @@ export async function initConfig(
     );
   }
 
-  // The list of queries should not be empty for any language. If it is then
-  // it is a user configuration error.
-  for (const language of config.languages) {
-    const hasBuiltinQueries = config.queries[language]?.builtin.length > 0;
-    const hasCustomQueries = config.queries[language]?.custom.length > 0;
-    const hasPacks = (config.packs[language]?.length || 0) > 0;
-    if (!hasPacks && !hasBuiltinQueries && !hasCustomQueries) {
-      throw new Error(
-        `Did not detect any queries to run for ${language}. ` +
-          "Please make sure that the default queries are enabled, or you are specifying queries to run."
-      );
-    }
-  }
-
   // When using the codescanning config in the CLI, pack downloads
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
   await logCodeScanningConfigInCli(codeQL, featureEnablement, logger);
 
   if (!(await useCodeScanningConfigInCli(codeQL, featureEnablement))) {
+    // The list of queries should not be empty for any language. If it is then
+    // it is a user configuration error.
+    // This check occurs in the CLI when it parses the config file.
+    for (const language of config.languages) {
+      const hasBuiltinQueries = config.queries[language]?.builtin.length > 0;
+      const hasCustomQueries = config.queries[language]?.custom.length > 0;
+      const hasPacks = (config.packs[language]?.length || 0) > 0;
+      if (!hasPacks && !hasBuiltinQueries && !hasCustomQueries) {
+        throw new Error(
+          `Did not detect any queries to run for ${language}. ` +
+            "Please make sure that the default queries are enabled, or you are specifying queries to run."
+        );
+      }
+    }
+
     const registries = parseRegistries(registriesInput);
     await downloadPacks(
       codeQL,

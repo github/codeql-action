@@ -9,7 +9,7 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { isRunningLocalAction } from "./actions-util";
+import { getOptionalInput, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
@@ -252,7 +252,6 @@ const CODEQL_MINIMUM_VERSION = "2.6.3";
  */
 const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
-export const CODEQL_VERSION_CONFIG_FILES = "2.10.1";
 const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
 export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
 const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
@@ -885,6 +884,9 @@ async function getCodeQLForCmd(
         }
       }
 
+      // A config file is only generated if the CliConfigFileEnabled feature flag is enabled.
+      // Only pass external repository token if a config file is
+      let externalRepositoryToken: string | undefined;
       const configLocation = await generateCodeScanningConfig(
         codeql,
         config,
@@ -892,17 +894,25 @@ async function getCodeQLForCmd(
       );
       if (configLocation) {
         extraArgs.push(`--codescanning-config=${configLocation}`);
+        externalRepositoryToken = getOptionalInput("external-repository-token");
+        if (externalRepositoryToken) {
+          extraArgs.push("--external-repository-token-stdin");
+        }
       }
 
-      await runTool(cmd, [
-        "database",
-        "init",
-        "--db-cluster",
-        config.dbLocation,
-        `--source-root=${sourceRoot}`,
-        ...extraArgs,
-        ...getExtraOptionsFromEnv(["database", "init"]),
-      ]);
+      await runTool(
+        cmd,
+        [
+          "database",
+          "init",
+          "--db-cluster",
+          config.dbLocation,
+          `--source-root=${sourceRoot}`,
+          ...extraArgs,
+          ...getExtraOptionsFromEnv(["database", "init"]),
+        ],
+        externalRepositoryToken
+      );
     },
     async runAutobuild(language: Language) {
       const cmdName =
@@ -1335,7 +1345,7 @@ export function getExtraOptions(
  */
 const maxErrorSize = 20_000;
 
-async function runTool(cmd: string, args: string[] = []) {
+async function runTool(cmd: string, args: string[] = [], stdin?: string) {
   let output = "";
   let error = "";
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
@@ -1354,6 +1364,7 @@ async function runTool(cmd: string, args: string[] = []) {
       },
     },
     ignoreReturnCode: true,
+    input: Buffer.from(stdin || ""),
   }).exec();
   if (exitCode !== 0)
     throw new CommandInvocationError(cmd, args, exitCode, error, output);

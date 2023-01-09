@@ -42,23 +42,28 @@ export async function uploadDatabases(
       // noting that it's the API's job to validate that the contents is acceptable.
       // This API method is available to anyone with write access to the repo.
       const bundledDb = await bundleDb(config, language, codeql, language);
-
-      await client.request(
-        `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
-        {
-          owner: repositoryNwo.owner,
-          repo: repositoryNwo.repo,
-          language,
-          name: `${language}-database`,
-          data: fs.createReadStream(bundledDb),
-          headers: {
-            authorization: `token ${apiDetails.auth}`,
-            "Content-Type": "application/zip",
-            "Content-Length": fs.statSync(bundledDb).size,
-          },
-        }
-      );
-      logger.debug(`Successfully uploaded database for ${language}`);
+      const bundledDbSize = fs.statSync(bundledDb).size;
+      const bundledDbReadStream = fs.createReadStream(bundledDb);
+      try {
+        await client.request(
+          `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
+          {
+            owner: repositoryNwo.owner,
+            repo: repositoryNwo.repo,
+            language,
+            name: `${language}-database`,
+            data: bundledDbReadStream,
+            headers: {
+              authorization: `token ${apiDetails.auth}`,
+              "Content-Type": "application/zip",
+              "Content-Length": bundledDbSize,
+            },
+          }
+        );
+        logger.debug(`Successfully uploaded database for ${language}`);
+      } finally {
+        bundledDbReadStream.close();
+      }
     } catch (e) {
       console.log(e);
       // Log a warning but don't fail the workflow

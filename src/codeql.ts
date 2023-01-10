@@ -885,13 +885,13 @@ async function getCodeQLForCmd(
       }
 
       // A config file is only generated if the CliConfigFileEnabled feature flag is enabled.
-      // Only pass external repository token if a config file is
-      let externalRepositoryToken: string | undefined;
       const configLocation = await generateCodeScanningConfig(
         codeql,
         config,
         featureEnablement
       );
+      // Only pass external repository token if a config file is going to be parsed by the CLI.
+      let externalRepositoryToken: string | undefined;
       if (configLocation) {
         extraArgs.push(`--codescanning-config=${configLocation}`);
         externalRepositoryToken = getOptionalInput("external-repository-token");
@@ -911,7 +911,7 @@ async function getCodeQLForCmd(
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"]),
         ],
-        externalRepositoryToken
+        { stdin: externalRepositoryToken }
       );
     },
     async runAutobuild(language: Language) {
@@ -1345,7 +1345,11 @@ export function getExtraOptions(
  */
 const maxErrorSize = 20_000;
 
-async function runTool(cmd: string, args: string[] = [], stdin?: string) {
+async function runTool(
+  cmd: string,
+  args: string[] = [],
+  opts: { stdin?: string } = {}
+) {
   let output = "";
   let error = "";
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
@@ -1364,7 +1368,7 @@ async function runTool(cmd: string, args: string[] = [], stdin?: string) {
       },
     },
     ignoreReturnCode: true,
-    input: Buffer.from(stdin || ""),
+    ...(opts.stdin ? { input: Buffer.from(opts.stdin || "") } : {}),
   }).exec();
   if (exitCode !== 0)
     throw new CommandInvocationError(cmd, args, exitCode, error, output);

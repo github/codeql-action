@@ -11,6 +11,7 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import * as api from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
@@ -118,23 +119,27 @@ async function mockDownloadApi({
 
 async function installIntoToolcache({
   apiDetails = sampleApiDetails,
+  cliVersion,
   isPinned,
   tagName,
   tmpDir,
 }: {
   apiDetails?: GitHubApiDetails;
+  cliVersion?: string;
   isPinned: boolean;
   tagName: string;
   tmpDir: string;
 }) {
   const url = await mockDownloadApi({ apiDetails, isPinned, tagName });
   await codeql.setupCodeQL(
-    url,
+    cliVersion !== undefined ? undefined : url,
     apiDetails,
     tmpDir,
-    util.GitHubVariant.DOTCOM,
+    util.GitHubVariant.GHES,
     false,
-    SAMPLE_DEFAULT_CLI_VERSION,
+    cliVersion !== undefined
+      ? { cliVersion, tagName, variant: util.GitHubVariant.GHES }
+      : SAMPLE_DEFAULT_CLI_VERSION,
     getRunnerLogger(true),
     false
   );
@@ -198,6 +203,58 @@ test("downloads an explicitly requested bundle even if a different version is ca
     t.deepEqual(result.toolsVersion, "0.0.0-20200610");
   });
 });
+
+for (const isCached of [true, false]) {
+  test(`uses default version on Dotcom when default version bundle is ${
+    isCached ? "" : "not "
+  }cached`, async (t) => {
+    await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      const tagName = `codeql-bundle-20230101`;
+
+      if (isCached) {
+        await installIntoToolcache({
+          cliVersion: SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
+          tagName,
+          isPinned: true,
+          tmpDir,
+        });
+      } else {
+        await mockDownloadApi({
+          tagName,
+        });
+        sinon.stub(api, "getApiClient").value(() => ({
+          repos: {
+            listReleases: sinon.stub().resolves(undefined),
+          },
+          paginate: sinon.stub().resolves([
+            {
+              assets: [
+                {
+                  name: "cli-version-2.0.0.txt",
+                },
+              ],
+              tag_name: tagName,
+            },
+          ]),
+        }));
+      }
+
+      const result = await codeql.setupCodeQL(
+        undefined,
+        sampleApiDetails,
+        tmpDir,
+        util.GitHubVariant.DOTCOM,
+        false,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        getRunnerLogger(true),
+        false
+      );
+      t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
+    });
+  });
+}
 
 for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
   test(`uses a cached bundle when no tools input is given on ${util.GitHubVariant[variant]}`, async (t) => {

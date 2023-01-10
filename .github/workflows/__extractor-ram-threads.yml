@@ -7,6 +7,7 @@ name: PR Check - Extractor ram and threads options test
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:

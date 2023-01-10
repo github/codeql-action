@@ -360,6 +360,10 @@ test("download codeql bundle from github ae endpoint", async (t) => {
         path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`)
       );
 
+    // This is a workaround to mock `api.getApiDetails()` since it doesn't seem to be possible to
+    // mock this directly. The difficulty is that `getApiDetails()` is called locally in
+    // `api-client.ts`, but `sinon.stub(api, "getApiDetails")` only affects calls to
+    // `getApiDetails()` via an imported `api` module.
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("token")

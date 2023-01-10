@@ -27,15 +27,13 @@ setupTests(test);
 const sampleApiDetails = {
   auth: "token",
   url: "https://github.com",
-  apiURL: undefined,
-  registriesAuthTokens: undefined,
+  apiURL: "https://api.github.com",
 };
 
 const sampleGHAEApiDetails = {
   auth: "token",
   url: "https://example.githubenterprise.com",
-  apiURL: undefined,
-  registriesAuthTokens: undefined,
+  apiURL: "https://example.githubenterprise.com/api/v3",
 };
 
 let stubConfig: Config;
@@ -361,6 +359,21 @@ test("download codeql bundle from github ae endpoint", async (t) => {
         200,
         path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`)
       );
+
+    sinon
+      .stub(actionsUtil, "getRequiredInput")
+      .withArgs("token")
+      .returns(sampleGHAEApiDetails.auth);
+    const requiredEnvParamStub = sinon.stub(util, "getRequiredEnvParam");
+    requiredEnvParamStub
+      .withArgs("GITHUB_SERVER_URL")
+      .returns(sampleGHAEApiDetails.url);
+    requiredEnvParamStub
+      .withArgs("GITHUB_API_URL")
+      .returns(sampleGHAEApiDetails.apiURL);
+
+    sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
+    process.env["GITHUB_ACTION_REPOSITORY"] = "github/codeql-action";
 
     await codeql.setupCodeQL(
       undefined,

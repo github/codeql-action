@@ -2,24 +2,22 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
-import * as toolcache from "@actions/tool-cache";
 import * as yaml from "js-yaml";
 
 import { getOptionalInput } from "./actions-util";
 import * as api from "./api-client";
 import { Config } from "./config-utils";
 import { errorMatchers } from "./error-matcher";
-import { FeatureEnablement } from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import { downloadCodeQL, getCodeQLSource } from "./setup-codeql";
+import * as setupCodeql from "./setup-codeql";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import {
   getTrapCachingExtractorConfigArgs,
   getTrapCachingExtractorConfigArgsForLang,
 } from "./trap-caching";
 import * as util from "./util";
-import { assertNever } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -287,6 +285,7 @@ export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
  * @param tempDir
  * @param variant
  * @param bypassToolcache
+ * @param defaultCliVersion
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
@@ -298,41 +297,20 @@ export async function setupCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   bypassToolcache: boolean,
+  defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
   checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   try {
-    const source = await getCodeQLSource(
+    const { codeqlFolder, toolsVersion } = await setupCodeql.setupCodeQL(
       toolsInput,
-      bypassToolcache,
       apiDetails,
+      tempDir,
       variant,
+      bypassToolcache,
+      defaultCliVersion,
       logger
     );
-
-    let codeqlFolder: string;
-
-    switch (source.sourceType) {
-      case "local":
-        codeqlFolder = await toolcache.extractTar(source.codeqlTarPath);
-        break;
-      case "toolcache":
-        codeqlFolder = source.codeqlFolder;
-        logger.debug(`CodeQL found in cache ${codeqlFolder}`);
-        break;
-      case "download":
-        codeqlFolder = await downloadCodeQL(
-          source.codeqlURL,
-          source.semanticVersion,
-          apiDetails,
-          tempDir,
-          logger
-        );
-        break;
-      default:
-        assertNever(source);
-    }
-
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
@@ -341,7 +319,7 @@ export async function setupCodeQL(
     }
 
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
-    return { codeql: cachedCodeQL, toolsVersion: source.toolsVersion };
+    return { codeql: cachedCodeQL, toolsVersion };
   } catch (e) {
     logger.error(e instanceof Error ? e : new Error(String(e)));
     throw new Error("Unable to download and extract CodeQL CLI");

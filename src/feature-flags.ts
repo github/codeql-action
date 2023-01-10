@@ -43,7 +43,7 @@ export const featureConfig: Record<
   },
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
-    minimumVersion: "2.11.1",
+    minimumVersion: "2.11.6",
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",

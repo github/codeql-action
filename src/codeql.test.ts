@@ -15,7 +15,11 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
-import { Feature, featureConfig } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  featureConfig,
+} from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, createFeatures, setupActionsVars } from "./testing-utils";
@@ -34,6 +38,11 @@ const sampleGHAEApiDetails = {
   auth: "token",
   url: "https://example.githubenterprise.com",
   apiURL: "https://example.githubenterprise.com/api/v3",
+};
+
+const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
+  cliVersion: "2.0.0",
+  variant: util.GitHubVariant.DOTCOM,
 };
 
 let stubConfig: Config;
@@ -125,6 +134,7 @@ async function installIntoToolcache({
     tmpDir,
     util.GitHubVariant.DOTCOM,
     false,
+    SAMPLE_DEFAULT_CLI_VERSION,
     getRunnerLogger(true),
     false
   );
@@ -149,11 +159,12 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
         tmpDir,
         util.GitHubVariant.DOTCOM,
         false,
+        SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
         false
       );
       t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
-      t.is(result.toolsVersion, version);
+      t.is(result.toolsVersion, `0.0.0-${version}`);
     }
 
     t.is(toolcache.findAllVersions("CodeQL").length, 2);
@@ -179,71 +190,81 @@ test("downloads an explicitly requested bundle even if a different version is ca
       tmpDir,
       util.GitHubVariant.DOTCOM,
       false,
+      SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
       false
     );
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
-    t.deepEqual(result.toolsVersion, "20200610");
+    t.deepEqual(result.toolsVersion, "0.0.0-20200610");
   });
 });
 
-test("uses a cached bundle when no tools input is given", async (t) => {
-  await util.withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
+  test(`uses a cached bundle when no tools input is given on ${util.GitHubVariant[variant]}`, async (t) => {
+    await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
 
-    await installIntoToolcache({
-      tagName: "codeql-bundle-20200601",
-      isPinned: true,
-      tmpDir,
+      await installIntoToolcache({
+        tagName: "codeql-bundle-20200601",
+        isPinned: true,
+        tmpDir,
+      });
+
+      const result = await codeql.setupCodeQL(
+        undefined,
+        sampleApiDetails,
+        tmpDir,
+        variant,
+        false,
+        {
+          cliVersion: defaults.cliVersion,
+          tagName: defaults.bundleVersion,
+          variant,
+        },
+        getRunnerLogger(true),
+        false
+      );
+      t.deepEqual(result.toolsVersion, "0.0.0-20200601");
+
+      const cachedVersions = toolcache.findAllVersions("CodeQL");
+      t.is(cachedVersions.length, 1);
     });
-
-    const result = await codeql.setupCodeQL(
-      undefined,
-      sampleApiDetails,
-      tmpDir,
-      util.GitHubVariant.DOTCOM,
-      false,
-      getRunnerLogger(true),
-      false
-    );
-    t.deepEqual(result.toolsVersion, "0.0.0-20200601");
-
-    const cachedVersions = toolcache.findAllVersions("CodeQL");
-    t.is(cachedVersions.length, 1);
   });
-});
 
-test("downloads bundle if only an unpinned version is cached", async (t) => {
-  await util.withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+  test(`downloads bundle if only an unpinned version is cached on ${util.GitHubVariant[variant]}`, async (t) => {
+    await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
 
-    await installIntoToolcache({
-      tagName: "codeql-bundle-20200601",
-      isPinned: false,
-      tmpDir,
+      await installIntoToolcache({
+        tagName: "codeql-bundle-20200601",
+        isPinned: false,
+        tmpDir,
+      });
+
+      await mockDownloadApi({
+        tagName: defaults.bundleVersion,
+      });
+      const result = await codeql.setupCodeQL(
+        undefined,
+        sampleApiDetails,
+        tmpDir,
+        variant,
+        false,
+        {
+          cliVersion: defaults.cliVersion,
+          tagName: defaults.bundleVersion,
+          variant,
+        },
+        getRunnerLogger(true),
+        false
+      );
+      t.deepEqual(result.toolsVersion, defaults.cliVersion);
+
+      const cachedVersions = toolcache.findAllVersions("CodeQL");
+      t.is(cachedVersions.length, 2);
     });
-
-    await mockDownloadApi({
-      tagName: defaults.bundleVersion,
-    });
-    const result = await codeql.setupCodeQL(
-      undefined,
-      sampleApiDetails,
-      tmpDir,
-      util.GitHubVariant.DOTCOM,
-      false,
-      getRunnerLogger(true),
-      false
-    );
-    t.deepEqual(
-      result.toolsVersion,
-      defaults.bundleVersion.replace("codeql-bundle-", "")
-    );
-
-    const cachedVersions = toolcache.findAllVersions("CodeQL");
-    t.is(cachedVersions.length, 2);
   });
-});
+}
 
 test('downloads bundle if "latest" tools specified but not cached', async (t) => {
   await util.withTmpDir(async (tmpDir) => {
@@ -264,68 +285,16 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       tmpDir,
       util.GitHubVariant.DOTCOM,
       false,
+      SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
       false
     );
-    t.deepEqual(
-      result.toolsVersion,
-      defaults.bundleVersion.replace("codeql-bundle-", "")
-    );
+    t.deepEqual(result.toolsVersion, defaults.cliVersion);
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 2);
   });
 });
-
-const TOOLCACHE_BYPASS_TEST_CASES: Array<
-  [boolean, string | undefined, boolean]
-> = [
-  [true, undefined, true],
-  [false, undefined, false],
-  [
-    true,
-    "https://github.com/github/codeql-action/releases/download/codeql-bundle-20200601/codeql-bundle.tar.gz",
-    false,
-  ],
-];
-
-for (const [
-  isFeatureEnabled,
-  toolsInput,
-  shouldToolcacheBeBypassed,
-] of TOOLCACHE_BYPASS_TEST_CASES) {
-  test(`download codeql bundle ${
-    shouldToolcacheBeBypassed ? "bypasses" : "does not bypass"
-  } toolcache when feature ${
-    isFeatureEnabled ? "enabled" : "disabled"
-  } and tools: ${toolsInput} passed`, async (t) => {
-    await util.withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
-
-      await installIntoToolcache({
-        tagName: "codeql-bundle-20200601",
-        isPinned: true,
-        tmpDir,
-      });
-
-      await mockDownloadApi({
-        tagName: defaults.bundleVersion,
-      });
-      await codeql.setupCodeQL(
-        toolsInput,
-        sampleApiDetails,
-        tmpDir,
-        util.GitHubVariant.DOTCOM,
-        isFeatureEnabled,
-        getRunnerLogger(true),
-        false
-      );
-
-      const cachedVersions = toolcache.findAllVersions("CodeQL");
-      t.is(cachedVersions.length, shouldToolcacheBeBypassed ? 2 : 1);
-    });
-  });
-}
 
 test("download codeql bundle from github ae endpoint", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
@@ -391,6 +360,11 @@ test("download codeql bundle from github ae endpoint", async (t) => {
       tmpDir,
       util.GitHubVariant.GHAE,
       false,
+      {
+        cliVersion: defaults.cliVersion,
+        tagName: defaults.bundleVersion,
+        variant: util.GitHubVariant.GHAE,
+      },
       getRunnerLogger(true),
       false
     );

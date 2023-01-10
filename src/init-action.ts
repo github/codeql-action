@@ -182,6 +182,9 @@ async function run() {
       return;
     }
 
+    const defaultCliVersion = await features.getDefaultCliVersion(
+      gitHubVersion.type
+    );
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
@@ -194,6 +197,7 @@ async function run() {
         repositoryNwo,
         logger
       ),
+      defaultCliVersion,
       logger
     );
     codeql = initCodeQLResult.codeql;

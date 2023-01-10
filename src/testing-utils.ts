@@ -1,5 +1,6 @@
 import * as github from "@actions/github";
 import { TestFn } from "ava";
+import * as nock from "nock";
 import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
@@ -89,6 +90,9 @@ export function setupTests(test: TestFn<any>) {
     if (!t.passed) {
       process.stdout.write(t.context.testOutput);
     }
+
+    // Undo any modifications made by nock
+    nock.cleanAll();
 
     // Undo any modifications made by sinon
     sinon.restore();

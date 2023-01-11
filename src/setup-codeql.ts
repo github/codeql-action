@@ -446,7 +446,7 @@ export function getCodeQLURLVersion(url: string): string {
 }
 
 /**
- * Set up CodeQL CLI access.
+ * Obtains the CodeQL bundle, installs it in the toolcache if appropriate, and extracts it.
  *
  * @param toolsInput
  * @param apiDetails
@@ -457,9 +457,9 @@ export function getCodeQLURLVersion(url: string): string {
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
- * @returns a { CodeQL, toolsVersion } object.
+ * @returns the path to the extracted bundle, and the version of the tools
  */
-export async function setupCodeQL(
+export async function setupCodeQLBundle(
   toolsInput: string | undefined,
   apiDetails: api.GitHubApiDetails,
   tempDir: string,

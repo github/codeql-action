@@ -302,7 +302,7 @@ export async function setupCodeQL(
   checkVersion: boolean
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   try {
-    const { codeqlFolder, toolsVersion } = await setupCodeql.setupCodeQL(
+    const { codeqlFolder, toolsVersion } = await setupCodeql.setupCodeQLBundle(
       toolsInput,
       apiDetails,
       tempDir,

@@ -67,6 +67,12 @@ test.beforeEach(() => {
   };
 });
 
+/**
+ * Mocks the API for downloading the bundle tagged `tagName`.
+ *
+ * @returns the download URL for the bundle. This can be passed to the tools parameter of
+ * `codeql.setupCodeQL`.
+ */
 async function mockDownloadApi({
   apiDetails = sampleApiDetails,
   isPinned,

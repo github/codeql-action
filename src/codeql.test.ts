@@ -15,7 +15,7 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { Feature } from "./feature-flags";
+import { Feature, featureConfig } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
@@ -559,7 +559,7 @@ const injectedConfigMacro = test.macro({
       const codeqlObject = await codeql.getCodeQLForTesting();
       sinon
         .stub(codeqlObject, "getVersion")
-        .resolves(codeql.CODEQL_VERSION_CONFIG_FILES);
+        .resolves(featureConfig[Feature.CliConfigFileEnabled].minimumVersion);
 
       const thisStubConfig: Config = {
         ...stubConfig,
@@ -616,7 +616,7 @@ test(
   },
   {},
   {
-    packs: ["codeql/javascript-experimental-atm-queries@~0.3.0"],
+    packs: ["codeql/javascript-experimental-atm-queries@~0.4.0"],
   }
 );
 
@@ -637,7 +637,7 @@ test(
     packs: {
       javascript: [
         "codeql/something-else",
-        "codeql/javascript-experimental-atm-queries@~0.3.0",
+        "codeql/javascript-experimental-atm-queries@~0.4.0",
       ],
     },
   }
@@ -659,7 +659,7 @@ test(
   {
     packs: {
       cpp: ["codeql/something-else"],
-      javascript: ["codeql/javascript-experimental-atm-queries@~0.3.0"],
+      javascript: ["codeql/javascript-experimental-atm-queries@~0.4.0"],
     },
   }
 );
@@ -740,7 +740,7 @@ test(
     },
   },
   {
-    packs: ["xxx", "yyy", "codeql/javascript-experimental-atm-queries@~0.3.0"],
+    packs: ["xxx", "yyy", "codeql/javascript-experimental-atm-queries@~0.4.0"],
   }
 );
 
@@ -872,7 +872,7 @@ test("does not use injected config", async (t: ExecutionContext<unknown>) => {
     const codeqlObject = await codeql.getCodeQLForTesting();
     sinon
       .stub(codeqlObject, "getVersion")
-      .resolves(codeql.CODEQL_VERSION_CONFIG_FILES);
+      .resolves(featureConfig[Feature.CliConfigFileEnabled].minimumVersion);
 
     await codeqlObject.databaseInitCluster(
       stubConfig,

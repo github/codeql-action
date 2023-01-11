@@ -326,7 +326,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
     }
   }
 
-  private async loadApiResponse() {
+  private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
     if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
       this.logger.debug(
@@ -342,7 +342,12 @@ class GitHubFeatureFlags implements FeatureEnablement {
           repo: this.repositoryNwo.repo,
         }
       );
-      return response.data;
+      const remoteFlags = response.data;
+      this.logger.debug(
+        "Loaded the following default values for the feature flags from the Code Scanning API: " +
+          `${JSON.stringify(remoteFlags)}`
+      );
+      return remoteFlags;
     } catch (e) {
       if (util.isHTTPError(e) && e.status === 403) {
         this.logger.warning(
@@ -351,6 +356,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
             "This could be because the Action is running on a pull request from a fork. If not, " +
             `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
         );
+        return {};
       } else {
         // Some features, such as `ml_powered_queries_enabled` affect the produced alerts.
         // Considering these features disabled in the event of a transient error could

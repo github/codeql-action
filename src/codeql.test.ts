@@ -27,15 +27,13 @@ setupTests(test);
 const sampleApiDetails = {
   auth: "token",
   url: "https://github.com",
-  apiURL: undefined,
-  registriesAuthTokens: undefined,
+  apiURL: "https://api.github.com",
 };
 
 const sampleGHAEApiDetails = {
   auth: "token",
   url: "https://example.githubenterprise.com",
-  apiURL: undefined,
-  registriesAuthTokens: undefined,
+  apiURL: "https://example.githubenterprise.com/api/v3",
 };
 
 let stubConfig: Config;
@@ -69,21 +67,21 @@ test.beforeEach(() => {
   };
 });
 
-async function mockApiAndSetupCodeQL({
-  apiDetails,
-  bypassToolcache,
+/**
+ * Mocks the API for downloading the bundle tagged `tagName`.
+ *
+ * @returns the download URL for the bundle. This can be passed to the tools parameter of
+ * `codeql.setupCodeQL`.
+ */
+async function mockDownloadApi({
+  apiDetails = sampleApiDetails,
   isPinned,
-  tmpDir,
-  toolsInput,
-  version,
+  tagName,
 }: {
   apiDetails?: GitHubApiDetails;
-  bypassToolcache?: boolean;
   isPinned?: boolean;
-  tmpDir: string;
-  toolsInput?: { input?: string };
-  version: string;
-}): Promise<{ codeql: codeql.CodeQL; toolsVersion: string }> {
+  tagName: string;
+}): Promise<string> {
   const platform =
     process.platform === "win32"
       ? "win64"
@@ -93,8 +91,8 @@ async function mockApiAndSetupCodeQL({
 
   const baseUrl = apiDetails?.url ?? "https://example.com";
   const relativeUrl = apiDetails
-    ? `/github/codeql-action/releases/download/${version}/codeql-bundle-${platform}.tar.gz`
-    : `/download/codeql-bundle-${version}/codeql-bundle.tar.gz`;
+    ? `/github/codeql-action/releases/download/${tagName}/codeql-bundle-${platform}.tar.gz`
+    : `/download/${tagName}/codeql-bundle.tar.gz`;
 
   nock(baseUrl)
     .get(relativeUrl)
@@ -106,18 +104,33 @@ async function mockApiAndSetupCodeQL({
       )
     );
 
-  return await codeql.setupCodeQL(
-    toolsInput ? toolsInput.input : `${baseUrl}${relativeUrl}`,
-    apiDetails ?? sampleApiDetails,
+  return `${baseUrl}${relativeUrl}`;
+}
+
+async function installIntoToolcache({
+  apiDetails = sampleApiDetails,
+  isPinned,
+  tagName,
+  tmpDir,
+}: {
+  apiDetails?: GitHubApiDetails;
+  isPinned: boolean;
+  tagName: string;
+  tmpDir: string;
+}) {
+  const url = await mockDownloadApi({ apiDetails, isPinned, tagName });
+  await codeql.setupCodeQL(
+    url,
+    apiDetails,
     tmpDir,
     util.GitHubVariant.DOTCOM,
-    !!bypassToolcache,
+    false,
     getRunnerLogger(true),
     false
   );
 }
 
-test("download codeql bundle cache", async (t) => {
+test("downloads and caches explicitly requested bundles that aren't in the toolcache", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -126,50 +139,65 @@ test("download codeql bundle cache", async (t) => {
     for (let i = 0; i < versions.length; i++) {
       const version = versions[i];
 
-      const codeQLConfig = await mockApiAndSetupCodeQL({ version, tmpDir });
+      const url = await mockDownloadApi({
+        tagName: `codeql-bundle-${version}`,
+        isPinned: false,
+      });
+      const result = await codeql.setupCodeQL(
+        url,
+        sampleApiDetails,
+        tmpDir,
+        util.GitHubVariant.DOTCOM,
+        false,
+        getRunnerLogger(true),
+        false
+      );
       t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
-      t.deepEqual(codeQLConfig.toolsVersion, version);
+      t.is(result.toolsVersion, version);
     }
 
     t.is(toolcache.findAllVersions("CodeQL").length, 2);
   });
 });
 
-test("download codeql bundle cache explicitly requested with pinned different version cached", async (t) => {
+test("downloads an explicitly requested bundle even if a different version is cached", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    const pinnedCodeQLConfig = await mockApiAndSetupCodeQL({
-      version: "20200601",
+    await installIntoToolcache({
+      tagName: "codeql-bundle-20200601",
       isPinned: true,
       tmpDir,
     });
-    t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
-    t.deepEqual(pinnedCodeQLConfig.toolsVersion, "20200601");
 
-    const unpinnedCodeQLConfig = await mockApiAndSetupCodeQL({
-      version: "20200610",
-      tmpDir,
+    const url = await mockDownloadApi({
+      tagName: "codeql-bundle-20200610",
     });
+    const result = await codeql.setupCodeQL(
+      url,
+      sampleApiDetails,
+      tmpDir,
+      util.GitHubVariant.DOTCOM,
+      false,
+      getRunnerLogger(true),
+      false
+    );
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
-    t.deepEqual(unpinnedCodeQLConfig.toolsVersion, "20200610");
+    t.deepEqual(result.toolsVersion, "20200610");
   });
 });
 
-test("don't download codeql bundle cache with pinned different version cached", async (t) => {
+test("uses a cached bundle when no tools input is given", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    const pinnedCodeQLConfig = await mockApiAndSetupCodeQL({
-      version: "20200601",
+    await installIntoToolcache({
+      tagName: "codeql-bundle-20200601",
       isPinned: true,
       tmpDir,
     });
 
-    t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
-    t.deepEqual(pinnedCodeQLConfig.toolsVersion, "20200601");
-
-    const codeQLConfig = await codeql.setupCodeQL(
+    const result = await codeql.setupCodeQL(
       undefined,
       sampleApiDetails,
       tmpDir,
@@ -178,69 +206,73 @@ test("don't download codeql bundle cache with pinned different version cached", 
       getRunnerLogger(true),
       false
     );
-    t.deepEqual(codeQLConfig.toolsVersion, "0.0.0-20200601");
+    t.deepEqual(result.toolsVersion, "0.0.0-20200601");
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
-
     t.is(cachedVersions.length, 1);
   });
 });
 
-test("download codeql bundle cache with different version cached (not pinned)", async (t) => {
+test("downloads bundle if only an unpinned version is cached", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    const cachedCodeQLConfig = await mockApiAndSetupCodeQL({
-      version: "20200601",
+    await installIntoToolcache({
+      tagName: "codeql-bundle-20200601",
+      isPinned: false,
       tmpDir,
     });
 
-    t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
-    t.deepEqual(cachedCodeQLConfig.toolsVersion, "20200601");
-
-    const codeQLConfig = await mockApiAndSetupCodeQL({
-      version: defaults.bundleVersion,
-      tmpDir,
-      apiDetails: sampleApiDetails,
-      toolsInput: { input: undefined },
+    await mockDownloadApi({
+      tagName: defaults.bundleVersion,
     });
+    const result = await codeql.setupCodeQL(
+      undefined,
+      sampleApiDetails,
+      tmpDir,
+      util.GitHubVariant.DOTCOM,
+      false,
+      getRunnerLogger(true),
+      false
+    );
     t.deepEqual(
-      codeQLConfig.toolsVersion,
+      result.toolsVersion,
       defaults.bundleVersion.replace("codeql-bundle-", "")
     );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
-
     t.is(cachedVersions.length, 2);
   });
 });
 
-test('download codeql bundle cache with pinned different version cached if "latest" tools specified', async (t) => {
+test('downloads bundle if "latest" tools specified but not cached', async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    const pinnedCodeQLConfig = await mockApiAndSetupCodeQL({
-      version: "20200601",
+    await installIntoToolcache({
+      tagName: "codeql-bundle-20200601",
       isPinned: true,
       tmpDir,
     });
 
-    t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
-    t.deepEqual(pinnedCodeQLConfig.toolsVersion, "20200601");
-
-    const latestCodeQLConfig = await mockApiAndSetupCodeQL({
-      version: defaults.bundleVersion,
-      apiDetails: sampleApiDetails,
-      toolsInput: { input: "latest" },
-      tmpDir,
+    await mockDownloadApi({
+      tagName: defaults.bundleVersion,
     });
+    const result = await codeql.setupCodeQL(
+      "latest",
+      sampleApiDetails,
+      tmpDir,
+      util.GitHubVariant.DOTCOM,
+      false,
+      getRunnerLogger(true),
+      false
+    );
     t.deepEqual(
-      latestCodeQLConfig.toolsVersion,
+      result.toolsVersion,
       defaults.bundleVersion.replace("codeql-bundle-", "")
     );
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
-
     t.is(cachedVersions.length, 2);
   });
 });
@@ -270,25 +302,26 @@ for (const [
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
 
-      await mockApiAndSetupCodeQL({
-        version: "codeql-bundle-20200601",
-        apiDetails: sampleApiDetails,
+      await installIntoToolcache({
+        tagName: "codeql-bundle-20200601",
         isPinned: true,
         tmpDir,
       });
 
-      t.assert(toolcache.find("CodeQL", "0.0.0-20200601"));
-
-      await mockApiAndSetupCodeQL({
-        version: defaults.bundleVersion,
-        apiDetails: sampleApiDetails,
-        bypassToolcache: isFeatureEnabled,
-        toolsInput: { input: toolsInput },
-        tmpDir,
+      await mockDownloadApi({
+        tagName: defaults.bundleVersion,
       });
+      await codeql.setupCodeQL(
+        toolsInput,
+        sampleApiDetails,
+        tmpDir,
+        util.GitHubVariant.DOTCOM,
+        isFeatureEnabled,
+        getRunnerLogger(true),
+        false
+      );
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
-
       t.is(cachedVersions.length, shouldToolcacheBeBypassed ? 2 : 1);
     });
   });
@@ -332,6 +365,25 @@ test("download codeql bundle from github ae endpoint", async (t) => {
         200,
         path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`)
       );
+
+    // This is a workaround to mock `api.getApiDetails()` since it doesn't seem to be possible to
+    // mock this directly. The difficulty is that `getApiDetails()` is called locally in
+    // `api-client.ts`, but `sinon.stub(api, "getApiDetails")` only affects calls to
+    // `getApiDetails()` via an imported `api` module.
+    sinon
+      .stub(actionsUtil, "getRequiredInput")
+      .withArgs("token")
+      .returns(sampleGHAEApiDetails.auth);
+    const requiredEnvParamStub = sinon.stub(util, "getRequiredEnvParam");
+    requiredEnvParamStub
+      .withArgs("GITHUB_SERVER_URL")
+      .returns(sampleGHAEApiDetails.url);
+    requiredEnvParamStub
+      .withArgs("GITHUB_API_URL")
+      .returns(sampleGHAEApiDetails.apiURL);
+
+    sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
+    process.env["GITHUB_ACTION_REPOSITORY"] = "github/codeql-action";
 
     await codeql.setupCodeQL(
       undefined,

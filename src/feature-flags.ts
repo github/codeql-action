@@ -5,7 +5,7 @@ import * as semver from "semver";
 
 import { getApiClient } from "./api-client";
 import { CodeQL } from "./codeql";
-import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
+import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";

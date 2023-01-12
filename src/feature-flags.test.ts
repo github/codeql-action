@@ -3,7 +3,7 @@ import * as path from "path";
 
 import test, { ExecutionContext } from "ava";
 
-import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
+import * as defaults from "./defaults.json";
 import {
   Feature,
   featureConfig,

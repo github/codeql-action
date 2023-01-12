@@ -9,7 +9,10 @@ import { v4 as uuidV4 } from "uuid";
 
 import { isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
-import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
+// Note: defaults.json is referenced from the CodeQL Action sync tool and the Actions runner image
+// creation scripts. Ensure that any changes to the format of this file are compatible with both of
+// these dependents.
+import * as defaults from "./defaults.json";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Logger } from "./logging";
 import * as util from "./util";

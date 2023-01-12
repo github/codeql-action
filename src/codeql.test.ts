@@ -83,7 +83,7 @@ test.beforeEach(() => {
  * @returns the download URL for the bundle. This can be passed to the tools parameter of
  * `codeql.setupCodeQL`.
  */
-async function mockDownloadApi({
+function mockDownloadApi({
   apiDetails = sampleApiDetails,
   isPinned,
   tagName,
@@ -91,7 +91,7 @@ async function mockDownloadApi({
   apiDetails?: GitHubApiDetails;
   isPinned?: boolean;
   tagName: string;
-}): Promise<string> {
+}): string {
   const platform =
     process.platform === "win32"
       ? "win64"
@@ -130,7 +130,7 @@ async function installIntoToolcache({
   tagName: string;
   tmpDir: string;
 }) {
-  const url = await mockDownloadApi({ apiDetails, isPinned, tagName });
+  const url = mockDownloadApi({ apiDetails, isPinned, tagName });
   await codeql.setupCodeQL(
     cliVersion !== undefined ? undefined : url,
     apiDetails,
@@ -145,6 +145,41 @@ async function installIntoToolcache({
   );
 }
 
+function mockReleaseApi({
+  apiDetails = sampleApiDetails,
+  assetNames,
+  tagName,
+}: {
+  apiDetails?: GitHubApiDetails;
+  assetNames: string[];
+  tagName: string;
+}): nock.Scope {
+  return nock(apiDetails.apiURL!)
+    .get(`/repos/github/codeql-action/releases/tags/${tagName}`)
+    .reply(200, {
+      assets: assetNames.map((name) => ({
+        name,
+      })),
+      tag_name: tagName,
+    });
+}
+
+function mockApiDetails(apiDetails: GitHubApiDetails) {
+  // This is a workaround to mock `api.getApiDetails()` since it doesn't seem to be possible to
+  // mock this directly. The difficulty is that `getApiDetails()` is called locally in
+  // `api-client.ts`, but `sinon.stub(api, "getApiDetails")` only affects calls to
+  // `getApiDetails()` via an imported `api` module.
+  sinon
+    .stub(actionsUtil, "getRequiredInput")
+    .withArgs("token")
+    .returns(apiDetails.auth);
+  const requiredEnvParamStub = sinon.stub(util, "getRequiredEnvParam");
+  requiredEnvParamStub.withArgs("GITHUB_SERVER_URL").returns(apiDetails.url);
+  requiredEnvParamStub
+    .withArgs("GITHUB_API_URL")
+    .returns(apiDetails.apiURL || "");
+}
+
 test("downloads and caches explicitly requested bundles that aren't in the toolcache", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
@@ -154,7 +189,7 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
     for (let i = 0; i < versions.length; i++) {
       const version = versions[i];
 
-      const url = await mockDownloadApi({
+      const url = mockDownloadApi({
         tagName: `codeql-bundle-${version}`,
         isPinned: false,
       });
@@ -186,7 +221,7 @@ test("downloads an explicitly requested bundle even if a different version is ca
       tmpDir,
     });
 
-    const url = await mockDownloadApi({
+    const url = mockDownloadApi({
       tagName: "codeql-bundle-20200610",
     });
     const result = await codeql.setupCodeQL(
@@ -200,6 +235,37 @@ test("downloads an explicitly requested bundle even if a different version is ca
       false
     );
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
+    t.deepEqual(result.toolsVersion, "0.0.0-20200610");
+  });
+});
+
+test("tries to cache an explicitly requested bundle with its CLI version number", async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+
+    mockApiDetails(sampleApiDetails);
+    sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
+
+    const releaseApiMock = mockReleaseApi({
+      assetNames: ["cli-version-2.10.0.txt"],
+      tagName: "codeql-bundle-20200610",
+    });
+    const url = mockDownloadApi({
+      tagName: "codeql-bundle-20200610",
+    });
+
+    const result = await codeql.setupCodeQL(
+      url,
+      sampleApiDetails,
+      tmpDir,
+      util.GitHubVariant.DOTCOM,
+      false,
+      SAMPLE_DEFAULT_CLI_VERSION,
+      getRunnerLogger(true),
+      false
+    );
+    t.assert(releaseApiMock.isDone(), "Releases API should have been called");
+    t.assert(toolcache.find("CodeQL", "2.10.0"));
     t.deepEqual(result.toolsVersion, "0.0.0-20200610");
   });
 });
@@ -237,7 +303,7 @@ for (const { isCached, tagName, toolcacheCliVersion } of [
           tmpDir,
         });
       } else {
-        await mockDownloadApi({
+        mockDownloadApi({
           tagName,
         });
         sinon.stub(api, "getApiClient").value(() => ({
@@ -314,7 +380,7 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         tmpDir,
       });
 
-      await mockDownloadApi({
+      mockDownloadApi({
         tagName: defaults.bundleVersion,
       });
       const result = await codeql.setupCodeQL(
@@ -349,7 +415,7 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       tmpDir,
     });
 
-    await mockDownloadApi({
+    mockDownloadApi({
       tagName: defaults.bundleVersion,
     });
     const result = await codeql.setupCodeQL(
@@ -408,22 +474,7 @@ test("download codeql bundle from github ae endpoint", async (t) => {
         path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`)
       );
 
-    // This is a workaround to mock `api.getApiDetails()` since it doesn't seem to be possible to
-    // mock this directly. The difficulty is that `getApiDetails()` is called locally in
-    // `api-client.ts`, but `sinon.stub(api, "getApiDetails")` only affects calls to
-    // `getApiDetails()` via an imported `api` module.
-    sinon
-      .stub(actionsUtil, "getRequiredInput")
-      .withArgs("token")
-      .returns(sampleGHAEApiDetails.auth);
-    const requiredEnvParamStub = sinon.stub(util, "getRequiredEnvParam");
-    requiredEnvParamStub
-      .withArgs("GITHUB_SERVER_URL")
-      .returns(sampleGHAEApiDetails.url);
-    requiredEnvParamStub
-      .withArgs("GITHUB_API_URL")
-      .returns(sampleGHAEApiDetails.apiURL);
-
+    mockApiDetails(sampleGHAEApiDetails);
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
     process.env["GITHUB_ACTION_REPOSITORY"] = "github/codeql-action";
 

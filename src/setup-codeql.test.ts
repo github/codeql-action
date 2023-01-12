@@ -118,7 +118,8 @@ test("findCodeQLBundleTagDotcomOnly() errors if no GitHub Release matches marker
         getRunnerLogger(true)
       ),
     {
-      message: "Failed to find a CodeQL bundle release for CLI version 2.12.1.",
+      message:
+        "Failed to find a release of the CodeQL tools that contains CodeQL CLI 2.12.1.",
     }
   );
 });

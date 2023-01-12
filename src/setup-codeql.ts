@@ -526,7 +526,7 @@ export async function downloadCodeQL(
   variant: util.GitHubVariant,
   tempDir: string,
   logger: Logger
-): Promise<string> {
+): Promise<{ toolsVersion: string; codeqlFolder: string }> {
   const parsedCodeQLURL = new URL(codeqlURL);
   const searchParams = new URLSearchParams(parsedCodeQLURL.search);
   const headers: OutgoingHttpHeaders = {
@@ -565,19 +565,27 @@ export async function downloadCodeQL(
 
   const bundleVersion = getBundleVersionFromUrl(codeqlURL);
   // Try to compute the CLI version for this bundle
-  const cliVersion =
+  const cliVersion: string | undefined =
     maybeCliVersion ||
     (variant === util.GitHubVariant.DOTCOM &&
       (await tryFindCliVersionDotcomOnly(
         `codeql-bundle-${bundleVersion}`,
         logger
-      )));
+      ))) ||
+    undefined;
   // Include the bundle version in the toolcache version number so that if the user requests the
   // same URL again, we can get it from the cache without having to call any of the Releases API.
   const toolcacheVersion = cliVersion
     ? `${cliVersion}-${bundleVersion}`
     : convertToSemVer(bundleVersion, logger);
-  return await toolcache.cacheDir(codeqlExtracted, "CodeQL", toolcacheVersion);
+  return {
+    toolsVersion: cliVersion || toolcacheVersion,
+    codeqlFolder: await toolcache.cacheDir(
+      codeqlExtracted,
+      "CodeQL",
+      toolcacheVersion
+    ),
+  };
 }
 
 export function getCodeQLURLVersion(url: string): string {
@@ -623,6 +631,7 @@ export async function setupCodeQLBundle(
   );
 
   let codeqlFolder: string;
+  let toolsVersion = source.toolsVersion;
   switch (source.sourceType) {
     case "local":
       codeqlFolder = await toolcache.extractTar(source.codeqlTarPath);
@@ -631,8 +640,8 @@ export async function setupCodeQLBundle(
       codeqlFolder = source.codeqlFolder;
       logger.debug(`CodeQL found in cache ${codeqlFolder}`);
       break;
-    case "download":
-      codeqlFolder = await downloadCodeQL(
+    case "download": {
+      const result = await downloadCodeQL(
         source.codeqlURL,
         source.cliVersion,
         apiDetails,
@@ -640,9 +649,12 @@ export async function setupCodeQLBundle(
         tempDir,
         logger
       );
+      toolsVersion = result.toolsVersion;
+      codeqlFolder = result.codeqlFolder;
       break;
+    }
     default:
       util.assertNever(source);
   }
-  return { codeqlFolder, toolsVersion: source.toolsVersion };
+  return { codeqlFolder, toolsVersion };
 }

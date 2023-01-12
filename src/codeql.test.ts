@@ -266,7 +266,7 @@ test("tries to cache an explicitly requested bundle with its CLI version number"
     );
     t.assert(releaseApiMock.isDone(), "Releases API should have been called");
     t.assert(toolcache.find("CodeQL", "2.10.0-20200610"));
-    t.deepEqual(result.toolsVersion, "0.0.0-20200610");
+    t.deepEqual(result.toolsVersion, "2.10.0");
   });
 });
 

@@ -204,18 +204,34 @@ test("downloads an explicitly requested bundle even if a different version is ca
   });
 });
 
-for (const isCached of [true, false]) {
-  test(`uses default version on Dotcom when default version bundle is ${
+for (const { isCached, tagName, toolcacheCliVersion } of [
+  {
+    isCached: true,
+    tagName: "codeql-bundle-20230101",
+    toolcacheCliVersion: SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
+  },
+  {
+    isCached: true,
+    // By leaving toolcacheCliVersion undefined, the bundle will be installed
+    // into the toolcache as `${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}-20230101`.
+    // This lets us test that `x.y.z-yyyymmdd` toolcache versions are used if an
+    // `x.y.z` version isn't in the toolcache.
+    tagName: `codeql-bundle-${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}-20230101`,
+  },
+  {
+    isCached: false,
+    tagName: "codeql-bundle-20230101",
+  },
+]) {
+  test(`uses default version on Dotcom when default version bundle ${tagName} is ${
     isCached ? "" : "not "
   }cached`, async (t) => {
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
 
-      const tagName = `codeql-bundle-20230101`;
-
       if (isCached) {
         await installIntoToolcache({
-          cliVersion: SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
+          cliVersion: toolcacheCliVersion,
           tagName,
           isPinned: true,
           tmpDir,

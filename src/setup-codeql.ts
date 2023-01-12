@@ -311,8 +311,8 @@ export async function getCodeQLSource(
    * We include a `variant` property to let us verify using the type system that
    * `tagName` is only undefined when the variant is Dotcom. This lets us ensure
    * that we can always compute `tagName`, either by using the existing tag name
-   * on enterprise instances, or safely calling `findCodeQLBundleTagDotcomOnly`
-   * on Dotcom.
+   * on enterprise instances, or calling `findCodeQLBundleTagDotcomOnly` on
+   * Dotcom.
    */
   const requestedVersion = forceLatest
     ? // case 1
@@ -339,14 +339,44 @@ export async function getCodeQLSource(
   let codeqlFolder = toolcache.find("CodeQL", requestedVersion.cliVersion);
   let tagName: string | undefined = requestedVersion["tagName"];
 
+  if (!codeqlFolder) {
+    logger.debug(
+      "Didn't find a version of the CodeQL tools in the toolcache with a version number " +
+        `exactly matching ${requestedVersion.cliVersion}.`
+    );
+    const allVersions = toolcache.findAllVersions("CodeQL");
+    logger.debug(
+      `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
+        allVersions
+      )}.`
+    );
+    // If there is exactly one version of the CodeQL tools in the toolcache, and that version is
+    // the form `x.y.z-<tagName>`, then use it.
+    const candidateVersions = allVersions.filter((version) =>
+      version.startsWith(`${requestedVersion.cliVersion}-`)
+    );
+    if (candidateVersions.length === 1) {
+      logger.debug("Exactly one candidate version found, using that.");
+      codeqlFolder = toolcache.find("CodeQL", candidateVersions[0]);
+    } else {
+      logger.debug(
+        "Did not find exactly one version of the CodeQL tools starting with the requested version."
+      );
+    }
+  }
+
   if (!codeqlFolder && !requestedVersion.cliVersion.startsWith("0.0.0")) {
     // Fall back to accepting a `0.0.0-<tagName>` version if we didn't find the
     // `x.y.z` version. This is to support old versions of the toolcache.
+    //
+    // If we are on Dotcom, we will make an HTTP request to the Releases API here
+    // to find the tag name for the requested version.
     tagName =
       tagName || (await getOrFindBundleTagName(requestedVersion, logger));
     const fallbackVersion = convertToSemVer(tagName, logger);
     logger.debug(
-      `Computed a fallback toolcache version number of ${fallbackVersion} for CodeQL tools version ${requestedVersion.cliVersion}.`
+      `Computed a fallback toolcache version number of ${fallbackVersion} for CodeQL tools version ` +
+        `${requestedVersion.cliVersion}.`
     );
     codeqlFolder = toolcache.find("CodeQL", fallbackVersion);
   }

@@ -15,7 +15,7 @@ import * as api from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
-import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
+import * as defaults from "./defaults.json";
 import {
   CodeQLDefaultVersionInfo,
   Feature,

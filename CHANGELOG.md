@@ -2,7 +2,8 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The default version of the CodeQL tools when running the CodeQL Action on github.com will now be more stable during the release of new GitHub Actions runner images. This will prevent fluctuations in code scanning alerts while a new runner image release rolls out to GitHub-hosted Actions runners. [#1475](https://github.com/github/codeql-action/pull/1475).
+- Upcoming versions of the GitHub Actions runner images will include a change to the layout of the CodeQL tools within the Actions toolcache. Specifically, the Actions toolcache will be pre-populated with the latest two versions of the CodeQL tools, rather than just the latest CodeQL tools. The version number of the CodeQL tools within the toolcache will also change to incorporate the version number of the corresponding release of the CodeQL CLI. Users should continue to avoid depending on the layout of the CodeQL tools within the toolcache, as this may change without warning in the future.
 
 ## 2.1.38 - 12 Jan 2023
 

@@ -48,6 +48,16 @@ export function getCodeQLActionRepository(logger: Logger): string {
   return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
 }
 
+/**
+ * CodeQL bundles are currently tagged in the form `codeql-bundle-yyyymmdd`, so it is not possible
+ * to directly find the CodeQL bundle release for a particular CLI version.
+ *
+ * To get around this, we add a `codeql-version-x.y.z.txt` asset to each bundle release that
+ * specifies the CLI version for that bundle release.
+ *
+ * In the medium term, we should migrate to a tagging scheme that allows us to directly find the
+ * CodeQL bundle release for a particular CLI version, for example `codeql-bundle-vx.y.z`.
+ */
 export async function findCodeQLBundleTagDotcomOnly(
   cliVersion: string,
   logger: Logger

@@ -19,7 +19,6 @@ import {
   parsePacksSpecification,
   prettyPrintPack,
 } from "./config-utils";
-import * as defaults from "./defaults.json"; // Referenced from codeql-action-sync-tool!
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { KOTLIN_SWIFT_BYPASS, Language } from "./languages";
 import { Logger } from "./logging";
@@ -901,45 +900,4 @@ export function parseMatrixInput(
     return undefined;
   }
   return JSON.parse(matrixInput);
-}
-
-/** Version information about a CodeQL bundle. */
-export interface CodeqlBundleVersionInfo {
-  /** Version number of the CLI contained within this bundle. */
-  cliVersion: string;
-  /** The name of the tag of the GitHub Release containing this bundle. */
-  tagName: string;
-  /**
-   * Version number of this bundle within the toolcache.
-   *
-   * For compatibility with previous runner images and toolcaches, consumers should fallback to
-   * looking up the `0.0.0-pre` version number within the toolcache if this version number is not
-   * found, where `pre` is the prerelease component of this version number.
-   */
-  toolcacheVersion: string;
-}
-
-function computeToolcacheVersion(cliVersion: string, tagName: string): string {
-  return `${cliVersion}-${tagName}`;
-}
-
-/**
- * Gets version information about the CodeQL bundle which was current as of the release of this
- * Action.
- *
- * This should be used in the following circumstances:
- *
- * - When running the Action on Enterprise instances.
- * - When a user requests `tools: latest`.
- * - When the Action is running on Dotcom and no default CodeQL version feature flags are enabled.
- */
-export function getPinnedCodeqlVersion(): CodeqlBundleVersionInfo {
-  return {
-    cliVersion: defaults.cliVersion,
-    tagName: defaults.bundleVersion,
-    toolcacheVersion: computeToolcacheVersion(
-      defaults.cliVersion,
-      defaults.bundleVersion
-    ),
-  };
 }

@@ -521,7 +521,7 @@ export async function getCodeQLSource(
 
 export async function downloadCodeQL(
   codeqlURL: string,
-  cliVersion: string | undefined,
+  maybeCliVersion: string | undefined,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
   tempDir: string,
@@ -564,15 +564,19 @@ export async function downloadCodeQL(
   const codeqlExtracted = await toolcache.extractTar(codeqlPath);
 
   const bundleVersion = getBundleVersionFromUrl(codeqlURL);
-  // If we have a CLI version, use that. Otherwise, try to find the CLI version from the GitHub Releases
-  const toolcacheVersion =
-    cliVersion ||
+  // Try to compute the CLI version for this bundle
+  const cliVersion =
+    maybeCliVersion ||
     (variant === util.GitHubVariant.DOTCOM &&
       (await tryFindCliVersionDotcomOnly(
         `codeql-bundle-${bundleVersion}`,
         logger
-      ))) ||
-    convertToSemVer(bundleVersion, logger);
+      )));
+  // Include the bundle version in the toolcache version number so that if the user requests the
+  // same URL again, we can get it from the cache without having to call any of the Releases API.
+  const toolcacheVersion = cliVersion
+    ? `${cliVersion}-${bundleVersion}`
+    : convertToSemVer(bundleVersion, logger);
   return await toolcache.cacheDir(codeqlExtracted, "CodeQL", toolcacheVersion);
 }
 

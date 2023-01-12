@@ -7,6 +7,7 @@ name: PR Check - Export file baseline information
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
@@ -42,18 +43,16 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
-    # Windows doesn't support Swift, and only macOS latest and nightly-latest support Swift 5.7.1.
-      if: runner.os == 'Linux' || (runner.os == 'macOS' && matrix.version == 'cached')
-      with:
-        swift-version: 5.7.0
     - uses: ./../action/init
+      id: init
       with:
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
-        CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
+    - uses: ./../action/.github/setup-swift
+      with:
+        codeql-path: ${{steps.init.outputs.codeql-path}}
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -62,7 +61,6 @@ jobs:
         output: ${{ runner.temp }}/results
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
-        CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
     - name: Upload SARIF
       uses: actions/upload-artifact@v3
       with:
@@ -87,4 +85,5 @@ jobs:
           fi
         done
     env:
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

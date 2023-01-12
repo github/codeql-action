@@ -18,6 +18,7 @@ interface WorkflowJob {
   name?: string;
   "runs-on"?: string;
   steps?: WorkflowJobStep[];
+  uses?: string;
 }
 
 interface WorkflowTrigger {
@@ -258,7 +259,17 @@ export async function getWorkflow(): Promise<Workflow> {
     relativePath
   );
 
-  return yaml.load(fs.readFileSync(absolutePath, "utf-8")) as Workflow;
+  try {
+    return yaml.load(fs.readFileSync(absolutePath, "utf-8")) as Workflow;
+  } catch (e) {
+    if (e instanceof Error && e["code"] === "ENOENT") {
+      throw new Error(
+        `Unable to load code scanning workflow from ${absolutePath}. This can happen if the currently ` +
+          "running workflow checks out a branch that doesn't contain the corresponding workflow file."
+      );
+    }
+    throw e;
+  }
 }
 
 /**
@@ -301,6 +312,11 @@ function getStepsCallingAction(
   job: WorkflowJob,
   actionName: string
 ): WorkflowJobStep[] {
+  if (job.uses) {
+    throw new Error(
+      `Could not get steps calling ${actionName} since the job calls a reusable workflow.`
+    );
+  }
   const steps = job.steps;
   if (!Array.isArray(steps)) {
     throw new Error(

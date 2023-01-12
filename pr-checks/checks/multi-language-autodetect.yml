@@ -1,21 +1,18 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
-# Temporarily exclude nightly-latest to unblock release
-versions: ["stable-20211005", "stable-20220120", "stable-20220401", "cached", "latest"]
 operatingSystems: ["ubuntu", "macos"]
 env:
   CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
 steps:
-  - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
-    # Only macOS latest and nightly-latest support Swift 5.7.1
-    if: runner.os == 'Linux' || matrix.version == 'cached'
-    with:
-      swift-version: "5.7.0"
-
   - uses: ./../action/init
+    id: init
     with:
       db-location: "${{ runner.temp }}/customDbLocation"
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+  
+  - uses: ./../action/.github/setup-swift
+    with:
+      codeql-path: ${{steps.init.outputs.codeql-path}}
 
   - name: Build code
     shell: bash
@@ -69,7 +66,7 @@ steps:
       fi
 
   - name: Check language autodetect for Swift
-    if: "!startsWith(matrix.os, 'windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+    if: "(matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
     shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

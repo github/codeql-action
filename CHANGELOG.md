@@ -2,14 +2,12 @@
 
 ## [UNRELEASED]
 
-- We have improved the mechanism by which the CodeQL Action determines the default version of the CodeQL tools when running on github.com.  As a result, code scanning alerts will now be more stable during the release of new GitHub Actions runner images. [#1475](https://github.com/github/codeql-action/pull/1475).
-- We are changing how the CodeQL bundle is stored within the Actions tool cache. This cache stores tools used in GitHub Actions workflows locally on the GitHub Actions runner to enable faster access to those tools, thereby speeding up those workflows. This change only affects customers who are interacting with the Actions tool cache directly, for example via the `@actions/tool-cache` npm package or directly on the filesystem of a GitHub Actions runner.
-
-  Previously, the Actions tool cache was pre-populated with a single version of the CodeQL bundle with a version number given by the date on which the bundle was published. For example, the `20230109.1` version of the `ubuntu-22.04` Actions runner image is pre-populated with version `0.0.0-20221211` of the CodeQL bundle.
-
-  To enable improvements to the stability of code scanning alerts during Actions runner image updates, upcoming versions of the Actions runner images will pre-populate the tool cache with the latest _two_ versions of the CodeQL bundle. The versions of the CodeQL bundle will also be numbered differently. For example, the next version of the `ubuntu-22.04` Actions runner image will be pre-populated with version `2.10.0-20230105` and version `2.11.6-20221211` of the CodeQL bundle.
-
-  This change will benefit customer workflows on github.com using the latest version of the CodeQL Action (`v2`). Customer workflows on github.com pinned to specific old versions of the CodeQL Action (e.g. `v2.1.32`) will no longer obtain the newest version of CodeQL from the GitHub Actions tool cache, and will instead download a compatible older version of CodeQL from GitHub Releases. To continue using the newest version of CodeQL, please update your workflows to reference the latest version of the CodeQL Action (`v2`).
+- Code scanning alerts will now be more stable during the release of new GitHub Actions runner images for customers running the CodeQL Action on github.com. [#1475](https://github.com/github/codeql-action/pull/1475).
+- To accomplish this, the internal layout of the GitHub Actions tool cache has changed. This will affect a minority of customers as follows.
+  - Customers with workflows on github.com that are pinned to specific old versions of the CodeQL Action (e.g. `v2.1.32`) will no longer obtain the newest version of CodeQL from the tool cache, and will instead download a compatible older version of CodeQL from GitHub Releases. To continue using the newest version of CodeQL, please update your workflows to reference the latest version of the CodeQL Action (`v2`).
+  - Customers directly interacting with the GitHub Actions tool cache directly, for example via the `@actions/tool-cache` npm package or directly on the filesystem of a GitHub Actions runner, may need to update their workflows to take into account the following changes:
+    1. On GitHub-hosted Actions runners, the tool cache is now pre-populated with two versions, rather than one version, of the CodeQL bundle.
+    2. The version numbering of each CodeQL bundle within the tool cache has changed to include the version number of the CodeQL CLI associated with that bundle, for example the bundle containing CodeQL CLI 2.11.6 is now versioned as `2.11.6-20221211` within the tool cache rather than `0.0.0-20221211`.
 
 ## 2.1.38 - 12 Jan 2023
 

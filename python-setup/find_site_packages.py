@@ -9,7 +9,7 @@ try:
     print(os.path.dirname(os.path.dirname(pip.__file__)))
 except ImportError:
     import sys
-    print("could not import pip", file=sys.stderr)
+    print("DEBUG: could not import pip", file=sys.stderr)
     # if you use poetry with `virtualenvs.options.no-pip = true` you might end up with a
     # virtualenv without pip, so the above trick doesn't actually work. See
     # https://python-poetry.org/docs/configuration/#virtualenvsoptionsno-pip

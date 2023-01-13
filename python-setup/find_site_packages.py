@@ -19,11 +19,12 @@ except ImportError:
     # poetry/requests-3, I was not allowed to install pip! So I did not pursue this
     # option further.
     #
-    # Instead, local testing shows that first entry of `site.getsitepackages()` has the
-    # right path, whereas `site.getusersitepackages()` is about the system python (very
+    # Instead, testing (on both Windows and Linux) shows that the last entry of
+    # `site.getsitepackages()` has the right path (note: On linux there is only a single
+    # entry), whereas `site.getusersitepackages()` is about the system python (very
     # confusing).
     #
     # We can't use the environment variable POETRY_VIRTUALENVS_OPTIONS_NO_PIP because it
     # does not work, see https://github.com/python-poetry/poetry/issues/5906
     import site
-    print(site.getsitepackages()[0])
+    print(site.getsitepackages()[-1])

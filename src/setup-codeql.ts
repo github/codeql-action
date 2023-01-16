@@ -154,7 +154,7 @@ export async function tryFindCliVersionDotcomOnly(
     return tryGetCodeQLCliVersionForRelease(release.data, logger);
   } catch (e) {
     logger.debug(
-      `Failed to find the CLI version for the CodeQL bundle tagged ${tagName}. Error: ${
+      `Failed to find the CLI version for the CodeQL bundle tagged ${tagName}. ${
         e instanceof Error ? e.message : e
       }`
     );

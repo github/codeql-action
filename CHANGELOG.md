@@ -14,6 +14,7 @@
   - **Advanced users only**: Workflows that interact directly with the GitHub Actions runner image tool cache to find CodeQL (for example via the `@actions/tool-cache` npm package or direct access to the filesystem) should take into account the following internal layout changes:
     - Previously, the tool cache was pre-populated with _one_ recent version of CodeQL. Now, it is pre-populated with _two_ recent versions of CodeQL.
     - Previously, the CodeQL tools were located within the tool cache under a directory named after the release date, e.g. CodeQL 2.11.6 was located under `CodeQL/0.0.0-20221211/x64/codeql`. Now, the CodeQL tools are located under a directory named after the CodeQL CLI version number and release date, e.g. CodeQL 2.11.6 is now located under `CodeQL/2.11.6-20221211/x64/codeql`.
+- Python automatic dependency installation will no longer fail for projects using Poetry that specify `virtualenvs.options.no-pip = true` in their `poetry.toml`. [#1431](https://github.com/github/codeql-action/pull/1431).
 
 ## 2.1.38 - 12 Jan 2023
 

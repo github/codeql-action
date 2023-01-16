@@ -8,7 +8,6 @@ import del from "del";
 import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
-import * as api from "./api-client";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
@@ -633,32 +632,17 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
  * Prompt the customer to upgrade to CodeQL Action v2, if appropriate.
  *
  * Check whether a customer is running v1. If they are, and we can determine that the GitHub
- * instance supports v2, then log a warning about v1's upcoming deprecation prompting the customer
- * to upgrade to v2.
+ * instance supports v2, then log an error that v1 is discontinued and prompt the customer to
+ * upgrade to v2.
  */
 export async function checkActionVersion(version: string) {
   if (!semver.satisfies(version, ">=2")) {
-    const githubVersion = await api.getGitHubVersion();
-    // Only log a warning for versions of GHES that are compatible with CodeQL Action version 2.
-    //
-    // GHES 3.4 shipped without the v2 tag, but it also shipped without this warning message code.
-    // Therefore users who are seeing this warning message code have pulled in a new version of the
-    // Action, and with it the v2 tag.
-    if (
-      githubVersion.type === GitHubVariant.DOTCOM ||
-      githubVersion.type === GitHubVariant.GHAE ||
-      (githubVersion.type === GitHubVariant.GHES &&
-        semver.satisfies(
-          semver.coerce(githubVersion.version) ?? "0.0.0",
-          ">=3.4"
-        ))
-    ) {
-      core.warning(
-        "CodeQL Action v1 will be deprecated on January 18th, 2023. Please upgrade to v2. For " +
-          "more information, see " +
-          "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/"
-      );
-    }
+    core.error(
+      "This version of the CodeQL Action was discontinued on January 18th, 2023, and is no longer " +
+        "updated or supported. For better performance, improved security, and new features, " +
+        "upgrade to v2. For more information, see " +
+        "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/"
+    );
   }
 }
 

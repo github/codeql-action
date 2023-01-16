@@ -26,7 +26,7 @@ def run_git(*args, allow_non_zero_exit_code=False):
   cmd = ['git', *args]
   p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   if not allow_non_zero_exit_code and p.returncode != 0:
-    raise Exception('Call to ' + ' '.join(cmd) + ' exited with code ' + str(p.returncode) + ' stderr:' + p.stderr.decode('ascii'))
+    raise Exception(f'Call to {" ".join(cmd)} exited with code {p.returncode} stderr: {p.stderr.decode("ascii")}.')
   return p.stdout.decode('ascii')
 
 # Returns true if the given branch exists on the origin remote
@@ -40,15 +40,15 @@ def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, conduct
   pull_requests = []
   commits_without_pull_requests = []
   for commit in all_commits:
-    pr = get_pr_for_commit(repo, commit)
+    pr = get_pr_for_commit(commit)
 
     if pr is None:
       commits_without_pull_requests.append(commit)
     elif not any(p for p in pull_requests if p.number == pr.number):
       pull_requests.append(pr)
 
-  print('Found ' + str(len(pull_requests)) + ' pull requests')
-  print('Found ' + str(len(commits_without_pull_requests)) + ' commits not in a pull request')
+  print(f'Found {len(pull_requests)} pull requests.')
+  print(f'Found {len(commits_without_pull_requests)} commits not in a pull request.')
 
   # Sort PRs and commits by age
   pull_requests = sorted(pull_requests, key=lambda pr: pr.number)
@@ -56,7 +56,7 @@ def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, conduct
 
   # Start constructing the body text
   body = []
-  body.append('Merging ' + source_branch_short_sha + ' into ' + TARGET_BRANCH)
+  body.append(f'Merging {source_branch_short_sha} into {TARGET_BRANCH}.')
 
   body.append('')
   body.append(f'Conductor for this PR is @{conductor}.')
@@ -81,22 +81,22 @@ def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, conduct
   body.append('Please do the following:')
   body.append(' - [ ] Ensure the CHANGELOG displays the correct version and date.')
   body.append(' - [ ] Ensure the CHANGELOG includes all relevant, user-facing changes since the last release.')
-  body.append(' - [ ] Check that there are not any unexpected commits being merged into the ' + TARGET_BRANCH + ' branch.')
+  body.append(f' - [ ] Check that there are not any unexpected commits being merged into the {TARGET_BRANCH} branch.')
   body.append(' - [ ] Ensure the docs team is aware of any documentation changes that need to be released.')
   body.append(' - [ ] Approve and merge this PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.')
   body.append(' - [ ] Merge the mergeback PR that will automatically be created once this PR is merged.')
 
-  title = 'Merge ' + SOURCE_BRANCH + ' into ' + TARGET_BRANCH
+  title = f'Merge {SOURCE_BRANCH} into {TARGET_BRANCH}'
 
   # Create the pull request
   # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft so that
   # a maintainer can take the PR out of draft, thereby triggering the PR checks.
   pr = repo.create_pull(title=title, body='\n'.join(body), head=new_branch_name, base=TARGET_BRANCH, draft=True)
-  print('Created PR #' + str(pr.number))
+  print(f'Created PR #{pr.number}')
 
   # Assign the conductor
   pr.add_to_assignees(conductor)
-  print('Assigned PR to ' + conductor)
+  print(f'Assigned PR to {conductor}')
 
 # Gets a list of the SHAs of all commits that have happened on the source branch
 # since the last release to the target branch.
@@ -105,7 +105,7 @@ def open_pr(repo, all_commits, source_branch_short_sha, new_branch_name, conduct
 def get_commit_difference(repo):
   # Passing split nothing means that the empty string splits to nothing: compare `''.split() == []`
   # to `''.split('\n') == ['']`.
-  commits = run_git('log', '--pretty=format:%H', ORIGIN + '/' + TARGET_BRANCH + '..' + ORIGIN + '/' + SOURCE_BRANCH).strip().split()
+  commits = run_git('log', '--pretty=format:%H', f'{ORIGIN}/{TARGET_BRANCH}..{ORIGIN}/{SOURCE_BRANCH}').strip().split()
 
   # Convert to full-fledged commit objects
   commits = [repo.get_commit(c) for c in commits]
@@ -121,13 +121,13 @@ def is_pr_merge_commit(commit):
 def get_truncated_commit_message(commit):
   message = commit.commit.message.split('\n')[0]
   if len(message) > 60:
-    return message[:57] + '...'
+    return f'{message[:57]}...'
   else:
     return message
 
 # Converts a commit into the PR that introduced it to the source branch.
 # Returns the PR object, or None if no PR could be found.
-def get_pr_for_commit(repo, commit):
+def get_pr_for_commit(commit):
   prs = commit.get_pulls()
 
   if prs.totalCount > 0:
@@ -161,7 +161,7 @@ def update_changelog(version):
   else:
     content = EMPTY_CHANGELOG
 
-  newContent = content.replace('[UNRELEASED]', version + ' - ' + get_today_string(), 1)
+  newContent = content.replace('[UNRELEASED]', f'${version} - {get_today_string()}', 1)
 
   with open('CHANGELOG.md', 'w') as f:
     f.write(newContent)
@@ -195,30 +195,30 @@ def main():
   version = get_current_version()
 
   # Print what we intend to go
-  print('Considering difference between ' + SOURCE_BRANCH + ' and ' + TARGET_BRANCH)
-  source_branch_short_sha = run_git('rev-parse', '--short', ORIGIN + '/' + SOURCE_BRANCH).strip()
-  print('Current head of ' + SOURCE_BRANCH + ' is ' + source_branch_short_sha)
+  print(f'Considering difference between {SOURCE_BRANCH} and {TARGET_BRANCH}...')
+  source_branch_short_sha = run_git('rev-parse', '--short', f'{ORIGIN}/{SOURCE_BRANCH}').strip()
+  print(f'Current head of {SOURCE_BRANCH} is {source_branch_short_sha}.')
 
   # See if there are any commits to merge in
   commits = get_commit_difference(repo=repo)
   if len(commits) == 0:
-    print('No commits to merge from ' + SOURCE_BRANCH + ' to ' + TARGET_BRANCH)
+    print(f'No commits to merge from {SOURCE_BRANCH} to {TARGET_BRANCH}.')
     return
 
   # The branch name is based off of the name of branch being merged into
   # and the SHA of the branch being merged from. Thus if the branch already
   # exists we can assume we don't need to recreate it.
-  new_branch_name = 'update-v' + version + '-' + source_branch_short_sha
-  print('Branch name is ' + new_branch_name)
+  new_branch_name = f'update-v{version}-{source_branch_short_sha}'
+  print(f'Branch name is {new_branch_name}.')
 
   # Check if the branch already exists. If so we can abort as this script
   # has already run on this combination of branches.
   if branch_exists_on_remote(new_branch_name):
-    print('Branch ' + new_branch_name + ' already exists. Nothing to do.')
+    print(f'Branch {new_branch_name} already exists. Nothing to do.')
     return
 
   # Create the new branch and push it to the remote
-  print('Creating branch ' + new_branch_name)
+  print(f'Creating branch {new_branch_name}.')
 
   # If we're performing a standard release, there won't be any new commits on the target branch,
   # as these will have already been merged back into the source branch. Therefore we can just

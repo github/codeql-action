@@ -88,7 +88,7 @@ export const getCommitOid = async function (
     return commitOid.trim();
   } catch (e) {
     core.info(
-      "Could not determine current commit SHA. Continuing with data from the environment."
+      "Could not determine current commit SHA using git. Continuing with data from user input or environment."
     );
     core.debug(`Reason: ${(e as Error).message}`);
     core.debug((e as Error).stack || "NO STACK");

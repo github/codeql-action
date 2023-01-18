@@ -359,7 +359,7 @@ for (const [
       t.true(
         errorSpy.calledOnceWithExactly(
           sinon.match(
-            "This version of the CodeQL Action was discontinued on January 18th, 2023"
+            "This version of the CodeQL Action was deprecated on January 18th, 2023"
           )
         )
       );

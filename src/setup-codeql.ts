@@ -76,28 +76,16 @@ async function getCodeQLBundleReleasesDotcomOnly(
   });
   logger.debug(`Found ${releases.length} releases.`);
 
-  return releases.flatMap((release) => {
-    const cliVersionFileVersions = release.assets
-      .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
-      .filter((v) => v)
-      .map((v) => v as string);
-
-    if (cliVersionFileVersions.length > 1) {
-      logger.warning(
-        `Ignoring release ${release.tag_name} with multiple CLI version marker files.`
-      );
-      return [];
-    }
-    return [
-      { cliVersion: cliVersionFileVersions[0], tagName: release.tag_name },
-    ];
-  });
+  return releases.map((release) => ({
+    cliVersion: tryGetCodeQLCliVersionForRelease(release, logger),
+    tagName: release.tag_name,
+  }));
 }
 
-async function tryGetCodeQLCliVersionForRelease(
+function tryGetCodeQLCliVersionForRelease(
   release,
   logger: Logger
-): Promise<string | undefined> {
+): string | undefined {
   const cliVersionsFromMarkerFiles = release.assets
     .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
     .filter((v) => v)
@@ -573,11 +561,17 @@ export async function downloadCodeQL(
         logger
       ))) ||
     undefined;
-  // Include the bundle version in the toolcache version number so that if the user requests the
-  // same URL again, we can get it from the cache without having to call any of the Releases API.
-  const toolcacheVersion = cliVersion
-    ? `${cliVersion}-${bundleVersion}`
-    : convertToSemVer(bundleVersion, logger);
+  // Include both the CLI version and the bundle version in the toolcache version number. That way
+  // if the user requests the same URL again, we can get it from the cache without having to call
+  // any of the Releases API.
+  //
+  // Special case: If the CLI version is a pre-release, then cache the bundle as
+  // `0.0.0-<bundleVersion>` to avoid the bundle being interpreted as containing a stable CLI
+  // release.
+  const toolcacheVersion =
+    cliVersion && !cliVersion.includes("-")
+      ? `${cliVersion}-${bundleVersion}`
+      : convertToSemVer(bundleVersion, logger);
   return {
     toolsVersion: cliVersion || toolcacheVersion,
     codeqlFolder: await toolcache.cacheDir(

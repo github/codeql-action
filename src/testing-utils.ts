@@ -1,3 +1,5 @@
+import { TextDecoder } from "node:util";
+
 import * as github from "@actions/github";
 import { TestFn } from "ava";
 import * as nock from "nock";

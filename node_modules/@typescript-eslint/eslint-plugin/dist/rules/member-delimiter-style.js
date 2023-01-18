@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
 const definition = {
     type: 'object',
@@ -45,13 +49,24 @@ const definition = {
     additionalProperties: false,
 };
 const isLastTokenEndOfLine = (token, line) => {
-    const positionInLine = line.indexOf(token);
+    const positionInLine = token.loc.start.column;
     return positionInLine === line.length - 1;
 };
-const makeFixFunction = ({ optsNone, optsSemi, lastToken, missingDelimiter, lastTokenLine, isSingleLine, }) => {
+const isCommentsEndOfLine = (token, comments, line) => {
+    if (!comments) {
+        return false;
+    }
+    if (comments.loc.end.line > token.loc.end.line) {
+        return true;
+    }
+    const positionInLine = comments.loc.end.column;
+    return positionInLine === line.length;
+};
+const makeFixFunction = ({ optsNone, optsSemi, lastToken, commentsAfterLastToken, missingDelimiter, lastTokenLine, isSingleLine, }) => {
     // if removing is the action but last token is not the end of the line
     if (optsNone &&
-        !isLastTokenEndOfLine(lastToken.value, lastTokenLine) &&
+        !isLastTokenEndOfLine(lastToken, lastTokenLine) &&
+        !isCommentsEndOfLine(lastToken, commentsAfterLastToken, lastTokenLine) &&
         !isSingleLine) {
         return null;
     }
@@ -72,13 +87,12 @@ const makeFixFunction = ({ optsNone, optsSemi, lastToken, missingDelimiter, last
 exports.default = util.createRule({
     name: 'member-delimiter-style',
     meta: {
-        type: 'suggestion',
+        type: 'layout',
         docs: {
             description: 'Require a specific member delimiter style for interfaces and type literals',
-            category: 'Stylistic Issues',
             recommended: false,
         },
-        fixable: 'code',
+        fixable: 'whitespace',
         messages: {
             unexpectedComma: 'Unexpected separator (,).',
             unexpectedSemi: 'Unexpected separator (;).',
@@ -152,6 +166,9 @@ exports.default = util.createRule({
             if (!lastToken) {
                 return;
             }
+            const commentsAfterLastToken = sourceCode
+                .getCommentsAfter(lastToken)
+                .pop();
             const sourceCodeLines = sourceCode.getLines();
             const lastTokenLine = sourceCodeLines[(lastToken === null || lastToken === void 0 ? void 0 : lastToken.loc.start.line) - 1];
             const optsSemi = getOption('semi');
@@ -203,6 +220,7 @@ exports.default = util.createRule({
                         optsNone,
                         optsSemi,
                         lastToken,
+                        commentsAfterLastToken,
                         missingDelimiter,
                         lastTokenLine,
                         isSingleLine: opts.type === 'single-line',
@@ -215,7 +233,7 @@ exports.default = util.createRule({
          * @param {ASTNode} node the node to be evaluated.
          */
         function checkMemberSeparatorStyle(node) {
-            const members = node.type === experimental_utils_1.AST_NODE_TYPES.TSInterfaceBody ? node.body : node.members;
+            const members = node.type === utils_1.AST_NODE_TYPES.TSInterfaceBody ? node.body : node.members;
             let isSingleLine = node.loc.start.line === node.loc.end.line;
             if (options.multilineDetection === 'last-member' &&
                 !isSingleLine &&
@@ -225,7 +243,7 @@ exports.default = util.createRule({
                     isSingleLine = true;
                 }
             }
-            const typeOpts = node.type === experimental_utils_1.AST_NODE_TYPES.TSInterfaceBody
+            const typeOpts = node.type === utils_1.AST_NODE_TYPES.TSInterfaceBody
                 ? interfaceOptions
                 : typeLiteralOptions;
             const opts = isSingleLine

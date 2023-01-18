@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.1.39 - 18 Jan 2023
 
 - CodeQL Action v1 is now deprecated, and is no longer updated or supported. For better performance, improved security, and new features, upgrade to v2. For more information, see [this changelog post](https://github.blog/changelog/2023-01-18-code-scanning-codeql-action-v1-is-now-deprecated/). [#1467](https://github.com/github/codeql-action/pull/1466)

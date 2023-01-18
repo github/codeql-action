@@ -19,7 +19,7 @@ test.beforeEach(() => {
   pluginStub = sinon.stub(githubUtils.GitHub, "plugin");
   githubStub = sinon.stub();
   pluginStub.returns(githubStub);
-  util.initializeEnvironment(pkg.version);
+  util.initializeEnvironment(pkg.version as string);
 });
 
 test("getApiClient", async (t) => {

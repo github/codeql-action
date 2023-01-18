@@ -445,7 +445,7 @@ export async function createStatusReportBase(
     status,
     testing_environment: testingEnvironment,
     runner_os: runnerOs,
-    action_version: pkg.version,
+    action_version: pkg.version as string,
   };
 
   // Add optional parameters

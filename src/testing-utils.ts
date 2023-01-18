@@ -180,6 +180,7 @@ export function mockLanguagesInRepo(languages: string[]) {
     url: "GET /repos/:owner/:repo/languages",
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   mockClient.returns({
     repos: {
       listLanguages,

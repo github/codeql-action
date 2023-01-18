@@ -230,7 +230,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
     }
   }
 
-  private async loadApiResponse() {
+  private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
     if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
       this.logger.debug(
@@ -265,5 +265,6 @@ class GitHubFeatureFlags implements FeatureEnablement {
         );
       }
     }
+    return {};
   }
 }

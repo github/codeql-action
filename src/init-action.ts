@@ -138,8 +138,8 @@ async function sendSuccessStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  initializeEnvironment(pkg.version);
-  await checkActionVersion(pkg.version);
+  initializeEnvironment(pkg.version as string);
+  await checkActionVersion(pkg.version as string);
 
   let config: configUtils.Config;
   let codeql: CodeQL;

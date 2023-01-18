@@ -36,8 +36,8 @@ async function sendSuccessStatusReport(
 
 async function run() {
   const startedAt = new Date();
-  initializeEnvironment(pkg.version);
-  await checkActionVersion(pkg.version);
+  initializeEnvironment(pkg.version as string);
+  await checkActionVersion(pkg.version as string);
   if (
     !(await actionsUtil.sendStatusReport(
       await actionsUtil.createStatusReportBase(

@@ -454,7 +454,7 @@ export function createQuerySuiteContents(
   queryFilters: configUtils.QueryFilter[]
 ) {
   return yaml.dump(
-    queries.map((q: string) => ({ query: q })).concat(queryFilters as any)
+    queries.map((q: string) => ({ query: q })).concat(queryFilters as any[])
   );
 }
 

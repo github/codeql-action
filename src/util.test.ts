@@ -328,7 +328,7 @@ const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
   [
     ["1.2.1", { type: util.GitHubVariant.DOTCOM }, true],
     ["1.2.1", { type: util.GitHubVariant.GHAE }, true],
-    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, false],
+    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, true],
     ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, true],
     ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, true],
     ["2.2.1", { type: util.GitHubVariant.DOTCOM }, false],
@@ -341,28 +341,30 @@ const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
 for (const [
   version,
   githubVersion,
-  shouldReportWarning,
+  shouldReportError,
 ] of CHECK_ACTION_VERSION_TESTS) {
-  const reportWarningDescription = shouldReportWarning
-    ? "reports warning"
-    : "doesn't report warning";
+  const reportErrorDescription = shouldReportError
+    ? "reports error"
+    : "doesn't report error";
   const versionsDescription = `CodeQL Action version ${version} and GitHub version ${formatGitHubVersion(
     githubVersion
   )}`;
-  test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {
-    const warningSpy = sinon.spy(core, "warning");
+  test(`checkActionVersion ${reportErrorDescription} for ${versionsDescription}`, async (t) => {
+    const errorSpy = sinon.spy(core, "error");
     const versionStub = sinon
       .stub(api, "getGitHubVersion")
       .resolves(githubVersion);
     await util.checkActionVersion(version);
-    if (shouldReportWarning) {
+    if (shouldReportError) {
       t.true(
-        warningSpy.calledOnceWithExactly(
-          sinon.match("CodeQL Action v1 will be deprecated")
+        errorSpy.calledOnceWithExactly(
+          sinon.match(
+            "This version of the CodeQL Action was deprecated on January 18th, 2023"
+          )
         )
       );
     } else {
-      t.false(warningSpy.called);
+      t.false(errorSpy.called);
     }
     versionStub.restore();
   });

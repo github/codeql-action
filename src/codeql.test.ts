@@ -239,36 +239,52 @@ test("downloads an explicitly requested bundle even if a different version is ca
   });
 });
 
-test("tries to cache an explicitly requested bundle with its CLI version number", async (t) => {
-  await util.withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+const EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES = [
+  {
+    cliVersion: "2.10.0",
+    expectedToolcacheVersion: "2.10.0-20200610",
+  },
+  {
+    cliVersion: "2.10.0-pre",
+    expectedToolcacheVersion: "0.0.0-20200610",
+  },
+];
 
-    mockApiDetails(sampleApiDetails);
-    sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
+for (const {
+  cliVersion,
+  expectedToolcacheVersion,
+} of EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES) {
+  test(`caches an explicitly requested bundle containing CLI ${cliVersion} as ${expectedToolcacheVersion}`, async (t) => {
+    await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
 
-    const releaseApiMock = mockReleaseApi({
-      assetNames: ["cli-version-2.10.0.txt"],
-      tagName: "codeql-bundle-20200610",
+      mockApiDetails(sampleApiDetails);
+      sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
+
+      const releaseApiMock = mockReleaseApi({
+        assetNames: [`cli-version-${cliVersion}.txt`],
+        tagName: "codeql-bundle-20200610",
+      });
+      const url = mockDownloadApi({
+        tagName: "codeql-bundle-20200610",
+      });
+
+      const result = await codeql.setupCodeQL(
+        url,
+        sampleApiDetails,
+        tmpDir,
+        util.GitHubVariant.DOTCOM,
+        false,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        getRunnerLogger(true),
+        false
+      );
+      t.assert(releaseApiMock.isDone(), "Releases API should have been called");
+      t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
+      t.deepEqual(result.toolsVersion, cliVersion);
     });
-    const url = mockDownloadApi({
-      tagName: "codeql-bundle-20200610",
-    });
-
-    const result = await codeql.setupCodeQL(
-      url,
-      sampleApiDetails,
-      tmpDir,
-      util.GitHubVariant.DOTCOM,
-      false,
-      SAMPLE_DEFAULT_CLI_VERSION,
-      getRunnerLogger(true),
-      false
-    );
-    t.assert(releaseApiMock.isDone(), "Releases API should have been called");
-    t.assert(toolcache.find("CodeQL", "2.10.0-20200610"));
-    t.deepEqual(result.toolsVersion, "2.10.0");
   });
-});
+}
 
 for (const { isCached, tagName, toolcacheCliVersion } of [
   {

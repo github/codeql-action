@@ -29,7 +29,7 @@ echo "$CHECKS" | jq
 
 echo "{\"contexts\": ${CHECKS}}" > checks.json
 
-for BRANCH in main releases/v2 releases/v1; do
+for BRANCH in main releases/v2; do
   echo "Updating $BRANCH"
   gh api --silent -X "PATCH" "repos/github/codeql-action/branches/$BRANCH/protection/required_status_checks" --input checks.json
 done

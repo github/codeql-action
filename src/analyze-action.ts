@@ -180,8 +180,8 @@ async function run() {
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
-  util.initializeEnvironment(pkg.version);
-  await util.checkActionVersion(pkg.version);
+  util.initializeEnvironment(pkg.version as string);
+  await util.checkActionVersion(pkg.version as string);
 
   const logger = getActionsLogger();
   try {

@@ -41,12 +41,12 @@ type hashCallback = (lineNumber: number, hash: string) => void;
  */
 export async function hash(callback: hashCallback, filepath: string) {
   // A rolling view in to the input
-  const window = Array(BLOCK_SIZE).fill(0);
+  const window: number[] = Array(BLOCK_SIZE).fill(0);
 
   // If the character in the window is the start of a new line
   // then records the line number, otherwise will be -1.
   // Indexes match up with those from the window variable.
-  const lineNumbers = Array(BLOCK_SIZE).fill(-1);
+  const lineNumbers: number[] = Array(BLOCK_SIZE).fill(-1);
 
   // The current hash value, updated as we read each character
   let hashRaw = Long.ZERO;
@@ -120,7 +120,7 @@ export async function hash(callback: hashCallback, filepath: string) {
   const readStream = fs.createReadStream(filepath, "utf8");
   for await (const data of readStream) {
     for (let i = 0; i < data.length; ++i) {
-      processCharacter(data.charCodeAt(i));
+      processCharacter((data as string).charCodeAt(i));
     }
   }
   processCharacter(EOF);
@@ -201,7 +201,7 @@ export function resolveUriToFile(
     logger.debug(`Ignoring location as URI "${location.uri}" is invalid`);
     return undefined;
   }
-  let uri = decodeURIComponent(location.uri);
+  let uri = decodeURIComponent(location.uri as string);
 
   // Remove a file scheme, and abort if the scheme is anything else
   const fileUriPrefix = "file://";

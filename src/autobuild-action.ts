@@ -36,7 +36,7 @@ async function sendCompletedStatusReport(
   failingLanguage?: string,
   cause?: Error
 ) {
-  initializeEnvironment(pkg.version);
+  initializeEnvironment(pkg.version as string);
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
@@ -57,7 +57,7 @@ async function sendCompletedStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  await checkActionVersion(pkg.version);
+  await checkActionVersion(pkg.version as string);
   let currentLanguage: Language | undefined = undefined;
   let languages: Language[] | undefined = undefined;
   try {

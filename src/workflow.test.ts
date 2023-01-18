@@ -144,7 +144,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
           push: 1,
           pull_request: 1,
         },
-      } as any),
+      } as Workflow),
       []
     )
   );
@@ -153,13 +153,14 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
     ...errorCodes(
       getWorkflowErrors({
         on: 1,
-      } as any),
+      } as Workflow),
       []
     )
   );
 
   t.deepEqual(
     ...errorCodes(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       getWorkflowErrors({
         on: 1,
         jobs: 1,
@@ -170,6 +171,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       getWorkflowErrors({
         on: 1,
         jobs: [1],
@@ -183,7 +185,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
       getWorkflowErrors({
         on: 1,
         jobs: { 1: 1 },
-      } as any),
+      } as Workflow),
       []
     )
   );
@@ -193,7 +195,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
       getWorkflowErrors({
         on: 1,
         jobs: { test: 1 },
-      } as any),
+      } as Workflow),
       []
     )
   );
@@ -203,13 +205,14 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
       getWorkflowErrors({
         on: 1,
         jobs: { test: [1] },
-      } as any),
+      } as Workflow),
       []
     )
   );
 
   t.deepEqual(
     ...errorCodes(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       getWorkflowErrors({
         on: 1,
         jobs: { test: { steps: 1 } },
@@ -220,6 +223,7 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
 
   t.deepEqual(
     ...errorCodes(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       getWorkflowErrors({
         on: 1,
         jobs: { test: { steps: [{ notrun: "git checkout HEAD^2" }] } },
@@ -233,15 +237,16 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
       getWorkflowErrors({
         on: 1,
         jobs: { test: [undefined] },
-      } as any),
+      } as Workflow),
       []
     )
   );
 
-  t.deepEqual(...errorCodes(getWorkflowErrors(1 as any), []));
+  t.deepEqual(...errorCodes(getWorkflowErrors(1 as Workflow), []));
 
   t.deepEqual(
     ...errorCodes(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       getWorkflowErrors({
         on: {
           push: {

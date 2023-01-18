@@ -26,7 +26,7 @@ test("getToolNames", (t) => {
     `${__dirname}/../src/testdata/tool-names.sarif`,
     "utf8"
   );
-  const toolNames = util.getToolNames(JSON.parse(input));
+  const toolNames = util.getToolNames(JSON.parse(input) as util.SarifFile);
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
 });
 
@@ -204,6 +204,7 @@ function mockGetMetaVersionHeader(
   };
   const spyGetContents = sinon
     .stub(client.meta, "get")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   return spyGetContents;

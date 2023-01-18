@@ -525,7 +525,7 @@ async function downloadCodeQL(
     `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`
   );
 
-  const dest = path.join(tempDir, uuidV4());
+  const dest = path.join(tempDir, uuidV4() as string);
   const finalHeaders = Object.assign(
     { "User-Agent": "CodeQL Action" },
     headers
@@ -987,7 +987,7 @@ async function getCodeQLForCmd(
       // Set trace command
       const ext = process.platform === "win32" ? ".cmd" : ".sh";
       const traceCommand = path.resolve(
-        JSON.parse(extractorPath),
+        JSON.parse(extractorPath) as string,
         "tools",
         `autobuild${ext}`
       );
@@ -1460,6 +1460,6 @@ async function generateCodeScanningConfig(
   return configLocation;
 }
 
-function cloneObject(obj: any) {
+function cloneObject<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }

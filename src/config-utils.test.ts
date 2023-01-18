@@ -9,6 +9,7 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { RegistryConfigWithCredentials } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
@@ -51,6 +52,7 @@ function mockGetContents(
   };
   const spyGetContents = sinon
     .stub(client.repos, "getContent")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   sinon.stub(api, "getApiClientWithExternalAuth").value(() => client);
@@ -66,6 +68,7 @@ function mockListLanguages(languages: string[]) {
   for (const language of languages) {
     response.data[language] = 123;
   }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   sinon.stub(client.repos, "listLanguages").resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
 }
@@ -2310,7 +2313,7 @@ test("downloadPacks-with-registries", async (t) => {
 
     const expectedConfigFile = path.join(tmpDir, "qlconfig.yml");
     const packDownloadStub = sinon.stub();
-    packDownloadStub.callsFake((packs, configFile) => {
+    packDownloadStub.callsFake((packs, configFile: string) => {
       t.deepEqual(configFile, expectedConfigFile);
       // verify the env vars were set correctly
       t.deepEqual(process.env.GITHUB_TOKEN, sampleApiDetails.auth);
@@ -2439,7 +2442,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
           codeQL,
           [Language.javascript, Language.java, Language.python],
           {},
-          registries as any,
+          registries as RegistryConfigWithCredentials[] | undefined,
           sampleApiDetails,
           tmpDir,
           logger

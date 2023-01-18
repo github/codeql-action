@@ -632,16 +632,16 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
  * Prompt the customer to upgrade to CodeQL Action v2, if appropriate.
  *
  * Check whether a customer is running v1. If they are, and we can determine that the GitHub
- * instance supports v2, then log an error that v1 is discontinued and prompt the customer to
+ * instance supports v2, then log an error that v1 is deprecated and prompt the customer to
  * upgrade to v2.
  */
 export async function checkActionVersion(version: string) {
   if (!semver.satisfies(version, ">=2")) {
     core.error(
-      "This version of the CodeQL Action was discontinued on January 18th, 2023, and is no longer " +
+      "This version of the CodeQL Action was deprecated on January 18th, 2023, and is no longer " +
         "updated or supported. For better performance, improved security, and new features, " +
         "upgrade to v2. For more information, see " +
-        "https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/"
+        "https://github.blog/changelog/2023-01-18-code-scanning-codeql-action-v1-is-now-deprecated/"
     );
   }
 }

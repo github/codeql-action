@@ -3,7 +3,10 @@
 ## [UNRELEASED]
 
 - CodeQL Action v1 is now discontinued, and is no longer updated or supported. For better performance, improved security, and new features, upgrade to v2. For more information, see [this changelog post](https://github.blog/changelog/2022-04-27-code-scanning-deprecation-of-codeql-action-v1/). [#1467](https://github.com/github/codeql-action/pull/1466)
-- Python automatic dependency installation will no longer fail for projects using Poetry that specify `virtualenvs.options.no-pip = true` in their `poetry.toml`. [#1431](https://github.com/github/codeql-action/pull/1431)
+- Python automatic dependency installation will no longer fail for projects using Poetry that specify `virtualenvs.options.no-pip = true` in their `poetry.toml`. [#1431](https://github.com/github/codeql-action/pull/1431).
+- Avoid printing a stack trace and error message when the action fails to find the SHA at the
+  current directory. This will happen in several non-error states and so we now avoid cluttering the
+  log with this message. [#1485](https://github.com/github/codeql-action/pull/1485)
 
 ## 2.1.38 - 12 Jan 2023
 

@@ -15,38 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
-    strategy:
-      matrix:
-        node-types-version: [12.12, current]
-
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Lint
         run: npm run-script lint
-
-      - name: Update version of @types/node
-        if: matrix.node-types-version != 'current'
-        env:
-          NODE_TYPES_VERSION: ${{ matrix.node-types-version }}
-        run: |
-          # Export `NODE_TYPES_VERSION` so it's available to jq
-          export NODE_TYPES_VERSION="${NODE_TYPES_VERSION}"
-          contents=$(jq '.devDependencies."@types/node" = env.NODE_TYPES_VERSION' package.json)
-          echo "${contents}" > package.json
-          # Usually we run `npm install` on macOS to ensure that we pick up macOS-only dependencies.
-          # However we're not checking in the updated lockfile here, so it's fine to run
-          # `npm install` on Linux.
-          npm install
-
-          if [ ! -z "$(git status --porcelain)" ]; then
-            git config --global user.email "github-actions@github.com"
-            git config --global user.name "github-actions[bot]"
-            # The period in `git add --all .` ensures that we stage deleted files too.
-            git add --all .
-            git commit -m "Use @types/node=${NODE_TYPES_VERSION}"
-          fi
 
       - name: Check generated JS
         run: .github/workflows/script/check-js.sh

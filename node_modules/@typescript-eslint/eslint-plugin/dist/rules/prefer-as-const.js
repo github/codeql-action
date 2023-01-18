@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,19 +23,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
 exports.default = util.createRule({
     name: 'prefer-as-const',
     meta: {
         type: 'suggestion',
         docs: {
-            description: 'Prefer usage of `as const` over literal type',
-            category: 'Best Practices',
+            description: 'Enforce the use of `as const` over literal type',
             recommended: 'error',
-            suggestion: true,
         },
         fixable: 'code',
+        hasSuggestions: true,
         messages: {
             preferConstAssertion: 'Expected a `const` instead of a literal type assertion.',
             variableConstAssertion: 'Expected a `const` assertion instead of a literal type annotation.',
@@ -42,8 +45,8 @@ exports.default = util.createRule({
     defaultOptions: [],
     create(context) {
         function compareTypes(valueNode, typeNode, canFix) {
-            if (valueNode.type === experimental_utils_1.AST_NODE_TYPES.Literal &&
-                typeNode.type === experimental_utils_1.AST_NODE_TYPES.TSLiteralType &&
+            if (valueNode.type === utils_1.AST_NODE_TYPES.Literal &&
+                typeNode.type === utils_1.AST_NODE_TYPES.TSLiteralType &&
                 'raw' in typeNode.literal &&
                 valueNode.raw === typeNode.literal.raw) {
                 if (canFix) {
@@ -76,6 +79,11 @@ exports.default = util.createRule({
             },
             TSTypeAssertion(node) {
                 compareTypes(node.expression, node.typeAnnotation, true);
+            },
+            PropertyDefinition(node) {
+                if (node.value && node.typeAnnotation) {
+                    compareTypes(node.value, node.typeAnnotation.typeAnnotation, false);
+                }
             },
             VariableDeclarator(node) {
                 if (node.init && node.id.typeAnnotation) {

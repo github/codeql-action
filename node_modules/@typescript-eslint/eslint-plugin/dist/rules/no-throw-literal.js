@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,28 +23,45 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = require("@typescript-eslint/utils");
 const ts = __importStar(require("typescript"));
 const util = __importStar(require("../util"));
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
 exports.default = util.createRule({
     name: 'no-throw-literal',
     meta: {
         type: 'problem',
         docs: {
             description: 'Disallow throwing literals as exceptions',
-            category: 'Best Practices',
-            recommended: false,
+            recommended: 'strict',
             extendsBaseRule: true,
             requiresTypeChecking: true,
         },
-        schema: [],
+        schema: [
+            {
+                type: 'object',
+                properties: {
+                    allowThrowingAny: {
+                        type: 'boolean',
+                    },
+                    allowThrowingUnknown: {
+                        type: 'boolean',
+                    },
+                },
+                additionalProperties: false,
+            },
+        ],
         messages: {
             object: 'Expected an error object to be thrown.',
             undef: 'Do not throw undefined.',
         },
     },
-    defaultOptions: [],
-    create(context) {
+    defaultOptions: [
+        {
+            allowThrowingAny: true,
+            allowThrowingUnknown: true,
+        },
+    ],
+    create(context, [options]) {
         const parserServices = util.getParserServices(context);
         const program = parserServices.program;
         const checker = program.getTypeChecker();
@@ -75,8 +96,8 @@ exports.default = util.createRule({
             return false;
         }
         function checkThrowArgument(node) {
-            if (node.type === experimental_utils_1.AST_NODE_TYPES.AwaitExpression ||
-                node.type === experimental_utils_1.AST_NODE_TYPES.YieldExpression) {
+            if (node.type === utils_1.AST_NODE_TYPES.AwaitExpression ||
+                node.type === utils_1.AST_NODE_TYPES.YieldExpression) {
                 return;
             }
             const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
@@ -85,9 +106,13 @@ exports.default = util.createRule({
                 context.report({ node, messageId: 'undef' });
                 return;
             }
-            if (util.isTypeAnyType(type) ||
-                util.isTypeUnknownType(type) ||
-                isErrorLike(type)) {
+            if (options.allowThrowingAny && util.isTypeAnyType(type)) {
+                return;
+            }
+            if (options.allowThrowingUnknown && util.isTypeUnknownType(type)) {
+                return;
+            }
+            if (isErrorLike(type)) {
                 return;
             }
             context.report({ node, messageId: 'object' });

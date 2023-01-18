@@ -17,6 +17,9 @@
 
     Where possible, we recommend downloading and managing the CodeQL CLI via the [CodeQL extension for the GitHub CLI](https://github.com/github/gh-codeql) or [GitHub Releases](https://github.com/github/codeql-cli-binaries/releases) rather than using the CodeQL tools from the runner image tool cache.
 - Python automatic dependency installation will no longer fail for projects using Poetry that specify `virtualenvs.options.no-pip = true` in their `poetry.toml`. [#1431](https://github.com/github/codeql-action/pull/1431).
+- Avoid printing a stack trace and error message when the action fails to find the SHA at the
+  current directory. This will happen in several non-error states and so we now avoid cluttering the
+  log with this message. [#1485](https://github.com/github/codeql-action/pull/1485)
 
 ## 2.1.38 - 12 Jan 2023
 

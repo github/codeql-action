@@ -88,9 +88,10 @@ export const getCommitOid = async function (
     return commitOid.trim();
   } catch (e) {
     core.info(
-      `Failed to call git to get current commit. Continuing with data from environment or input: ${e}`
+      "Could not determine current commit SHA using git. Continuing with data from user input or environment."
     );
-    core.info((e as Error).stack || "NO STACK");
+    core.debug(`Reason: ${(e as Error).message}`);
+    core.debug((e as Error).stack || "NO STACK");
     return getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
   }
 };

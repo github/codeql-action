@@ -1,8 +1,9 @@
-# This workflow runs after a release of the action. For v2 releases, it merges any changes from the
-# release back into the main branch. Typically, this is just a single commit that updates the
-# changelog. For v2 and v1 releases, it then (a) tags the merge commit on the release branch that
-# represents the new release with an `vx.y.z` tag and (b) updates the `vx` tag to refer to this
-# commit.
+# This workflow runs after a release of the action. It:
+# 1. Merges any changes from the release back into the main branch. Typically, this is just a single
+#    commit that updates the changelog.
+# 2. Tags the merge commit on the release branch that represents the new release with an `v2.x.y`
+#    tag
+# 3. Updates the `v2` tag to refer to this merge commit.
 name: Tag release and merge back
 
 on:
@@ -15,7 +16,6 @@ on:
 
   push:
     branches:
-      - releases/v1
       - releases/v2
 
 jobs:
@@ -105,7 +105,7 @@ jobs:
           git push origin --atomic --force refs/tags/"${VERSION}" refs/tags/"${major_version_tag}"
 
       - name: Create mergeback branch
-        if: steps.check.outputs.exists != 'true' && contains(github.ref, 'releases/v2')
+        if: steps.check.outputs.exists != 'true'
         env:
           VERSION: "${{ steps.getVersion.outputs.version }}"
           NEW_BRANCH: "${{ steps.getVersion.outputs.newBranch }}"

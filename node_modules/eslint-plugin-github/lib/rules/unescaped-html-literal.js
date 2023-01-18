@@ -2,7 +2,7 @@ module.exports = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'disallow unesaped HTML literals',
+      description: 'disallow unescaped HTML literals',
       url: require('../url')(module)
     },
     schema: []

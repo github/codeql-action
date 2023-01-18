@@ -16,7 +16,10 @@
     "rules": {
         "filenames/match-regex": ["error", "^[a-z0-9-]+(\\.test)?$"],
         "i18n-text/no-en": "off",
-        "import/extensions": "error",
+        "import/extensions": ["error", {
+            // Allow importing JSON files
+            "json": {}
+        }],
         "import/no-amd": "error",
         "import/no-commonjs": "error",
         "import/no-dynamic-require": "error",
@@ -55,5 +58,13 @@
             "func-style": "off",
             "sort-imports": "off"
         }
-    }]
+    }],
+    "settings": {
+        "import/resolver": {
+            "node": {
+                "moduleDirectory": ["node_modules", "src"]
+            },
+            "typescript": {}
+        }
+    }
 }

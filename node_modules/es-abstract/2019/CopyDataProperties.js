@@ -55,8 +55,8 @@ module.exports = function CopyDataProperties(target, source, excludedItems) {
 		var enumerable = $isEnumerable(fromObj, nextKey) || (
 		// this is to handle string keys being non-enumerable in older engines
 			typeof source === 'string'
-            && nextKey >= 0
-            && IsInteger(ToNumber(nextKey))
+			&& nextKey >= 0
+			&& IsInteger(ToNumber(nextKey))
 		);
 		if (excluded === false && enumerable) {
 			var propValue = Get(fromObj, nextKey);

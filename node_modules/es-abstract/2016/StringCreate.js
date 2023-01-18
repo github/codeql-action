@@ -20,7 +20,7 @@ module.exports = function StringCreate(value, prototype) {
 	}
 
 	var S = $Object(value);
-	if (S !== $StringPrototype) {
+	if (prototype !== $StringPrototype) {
 		if (setProto) {
 			setProto(S, prototype);
 		} else {

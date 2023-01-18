@@ -2,7 +2,7 @@ name: PR Checks
 
 on:
   push:
-    branches: [main, releases/v1, releases/v2]
+    branches: [main, releases/v2]
   pull_request:
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.
@@ -69,23 +69,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      # Checks for any conflict markers created by git. This check is primarily intended to validate that
-      # any merge conflicts in the v2 -> v1 backport PR are fixed before the PR is merged.
-      - name: Check for merge conflicts
-        run: |
-          # Use `|| true` since grep returns exit code 1 if there are no matches, and we don't want
-          # this to fail the workflow.
-          FILES_WITH_CONFLICTS=$(grep --extended-regexp --ignore-case --line-number --recursive \
-            '^(<<<<<<<|>>>>>>>)' . || true)
-          if [[ "${FILES_WITH_CONFLICTS}" ]]; then
-            echo "Fail: Found merge conflict markers in the following files:"
-            echo ""
-            echo "${FILES_WITH_CONFLICTS}"
-            exit 1
-          else
-            echo "Success: Found no merge conflict markers."
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v4

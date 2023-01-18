@@ -10,7 +10,6 @@ on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:

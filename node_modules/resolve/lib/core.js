@@ -15,9 +15,8 @@ function specifierIncluded(specifier) {
             return cur < ver;
         } else if (op === '>=') {
             return cur >= ver;
-        } else {
-            return false;
         }
+        return false;
     }
     return op === '>=';
 }

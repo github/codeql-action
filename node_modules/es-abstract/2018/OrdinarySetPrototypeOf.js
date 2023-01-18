@@ -16,15 +16,15 @@ module.exports = function OrdinarySetPrototypeOf(O, V) {
 		throw new $TypeError('Assertion failed: V must be Object or Null');
 	}
 	/*
-    var extensible = IsExtensible(O);
-    var current = OrdinaryGetPrototypeOf(O);
-    if (SameValue(V, current)) {
-        return true;
-    }
-    if (!extensible) {
-        return false;
-    }
-    */
+	var extensible = IsExtensible(O);
+	var current = OrdinaryGetPrototypeOf(O);
+	if (SameValue(V, current)) {
+		return true;
+	}
+	if (!extensible) {
+		return false;
+	}
+	*/
 	try {
 		$setProto(O, V);
 	} catch (e) {
@@ -32,22 +32,22 @@ module.exports = function OrdinarySetPrototypeOf(O, V) {
 	}
 	return OrdinaryGetPrototypeOf(O) === V;
 	/*
-    var p = V;
-    var done = false;
-    while (!done) {
-        if (p === null) {
-            done = true;
-        } else if (SameValue(p, O)) {
-            return false;
-        } else {
-            if (wat) {
-                done = true;
-            } else {
-                p = p.[[Prototype]];
-            }
-        }
-     }
-     O.[[Prototype]] = V;
-     return true;
-     */
+	var p = V;
+	var done = false;
+	while (!done) {
+		if (p === null) {
+			done = true;
+		} else if (SameValue(p, O)) {
+			return false;
+		} else {
+			if (wat) {
+				done = true;
+			} else {
+				p = p.[[Prototype]];
+			}
+		}
+	}
+	O.[[Prototype]] = V;
+	return true;
+	*/
 };

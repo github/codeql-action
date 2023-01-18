@@ -1,6 +1,6 @@
 # eslint-plugin-prettier [![Build Status](https://github.com/prettier/eslint-plugin-prettier/workflows/CI/badge.svg?branch=master)](https://github.com/prettier/eslint-plugin-prettier/actions?query=workflow%3ACI+branch%3Amaster)
 
-Runs [Prettier](https://github.com/prettier/prettier) as an [ESLint](http://eslint.org) rule and reports differences as individual ESLint issues.
+Runs [Prettier](https://github.com/prettier/prettier) as an [ESLint](https://eslint.org) rule and reports differences as individual ESLint issues.
 
 If your desired formatting does not match Prettier’s output, you should use a different tool such as [prettier-eslint](https://github.com/prettier/prettier-eslint) instead.
 
@@ -95,6 +95,10 @@ Exactly what does `plugin:prettier/recommended` do? Well, this is what it expand
 - `"prettier/prettier": "error"` turns on the rule provided by this plugin, which runs Prettier from within ESLint.
 - `"arrow-body-style": "off"` and `"prefer-arrow-callback": "off"` turns off two ESLint core rules that unfortunately are problematic with this plugin – see the next section.
 
+## `Svelte` support
+
+We recommend to use [`eslint-plugin-svelte`](https://github.com/ota-meshi/eslint-plugin-svelte) instead of [`eslint-plugin-svelte3`](https://github.com/sveltejs/eslint-plugin-svelte3) because `eslint-plugin-svelte` has a correct [`eslint-svelte-parser`](https://github.com/ota-meshi/svelte-eslint-parser) instead of hacking, when use with `eslint-plugin-svelte3`, `eslint-plugin-prettier` will just ignore the text passed by `eslint-plugin-svelte3`, because the text they has been modified.
+
 ## `arrow-body-style` and `prefer-arrow-callback` issue
 
 If you use [arrow-body-style](https://eslint.org/docs/rules/arrow-body-style) or [prefer-arrow-callback](https://eslint.org/docs/rules/prefer-arrow-callback) together with the `prettier/prettier` rule from this plugin, you can in some cases end up with invalid code due to a bug in ESLint’s autofix – see [issue #65](https://github.com/prettier/eslint-plugin-prettier/issues/65).
@@ -114,7 +118,9 @@ If you’re fixing large of amounts of previously unformatted code, consider tem
   - An object representing [options](https://prettier.io/docs/en/options.html) that will be passed into prettier. Example:
 
     ```json
-    "prettier/prettier": ["error", {"singleQuote": true, "parser": "flow"}]
+    {
+      "prettier/prettier": ["error", { "singleQuote": true, "parser": "flow" }]
+    }
     ```
 
     NB: This option will merge and override any config set with `.prettierrc` files
@@ -126,25 +132,45 @@ If you’re fixing large of amounts of previously unformatted code, consider tem
     - `usePrettierrc`: Enables loading of the Prettier configuration file, (default: `true`). May be useful if you are using multiple tools that conflict with each other, or do not wish to mix your ESLint settings with your Prettier configuration.
 
       ```json
-      "prettier/prettier": ["error", {}, {
-        "usePrettierrc": false
-      }]
+      {
+        "prettier/prettier": [
+          "error",
+          {},
+          {
+            "usePrettierrc": false
+          }
+        ]
+      }
       ```
 
     - `fileInfoOptions`: Options that are passed to [prettier.getFileInfo](https://prettier.io/docs/en/api.html#prettiergetfileinfofilepath--options) to decide whether a file needs to be formatted. Can be used for example to opt-out from ignoring files located in `node_modules` directories.
 
       ```json
-      "prettier/prettier": ["error", {}, {
-        "fileInfoOptions": {
-          "withNodeModules": true
-        }
-      }]
+      {
+        "prettier/prettier": [
+          "error",
+          {},
+          {
+            "fileInfoOptions": {
+              "withNodeModules": true
+            }
+          }
+        ]
+      }
       ```
 
-- The rule is autofixable -- if you run `eslint` with the `--fix` flag, your code will be formatted according to `prettier` style.
+- The rule is auto fixable -- if you run `eslint` with the `--fix` flag, your code will be formatted according to `prettier` style.
 
 ---
 
 ## Contributing
 
 See [CONTRIBUTING.md](https://github.com/prettier/eslint-plugin-prettier/blob/master/CONTRIBUTING.md)
+
+## Changelog
+
+Detailed changes for each release are documented in [CHANGELOG.md](./CHANGELOG.md).
+
+## License
+
+[MIT](http://opensource.org/licenses/MIT)

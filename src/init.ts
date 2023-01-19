@@ -8,7 +8,7 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureEnablement } from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
@@ -21,6 +21,7 @@ export async function initCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   bypassToolcache: boolean,
+  defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
 ): Promise<{ codeql: CodeQL; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
@@ -30,6 +31,7 @@ export async function initCodeQL(
     tempDir,
     variant,
     bypassToolcache,
+    defaultCliVersion,
     logger,
     true
   );

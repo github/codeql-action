@@ -2,7 +2,19 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Improve stability when choosing the default version of CodeQL to use in code scanning workflow runs on Actions on GitHub.com [#1475](https://github.com/github/codeql-action/pull/1475).
+  - This change addresses customer reports of code scanning alerts on GitHub.com being closed and reopened during the rollout of new versions of CodeQL in the GitHub Actions [runner images](https://github.com/actions/runner-images).
+  - **No change is required for the majority of workflows**, including:
+    - Workflows on GitHub.com hosted runners using the latest version (`v2`) of the CodeQL Action.
+    - Workflows on GitHub.com hosted runners that are pinned to specific versions of the CodeQL Action from `v2.2.0` onwards.
+    - Workflows on GitHub Enterprise Server.
+  - **A change may be required** for workflows on GitHub.com hosted runners that are pinned to specific versions of the CodeQL Action before `v2.2.0` (e.g. `v2.1.32`):
+    - Previously, these workflows would obtain the latest version of CodeQL from the Actions runner image.
+    - Now, these workflows will download an older, compatible version of CodeQL from GitHub Releases. To use this older version, no change is required. To use the newest version of CodeQL, please update your workflows to reference the latest version of the CodeQL Action (`v2`).
+  - **Internal changes**
+    - These changes will not affect the majority of code scanning workflows. Continue reading only if your workflow uses [@actions/tool-cache](https://github.com/actions/toolkit/tree/main/packages/tool-cache) or relies on the precise location of CodeQL within the Actions tool cache.
+    - The tool cache now contains **two** recent CodeQL versions (previously **one**).
+    - Each CodeQL version is located under a directory named after the release date and version number, e.g. CodeQL 2.11.6 is now located under `CodeQL/2.11.6-20221211/x64/codeql` (previously `CodeQL/0.0.0-20221211/x64/codeql`).
 
 ## 2.1.39 - 18 Jan 2023
 

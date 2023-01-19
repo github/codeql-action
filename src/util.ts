@@ -552,8 +552,8 @@ export async function bundleDb(
 }
 
 export async function delay(milliseconds: number) {
-  // Immediately `unref` the timer such that it doesn't hold up the event loop
-  // if it's not being awaited.
+  // Immediately `unref` the timer such that it only prevents the process from exiting if the
+  // surrounding promise is being awaited.
   return new Promise((resolve) => setTimeout(resolve, milliseconds).unref());
 }
 
@@ -768,23 +768,19 @@ export async function withTimeout<T>(
     finished = true;
     return result;
   };
-  const timeout: Promise<undefined> = new Promise((resolve) => {
-    // Immediately `unref` the timer such that it doesn't hold up the event loop
-    // if it's not being awaited.
-    setTimeout(() => {
-      if (!finished) {
-        // Workaround: While the promise racing below will allow the main code
-        // to continue, the process won't normally exit until the asynchronous
-        // task in the background has finished. We set this variable to force
-        // an exit at the end of our code when `checkForTimeout` is called.
-        hadTimeout = true;
-        onTimeout();
-      }
-      resolve(undefined);
-    }, timeoutMs).unref();
-  });
-
-  return await Promise.race([mainTask(), timeout]);
+  const timeoutTask = async () => {
+    await delay(timeoutMs);
+    if (!finished) {
+      // Workaround: While the promise racing below will allow the main code
+      // to continue, the process won't normally exit until the asynchronous
+      // task in the background has finished. We set this variable to force
+      // an exit at the end of our code when `checkForTimeout` is called.
+      hadTimeout = true;
+      onTimeout();
+    }
+    return undefined;
+  };
+  return await Promise.race([mainTask(), timeoutTask()]);
 }
 
 /**

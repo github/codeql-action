@@ -552,7 +552,9 @@ export async function bundleDb(
 }
 
 export async function delay(milliseconds: number) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+  // Immediately `unref` the timer such that it doesn't hold up the event loop
+  // if it's not being awaited.
+  return new Promise((resolve) => setTimeout(resolve, milliseconds).unref());
 }
 
 export function isGoodVersion(versionSpec: string) {
@@ -767,6 +769,8 @@ export async function withTimeout<T>(
     return result;
   };
   const timeout: Promise<undefined> = new Promise((resolve) => {
+    // Immediately `unref` the timer such that it doesn't hold up the event loop
+    // if it's not being awaited.
     setTimeout(() => {
       if (!finished) {
         // Workaround: While the promise racing below will allow the main code
@@ -777,7 +781,7 @@ export async function withTimeout<T>(
         onTimeout();
       }
       resolve(undefined);
-    }, timeoutMs);
+    }, timeoutMs).unref();
   });
 
   return await Promise.race([mainTask(), timeout]);

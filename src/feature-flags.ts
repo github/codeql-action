@@ -1,13 +1,35 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as semver from "semver";
+
 import { getApiClient } from "./api-client";
 import { CodeQL } from "./codeql";
+import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 
+const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
+const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
+const MINIMUM_ENABLED_CODEQL_VERSION = "2.11.6";
+
+export type CodeQLDefaultVersionInfo =
+  | {
+      cliVersion: string;
+      variant: util.GitHubVariant.DOTCOM;
+    }
+  | {
+      cliVersion: string;
+      tagName: string;
+      variant: util.GitHubVariant.GHAE | util.GitHubVariant.GHES;
+    };
+
 export interface FeatureEnablement {
+  /** Gets the default version of the CodeQL tools. */
+  getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo>;
   getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
 }
 
@@ -91,6 +113,12 @@ export class Features implements FeatureEnablement {
     );
   }
 
+  async getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo> {
+    return await this.gitHubFeatureFlags.getDefaultCliVersion(variant);
+  }
+
   /**
    *
    * @param feature The feature to check.
@@ -151,6 +179,74 @@ class GitHubFeatureFlags implements FeatureEnablement {
     private readonly logger: Logger
   ) {
     /**/
+  }
+
+  private getCliVersionFromFeatureFlag(f: string): string | undefined {
+    if (
+      !f.startsWith(DEFAULT_VERSION_FEATURE_FLAG_PREFIX) ||
+      !f.endsWith(DEFAULT_VERSION_FEATURE_FLAG_SUFFIX)
+    ) {
+      return undefined;
+    }
+    const version = f
+      .substring(
+        DEFAULT_VERSION_FEATURE_FLAG_PREFIX.length,
+        f.length - DEFAULT_VERSION_FEATURE_FLAG_SUFFIX.length
+      )
+      .replace(/_/g, ".");
+
+    if (!semver.valid(version)) {
+      this.logger.warning(
+        `Ignoring feature flag ${f} as it does not specify a valid CodeQL version.`
+      );
+      return undefined;
+    }
+    return version;
+  }
+
+  async getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo> {
+    if (variant === util.GitHubVariant.DOTCOM) {
+      return {
+        cliVersion: await this.getDefaultDotcomCliVersion(),
+        variant,
+      };
+    }
+    return {
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
+      variant,
+    };
+  }
+
+  async getDefaultDotcomCliVersion(): Promise<string> {
+    const response = await this.getAllFeatures();
+
+    const enabledFeatureFlagCliVersions = Object.entries(response)
+      .map(([f, isEnabled]) =>
+        isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined
+      )
+      .filter((f) => f !== undefined)
+      .map((f) => f as string);
+
+    if (enabledFeatureFlagCliVersions.length === 0) {
+      this.logger.debug(
+        "Feature flags do not specify a default CLI version. Falling back to CLI version " +
+          `${MINIMUM_ENABLED_CODEQL_VERSION}.`
+      );
+      return MINIMUM_ENABLED_CODEQL_VERSION;
+    }
+
+    const maxCliVersion = enabledFeatureFlagCliVersions.reduce(
+      (maxVersion, currentVersion) =>
+        currentVersion > maxVersion ? currentVersion : maxVersion,
+      enabledFeatureFlagCliVersions[0]
+    );
+    this.logger.debug(
+      `Derived default CLI version of ${maxCliVersion} from feature flags.`
+    );
+    return maxCliVersion;
   }
 
   async getValue(feature: Feature): Promise<boolean> {
@@ -246,7 +342,12 @@ class GitHubFeatureFlags implements FeatureEnablement {
           repo: this.repositoryNwo.repo,
         }
       );
-      return response.data;
+      const remoteFlags = response.data;
+      this.logger.debug(
+        "Loaded the following default values for the feature flags from the Code Scanning API: " +
+          `${JSON.stringify(remoteFlags)}`
+      );
+      return remoteFlags;
     } catch (e) {
       if (util.isHTTPError(e) && e.status === 403) {
         this.logger.warning(
@@ -255,6 +356,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
             "This could be because the Action is running on a pull request from a fork. If not, " +
             `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
         );
+        return {};
       } else {
         // Some features, such as `ml_powered_queries_enabled` affect the produced alerts.
         // Considering these features disabled in the event of a transient error could

@@ -204,6 +204,9 @@ export function mockCodeQLVersion(version) {
  */
 export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
   return {
+    getDefaultCliVersion: async () => {
+      throw new Error("not implemented");
+    },
     getValue: async (feature) => {
       return enabledFeatures.includes(feature);
     },

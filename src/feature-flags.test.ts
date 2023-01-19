@@ -1,8 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 
+import * as defaults from "./defaults.json";
 import {
   Feature,
   featureConfig,
@@ -371,7 +372,93 @@ test("Environment variable can override feature flag cache", async (t) => {
   });
 });
 
-function assertAllFeaturesUndefinedInApi(t, loggedMessages: LoggedMessage[]) {
+for (const variant of [GitHubVariant.GHAE, GitHubVariant.GHES]) {
+  test(`selects CLI from defaults.json on ${GitHubVariant[variant]}`, async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const features = setUpFeatureFlagTests(tmpDir);
+      t.deepEqual(await features.getDefaultCliVersion(variant), {
+        cliVersion: defaults.cliVersion,
+        tagName: defaults.bundleVersion,
+        variant,
+      });
+    });
+  });
+}
+
+test("selects CLI v2.12.1 on Dotcom when feature flags enable v2.12.0 and v2.12.1", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const featureEnablement = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    expectedFeatureEnablement["default_codeql_version_2_12_0_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_12_1_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_12_2_enabled"] = false;
+    expectedFeatureEnablement["default_codeql_version_2_12_3_enabled"] = false;
+    expectedFeatureEnablement["default_codeql_version_2_12_4_enabled"] = false;
+    expectedFeatureEnablement["default_codeql_version_2_12_5_enabled"] = false;
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    t.deepEqual(
+      await featureEnablement.getDefaultCliVersion(GitHubVariant.DOTCOM),
+      {
+        cliVersion: "2.12.1",
+        variant: GitHubVariant.DOTCOM,
+      }
+    );
+  });
+});
+
+test(`selects CLI v2.11.6 on Dotcom when no default version feature flags are enabled`, async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const featureEnablement = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    t.deepEqual(
+      await featureEnablement.getDefaultCliVersion(GitHubVariant.DOTCOM),
+      {
+        cliVersion: "2.11.6",
+        variant: GitHubVariant.DOTCOM,
+      }
+    );
+  });
+});
+
+test("ignores invalid version numbers in default version feature flags", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const loggedMessages = [];
+    const featureEnablement = setUpFeatureFlagTests(
+      tmpDir,
+      getRecordingLogger(loggedMessages)
+    );
+    const expectedFeatureEnablement = initializeFeatures(true);
+    expectedFeatureEnablement["default_codeql_version_2_12_0_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_12_1_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_12_invalid_enabled"] =
+      true;
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    t.deepEqual(
+      await featureEnablement.getDefaultCliVersion(GitHubVariant.DOTCOM),
+      {
+        cliVersion: "2.12.1",
+        variant: GitHubVariant.DOTCOM,
+      }
+    );
+    t.assert(
+      loggedMessages.find(
+        (v: LoggedMessage) =>
+          v.type === "warning" &&
+          v.message ===
+            "Ignoring feature flag default_codeql_version_2_12_invalid_enabled as it does not specify a valid CodeQL version."
+      ) !== undefined
+    );
+  });
+});
+
+function assertAllFeaturesUndefinedInApi(
+  t: ExecutionContext<unknown>,
+  loggedMessages: LoggedMessage[]
+) {
   for (const feature of Object.keys(featureConfig)) {
     t.assert(
       loggedMessages.find(

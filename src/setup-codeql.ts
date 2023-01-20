@@ -565,11 +565,13 @@ export async function downloadCodeQL(
   // if the user requests the same URL again, we can get it from the cache without having to call
   // any of the Releases API.
   //
-  // Special case: If the CLI version is a pre-release, then cache the bundle as
-  // `0.0.0-<bundleVersion>` to avoid the bundle being interpreted as containing a stable CLI
-  // release.
+  // Special case: If the CLI version is a pre-release or contains build metadata, then cache the
+  // bundle as `0.0.0-<bundleVersion>` to avoid the bundle being interpreted as containing a stable
+  // CLI release. In principle, it should be enough to just check that the CLI version isn't a
+  // pre-release, but the version numbers of CodeQL nightlies have the format `x.y.z+<timestamp>`,
+  // and we don't want these nightlies to override stable CLI versions in the toolcache.
   const toolcacheVersion =
-    cliVersion && !cliVersion.includes("-")
+    cliVersion && cliVersion.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)
       ? `${cliVersion}-${bundleVersion}`
       : convertToSemVer(bundleVersion, logger);
   return {

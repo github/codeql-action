@@ -9,9 +9,13 @@ var $SyntaxError = GetIntrinsic('%SyntaxError%');
 var IsArray = require('./IsArray');
 var Type = require('./Type');
 
-var hasProto = !({ __proto__: null } instanceof Object);
+var forEach = require('../helpers/forEach');
 
-// https://262.ecma-international.org/6.0/#sec-objectcreate
+var SLOT = require('internal-slot');
+
+var hasProto = require('has-proto')();
+
+// https://262.ecma-international.org/11.0/#sec-objectcreate
 
 module.exports = function OrdinaryObjectCreate(proto) {
 	if (proto !== null && Type(proto) !== 'Object') {
@@ -21,26 +25,32 @@ module.exports = function OrdinaryObjectCreate(proto) {
 	if (!IsArray(additionalInternalSlotsList)) {
 		throw new $TypeError('Assertion failed: `additionalInternalSlotsList` must be an Array');
 	}
-	// var internalSlotsList = ['[[Prototype]]', '[[Extensible]]'];
-	if (additionalInternalSlotsList.length > 0) {
-		throw new $SyntaxError('es-abstract does not yet support internal slots');
-		// internalSlotsList.push(...additionalInternalSlotsList);
-	}
-	// var O = MakeBasicObject(internalSlotsList);
-	// setProto(O, proto);
-	// return O;
 
+	// var internalSlotsList = ['[[Prototype]]', '[[Extensible]]']; // step 1
+	// internalSlotsList.push(...additionalInternalSlotsList); // step 2
+	// var O = MakeBasicObject(internalSlotsList); // step 3
+	// setProto(O, proto); // step 4
+	// return O; // step 5
+
+	var O;
 	if ($ObjectCreate) {
-		return $ObjectCreate(proto);
-	}
-	if (hasProto) {
-		return { __proto__: proto };
+		O = $ObjectCreate(proto);
+	} else if (hasProto) {
+		O = { __proto__: proto };
+	} else {
+		if (proto === null) {
+			throw new $SyntaxError('native Object.create support is required to create null objects');
+		}
+		var T = function T() {};
+		T.prototype = proto;
+		O = new T();
 	}
 
-	if (proto === null) {
-		throw new $SyntaxError('native Object.create support is required to create null objects');
+	if (additionalInternalSlotsList.length > 0) {
+		forEach(additionalInternalSlotsList, function (slot) {
+			SLOT.set(O, slot, void undefined);
+		});
 	}
-	var T = function T() {};
-	T.prototype = proto;
-	return new T();
+
+	return O;
 };

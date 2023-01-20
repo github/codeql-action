@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -18,29 +22,28 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
-const quotes_1 = __importDefault(require("eslint/lib/rules/quotes"));
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
+const getESLintCoreRule_1 = require("../util/getESLintCoreRule");
+const baseRule = (0, getESLintCoreRule_1.getESLintCoreRule)('quotes');
 exports.default = util.createRule({
     name: 'quotes',
     meta: {
         type: 'layout',
         docs: {
             description: 'Enforce the consistent use of either backticks, double, or single quotes',
-            category: 'Stylistic Issues',
             recommended: false,
             extendsBaseRule: true,
         },
         fixable: 'code',
-        messages: (_a = quotes_1.default.meta.messages) !== null && _a !== void 0 ? _a : {
+        hasSuggestions: baseRule.meta.hasSuggestions,
+        // TODO: this rule has only had messages since v7.0 - remove this when we remove support for v6
+        messages: (_a = baseRule.meta.messages) !== null && _a !== void 0 ? _a : {
             wrongQuotes: 'Strings must use {{description}}.',
         },
-        schema: quotes_1.default.meta.schema,
+        schema: baseRule.meta.schema,
     },
     defaultOptions: [
         'double',
@@ -50,21 +53,21 @@ exports.default = util.createRule({
         },
     ],
     create(context, [option]) {
-        const rules = quotes_1.default.create(context);
+        const rules = baseRule.create(context);
         function isAllowedAsNonBacktick(node) {
             const parent = node.parent;
             switch (parent === null || parent === void 0 ? void 0 : parent.type) {
-                case experimental_utils_1.AST_NODE_TYPES.TSAbstractMethodDefinition:
-                case experimental_utils_1.AST_NODE_TYPES.TSMethodSignature:
-                case experimental_utils_1.AST_NODE_TYPES.TSPropertySignature:
-                case experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration:
-                case experimental_utils_1.AST_NODE_TYPES.TSLiteralType:
-                case experimental_utils_1.AST_NODE_TYPES.TSExternalModuleReference:
+                case utils_1.AST_NODE_TYPES.TSAbstractMethodDefinition:
+                case utils_1.AST_NODE_TYPES.TSMethodSignature:
+                case utils_1.AST_NODE_TYPES.TSPropertySignature:
+                case utils_1.AST_NODE_TYPES.TSModuleDeclaration:
+                case utils_1.AST_NODE_TYPES.TSLiteralType:
+                case utils_1.AST_NODE_TYPES.TSExternalModuleReference:
                     return true;
-                case experimental_utils_1.AST_NODE_TYPES.TSEnumMember:
+                case utils_1.AST_NODE_TYPES.TSEnumMember:
                     return node === parent.id;
-                case experimental_utils_1.AST_NODE_TYPES.TSAbstractClassProperty:
-                case experimental_utils_1.AST_NODE_TYPES.ClassProperty:
+                case utils_1.AST_NODE_TYPES.TSAbstractPropertyDefinition:
+                case utils_1.AST_NODE_TYPES.PropertyDefinition:
                     return node === parent.key;
                 default:
                     return false;

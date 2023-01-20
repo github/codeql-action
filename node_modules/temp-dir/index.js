@@ -1,13 +1,6 @@
-'use strict';
-const fs = require('fs');
-const os = require('os');
+import {promises as fs} from 'node:fs';
+import os from 'node:os';
 
-const tempDirectorySymbol = Symbol.for('__RESOLVED_TEMP_DIRECTORY__');
+const temporaryDirectory = await fs.realpath(os.tmpdir());
 
-if (!global[tempDirectorySymbol]) {
-	Object.defineProperty(global, tempDirectorySymbol, {
-		value: fs.realpathSync(os.tmpdir())
-	});
-}
-
-module.exports = global[tempDirectorySymbol];
+export default temporaryDirectory;

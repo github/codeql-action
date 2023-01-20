@@ -19,7 +19,7 @@ var Type = require('./Type');
 
 // https://262.ecma-international.org/8.0/#sec-enumerableownproperties
 
-module.exports = function EnumerableOwnProperties(O, kind) {
+module.exports = function EnumerableOwnPropertyNames(O, kind) {
 	if (Type(O) !== 'Object') {
 		throw new $TypeError('Assertion failed: Type(O) is not Object');
 	}

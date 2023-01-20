@@ -5,6 +5,7 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
+import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
@@ -23,7 +24,7 @@ import {
 import { getWorkflowPath } from "./workflow";
 
 // eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
+const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
 
 /**
  * Wrapper around core.getInput for inputs that always have a value.
@@ -382,6 +383,10 @@ export function getActionsStatus(
   }
 }
 
+export function getActionVersion(): string {
+  return pkg.version!;
+}
+
 /**
  * Compose a StatusReport.
  *
@@ -445,7 +450,7 @@ export async function createStatusReportBase(
     status,
     testing_environment: testingEnvironment,
     runner_os: runnerOs,
-    action_version: pkg.version as string,
+    action_version: getActionVersion(),
   };
 
   // Add optional parameters

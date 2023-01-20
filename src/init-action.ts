@@ -5,6 +5,7 @@ import * as core from "@actions/core";
 import {
   createStatusReportBase,
   getActionsStatus,
+  getActionVersion,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
@@ -42,9 +43,6 @@ import {
   shouldBypassToolcache,
 } from "./util";
 import { validateWorkflow } from "./workflow";
-
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
 
 interface InitSuccessStatusReport extends StatusReportBase {
   /** Comma-separated list of languages where the default queries are disabled. */
@@ -137,7 +135,7 @@ async function sendSuccessStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  initializeEnvironment(pkg.version as string);
+  initializeEnvironment(getActionVersion());
 
   let config: configUtils.Config;
   let codeql: CodeQL;

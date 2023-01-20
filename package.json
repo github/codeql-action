@@ -31,6 +31,7 @@
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^3.0.9",
     "@octokit/types": "^8.0.0",
+    "@schemastore/package": "^0.0.6",
     "@types/uuid": "^9.0.0",
     "adm-zip": "^0.5.9",
     "commander": "^8.1.0",

@@ -248,6 +248,10 @@ const EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES = [
     cliVersion: "2.10.0-pre",
     expectedToolcacheVersion: "0.0.0-20200610",
   },
+  {
+    cliVersion: "2.10.0+202006100101",
+    expectedToolcacheVersion: "0.0.0-20200610",
+  },
 ];
 
 for (const {

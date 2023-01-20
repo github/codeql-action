@@ -3,6 +3,7 @@ import * as core from "@actions/core";
 import {
   createStatusReportBase,
   getActionsStatus,
+  getActionVersion,
   getOptionalInput,
   getTemporaryDirectory,
   sendStatusReport,
@@ -19,9 +20,6 @@ import {
   initializeEnvironment,
 } from "./util";
 
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
-
 interface AutobuildStatusReport extends StatusReportBase {
   /** Comma-separated set of languages being auto-built. */
   autobuild_languages: string;
@@ -35,7 +33,7 @@ async function sendCompletedStatusReport(
   failingLanguage?: string,
   cause?: Error
 ) {
-  initializeEnvironment(pkg.version as string);
+  initializeEnvironment(getActionVersion());
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(

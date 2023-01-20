@@ -31,9 +31,6 @@ import { UploadResult } from "./upload-lib";
 import * as util from "./util";
 import { checkForTimeout } from "./util";
 
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
-
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
     QueriesStatusReport {}
@@ -180,7 +177,7 @@ async function run() {
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
-  util.initializeEnvironment(pkg.version as string);
+  util.initializeEnvironment(actionsUtil.getActionVersion());
 
   const logger = getActionsLogger();
   try {

@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
+import { getActionVersion } from "./actions-util";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -9,9 +10,6 @@ import {
   initializeEnvironment,
   isInTestMode,
 } from "./util";
-
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
 
 interface UploadSarifStatusReport
   extends actionsUtil.StatusReportBase,
@@ -35,7 +33,7 @@ async function sendSuccessStatusReport(
 
 async function run() {
   const startedAt = new Date();
-  initializeEnvironment(pkg.version as string);
+  initializeEnvironment(getActionVersion());
   if (
     !(await actionsUtil.sendStatusReport(
       await actionsUtil.createStatusReportBase(

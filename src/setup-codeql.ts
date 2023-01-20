@@ -536,7 +536,7 @@ export async function downloadCodeQL(
     `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`
   );
 
-  const dest = path.join(tempDir, uuidV4() as string);
+  const dest = path.join(tempDir, uuidV4());
   const finalHeaders = Object.assign(
     { "User-Agent": "CodeQL Action" },
     headers

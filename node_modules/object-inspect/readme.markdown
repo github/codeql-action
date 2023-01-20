@@ -55,6 +55,7 @@ Additional options:
   - `maxStringLength`: must be `0`, a positive integer, `Infinity`, or `null`, if present. Default `Infinity`.
   - `customInspect`: When `true`, a custom inspect method function will be invoked (either undere the `util.inspect.custom` symbol, or the `inspect` property). When the string `'symbol'`, only the symbol method will be invoked. Default `true`.
   - `indent`: must be "\t", `null`, or a positive integer. Default `null`.
+  - `numericSeparator`: must be a boolean, if present. Default `false`. If `true`, all numbers will be printed with numeric separators (eg, `1234.5678` will be printed as `'1_234.567_8'`)
 
 # install
 

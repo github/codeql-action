@@ -7,9 +7,6 @@ import { getApiClient } from "./api-client";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
-
 setupTests(test);
 
 let pluginStub: sinon.SinonStub;
@@ -19,7 +16,7 @@ test.beforeEach(() => {
   pluginStub = sinon.stub(githubUtils.GitHub, "plugin");
   githubStub = sinon.stub();
   pluginStub.returns(githubStub);
-  util.initializeEnvironment(pkg.version);
+  util.initializeEnvironment(actionsUtil.getActionVersion());
 });
 
 test("getApiClient", async (t) => {
@@ -39,7 +36,7 @@ test("getApiClient", async (t) => {
       auth: "token xyz",
       baseUrl: "http://api.github.localhost",
       log: sinon.match.any,
-      userAgent: `CodeQL-Action/${pkg.version}`,
+      userAgent: `CodeQL-Action/${actionsUtil.getActionVersion()}`,
     })
   );
 });

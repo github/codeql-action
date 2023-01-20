@@ -25,8 +25,8 @@ module.exports = function CreateDataProperty(O, P, V) {
 	}
 	var oldDesc = OrdinaryGetOwnProperty(O, P);
 	var extensible = !oldDesc || IsExtensible(O);
-	var immutable = oldDesc && (!oldDesc['[[Writable]]'] || !oldDesc['[[Configurable]]']);
-	if (immutable || !extensible) {
+	var nonConfigurable = oldDesc && !oldDesc['[[Configurable]]'];
+	if (nonConfigurable || !extensible) {
 		return false;
 	}
 	return DefineOwnProperty(

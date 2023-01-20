@@ -1931,7 +1931,9 @@ export async function downloadPacks(
       }
       if (numPacksDownloaded > 0) {
         logger.info(
-          `Downloaded ${numPacksDownloaded} ${packs === 1 ? "pack" : "packs"}`
+          `Downloaded ${numPacksDownloaded} ${
+            numPacksDownloaded === 1 ? "pack" : "packs"
+          }`
         );
       } else {
         logger.info("No packs to download");

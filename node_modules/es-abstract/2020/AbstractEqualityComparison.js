@@ -1,16 +1,20 @@
 'use strict';
 
+var StrictEqualityComparison = require('./StrictEqualityComparison');
+var StringToBigInt = require('./StringToBigInt');
 var ToNumber = require('./ToNumber');
 var ToPrimitive = require('./ToPrimitive');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-abstract-equality-comparison
+var isNaN = require('../helpers/isNaN');
+
+// https://ecma-international.org/ecma-262/11.0/#sec-abstract-equality-comparison
 
 module.exports = function AbstractEqualityComparison(x, y) {
 	var xType = Type(x);
 	var yType = Type(y);
 	if (xType === yType) {
-		return x === y; // ES6+ specified this shortcut anyways.
+		return StrictEqualityComparison(x, y);
 	}
 	if (x == null && y == null) {
 		return true;
@@ -21,17 +25,33 @@ module.exports = function AbstractEqualityComparison(x, y) {
 	if (xType === 'String' && yType === 'Number') {
 		return AbstractEqualityComparison(ToNumber(x), y);
 	}
+	if (xType === 'BigInt' && yType === 'String') {
+		var n = StringToBigInt(y);
+		if (isNaN(n)) {
+			return false;
+		}
+		return AbstractEqualityComparison(x, n);
+	}
+	if (xType === 'String' && yType === 'BigInt') {
+		return AbstractEqualityComparison(y, x);
+	}
 	if (xType === 'Boolean') {
 		return AbstractEqualityComparison(ToNumber(x), y);
 	}
 	if (yType === 'Boolean') {
 		return AbstractEqualityComparison(x, ToNumber(y));
 	}
-	if ((xType === 'String' || xType === 'Number' || xType === 'Symbol') && yType === 'Object') {
+	if ((xType === 'String' || xType === 'Number' || xType === 'BigInt' || xType === 'Symbol') && yType === 'Object') {
 		return AbstractEqualityComparison(x, ToPrimitive(y));
 	}
-	if (xType === 'Object' && (yType === 'String' || yType === 'Number' || yType === 'Symbol')) {
+	if (xType === 'Object' && (yType === 'String' || yType === 'Number' || yType === 'BigInt' || yType === 'Symbol')) {
 		return AbstractEqualityComparison(ToPrimitive(x), y);
+	}
+	if ((xType === 'BigInt' && yType === 'Number') || (xType === 'Number' && yType === 'BigInt')) {
+		if (isNaN(x) || isNaN(y) || x === Infinity || y === Infinity || x === -Infinity || y === -Infinity) {
+			return false;
+		}
+		return x == y; // eslint-disable-line eqeqeq
 	}
 	return false;
 };

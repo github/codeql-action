@@ -1,5 +1,9 @@
 # import/first
 
+🔧 This rule is automatically fixable by the [`--fix` CLI option](https://eslint.org/docs/latest/user-guide/command-line-interface#--fix).
+
+<!-- end auto-generated rule header -->
+
 This rule reports any imports that come after non-import
 statements.
 
@@ -45,7 +49,7 @@ A directive in this case is assumed to be a single statement that contains only
 a literal string-valued expression.
 
 `'use strict'` would be a good example, except that [modules are always in strict
-mode](http://www.ecma-international.org/ecma-262/6.0/#sec-strict-mode-code) so it would be surprising to see a `'use strict'` sharing a file with `import`s and
+mode](https://262.ecma-international.org/6.0/#sec-strict-mode-code) so it would be surprising to see a `'use strict'` sharing a file with `import`s and
 `export`s.
 
 Given that, see [#255] for the reasoning.

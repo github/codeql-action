@@ -61,6 +61,6 @@ module.exports = function BigIntBitwiseOp(op, x, y) {
 	if (tmp !== 0) {
 		result -= $pow(2, shift);
 	}
-    return result;
-    */
+	return result;
+	*/
 };

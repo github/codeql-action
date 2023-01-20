@@ -1,5 +1,4 @@
-'use strict';
-module.exports = milliseconds => {
+export default function parseMilliseconds(milliseconds) {
 	if (typeof milliseconds !== 'number') {
 		throw new TypeError('Expected a number');
 	}
@@ -15,4 +14,4 @@ module.exports = milliseconds => {
 		microseconds: roundTowardsZero(milliseconds * 1000) % 1000,
 		nanoseconds: roundTowardsZero(milliseconds * 1e6) % 1000
 	};
-};
+}

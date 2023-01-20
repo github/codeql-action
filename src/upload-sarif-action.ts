@@ -5,7 +5,6 @@ import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import {
-  checkActionVersion,
   getRequiredEnvParam,
   initializeEnvironment,
   isInTestMode,
@@ -37,7 +36,6 @@ async function sendSuccessStatusReport(
 async function run() {
   const startedAt = new Date();
   initializeEnvironment(pkg.version as string);
-  await checkActionVersion(pkg.version as string);
   if (
     !(await actionsUtil.sendStatusReport(
       await actionsUtil.createStatusReportBase(

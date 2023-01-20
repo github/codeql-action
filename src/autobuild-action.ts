@@ -15,7 +15,6 @@ import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import {
   DID_AUTOBUILD_GO_ENV_VAR_NAME,
-  checkActionVersion,
   checkGitHubVersionInRange,
   initializeEnvironment,
 } from "./util";
@@ -57,7 +56,6 @@ async function sendCompletedStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  await checkActionVersion(pkg.version as string);
   let currentLanguage: Language | undefined = undefined;
   let languages: Language[] | undefined = undefined;
   try {

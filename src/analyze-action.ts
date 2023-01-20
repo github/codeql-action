@@ -181,7 +181,6 @@ async function run() {
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
   util.initializeEnvironment(pkg.version as string);
-  await util.checkActionVersion(pkg.version as string);
 
   const logger = getActionsLogger();
   try {

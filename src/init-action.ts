@@ -27,7 +27,6 @@ import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { getTotalCacheSize } from "./trap-caching";
 import {
-  checkActionVersion,
   checkForTimeout,
   checkGitHubVersionInRange,
   codeQlVersionAbove,
@@ -139,7 +138,6 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   initializeEnvironment(pkg.version as string);
-  await checkActionVersion(pkg.version as string);
 
   let config: configUtils.Config;
   let codeql: CodeQL;

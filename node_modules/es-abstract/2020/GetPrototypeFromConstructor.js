@@ -4,6 +4,7 @@ var GetIntrinsic = require('get-intrinsic');
 
 var $Function = GetIntrinsic('%Function%');
 var $TypeError = GetIntrinsic('%TypeError%');
+var $SyntaxError = GetIntrinsic('%SyntaxError%');
 
 var Get = require('./Get');
 var IsConstructor = require('./IsConstructor');
@@ -20,7 +21,7 @@ module.exports = function GetPrototypeFromConstructor(constructor, intrinsicDefa
 	if (Type(proto) !== 'Object') {
 		if (!(constructor instanceof $Function)) {
 			// ignore other realms, for now
-			throw new $TypeError('cross-realm constructors not currently supported');
+			throw new $SyntaxError('cross-realm constructors not currently supported');
 		}
 		proto = intrinsic;
 	}

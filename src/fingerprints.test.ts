@@ -201,7 +201,7 @@ test("addFingerprints", async (t) => {
     fs
       .readFileSync(`${__dirname}/../src/testdata/fingerprinting.input.sarif`)
       .toString()
-  );
+  ) as util.SarifFile;
   const expected = JSON.parse(
     fs
       .readFileSync(
@@ -229,7 +229,7 @@ test("missingRegions", async (t) => {
     fs
       .readFileSync(`${__dirname}/../src/testdata/fingerprinting2.input.sarif`)
       .toString()
-  );
+  ) as util.SarifFile;
   const expected = JSON.parse(
     fs
       .readFileSync(

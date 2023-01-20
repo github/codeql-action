@@ -2,12 +2,10 @@
 
 var GetIntrinsic = require('get-intrinsic');
 
-var $Object = GetIntrinsic('%Object%');
+var $preventExtensions = GetIntrinsic('%Object.preventExtensions%', true);
+var $isExtensible = GetIntrinsic('%Object.isExtensible%', true);
 
 var isPrimitive = require('../helpers/isPrimitive');
-
-var $preventExtensions = $Object.preventExtensions;
-var $isExtensible = $Object.isExtensible;
 
 // https://ecma-international.org/ecma-262/6.0/#sec-isextensible-o
 

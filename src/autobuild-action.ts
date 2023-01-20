@@ -3,6 +3,7 @@ import * as core from "@actions/core";
 import {
   createStatusReportBase,
   getActionsStatus,
+  getActionVersion,
   getOptionalInput,
   getTemporaryDirectory,
   sendStatusReport,
@@ -15,13 +16,9 @@ import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import {
   DID_AUTOBUILD_GO_ENV_VAR_NAME,
-  checkActionVersion,
   checkGitHubVersionInRange,
   initializeEnvironment,
 } from "./util";
-
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
 
 interface AutobuildStatusReport extends StatusReportBase {
   /** Comma-separated set of languages being auto-built. */
@@ -36,7 +33,7 @@ async function sendCompletedStatusReport(
   failingLanguage?: string,
   cause?: Error
 ) {
-  initializeEnvironment(pkg.version);
+  initializeEnvironment(getActionVersion());
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
@@ -57,7 +54,6 @@ async function sendCompletedStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  await checkActionVersion(pkg.version);
   let currentLanguage: Language | undefined = undefined;
   let languages: Language[] | undefined = undefined;
   try {

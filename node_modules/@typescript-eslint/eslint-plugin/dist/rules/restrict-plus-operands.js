@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -26,8 +30,7 @@ exports.default = util.createRule({
     meta: {
         type: 'problem',
         docs: {
-            description: 'When adding two variables, operands must both be of type number or of type string',
-            category: 'Best Practices',
+            description: 'Require both operands of addition to be the same type and be `bigint`, `number`, or `string`',
             recommended: 'error',
             requiresTypeChecking: true,
         },
@@ -35,6 +38,8 @@ exports.default = util.createRule({
             notNumbers: "Operands of '+' operation must either be both strings or both numbers.",
             notStrings: "Operands of '+' operation must either be both strings or both numbers. Consider using a template literal.",
             notBigInts: "Operands of '+' operation must be both bigints.",
+            notValidAnys: "Operands of '+' operation with any is possible only with string, number, bigint or any",
+            notValidTypes: "Operands of '+' operation must either be one of string, number, bigint or any (if allowed by option)",
         },
         schema: [
             {
@@ -42,6 +47,11 @@ exports.default = util.createRule({
                 additionalProperties: false,
                 properties: {
                     checkCompoundAssignments: {
+                        description: 'Whether to check compound assignments such as `+=`.',
+                        type: 'boolean',
+                    },
+                    allowAny: {
+                        description: 'Whether to allow `any` typed values.',
                         type: 'boolean',
                     },
                 },
@@ -51,9 +61,10 @@ exports.default = util.createRule({
     defaultOptions: [
         {
             checkCompoundAssignments: false,
+            allowAny: false,
         },
     ],
-    create(context, [{ checkCompoundAssignments }]) {
+    create(context, [{ checkCompoundAssignments, allowAny }]) {
         const service = util.getParserServices(context);
         const typeChecker = service.program.getTypeChecker();
         /**
@@ -77,12 +88,22 @@ exports.default = util.createRule({
             }
             if (type.isIntersection()) {
                 const types = type.types.map(getBaseTypeOfLiteralType);
-                return types.some(value => value === 'string') ? 'string' : 'invalid';
+                if (types.some(value => value === 'string')) {
+                    return 'string';
+                }
+                if (types.some(value => value === 'number')) {
+                    return 'number';
+                }
+                if (types.some(value => value === 'bigint')) {
+                    return 'bigint';
+                }
+                return 'invalid';
             }
             const stringType = typeChecker.typeToString(type);
             if (stringType === 'number' ||
                 stringType === 'string' ||
-                stringType === 'bigint') {
+                stringType === 'bigint' ||
+                stringType === 'any') {
                 return stringType;
             }
             return 'invalid';
@@ -99,37 +120,54 @@ exports.default = util.createRule({
         function checkPlusOperands(node) {
             const leftType = getNodeType(node.left);
             const rightType = getNodeType(node.right);
-            if (leftType === 'invalid' ||
-                rightType === 'invalid' ||
-                leftType !== rightType) {
-                if (leftType === 'string' || rightType === 'string') {
+            if (leftType === rightType) {
+                if (leftType === 'invalid') {
                     context.report({
                         node,
-                        messageId: 'notStrings',
+                        messageId: 'notValidTypes',
                     });
                 }
-                else if (leftType === 'bigint' || rightType === 'bigint') {
+                if (!allowAny && leftType === 'any') {
                     context.report({
                         node,
-                        messageId: 'notBigInts',
+                        messageId: 'notValidAnys',
                     });
                 }
-                else {
+                return;
+            }
+            if (leftType === 'any' || rightType === 'any') {
+                if (!allowAny || leftType === 'invalid' || rightType === 'invalid') {
                     context.report({
                         node,
-                        messageId: 'notNumbers',
+                        messageId: 'notValidAnys',
                     });
                 }
+                return;
+            }
+            if (leftType === 'string' || rightType === 'string') {
+                return context.report({
+                    node,
+                    messageId: 'notStrings',
+                });
+            }
+            if (leftType === 'bigint' || rightType === 'bigint') {
+                return context.report({
+                    node,
+                    messageId: 'notBigInts',
+                });
+            }
+            if (leftType === 'number' || rightType === 'number') {
+                return context.report({
+                    node,
+                    messageId: 'notNumbers',
+                });
             }
         }
-        return {
-            "BinaryExpression[operator='+']": checkPlusOperands,
+        return Object.assign({ "BinaryExpression[operator='+']": checkPlusOperands }, (checkCompoundAssignments && {
             "AssignmentExpression[operator='+=']"(node) {
-                if (checkCompoundAssignments) {
-                    checkPlusOperands(node);
-                }
+                checkPlusOperands(node);
             },
-        };
+        }));
     },
 });
 //# sourceMappingURL=restrict-plus-operands.js.map

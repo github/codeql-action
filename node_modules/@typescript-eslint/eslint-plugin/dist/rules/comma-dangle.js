@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -18,13 +22,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
-const comma_dangle_1 = __importDefault(require("eslint/lib/rules/comma-dangle"));
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
+const getESLintCoreRule_1 = require("../util/getESLintCoreRule");
+const baseRule = (0, getESLintCoreRule_1.getESLintCoreRule)('comma-dangle');
 const OPTION_VALUE_SCHEME = [
     'always-multiline',
     'always',
@@ -52,13 +54,12 @@ exports.default = util.createRule({
     meta: {
         type: 'layout',
         docs: {
-            description: 'Require or disallow trailing comma',
-            category: 'Stylistic Issues',
+            description: 'Require or disallow trailing commas',
             recommended: false,
             extendsBaseRule: true,
         },
         schema: {
-            definitions: {
+            $defs: {
                 value: {
                     enum: OPTION_VALUE_SCHEME,
                 },
@@ -71,32 +72,34 @@ exports.default = util.createRule({
                 {
                     oneOf: [
                         {
-                            $ref: '#/definitions/value',
+                            $ref: '#/$defs/value',
                         },
                         {
                             type: 'object',
                             properties: {
-                                arrays: { $ref: '#/definitions/valueWithIgnore' },
-                                objects: { $ref: '#/definitions/valueWithIgnore' },
-                                imports: { $ref: '#/definitions/valueWithIgnore' },
-                                exports: { $ref: '#/definitions/valueWithIgnore' },
-                                functions: { $ref: '#/definitions/valueWithIgnore' },
-                                enums: { $ref: '#/definitions/valueWithIgnore' },
-                                generics: { $ref: '#/definitions/valueWithIgnore' },
-                                tuples: { $ref: '#/definitions/valueWithIgnore' },
+                                arrays: { $ref: '#/$defs/valueWithIgnore' },
+                                objects: { $ref: '#/$defs/valueWithIgnore' },
+                                imports: { $ref: '#/$defs/valueWithIgnore' },
+                                exports: { $ref: '#/$defs/valueWithIgnore' },
+                                functions: { $ref: '#/$defs/valueWithIgnore' },
+                                enums: { $ref: '#/$defs/valueWithIgnore' },
+                                generics: { $ref: '#/$defs/valueWithIgnore' },
+                                tuples: { $ref: '#/$defs/valueWithIgnore' },
                             },
                             additionalProperties: false,
                         },
                     ],
                 },
             ],
+            additionalProperties: false,
         },
         fixable: 'code',
-        messages: comma_dangle_1.default.meta.messages,
+        hasSuggestions: baseRule.meta.hasSuggestions,
+        messages: baseRule.meta.messages,
     },
     defaultOptions: ['never'],
     create(context, [options]) {
-        const rules = comma_dangle_1.default.create(context);
+        const rules = baseRule.create(context);
         const sourceCode = context.getSourceCode();
         const normalizedOptions = normalizeOptions(options);
         const predicate = {
@@ -112,11 +115,11 @@ exports.default = util.createRule({
         }
         function getLastItem(node) {
             switch (node.type) {
-                case experimental_utils_1.AST_NODE_TYPES.TSEnumDeclaration:
+                case utils_1.AST_NODE_TYPES.TSEnumDeclaration:
                     return last(node.members);
-                case experimental_utils_1.AST_NODE_TYPES.TSTypeParameterDeclaration:
+                case utils_1.AST_NODE_TYPES.TSTypeParameterDeclaration:
                     return last(node.params);
-                case experimental_utils_1.AST_NODE_TYPES.TSTupleType:
+                case utils_1.AST_NODE_TYPES.TSTupleType:
                     return last(node.elementTypes);
                 default:
                     return null;

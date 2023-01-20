@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
+const utils_1 = require("@typescript-eslint/utils");
 const ts = __importStar(require("typescript"));
 const util = __importStar(require("../util"));
 var Usefulness;
@@ -32,13 +36,12 @@ exports.default = util.createRule({
     name: 'no-base-to-string',
     meta: {
         docs: {
-            description: 'Requires that `.toString()` is only called on objects which provide useful information when stringified',
-            category: 'Best Practices',
-            recommended: false,
+            description: 'Require `.toString()` to only be called on objects which provide useful information when stringified',
+            recommended: 'strict',
             requiresTypeChecking: true,
         },
         messages: {
-            baseToString: "'{{name}} {{certainty}} evaluate to '[object Object]' when stringified.",
+            baseToString: "'{{name}}' {{certainty}} evaluate to '[object Object]' when stringified.",
         },
         schema: [
             {
@@ -58,7 +61,7 @@ exports.default = util.createRule({
     },
     defaultOptions: [
         {
-            ignoredTypeNames: ['RegExp'],
+            ignoredTypeNames: ['Error', 'RegExp', 'URL', 'URLSearchParams'],
         },
     ],
     create(context, [option]) {
@@ -67,7 +70,7 @@ exports.default = util.createRule({
         const typeChecker = parserServices.program.getTypeChecker();
         const ignoredTypeNames = (_a = option.ignoredTypeNames) !== null && _a !== void 0 ? _a : [];
         function checkExpression(node, type) {
-            if (node.type === experimental_utils_1.AST_NODE_TYPES.Literal) {
+            if (node.type === utils_1.AST_NODE_TYPES.Literal) {
                 return;
             }
             const certainty = collectToStringCertainty(type !== null && type !== void 0 ? type : typeChecker.getTypeAtLocation(parserServices.esTreeNodeToTSNodeMap.get(node)));
@@ -138,7 +141,8 @@ exports.default = util.createRule({
                 if (util.getTypeName(typeChecker, leftType) === 'string') {
                     checkExpression(node.right, rightType);
                 }
-                else if (util.getTypeName(typeChecker, rightType) === 'string') {
+                else if (util.getTypeName(typeChecker, rightType) === 'string' &&
+                    node.left.type !== utils_1.AST_NODE_TYPES.PrivateIdentifier) {
                     checkExpression(node.left, leftType);
                 }
             },
@@ -148,7 +152,7 @@ exports.default = util.createRule({
             },
             TemplateLiteral(node) {
                 if (node.parent &&
-                    node.parent.type === experimental_utils_1.AST_NODE_TYPES.TaggedTemplateExpression) {
+                    node.parent.type === utils_1.AST_NODE_TYPES.TaggedTemplateExpression) {
                     return;
                 }
                 for (const expression of node.expressions) {

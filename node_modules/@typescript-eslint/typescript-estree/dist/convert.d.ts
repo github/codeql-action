@@ -1,10 +1,10 @@
 import * as ts from 'typescript';
-import { TSError } from './node-utils';
-import { ParserWeakMap, ParserWeakMapESTreeToTSNode } from './parser-options';
-import { TSESTree, TSNode } from './ts-estree';
+import type { TSError } from './node-utils';
+import type { ParserWeakMap, ParserWeakMapESTreeToTSNode } from './parser-options';
+import type { SemanticOrSyntacticError } from './semantic-or-syntactic-errors';
+import type { TSESTree, TSNode } from './ts-estree';
 interface ConverterOptions {
     errorOnUnknownASTType: boolean;
-    useJSXTextNode: boolean;
     shouldPreserveNodeMaps: boolean;
 }
 /**
@@ -12,7 +12,7 @@ interface ConverterOptions {
  * @param error the error object
  * @returns converted error object
  */
-export declare function convertError(error: any): TSError;
+export declare function convertError(error: ts.DiagnosticWithLocation | SemanticOrSyntacticError): TSError;
 export interface ASTMaps {
     esTreeNodeToTSNodeMap: ParserWeakMapESTreeToTSNode;
     tsNodeToESTreeNodeMap: ParserWeakMap<TSNode, TSESTree.Node>;
@@ -127,12 +127,15 @@ export declare class Converter {
      */
     private convertJSXTagName;
     private convertMethodSignature;
+    private convertAssertClasue;
     /**
      * Applies the given TS modifiers to the given result object.
+     *
+     * This method adds not standardized `modifiers` property in nodes
+     *
      * @param result
      * @param modifiers original ts.Nodes from the node.modifiers array
      * @returns the current result object will be mutated
-     * @deprecated This method adds not standardized `modifiers` property in nodes
      */
     private applyModifiersToResult;
     /**
@@ -141,6 +144,7 @@ export declare class Converter {
      * @param childRange The child node range used to expand location
      */
     private fixParentLocation;
+    private assertModuleSpecifier;
     /**
      * Converts a TypeScript node into an ESTree node.
      * The core of the conversion logic:

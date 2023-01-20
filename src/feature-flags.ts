@@ -367,5 +367,6 @@ class GitHubFeatureFlags implements FeatureEnablement {
         );
       }
     }
+    return {};
   }
 }

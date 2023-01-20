@@ -10,74 +10,59 @@
 //-----------------------------------------------------------------------------
 
 const ajv = require("../shared/ajv")();
+const {
+    parseRuleId,
+    getRuleFromConfig,
+    getRuleOptionsSchema
+} = require("./flat-config-helpers");
+const ruleReplacements = require("../../conf/replacements.json");
 
 //-----------------------------------------------------------------------------
 // Helpers
 //-----------------------------------------------------------------------------
 
 /**
- * Finds a rule with the given ID in the given config.
- * @param {string} ruleId The ID of the rule to find.
+ * Throws a helpful error when a rule cannot be found.
+ * @param {Object} ruleId The rule identifier.
+ * @param {string} ruleId.pluginName The ID of the rule to find.
+ * @param {string} ruleId.ruleName The ID of the rule to find.
  * @param {Object} config The config to search in.
- * @returns {{create: Function, schema: (Array|null)}} THe rule object.
+ * @throws {TypeError} For missing plugin or rule.
+ * @returns {void}
  */
-function findRuleDefinition(ruleId, config) {
-    const ruleIdParts = ruleId.split("/");
-    let pluginName, ruleName;
+function throwRuleNotFoundError({ pluginName, ruleName }, config) {
 
-    // built-in rule
-    if (ruleIdParts.length === 1) {
-        pluginName = "@";
-        ruleName = ruleIdParts[0];
-    } else {
-        ruleName = ruleIdParts.pop();
-        pluginName = ruleIdParts.join("/");
-    }
+    const ruleId = pluginName === "@" ? ruleName : `${pluginName}/${ruleName}`;
 
-    if (!config.plugins || !config.plugins[pluginName]) {
-        throw new TypeError(`Key "rules": Key "${ruleId}": Could not find plugin "${pluginName}".`);
-    }
+    const errorMessageHeader = `Key "rules": Key "${ruleId}"`;
+    let errorMessage = `${errorMessageHeader}: Could not find plugin "${pluginName}".`;
 
-    if (!config.plugins[pluginName].rules || !config.plugins[pluginName].rules[ruleName]) {
-        throw new TypeError(`Key "rules": Key "${ruleId}": Could not find "${ruleName}" in plugin "${pluginName}".`);
-    }
+    // if the plugin exists then we need to check if the rule exists
+    if (config.plugins && config.plugins[pluginName]) {
+        const replacementRuleName = ruleReplacements.rules[ruleName];
 
-    return config.plugins[pluginName].rules[ruleName];
+        if (pluginName === "@" && replacementRuleName) {
 
-}
+            errorMessage = `${errorMessageHeader}: Rule "${ruleName}" was removed and replaced by "${replacementRuleName}".`;
 
-/**
- * Gets a complete options schema for a rule.
- * @param {{create: Function, schema: (Array|null)}} rule A new-style rule object
- * @returns {Object} JSON Schema for the rule's options.
- */
-function getRuleOptionsSchema(rule) {
+        } else {
 
-    if (!rule) {
-        return null;
-    }
+            errorMessage = `${errorMessageHeader}: Could not find "${ruleName}" in plugin "${pluginName}".`;
 
-    const schema = rule.schema || rule.meta && rule.meta.schema;
+            // otherwise, let's see if we can find the rule name elsewhere
+            for (const [otherPluginName, otherPlugin] of Object.entries(config.plugins)) {
+                if (otherPlugin.rules && otherPlugin.rules[ruleName]) {
+                    errorMessage += ` Did you mean "${otherPluginName}/${ruleName}"?`;
+                    break;
+                }
+            }
 
-    if (Array.isArray(schema)) {
-        if (schema.length) {
-            return {
-                type: "array",
-                items: schema,
-                minItems: 0,
-                maxItems: schema.length
-            };
         }
-        return {
-            type: "array",
-            minItems: 0,
-            maxItems: 0
-        };
 
+        // falls through to throw error
     }
 
-    // Given a full schema, leave it alone
-    return schema || null;
+    throw new TypeError(errorMessage);
 }
 
 //-----------------------------------------------------------------------------
@@ -98,7 +83,6 @@ class RuleValidator {
          * A collection of compiled validators for rules that have already
          * been validated.
          * @type {WeakMap}
-         * @property validators
          */
         this.validators = new WeakMap();
     }
@@ -137,7 +121,11 @@ class RuleValidator {
                 continue;
             }
 
-            const rule = findRuleDefinition(ruleId, config);
+            const rule = getRuleFromConfig(ruleId, config);
+
+            if (!rule) {
+                throwRuleNotFoundError(parseRuleId(ruleId), config);
+            }
 
             // Precompile and cache validator the first time
             if (!this.validators.has(rule)) {

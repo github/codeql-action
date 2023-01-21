@@ -3,6 +3,7 @@ import * as path from "path";
 import * as core from "@actions/core";
 
 import {
+  ActionStatus,
   createStatusReportBase,
   getActionsStatus,
   getActionVersion,
@@ -45,12 +46,13 @@ import {
 import { validateWorkflow } from "./workflow";
 
 export enum ToolsSource {
+  Unknown = "UNKNOWN",
   Local = "LOCAL",
   Toolcache = "TOOLCACHE",
   Download = "DOWNLOAD"
 }
 
-interface InitSuccessStatusReport extends StatusReportBase {
+interface InitStatusReport extends StatusReportBase {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
   /**
@@ -82,14 +84,15 @@ interface InitSuccessStatusReport extends StatusReportBase {
 }
 
 // Adds additional fields that are only present if CodeQL bundle was downloaded.
-interface InitDownloadSuccessStatusReport extends InitSuccessStatusReport {
+interface InitDownloadStatusReport extends InitStatusReport {
   /** Time taken to download the bundle, in milliseconds. */
   tools_download_duration_ms: number;
   /** Whether the relevant tools dotcom feature flags have been misconfigured. Only sent if we attempt to download based off dotcom flags. */
   tools_feature_flags_valid: boolean;
 }
 
-async function sendSuccessStatusReport(
+async function sendInitStatusReport(
+  actionStatus: ActionStatus,
   startedAt: Date,
   config: configUtils.Config,
   toolsDownloadDurationMs: number | undefined,
@@ -100,7 +103,7 @@ async function sendSuccessStatusReport(
 ) {
   const statusReportBase = await createStatusReportBase(
     "init",
-    "success",
+    actionStatus,
     startedAt
   );
 
@@ -130,24 +133,25 @@ async function sendSuccessStatusReport(
     queries.push(...queriesInput.split(","));
   }
 
-  const statusReport: InitSuccessStatusReport = {
+  const statusReport: InitStatusReport = {
     ...statusReportBase,
     disable_default_queries: disableDefaultQueries,
-    languages,
+    languages: languages || "",
     ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
     paths,
     paths_ignore: pathsIgnore,
     queries: queries.join(","),
     tools_input: getOptionalInput("tools") || "",
-    tools_resolved_version: toolsVersion,
+    tools_resolved_version: toolsVersion || "",
     workflow_languages: workflowLanguages || "",
-    trap_cache_languages: Object.keys(config.trapCaches).join(","),
+    // TODO(angelapwen): I think the following will crash if config.trapCaches is undefined because we might
+    // be sending a failure report before we initialize config. 
+    trap_cache_languages: Object.keys(config.trapCaches).join(",") || "",
     trap_cache_download_size_bytes: Math.round(
       await getTotalCacheSize(config.trapCaches, logger)
-    ),
-    trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
-
-    tools_source: toolsSource
+    ) || -1, // Placeholder value if cache size is not determined yet.
+    trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime) || -1, // Placeholder value if cache size is not determined yet.,
+    tools_source: toolsSource || ToolsSource.Unknown,
   };
 
   if (toolsSource !== ToolsSource.Download) {
@@ -155,7 +159,7 @@ async function sendSuccessStatusReport(
   }
 
   // Otherwise, we should append the extra two download-related telemetry fields.
-  const downloadStatusReport: InitDownloadSuccessStatusReport = {
+  const downloadStatusReport: InitDownloadStatusReport = {
     ...statusReport,
     tools_download_duration_ms: toolsDownloadDurationMs ? toolsDownloadDurationMs : -1, // Placeholder value in case field is undefined.
     tools_feature_flags_valid: toolsFeatureFlagsValid ? toolsFeatureFlagsValid : false, // Report invalid in case field is undefined.
@@ -353,18 +357,19 @@ async function run() {
     core.setFailed(String(error));
 
     console.log(error);
-    await sendStatusReport(
-      await createStatusReportBase(
-        "init",
-        getActionsStatus(error),
-        startedAt,
-        String(error),
-        error instanceof Error ? error.stack : undefined
-      )
-    );
+    await sendInitStatusReport(
+      getActionsStatus(error),
+      startedAt,
+      config,
+      toolsDownloadDurationMs,
+      toolsFeatureFlagsValid,
+      toolsSource,
+      toolsVersion,
+      logger
+    )
     return;
   }
-  await sendSuccessStatusReport(startedAt, config, toolsDownloadDurationMs, toolsFeatureFlagsValid, toolsSource, toolsVersion, logger);
+  await sendInitStatusReport("success", startedAt, config, toolsDownloadDurationMs, toolsFeatureFlagsValid, toolsSource, toolsVersion, logger);
 }
 
 async function getTrapCachingEnabled(

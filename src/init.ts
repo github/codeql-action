@@ -9,6 +9,7 @@ import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import { ToolsSource } from "./init-action";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
@@ -23,9 +24,9 @@ export async function initCodeQL(
   bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
-): Promise<{ codeql: CodeQL; toolsVersion: string }> {
+): Promise<{ codeql: CodeQL; toolsDownloadDurationMs?: number; toolsSource: ToolsSource; toolsVersion: string }> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsVersion } = await setupCodeQL(
+  const { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion } = await setupCodeQL(
     toolsInput,
     apiDetails,
     tempDir,
@@ -37,7 +38,7 @@ export async function initCodeQL(
   );
   await codeql.printVersion();
   logger.endGroup();
-  return { codeql, toolsVersion };
+  return { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion };
 }
 
 export async function initConfig(

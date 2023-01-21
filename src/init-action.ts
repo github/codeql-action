@@ -44,6 +44,12 @@ import {
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
+export enum ToolsSource {
+  Local = "LOCAL",
+  Toolcache = "TOOLCACHE",
+  Download = "DOWNLOAD"
+}
+
 interface InitSuccessStatusReport extends StatusReportBase {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
@@ -63,6 +69,8 @@ interface InitSuccessStatusReport extends StatusReportBase {
   tools_input: string;
   /** Version of the bundle used. */
   tools_resolved_version: string;
+  /** Where the bundle originated from. */
+  tools_source: ToolsSource;
   /** Comma-separated list of languages specified explicitly in the workflow file. */
   workflow_languages: string;
   /** Comma-separated list of languages for which we are using TRAP caching. */
@@ -73,9 +81,20 @@ interface InitSuccessStatusReport extends StatusReportBase {
   trap_cache_download_duration_ms: number;
 }
 
+// Adds additional fields that are only present if CodeQL bundle was downloaded.
+interface InitDownloadSuccessStatusReport extends InitSuccessStatusReport {
+  /** Time taken to download the bundle, in milliseconds. */
+  tools_download_duration_ms: number;
+  /** Whether the relevant tools dotcom feature flags have been misconfigured. Only sent if we attempt to download based off dotcom flags. */
+  tools_feature_flags_valid: boolean;
+}
+
 async function sendSuccessStatusReport(
   startedAt: Date,
   config: configUtils.Config,
+  toolsDownloadDurationMs: number | undefined,
+  toolsFeatureFlagsValid: boolean | undefined,
+  toolsSource: ToolsSource,
   toolsVersion: string,
   logger: Logger
 ) {
@@ -127,9 +146,22 @@ async function sendSuccessStatusReport(
       await getTotalCacheSize(config.trapCaches, logger)
     ),
     trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+
+    tools_source: toolsSource
   };
 
-  await sendStatusReport(statusReport);
+  if (toolsSource !== ToolsSource.Download) {
+    await sendStatusReport(statusReport);
+  }
+
+  // Otherwise, we should append the extra two download-related telemetry fields.
+  const downloadStatusReport: InitDownloadSuccessStatusReport = {
+    ...statusReport,
+    tools_download_duration_ms: toolsDownloadDurationMs ? toolsDownloadDurationMs : -1, // Placeholder value in case field is undefined.
+    tools_feature_flags_valid: toolsFeatureFlagsValid ? toolsFeatureFlagsValid : false, // Report invalid in case field is undefined.
+  }
+
+  await sendStatusReport(downloadStatusReport);
 }
 
 async function run() {
@@ -139,6 +171,9 @@ async function run() {
 
   let config: configUtils.Config;
   let codeql: CodeQL;
+  let toolsDownloadDurationMs: number | undefined;
+  let toolsFeatureFlagsValid: boolean | undefined;
+  let toolsSource: ToolsSource
   let toolsVersion: string;
 
   const apiDetails = {
@@ -178,9 +213,10 @@ async function run() {
       return;
     }
 
-    const defaultCliVersion = await features.getDefaultCliVersion(
+    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type
     );
+    toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
@@ -193,11 +229,13 @@ async function run() {
         repositoryNwo,
         logger
       ),
-      defaultCliVersion,
+      codeQLDefaultVersionInfo.codeQLDefaultVersionInfo,
       logger
     );
     codeql = initCodeQLResult.codeql;
+    toolsDownloadDurationMs = initCodeQLResult.toolsDownloadDurationMs;
     toolsVersion = initCodeQLResult.toolsVersion;
+    toolsSource = initCodeQLResult.toolsSource;
     await enrichEnvironment(codeql);
 
     config = await initConfig(
@@ -326,7 +364,7 @@ async function run() {
     );
     return;
   }
-  await sendSuccessStatusReport(startedAt, config, toolsVersion, logger);
+  await sendSuccessStatusReport(startedAt, config, toolsDownloadDurationMs, toolsFeatureFlagsValid, toolsSource, toolsVersion, logger);
 }
 
 async function getTrapCachingEnabled(

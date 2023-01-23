@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { performance } from "perf_hooks"; // We need to import `performance` on Node 12
+import { performance } from "perf_hooks";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import del from "del";

@@ -23,6 +23,7 @@ import {
   injectWindowsTracer,
   installPythonDeps,
   runInit,
+  ToolsSource
 } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
@@ -44,13 +45,6 @@ import {
   shouldBypassToolcache,
 } from "./util";
 import { validateWorkflow } from "./workflow";
-
-export enum ToolsSource {
-  Unknown = "UNKNOWN",
-  Local = "LOCAL",
-  Toolcache = "TOOLCACHE",
-  Download = "DOWNLOAD"
-}
 
 interface InitStatusReport extends StatusReportBase {
   /** Comma-separated list of languages where the default queries are disabled. */

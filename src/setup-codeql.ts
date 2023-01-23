@@ -15,7 +15,7 @@ import * as api from "./api-client";
 // these dependents.
 import * as defaults from "./defaults.json";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
-import { ToolsSource } from "./init-action";
+import { ToolsSource } from "./init";
 import { Logger } from "./logging";
 import * as util from "./util";
 import { isGoodVersion } from "./util";

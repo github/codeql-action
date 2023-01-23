@@ -9,12 +9,18 @@ import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
-import { ToolsSource } from "./init-action";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 import { codeQlVersionAbove } from "./util";
+
+export enum ToolsSource {
+  Unknown = "UNKNOWN",
+  Local = "LOCAL",
+  Toolcache = "TOOLCACHE",
+  Download = "DOWNLOAD"
+}
 
 export async function initCodeQL(
   toolsInput: string | undefined,

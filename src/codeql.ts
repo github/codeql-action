@@ -9,7 +9,7 @@ import * as api from "./api-client";
 import { Config } from "./config-utils";
 import { errorMatchers } from "./error-matcher";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
-import { ToolsSource } from "./init-action";
+import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";

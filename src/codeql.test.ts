@@ -21,7 +21,7 @@ import {
   Feature,
   featureConfig,
 } from "./feature-flags";
-import { ToolsSource } from "./init-action";
+import { ToolsSource } from "./init";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, createFeatures, setupActionsVars } from "./testing-utils";

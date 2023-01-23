@@ -31,7 +31,10 @@ def suppress_stdout_stderr():
 
 def get_extractor_version(codeql_base_dir: str, quiet: bool = True) -> int:
     extractor_dir = os.path.join(codeql_base_dir, 'python', 'tools')
+    print(f'extractor_dir = {extractor_dir}')
+    print(f'extractor_dir contents = {os.listdir(extractor_dir)}')
     sys.path = [extractor_dir] + sys.path
+    print(f'sys.path = {sys.path}')
 
     from python_tracer import getzipfilename
 

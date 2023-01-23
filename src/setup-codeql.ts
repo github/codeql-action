@@ -548,14 +548,14 @@ export async function downloadCodeQL(
     headers
   );
 
-  const start = performance.now();
+  const toolsDownloadStart = performance.now();
   const codeqlPath = await toolcache.downloadTool(
     codeqlURL,
     dest,
     undefined,
     finalHeaders
   );
-  const toolsDownloadDurationMs = performance.now() - start;
+  const toolsDownloadDurationMs = performance.now() - toolsDownloadStart;
 
   logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 

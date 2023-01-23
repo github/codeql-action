@@ -23,7 +23,7 @@ import {
   injectWindowsTracer,
   installPythonDeps,
   runInit,
-  ToolsSource
+  ToolsSource,
 } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
@@ -139,12 +139,12 @@ async function sendInitStatusReport(
     tools_resolved_version: toolsVersion || "",
     workflow_languages: workflowLanguages || "",
     // TODO(angelapwen): I think the following will crash if config.trapCaches is undefined because we might
-    // be sending a failure report before we initialize config. 
+    // be sending a failure report before we initialize config.
     trap_cache_languages: Object.keys(config.trapCaches).join(",") || "",
-    trap_cache_download_size_bytes: Math.round(
-      await getTotalCacheSize(config.trapCaches, logger)
-    ) || -1, // Placeholder value if cache size is not determined yet.
-    trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime) || -1, // Placeholder value if cache size is not determined yet.,
+    trap_cache_download_size_bytes:
+      Math.round(await getTotalCacheSize(config.trapCaches, logger)) || -1, // Placeholder value if cache size is not determined yet.
+    trap_cache_download_duration_ms:
+      Math.round(config.trapCacheDownloadTime) || -1, // Placeholder value if cache size is not determined yet.,
     tools_source: toolsSource || ToolsSource.Unknown,
   };
 
@@ -155,8 +155,12 @@ async function sendInitStatusReport(
   // Otherwise, we should append the extra two download-related telemetry fields.
   const downloadStatusReport: InitDownloadStatusReport = {
     ...statusReport,
-    tools_download_duration_ms: toolsDownloadDurationMs ? toolsDownloadDurationMs : -1, // Placeholder value in case field is undefined.
-    tools_feature_flags_valid: toolsFeatureFlagsValid ? toolsFeatureFlagsValid : false, // Report invalid in case field is undefined.
+    tools_download_duration_ms: toolsDownloadDurationMs
+      ? toolsDownloadDurationMs
+      : -1, // Placeholder value in case field is undefined.
+    tools_feature_flags_valid: toolsFeatureFlagsValid
+      ? toolsFeatureFlagsValid
+      : false, // Report invalid in case field is undefined.
   };
 
   await sendStatusReport(downloadStatusReport);
@@ -363,7 +367,16 @@ async function run() {
     );
     return;
   }
-  await sendInitStatusReport("success", startedAt, config, toolsDownloadDurationMs, toolsFeatureFlagsValid, toolsSource, toolsVersion, logger);
+  await sendInitStatusReport(
+    "success",
+    startedAt,
+    config,
+    toolsDownloadDurationMs,
+    toolsFeatureFlagsValid,
+    toolsSource,
+    toolsVersion,
+    logger
+  );
 }
 
 async function getTrapCachingEnabled(

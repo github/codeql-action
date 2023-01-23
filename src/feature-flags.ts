@@ -27,9 +27,10 @@ export type CodeQLDefaultVersionInfo =
 
 export interface FeatureEnablement {
   /** Gets the default version of the CodeQL tools. */
-  getDefaultCliVersion(
-    variant: util.GitHubVariant
-  ): Promise<{ codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo; toolsFeatureFlagsValid?: boolean }>;
+  getDefaultCliVersion(variant: util.GitHubVariant): Promise<{
+    codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo;
+    toolsFeatureFlagsValid?: boolean;
+  }>;
   getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
 }
 
@@ -113,9 +114,10 @@ export class Features implements FeatureEnablement {
     );
   }
 
-  async getDefaultCliVersion(
-    variant: util.GitHubVariant
-  ): Promise<{ codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo; toolsFeatureFlagsValid?: boolean }> {
+  async getDefaultCliVersion(variant: util.GitHubVariant): Promise<{
+    codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo;
+    toolsFeatureFlagsValid?: boolean;
+  }> {
     return await this.gitHubFeatureFlags.getDefaultCliVersion(variant);
   }
 
@@ -204,9 +206,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
     return version;
   }
 
-  async getDefaultCliVersion(
-    variant: util.GitHubVariant
-  ): Promise<{ codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo; toolsFeatureFlagsValid?: boolean }> {
+  async getDefaultCliVersion(variant: util.GitHubVariant): Promise<{
+    codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo;
+    toolsFeatureFlagsValid?: boolean;
+  }> {
     if (variant === util.GitHubVariant.DOTCOM) {
       const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
       return {
@@ -214,7 +217,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
           cliVersion: defaultDotComCliVersion.version,
           variant,
         },
-        toolsFeatureFlagsValid: defaultDotComCliVersion.toolsFeatureFlagsValid
+        toolsFeatureFlagsValid: defaultDotComCliVersion.toolsFeatureFlagsValid,
       };
     }
     return {
@@ -226,7 +229,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
     };
   }
 
-  async getDefaultDotcomCliVersion(): Promise<{ version: string; toolsFeatureFlagsValid: boolean }> {
+  async getDefaultDotcomCliVersion(): Promise<{
+    version: string;
+    toolsFeatureFlagsValid: boolean;
+  }> {
     const response = await this.getAllFeatures();
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
@@ -241,7 +247,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
         "Feature flags do not specify a default CLI version. Falling back to CLI version " +
           `${MINIMUM_ENABLED_CODEQL_VERSION}.`
       );
-      return { version: MINIMUM_ENABLED_CODEQL_VERSION, toolsFeatureFlagsValid: false };
+      return {
+        version: MINIMUM_ENABLED_CODEQL_VERSION,
+        toolsFeatureFlagsValid: false,
+      };
     }
 
     const maxCliVersion = enabledFeatureFlagCliVersions.reduce(

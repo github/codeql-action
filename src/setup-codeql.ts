@@ -516,7 +516,11 @@ export async function downloadCodeQL(
   variant: util.GitHubVariant,
   tempDir: string,
   logger: Logger
-): Promise<{ toolsVersion: string; codeqlFolder: string; toolsDownloadDurationMs: number }> {
+): Promise<{
+  toolsVersion: string;
+  codeqlFolder: string;
+  toolsDownloadDurationMs: number;
+}> {
   const parsedCodeQLURL = new URL(codeqlURL);
   const searchParams = new URLSearchParams(parsedCodeQLURL.search);
   const headers: OutgoingHttpHeaders = {
@@ -587,7 +591,7 @@ export async function downloadCodeQL(
       "CodeQL",
       toolcacheVersion
     ),
-    toolsDownloadDurationMs
+    toolsDownloadDurationMs,
   };
 }
 
@@ -623,7 +627,12 @@ export async function setupCodeQLBundle(
   bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
-): Promise<{ codeqlFolder: string; toolsDownloadDurationMs?: number; toolsSource: ToolsSource; toolsVersion: string }> {
+): Promise<{
+  codeqlFolder: string;
+  toolsDownloadDurationMs?: number;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+}> {
   const source = await getCodeQLSource(
     toolsInput,
     bypassToolcache,

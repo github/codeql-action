@@ -378,13 +378,11 @@ for (const variant of [GitHubVariant.GHAE, GitHubVariant.GHES]) {
       const features = setUpFeatureFlagTests(tmpDir);
 
       const defaultCliVersion = await features.getDefaultCliVersion(variant);
-      t.deepEqual(
-        defaultCliVersion.codeQLDefaultVersionInfo,
-        {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
-          variant,
-        });
+      t.deepEqual(defaultCliVersion.codeQLDefaultVersionInfo, {
+        cliVersion: defaults.cliVersion,
+        tagName: defaults.bundleVersion,
+        variant,
+      });
 
       t.is(defaultCliVersion.toolsFeatureFlagsValid, undefined);
     });
@@ -403,13 +401,13 @@ test("selects CLI v2.12.1 on Dotcom when feature flags enable v2.12.0 and v2.12.
     expectedFeatureEnablement["default_codeql_version_2_12_5_enabled"] = false;
     mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
-    const defaultCliVersion = await featureEnablement.getDefaultCliVersion(GitHubVariant.DOTCOM);
-    t.deepEqual(
-      defaultCliVersion.codeQLDefaultVersionInfo,
-      {
-        cliVersion: "2.12.1",
-        variant: GitHubVariant.DOTCOM,
-      });
+    const defaultCliVersion = await featureEnablement.getDefaultCliVersion(
+      GitHubVariant.DOTCOM
+    );
+    t.deepEqual(defaultCliVersion.codeQLDefaultVersionInfo, {
+      cliVersion: "2.12.1",
+      variant: GitHubVariant.DOTCOM,
+    });
 
     t.is(defaultCliVersion.toolsFeatureFlagsValid, true);
   });
@@ -421,13 +419,13 @@ test(`selects CLI v2.11.6 on Dotcom when no default version feature flags are en
     const expectedFeatureEnablement = initializeFeatures(true);
     mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
-    const defaultCliVersion = await featureEnablement.getDefaultCliVersion(GitHubVariant.DOTCOM);
-    t.deepEqual(
-      defaultCliVersion.codeQLDefaultVersionInfo,
-      {
-        cliVersion: "2.11.6",
-        variant: GitHubVariant.DOTCOM,
-      });
+    const defaultCliVersion = await featureEnablement.getDefaultCliVersion(
+      GitHubVariant.DOTCOM
+    );
+    t.deepEqual(defaultCliVersion.codeQLDefaultVersionInfo, {
+      cliVersion: "2.11.6",
+      variant: GitHubVariant.DOTCOM,
+    });
 
     t.is(defaultCliVersion.toolsFeatureFlagsValid, false);
   });
@@ -447,13 +445,13 @@ test("ignores invalid version numbers in default version feature flags", async (
       true;
     mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
-    const defaultCliVersion = await featureEnablement.getDefaultCliVersion(GitHubVariant.DOTCOM);
-    t.deepEqual(
-      defaultCliVersion.codeQLDefaultVersionInfo,
-      {
-        cliVersion: "2.12.1",
-        variant: GitHubVariant.DOTCOM,
-      });
+    const defaultCliVersion = await featureEnablement.getDefaultCliVersion(
+      GitHubVariant.DOTCOM
+    );
+    t.deepEqual(defaultCliVersion.codeQLDefaultVersionInfo, {
+      cliVersion: "2.12.1",
+      variant: GitHubVariant.DOTCOM,
+    });
 
     t.is(defaultCliVersion.toolsFeatureFlagsValid, true);
 

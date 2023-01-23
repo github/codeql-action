@@ -19,7 +19,7 @@ export enum ToolsSource {
   Unknown = "UNKNOWN",
   Local = "LOCAL",
   Toolcache = "TOOLCACHE",
-  Download = "DOWNLOAD"
+  Download = "DOWNLOAD",
 }
 
 export async function initCodeQL(
@@ -30,18 +30,24 @@ export async function initCodeQL(
   bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
-): Promise<{ codeql: CodeQL; toolsDownloadDurationMs?: number; toolsSource: ToolsSource; toolsVersion: string }> {
+): Promise<{
+  codeql: CodeQL;
+  toolsDownloadDurationMs?: number;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+}> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion } = await setupCodeQL(
-    toolsInput,
-    apiDetails,
-    tempDir,
-    variant,
-    bypassToolcache,
-    defaultCliVersion,
-    logger,
-    true
-  );
+  const { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion } =
+    await setupCodeQL(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      bypassToolcache,
+      defaultCliVersion,
+      logger,
+      true
+    );
   await codeql.printVersion();
   logger.endGroup();
   return { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion };

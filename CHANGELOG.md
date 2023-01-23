@@ -15,6 +15,7 @@
     - These changes will not affect the majority of code scanning workflows. Continue reading only if your workflow uses [@actions/tool-cache](https://github.com/actions/toolkit/tree/main/packages/tool-cache) or relies on the precise location of CodeQL within the Actions tool cache.
     - The tool cache now contains **two** recent CodeQL versions (previously **one**).
     - Each CodeQL version is located under a directory named after the release date and version number, e.g. CodeQL 2.11.6 is now located under `CodeQL/2.11.6-20221211/x64/codeql` (previously `CodeQL/0.0.0-20221211/x64/codeql`).
+- Update default CodeQL bundle version to 2.12.1. [#1498](https://github.com/github/codeql-action/pull/1498)
 - Fix a bug that forced the `init` Action to run for at least two minutes on JavaScript. [#1494](https://github.com/github/codeql-action/pull/1494)
 
 ## 2.1.39 - 18 Jan 2023

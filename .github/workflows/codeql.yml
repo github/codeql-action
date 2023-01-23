@@ -87,7 +87,7 @@ jobs:
       uses: ./init
       id: init
       with:
-        languages: javascript
+        languages:github:main
         config-file: ./.github/codeql/codeql-config.yml
         tools: ${{ matrix.tools }}
     # confirm steps.init.outputs.codeql-path points to the codeql binary

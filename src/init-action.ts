@@ -46,7 +46,20 @@ import {
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
-interface InitStatusReport extends StatusReportBase {
+// Fields of the init status report that can be sent before `config` is populated.
+interface InitBaseStatusReport extends StatusReportBase {
+  /** Value given by the user as the "tools" input. */
+  tools_input: string;
+  /** Version of the bundle used. */
+  tools_resolved_version: string;
+  /** Where the bundle originated from. */
+  tools_source: ToolsSource;
+  /** Comma-separated list of languages specified explicitly in the workflow file. */
+  workflow_languages: string;
+}
+
+// Fields of the init status report that are populated using values from `config`.
+interface InitStatusReport extends InitBaseStatusReport {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
   /**
@@ -61,14 +74,6 @@ interface InitStatusReport extends StatusReportBase {
   paths_ignore: string;
   /** Comma-separated list of queries sources, from the 'queries' config field or workflow input. */
   queries: string;
-  /** Value given by the user as the "tools" input. */
-  tools_input: string;
-  /** Version of the bundle used. */
-  tools_resolved_version: string;
-  /** Where the bundle originated from. */
-  tools_source: ToolsSource;
-  /** Comma-separated list of languages specified explicitly in the workflow file. */
-  workflow_languages: string;
   /** Comma-separated list of languages for which we are using TRAP caching. */
   trap_cache_languages: string;
   /** Size of TRAP caches that we downloaded, in bytes. */
@@ -77,8 +82,15 @@ interface InitStatusReport extends StatusReportBase {
   trap_cache_download_duration_ms: number;
 }
 
-// Adds additional fields that are only present if CodeQL bundle was downloaded.
-interface InitDownloadStatusReport extends InitStatusReport {
+interface InitBaseToolsDownloadStatusReport extends InitBaseStatusReport {
+  /** Time taken to download the bundle, in milliseconds. */
+  tools_download_duration_ms: number;
+  /** Whether the relevant tools dotcom feature flags have been misconfigured. Only sent if we attempt to download based off dotcom flags. */
+  tools_feature_flags_valid: boolean;
+}
+
+// Additional fields that are only present if CodeQL bundle was downloaded.
+interface InitToolsDownloadStatusReport extends InitStatusReport {
   /** Time taken to download the bundle, in milliseconds. */
   tools_download_duration_ms: number;
   /** Whether the relevant tools dotcom feature flags have been misconfigured. Only sent if we attempt to download based off dotcom flags. */
@@ -101,69 +113,91 @@ async function sendInitStatusReport(
     startedAt
   );
 
-  const languages = config.languages.join(",");
   const workflowLanguages = getOptionalInput("languages");
-  const paths = (config.originalUserInput.paths || []).join(",");
-  const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
-    ","
-  );
-  const disableDefaultQueries = config.originalUserInput[
-    "disable-default-queries"
-  ]
-    ? languages
-    : "";
 
-  const queries: string[] = [];
-  let queriesInput = getOptionalInput("queries")?.trim();
-  if (queriesInput === undefined || queriesInput.startsWith("+")) {
-    queries.push(
-      ...(config.originalUserInput.queries || []).map((q) => q.uses)
-    );
-  }
-  if (queriesInput !== undefined) {
-    queriesInput = queriesInput.startsWith("+")
-      ? queriesInput.slice(1)
-      : queriesInput;
-    queries.push(...queriesInput.split(","));
-  }
-
-  const statusReport: InitStatusReport = {
+  const initBaseStatusReport: InitBaseStatusReport = {
     ...statusReportBase,
-    disable_default_queries: disableDefaultQueries,
-    languages: languages || "",
-    ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
-    paths,
-    paths_ignore: pathsIgnore,
-    queries: queries.join(","),
     tools_input: getOptionalInput("tools") || "",
-    tools_resolved_version: toolsVersion || "",
-    workflow_languages: workflowLanguages || "",
-    // TODO(angelapwen): I think the following will crash if config.trapCaches is undefined because we might
-    // be sending a failure report before we initialize config.
-    trap_cache_languages: Object.keys(config.trapCaches).join(",") || "",
-    trap_cache_download_size_bytes:
-      Math.round(await getTotalCacheSize(config.trapCaches, logger)) || -1, // Placeholder value if cache size is not determined yet.
-    trap_cache_download_duration_ms:
-      Math.round(config.trapCacheDownloadTime) || -1, // Placeholder value if cache size is not determined yet.,
+    tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
+    workflow_languages: workflowLanguages || "",
   };
 
-  if (toolsSource !== ToolsSource.Download) {
-    await sendStatusReport(statusReport);
+  if (config !== undefined) {
+    const languages = config.languages.join(",");
+    const paths = (config.originalUserInput.paths || []).join(",");
+    const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
+      ","
+    );
+    const disableDefaultQueries = config.originalUserInput[
+      "disable-default-queries"
+    ]
+      ? languages
+      : "";
+
+    const queries: string[] = [];
+    let queriesInput = getOptionalInput("queries")?.trim();
+    if (queriesInput === undefined || queriesInput.startsWith("+")) {
+      queries.push(
+        ...(config.originalUserInput.queries || []).map((q) => q.uses)
+      );
+    }
+    if (queriesInput !== undefined) {
+      queriesInput = queriesInput.startsWith("+")
+        ? queriesInput.slice(1)
+        : queriesInput;
+      queries.push(...queriesInput.split(","));
+    }
+
+    // Append fields that are dependent on `config`
+    const statusReportWithConfig: InitStatusReport = {
+      ...initBaseStatusReport,
+      disable_default_queries: disableDefaultQueries,
+      languages,
+      ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
+      paths,
+      paths_ignore: pathsIgnore,
+      queries: queries.join(","),
+      trap_cache_languages: Object.keys(config.trapCaches).join(","),
+      trap_cache_download_size_bytes: Math.round(
+        await getTotalCacheSize(config.trapCaches, logger)
+      ),
+      trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+    };
+
+    if (toolsSource !== ToolsSource.Download) {
+      await sendStatusReport(statusReportWithConfig);
+      return;
+    }
+
+    // Otherwise, we should append the extra two download-related telemetry fields.
+    const toolsDownloadStatusReport: InitToolsDownloadStatusReport = {
+      ...statusReportWithConfig,
+      tools_download_duration_ms: toolsDownloadDurationMs
+        ? toolsDownloadDurationMs
+        : -1, // Placeholder value in case field is undefined.
+      tools_feature_flags_valid: toolsFeatureFlagsValid
+        ? toolsFeatureFlagsValid
+        : false, // Report invalid in case field is undefined.
+    };
+    await sendStatusReport(toolsDownloadStatusReport);
+    return;
+  } else {
+    if (toolsSource === ToolsSource.Download) {
+      const toolsDownloadStatusReport: InitBaseToolsDownloadStatusReport = {
+        ...initBaseStatusReport,
+        tools_download_duration_ms: toolsDownloadDurationMs
+          ? toolsDownloadDurationMs
+          : -1, // Placeholder value in case field is undefined.
+        tools_feature_flags_valid: toolsFeatureFlagsValid
+          ? toolsFeatureFlagsValid
+          : false, // Report invalid in case field is undefined.
+      };
+      await sendStatusReport(toolsDownloadStatusReport);
+      return;
+    }
+    await sendStatusReport(initBaseStatusReport);
   }
-
-  // Otherwise, we should append the extra two download-related telemetry fields.
-  const downloadStatusReport: InitDownloadStatusReport = {
-    ...statusReport,
-    tools_download_duration_ms: toolsDownloadDurationMs
-      ? toolsDownloadDurationMs
-      : -1, // Placeholder value in case field is undefined.
-    tools_feature_flags_valid: toolsFeatureFlagsValid
-      ? toolsFeatureFlagsValid
-      : false, // Report invalid in case field is undefined.
-  };
-
-  await sendStatusReport(downloadStatusReport);
 }
 
 async function run() {

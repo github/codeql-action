@@ -226,7 +226,8 @@ export function countResultsInSarif(sarif: string): number {
 // Throws an error if the file is invalid.
 export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
   const sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8"));
-  const schema = require("../src/sarif_v2.1.0_schema.json");
+  const schema =
+    require("../src/sarif_v2.1.0_schema.json") as jsonschema.Schema;
 
   const result = new jsonschema.Validator().validate(sarif, schema);
   if (!result.valid) {

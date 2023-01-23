@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as os from "os";
 import path from "path";
 
-import * as core from "@actions/core";
 import * as github from "@actions/github";
 import test from "ava";
 import * as sinon from "sinon";
@@ -26,7 +25,7 @@ test("getToolNames", (t) => {
     `${__dirname}/../src/testdata/tool-names.sarif`,
     "utf8"
   );
-  const toolNames = util.getToolNames(JSON.parse(input));
+  const toolNames = util.getToolNames(JSON.parse(input) as util.SarifFile);
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
 });
 
@@ -204,6 +203,7 @@ function mockGetMetaVersionHeader(
   };
   const spyGetContents = sinon
     .stub(client.meta, "get")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   return spyGetContents;
@@ -308,65 +308,6 @@ for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
 
       t.is(util.getMlPoweredJsQueriesStatus(config), expectedStatus);
     });
-  });
-}
-
-function formatGitHubVersion(version: util.GitHubVersion): string {
-  switch (version.type) {
-    case util.GitHubVariant.DOTCOM:
-      return "dotcom";
-    case util.GitHubVariant.GHAE:
-      return "GHAE";
-    case util.GitHubVariant.GHES:
-      return `GHES ${version.version}`;
-    default:
-      util.assertNever(version);
-  }
-}
-
-const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
-  [
-    ["1.2.1", { type: util.GitHubVariant.DOTCOM }, true],
-    ["1.2.1", { type: util.GitHubVariant.GHAE }, true],
-    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, true],
-    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, true],
-    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, true],
-    ["2.2.1", { type: util.GitHubVariant.DOTCOM }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHAE }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, false],
-  ];
-
-for (const [
-  version,
-  githubVersion,
-  shouldReportError,
-] of CHECK_ACTION_VERSION_TESTS) {
-  const reportErrorDescription = shouldReportError
-    ? "reports error"
-    : "doesn't report error";
-  const versionsDescription = `CodeQL Action version ${version} and GitHub version ${formatGitHubVersion(
-    githubVersion
-  )}`;
-  test(`checkActionVersion ${reportErrorDescription} for ${versionsDescription}`, async (t) => {
-    const errorSpy = sinon.spy(core, "error");
-    const versionStub = sinon
-      .stub(api, "getGitHubVersion")
-      .resolves(githubVersion);
-    await util.checkActionVersion(version);
-    if (shouldReportError) {
-      t.true(
-        errorSpy.calledOnceWithExactly(
-          sinon.match(
-            "This version of the CodeQL Action was deprecated on January 18th, 2023"
-          )
-        )
-      );
-    } else {
-      t.false(errorSpy.called);
-    }
-    versionStub.restore();
   });
 }
 

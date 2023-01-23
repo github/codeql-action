@@ -7,13 +7,7 @@ var $TypeError = GetIntrinsic('%TypeError%');
 var IsPropertyKey = require('./IsPropertyKey');
 var ToObject = require('./ToObject');
 
-/**
- * 7.3.2 GetV (V, P)
- * 1. Assert: IsPropertyKey(P) is true.
- * 2. Let O be ToObject(V).
- * 3. ReturnIfAbrupt(O).
- * 4. Return O.[[Get]](P, V).
- */
+// https://ecma-international.org/ecma-262/6.0/#sec-getv
 
 module.exports = function GetV(V, P) {
 	// 7.3.2.1

@@ -1,5 +1,7 @@
 # import/no-anonymous-default-export
 
+<!-- end auto-generated rule header -->
+
 Reports if a module's default export is unnamed. This includes several types of unnamed data types; literals, object expressions, arrays, anonymous functions, arrow functions, and anonymous class declarations.
 
 Ensuring that default exports are named helps improve the grepability of the codebase by encouraging the re-use of the same identifier for the module's default export at its declaration site and at its import sites.
@@ -17,6 +19,7 @@ The complete default configuration looks like this.
   "allowAnonymousClass": false,
   "allowAnonymousFunction": false,
   "allowCallExpression": true, // The true value here is for backward compatibility
+  "allowNew": false,
   "allowLiteral": false,
   "allowObject": false
 }]
@@ -40,6 +43,8 @@ export default foo(bar)
 export default 123
 
 export default {}
+
+export default new Foo()
 ```
 
 ### Pass
@@ -70,4 +75,7 @@ export default 123
 
 /* eslint import/no-anonymous-default-export: [2, {"allowObject": true}] */
 export default {}
+
+/* eslint import/no-anonymous-default-export: [2, {"allowNew": true}] */
+export default new Foo()
 ```

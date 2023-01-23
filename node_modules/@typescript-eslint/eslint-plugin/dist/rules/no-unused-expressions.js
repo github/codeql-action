@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -18,26 +22,25 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
-const no_unused_expressions_1 = __importDefault(require("eslint/lib/rules/no-unused-expressions"));
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
+const getESLintCoreRule_1 = require("../util/getESLintCoreRule");
+const baseRule = (0, getESLintCoreRule_1.getESLintCoreRule)('no-unused-expressions');
 exports.default = util.createRule({
     name: 'no-unused-expressions',
     meta: {
         type: 'suggestion',
         docs: {
             description: 'Disallow unused expressions',
-            category: 'Best Practices',
             recommended: false,
             extendsBaseRule: true,
         },
-        schema: no_unused_expressions_1.default.meta.schema,
-        messages: (_a = no_unused_expressions_1.default.meta.messages) !== null && _a !== void 0 ? _a : {
+        hasSuggestions: baseRule.meta.hasSuggestions,
+        schema: baseRule.meta.schema,
+        // TODO: this rule has only had messages since v7.0 - remove this when we remove support for v6
+        messages: (_a = baseRule.meta.messages) !== null && _a !== void 0 ? _a : {
             unusedExpression: 'Expected an assignment or function call and instead saw an expression.',
         },
     },
@@ -48,20 +51,19 @@ exports.default = util.createRule({
             allowTaggedTemplates: false,
         },
     ],
-    create(context, options) {
-        const rules = no_unused_expressions_1.default.create(context);
-        const { allowShortCircuit = false, allowTernary = false } = options[0];
+    create(context, [{ allowShortCircuit = false, allowTernary = false }]) {
+        const rules = baseRule.create(context);
         function isValidExpression(node) {
-            if (allowShortCircuit && node.type === experimental_utils_1.AST_NODE_TYPES.LogicalExpression) {
+            if (allowShortCircuit && node.type === utils_1.AST_NODE_TYPES.LogicalExpression) {
                 return isValidExpression(node.right);
             }
-            if (allowTernary && node.type === experimental_utils_1.AST_NODE_TYPES.ConditionalExpression) {
+            if (allowTernary && node.type === utils_1.AST_NODE_TYPES.ConditionalExpression) {
                 return (isValidExpression(node.alternate) &&
                     isValidExpression(node.consequent));
             }
-            return ((node.type === experimental_utils_1.AST_NODE_TYPES.ChainExpression &&
-                node.expression.type === experimental_utils_1.AST_NODE_TYPES.CallExpression) ||
-                node.type === experimental_utils_1.AST_NODE_TYPES.ImportExpression);
+            return ((node.type === utils_1.AST_NODE_TYPES.ChainExpression &&
+                node.expression.type === utils_1.AST_NODE_TYPES.CallExpression) ||
+                node.type === utils_1.AST_NODE_TYPES.ImportExpression);
         }
         return {
             ExpressionStatement(node) {

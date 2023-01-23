@@ -1,14 +1,15 @@
 "use strict";
 // THIS CODE WAS AUTOMATICALLY GENERATED
 // DO NOT EDIT THIS CODE BY HAND
-// YOU CAN REGENERATE IT USING yarn generate:lib
+// RUN THE FOLLOWING COMMAND FROM THE WORKSPACE ROOT TO REGENERATE:
+// npx nx generate-lib @typescript-eslint/scope-manager
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.es6 = void 0;
 const es5_1 = require("./es5");
-const es2015_core_1 = require("./es2015.core");
 const es2015_collection_1 = require("./es2015.collection");
-const es2015_iterable_1 = require("./es2015.iterable");
+const es2015_core_1 = require("./es2015.core");
 const es2015_generator_1 = require("./es2015.generator");
+const es2015_iterable_1 = require("./es2015.iterable");
 const es2015_promise_1 = require("./es2015.promise");
 const es2015_proxy_1 = require("./es2015.proxy");
 const es2015_reflect_1 = require("./es2015.reflect");

@@ -3,7 +3,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -20,30 +24,28 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
-const no_extra_parens_1 = __importDefault(require("eslint/lib/rules/no-extra-parens"));
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
+const getESLintCoreRule_1 = require("../util/getESLintCoreRule");
+const baseRule = (0, getESLintCoreRule_1.getESLintCoreRule)('no-extra-parens');
 exports.default = util.createRule({
     name: 'no-extra-parens',
     meta: {
         type: 'layout',
         docs: {
             description: 'Disallow unnecessary parentheses',
-            category: 'Possible Errors',
             recommended: false,
             extendsBaseRule: true,
         },
         fixable: 'code',
-        schema: no_extra_parens_1.default.meta.schema,
-        messages: no_extra_parens_1.default.meta.messages,
+        hasSuggestions: baseRule.meta.hasSuggestions,
+        schema: baseRule.meta.schema,
+        messages: baseRule.meta.messages,
     },
     defaultOptions: ['all'],
     create(context) {
-        const rules = no_extra_parens_1.default.create(context);
+        const rules = baseRule.create(context);
         function binaryExp(node) {
             const rule = rules.BinaryExpression;
             // makes the rule think it should skip the left or right
@@ -53,10 +55,10 @@ exports.default = util.createRule({
                 return; // ignore
             }
             if (isLeftTypeAssertion) {
-                return rule(Object.assign(Object.assign({}, node), { left: Object.assign(Object.assign({}, node.left), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                return rule(Object.assign(Object.assign({}, node), { left: Object.assign(Object.assign({}, node.left), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
             }
             if (isRightTypeAssertion) {
-                return rule(Object.assign(Object.assign({}, node), { right: Object.assign(Object.assign({}, node.right), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                return rule(Object.assign(Object.assign({}, node), { right: Object.assign(Object.assign({}, node.right), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
             }
             return rule(node);
         }
@@ -65,13 +67,13 @@ exports.default = util.createRule({
             const rule = rules.CallExpression;
             if (util.isTypeAssertion(node.callee)) {
                 // reduces the precedence of the node so the rule thinks it needs to be wrapped
-                return rule(Object.assign(Object.assign({}, node), { callee: Object.assign(Object.assign({}, node.callee), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                return rule(Object.assign(Object.assign({}, node), { callee: Object.assign(Object.assign({}, node.callee), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
             }
             if (node.arguments.length === 1 &&
-                ((_a = node.typeParameters) === null || _a === void 0 ? void 0 : _a.params.some(param => param.type === experimental_utils_1.AST_NODE_TYPES.TSParenthesizedType ||
-                    param.type === experimental_utils_1.AST_NODE_TYPES.TSImportType))) {
+                ((_a = node.typeParameters) === null || _a === void 0 ? void 0 : _a.params.some(param => param.type === utils_1.AST_NODE_TYPES.TSImportType ||
+                    param.type === utils_1.AST_NODE_TYPES.TSArrayType))) {
                 return rule(Object.assign(Object.assign({}, node), { arguments: [
-                        Object.assign(Object.assign({}, node.arguments[0]), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }),
+                        Object.assign(Object.assign({}, node.arguments[0]), { type: utils_1.AST_NODE_TYPES.SequenceExpression }),
                     ] }));
             }
             return rule(node);
@@ -80,7 +82,7 @@ exports.default = util.createRule({
             const rule = rules.UnaryExpression;
             if (util.isTypeAssertion(node.argument)) {
                 // reduces the precedence of the node so the rule thinks it needs to be wrapped
-                return rule(Object.assign(Object.assign({}, node), { argument: Object.assign(Object.assign({}, node.argument), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                return rule(Object.assign(Object.assign({}, node), { argument: Object.assign(Object.assign({}, node.argument), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
             }
             return rule(node);
         }
@@ -92,22 +94,40 @@ exports.default = util.createRule({
                 }
             },
             // AssignmentExpression
-            // AwaitExpression
+            AwaitExpression(node) {
+                if (util.isTypeAssertion(node.argument)) {
+                    // reduces the precedence of the node so the rule thinks it needs to be wrapped
+                    return rules.AwaitExpression(Object.assign(Object.assign({}, node), { argument: Object.assign(Object.assign({}, node.argument), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                }
+                return rules.AwaitExpression(node);
+            },
             BinaryExpression: binaryExp,
             CallExpression: callExp,
-            // ClassDeclaration
-            // ClassExpression
+            ClassDeclaration(node) {
+                var _a;
+                if (((_a = node.superClass) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.TSAsExpression) {
+                    return rules.ClassDeclaration(Object.assign(Object.assign({}, node), { superClass: Object.assign(Object.assign({}, node.superClass), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                }
+                return rules.ClassDeclaration(node);
+            },
+            ClassExpression(node) {
+                var _a;
+                if (((_a = node.superClass) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.TSAsExpression) {
+                    return rules.ClassExpression(Object.assign(Object.assign({}, node), { superClass: Object.assign(Object.assign({}, node.superClass), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                }
+                return rules.ClassExpression(node);
+            },
             ConditionalExpression(node) {
                 // reduces the precedence of the node so the rule thinks it needs to be wrapped
                 if (util.isTypeAssertion(node.test)) {
-                    return rules.ConditionalExpression(Object.assign(Object.assign({}, node), { test: Object.assign(Object.assign({}, node.test), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                    return rules.ConditionalExpression(Object.assign(Object.assign({}, node), { test: Object.assign(Object.assign({}, node.test), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
                 }
                 if (util.isTypeAssertion(node.consequent)) {
-                    return rules.ConditionalExpression(Object.assign(Object.assign({}, node), { consequent: Object.assign(Object.assign({}, node.consequent), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                    return rules.ConditionalExpression(Object.assign(Object.assign({}, node), { consequent: Object.assign(Object.assign({}, node.consequent), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
                 }
                 if (util.isTypeAssertion(node.alternate)) {
-                    // reduces the precedence of the node so the rule thinks it needs to be rapped
-                    return rules.ConditionalExpression(Object.assign(Object.assign({}, node), { alternate: Object.assign(Object.assign({}, node.alternate), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                    // reduces the precedence of the node so the rule thinks it needs to be wrapped
+                    return rules.ConditionalExpression(Object.assign(Object.assign({}, node), { alternate: Object.assign(Object.assign({}, node.alternate), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
                 }
                 return rules.ConditionalExpression(node);
             },
@@ -136,7 +156,7 @@ exports.default = util.createRule({
             MemberExpression(node) {
                 if (util.isTypeAssertion(node.object)) {
                     // reduces the precedence of the node so the rule thinks it needs to be wrapped
-                    return rules.MemberExpression(Object.assign(Object.assign({}, node), { object: Object.assign(Object.assign({}, node.object), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                    return rules.MemberExpression(Object.assign(Object.assign({}, node), { object: Object.assign(Object.assign({}, node.object), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
                 }
                 return rules.MemberExpression(node);
             },
@@ -183,7 +203,7 @@ exports.default = util.createRule({
             overrides.ForOfStatement = function (node) {
                 if (util.isTypeAssertion(node.right)) {
                     // makes the rule skip checking of the right
-                    return rules.ForOfStatement(Object.assign(Object.assign({}, node), { type: experimental_utils_1.AST_NODE_TYPES.ForOfStatement, right: Object.assign(Object.assign({}, node.right), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                    return rules.ForOfStatement(Object.assign(Object.assign({}, node), { type: utils_1.AST_NODE_TYPES.ForOfStatement, right: Object.assign(Object.assign({}, node.right), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
                 }
                 return rules.ForOfStatement(node);
             };
@@ -192,7 +212,7 @@ exports.default = util.createRule({
             overrides['ForInStatement, ForOfStatement'] = function (node) {
                 if (util.isTypeAssertion(node.right)) {
                     // makes the rule skip checking of the right
-                    return rules['ForInStatement, ForOfStatement'](Object.assign(Object.assign({}, node), { type: experimental_utils_1.AST_NODE_TYPES.ForOfStatement, right: Object.assign(Object.assign({}, node.right), { type: experimental_utils_1.AST_NODE_TYPES.SequenceExpression }) }));
+                    return rules['ForInStatement, ForOfStatement'](Object.assign(Object.assign({}, node), { type: utils_1.AST_NODE_TYPES.ForOfStatement, right: Object.assign(Object.assign({}, node.right), { type: utils_1.AST_NODE_TYPES.SequenceExpression }) }));
                 }
                 return rules['ForInStatement, ForOfStatement'](node);
             };

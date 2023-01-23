@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -18,14 +22,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
-const no_useless_constructor_1 = __importDefault(require("eslint/lib/rules/no-useless-constructor"));
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
+const getESLintCoreRule_1 = require("../util/getESLintCoreRule");
+const baseRule = (0, getESLintCoreRule_1.getESLintCoreRule)('no-useless-constructor');
 /**
  * Check if method with accessibility is not useless
  */
@@ -36,7 +38,7 @@ function checkAccessibility(node) {
             return false;
         case 'public':
             if (node.parent &&
-                node.parent.type === experimental_utils_1.AST_NODE_TYPES.ClassBody &&
+                node.parent.type === utils_1.AST_NODE_TYPES.ClassBody &&
                 node.parent.parent &&
                 'superClass' in node.parent.parent &&
                 node.parent.parent.superClass) {
@@ -47,11 +49,14 @@ function checkAccessibility(node) {
     return true;
 }
 /**
- * Check if method is not unless due to typescript parameter properties
+ * Check if method is not useless due to typescript parameter properties and decorators
  */
 function checkParams(node) {
-    return (!node.value.params ||
-        !node.value.params.some(param => param.type === experimental_utils_1.AST_NODE_TYPES.TSParameterProperty));
+    return !node.value.params.some(param => {
+        var _a;
+        return param.type === utils_1.AST_NODE_TYPES.TSParameterProperty ||
+            ((_a = param.decorators) === null || _a === void 0 ? void 0 : _a.length);
+    });
 }
 exports.default = util.createRule({
     name: 'no-useless-constructor',
@@ -59,22 +64,23 @@ exports.default = util.createRule({
         type: 'problem',
         docs: {
             description: 'Disallow unnecessary constructors',
-            category: 'Best Practices',
-            recommended: false,
+            recommended: 'strict',
             extendsBaseRule: true,
         },
-        schema: no_useless_constructor_1.default.meta.schema,
-        messages: (_a = no_useless_constructor_1.default.meta.messages) !== null && _a !== void 0 ? _a : {
+        hasSuggestions: baseRule.meta.hasSuggestions,
+        schema: baseRule.meta.schema,
+        // TODO: this rule has only had messages since v7.0 - remove this when we remove support for v6
+        messages: (_a = baseRule.meta.messages) !== null && _a !== void 0 ? _a : {
             noUselessConstructor: 'Useless constructor.',
         },
     },
     defaultOptions: [],
     create(context) {
-        const rules = no_useless_constructor_1.default.create(context);
+        const rules = baseRule.create(context);
         return {
             MethodDefinition(node) {
                 if (node.value &&
-                    node.value.type === experimental_utils_1.AST_NODE_TYPES.FunctionExpression &&
+                    node.value.type === utils_1.AST_NODE_TYPES.FunctionExpression &&
                     node.value.body &&
                     checkAccessibility(node) &&
                     checkParams(node)) {

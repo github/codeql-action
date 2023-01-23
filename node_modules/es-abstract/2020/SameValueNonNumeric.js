@@ -11,7 +11,7 @@ var Type = require('./Type');
 
 module.exports = function SameValueNonNumeric(x, y) {
 	var xType = Type(x);
-	if (xType === 'Number' || xType === 'Bigint') {
+	if (xType === 'Number' || xType === 'BigInt') {
 		throw new $TypeError('Assertion failed: SameValueNonNumeric does not accept Number or BigInt values');
 	}
 	if (xType !== Type(y)) {

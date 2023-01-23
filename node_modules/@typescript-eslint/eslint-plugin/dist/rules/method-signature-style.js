@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,15 +23,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
 exports.default = util.createRule({
     name: 'method-signature-style',
     meta: {
         type: 'suggestion',
         docs: {
-            description: 'Enforces using a particular method signature syntax.',
-            category: 'Best Practices',
+            description: 'Enforce using a particular method signature syntax',
             recommended: false,
         },
         fixable: 'code',
@@ -89,26 +92,26 @@ exports.default = util.createRule({
             if (!node.parent) {
                 return false;
             }
-            if (node.parent.type === experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration) {
+            if (node.parent.type === utils_1.AST_NODE_TYPES.TSModuleDeclaration) {
                 return true;
             }
-            if (node.parent.type === experimental_utils_1.AST_NODE_TYPES.Program) {
+            if (node.parent.type === utils_1.AST_NODE_TYPES.Program) {
                 return false;
             }
             return isNodeParentModuleDeclaration(node.parent);
         }
-        return {
+        return Object.assign(Object.assign({}, (mode === 'property' && {
             TSMethodSignature(methodNode) {
-                if (mode === 'method') {
+                if (methodNode.kind !== 'method') {
                     return;
                 }
                 const parent = methodNode.parent;
-                const members = (parent === null || parent === void 0 ? void 0 : parent.type) === experimental_utils_1.AST_NODE_TYPES.TSInterfaceBody
+                const members = (parent === null || parent === void 0 ? void 0 : parent.type) === utils_1.AST_NODE_TYPES.TSInterfaceBody
                     ? parent.body
-                    : (parent === null || parent === void 0 ? void 0 : parent.type) === experimental_utils_1.AST_NODE_TYPES.TSTypeLiteral
+                    : (parent === null || parent === void 0 ? void 0 : parent.type) === utils_1.AST_NODE_TYPES.TSTypeLiteral
                         ? parent.members
                         : [];
-                const duplicatedKeyMethodNodes = members.filter((element) => element.type === experimental_utils_1.AST_NODE_TYPES.TSMethodSignature &&
+                const duplicatedKeyMethodNodes = members.filter((element) => element.type === utils_1.AST_NODE_TYPES.TSMethodSignature &&
                     element !== methodNode &&
                     getMethodKey(element) === getMethodKey(methodNode));
                 const isParentModule = isNodeParentModuleDeclaration(methodNode);
@@ -173,13 +176,11 @@ exports.default = util.createRule({
                     });
                 }
             },
+        })), (mode === 'method' && {
             TSPropertySignature(propertyNode) {
                 var _a;
                 const typeNode = (_a = propertyNode.typeAnnotation) === null || _a === void 0 ? void 0 : _a.typeAnnotation;
-                if ((typeNode === null || typeNode === void 0 ? void 0 : typeNode.type) !== experimental_utils_1.AST_NODE_TYPES.TSFunctionType) {
-                    return;
-                }
-                if (mode === 'property') {
+                if ((typeNode === null || typeNode === void 0 ? void 0 : typeNode.type) !== utils_1.AST_NODE_TYPES.TSFunctionType) {
                     return;
                 }
                 context.report({
@@ -194,7 +195,7 @@ exports.default = util.createRule({
                     },
                 });
             },
-        };
+        }));
     },
 });
 //# sourceMappingURL=method-signature-style.js.map

@@ -1,11 +1,15 @@
-# import/order: Enforce a convention in module import order
+# import/order
+
+🔧 This rule is automatically fixable by the [`--fix` CLI option](https://eslint.org/docs/latest/user-guide/command-line-interface#--fix).
+
+<!-- end auto-generated rule header -->
 
 Enforce a convention in the order of `require()` / `import` statements.
 +(fixable) The `--fix` option on the [command line] automatically fixes problems reported by this rule.
 
-With the [`groups`](#groups-array) option set to `["builtin", "external", "internal", "parent", "sibling", "index", "object"]` the order is as shown in the following example:
+With the [`groups`](#groups-array) option set to `["builtin", "external", "internal", "parent", "sibling", "index", "object", "type"]` the order is as shown in the following example:
 
-```js
+```ts
 // 1. node "builtin" modules
 import fs from 'fs';
 import path from 'path';
@@ -36,7 +40,7 @@ Statements using the ES6 `import` syntax must appear before any `require()` stat
 
 ## Fail
 
-```js
+```ts
 import _ from 'lodash';
 import path from 'path'; // `path` import should occur before import of `lodash`
 
@@ -54,7 +58,7 @@ import foo from './foo'; // `import` statements must be before `require` stateme
 
 ## Pass
 
-```js
+```ts
 import path from 'path';
 import _ from 'lodash';
 
@@ -85,7 +89,7 @@ This rule supports the following options:
 How groups are defined, and the order to respect. `groups` must be an array of `string` or [`string`]. The only allowed `string`s are:
 `"builtin"`, `"external"`, `"internal"`, `"unknown"`, `"parent"`, `"sibling"`, `"index"`, `"object"`, `"type"`.
 The enforced order is the same as the order of each element in a group. Omitted types are implicitly grouped together as the last element. Example:
-```js
+```ts
 [
   'builtin', // Built-in types are first
   ['sibling', 'parent'], // Then sibling and parent types. They can be mingled together
@@ -98,8 +102,22 @@ The default value is `["builtin", "external", "parent", "sibling", "index"]`.
 
 You can set the options like this:
 
-```js
-"import/order": ["error", {"groups": ["index", "sibling", "parent", "internal", "external", "builtin", "object", "type"]}]
+```ts
+"import/order": [
+  "error",
+  {
+    "groups": [
+      "index",
+      "sibling",
+      "parent",
+      "internal",
+      "external",
+      "builtin",
+      "object",
+      "type"
+    ]
+  }
+]
 ```
 
 ### `pathGroups: [array of objects]`:
@@ -124,6 +142,31 @@ Properties of the objects
         "group": "external"
       }
     ]
+  }]
+}
+```
+
+### `distinctGroup: [boolean]`:
+
+This changes how `pathGroups[].position` affects grouping. The property is most useful when `newlines-between` is set to `always` and at least 1 `pathGroups` entry has a `position` property set.
+
+By default, in the context of a particular `pathGroup` entry, when setting `position`, a new "group" will silently be created. That is, even if the `group` is specified, a newline will still separate imports that match that `pattern` with the rest of the group (assuming `newlines-between` is `always`). This is undesirable if your intentions are to use `position` to position _within_ the group (and not create a new one). Override this behavior by setting `distinctGroup` to `false`; this will keep imports within the same group as intended.
+
+Note that currently, `distinctGroup` defaults to `true`. However, in a later update, the default will change to `false`
+
+Example:
+```json
+{
+  "import/order": ["error", {
+    "newlines-between": "always",
+    "pathGroups": [
+      {
+        "pattern": "@app/**",
+        "group": "external",
+        "position": "after"
+      }
+    ],
+    "distinctGroup": false
   }]
 }
 ```
@@ -169,20 +212,22 @@ Example:
   ]
 }
 ```
-The default value is `["builtin", "external"]`.
+The default value is `["builtin", "external", "object"]`.
 
 ### `newlines-between: [ignore|always|always-and-inside-groups|never]`:
 
 Enforces or forbids new lines between import groups:
 
-- If set to `ignore`, no errors related to new lines between import groups will be reported (default).
+- If set to `ignore`, no errors related to new lines between import groups will be reported.
 - If set to `always`, at least one new line between each group will be enforced, and new lines inside a group will be forbidden. To prevent multiple lines between imports, core `no-multiple-empty-lines` rule can be used.
 - If set to `always-and-inside-groups`, it will act like `always` except newlines are allowed inside import groups.
 - If set to `never`, no new lines are allowed in the entire import section.
 
+The default value is `"ignore"`.
+
 With the default group setting, the following will be invalid:
 
-```js
+```ts
 /* eslint import/order: ["error", {"newlines-between": "always"}] */
 import fs from 'fs';
 import path from 'path';
@@ -190,7 +235,7 @@ import index from './';
 import sibling from './foo';
 ```
 
-```js
+```ts
 /* eslint import/order: ["error", {"newlines-between": "always-and-inside-groups"}] */
 import fs from 'fs';
 
@@ -199,7 +244,7 @@ import index from './';
 import sibling from './foo';
 ```
 
-```js
+```ts
 /* eslint import/order: ["error", {"newlines-between": "never"}] */
 import fs from 'fs';
 import path from 'path';
@@ -211,7 +256,7 @@ import sibling from './foo';
 
 while those will be valid:
 
-```js
+```ts
 /* eslint import/order: ["error", {"newlines-between": "always"}] */
 import fs from 'fs';
 import path from 'path';
@@ -221,7 +266,7 @@ import index from './';
 import sibling from './foo';
 ```
 
-```js
+```ts
 /* eslint import/order: ["error", {"newlines-between": "always-and-inside-groups"}] */
 import fs from 'fs';
 
@@ -232,7 +277,7 @@ import index from './';
 import sibling from './foo';
 ```
 
-```js
+```ts
 /* eslint import/order: ["error", {"newlines-between": "never"}] */
 import fs from 'fs';
 import path from 'path';
@@ -240,15 +285,16 @@ import index from './';
 import sibling from './foo';
 ```
 
-### `alphabetize: {order: asc|desc|ignore, caseInsensitive: true|false}`:
+### `alphabetize: {order: asc|desc|ignore, orderImportKind: asc|desc|ignore, caseInsensitive: true|false}`:
 
 Sort the order within each group in alphabetical manner based on **import path**:
 
 - `order`: use `asc` to sort in ascending order, and `desc` to sort in descending order (default: `ignore`).
+- `orderImportKind`: use `asc` to sort in ascending order various import kinds, e.g. imports prefixed with `type` or `typeof`, with same import path. Use `desc` to sort in descending order (default: `ignore`).
 - `caseInsensitive`: use `true` to ignore case, and `false` to consider case (default: `false`).
 
 Example setting:
-```js
+```ts
 alphabetize: {
   order: 'asc', /* sort in ascending order. Options: ['ignore', 'asc', 'desc'] */
   caseInsensitive: true /* ignore case. Options: [true, false] */
@@ -257,7 +303,7 @@ alphabetize: {
 
 This will fail the rule check:
 
-```js
+```ts
 /* eslint import/order: ["error", {"alphabetize": {"order": "asc", "caseInsensitive": true}}] */
 import React, { PureComponent } from 'react';
 import aTypes from 'prop-types';
@@ -268,7 +314,7 @@ import blist from 'BList';
 
 While this will pass:
 
-```js
+```ts
 /* eslint import/order: ["error", {"alphabetize": {"order": "asc", "caseInsensitive": true}}] */
 import blist from 'BList';
 import * as classnames from 'classnames';
@@ -288,7 +334,7 @@ way that is safe.
 
 This will fail the rule check:
 
-```js
+```ts
 /* eslint import/order: ["error", {"warnOnUnassignedImports": true}] */
 import fs from 'fs';
 import './styles.css';
@@ -297,7 +343,7 @@ import path from 'path';
 
 While this will pass:
 
-```js
+```ts
 /* eslint import/order: ["error", {"warnOnUnassignedImports": true}] */
 import fs from 'fs';
 import path from 'path';

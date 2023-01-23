@@ -17,9 +17,18 @@ $ npm install eslint-visitor-keys
 
 ### Requirements
 
-- [Node.js] 4.0.0 or later.
+- [Node.js] `^12.22.0`, `^14.17.0`, or `>=16.0.0`
+
 
 ## 📖 Usage
+
+To use in an ESM file:
+
+```js
+import * as evk from "eslint-visitor-keys"
+```
+
+To use in a CommonJS file:
 
 ```js
 const evk = require("eslint-visitor-keys")
@@ -51,7 +60,7 @@ This will be used to traverse unknown nodes.
 
 For example:
 
-```
+```js
 const node = {
     type: "AssignmentExpression",
     left: { type: "Identifier", name: "foo" },
@@ -71,7 +80,7 @@ Make the union set with `evk.KEYS` and the given keys.
 
 For example:
 
-```
+```js
 console.log(evk.unionWith({
     MethodDefinition: ["decorators"]
 })) // → { ..., MethodDefinition: ["decorators", "key", "value"], ... }
@@ -94,5 +103,5 @@ Welcome. See [ESLint contribution guidelines](https://eslint.org/docs/developer-
 
 
 [npm]: https://www.npmjs.com/
-[Node.js]: https://nodejs.org/en/
+[Node.js]: https://nodejs.org/
 [ESTree]: https://github.com/estree/estree

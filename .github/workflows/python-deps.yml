@@ -1,4 +1,4 @@
-name: Test Python Package Installation on Linux and Mac
+name: Test Python Package Installation
 
 on:
   push:
@@ -144,6 +144,7 @@ jobs:
         python-version: ${{ matrix.python_version }}
 
     - name: Initialize CodeQL
+      id: init
       uses: ./init
       with:
         tools: latest
@@ -151,15 +152,15 @@ jobs:
         setup-python-dependencies: false
 
     - name: Test Auto Package Installation
+      env:
+        CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
       run: |
         $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\install_tools.ps1"
         powershell -File $cmd
 
         cd $Env:GITHUB_WORKSPACE\\python-setup/tests/$Env:PYTHON_DEPS_TYPE/requests-$Env:PYTHON_VERSION
-        $DefaultsPath = Join-Path (Join-Path $Env:GITHUB_WORKSPACE "src") "defaults.json"
-        $CodeQLBundleName = (Get-Content -Raw -Path $DefaultsPath | ConvertFrom-Json).bundleVersion
-        $CodeQLVersion = "0.0.0-" + $CodeQLBundleName.split("-")[-1]
-        py -3 $Env:GITHUB_WORKSPACE\\python-setup\\auto_install_packages.py C:\\hostedtoolcache\\windows\\CodeQL\\$CodeQLVersion\\x64\\codeql
+        $codeql_dist = (get-item $Env:CODEQL_PATH).Directory.FullName
+        py -3 $Env:GITHUB_WORKSPACE\\python-setup\\auto_install_packages.py $codeql_dist
 
     - name: Setup for extractor
       run: |

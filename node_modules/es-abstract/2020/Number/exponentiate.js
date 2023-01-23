@@ -72,6 +72,6 @@ module.exports = function NumberExponentiate(base, exponent) {
 	}
 	if (base < 0 && isFinite(base) && isFinite(exponent) && !IsInteger(exponent)) {
 		return NaN;
-    }
-    */
+	}
+	*/
 };

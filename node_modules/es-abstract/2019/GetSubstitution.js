@@ -5,7 +5,7 @@ var GetIntrinsic = require('get-intrinsic');
 var $TypeError = GetIntrinsic('%TypeError%');
 
 var callBound = require('call-bind/callBound');
-var regexTester = require('../helpers/regexTester');
+var regexTester = require('safe-regex-test');
 var every = require('../helpers/every');
 
 var $charAt = callBound('String.prototype.charAt');

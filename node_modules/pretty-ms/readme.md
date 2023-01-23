@@ -1,17 +1,17 @@
-# pretty-ms [![Build Status](https://travis-ci.com/sindresorhus/pretty-ms.svg?branch=master)](https://travis-ci.com/sindresorhus/pretty-ms)
+# pretty-ms
 
 > Convert milliseconds to a human readable string: `1337000000` → `15d 11h 23m 20s`
 
 ## Install
 
-```
-$ npm install pretty-ms
+```sh
+npm install pretty-ms
 ```
 
 ## Usage
 
 ```js
-const prettyMilliseconds = require('pretty-ms');
+import prettyMilliseconds from 'pretty-ms';
 
 prettyMilliseconds(1337000000);
 //=> '15d 11h 23m 20s'

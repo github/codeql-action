@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -18,30 +22,27 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
-const space_infix_ops_1 = __importDefault(require("eslint/lib/rules/space-infix-ops"));
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
+const getESLintCoreRule_1 = require("../util/getESLintCoreRule");
+const baseRule = (0, getESLintCoreRule_1.getESLintCoreRule)('space-infix-ops');
 const UNIONS = ['|', '&'];
 exports.default = util.createRule({
     name: 'space-infix-ops',
     meta: {
         type: 'layout',
         docs: {
-            description: 'This rule is aimed at ensuring there are spaces around infix operators.',
-            category: 'Stylistic Issues',
+            description: 'Require spacing around infix operators',
             recommended: false,
             extendsBaseRule: true,
         },
-        fixable: space_infix_ops_1.default.meta.fixable,
-        schema: space_infix_ops_1.default.meta.schema,
-        messages: (_a = space_infix_ops_1.default.meta.messages) !== null && _a !== void 0 ? _a : {
-            missingSpace: "Operator '{{operator}}' must be spaced.",
-        },
+        fixable: baseRule.meta.fixable,
+        hasSuggestions: baseRule.meta.hasSuggestions,
+        schema: baseRule.meta.schema,
+        messages: Object.assign({ 
+            // @ts-expect-error -- we report on this messageId so we need to ensure it's there in case ESLint changes in future
+            missingSpace: "Operator '{{operator}}' must be spaced." }, baseRule.meta.messages),
     },
     defaultOptions: [
         {
@@ -49,12 +50,11 @@ exports.default = util.createRule({
         },
     ],
     create(context) {
-        const rules = space_infix_ops_1.default.create(context);
+        const rules = baseRule.create(context);
         const sourceCode = context.getSourceCode();
-        const report = (node, operator) => {
+        function report(operator) {
             context.report({
-                node: node,
-                loc: operator.loc,
+                node: operator,
                 messageId: 'missingSpace',
                 data: {
                     operator: operator.value,
@@ -73,12 +73,12 @@ exports.default = util.createRule({
                     return fixer.replaceText(operator, fixString);
                 },
             });
-        };
-        function isSpaceChar(token) {
-            return token.type === experimental_utils_1.AST_TOKEN_TYPES.Punctuator && token.value === '=';
         }
-        function checkAndReportAssignmentSpace(node, leftNode, rightNode) {
-            if (!rightNode) {
+        function isSpaceChar(token) {
+            return (token.type === utils_1.AST_TOKEN_TYPES.Punctuator && /^[=?:]$/.test(token.value));
+        }
+        function checkAndReportAssignmentSpace(leftNode, rightNode) {
+            if (!rightNode || !leftNode) {
                 return;
             }
             const operator = sourceCode.getFirstTokenBetween(leftNode, rightNode, isSpaceChar);
@@ -86,7 +86,7 @@ exports.default = util.createRule({
             const next = sourceCode.getTokenAfter(operator);
             if (!sourceCode.isSpaceBetween(prev, operator) ||
                 !sourceCode.isSpaceBetween(operator, next)) {
-                report(node, operator);
+                report(operator);
             }
         }
         /**
@@ -94,24 +94,18 @@ exports.default = util.createRule({
          * @param node The node to report
          */
         function checkForEnumAssignmentSpace(node) {
-            if (!node.initializer) {
-                return;
-            }
-            const leftNode = sourceCode.getTokenByRangeStart(node.id.range[0]);
-            const rightNode = sourceCode.getTokenByRangeStart(node.initializer.range[0]);
-            checkAndReportAssignmentSpace(node, leftNode, rightNode);
+            checkAndReportAssignmentSpace(node.id, node.initializer);
         }
         /**
          * Check if it has an assignment char and report if it's faulty
          * @param node The node to report
          */
-        function checkForClassPropertyAssignmentSpace(node) {
-            var _a, _b;
-            const leftNode = sourceCode.getTokenByRangeStart((_b = (_a = node.typeAnnotation) === null || _a === void 0 ? void 0 : _a.range[0]) !== null && _b !== void 0 ? _b : node.range[0]);
-            const rightNode = node.value
-                ? sourceCode.getTokenByRangeStart(node.value.range[0])
-                : undefined;
-            checkAndReportAssignmentSpace(node, leftNode, rightNode);
+        function checkForPropertyDefinitionAssignmentSpace(node) {
+            var _a;
+            const leftNode = node.optional && !node.typeAnnotation
+                ? sourceCode.getTokenAfter(node.key)
+                : (_a = node.typeAnnotation) !== null && _a !== void 0 ? _a : node.key;
+            checkAndReportAssignmentSpace(leftNode, node.value);
         }
         /**
          * Check if it is missing spaces between type annotations chaining
@@ -120,13 +114,16 @@ exports.default = util.createRule({
         function checkForTypeAnnotationSpace(typeAnnotation) {
             const types = typeAnnotation.types;
             types.forEach(type => {
-                const operator = sourceCode.getTokenBefore(type);
+                const skipFunctionParenthesis = type.type === utils_1.TSESTree.AST_NODE_TYPES.TSFunctionType
+                    ? util.isNotOpeningParenToken
+                    : 0;
+                const operator = sourceCode.getTokenBefore(type, skipFunctionParenthesis);
                 if (operator != null && UNIONS.includes(operator.value)) {
                     const prev = sourceCode.getTokenBefore(operator);
                     const next = sourceCode.getTokenAfter(operator);
                     if (!sourceCode.isSpaceBetween(prev, operator) ||
                         !sourceCode.isSpaceBetween(operator, next)) {
-                        report(typeAnnotation, operator);
+                        report(operator);
                     }
                 }
             });
@@ -136,11 +133,14 @@ exports.default = util.createRule({
          * @param node The node to report
          */
         function checkForTypeAliasAssignment(node) {
-            const leftNode = sourceCode.getTokenByRangeStart(node.id.range[0]);
-            const rightNode = sourceCode.getTokenByRangeStart(node.typeAnnotation.range[0]);
-            checkAndReportAssignmentSpace(node, leftNode, rightNode);
+            var _a;
+            checkAndReportAssignmentSpace((_a = node.typeParameters) !== null && _a !== void 0 ? _a : node.id, node.typeAnnotation);
         }
-        return Object.assign(Object.assign({}, rules), { TSEnumMember: checkForEnumAssignmentSpace, ClassProperty: checkForClassPropertyAssignmentSpace, TSTypeAliasDeclaration: checkForTypeAliasAssignment, TSUnionType: checkForTypeAnnotationSpace, TSIntersectionType: checkForTypeAnnotationSpace });
+        function checkForTypeConditional(node) {
+            checkAndReportAssignmentSpace(node.extendsType, node.trueType);
+            checkAndReportAssignmentSpace(node.trueType, node.falseType);
+        }
+        return Object.assign(Object.assign({}, rules), { TSEnumMember: checkForEnumAssignmentSpace, PropertyDefinition: checkForPropertyDefinitionAssignmentSpace, TSTypeAliasDeclaration: checkForTypeAliasAssignment, TSUnionType: checkForTypeAnnotationSpace, TSIntersectionType: checkForTypeAnnotationSpace, TSConditionalType: checkForTypeConditional });
     },
 });
 //# sourceMappingURL=space-infix-ops.js.map

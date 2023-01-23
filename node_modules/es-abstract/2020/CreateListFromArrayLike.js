@@ -19,7 +19,7 @@ var Type = require('./Type');
 module.exports = function CreateListFromArrayLike(obj) {
 	var elementTypes = arguments.length > 1
 		? arguments[1]
-		: ['Undefined', 'Null', 'Boolean', 'String', 'Symbol', 'Number', 'Object'];
+		: ['Undefined', 'Null', 'Boolean', 'String', 'Symbol', 'Number', 'BigInt', 'Object'];
 
 	if (Type(obj) !== 'Object') {
 		throw new $TypeError('Assertion failed: `obj` must be an Object');

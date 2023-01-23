@@ -157,7 +157,7 @@ async function sendInitStatusReport(
     ...statusReport,
     tools_download_duration_ms: toolsDownloadDurationMs ? toolsDownloadDurationMs : -1, // Placeholder value in case field is undefined.
     tools_feature_flags_valid: toolsFeatureFlagsValid ? toolsFeatureFlagsValid : false, // Report invalid in case field is undefined.
-  }
+  };
 
   await sendStatusReport(downloadStatusReport);
 }
@@ -171,7 +171,7 @@ async function run() {
   let codeql: CodeQL;
   let toolsDownloadDurationMs: number | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
-  let toolsSource: ToolsSource
+  let toolsSource: ToolsSource;
   let toolsVersion: string;
 
   const apiDetails = {
@@ -214,7 +214,7 @@ async function run() {
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type
     );
-    toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid
+    toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
@@ -360,7 +360,7 @@ async function run() {
       toolsSource,
       toolsVersion,
       logger
-    )
+    );
     return;
   }
   await sendInitStatusReport("success", startedAt, config, toolsDownloadDurationMs, toolsFeatureFlagsValid, toolsSource, toolsVersion, logger);

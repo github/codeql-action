@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.2](https://github.com/inspect-js/is-negative-zero/compare/v2.0.1...v2.0.2) - 2021-12-10
+
+### Commits
+
+- [actions] reuse common workflows [`ece923d`](https://github.com/inspect-js/is-negative-zero/commit/ece923d6b50820b7832150957774047da43d1743)
+- [actions] use `node/install` instead of `node/run`; use `codecov` action [`3a26f43`](https://github.com/inspect-js/is-negative-zero/commit/3a26f435434bbfb8a254ddd32d6079bf50263121)
+- [meta] do not publish workflow files [`2cea0c2`](https://github.com/inspect-js/is-negative-zero/commit/2cea0c20c7f8b167bb6064f916f3285642bf5ab1)
+- [readme] add github actions/codecov badges; update URLs [`0c0be3e`](https://github.com/inspect-js/is-negative-zero/commit/0c0be3eb148ccf9d764e8ed515ef0e1d0ffeed9d)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `safe-publish-latest`, `tape` [`a93d16e`](https://github.com/inspect-js/is-negative-zero/commit/a93d16eddf46cad6bc9b71a92968ce758e6f4ea4)
+- [meta] create FUNDING.yml [`b4f425e`](https://github.com/inspect-js/is-negative-zero/commit/b4f425e49edb8c4aa1efa6ba34c2d5c1150b2a26)
+- [actions] update codecov uploader [`7999db3`](https://github.com/inspect-js/is-negative-zero/commit/7999db3bff3f0f9cc729529940b9077a586822e2)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `auto-changelog`, `safe-publish-latest`, `tape` [`140e4d9`](https://github.com/inspect-js/is-negative-zero/commit/140e4d95eda9ad821608c28a5f705d84a906096d)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `aud`, `tape` [`23a8b6d`](https://github.com/inspect-js/is-negative-zero/commit/23a8b6d257cea0b8a608b2319739562ecbc6ba75)
+- [readme] add actions and codecov badges [`fe92126`](https://github.com/inspect-js/is-negative-zero/commit/fe9212634346ced7a45905d958cb85d129e4c10b)
+- [readme] fix repo URLs [`50c428e`](https://github.com/inspect-js/is-negative-zero/commit/50c428e423e5861a6c231440b8b3e746cbf6230f)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `tape` [`688155f`](https://github.com/inspect-js/is-negative-zero/commit/688155ff0214da72cbafa4c438c3b9629265d82b)
+- [meta] use `prepublishOnly` script for npm 7+ [`83171f9`](https://github.com/inspect-js/is-negative-zero/commit/83171f9131aed266f475d7a3283d9c2fc77e1436)
+- [actions] update workflows [`e9823db`](https://github.com/inspect-js/is-negative-zero/commit/e9823db3054887d8bb5b3f2c8f698b93cdce7d82)
+
 ## [v2.0.1](https://github.com/inspect-js/is-negative-zero/compare/v2.0.0...v2.0.1) - 2020-12-04
 
 ### Commits

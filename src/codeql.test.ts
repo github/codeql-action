@@ -248,6 +248,10 @@ const EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES = [
     cliVersion: "2.10.0-pre",
     expectedToolcacheVersion: "0.0.0-20200610",
   },
+  {
+    cliVersion: "2.10.0+202006100101",
+    expectedToolcacheVersion: "0.0.0-20200610",
+  },
 ];
 
 for (const {
@@ -646,13 +650,13 @@ const injectedConfigMacro = test.macro({
         getRunnerLogger(true)
       );
 
-      const args = runnerConstructorStub.firstCall.args[1];
+      const args = runnerConstructorStub.firstCall.args[1] as string[];
       // should have used an config file
       const configArg = args.find((arg: string) =>
         arg.startsWith("--codescanning-config=")
       );
       t.truthy(configArg, "Should have injected a codescanning config");
-      const configFile = configArg.split("=")[1];
+      const configFile = configArg!.split("=")[1];
       const augmentedConfig = yaml.load(fs.readFileSync(configFile, "utf8"));
       t.deepEqual(augmentedConfig, expectedConfig);
 

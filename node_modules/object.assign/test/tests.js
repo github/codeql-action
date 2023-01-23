@@ -3,6 +3,7 @@
 var hasSymbols = require('has-symbols/shams')();
 var forEach = require('for-each');
 var has = require('has');
+var mockProperty = require('mock-property');
 
 module.exports = function (assign, t) {
 	t.test('error cases', function (st) {
@@ -160,11 +161,7 @@ module.exports = function (assign, t) {
 	});
 
 	t.test('does not fail when symbols are not present', { skip: !Object.isFrozen || Object.isFrozen(Object) }, function (st) {
-		var getSyms;
-		if (hasSymbols) {
-			getSyms = Object.getOwnPropertySymbols;
-			delete Object.getOwnPropertySymbols;
-		}
+		st.teardown(mockProperty(Object, 'getOwnPropertySymbols', { 'delete': true }));
 
 		var visited = [];
 		var obj = {};
@@ -184,8 +181,6 @@ module.exports = function (assign, t) {
 
 		if (hasSymbols) {
 			st.equal(target[symbol], Infinity);
-
-			Object.getOwnPropertySymbols = getSyms;
 		}
 		st.end();
 	});

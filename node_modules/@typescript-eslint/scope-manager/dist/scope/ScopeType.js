@@ -6,6 +6,8 @@ var ScopeType;
     ScopeType["block"] = "block";
     ScopeType["catch"] = "catch";
     ScopeType["class"] = "class";
+    ScopeType["classFieldInitializer"] = "class-field-initializer";
+    ScopeType["classStaticBlock"] = "class-static-block";
     ScopeType["conditionalType"] = "conditionalType";
     ScopeType["for"] = "for";
     ScopeType["function"] = "function";

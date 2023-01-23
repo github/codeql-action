@@ -36,7 +36,9 @@ export async function uploadDebugArtifacts(
   const matrix = getRequiredInput("matrix");
   if (matrix) {
     try {
-      for (const [, matrixVal] of Object.entries(JSON.parse(matrix)).sort())
+      for (const [, matrixVal] of Object.entries(
+        JSON.parse(matrix) as any[][]
+      ).sort())
         suffix += `-${matrixVal}`;
     } catch (e) {
       core.info(
@@ -163,7 +165,7 @@ export async function uploadDatabaseBundleDebugArtifact(
 ) {
   for (const language of config.languages) {
     try {
-      let databaseBundlePath;
+      let databaseBundlePath: string;
       if (!dbIsFinalized(config, language, logger)) {
         databaseBundlePath = await createPartialDatabaseBundle(
           config,

@@ -8,7 +8,7 @@ var $parseInt = GetIntrinsic('%parseInt%');
 
 var inspect = require('object-inspect');
 
-var regexTester = require('../helpers/regexTester');
+var regexTester = require('safe-regex-test');
 var callBound = require('call-bind/callBound');
 var every = require('../helpers/every');
 

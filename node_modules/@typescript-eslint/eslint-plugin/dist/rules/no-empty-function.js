@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -18,16 +22,16 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
-const no_empty_function_1 = __importDefault(require("eslint/lib/rules/no-empty-function"));
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
-const schema = util.deepMerge(Array.isArray(no_empty_function_1.default.meta.schema)
-    ? no_empty_function_1.default.meta.schema[0]
-    : no_empty_function_1.default.meta.schema, {
+const getESLintCoreRule_1 = require("../util/getESLintCoreRule");
+const baseRule = (0, getESLintCoreRule_1.getESLintCoreRule)('no-empty-function');
+const schema = util.deepMerge(
+// eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- https://github.com/microsoft/TypeScript/issues/17002
+Array.isArray(baseRule.meta.schema)
+    ? baseRule.meta.schema[0]
+    : baseRule.meta.schema, {
     properties: {
         allow: {
             items: {
@@ -45,6 +49,7 @@ const schema = util.deepMerge(Array.isArray(no_empty_function_1.default.meta.sch
                     'asyncFunctions',
                     'asyncMethods',
                     'decoratedFunctions',
+                    'overrideMethods',
                 ],
             },
         },
@@ -56,12 +61,12 @@ exports.default = util.createRule({
         type: 'suggestion',
         docs: {
             description: 'Disallow empty functions',
-            category: 'Best Practices',
             recommended: 'error',
             extendsBaseRule: true,
         },
+        hasSuggestions: baseRule.meta.hasSuggestions,
         schema: [schema],
-        messages: no_empty_function_1.default.meta.messages,
+        messages: baseRule.meta.messages,
     },
     defaultOptions: [
         {
@@ -69,10 +74,11 @@ exports.default = util.createRule({
         },
     ],
     create(context, [{ allow = [] }]) {
-        const rules = no_empty_function_1.default.create(context);
+        const rules = baseRule.create(context);
         const isAllowedProtectedConstructors = allow.includes('protected-constructors');
         const isAllowedPrivateConstructors = allow.includes('private-constructors');
         const isAllowedDecoratedFunctions = allow.includes('decoratedFunctions');
+        const isAllowedOverrideMethods = allow.includes('overrideMethods');
         /**
          * Check if the method body is empty
          * @param node the node to be validated
@@ -90,7 +96,7 @@ exports.default = util.createRule({
          */
         function hasParameterProperties(node) {
             var _a;
-            return (_a = node.params) === null || _a === void 0 ? void 0 : _a.some(param => param.type === experimental_utils_1.AST_NODE_TYPES.TSParameterProperty);
+            return (_a = node.params) === null || _a === void 0 ? void 0 : _a.some(param => param.type === utils_1.AST_NODE_TYPES.TSParameterProperty);
         }
         /**
          * @param node the node to be validated
@@ -100,7 +106,7 @@ exports.default = util.createRule({
         function isAllowedEmptyConstructor(node) {
             const parent = node.parent;
             if (isBodyEmpty(node) &&
-                (parent === null || parent === void 0 ? void 0 : parent.type) === experimental_utils_1.AST_NODE_TYPES.MethodDefinition &&
+                (parent === null || parent === void 0 ? void 0 : parent.type) === utils_1.AST_NODE_TYPES.MethodDefinition &&
                 parent.kind === 'constructor') {
                 const { accessibility } = parent;
                 return (
@@ -121,16 +127,24 @@ exports.default = util.createRule({
         function isAllowedEmptyDecoratedFunctions(node) {
             var _a;
             if (isAllowedDecoratedFunctions && isBodyEmpty(node)) {
-                const decorators = ((_a = node.parent) === null || _a === void 0 ? void 0 : _a.type) === experimental_utils_1.AST_NODE_TYPES.MethodDefinition
+                const decorators = ((_a = node.parent) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.MethodDefinition
                     ? node.parent.decorators
                     : undefined;
                 return !!decorators && !!decorators.length;
             }
             return false;
         }
+        function isAllowedEmptyOverrideMethod(node) {
+            var _a;
+            return (isAllowedOverrideMethods &&
+                isBodyEmpty(node) &&
+                ((_a = node.parent) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.MethodDefinition &&
+                node.parent.override === true);
+        }
         return Object.assign(Object.assign({}, rules), { FunctionExpression(node) {
                 if (isAllowedEmptyConstructor(node) ||
-                    isAllowedEmptyDecoratedFunctions(node)) {
+                    isAllowedEmptyDecoratedFunctions(node) ||
+                    isAllowedEmptyOverrideMethod(node)) {
                     return;
                 }
                 rules.FunctionExpression(node);

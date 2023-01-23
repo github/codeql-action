@@ -1,11 +1,18 @@
 # import/newline-after-import
 
+🔧 This rule is automatically fixable by the [`--fix` CLI option](https://eslint.org/docs/latest/user-guide/command-line-interface#--fix).
+
+<!-- end auto-generated rule header -->
+
 Enforces having one or more empty lines after the last top-level import statement or require call.
 +(fixable) The `--fix` option on the [command line] automatically fixes problems reported by this rule.
 
 ## Rule Details
 
-This rule has one option, `count` which sets the number of newlines that are enforced after the last top-level import statement or require call. This option defaults to `1`.
+This rule supports the following options: 
+- `count` which sets the number of newlines that are enforced after the last top-level import statement or require call. This option defaults to `1`.
+
+- `considerComments` which enforces the rule on comments after the last import-statement as well when set to true. This option defaults to `false`.
 
 Valid:
 
@@ -71,6 +78,30 @@ import defaultExport from './foo'
 const FOO = 'BAR'
 ```
 
+With `considerComments` set to `false` this will be considered valid:
+
+```js
+import defaultExport from './foo'
+// some comment here.
+const FOO = 'BAR'
+```
+
+With `considerComments` set to `true` this will be considered valid:
+
+```js
+import defaultExport from './foo'
+
+// some comment here.
+const FOO = 'BAR'
+```
+
+With `considerComments` set to `true` this will be considered invalid:
+
+```js
+import defaultExport from './foo'
+// some comment here.
+const FOO = 'BAR'
+```
 
 ## Example options usage
 ```json

@@ -12,7 +12,6 @@ try {
 }
 const getRuleURI = require('eslint-rule-documentation')
 
-// eslint-disable-next-line eslint-plugin/prefer-object-rule
 module.exports = function (results) {
   let output = '\n'
   let errors = 0

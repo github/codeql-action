@@ -552,7 +552,9 @@ export async function bundleDb(
 }
 
 export async function delay(milliseconds: number) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+  // Immediately `unref` the timer such that it only prevents the process from exiting if the
+  // surrounding promise is being awaited.
+  return new Promise((resolve) => setTimeout(resolve, milliseconds).unref());
 }
 
 export function isGoodVersion(versionSpec: string) {
@@ -625,24 +627,6 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
       return "false";
     default:
       return "other";
-  }
-}
-
-/**
- * Prompt the customer to upgrade to CodeQL Action v2, if appropriate.
- *
- * Check whether a customer is running v1. If they are, and we can determine that the GitHub
- * instance supports v2, then log an error that v1 is deprecated and prompt the customer to
- * upgrade to v2.
- */
-export async function checkActionVersion(version: string) {
-  if (!semver.satisfies(version, ">=2")) {
-    core.error(
-      "This version of the CodeQL Action was deprecated on January 18th, 2023, and is no longer " +
-        "updated or supported. For better performance, improved security, and new features, " +
-        "upgrade to v2. For more information, see " +
-        "https://github.blog/changelog/2023-01-18-code-scanning-codeql-action-v1-is-now-deprecated/"
-    );
   }
 }
 
@@ -766,21 +750,19 @@ export async function withTimeout<T>(
     finished = true;
     return result;
   };
-  const timeout: Promise<undefined> = new Promise((resolve) => {
-    setTimeout(() => {
-      if (!finished) {
-        // Workaround: While the promise racing below will allow the main code
-        // to continue, the process won't normally exit until the asynchronous
-        // task in the background has finished. We set this variable to force
-        // an exit at the end of our code when `checkForTimeout` is called.
-        hadTimeout = true;
-        onTimeout();
-      }
-      resolve(undefined);
-    }, timeoutMs);
-  });
-
-  return await Promise.race([mainTask(), timeout]);
+  const timeoutTask = async () => {
+    await delay(timeoutMs);
+    if (!finished) {
+      // Workaround: While the promise racing below will allow the main code
+      // to continue, the process won't normally exit until the asynchronous
+      // task in the background has finished. We set this variable to force
+      // an exit at the end of our code when `checkForTimeout` is called.
+      hadTimeout = true;
+      onTimeout();
+    }
+    return undefined;
+  };
+  return await Promise.race([mainTask(), timeoutTask()]);
 }
 
 /**

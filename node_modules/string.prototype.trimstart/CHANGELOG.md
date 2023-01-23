@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.6](https://github.com/es-shims/String.prototype.trimStart/compare/v1.0.5...v1.0.6) - 2022-11-07
+
+### Commits
+
+- [meta] use `npmignore` to autogenerate an npmignore file [`0838ae4`](https://github.com/es-shims/String.prototype.trimStart/commit/0838ae4ed948df470185afbeea4296f5c5ecd759)
+- [actions] update rebase action to use reusable workflow [`d6bb784`](https://github.com/es-shims/String.prototype.trimStart/commit/d6bb78400a00459e9ab0b28f433c45804a65184d)
+- [Dev Deps] update `aud`, `tape` [`8734d9a`](https://github.com/es-shims/String.prototype.trimStart/commit/8734d9a616c6aca9ec7f0c8819e66c2496deb32e)
+- [Deps] update `es-abstract` [`30f593f`](https://github.com/es-shims/String.prototype.trimStart/commit/30f593f3febf6d8d9b3d5605174b437fed9cbb3a)
+
+## [v1.0.5](https://github.com/es-shims/String.prototype.trimStart/compare/v1.0.4...v1.0.5) - 2022-05-02
+
+### Commits
+
+- [actions] reuse common workflows [`61d4009`](https://github.com/es-shims/String.prototype.trimStart/commit/61d40098a96b3dcc6cf963c9d03dd1b23b6eb13d)
+- [actions] use `node/install` instead of `node/run`; use `codecov` action [`bfe39c4`](https://github.com/es-shims/String.prototype.trimStart/commit/bfe39c498e26a4ad75c64cce27ff3df9bfef2cc1)
+- [Fix] ensure main entry point properly checks the receiver in ES3 engines [`36e3730`](https://github.com/es-shims/String.prototype.trimStart/commit/36e37307bb06fb5dc34d861a4bf6f7db931340d9)
+- [Fix] as of unicode v6, the mongolian vowel separator is no longer whitespace [`4f77eed`](https://github.com/es-shims/String.prototype.trimStart/commit/4f77eed5aa64e6f781310847d7831563fce90f5c)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `@es-shims/api`, `safe-publish-latest`, `tape` [`59fcb99`](https://github.com/es-shims/String.prototype.trimStart/commit/59fcb995ef8d4723a83e28d46dbe41a14253b681)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `aud`, `auto-changelog`, `functions-have-names`, `tape` [`486ffcf`](https://github.com/es-shims/String.prototype.trimStart/commit/486ffcfa93c75516601169a3973b81fdfeb7de8b)
+- [actions] update codecov uploader [`b33ac48`](https://github.com/es-shims/String.prototype.trimStart/commit/b33ac48ccc86f6b894d8fde5162bd1c806904972)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `@es-shims/api`, `aud`, `auto-changelog`, `tape` [`3c89fa5`](https://github.com/es-shims/String.prototype.trimStart/commit/3c89fa571d1c4b8894230d93caaf3b3d9885534d)
+- [readme] add github actions/codecov badges [`00be6b3`](https://github.com/es-shims/String.prototype.trimStart/commit/00be6b34fdd989950b934b4471087362b78d4b0c)
+- [Dev Deps] update `eslint`, `tape` [`13a08f5`](https://github.com/es-shims/String.prototype.trimStart/commit/13a08f578c53cf5f129fb6ebe486e8bbcc40c14e)
+- [actions] update workflows [`6ac576d`](https://github.com/es-shims/String.prototype.trimStart/commit/6ac576dde99f73d19492777efed29ec069e89bf1)
+- [meta] use `prepublishOnly` script for npm 7+ [`fa382ca`](https://github.com/es-shims/String.prototype.trimStart/commit/fa382caa5c8e9a868572605ce215a3db1dc9ef21)
+- [Deps] update `define-properties` [`d57bffe`](https://github.com/es-shims/String.prototype.trimStart/commit/d57bffef7d89384c8888627c5ee33b80e24d54e0)
+
 ## [v1.0.4](https://github.com/es-shims/String.prototype.trimStart/compare/v1.0.3...v1.0.4) - 2021-02-23
 
 ### Commits

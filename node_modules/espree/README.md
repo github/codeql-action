@@ -1,6 +1,6 @@
 [![npm version](https://img.shields.io/npm/v/espree.svg)](https://www.npmjs.com/package/espree)
-[![Build Status](https://travis-ci.org/eslint/espree.svg?branch=master)](https://travis-ci.org/eslint/espree)
 [![npm downloads](https://img.shields.io/npm/dm/espree.svg)](https://www.npmjs.com/package/espree)
+[![Build Status](https://github.com/eslint/espree/workflows/CI/badge.svg)](https://github.com/eslint/espree/actions)
 [![Bountysource](https://www.bountysource.com/badge/tracker?tracker_id=9348450)](https://www.bountysource.com/trackers/9348450-eslint?utm_source=9348450&utm_medium=shield&utm_campaign=TRACKER_BADGE)
 
 # Espree
@@ -15,9 +15,17 @@ Install:
 npm i espree
 ```
 
-And in your Node.js code:
+To use in an ESM file:
 
-```javascript
+```js
+import * as espree from "espree";
+
+const ast = espree.parse(code);
+```
+
+To use in a Common JS file:
+
+```js
 const espree = require("espree");
 
 const ast = espree.parse(code);
@@ -29,13 +37,13 @@ const ast = espree.parse(code);
 
 `parse` parses the given code and returns a abstract syntax tree (AST). It takes two parameters.
 
-- `code` [string]() - the code which needs to be parsed. 
+- `code` [string]() - the code which needs to be parsed.
 - `options (Optional)` [Object]() - read more about this [here](#options).
 
-```javascript
-const espree = require("espree");
+```js
+import * as espree from "espree";
 
-const ast = espree.parse(code, options);
+const ast = espree.parse(code);
 ```
 
 **Example :**
@@ -73,7 +81,7 @@ Node {
 
 `tokenize` returns the tokens of a given code. It takes two parameters.
 
-- `code` [string]() - the code which needs to be parsed. 
+- `code` [string]() - the code which needs to be parsed.
 - `options (Optional)` [Object]() - read more about this [here](#options).
 
 Even if `options` is empty or undefined or `options.tokens` is `false`, it assigns it to `true` in order to get the `tokens` array
@@ -81,6 +89,8 @@ Even if `options` is empty or undefined or `options.tokens` is `false`, it assig
 **Example :**
 
 ```js
+import * as espree from "espree";
+
 const tokens = espree.tokenize('let foo = "bar"', { ecmaVersion: 6 });
 console.log(tokens);
 ```
@@ -114,7 +124,7 @@ Returns the latest ECMAScript supported by `espree`
 
 Returns an array of all supported ECMAScript versions
 
-## Options 
+## Options
 
 ```js
 const options = {
@@ -130,11 +140,14 @@ const options = {
     // create a top-level tokens array containing all tokens
     tokens: false,
 
-    // Set to 3, 5 (default), 6, 7, 8, 9, 10, 11, or 12 to specify the version of ECMAScript syntax you want to use.
-    // You can also set to 2015 (same as 6), 2016 (same as 7), 2017 (same as 8), 2018 (same as 9), 2019 (same as 10), 2020 (same as 11), or 2021 (same as 12) to use the year-based naming.
-    ecmaVersion: 5,
+    // Set to 3, 5 (the default), 6, 7, 8, 9, 10, 11, 12, 13 or 14 to specify the version of ECMAScript syntax you want to use.
+    // You can also set to 2015 (same as 6), 2016 (same as 7), 2017 (same as 8), 2018 (same as 9), 2019 (same as 10), 2020 (same as 11), 2021 (same as 12), 2022 (same as 13) or 2023 (same as 14) to use the year-based naming.
+    // You can also set "latest" to use the most recently supported version.
+    ecmaVersion: 3,
 
-    // specify which type of script you're parsing ("script" or "module")
+    allowReserved: true, // only allowed when ecmaVersion is 3
+
+    // specify which type of script you're parsing ("script", "module", or "commonjs")
     sourceType: "script",
 
     // specify additional language features
@@ -143,7 +156,7 @@ const options = {
         // enable JSX parsing
         jsx: false,
 
-        // enable return in global scope
+        // enable return in global scope (set to true automatically when sourceType is "commonjs")
         globalReturn: false,
 
         // enable implied strict mode (if ecmaVersion >= 5)
@@ -172,7 +185,6 @@ We work hard to ensure that Espree is safe for everyone and that security issues
 
 * `npm test` - run all linting and tests
 * `npm run lint` - run all linting
-* `npm run browserify` - creates a version of Espree that is usable in a browser
 
 ## Differences from Espree 2.x
 
@@ -219,12 +231,11 @@ We are building on top of Acorn, however, so that we can contribute back and hel
 
 ### What ECMAScript features do you support?
 
-Espree supports all ECMAScript 2020 features and partially supports ECMAScript 2021 features.
+Espree supports all ECMAScript 2022 features and partially supports ECMAScript 2023 features.
 
-Because ECMAScript 2021 is still under development, we are implementing features as they are finalized. Currently, Espree supports:
+Because ECMAScript 2023 is still under development, we are implementing features as they are finalized. Currently, Espree supports:
 
-* [Logical Assignment Operators](https://github.com/tc39/proposal-logical-assignment)
-* [Numeric Separators](https://github.com/tc39/proposal-numeric-separator)
+* [Hashbang grammar](https://github.com/tc39/proposal-hashbang)
 
 See [finished-proposals.md](https://github.com/tc39/proposals/blob/master/finished-proposals.md) to know what features are finalized.
 

@@ -47,7 +47,7 @@ import {
 import { validateWorkflow } from "./workflow";
 
 // Fields of the init status report that can be sent before `config` is populated.
-interface InitBaseStatusReport extends StatusReportBase {
+interface InitStatusReport extends StatusReportBase {
   /** Value given by the user as the "tools" input. */
   tools_input: string;
   /** Version of the bundle used. */
@@ -59,7 +59,7 @@ interface InitBaseStatusReport extends StatusReportBase {
 }
 
 // Fields of the init status report that are populated using values from `config`.
-interface InitStatusReport extends InitBaseStatusReport {
+interface InitWithConfigStatusReport extends InitStatusReport {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
   /**
@@ -82,15 +82,8 @@ interface InitStatusReport extends InitBaseStatusReport {
   trap_cache_download_duration_ms: number;
 }
 
-interface InitBaseToolsDownloadStatusReport extends InitBaseStatusReport {
-  /** Time taken to download the bundle, in milliseconds. */
-  tools_download_duration_ms: number;
-  /** Whether the relevant tools dotcom feature flags have been misconfigured. Only sent if we attempt to download based off dotcom flags. */
-  tools_feature_flags_valid: boolean;
-}
-
-// Additional fields that are only present if CodeQL bundle was downloaded.
-interface InitToolsDownloadStatusReport extends InitStatusReport {
+// Fields that we only send to the status report if the tools source was download.
+interface InitToolsDownloadFields {
   /** Time taken to download the bundle, in milliseconds. */
   tools_download_duration_ms: number;
   /** Whether the relevant tools dotcom feature flags have been misconfigured. Only sent if we attempt to download based off dotcom flags. */
@@ -115,13 +108,29 @@ async function sendInitStatusReport(
 
   const workflowLanguages = getOptionalInput("languages");
 
-  const initBaseStatusReport: InitBaseStatusReport = {
+  const initStatusReport: InitStatusReport = {
     ...statusReportBase,
     tools_input: getOptionalInput("tools") || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: workflowLanguages || "",
   };
+
+  let initToolsDownloadFields: InitToolsDownloadFields = {
+    tools_download_duration_ms: -1, // Placeholder value in case field is undefined.
+    tools_feature_flags_valid: false, // Report invalid in case field is undefined.
+  };
+
+  if (toolsSource === ToolsSource.Download) {
+    initToolsDownloadFields = {
+      tools_download_duration_ms: toolsDownloadDurationMs
+        ? toolsDownloadDurationMs
+        : -1,
+      tools_feature_flags_valid: toolsFeatureFlagsValid
+        ? toolsFeatureFlagsValid
+        : false,
+    };
+  }
 
   if (config !== undefined) {
     const languages = config.languages.join(",");
@@ -150,8 +159,8 @@ async function sendInitStatusReport(
     }
 
     // Append fields that are dependent on `config`
-    const statusReportWithConfig: InitStatusReport = {
-      ...initBaseStatusReport,
+    const initWithConfigStatusReport: InitWithConfigStatusReport = {
+      ...initStatusReport,
       disable_default_queries: disableDefaultQueries,
       languages,
       ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
@@ -164,39 +173,12 @@ async function sendInitStatusReport(
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
     };
-
-    if (toolsSource !== ToolsSource.Download) {
-      await sendStatusReport(statusReportWithConfig);
-      return;
-    }
-
-    // Otherwise, we should append the extra two download-related telemetry fields.
-    const toolsDownloadStatusReport: InitToolsDownloadStatusReport = {
-      ...statusReportWithConfig,
-      tools_download_duration_ms: toolsDownloadDurationMs
-        ? toolsDownloadDurationMs
-        : -1, // Placeholder value in case field is undefined.
-      tools_feature_flags_valid: toolsFeatureFlagsValid
-        ? toolsFeatureFlagsValid
-        : false, // Report invalid in case field is undefined.
-    };
-    await sendStatusReport(toolsDownloadStatusReport);
-    return;
+    await sendStatusReport({
+      ...initWithConfigStatusReport,
+      ...initToolsDownloadFields,
+    });
   } else {
-    if (toolsSource === ToolsSource.Download) {
-      const toolsDownloadStatusReport: InitBaseToolsDownloadStatusReport = {
-        ...initBaseStatusReport,
-        tools_download_duration_ms: toolsDownloadDurationMs
-          ? toolsDownloadDurationMs
-          : -1, // Placeholder value in case field is undefined.
-        tools_feature_flags_valid: toolsFeatureFlagsValid
-          ? toolsFeatureFlagsValid
-          : false, // Report invalid in case field is undefined.
-      };
-      await sendStatusReport(toolsDownloadStatusReport);
-      return;
-    }
-    await sendStatusReport(initBaseStatusReport);
+    await sendStatusReport({ ...initStatusReport, ...initToolsDownloadFields });
   }
 }
 

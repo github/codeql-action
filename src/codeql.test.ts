@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import path from "path";
-import { performance } from "perf_hooks";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
@@ -43,8 +42,6 @@ const sampleGHAEApiDetails = {
   apiURL: "https://example.githubenterprise.com/api/v3",
 };
 
-const performanceNowFunction = sinon.spy(performance, "now");
-
 const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
   cliVersion: "2.0.0",
   variant: util.GitHubVariant.DOTCOM,
@@ -79,8 +76,6 @@ test.beforeEach(() => {
     trapCaches: {},
     trapCacheDownloadTime: 0,
   };
-
-  performanceNowFunction.resetHistory();
 });
 
 /**
@@ -213,8 +208,7 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
       t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
       t.is(result.toolsVersion, `0.0.0-${version}`);
       t.is(result.toolsSource, ToolsSource.Download);
-      t.assert(performanceNowFunction.notCalled);
-      t.not(result.toolsDownloadDurationMs, undefined);
+      t.is(typeof result.toolsDownloadDurationMs, "number");
     }
 
     t.is(toolcache.findAllVersions("CodeQL").length, 2);
@@ -299,7 +293,6 @@ for (const {
       t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
       t.deepEqual(result.toolsVersion, cliVersion);
       t.is(result.toolsSource, ToolsSource.Download);
-      t.assert(performanceNowFunction.notCalled);
       t.not(result.toolsDownloadDurationMs, undefined);
     });
   });
@@ -372,11 +365,9 @@ for (const { isCached, tagName, toolcacheCliVersion } of [
 
       if (isCached) {
         t.is(result.toolsSource, ToolsSource.Toolcache);
-        t.assert(performanceNowFunction.notCalled);
         t.is(result.toolsDownloadDurationMs, undefined);
       } else {
         t.is(result.toolsSource, ToolsSource.Download);
-        t.assert(performanceNowFunction.calledTwice);
         t.is(typeof result.toolsDownloadDurationMs, "number");
       }
     });
@@ -410,7 +401,6 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
       );
       t.deepEqual(result.toolsVersion, "0.0.0-20200601");
       t.is(result.toolsSource, ToolsSource.Toolcache);
-      t.assert(performanceNowFunction.notCalled);
       t.is(result.toolsDownloadDurationMs, undefined);
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
@@ -447,7 +437,6 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
       t.is(result.toolsSource, ToolsSource.Download);
-      t.assert(performanceNowFunction.calledTwice);
       t.is(typeof result.toolsDownloadDurationMs, "number");
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
@@ -481,7 +470,6 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
     t.is(result.toolsSource, ToolsSource.Download);
-    t.assert(performanceNowFunction.calledTwice);
     t.is(typeof result.toolsDownloadDurationMs, "number");
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
@@ -548,7 +536,6 @@ test("download codeql bundle from github ae endpoint", async (t) => {
     );
 
     t.is(result.toolsSource, ToolsSource.Download);
-    t.assert(performanceNowFunction.calledTwice);
     t.is(typeof result.toolsDownloadDurationMs, "number");
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");

@@ -85,15 +85,15 @@ interface InitWithConfigStatusReport extends InitStatusReport {
 /** Fields of the init status report populated when the tools source is `download`. */
 interface InitToolsDownloadFields {
   /** Time taken to download the bundle, in milliseconds. */
-  tools_download_duration_ms: number;
+  tools_download_duration_ms?: number;
   /** Whether the relevant tools dotcom feature flags have been misconfigured. Only populated if we attempt to determine the default version based on the dotcom feature flags. */
-  tools_feature_flags_valid: boolean;
+  tools_feature_flags_valid?: boolean;
 }
 
 async function sendInitStatusReport(
   actionStatus: ActionStatus,
   startedAt: Date,
-  config: configUtils.Config,
+  config: configUtils.Config | undefined,
   toolsDownloadDurationMs: number | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
@@ -116,19 +116,12 @@ async function sendInitStatusReport(
     workflow_languages: workflowLanguages || "",
   };
 
-  let initToolsDownloadFields: InitToolsDownloadFields = {
-    tools_download_duration_ms: -1, // Placeholder value in case field is undefined.
-    tools_feature_flags_valid: false, // Report invalid in case field is undefined.
-  };
+  let initToolsDownloadFields: InitToolsDownloadFields = {};
 
   if (toolsSource === ToolsSource.Download) {
     initToolsDownloadFields = {
-      tools_download_duration_ms: toolsDownloadDurationMs
-        ? toolsDownloadDurationMs
-        : -1,
-      tools_feature_flags_valid: toolsFeatureFlagsValid
-        ? toolsFeatureFlagsValid
-        : false,
+      tools_download_duration_ms: toolsDownloadDurationMs,
+      tools_feature_flags_valid: toolsFeatureFlagsValid,
     };
   }
 

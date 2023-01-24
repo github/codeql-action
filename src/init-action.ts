@@ -82,11 +82,11 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   trap_cache_download_duration_ms: number;
 }
 
-// Fields that we only send to the status report if the tools source was download.
+/** Fields of the init status report populated when the tools source is `download`. */
 interface InitToolsDownloadFields {
   /** Time taken to download the bundle, in milliseconds. */
   tools_download_duration_ms: number;
-  /** Whether the relevant tools dotcom feature flags have been misconfigured. Only sent if we attempt to download based off dotcom flags. */
+  /** Whether the relevant tools dotcom feature flags have been misconfigured. Only populated if we attempt to determine the default version based on the dotcom feature flags. */
   tools_feature_flags_valid: boolean;
 }
 

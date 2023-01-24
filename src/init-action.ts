@@ -46,7 +46,7 @@ import {
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
-// Fields of the init status report that can be sent before `config` is populated.
+/** Fields of the init status report that can be sent before `config` is populated. */
 interface InitStatusReport extends StatusReportBase {
   /** Value given by the user as the "tools" input. */
   tools_input: string;
@@ -58,7 +58,7 @@ interface InitStatusReport extends StatusReportBase {
   workflow_languages: string;
 }
 
-// Fields of the init status report that are populated using values from `config`.
+/** Fields of the init status report that are populated using values from `config`. */
 interface InitWithConfigStatusReport extends InitStatusReport {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;

@@ -7,10 +7,9 @@ if [ ! -z "$(git status --porcelain)" ]; then
     >&2 echo "Failed: Repo should be clean before testing!"
     exit 1
 fi
-# Pin npm to v8 since v9 doesn't support Node 12.
 # When updating this, make sure to update the npm version in
 # `.github/workflows/update-dependencies.yml` too.
-sudo npm install --force -g npm@^8.19.3
+sudo npm install --force -g npm@9.2.0
 # Reinstall modules and then clean to remove absolute paths
 # Use 'npm ci' instead of 'npm install' as this is intended to be reproducible
 npm ci

@@ -2,9 +2,11 @@ name: "Prepare test"
 description: Performs some preparation to run tests
 inputs:
   version:
+    description: "The version of the CodeQL CLI to use. Can be 'latest', 'cached', 'nightly-latest', 'nightly-YYYY-MM-DD', or 'stable-YYYY-MM-DD'."
     required: true
 outputs:
   tools-url:
+    description: "The value that should be passed as the 'tools' input of the 'init' step."
     value: ${{ steps.get-url.outputs.tools-url }}
 runs:
   using: composite
@@ -20,6 +22,7 @@ runs:
       name: Determine URL
       shell: bash
       run: |
+        set -e # Fail this Action if `gh release list` fails.
         if [[ ${{ inputs.version }} == "nightly-latest" ]]; then
           export LATEST=`gh release list --repo dsp-testing/codeql-cli-nightlies -L 1 | cut -f 3`
           echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$LATEST/codeql-bundle.tar.gz" >> $GITHUB_OUTPUT
@@ -34,5 +37,6 @@ runs:
         elif [[ ${{ inputs.version }} == "cached" ]]; then
           echo "tools-url=" >> $GITHUB_OUTPUT
         else
-          echo "::error Unrecognized version specified!"
+          echo "::error::Unrecognized version specified!"
+          exit 1
         fi

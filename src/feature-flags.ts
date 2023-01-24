@@ -17,20 +17,21 @@ const MINIMUM_ENABLED_CODEQL_VERSION = "2.11.6";
 export type CodeQLDefaultVersionInfo =
   | {
       cliVersion: string;
+      toolsFeatureFlagsValid?: boolean;
       variant: util.GitHubVariant.DOTCOM;
     }
   | {
       cliVersion: string;
       tagName: string;
+      toolsFeatureFlagsValid?: boolean;
       variant: util.GitHubVariant.GHAE | util.GitHubVariant.GHES;
     };
 
 export interface FeatureEnablement {
   /** Gets the default version of the CodeQL tools. */
-  getDefaultCliVersion(variant: util.GitHubVariant): Promise<{
-    codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo;
-    toolsFeatureFlagsValid?: boolean;
-  }>;
+  getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo>;
   getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
 }
 
@@ -114,10 +115,9 @@ export class Features implements FeatureEnablement {
     );
   }
 
-  async getDefaultCliVersion(variant: util.GitHubVariant): Promise<{
-    codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo;
-    toolsFeatureFlagsValid?: boolean;
-  }> {
+  async getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo> {
     return await this.gitHubFeatureFlags.getDefaultCliVersion(variant);
   }
 
@@ -206,26 +206,21 @@ class GitHubFeatureFlags implements FeatureEnablement {
     return version;
   }
 
-  async getDefaultCliVersion(variant: util.GitHubVariant): Promise<{
-    codeQLDefaultVersionInfo: CodeQLDefaultVersionInfo;
-    toolsFeatureFlagsValid?: boolean;
-  }> {
+  async getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo> {
     if (variant === util.GitHubVariant.DOTCOM) {
       const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
       return {
-        codeQLDefaultVersionInfo: {
-          cliVersion: defaultDotComCliVersion.version,
-          variant,
-        },
+        cliVersion: defaultDotComCliVersion.version,
         toolsFeatureFlagsValid: defaultDotComCliVersion.toolsFeatureFlagsValid,
+        variant,
       };
     }
     return {
-      codeQLDefaultVersionInfo: {
-        cliVersion: defaults.cliVersion,
-        tagName: defaults.bundleVersion,
-        variant,
-      },
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
+      variant,
     };
   }
 

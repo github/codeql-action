@@ -247,7 +247,7 @@ async function run() {
         repositoryNwo,
         logger
       ),
-      codeQLDefaultVersionInfo.codeQLDefaultVersionInfo,
+      codeQLDefaultVersionInfo,
       logger
     );
     codeql = initCodeQLResult.codeql;

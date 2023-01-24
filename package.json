@@ -30,7 +30,7 @@
     "@actions/tool-cache": "^2.0.1",
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^4.0.4",
-    "@octokit/types": "^8.0.0",
+    "@octokit/types": "^9.0.0",
     "@schemastore/package": "^0.0.6",
     "@types/uuid": "^9.0.0",
     "adm-zip": "^0.5.9",

@@ -12,7 +12,6 @@ import * as util from "./util";
 
 const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
 const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
-const MINIMUM_ENABLED_CODEQL_VERSION = "2.11.6";
 
 export type CodeQLDefaultVersionInfo =
   | {
@@ -237,12 +236,22 @@ class GitHubFeatureFlags implements FeatureEnablement {
       .map((f) => f as string);
 
     if (enabledFeatureFlagCliVersions.length === 0) {
-      this.logger.debug(
-        "Feature flags do not specify a default CLI version. Falling back to CLI version " +
-          `${MINIMUM_ENABLED_CODEQL_VERSION}.`
+      // We expect at least one default CLI version to be enabled on Dotcom at any time. However if
+      // the feature flags are misconfigured, rather than crashing, we fall back to the CLI version
+      // shipped with the Action in defaults.json. This has the effect of immediately rolling out
+      // new CLI versions to all users running the latest Action.
+      //
+      // A drawback of this approach relates to the small number of users that run old versions of
+      // the Action on Dotcom. As a result of this approach, if we misconfigure the feature flags
+      // then these users will experience some alert churn. This is because the CLI version in the
+      // defaults.json shipped with an old version of the Action is likely older than the CLI
+      // version that would have been specified by the feature flags before they were misconfigured.
+      this.logger.warning(
+        "Feature flags do not specify a default CLI version. Falling back to the CLI version " +
+          `shipped with the Action. This is ${defaults.cliVersion}.`
       );
       return {
-        version: MINIMUM_ENABLED_CODEQL_VERSION,
+        version: defaults.cliVersion,
         toolsFeatureFlagsValid: false,
       };
     }

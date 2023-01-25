@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import path from "path";
-// We need to import `performance` on Node 12
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";

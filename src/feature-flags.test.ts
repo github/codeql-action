@@ -410,7 +410,7 @@ test("selects CLI v2.12.1 on Dotcom when feature flags enable v2.12.0 and v2.12.
   });
 });
 
-test(`selects CLI v2.11.6 on Dotcom when no default version feature flags are enabled`, async (t) => {
+test(`selects CLI from defaults.json on Dotcom when no default version feature flags are enabled`, async (t) => {
   await withTmpDir(async (tmpDir) => {
     const featureEnablement = setUpFeatureFlagTests(tmpDir);
     const expectedFeatureEnablement = initializeFeatures(true);
@@ -420,7 +420,7 @@ test(`selects CLI v2.11.6 on Dotcom when no default version feature flags are en
       GitHubVariant.DOTCOM
     );
     t.deepEqual(defaultCliVersion, {
-      cliVersion: "2.11.6",
+      cliVersion: defaults.cliVersion,
       toolsFeatureFlagsValid: false,
       variant: GitHubVariant.DOTCOM,
     });

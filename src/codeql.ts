@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
@@ -1078,6 +1079,10 @@ async function runTool(
   }).exec();
   if (exitCode !== 0)
     throw new CommandInvocationError(cmd, args, exitCode, error, output);
+  core.startGroup("Command output");
+  core.info(error);
+  core.endGroup();
+
   return output;
 }
 

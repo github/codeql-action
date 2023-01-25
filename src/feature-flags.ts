@@ -23,7 +23,6 @@ export type CodeQLDefaultVersionInfo =
   | {
       cliVersion: string;
       tagName: string;
-      toolsFeatureFlagsValid?: boolean;
       variant: util.GitHubVariant.GHAE | util.GitHubVariant.GHES;
     };
 

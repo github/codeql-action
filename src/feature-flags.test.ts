@@ -383,7 +383,6 @@ for (const variant of [GitHubVariant.GHAE, GitHubVariant.GHES]) {
         tagName: defaults.bundleVersion,
         variant,
       });
-      t.falsy(defaultCliVersion.toolsFeatureFlagsValid);
     });
   });
 }

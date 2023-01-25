@@ -15,6 +15,13 @@ import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 import { codeQlVersionAbove } from "./util";
 
+export enum ToolsSource {
+  Unknown = "UNKNOWN",
+  Local = "LOCAL",
+  Toolcache = "TOOLCACHE",
+  Download = "DOWNLOAD",
+}
+
 export async function initCodeQL(
   toolsInput: string | undefined,
   apiDetails: GitHubApiDetails,
@@ -23,21 +30,27 @@ export async function initCodeQL(
   bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
-): Promise<{ codeql: CodeQL; toolsVersion: string }> {
+): Promise<{
+  codeql: CodeQL;
+  toolsDownloadDurationMs?: number;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+}> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsVersion } = await setupCodeQL(
-    toolsInput,
-    apiDetails,
-    tempDir,
-    variant,
-    bypassToolcache,
-    defaultCliVersion,
-    logger,
-    true
-  );
+  const { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion } =
+    await setupCodeQL(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      bypassToolcache,
+      defaultCliVersion,
+      logger,
+      true
+    );
   await codeql.printVersion();
   logger.endGroup();
-  return { codeql, toolsVersion };
+  return { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion };
 }
 
 export async function initConfig(

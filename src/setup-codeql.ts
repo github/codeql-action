@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
+import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
@@ -14,6 +15,7 @@ import * as api from "./api-client";
 // these dependents.
 import * as defaults from "./defaults.json";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import { ToolsSource } from "./init";
 import { Logger } from "./logging";
 import * as util from "./util";
 import { isGoodVersion } from "./util";
@@ -514,7 +516,11 @@ export async function downloadCodeQL(
   variant: util.GitHubVariant,
   tempDir: string,
   logger: Logger
-): Promise<{ toolsVersion: string; codeqlFolder: string }> {
+): Promise<{
+  toolsVersion: string;
+  codeqlFolder: string;
+  toolsDownloadDurationMs: number;
+}> {
   const parsedCodeQLURL = new URL(codeqlURL);
   const searchParams = new URLSearchParams(parsedCodeQLURL.search);
   const headers: OutgoingHttpHeaders = {
@@ -541,12 +547,16 @@ export async function downloadCodeQL(
     { "User-Agent": "CodeQL Action" },
     headers
   );
+
+  const toolsDownloadStart = performance.now();
   const codeqlPath = await toolcache.downloadTool(
     codeqlURL,
     dest,
     undefined,
     finalHeaders
   );
+  const toolsDownloadDurationMs = performance.now() - toolsDownloadStart;
+
   logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 
   const codeqlExtracted = await toolcache.extractTar(codeqlPath);
@@ -581,6 +591,7 @@ export async function downloadCodeQL(
       "CodeQL",
       toolcacheVersion
     ),
+    toolsDownloadDurationMs,
   };
 }
 
@@ -616,7 +627,12 @@ export async function setupCodeQLBundle(
   bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
-): Promise<{ codeqlFolder: string; toolsVersion: string }> {
+): Promise<{
+  codeqlFolder: string;
+  toolsDownloadDurationMs?: number;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+}> {
   const source = await getCodeQLSource(
     toolsInput,
     bypassToolcache,
@@ -628,13 +644,17 @@ export async function setupCodeQLBundle(
 
   let codeqlFolder: string;
   let toolsVersion = source.toolsVersion;
+  let toolsDownloadDurationMs: number | undefined;
+  let toolsSource: ToolsSource;
   switch (source.sourceType) {
     case "local":
       codeqlFolder = await toolcache.extractTar(source.codeqlTarPath);
+      toolsSource = ToolsSource.Local;
       break;
     case "toolcache":
       codeqlFolder = source.codeqlFolder;
       logger.debug(`CodeQL found in cache ${codeqlFolder}`);
+      toolsSource = ToolsSource.Toolcache;
       break;
     case "download": {
       const result = await downloadCodeQL(
@@ -647,10 +667,12 @@ export async function setupCodeQLBundle(
       );
       toolsVersion = result.toolsVersion;
       codeqlFolder = result.codeqlFolder;
+      toolsDownloadDurationMs = result.toolsDownloadDurationMs;
+      toolsSource = ToolsSource.Download;
       break;
     }
     default:
       util.assertNever(source);
   }
-  return { codeqlFolder, toolsVersion };
+  return { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion };
 }

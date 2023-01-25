@@ -21,6 +21,7 @@ import {
   Feature,
   featureConfig,
 } from "./feature-flags";
+import { ToolsSource } from "./init";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, createFeatures, setupActionsVars } from "./testing-utils";
@@ -203,8 +204,11 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
         getRunnerLogger(true),
         false
       );
+
       t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
       t.is(result.toolsVersion, `0.0.0-${version}`);
+      t.is(result.toolsSource, ToolsSource.Download);
+      t.is(typeof result.toolsDownloadDurationMs, "number");
     }
 
     t.is(toolcache.findAllVersions("CodeQL").length, 2);
@@ -236,6 +240,8 @@ test("downloads an explicitly requested bundle even if a different version is ca
     );
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
     t.deepEqual(result.toolsVersion, "0.0.0-20200610");
+    t.is(result.toolsSource, ToolsSource.Download);
+    t.not(result.toolsDownloadDurationMs, undefined);
   });
 });
 
@@ -286,6 +292,8 @@ for (const {
       t.assert(releaseApiMock.isDone(), "Releases API should have been called");
       t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
       t.deepEqual(result.toolsVersion, cliVersion);
+      t.is(result.toolsSource, ToolsSource.Download);
+      t.not(result.toolsDownloadDurationMs, undefined);
     });
   });
 }
@@ -354,6 +362,14 @@ for (const { isCached, tagName, toolcacheCliVersion } of [
         false
       );
       t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
+
+      if (isCached) {
+        t.is(result.toolsSource, ToolsSource.Toolcache);
+        t.is(result.toolsDownloadDurationMs, undefined);
+      } else {
+        t.is(result.toolsSource, ToolsSource.Download);
+        t.is(typeof result.toolsDownloadDurationMs, "number");
+      }
     });
   });
 }
@@ -384,6 +400,8 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         false
       );
       t.deepEqual(result.toolsVersion, "0.0.0-20200601");
+      t.is(result.toolsSource, ToolsSource.Toolcache);
+      t.is(result.toolsDownloadDurationMs, undefined);
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
       t.is(cachedVersions.length, 1);
@@ -418,6 +436,8 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         false
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
+      t.is(result.toolsSource, ToolsSource.Download);
+      t.is(typeof result.toolsDownloadDurationMs, "number");
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
       t.is(cachedVersions.length, 2);
@@ -449,6 +469,8 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       false
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
+    t.is(result.toolsSource, ToolsSource.Download);
+    t.is(typeof result.toolsDownloadDurationMs, "number");
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 2);
@@ -498,7 +520,7 @@ test("download codeql bundle from github ae endpoint", async (t) => {
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
     process.env["GITHUB_ACTION_REPOSITORY"] = "github/codeql-action";
 
-    await codeql.setupCodeQL(
+    const result = await codeql.setupCodeQL(
       undefined,
       sampleGHAEApiDetails,
       tmpDir,
@@ -512,6 +534,9 @@ test("download codeql bundle from github ae endpoint", async (t) => {
       getRunnerLogger(true),
       false
     );
+
+    t.is(result.toolsSource, ToolsSource.Download);
+    t.is(typeof result.toolsDownloadDurationMs, "number");
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 1);

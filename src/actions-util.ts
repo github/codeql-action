@@ -303,7 +303,7 @@ type ActionName =
   | "finish"
   | "upload-sarif"
   | "init-post";
-type ActionStatus =
+export type ActionStatus =
   | "starting"
   | "aborted"
   | "success"

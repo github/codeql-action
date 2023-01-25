@@ -16,6 +16,7 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 export type CodeQLDefaultVersionInfo =
   | {
       cliVersion: string;
+      toolsFeatureFlagsValid?: boolean;
       variant: util.GitHubVariant.DOTCOM;
     }
   | {
@@ -207,8 +208,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
     variant: util.GitHubVariant
   ): Promise<CodeQLDefaultVersionInfo> {
     if (variant === util.GitHubVariant.DOTCOM) {
+      const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
       return {
-        cliVersion: await this.getDefaultDotcomCliVersion(),
+        cliVersion: defaultDotComCliVersion.version,
+        toolsFeatureFlagsValid: defaultDotComCliVersion.toolsFeatureFlagsValid,
         variant,
       };
     }
@@ -219,7 +222,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
     };
   }
 
-  async getDefaultDotcomCliVersion(): Promise<string> {
+  async getDefaultDotcomCliVersion(): Promise<{
+    version: string;
+    toolsFeatureFlagsValid: boolean;
+  }> {
     const response = await this.getAllFeatures();
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
@@ -244,7 +250,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
         "Feature flags do not specify a default CLI version. Falling back to the CLI version " +
           `shipped with the Action. This is ${defaults.cliVersion}.`
       );
-      return defaults.cliVersion;
+      return {
+        version: defaults.cliVersion,
+        toolsFeatureFlagsValid: false,
+      };
     }
 
     const maxCliVersion = enabledFeatureFlagCliVersions.reduce(
@@ -255,7 +264,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
     this.logger.debug(
       `Derived default CLI version of ${maxCliVersion} from feature flags.`
     );
-    return maxCliVersion;
+    return { version: maxCliVersion, toolsFeatureFlagsValid: true };
   }
 
   async getValue(feature: Feature): Promise<boolean> {

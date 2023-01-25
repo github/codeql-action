@@ -9,6 +9,7 @@ import * as api from "./api-client";
 import { Config } from "./config-utils";
 import { errorMatchers } from "./error-matcher";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
@@ -300,17 +301,23 @@ export async function setupCodeQL(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
   checkVersion: boolean
-): Promise<{ codeql: CodeQL; toolsVersion: string }> {
+): Promise<{
+  codeql: CodeQL;
+  toolsDownloadDurationMs?: number;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+}> {
   try {
-    const { codeqlFolder, toolsVersion } = await setupCodeql.setupCodeQLBundle(
-      toolsInput,
-      apiDetails,
-      tempDir,
-      variant,
-      bypassToolcache,
-      defaultCliVersion,
-      logger
-    );
+    const { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion } =
+      await setupCodeql.setupCodeQLBundle(
+        toolsInput,
+        apiDetails,
+        tempDir,
+        variant,
+        bypassToolcache,
+        defaultCliVersion,
+        logger
+      );
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
@@ -319,7 +326,12 @@ export async function setupCodeQL(
     }
 
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
-    return { codeql: cachedCodeQL, toolsVersion };
+    return {
+      codeql: cachedCodeQL,
+      toolsDownloadDurationMs,
+      toolsSource,
+      toolsVersion,
+    };
   } catch (e) {
     logger.error(e instanceof Error ? e : new Error(String(e)));
     throw new Error("Unable to download and extract CodeQL CLI");

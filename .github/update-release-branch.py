@@ -161,7 +161,7 @@ def update_changelog(version):
   else:
     content = EMPTY_CHANGELOG
 
-  newContent = content.replace('[UNRELEASED]', f'${version} - {get_today_string()}', 1)
+  newContent = content.replace('[UNRELEASED]', f'{version} - {get_today_string()}', 1)
 
   with open('CHANGELOG.md', 'w') as f:
     f.write(newContent)

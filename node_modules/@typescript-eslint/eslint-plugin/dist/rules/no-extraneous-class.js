@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,16 +23,15 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
 exports.default = util.createRule({
     name: 'no-extraneous-class',
     meta: {
         type: 'suggestion',
         docs: {
-            description: 'Forbids the use of classes as namespaces',
-            category: 'Best Practices',
-            recommended: false,
+            description: 'Disallow classes used as namespaces',
+            recommended: 'strict',
         },
         schema: [
             {
@@ -36,15 +39,19 @@ exports.default = util.createRule({
                 additionalProperties: false,
                 properties: {
                     allowConstructorOnly: {
+                        description: 'Whether to allow extraneous classes that contain only a constructor.',
                         type: 'boolean',
                     },
                     allowEmpty: {
+                        description: 'Whether to allow extraneous classes that have no body (i.e. are empty).',
                         type: 'boolean',
                     },
                     allowStaticOnly: {
+                        description: 'Whether to allow extraneous classes that only contain static members.',
                         type: 'boolean',
                     },
                     allowWithDecorator: {
+                        description: 'Whether to allow extraneous classes that include a decorator.',
                         type: 'boolean',
                     },
                 },
@@ -92,7 +99,7 @@ exports.default = util.createRule({
                 let onlyConstructor = true;
                 for (const prop of node.body) {
                     if ('kind' in prop && prop.kind === 'constructor') {
-                        if (prop.value.params.some(param => param.type === experimental_utils_1.AST_NODE_TYPES.TSParameterProperty)) {
+                        if (prop.value.params.some(param => param.type === utils_1.AST_NODE_TYPES.TSParameterProperty)) {
                             onlyConstructor = false;
                             onlyStatic = false;
                         }

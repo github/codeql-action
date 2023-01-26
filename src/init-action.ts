@@ -3,8 +3,10 @@ import * as path from "path";
 import * as core from "@actions/core";
 
 import {
+  ActionStatus,
   createStatusReportBase,
   getActionsStatus,
+  getActionVersion,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
@@ -21,13 +23,13 @@ import {
   injectWindowsTracer,
   installPythonDeps,
   runInit,
+  ToolsSource,
 } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { getTotalCacheSize } from "./trap-caching";
 import {
-  checkActionVersion,
   checkForTimeout,
   checkGitHubVersionInRange,
   codeQlVersionAbove,
@@ -38,16 +40,27 @@ import {
   getMlPoweredJsQueriesStatus,
   getRequiredEnvParam,
   getThreadsFlagValue,
+  GitHubVariant,
   initializeEnvironment,
   isHostedRunner,
   shouldBypassToolcache,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
+/** Fields of the init status report that can be sent before `config` is populated. */
+interface InitStatusReport extends StatusReportBase {
+  /** Value given by the user as the "tools" input. */
+  tools_input: string;
+  /** Version of the bundle used. */
+  tools_resolved_version: string;
+  /** Where the bundle originated from. */
+  tools_source: ToolsSource;
+  /** Comma-separated list of languages specified explicitly in the workflow file. */
+  workflow_languages: string;
+}
 
-interface InitSuccessStatusReport extends StatusReportBase {
+/** Fields of the init status report that are populated using values from `config`. */
+interface InitWithConfigStatusReport extends InitStatusReport {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
   /**
@@ -62,12 +75,6 @@ interface InitSuccessStatusReport extends StatusReportBase {
   paths_ignore: string;
   /** Comma-separated list of queries sources, from the 'queries' config field or workflow input. */
   queries: string;
-  /** Value given by the user as the "tools" input. */
-  tools_input: string;
-  /** Version of the bundle used. */
-  tools_resolved_version: string;
-  /** Comma-separated list of languages specified explicitly in the workflow file. */
-  workflow_languages: string;
   /** Comma-separated list of languages for which we are using TRAP caching. */
   trap_cache_languages: string;
   /** Size of TRAP caches that we downloaded, in bytes. */
@@ -76,73 +83,109 @@ interface InitSuccessStatusReport extends StatusReportBase {
   trap_cache_download_duration_ms: number;
 }
 
-async function sendSuccessStatusReport(
+/** Fields of the init status report populated when the tools source is `download`. */
+interface InitToolsDownloadFields {
+  /** Time taken to download the bundle, in milliseconds. */
+  tools_download_duration_ms?: number;
+  /** Whether the relevant tools dotcom feature flags have been misconfigured. Only populated if we attempt to determine the default version based on the dotcom feature flags. */
+  tools_feature_flags_valid?: boolean;
+}
+
+async function sendInitStatusReport(
+  actionStatus: ActionStatus,
   startedAt: Date,
-  config: configUtils.Config,
+  config: configUtils.Config | undefined,
+  toolsDownloadDurationMs: number | undefined,
+  toolsFeatureFlagsValid: boolean | undefined,
+  toolsSource: ToolsSource,
   toolsVersion: string,
   logger: Logger
 ) {
   const statusReportBase = await createStatusReportBase(
     "init",
-    "success",
+    actionStatus,
     startedAt
   );
 
-  const languages = config.languages.join(",");
   const workflowLanguages = getOptionalInput("languages");
-  const paths = (config.originalUserInput.paths || []).join(",");
-  const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
-    ","
-  );
-  const disableDefaultQueries = config.originalUserInput[
-    "disable-default-queries"
-  ]
-    ? languages
-    : "";
 
-  const queries: string[] = [];
-  let queriesInput = getOptionalInput("queries")?.trim();
-  if (queriesInput === undefined || queriesInput.startsWith("+")) {
-    queries.push(
-      ...(config.originalUserInput.queries || []).map((q) => q.uses)
-    );
-  }
-  if (queriesInput !== undefined) {
-    queriesInput = queriesInput.startsWith("+")
-      ? queriesInput.slice(1)
-      : queriesInput;
-    queries.push(...queriesInput.split(","));
-  }
-
-  const statusReport: InitSuccessStatusReport = {
+  const initStatusReport: InitStatusReport = {
     ...statusReportBase,
-    disable_default_queries: disableDefaultQueries,
-    languages,
-    ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
-    paths,
-    paths_ignore: pathsIgnore,
-    queries: queries.join(","),
     tools_input: getOptionalInput("tools") || "",
     tools_resolved_version: toolsVersion,
+    tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: workflowLanguages || "",
-    trap_cache_languages: Object.keys(config.trapCaches).join(","),
-    trap_cache_download_size_bytes: Math.round(
-      await getTotalCacheSize(config.trapCaches, logger)
-    ),
-    trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
   };
 
-  await sendStatusReport(statusReport);
+  let initToolsDownloadFields: InitToolsDownloadFields = {};
+
+  if (toolsSource === ToolsSource.Download) {
+    initToolsDownloadFields = {
+      tools_download_duration_ms: toolsDownloadDurationMs,
+      tools_feature_flags_valid: toolsFeatureFlagsValid,
+    };
+  }
+
+  if (config !== undefined) {
+    const languages = config.languages.join(",");
+    const paths = (config.originalUserInput.paths || []).join(",");
+    const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
+      ","
+    );
+    const disableDefaultQueries = config.originalUserInput[
+      "disable-default-queries"
+    ]
+      ? languages
+      : "";
+
+    const queries: string[] = [];
+    let queriesInput = getOptionalInput("queries")?.trim();
+    if (queriesInput === undefined || queriesInput.startsWith("+")) {
+      queries.push(
+        ...(config.originalUserInput.queries || []).map((q) => q.uses)
+      );
+    }
+    if (queriesInput !== undefined) {
+      queriesInput = queriesInput.startsWith("+")
+        ? queriesInput.slice(1)
+        : queriesInput;
+      queries.push(...queriesInput.split(","));
+    }
+
+    // Append fields that are dependent on `config`
+    const initWithConfigStatusReport: InitWithConfigStatusReport = {
+      ...initStatusReport,
+      disable_default_queries: disableDefaultQueries,
+      languages,
+      ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
+      paths,
+      paths_ignore: pathsIgnore,
+      queries: queries.join(","),
+      trap_cache_languages: Object.keys(config.trapCaches).join(","),
+      trap_cache_download_size_bytes: Math.round(
+        await getTotalCacheSize(config.trapCaches, logger)
+      ),
+      trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+    };
+    await sendStatusReport({
+      ...initWithConfigStatusReport,
+      ...initToolsDownloadFields,
+    });
+  } else {
+    await sendStatusReport({ ...initStatusReport, ...initToolsDownloadFields });
+  }
 }
 
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  initializeEnvironment(pkg.version);
-  await checkActionVersion(pkg.version);
+  initializeEnvironment(getActionVersion());
 
   let config: configUtils.Config;
   let codeql: CodeQL;
+  let toolsDownloadDurationMs: number | undefined;
+  let toolsFeatureFlagsValid: boolean | undefined;
+  let toolsSource: ToolsSource;
   let toolsVersion: string;
 
   const apiDetails = {
@@ -182,6 +225,12 @@ async function run() {
       return;
     }
 
+    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
+      gitHubVersion.type
+    );
+    if (codeQLDefaultVersionInfo.variant === GitHubVariant.DOTCOM) {
+      toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+    }
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
@@ -194,10 +243,13 @@ async function run() {
         repositoryNwo,
         logger
       ),
+      codeQLDefaultVersionInfo,
       logger
     );
     codeql = initCodeQLResult.codeql;
+    toolsDownloadDurationMs = initCodeQLResult.toolsDownloadDurationMs;
     toolsVersion = initCodeQLResult.toolsVersion;
+    toolsSource = initCodeQLResult.toolsSource;
     await enrichEnvironment(codeql);
 
     config = await initConfig(
@@ -315,18 +367,28 @@ async function run() {
     core.setFailed(String(error));
 
     console.log(error);
-    await sendStatusReport(
-      await createStatusReportBase(
-        "init",
-        getActionsStatus(error),
-        startedAt,
-        String(error),
-        error instanceof Error ? error.stack : undefined
-      )
+    await sendInitStatusReport(
+      getActionsStatus(error),
+      startedAt,
+      config,
+      toolsDownloadDurationMs,
+      toolsFeatureFlagsValid,
+      toolsSource,
+      toolsVersion,
+      logger
     );
     return;
   }
-  await sendSuccessStatusReport(startedAt, config, toolsVersion, logger);
+  await sendInitStatusReport(
+    "success",
+    startedAt,
+    config,
+    toolsDownloadDurationMs,
+    toolsFeatureFlagsValid,
+    toolsSource,
+    toolsVersion,
+    logger
+  );
 }
 
 async function getTrapCachingEnabled(

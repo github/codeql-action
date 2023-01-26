@@ -5,6 +5,7 @@ var GetIntrinsic = require('get-intrinsic');
 var $TypeError = GetIntrinsic('%TypeError%');
 
 var Call = require('./Call');
+var CompletionRecord = require('./CompletionRecord');
 var GetMethod = require('./GetMethod');
 var IsCallable = require('./IsCallable');
 var Type = require('./Type');
@@ -15,10 +16,10 @@ module.exports = function IteratorClose(iterator, completion) {
 	if (Type(iterator) !== 'Object') {
 		throw new $TypeError('Assertion failed: Type(iterator) is not Object');
 	}
-	if (!IsCallable(completion)) {
-		throw new $TypeError('Assertion failed: completion is not a thunk for a Completion Record');
+	if (!IsCallable(completion) && !(completion instanceof CompletionRecord)) {
+		throw new $TypeError('Assertion failed: completion is not a thunk representing a Completion Record, nor a Completion Record instance');
 	}
-	var completionThunk = completion;
+	var completionThunk = completion instanceof CompletionRecord ? function () { return completion['?'](); } : completion;
 
 	var iteratorReturn = GetMethod(iterator, 'return');
 

@@ -2,12 +2,9 @@ import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
-import { getRequiredInput } from "./actions-util";
+import { getActionVersion, getRequiredInput } from "./actions-util";
 import * as util from "./util";
 import { getRequiredEnvParam, GitHubVersion } from "./util";
-
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
 
 export enum DisallowedAPIVersionReason {
   ACTION_TOO_OLD,
@@ -39,7 +36,7 @@ function createApiClientWithDetails(
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiDetails.apiURL,
-      userAgent: `CodeQL-Action/${pkg.version}`,
+      userAgent: `CodeQL-Action/${getActionVersion()}`,
       log: consoleLogLevel({ level: "debug" }),
     })
   );

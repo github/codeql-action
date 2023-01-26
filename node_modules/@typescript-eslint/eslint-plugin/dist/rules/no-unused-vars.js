@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,8 +23,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
 const scope_manager_1 = require("@typescript-eslint/scope-manager");
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
 exports.default = util.createRule({
     name: 'no-unused-vars',
@@ -28,7 +32,6 @@ exports.default = util.createRule({
         type: 'problem',
         docs: {
             description: 'Disallow unused variables',
-            category: 'Variables',
             recommended: 'warn',
             extendsBaseRule: true,
         },
@@ -62,6 +65,9 @@ exports.default = util.createRule({
                             caughtErrorsIgnorePattern: {
                                 type: 'string',
                             },
+                            destructuredArrayIgnorePattern: {
+                                type: 'string',
+                            },
                         },
                         additionalProperties: false,
                     },
@@ -73,7 +79,7 @@ exports.default = util.createRule({
         },
     },
     defaultOptions: [{}],
-    create(context) {
+    create(context, [firstOption]) {
         const filename = context.getFilename();
         const sourceCode = context.getSourceCode();
         const MODULE_DECL_CACHE = new Map();
@@ -85,7 +91,6 @@ exports.default = util.createRule({
                 ignoreRestSiblings: false,
                 caughtErrors: 'none',
             };
-            const firstOption = context.options[0];
             if (firstOption) {
                 if (typeof firstOption === 'string') {
                     options.vars = firstOption;
@@ -106,12 +111,27 @@ exports.default = util.createRule({
                     if (firstOption.caughtErrorsIgnorePattern) {
                         options.caughtErrorsIgnorePattern = new RegExp(firstOption.caughtErrorsIgnorePattern, 'u');
                     }
+                    if (firstOption.destructuredArrayIgnorePattern) {
+                        options.destructuredArrayIgnorePattern = new RegExp(firstOption.destructuredArrayIgnorePattern, 'u');
+                    }
                 }
             }
             return options;
         })();
         function collectUnusedVariables() {
-            var _a, _b, _c;
+            var _a, _b, _c, _d, _e;
+            /**
+             * Checks whether a node is a sibling of the rest property or not.
+             * @param {ASTNode} node a node to check
+             * @returns {boolean} True if the node is a sibling of the rest property, otherwise false.
+             */
+            function hasRestSibling(node) {
+                var _a;
+                return (node.type === utils_1.AST_NODE_TYPES.Property &&
+                    ((_a = node.parent) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.ObjectPattern &&
+                    node.parent.properties[node.parent.properties.length - 1].type ===
+                        utils_1.AST_NODE_TYPES.RestElement);
+            }
             /**
              * Determines if a variable has a sibling rest property
              * @param variable eslint-scope variable object.
@@ -119,14 +139,9 @@ exports.default = util.createRule({
              */
             function hasRestSpreadSibling(variable) {
                 if (options.ignoreRestSiblings) {
-                    return variable.defs.some(def => {
-                        const propertyNode = def.name.parent;
-                        const patternNode = propertyNode.parent;
-                        return (propertyNode.type === experimental_utils_1.AST_NODE_TYPES.Property &&
-                            patternNode.type === experimental_utils_1.AST_NODE_TYPES.ObjectPattern &&
-                            patternNode.properties[patternNode.properties.length - 1].type ===
-                                experimental_utils_1.AST_NODE_TYPES.RestElement);
-                    });
+                    const hasRestSiblingDefinition = variable.defs.some(def => hasRestSibling(def.name.parent));
+                    const hasRestSiblingReference = variable.references.some(ref => hasRestSibling(ref.identifier.parent));
+                    return hasRestSiblingDefinition || hasRestSiblingReference;
                 }
                 return false;
             }
@@ -151,30 +166,38 @@ exports.default = util.createRule({
                     continue;
                 }
                 const def = variable.defs[0];
-                if (variable.scope.type === experimental_utils_1.TSESLint.Scope.ScopeType.global &&
+                if (variable.scope.type === utils_1.TSESLint.Scope.ScopeType.global &&
                     options.vars === 'local') {
                     // skip variables in the global scope if configured to
                     continue;
                 }
+                const refUsedInArrayPatterns = variable.references.some(ref => { var _a; return ((_a = ref.identifier.parent) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.ArrayPattern; });
+                // skip elements of array destructuring patterns
+                if ((((_a = def.name.parent) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.ArrayPattern ||
+                    refUsedInArrayPatterns) &&
+                    'name' in def.name &&
+                    ((_b = options.destructuredArrayIgnorePattern) === null || _b === void 0 ? void 0 : _b.test(def.name.name))) {
+                    continue;
+                }
                 // skip catch variables
-                if (def.type === experimental_utils_1.TSESLint.Scope.DefinitionType.CatchClause) {
+                if (def.type === utils_1.TSESLint.Scope.DefinitionType.CatchClause) {
                     if (options.caughtErrors === 'none') {
                         continue;
                     }
                     // skip ignored parameters
                     if ('name' in def.name &&
-                        ((_a = options.caughtErrorsIgnorePattern) === null || _a === void 0 ? void 0 : _a.test(def.name.name))) {
+                        ((_c = options.caughtErrorsIgnorePattern) === null || _c === void 0 ? void 0 : _c.test(def.name.name))) {
                         continue;
                     }
                 }
-                if (def.type === experimental_utils_1.TSESLint.Scope.DefinitionType.Parameter) {
+                if (def.type === utils_1.TSESLint.Scope.DefinitionType.Parameter) {
                     // if "args" option is "none", skip any parameter
                     if (options.args === 'none') {
                         continue;
                     }
                     // skip ignored parameters
                     if ('name' in def.name &&
-                        ((_b = options.argsIgnorePattern) === null || _b === void 0 ? void 0 : _b.test(def.name.name))) {
+                        ((_d = options.argsIgnorePattern) === null || _d === void 0 ? void 0 : _d.test(def.name.name))) {
                         continue;
                     }
                     // if "args" option is "after-used", skip used variables
@@ -187,7 +210,7 @@ exports.default = util.createRule({
                 else {
                     // skip ignored variables
                     if ('name' in def.name &&
-                        ((_c = options.varsIgnorePattern) === null || _c === void 0 ? void 0 : _c.test(def.name.name))) {
+                        ((_e = options.varsIgnorePattern) === null || _e === void 0 ? void 0 : _e.test(def.name.name))) {
                         continue;
                     }
                 }
@@ -205,7 +228,7 @@ exports.default = util.createRule({
         }
         return {
             // declaration file handling
-            [ambientDeclarationSelector(experimental_utils_1.AST_NODE_TYPES.Program, true)](node) {
+            [ambientDeclarationSelector(utils_1.AST_NODE_TYPES.Program, true)](node) {
                 if (!util.isDefinitionFile(filename)) {
                     return;
                 }
@@ -214,7 +237,7 @@ exports.default = util.createRule({
             // module declaration in module declaration should not report unused vars error
             // this is workaround as this change should be done in better way
             'TSModuleDeclaration > TSModuleDeclaration'(node) {
-                if (node.id.type === experimental_utils_1.AST_NODE_TYPES.Identifier) {
+                if (node.id.type === utils_1.AST_NODE_TYPES.Identifier) {
                     let scope = context.getScope();
                     if (scope.upper) {
                         scope = scope.upper;
@@ -235,7 +258,7 @@ exports.default = util.createRule({
                 const moduleDecl = util.nullThrows((_a = node.parent) === null || _a === void 0 ? void 0 : _a.parent, util.NullThrowsReasons.MissingParent);
                 // declared ambient modules with an `export =` statement will only export that one thing
                 // all other statements are not automatically exported in this case
-                if (moduleDecl.id.type === experimental_utils_1.AST_NODE_TYPES.Literal &&
+                if (moduleDecl.id.type === utils_1.AST_NODE_TYPES.Literal &&
                     checkModuleDeclForExportEquals(moduleDecl)) {
                     return;
                 }
@@ -254,17 +277,17 @@ exports.default = util.createRule({
                     const defType = (_a = unusedVar === null || unusedVar === void 0 ? void 0 : unusedVar.defs[0]) === null || _a === void 0 ? void 0 : _a.type;
                     let type;
                     let pattern;
-                    if (defType === experimental_utils_1.TSESLint.Scope.DefinitionType.CatchClause &&
+                    if (defType === utils_1.TSESLint.Scope.DefinitionType.CatchClause &&
                         options.caughtErrorsIgnorePattern) {
                         type = 'args';
                         pattern = options.caughtErrorsIgnorePattern.toString();
                     }
-                    else if (defType === experimental_utils_1.TSESLint.Scope.DefinitionType.Parameter &&
+                    else if (defType === utils_1.TSESLint.Scope.DefinitionType.Parameter &&
                         options.argsIgnorePattern) {
                         type = 'args';
                         pattern = options.argsIgnorePattern.toString();
                     }
-                    else if (defType !== experimental_utils_1.TSESLint.Scope.DefinitionType.Parameter &&
+                    else if (defType !== utils_1.TSESLint.Scope.DefinitionType.Parameter &&
                         options.varsIgnorePattern) {
                         type = 'vars';
                         pattern = options.varsIgnorePattern.toString();
@@ -285,9 +308,16 @@ exports.default = util.createRule({
                  * @returns The message data to be used with this unused variable.
                  */
                 function getAssignedMessageData(unusedVar) {
-                    const additional = options.varsIgnorePattern
-                        ? `. Allowed unused vars must match ${options.varsIgnorePattern.toString()}`
-                        : '';
+                    var _a;
+                    const def = unusedVar.defs[0];
+                    let additional = '';
+                    if (options.destructuredArrayIgnorePattern &&
+                        ((_a = def === null || def === void 0 ? void 0 : def.name.parent) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.ArrayPattern) {
+                        additional = `. Allowed unused elements of array destructuring patterns must match ${options.destructuredArrayIgnorePattern.toString()}`;
+                    }
+                    else if (options.varsIgnorePattern) {
+                        additional = `. Allowed unused vars must match ${options.varsIgnorePattern.toString()}`;
+                    }
                     return {
                         varName: unusedVar.name,
                         action: 'assigned a value',
@@ -295,14 +325,14 @@ exports.default = util.createRule({
                     };
                 }
                 const unusedVars = collectUnusedVariables();
-                for (let i = 0, l = unusedVars.length; i < l; ++i) {
-                    const unusedVar = unusedVars[i];
+                for (const unusedVar of unusedVars) {
                     // Report the first declaration.
                     if (unusedVar.defs.length > 0) {
+                        const writeReferences = unusedVar.references.filter(ref => ref.isWrite() &&
+                            ref.from.variableScope === unusedVar.scope.variableScope);
                         context.report({
-                            node: unusedVar.references.length
-                                ? unusedVar.references[unusedVar.references.length - 1]
-                                    .identifier
+                            node: writeReferences.length
+                                ? writeReferences[writeReferences.length - 1].identifier
                                 : unusedVar.identifiers[0],
                             messageId: 'unusedVar',
                             data: unusedVar.references.some(ref => ref.isWrite())
@@ -329,9 +359,9 @@ exports.default = util.createRule({
             if (cached != null) {
                 return cached;
             }
-            if (node.body && node.body.type === experimental_utils_1.AST_NODE_TYPES.TSModuleBlock) {
+            if (node.body && node.body.type === utils_1.AST_NODE_TYPES.TSModuleBlock) {
                 for (const statement of node.body.body) {
-                    if (statement.type === experimental_utils_1.AST_NODE_TYPES.TSExportAssignment) {
+                    if (statement.type === utils_1.AST_NODE_TYPES.TSExportAssignment) {
                         MODULE_DECL_CACHE.set(node, true);
                         return true;
                     }
@@ -344,16 +374,16 @@ exports.default = util.createRule({
             return [
                 // Types are ambiently exported
                 `${parent} > :matches(${[
-                    experimental_utils_1.AST_NODE_TYPES.TSInterfaceDeclaration,
-                    experimental_utils_1.AST_NODE_TYPES.TSTypeAliasDeclaration,
+                    utils_1.AST_NODE_TYPES.TSInterfaceDeclaration,
+                    utils_1.AST_NODE_TYPES.TSTypeAliasDeclaration,
                 ].join(', ')})`,
                 // Value things are ambiently exported if they are "declare"d
                 `${parent} > :matches(${[
-                    experimental_utils_1.AST_NODE_TYPES.ClassDeclaration,
-                    experimental_utils_1.AST_NODE_TYPES.TSDeclareFunction,
-                    experimental_utils_1.AST_NODE_TYPES.TSEnumDeclaration,
-                    experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration,
-                    experimental_utils_1.AST_NODE_TYPES.VariableDeclaration,
+                    utils_1.AST_NODE_TYPES.ClassDeclaration,
+                    utils_1.AST_NODE_TYPES.TSDeclareFunction,
+                    utils_1.AST_NODE_TYPES.TSEnumDeclaration,
+                    utils_1.AST_NODE_TYPES.TSModuleDeclaration,
+                    utils_1.AST_NODE_TYPES.VariableDeclaration,
                 ].join(', ')})${childDeclare ? '[declare = true]' : ''}`,
             ].join(', ');
         }
@@ -361,18 +391,18 @@ exports.default = util.createRule({
             var _a;
             const identifiers = [];
             switch (node.type) {
-                case experimental_utils_1.AST_NODE_TYPES.TSInterfaceDeclaration:
-                case experimental_utils_1.AST_NODE_TYPES.TSTypeAliasDeclaration:
-                case experimental_utils_1.AST_NODE_TYPES.ClassDeclaration:
-                case experimental_utils_1.AST_NODE_TYPES.FunctionDeclaration:
-                case experimental_utils_1.AST_NODE_TYPES.TSDeclareFunction:
-                case experimental_utils_1.AST_NODE_TYPES.TSEnumDeclaration:
-                case experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration:
-                    if (((_a = node.id) === null || _a === void 0 ? void 0 : _a.type) === experimental_utils_1.AST_NODE_TYPES.Identifier) {
+                case utils_1.AST_NODE_TYPES.TSInterfaceDeclaration:
+                case utils_1.AST_NODE_TYPES.TSTypeAliasDeclaration:
+                case utils_1.AST_NODE_TYPES.ClassDeclaration:
+                case utils_1.AST_NODE_TYPES.FunctionDeclaration:
+                case utils_1.AST_NODE_TYPES.TSDeclareFunction:
+                case utils_1.AST_NODE_TYPES.TSEnumDeclaration:
+                case utils_1.AST_NODE_TYPES.TSModuleDeclaration:
+                    if (((_a = node.id) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.Identifier) {
                         identifiers.push(node.id);
                     }
                     break;
-                case experimental_utils_1.AST_NODE_TYPES.VariableDeclaration:
+                case utils_1.AST_NODE_TYPES.VariableDeclaration:
                     for (const declaration of node.declarations) {
                         visitPattern(declaration, pattern => {
                             identifiers.push(pattern);
@@ -382,8 +412,8 @@ exports.default = util.createRule({
             }
             let scope = context.getScope();
             const shouldUseUpperScope = [
-                experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration,
-                experimental_utils_1.AST_NODE_TYPES.TSDeclareFunction,
+                utils_1.AST_NODE_TYPES.TSModuleDeclaration,
+                utils_1.AST_NODE_TYPES.TSDeclareFunction,
             ].includes(node.type);
             if (scope.variableScope !== scope) {
                 scope = scope.variableScope;

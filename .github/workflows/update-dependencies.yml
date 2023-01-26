@@ -27,10 +27,9 @@ jobs:
       run: |
         git fetch origin "$BRANCH" --depth=1
         git checkout "origin/$BRANCH"
-        # Pin npm to v8 since v9 doesn't support Node 12.
         # When updating this, make sure to update the npm version in
         # `.github/workflows/script/check-node-modules.sh` too.
-        sudo npm install --force -g npm@^8.19.3
+        sudo npm install --force -g npm@9.2.0
         npm install
         npm ci
         npm run removeNPMAbsolutePaths

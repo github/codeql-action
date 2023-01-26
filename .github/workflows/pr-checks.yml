@@ -2,7 +2,7 @@ name: PR Checks
 
 on:
   push:
-    branches: [main, releases/v1, releases/v2]
+    branches: [main, releases/v2]
   pull_request:
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.
@@ -15,38 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
-    strategy:
-      matrix:
-        node-types-version: [12.12, current]
-
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Lint
         run: npm run-script lint
-
-      - name: Update version of @types/node
-        if: matrix.node-types-version != 'current'
-        env:
-          NODE_TYPES_VERSION: ${{ matrix.node-types-version }}
-        run: |
-          # Export `NODE_TYPES_VERSION` so it's available to jq
-          export NODE_TYPES_VERSION="${NODE_TYPES_VERSION}"
-          contents=$(jq '.devDependencies."@types/node" = env.NODE_TYPES_VERSION' package.json)
-          echo "${contents}" > package.json
-          # Usually we run `npm install` on macOS to ensure that we pick up macOS-only dependencies.
-          # However we're not checking in the updated lockfile here, so it's fine to run
-          # `npm install` on Linux.
-          npm install
-
-          if [ ! -z "$(git status --porcelain)" ]; then
-            git config --global user.email "github-actions@github.com"
-            git config --global user.name "github-actions[bot]"
-            # The period in `git add --all .` ensures that we stage deleted files too.
-            git add --all .
-            git commit -m "Use @types/node=${NODE_TYPES_VERSION}"
-          fi
 
       - name: Check generated JS
         run: .github/workflows/script/check-js.sh
@@ -69,23 +43,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      # Checks for any conflict markers created by git. This check is primarily intended to validate that
-      # any merge conflicts in the v2 -> v1 backport PR are fixed before the PR is merged.
-      - name: Check for merge conflicts
-        run: |
-          # Use `|| true` since grep returns exit code 1 if there are no matches, and we don't want
-          # this to fail the workflow.
-          FILES_WITH_CONFLICTS=$(grep --extended-regexp --ignore-case --line-number --recursive \
-            '^(<<<<<<<|>>>>>>>)' . || true)
-          if [[ "${FILES_WITH_CONFLICTS}" ]]; then
-            echo "Fail: Found merge conflict markers in the following files:"
-            echo ""
-            echo "${FILES_WITH_CONFLICTS}"
-            exit 1
-          else
-            echo "Success: Found no merge conflict markers."
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v4

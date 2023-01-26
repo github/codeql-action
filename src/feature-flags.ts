@@ -1,13 +1,35 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as semver from "semver";
+
 import { getApiClient } from "./api-client";
 import { CodeQL } from "./codeql";
+import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 
+const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
+const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
+
+export type CodeQLDefaultVersionInfo =
+  | {
+      cliVersion: string;
+      toolsFeatureFlagsValid?: boolean;
+      variant: util.GitHubVariant.DOTCOM;
+    }
+  | {
+      cliVersion: string;
+      tagName: string;
+      variant: util.GitHubVariant.GHAE | util.GitHubVariant.GHES;
+    };
+
 export interface FeatureEnablement {
+  /** Gets the default version of the CodeQL tools. */
+  getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo>;
   getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
 }
 
@@ -91,6 +113,12 @@ export class Features implements FeatureEnablement {
     );
   }
 
+  async getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo> {
+    return await this.gitHubFeatureFlags.getDefaultCliVersion(variant);
+  }
+
   /**
    *
    * @param feature The feature to check.
@@ -151,6 +179,92 @@ class GitHubFeatureFlags implements FeatureEnablement {
     private readonly logger: Logger
   ) {
     /**/
+  }
+
+  private getCliVersionFromFeatureFlag(f: string): string | undefined {
+    if (
+      !f.startsWith(DEFAULT_VERSION_FEATURE_FLAG_PREFIX) ||
+      !f.endsWith(DEFAULT_VERSION_FEATURE_FLAG_SUFFIX)
+    ) {
+      return undefined;
+    }
+    const version = f
+      .substring(
+        DEFAULT_VERSION_FEATURE_FLAG_PREFIX.length,
+        f.length - DEFAULT_VERSION_FEATURE_FLAG_SUFFIX.length
+      )
+      .replace(/_/g, ".");
+
+    if (!semver.valid(version)) {
+      this.logger.warning(
+        `Ignoring feature flag ${f} as it does not specify a valid CodeQL version.`
+      );
+      return undefined;
+    }
+    return version;
+  }
+
+  async getDefaultCliVersion(
+    variant: util.GitHubVariant
+  ): Promise<CodeQLDefaultVersionInfo> {
+    if (variant === util.GitHubVariant.DOTCOM) {
+      const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
+      return {
+        cliVersion: defaultDotComCliVersion.version,
+        toolsFeatureFlagsValid: defaultDotComCliVersion.toolsFeatureFlagsValid,
+        variant,
+      };
+    }
+    return {
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
+      variant,
+    };
+  }
+
+  async getDefaultDotcomCliVersion(): Promise<{
+    version: string;
+    toolsFeatureFlagsValid: boolean;
+  }> {
+    const response = await this.getAllFeatures();
+
+    const enabledFeatureFlagCliVersions = Object.entries(response)
+      .map(([f, isEnabled]) =>
+        isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined
+      )
+      .filter((f) => f !== undefined)
+      .map((f) => f as string);
+
+    if (enabledFeatureFlagCliVersions.length === 0) {
+      // We expect at least one default CLI version to be enabled on Dotcom at any time. However if
+      // the feature flags are misconfigured, rather than crashing, we fall back to the CLI version
+      // shipped with the Action in defaults.json. This has the effect of immediately rolling out
+      // new CLI versions to all users running the latest Action.
+      //
+      // A drawback of this approach relates to the small number of users that run old versions of
+      // the Action on Dotcom. As a result of this approach, if we misconfigure the feature flags
+      // then these users will experience some alert churn. This is because the CLI version in the
+      // defaults.json shipped with an old version of the Action is likely older than the CLI
+      // version that would have been specified by the feature flags before they were misconfigured.
+      this.logger.warning(
+        "Feature flags do not specify a default CLI version. Falling back to the CLI version " +
+          `shipped with the Action. This is ${defaults.cliVersion}.`
+      );
+      return {
+        version: defaults.cliVersion,
+        toolsFeatureFlagsValid: false,
+      };
+    }
+
+    const maxCliVersion = enabledFeatureFlagCliVersions.reduce(
+      (maxVersion, currentVersion) =>
+        currentVersion > maxVersion ? currentVersion : maxVersion,
+      enabledFeatureFlagCliVersions[0]
+    );
+    this.logger.debug(
+      `Derived default CLI version of ${maxCliVersion} from feature flags.`
+    );
+    return { version: maxCliVersion, toolsFeatureFlagsValid: true };
   }
 
   async getValue(feature: Feature): Promise<boolean> {
@@ -230,7 +344,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
     }
   }
 
-  private async loadApiResponse() {
+  private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
     if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
       this.logger.debug(
@@ -246,7 +360,12 @@ class GitHubFeatureFlags implements FeatureEnablement {
           repo: this.repositoryNwo.repo,
         }
       );
-      return response.data;
+      const remoteFlags = response.data;
+      this.logger.debug(
+        "Loaded the following default values for the feature flags from the Code Scanning API: " +
+          `${JSON.stringify(remoteFlags)}`
+      );
+      return remoteFlags;
     } catch (e) {
       if (util.isHTTPError(e) && e.status === 403) {
         this.logger.warning(
@@ -255,6 +374,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
             "This could be because the Action is running on a pull request from a fork. If not, " +
             `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
         );
+        return {};
       } else {
         // Some features, such as `ml_powered_queries_enabled` affect the produced alerts.
         // Considering these features disabled in the event of a transient error could
@@ -265,5 +385,6 @@ class GitHubFeatureFlags implements FeatureEnablement {
         );
       }
     }
+    return {};
   }
 }

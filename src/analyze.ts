@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { performance } from "perf_hooks"; // We need to import `performance` on Node 12
+import { performance } from "perf_hooks";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import del from "del";
@@ -454,7 +454,7 @@ export function createQuerySuiteContents(
   queryFilters: configUtils.QueryFilter[]
 ) {
   return yaml.dump(
-    queries.map((q: string) => ({ query: q })).concat(queryFilters as any)
+    queries.map((q: string) => ({ query: q })).concat(queryFilters as any[])
   );
 }
 

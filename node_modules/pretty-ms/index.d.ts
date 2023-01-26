@@ -1,82 +1,80 @@
-declare namespace prettyMilliseconds {
-	interface Options {
-		/**
-		Number of digits to appear after the seconds decimal point.
+export interface Options {
+	/**
+	Number of digits to appear after the seconds decimal point.
 
-		@default 1
-		*/
-		readonly secondsDecimalDigits?: number;
+	@default 1
+	*/
+	readonly secondsDecimalDigits?: number;
 
-		/**
-		Number of digits to appear after the milliseconds decimal point.
+	/**
+	Number of digits to appear after the milliseconds decimal point.
 
-		Useful in combination with [`process.hrtime()`](https://nodejs.org/api/process.html#process_process_hrtime).
+	Useful in combination with [`process.hrtime()`](https://nodejs.org/api/process.html#process_process_hrtime).
 
-		@default 0
-		*/
-		readonly millisecondsDecimalDigits?: number;
+	@default 0
+	*/
+	readonly millisecondsDecimalDigits?: number;
 
-		/**
-		Keep milliseconds on whole seconds: `13s` → `13.0s`.
+	/**
+	Keep milliseconds on whole seconds: `13s` → `13.0s`.
 
-		Useful when you are showing a number of seconds spent on an operation and don't want the width of the output to change when hitting a whole number.
+	Useful when you are showing a number of seconds spent on an operation and don't want the width of the output to change when hitting a whole number.
 
-		@default false
-		*/
-		readonly keepDecimalsOnWholeSeconds?: boolean;
+	@default false
+	*/
+	readonly keepDecimalsOnWholeSeconds?: boolean;
 
-		/**
-		Only show the first unit: `1h 10m` → `1h`.
+	/**
+	Only show the first unit: `1h 10m` → `1h`.
 
-		Also ensures that `millisecondsDecimalDigits` and `secondsDecimalDigits` are both set to `0`.
+	Also ensures that `millisecondsDecimalDigits` and `secondsDecimalDigits` are both set to `0`.
 
-		@default false
-		*/
-		readonly compact?: boolean;
+	@default false
+	*/
+	readonly compact?: boolean;
 
-		/**
-		Number of units to show. Setting `compact` to `true` overrides this option.
+	/**
+	Number of units to show. Setting `compact` to `true` overrides this option.
 
-		@default Infinity
-		*/
-		readonly unitCount?: number;
+	@default Infinity
+	*/
+	readonly unitCount?: number;
 
-		/**
-		Use full-length units: `5h 1m 45s` → `5 hours 1 minute 45 seconds`.
+	/**
+	Use full-length units: `5h 1m 45s` → `5 hours 1 minute 45 seconds`.
 
-		@default false
-		*/
-		readonly verbose?: boolean;
+	@default false
+	*/
+	readonly verbose?: boolean;
 
-		/**
-		Show milliseconds separately. This means they won't be included in the decimal part of the seconds.
+	/**
+	Show milliseconds separately. This means they won't be included in the decimal part of the seconds.
 
-		@default false
-		*/
-		readonly separateMilliseconds?: boolean;
+	@default false
+	*/
+	readonly separateMilliseconds?: boolean;
 
-		/**
-		Show microseconds and nanoseconds.
+	/**
+	Show microseconds and nanoseconds.
 
-		@default false
-		*/
-		readonly formatSubMilliseconds?: boolean;
+	@default false
+	*/
+	readonly formatSubMilliseconds?: boolean;
 
-		/**
-		Display time using colon notation: `5h 1m 45s` → `5:01:45`. Always shows time in at least minutes: `1s` → `0:01`
+	/**
+	Display time using colon notation: `5h 1m 45s` → `5:01:45`. Always shows time in at least minutes: `1s` → `0:01`
 
-		Useful when you want to display time without the time units, similar to a digital watch.
+	Useful when you want to display time without the time units, similar to a digital watch.
 
-		Setting `colonNotation` to `true` overrides the following options to `false`:
-		- `compact`
-		- `formatSubMilliseconds`
-		- `separateMilliseconds`
-		- `verbose`
+	Setting `colonNotation` to `true` overrides the following options to `false`:
+	- `compact`
+	- `formatSubMilliseconds`
+	- `separateMilliseconds`
+	- `verbose`
 
-		@default false
-		*/
-		readonly colonNotation?: boolean;
-	}
+	@default false
+	*/
+	readonly colonNotation?: boolean;
 }
 
 /**
@@ -86,7 +84,7 @@ Convert milliseconds to a human readable string: `1337000000` → `15d 11h 23m 2
 
 @example
 ```
-import prettyMilliseconds = require('pretty-ms');
+import prettyMilliseconds from 'pretty-ms';
 
 prettyMilliseconds(1337000000);
 //=> '15d 11h 23m 20s'
@@ -118,9 +116,8 @@ prettyMilliseconds(new Date(2014, 0, 1, 10, 40) - new Date(2014, 0, 1, 10, 5))
 //=> '35m'
 ```
 */
-declare function prettyMilliseconds(
+export default function prettyMilliseconds(
 	milliseconds: number,
-	options?: prettyMilliseconds.Options
+	options?: Options
 ): string;
 
-export = prettyMilliseconds;

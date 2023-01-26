@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,16 +23,15 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
 exports.default = util.createRule({
     name: 'prefer-ts-expect-error',
     meta: {
         type: 'problem',
         docs: {
-            description: 'Recommends using `@ts-expect-error` over `@ts-ignore`',
-            category: 'Best Practices',
-            recommended: false,
+            description: 'Enforce using `@ts-expect-error` over `@ts-ignore`',
+            recommended: 'strict',
         },
         fixable: 'code',
         messages: {
@@ -42,7 +45,7 @@ exports.default = util.createRule({
         const tsIgnoreRegExpMultiLine = /^\s*(?:\/|\*)*\s*@ts-ignore/;
         const sourceCode = context.getSourceCode();
         function isLineComment(comment) {
-            return comment.type === experimental_utils_1.AST_TOKEN_TYPES.Line;
+            return comment.type === utils_1.AST_TOKEN_TYPES.Line;
         }
         function getLastCommentLine(comment) {
             if (isLineComment(comment)) {

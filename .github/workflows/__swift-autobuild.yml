@@ -12,7 +12,6 @@ on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:
@@ -55,6 +54,7 @@ jobs:
       shell: bash
       run: pwd
     - uses: ./../action/autobuild
+      timeout-minutes: 10
     - uses: ./../action/analyze
       id: analysis
     - name: Check database

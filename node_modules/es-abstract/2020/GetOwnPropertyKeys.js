@@ -6,8 +6,8 @@ var hasSymbols = require('has-symbols')();
 
 var $TypeError = GetIntrinsic('%TypeError%');
 
-var $gOPN = GetIntrinsic('%Object.getOwnPropertyNames%');
-var $gOPS = hasSymbols && GetIntrinsic('%Object.getOwnPropertySymbols%');
+var $gOPN = GetIntrinsic('%Object.getOwnPropertyNames%', true);
+var $gOPS = hasSymbols && GetIntrinsic('%Object.getOwnPropertySymbols%', true);
 var keys = require('object-keys');
 
 var esType = require('./Type');

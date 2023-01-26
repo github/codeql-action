@@ -1,3 +1,5 @@
+import { TextDecoder } from "node:util";
+
 import * as github from "@actions/github";
 import { TestFn } from "ava";
 import * as nock from "nock";
@@ -178,6 +180,7 @@ export function mockLanguagesInRepo(languages: string[]) {
     url: "GET /repos/:owner/:repo/languages",
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   mockClient.returns({
     repos: {
       listLanguages,
@@ -201,6 +204,9 @@ export function mockCodeQLVersion(version) {
  */
 export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
   return {
+    getDefaultCliVersion: async () => {
+      throw new Error("not implemented");
+    },
     getValue: async (feature) => {
       return enabledFeatures.includes(feature);
     },

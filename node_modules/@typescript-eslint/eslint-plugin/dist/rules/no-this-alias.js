@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
 exports.default = util.createRule({
     name: 'no-this-alias',
@@ -27,7 +31,6 @@ exports.default = util.createRule({
         type: 'suggestion',
         docs: {
             description: 'Disallow aliasing `this`',
-            category: 'Best Practices',
             recommended: 'error',
         },
         schema: [
@@ -36,9 +39,11 @@ exports.default = util.createRule({
                 additionalProperties: false,
                 properties: {
                     allowDestructuring: {
+                        description: 'Whether to ignore destructurings, such as `const { props, state } = this`.',
                         type: 'boolean',
                     },
                     allowedNames: {
+                        description: 'Names to ignore, such as ["self"] for `const self = this;`.',
                         type: 'array',
                         items: {
                             type: 'string',
@@ -60,18 +65,18 @@ exports.default = util.createRule({
     ],
     create(context, [{ allowDestructuring, allowedNames }]) {
         return {
-            "VariableDeclarator[init.type='ThisExpression']"(node) {
-                const { id } = node;
-                if (allowDestructuring && id.type !== experimental_utils_1.AST_NODE_TYPES.Identifier) {
+            "VariableDeclarator[init.type='ThisExpression'], AssignmentExpression[right.type='ThisExpression']"(node) {
+                const id = node.type === utils_1.AST_NODE_TYPES.VariableDeclarator ? node.id : node.left;
+                if (allowDestructuring && id.type !== utils_1.AST_NODE_TYPES.Identifier) {
                     return;
                 }
-                const hasAllowedName = id.type === experimental_utils_1.AST_NODE_TYPES.Identifier
+                const hasAllowedName = id.type === utils_1.AST_NODE_TYPES.Identifier
                     ? allowedNames.includes(id.name)
                     : false;
                 if (!hasAllowedName) {
                     context.report({
                         node: id,
-                        messageId: id.type === experimental_utils_1.AST_NODE_TYPES.Identifier
+                        messageId: id.type === utils_1.AST_NODE_TYPES.Identifier
                             ? 'thisAssignment'
                             : 'thisDestructure',
                     });

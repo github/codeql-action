@@ -8,12 +8,19 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureEnablement } from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 import { codeQlVersionAbove } from "./util";
+
+export enum ToolsSource {
+  Unknown = "UNKNOWN",
+  Local = "LOCAL",
+  Toolcache = "TOOLCACHE",
+  Download = "DOWNLOAD",
+}
 
 export async function initCodeQL(
   toolsInput: string | undefined,
@@ -21,21 +28,29 @@ export async function initCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   bypassToolcache: boolean,
+  defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
-): Promise<{ codeql: CodeQL; toolsVersion: string }> {
+): Promise<{
+  codeql: CodeQL;
+  toolsDownloadDurationMs?: number;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+}> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsVersion } = await setupCodeQL(
-    toolsInput,
-    apiDetails,
-    tempDir,
-    variant,
-    bypassToolcache,
-    logger,
-    true
-  );
+  const { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion } =
+    await setupCodeQL(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      bypassToolcache,
+      defaultCliVersion,
+      logger,
+      true
+    );
   await codeql.printVersion();
   logger.endGroup();
-  return { codeql, toolsVersion };
+  return { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion };
 }
 
 export async function initConfig(

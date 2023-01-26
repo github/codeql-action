@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-// We need to import `performance` on Node 12
 import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
@@ -1931,7 +1930,9 @@ export async function downloadPacks(
       }
       if (numPacksDownloaded > 0) {
         logger.info(
-          `Downloaded ${numPacksDownloaded} ${packs === 1 ? "pack" : "packs"}`
+          `Downloaded ${numPacksDownloaded} ${
+            numPacksDownloaded === 1 ? "pack" : "packs"
+          }`
         );
       } else {
         logger.info("No packs to download");

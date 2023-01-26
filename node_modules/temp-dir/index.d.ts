@@ -3,16 +3,20 @@ Get the real path of the system temp directory.
 
 @example
 ```
-import * as os from 'os';
-import tempDirectory = require('temp-dir');
+import temporaryDirectory from 'temp-dir';
 
-console.log(tempDirectory);
+console.log(temporaryDirectory);
 //=> '/private/var/folders/3x/jf5977fn79jbglr7rk0tq4d00000gn/T'
+```
+
+@example
+```
+import os from 'node:os';
 
 console.log(os.tmpdir());
 //=> '/var/folders/3x/jf5977fn79jbglr7rk0tq4d00000gn/T' // <= Symlink
 ```
 */
-declare const tempDirectory: string;
+declare const temporaryDirectory: string;
 
-export = tempDirectory;
+export default temporaryDirectory;

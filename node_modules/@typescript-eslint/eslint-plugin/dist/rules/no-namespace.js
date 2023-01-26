@@ -1,7 +1,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -19,28 +23,29 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
+const utils_1 = require("@typescript-eslint/utils");
 const util = __importStar(require("../util"));
 exports.default = util.createRule({
     name: 'no-namespace',
     meta: {
         type: 'suggestion',
         docs: {
-            description: 'Disallow the use of custom TypeScript modules and namespaces',
-            category: 'Best Practices',
+            description: 'Disallow TypeScript namespaces',
             recommended: 'error',
         },
         messages: {
-            moduleSyntaxIsPreferred: 'ES2015 module syntax is preferred over custom TypeScript modules and namespaces.',
+            moduleSyntaxIsPreferred: 'ES2015 module syntax is preferred over namespaces.',
         },
         schema: [
             {
                 type: 'object',
                 properties: {
                     allowDeclarations: {
+                        description: 'Whether to allow `declare` with custom TypeScript namespaces.',
                         type: 'boolean',
                     },
                     allowDefinitionFiles: {
+                        description: 'Whether to allow `declare` with custom TypeScript namespaces inside definition files.',
                         type: 'boolean',
                     },
                 },
@@ -57,15 +62,16 @@ exports.default = util.createRule({
     create(context, [{ allowDeclarations, allowDefinitionFiles }]) {
         const filename = context.getFilename();
         function isDeclaration(node) {
-            var _a;
-            return (node.declare === true ||
-                (((_a = node.parent.parent) === null || _a === void 0 ? void 0 : _a.type) === experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration &&
-                    isDeclaration(node.parent.parent)));
+            if (node.type === utils_1.AST_NODE_TYPES.TSModuleDeclaration &&
+                node.declare === true) {
+                return true;
+            }
+            return node.parent != null && isDeclaration(node.parent);
         }
         return {
             "TSModuleDeclaration[global!=true][id.type='Identifier']"(node) {
                 if ((node.parent &&
-                    node.parent.type === experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration) ||
+                    node.parent.type === utils_1.AST_NODE_TYPES.TSModuleDeclaration) ||
                     (allowDefinitionFiles && util.isDefinitionFile(filename)) ||
                     (allowDeclarations && isDeclaration(node))) {
                     return;

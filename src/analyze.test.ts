@@ -282,6 +282,7 @@ test("validateQueryFilters", (t) => {
 
   t.throws(
     () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return validateQueryFilters({ exclude: "foo" } as any);
     },
     {

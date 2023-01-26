@@ -132,7 +132,7 @@ for file in os.listdir('checks'):
             },
             'on': {
                 'push': {
-                    'branches': ['main', 'releases/v1', 'releases/v2']
+                    'branches': ['main', 'releases/v2']
                 },
                 'pull_request': {
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]

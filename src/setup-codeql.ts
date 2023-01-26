@@ -241,14 +241,24 @@ async function getCodeQLBundleDownloadURL(
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${tagName}/${codeQLBundleName}`;
 }
 
+function getBundleVersionFromTagName(tagName: string): string {
+  const match = tagName.match(/^codeql-bundle-(.*)$/);
+  if (match === null || match.length < 2) {
+    throw new Error(
+      `Malformed bundle tag name: ${tagName}. Bundle version could not be inferred`
+    );
+  }
+  return match[1];
+}
+
 export function getBundleVersionFromUrl(url: string): string {
-  const match = url.match(/\/codeql-bundle-(.*)\//);
+  const match = url.match(/\/(codeql-bundle-.*)\//);
   if (match === null || match.length < 2) {
     throw new Error(
       `Malformed tools url: ${url}. Bundle version could not be inferred`
     );
   }
-  return match[1];
+  return getBundleVersionFromTagName(match[1]);
 }
 
 export function convertToSemVer(version: string, logger: Logger): string {
@@ -448,14 +458,17 @@ export async function getCodeQLSource(
   }
 
   if (!codeqlFolder && requestedVersion.cliVersion) {
-    // Fall back to accepting a `0.0.0-<tagName>` version if we didn't find the
+    // Fall back to accepting a `0.0.0-<bundleVersion>` version if we didn't find the
     // `x.y.z` version. This is to support old versions of the toolcache.
     //
     // If we are on Dotcom, we will make an HTTP request to the Releases API here
     // to find the tag name for the requested version.
     tagName =
       tagName || (await getOrFindBundleTagName(requestedVersion, logger));
-    const fallbackVersion = convertToSemVer(tagName, logger);
+    const fallbackVersion = convertToSemVer(
+      getBundleVersionFromTagName(tagName),
+      logger
+    );
     logger.debug(
       `Computed a fallback toolcache version number of ${fallbackVersion} for CodeQL tools version ` +
         `${requestedVersion.cliVersion}.`

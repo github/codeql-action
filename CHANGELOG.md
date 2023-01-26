@@ -1,6 +1,6 @@
 # CodeQL Action Changelog
 
-## [UNRELEASED]
+## $2.2.0 - 26 Jan 2023
 
 - Improve stability when choosing the default version of CodeQL to use in code scanning workflow runs on Actions on GitHub.com. [#1475](https://github.com/github/codeql-action/pull/1475)
   - This change addresses customer reports of code scanning alerts on GitHub.com being closed and reopened during the rollout of new versions of CodeQL in the GitHub Actions [runner images](https://github.com/actions/runner-images).

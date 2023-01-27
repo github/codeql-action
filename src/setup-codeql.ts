@@ -568,7 +568,9 @@ export async function downloadCodeQL(
     undefined,
     finalHeaders
   );
-  const toolsDownloadDurationMs = performance.now() - toolsDownloadStart;
+  const toolsDownloadDurationMs = Math.round(
+    performance.now() - toolsDownloadStart
+  );
 
   logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
 

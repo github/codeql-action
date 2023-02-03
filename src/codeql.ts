@@ -279,6 +279,11 @@ export const CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS = "2.9.0";
 export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 
 /**
+ * Versions 2.11.1+ of the CodeQL CLI introduces `security-experimental` query suites for all languages.
+ */
+export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput

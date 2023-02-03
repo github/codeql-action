@@ -543,11 +543,12 @@ export async function downloadCodeQL(
   // from the same GitHub instance the Action is running on.
   // This avoids leaking Enterprise tokens to dotcom.
   // We also don't want to send an authorization header if there's already a token provided in the URL.
+  let authorization: string | undefined = undefined;
   if (searchParams.has("token")) {
     logger.debug("CodeQL tools URL contains an authorization token.");
   } else if (codeqlURL.startsWith(`${apiDetails.url}/`)) {
     logger.debug("Providing an authorization token to download CodeQL tools.");
-    headers.authorization = `token ${apiDetails.auth}`;
+    authorization = `token ${apiDetails.auth}`;
   } else {
     logger.debug("Downloading CodeQL tools without an authorization token.");
   }
@@ -565,7 +566,7 @@ export async function downloadCodeQL(
   const codeqlPath = await toolcache.downloadTool(
     codeqlURL,
     dest,
-    undefined,
+    authorization,
     finalHeaders
   );
   const toolsDownloadDurationMs = Math.round(

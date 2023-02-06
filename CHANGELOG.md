@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Fix an issue where customers using the CodeQL Action with the [CodeQL Action sync tool](https://docs.github.com/en/enterprise-server@3.7/admin/code-security/managing-github-advanced-security-for-your-enterprise/configuring-code-scanning-for-your-appliance#configuring-codeql-analysis-on-a-server-without-internet-access) would not be able to obtain the CodeQL tools. [#1517](https://github.com/github/codeql-action/pull/1517)
 
 ## 2.2.1 - 27 Jan 2023
 

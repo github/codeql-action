@@ -87,10 +87,14 @@ test.beforeEach(() => {
 function mockDownloadApi({
   apiDetails = sampleApiDetails,
   isPinned,
+  repo = "github/codeql-action",
+  platformSpecific = true,
   tagName,
 }: {
   apiDetails?: GitHubApiDetails;
   isPinned?: boolean;
+  repo?: string;
+  platformSpecific?: boolean;
   tagName: string;
 }): string {
   const platform =
@@ -102,7 +106,9 @@ function mockDownloadApi({
 
   const baseUrl = apiDetails?.url ?? "https://example.com";
   const relativeUrl = apiDetails
-    ? `/github/codeql-action/releases/download/${tagName}/codeql-bundle-${platform}.tar.gz`
+    ? `/${repo}/releases/download/${tagName}/codeql-bundle${
+        platformSpecific ? `-${platform}` : ""
+      }.tar.gz`
     : `/download/${tagName}/codeql-bundle.tar.gz`;
 
   nock(baseUrl)
@@ -468,69 +474,120 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
   });
 });
 
-test("download codeql bundle from github ae endpoint", async (t) => {
+for (const isBundleVersionInUrl of [true, false]) {
+  const inclusionString = isBundleVersionInUrl
+    ? "includes"
+    : "does not include";
+  test(`download codeql bundle from github ae endpoint (URL ${inclusionString} bundle version)`, async (t) => {
+    await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      const bundleAssetID = 10;
+
+      const platform =
+        process.platform === "win32"
+          ? "win64"
+          : process.platform === "linux"
+          ? "linux64"
+          : "osx64";
+      const codeQLBundleName = `codeql-bundle-${platform}.tar.gz`;
+
+      const eventualDownloadUrl = isBundleVersionInUrl
+        ? `https://example.githubenterprise.com/github/codeql-action/releases/download/${defaults.bundleVersion}/${codeQLBundleName}`
+        : `https://example.githubenterprise.com/api/v3/repos/github/codeql-action/releases/assets/${bundleAssetID}`;
+
+      nock("https://example.githubenterprise.com")
+        .get(
+          `/api/v3/enterprise/code-scanning/codeql-bundle/find/${defaults.bundleVersion}`
+        )
+        .reply(200, {
+          assets: { [codeQLBundleName]: bundleAssetID },
+        });
+
+      nock("https://example.githubenterprise.com")
+        .get(
+          `/api/v3/enterprise/code-scanning/codeql-bundle/download/${bundleAssetID}`
+        )
+        .reply(200, {
+          url: eventualDownloadUrl,
+        });
+
+      nock("https://example.githubenterprise.com")
+        .get(
+          eventualDownloadUrl.replace(
+            "https://example.githubenterprise.com",
+            ""
+          )
+        )
+        .replyWithFile(
+          200,
+          path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`)
+        );
+
+      mockApiDetails(sampleGHAEApiDetails);
+      sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
+      process.env["GITHUB_ACTION_REPOSITORY"] = "github/codeql-action";
+
+      const result = await codeql.setupCodeQL(
+        undefined,
+        sampleGHAEApiDetails,
+        tmpDir,
+        util.GitHubVariant.GHAE,
+        false,
+        {
+          cliVersion: defaults.cliVersion,
+          tagName: defaults.bundleVersion,
+          variant: util.GitHubVariant.GHAE,
+        },
+        getRunnerLogger(true),
+        false
+      );
+
+      t.is(result.toolsSource, ToolsSource.Download);
+      t.assert(Number.isInteger(result.toolsDownloadDurationMs));
+
+      const cachedVersions = toolcache.findAllVersions("CodeQL");
+      t.is(cachedVersions.length, 1);
+    });
+  });
+}
+
+test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    const bundleAssetID = 10;
-
-    const platform =
-      process.platform === "win32"
-        ? "win64"
-        : process.platform === "linux"
-        ? "linux64"
-        : "osx64";
-    const codeQLBundleName = `codeql-bundle-${platform}.tar.gz`;
-
-    nock("https://example.githubenterprise.com")
-      .get(
-        `/api/v3/enterprise/code-scanning/codeql-bundle/find/${defaults.bundleVersion}`
-      )
-      .reply(200, {
-        assets: { [codeQLBundleName]: bundleAssetID },
-      });
-
-    nock("https://example.githubenterprise.com")
-      .get(
-        `/api/v3/enterprise/code-scanning/codeql-bundle/download/${bundleAssetID}`
-      )
-      .reply(200, {
-        url: `https://example.githubenterprise.com/github/codeql-action/releases/download/${defaults.bundleVersion}/${codeQLBundleName}`,
-      });
-
-    nock("https://example.githubenterprise.com")
-      .get(
-        `/github/codeql-action/releases/download/${defaults.bundleVersion}/${codeQLBundleName}`
-      )
-      .replyWithFile(
-        200,
-        path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`)
-      );
-
-    mockApiDetails(sampleGHAEApiDetails);
-    sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
-    process.env["GITHUB_ACTION_REPOSITORY"] = "github/codeql-action";
+    mockApiDetails(sampleApiDetails);
+    sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
+    const releasesApiMock = mockReleaseApi({
+      assetNames: ["cli-version-2.12.2.txt"],
+      tagName: "codeql-bundle-20230203",
+    });
+    mockDownloadApi({
+      repo: "dsp-testing/codeql-cli-nightlies",
+      platformSpecific: false,
+      tagName: "codeql-bundle-20230203",
+    });
 
     const result = await codeql.setupCodeQL(
-      undefined,
-      sampleGHAEApiDetails,
+      "https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20230203/codeql-bundle.tar.gz",
+      sampleApiDetails,
       tmpDir,
-      util.GitHubVariant.GHAE,
+      util.GitHubVariant.DOTCOM,
       false,
-      {
-        cliVersion: defaults.cliVersion,
-        tagName: defaults.bundleVersion,
-        variant: util.GitHubVariant.GHAE,
-      },
+      SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
       false
     );
 
+    t.is(result.toolsVersion, "0.0.0-20230203");
     t.is(result.toolsSource, ToolsSource.Download);
-    t.assert(Number.isInteger(result.toolsDownloadDurationMs));
+    t.true(Number.isInteger(result.toolsDownloadDurationMs));
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 1);
+    t.is(cachedVersions[0], "0.0.0-20230203");
+
+    t.false(releasesApiMock.isDone());
   });
 });
 

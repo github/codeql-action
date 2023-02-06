@@ -241,24 +241,36 @@ async function getCodeQLBundleDownloadURL(
   return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${tagName}/${codeQLBundleName}`;
 }
 
-function getBundleVersionFromTagName(tagName: string): string {
+function tryGetBundleVersionFromTagName(
+  tagName: string,
+  logger: Logger
+): string | undefined {
   const match = tagName.match(/^codeql-bundle-(.*)$/);
   if (match === null || match.length < 2) {
-    throw new Error(
-      `Malformed bundle tag name: ${tagName}. Bundle version could not be inferred`
-    );
+    logger.debug(`Could not determine bundle version from tag ${tagName}.`);
+    return undefined;
   }
   return match[1];
 }
 
-export function getBundleVersionFromUrl(url: string): string {
+function tryGetTagNameFromUrl(url: string, logger: Logger): string | undefined {
   const match = url.match(/\/(codeql-bundle-.*)\//);
   if (match === null || match.length < 2) {
-    throw new Error(
-      `Malformed tools url: ${url}. Bundle version could not be inferred`
-    );
+    logger.debug(`Could not determine tag name for URL ${url}.`);
+    return undefined;
   }
-  return getBundleVersionFromTagName(match[1]);
+  return match[1];
+}
+
+export function tryGetBundleVersionFromUrl(
+  url: string,
+  logger: Logger
+): string | undefined {
+  const tagName = tryGetTagNameFromUrl(url, logger);
+  if (tagName === undefined) {
+    return undefined;
+  }
+  return tryGetBundleVersionFromTagName(tagName, logger);
 }
 
 export function convertToSemVer(version: string, logger: Logger): string {
@@ -291,6 +303,8 @@ type CodeQLToolsSource =
       toolsVersion: string;
     }
   | {
+      /** Bundle version of the tools, if known. */
+      bundleVersion?: string;
       /** CLI version of the tools, if known. */
       cliVersion?: string;
       codeqlURL: string;
@@ -299,22 +313,11 @@ type CodeQLToolsSource =
       toolsVersion: string;
     };
 
-async function getOrFindBundleTagName(
-  version: CodeQLDefaultVersionInfo,
-  logger: Logger
-): Promise<string> {
-  if (version.variant === util.GitHubVariant.DOTCOM) {
-    return await findCodeQLBundleTagDotcomOnly(version.cliVersion, logger);
-  } else {
-    return version.tagName;
-  }
-}
-
 /**
  * Look for a version of the CodeQL tools in the cache which could override the requested CLI version.
  */
 async function findOverridingToolsInCache(
-  requestedCliVersion: string,
+  humanReadableVersion: string,
   logger: Logger
 ): Promise<CodeQLToolsSource | undefined> {
   const candidates = toolcache
@@ -329,7 +332,7 @@ async function findOverridingToolsInCache(
   if (candidates.length === 1) {
     const candidate = candidates[0];
     logger.debug(
-      `CodeQL tools version ${candidate.version} in toolcache overriding version ${requestedCliVersion}.`
+      `CodeQL tools version ${candidate.version} in toolcache overriding version ${humanReadableVersion}.`
     );
     return {
       codeqlFolder: candidate.folder,
@@ -365,7 +368,8 @@ export async function getCodeQLSource(
     };
   }
 
-  const forceLatestReason =
+  /** The reason why the tools shipped with the Action have been forced. */
+  const forceShippedToolsReason =
     // We use the special value of 'latest' to prioritize the version in the
     // defaults over any pinned cached version.
     toolsInput === "latest"
@@ -377,64 +381,67 @@ export async function getCodeQLSource(
       toolsInput === undefined && bypassToolcache
       ? "a specific version of the CodeQL tools was not requested and the bypass toolcache feature is enabled"
       : undefined;
-  const forceLatest = forceLatestReason !== undefined;
-  if (forceLatest) {
-    logger.debug(
-      `Forcing the latest version of the CodeQL tools since ${forceLatestReason}.`
+  /** Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced. */
+  const forceShippedTools = forceShippedToolsReason !== undefined;
+  if (forceShippedTools) {
+    logger.info(
+      "Overriding the version of the CodeQL tools by the version shipped with the Action since " +
+        `${forceShippedToolsReason}.`
     );
   }
 
+  /** CLI version number, for example 2.12.1. */
+  let cliVersion: string | undefined;
+  /** Tag name of the CodeQL bundle, for example `codeql-bundle-20230120`. */
+  let tagName: string | undefined;
   /**
-   * The requested version is:
-   * 
-   * 1. The one in `defaults.json`, if forceLatest is true.
-   * 2. The version specified by the tools input URL, if one was provided.
-   * 3. The default CLI version, otherwise.
-  
-   * We include a `variant` property to let us verify using the type system that
-   * `tagName` is only undefined when the variant is Dotcom. This lets us ensure
-   * that we can always compute `tagName`, either by using the existing tag name
-   * on enterprise instances, or calling `findCodeQLBundleTagDotcomOnly` on
-   * Dotcom.
+   * URL of the CodeQL bundle.
+   *
+   * This does not always include a tag name.
    */
-  const requestedVersion = forceLatest
-    ? // case 1
-      {
-        cliVersion: defaults.cliVersion,
-        syntheticCliVersion: defaults.cliVersion,
-        tagName: defaults.bundleVersion,
-        variant,
-      }
-    : toolsInput !== undefined
-    ? // case 2
-      {
-        syntheticCliVersion: convertToSemVer(
-          getBundleVersionFromUrl(toolsInput),
-          logger
-        ),
-        tagName: `codeql-bundle-${getBundleVersionFromUrl(toolsInput)}`,
-        url: toolsInput,
-        variant,
-      }
-    : // case 3
-      {
-        ...defaultCliVersion,
-        syntheticCliVersion: defaultCliVersion.cliVersion,
-      };
+  let url: string | undefined;
 
-  // If we find the specified version, we always use that.
-  let codeqlFolder = toolcache.find(
-    "CodeQL",
-    requestedVersion.syntheticCliVersion
+  if (forceShippedTools) {
+    cliVersion = defaults.cliVersion;
+    tagName = defaults.bundleVersion;
+  } else if (toolsInput !== undefined) {
+    // If a tools URL was provided, then use that.
+    tagName = tryGetTagNameFromUrl(toolsInput, logger);
+    url = toolsInput;
+  } else {
+    // Otherwise, use the default CLI version passed in.
+    cliVersion = defaultCliVersion.cliVersion;
+    tagName = defaultCliVersion["tagName"];
+  }
+
+  const bundleVersion =
+    tagName && tryGetBundleVersionFromTagName(tagName, logger);
+  const humanReadableVersion =
+    cliVersion ??
+    (bundleVersion && convertToSemVer(bundleVersion, logger)) ??
+    tagName ??
+    url ??
+    "unknown";
+
+  logger.debug(
+    "Attempting to obtain CodeQL tools. " +
+      `CLI version: ${cliVersion ?? "unknown"}, ` +
+      `bundle tag name: ${tagName ?? "unknown"}, ` +
+      `URL: ${url ?? "unspecified"}.`
   );
-  let tagName: string | undefined = requestedVersion["tagName"];
 
-  if (!codeqlFolder) {
-    logger.debug(
-      "Didn't find a version of the CodeQL tools in the toolcache with a version number " +
-        `exactly matching ${requestedVersion.syntheticCliVersion}.`
-    );
-    if (requestedVersion.cliVersion) {
+  let codeqlFolder;
+
+  if (cliVersion) {
+    // If we find the specified CLI version, we always use that.
+    codeqlFolder = toolcache.find("CodeQL", cliVersion);
+
+    // Fall back to matching `x.y.z-<tagName>`.
+    if (!codeqlFolder) {
+      logger.debug(
+        "Didn't find a version of the CodeQL tools in the toolcache with a version number " +
+          `exactly matching ${cliVersion}.`
+      );
       const allVersions = toolcache.findAllVersions("CodeQL");
       logger.debug(
         `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
@@ -444,55 +451,82 @@ export async function getCodeQLSource(
       // If there is exactly one version of the CodeQL tools in the toolcache, and that version is
       // the form `x.y.z-<tagName>`, then use it.
       const candidateVersions = allVersions.filter((version) =>
-        version.startsWith(`${requestedVersion.cliVersion}-`)
+        version.startsWith(`${cliVersion}-`)
       );
       if (candidateVersions.length === 1) {
-        logger.debug("Exactly one candidate version found, using that.");
-        codeqlFolder = toolcache.find("CodeQL", candidateVersions[0]);
-      } else {
         logger.debug(
-          "Did not find exactly one version of the CodeQL tools starting with the requested version."
+          `Exactly one version of the CodeQL tools starting with ${cliVersion} found in the ` +
+            "toolcache, using that."
         );
+        codeqlFolder = toolcache.find("CodeQL", candidateVersions[0]);
+      } else if (candidateVersions.length === 0) {
+        logger.debug(
+          `Didn't find any versions of the CodeQL tools starting with ${cliVersion} ` +
+            `in the toolcache. Trying next fallback method.`
+        );
+      } else {
+        logger.warning(
+          `Found ${candidateVersions.length} versions of the CodeQL tools starting with ` +
+            `${cliVersion} in the toolcache, but at most one was expected.`
+        );
+        logger.debug("Trying next fallback method.");
       }
     }
   }
 
-  if (!codeqlFolder && requestedVersion.cliVersion) {
-    // Fall back to accepting a `0.0.0-<bundleVersion>` version if we didn't find the
-    // `x.y.z` version. This is to support old versions of the toolcache.
-    //
-    // If we are on Dotcom, we will make an HTTP request to the Releases API here
-    // to find the tag name for the requested version.
-    tagName =
-      tagName || (await getOrFindBundleTagName(requestedVersion, logger));
-    const fallbackVersion = convertToSemVer(
-      getBundleVersionFromTagName(tagName),
-      logger
+  // Fall back to matching `0.0.0-<bundleVersion>`.
+  if (!codeqlFolder && (cliVersion || tagName)) {
+    if (cliVersion || tagName) {
+      const fallbackVersion = await tryGetFallbackToolcacheVersion(
+        cliVersion,
+        tagName,
+        variant,
+        logger
+      );
+      if (fallbackVersion) {
+        codeqlFolder = toolcache.find("CodeQL", fallbackVersion);
+      } else {
+        logger.debug(
+          "Could not determine a fallback toolcache version number for CodeQL tools version " +
+            `${humanReadableVersion}.`
+        );
+      }
+    } else {
+      logger.debug(
+        "Both the CLI version and the bundle version are unknown, so we will not be able to find " +
+          "the requested version of the CodeQL tools in the toolcache."
+      );
+    }
+  }
+
+  if (codeqlFolder) {
+    logger.info(
+      `Found CodeQL tools version ${humanReadableVersion} in the toolcache.`
     );
-    logger.debug(
-      `Computed a fallback toolcache version number of ${fallbackVersion} for CodeQL tools version ` +
-        `${requestedVersion.cliVersion}.`
+  } else {
+    logger.info(
+      `Did not find CodeQL tools version ${humanReadableVersion} in the toolcache.`
     );
-    codeqlFolder = toolcache.find("CodeQL", fallbackVersion);
   }
 
   if (codeqlFolder) {
     return {
       codeqlFolder,
       sourceType: "toolcache",
-      toolsVersion: requestedVersion.syntheticCliVersion,
+      toolsVersion: cliVersion ?? humanReadableVersion,
     };
   }
-  logger.debug(
-    `Did not find CodeQL tools version ${requestedVersion.syntheticCliVersion} in the toolcache.`
-  );
 
   // If we don't find the requested version on Enterprise, we may allow a
   // different version to save download time if the version hasn't been
   // specified explicitly (in which case we always honor it).
-  if (variant !== util.GitHubVariant.DOTCOM && !forceLatest && !toolsInput) {
+  if (
+    variant !== util.GitHubVariant.DOTCOM &&
+    !forceShippedTools &&
+    !toolsInput
+  ) {
     const result = await findOverridingToolsInCache(
-      requestedVersion.syntheticCliVersion,
+      humanReadableVersion,
       logger
     );
     if (result !== undefined) {
@@ -500,30 +534,66 @@ export async function getCodeQLSource(
     }
   }
 
+  if (!url) {
+    if (!tagName && cliVersion && variant === util.GitHubVariant.DOTCOM) {
+      tagName = await findCodeQLBundleTagDotcomOnly(cliVersion, logger);
+    } else if (!tagName) {
+      throw new Error(
+        `Could not obtain the requested version (${humanReadableVersion}) of the CodeQL tools ` +
+          "since we could not compute the tag name."
+      );
+    }
+    url = await getCodeQLBundleDownloadURL(
+      tagName,
+      apiDetails,
+      variant,
+      logger
+    );
+  }
+
   return {
-    cliVersion: requestedVersion.cliVersion || undefined,
-    codeqlURL:
-      requestedVersion["url"] ||
-      (await getCodeQLBundleDownloadURL(
-        tagName ||
-          // The check on `requestedVersion.tagName` is redundant but lets us
-          // use the property that if we don't know `requestedVersion.tagName`,
-          // then we must know `requestedVersion.cliVersion`. This property is
-          // required by the type of `getOrFindBundleTagName`.
-          (requestedVersion.tagName !== undefined
-            ? requestedVersion.tagName
-            : await getOrFindBundleTagName(requestedVersion, logger)),
-        apiDetails,
-        variant,
-        logger
-      )),
+    bundleVersion: tagName && tryGetBundleVersionFromTagName(tagName, logger),
+    cliVersion,
+    codeqlURL: url,
     sourceType: "download",
-    toolsVersion: requestedVersion.syntheticCliVersion,
+    toolsVersion: cliVersion ?? humanReadableVersion,
   };
+}
+
+/**
+ * Gets a fallback version number to use when looking for CodeQL in the toolcache if we didn't find
+ * the `x.y.z` version. This is to support old versions of the toolcache.
+ */
+export async function tryGetFallbackToolcacheVersion(
+  cliVersion: string | undefined,
+  tagName: string | undefined,
+  variant: util.GitHubVariant,
+  logger: Logger
+): Promise<string | undefined> {
+  //
+  // If we are on Dotcom, we will make an HTTP request to the Releases API here
+  // to find the tag name for the requested version.
+  if (cliVersion && !tagName && variant === util.GitHubVariant.DOTCOM) {
+    tagName = await findCodeQLBundleTagDotcomOnly(cliVersion, logger);
+  }
+  if (!tagName) {
+    return undefined;
+  }
+  const bundleVersion = tryGetBundleVersionFromTagName(tagName, logger);
+  if (!bundleVersion) {
+    return undefined;
+  }
+  const fallbackVersion = convertToSemVer(bundleVersion, logger);
+  logger.debug(
+    `Computed a fallback toolcache version number of ${fallbackVersion} for CodeQL version ` +
+      `${cliVersion ?? tagName}.`
+  );
+  return fallbackVersion;
 }
 
 export async function downloadCodeQL(
   codeqlURL: string,
+  maybeBundleVersion: string | undefined,
   maybeCliVersion: string | undefined,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
@@ -577,7 +647,21 @@ export async function downloadCodeQL(
 
   const codeqlExtracted = await toolcache.extractTar(codeqlPath);
 
-  const bundleVersion = getBundleVersionFromUrl(codeqlURL);
+  const bundleVersion =
+    maybeBundleVersion ?? tryGetBundleVersionFromUrl(codeqlURL, logger);
+
+  if (bundleVersion === undefined) {
+    logger.debug(
+      "Could not cache CodeQL tools because we could not determine the bundle version from the " +
+        `URL ${codeqlURL}.`
+    );
+    return {
+      toolsVersion: maybeCliVersion ?? "unknown",
+      codeqlFolder: codeqlExtracted,
+      toolsDownloadDurationMs,
+    };
+  }
+
   // Try to compute the CLI version for this bundle
   const cliVersion: string | undefined =
     maybeCliVersion ||
@@ -675,6 +759,7 @@ export async function setupCodeQLBundle(
     case "download": {
       const result = await downloadCodeQL(
         source.codeqlURL,
+        source.bundleVersion,
         source.cliVersion,
         apiDetails,
         variant,

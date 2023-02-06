@@ -368,7 +368,8 @@ export async function getCodeQLSource(
     };
   }
 
-  const forceLatestReason =
+  /** The reason why the tools shipped with the Action have been forced. */
+  const forceShippedToolsReason =
     // We use the special value of 'latest' to prioritize the version in the
     // defaults over any pinned cached version.
     toolsInput === "latest"
@@ -380,10 +381,12 @@ export async function getCodeQLSource(
       toolsInput === undefined && bypassToolcache
       ? "a specific version of the CodeQL tools was not requested and the bypass toolcache feature is enabled"
       : undefined;
-  const forceLatest = forceLatestReason !== undefined;
-  if (forceLatest) {
-    logger.debug(
-      `Forcing the latest version of the CodeQL tools since ${forceLatestReason}.`
+  /** Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced. */
+  const forceShippedTools = forceShippedToolsReason !== undefined;
+  if (forceShippedTools) {
+    logger.info(
+      "Overriding the version of the CodeQL tools by the version shipped with the Action since " +
+        `${forceShippedToolsReason}.`
     );
   }
 
@@ -398,8 +401,7 @@ export async function getCodeQLSource(
    */
   let url: string | undefined;
 
-  if (forceLatest) {
-    // When forceLatest is true, the requested version is the one shipped with the Action in `defaults.json`.
+  if (forceShippedTools) {
     cliVersion = defaults.cliVersion;
     tagName = defaults.bundleVersion;
   } else if (toolsInput !== undefined) {
@@ -512,7 +514,11 @@ export async function getCodeQLSource(
   // If we don't find the requested version on Enterprise, we may allow a
   // different version to save download time if the version hasn't been
   // specified explicitly (in which case we always honor it).
-  if (variant !== util.GitHubVariant.DOTCOM && !forceLatest && !toolsInput) {
+  if (
+    variant !== util.GitHubVariant.DOTCOM &&
+    !forceShippedTools &&
+    !toolsInput
+  ) {
     const result = await findOverridingToolsInCache(
       humanReadableVersion,
       logger

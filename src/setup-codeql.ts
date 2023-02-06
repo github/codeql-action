@@ -459,11 +459,17 @@ export async function getCodeQLSource(
             "toolcache, using that."
         );
         codeqlFolder = toolcache.find("CodeQL", candidateVersions[0]);
-      } else {
+      } else if (candidateVersions.length === 0) {
         logger.debug(
-          `Did not find exactly one version of the CodeQL tools starting with ${cliVersion} ` +
-            `(instead found ${candidateVersions.length}). Trying next fallback method.`
+          `Didn't find any versions of the CodeQL tools starting with ${cliVersion} ` +
+            `in the toolcache. Trying next fallback method.`
         );
+      } else {
+        logger.warning(
+          `Found ${candidateVersions.length} versions of the CodeQL tools starting with ` +
+            `${cliVersion} in the toolcache, but at most one was expected.`
+        );
+        logger.debug("Trying next fallback method.");
       }
     }
   }

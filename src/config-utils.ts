@@ -10,6 +10,7 @@ import {
   CodeQL,
   CODEQL_VERSION_GHES_PACK_DOWNLOAD,
   CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS,
+  CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE,
   ResolveQueriesOutput,
 } from "./codeql";
 import * as externalQueries from "./external-queries";
@@ -380,7 +381,11 @@ async function addDefaultQueries(
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
-const builtinSuites = ["security-extended", "security-and-quality"] as const;
+const builtinSuites = [
+  "security-experimental",
+  "security-extended",
+  "security-and-quality",
+] as const;
 
 /**
  * Determine the set of queries associated with suiteName's suites and add them to resultMap.
@@ -401,6 +406,19 @@ async function addBuiltinSuiteQueries(
   if (!found) {
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
   }
+  if (
+    suiteName === "security-experimental" &&
+    !(await codeQlVersionAbove(
+      codeQL,
+      CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE
+    ))
+  ) {
+    throw new Error(
+      `The 'security-experimental' suite is not supported on CodeQL CLI versions earlier than 
+      ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE}. Please upgrade to CodeQL CLI version
+      ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE} or later.`
+    );
+  }
 
   // If we're running the JavaScript security-extended analysis (or a superset of it), the repo is
   // opted into the ML-powered queries beta, and a user hasn't already added the ML-powered query
@@ -413,7 +431,9 @@ async function addBuiltinSuiteQueries(
         CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS
       ))) &&
     languages.includes("javascript") &&
-    (found === "security-extended" || found === "security-and-quality") &&
+    (found === "security-experimental" ||
+      found === "security-extended" ||
+      found === "security-and-quality") &&
     !packs.javascript?.some(isMlPoweredJsQueriesPack) &&
     (await featureEnablement.getValue(Feature.MlPoweredQueriesEnabled, codeQL))
   ) {

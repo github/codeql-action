@@ -87,10 +87,14 @@ test.beforeEach(() => {
 function mockDownloadApi({
   apiDetails = sampleApiDetails,
   isPinned,
+  repo = "github/codeql-action",
+  platformSpecific = true,
   tagName,
 }: {
   apiDetails?: GitHubApiDetails;
   isPinned?: boolean;
+  repo?: string;
+  platformSpecific?: boolean;
   tagName: string;
 }): string {
   const platform =
@@ -102,7 +106,9 @@ function mockDownloadApi({
 
   const baseUrl = apiDetails?.url ?? "https://example.com";
   const relativeUrl = apiDetails
-    ? `/github/codeql-action/releases/download/${tagName}/codeql-bundle-${platform}.tar.gz`
+    ? `/${repo}/releases/download/${tagName}/codeql-bundle${
+        platformSpecific ? `-${platform}` : ""
+      }.tar.gz`
     : `/download/${tagName}/codeql-bundle.tar.gz`;
 
   nock(baseUrl)
@@ -545,6 +551,45 @@ for (const isBundleVersionInUrl of [true, false]) {
     });
   });
 }
+
+test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+
+    mockApiDetails(sampleApiDetails);
+    sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
+    const releasesApiMock = mockReleaseApi({
+      assetNames: ["cli-version-2.12.2.txt"],
+      tagName: "codeql-bundle-20230203",
+    });
+    mockDownloadApi({
+      repo: "dsp-testing/codeql-cli-nightlies",
+      platformSpecific: false,
+      tagName: "codeql-bundle-20230203",
+    });
+
+    const result = await codeql.setupCodeQL(
+      "https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20230203/codeql-bundle.tar.gz",
+      sampleApiDetails,
+      tmpDir,
+      util.GitHubVariant.DOTCOM,
+      false,
+      SAMPLE_DEFAULT_CLI_VERSION,
+      getRunnerLogger(true),
+      false
+    );
+
+    t.is(result.toolsVersion, "0.0.0-20230203");
+    t.is(result.toolsSource, ToolsSource.Download);
+    t.true(Number.isInteger(result.toolsDownloadDurationMs));
+
+    const cachedVersions = toolcache.findAllVersions("CodeQL");
+    t.is(cachedVersions.length, 1);
+    t.is(cachedVersions[0], "0.0.0-20230203");
+
+    t.false(releasesApiMock.isDone());
+  });
+});
 
 test("getExtraOptions works for explicit paths", (t) => {
   t.deepEqual(codeql.getExtraOptions({}, ["foo"], []), []);

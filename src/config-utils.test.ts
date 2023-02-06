@@ -1993,7 +1993,7 @@ test(
   process.platform === "win32" ? undefined : "~0.1.0"
 );
 // Test that ML-powered queries aren't run when the user hasn't specified that we should run the
-// `security-experimental`, `security-extended`, or `security-and-quality` query suite.
+//  `security-extended`, `security-and-quality`, or `security-experimental` query suite.
 test(mlPoweredQueriesMacro, "2.7.5", true, undefined, undefined, undefined);
 // Test that ML-powered queries are run on non-Windows platforms running `security-extended` on
 // versions of the CodeQL CLI prior to 2.9.0.

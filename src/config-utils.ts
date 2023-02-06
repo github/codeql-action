@@ -414,7 +414,7 @@ async function addBuiltinSuiteQueries(
     ))
   ) {
     throw new Error(
-      `'security-experimental' suite is not supported on CodeQL versions less than ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE}.`
+      `The 'security-experimental' suite is not supported on CodeQL CLI versions earlier than ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE}. Please upgrade to CodeQL CLI version ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE} or later.`
     );
   }
 

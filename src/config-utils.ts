@@ -1650,7 +1650,8 @@ export function parsePacks(
  * Without a '+', an input value will override the corresponding value in the config file.
  *
  * @param inputValue The input value to process.
- * @returns true if the input value should replace the corresponding value in the config file, false if it should be appended.
+ * @returns true if the input value should replace the corresponding value in the config file,
+ *          false if it should be appended.
  */
 function shouldCombine(inputValue?: string): boolean {
   return !!inputValue?.trim().startsWith("+");

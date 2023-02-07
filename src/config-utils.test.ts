@@ -7,9 +7,13 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
+import {
+  CODEQL_VERSION_GHES_PACK_DOWNLOAD,
+  getCachedCodeQL,
+  PackDownloadOutput,
+  setCodeQL,
+} from "./codeql";
 import * as configUtils from "./config-utils";
-import { RegistryConfigWithCredentials } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
@@ -2277,9 +2281,9 @@ test("downloadPacks-no-registries", async (t) => {
         go: ["c", "d"],
         python: ["e", "f"],
       },
-      undefined, // registries
       sampleApiDetails,
-      tmpDir,
+      undefined, // registriesAuthTokens
+      tmpDir, // qlconfig file path
       logger
     );
 
@@ -2299,7 +2303,7 @@ test("downloadPacks-with-registries", async (t) => {
     process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
     const logger = getRunnerLogger(true);
 
-    const registries = [
+    const registriesInput = yaml.dump([
       {
         // no slash
         url: "http://ghcr.io",
@@ -2312,9 +2316,12 @@ test("downloadPacks-with-registries", async (t) => {
         packages: "semmle/*",
         token: "still-not-a-token",
       },
-    ];
+    ]);
 
     // append a slash to the first url
+    const registries = yaml.load(
+      registriesInput
+    ) as configUtils.RegistryConfigWithCredentials[];
     const expectedRegistries = registries.map((r, i) => ({
       packages: r.packages,
       url: i === 0 ? `${r.url}/` : r.url,
@@ -2356,8 +2363,8 @@ test("downloadPacks-with-registries", async (t) => {
         go: ["c", "d"],
         python: ["e", "f"],
       },
-      registries,
       sampleApiDetails,
+      registriesInput,
       tmpDir,
       logger
     );
@@ -2387,7 +2394,7 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
     process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
     const logger = getRunnerLogger(true);
 
-    const registries = [
+    const registriesInput = yaml.dump([
       {
         url: "http://ghcr.io",
         packages: ["codeql/*", "dsp-testing/*"],
@@ -2398,7 +2405,7 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
         packages: "semmle/*",
         token: "still-not-a-token",
       },
-    ];
+    ]);
 
     const codeQL = setCodeQL({
       getVersion: () => Promise.resolve("2.10.3"),
@@ -2409,8 +2416,8 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
           codeQL,
           [Language.javascript, Language.java, Language.python],
           {},
-          registries,
           sampleApiDetails,
+          registriesInput,
           tmpDir,
           logger
         );
@@ -2429,7 +2436,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
     process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
     const logger = getRunnerLogger(true);
 
-    const registries = [
+    const registriesInput = yaml.dump([
       {
         // missing url property
         packages: ["codeql/*", "dsp-testing/*"],
@@ -2440,7 +2447,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
         packages: "semmle/*",
         token: "still-not-a-token",
       },
-    ];
+    ]);
 
     const codeQL = setCodeQL({
       getVersion: () => Promise.resolve("2.10.4"),
@@ -2451,8 +2458,8 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
           codeQL,
           [Language.javascript, Language.java, Language.python],
           {},
-          registries as RegistryConfigWithCredentials[] | undefined,
           sampleApiDetails,
+          registriesInput,
           tmpDir,
           logger
         );
@@ -2460,6 +2467,66 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
       { instanceOf: Error },
       "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties."
     );
+  });
+});
+
+// the happy path for generateRegistries is already tested in downloadPacks.
+// these following tests are for the error cases and when nothing is generated.
+test("no generateRegistries when CLI is too old", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const registriesInput = yaml.dump([
+      {
+        // no slash
+        url: "http://ghcr.io",
+        packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
+      },
+      {
+        // with slash
+        url: "https://containers.GHEHOSTNAME1/v2/",
+        packages: "semmle/*",
+        token: "still-not-a-token",
+      },
+    ]);
+    const codeQL = setCodeQL({
+      // Accepted CLI versions are 2.10.4 or higher
+      getVersion: () => Promise.resolve("2.10.3"),
+    });
+    const logger = getRunnerLogger(true);
+    await t.throwsAsync(
+      async () =>
+        await configUtils.generateRegistries(
+          registriesInput,
+          codeQL,
+          tmpDir,
+          logger
+        ),
+      undefined,
+      "'registries' input is not supported on CodeQL versions less than 2.10.4."
+    );
+
+    // t.is(registriesAuthTokens, undefined);
+    // t.is(qlconfigFile, undefined);
+  });
+});
+test("no generateRegistries when registries is undefined", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const registriesInput = undefined;
+    const codeQL = setCodeQL({
+      // Accepted CLI versions are 2.10.4 or higher
+      getVersion: () => Promise.resolve(CODEQL_VERSION_GHES_PACK_DOWNLOAD),
+    });
+    const logger = getRunnerLogger(true);
+    const { registriesAuthTokens, qlconfigFile } =
+      await configUtils.generateRegistries(
+        registriesInput,
+        codeQL,
+        tmpDir,
+        logger
+      );
+
+    t.is(registriesAuthTokens, undefined);
+    t.is(qlconfigFile, undefined);
   });
 });
 

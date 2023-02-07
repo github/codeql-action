@@ -91,6 +91,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     featureEnablement: FeatureEnablement,
+    qlconfigFile: string | undefined,
     logger: Logger
   ): Promise<void>;
   /**
@@ -282,6 +283,11 @@ export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
  * Versions 2.11.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for each language.
  */
 export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
+
+/**
+ * Versions 2.12.2+ of the CodeQL CLI support the `--qlconfig` flag in calls to `database init`.
+ */
+export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.3";
 
 /**
  * Set up CodeQL CLI access.
@@ -562,6 +568,7 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       featureEnablement: FeatureEnablement,
+      qlconfigFile: string | undefined,
       logger: Logger
     ) {
       const extraArgs = config.languages.map(
@@ -601,13 +608,18 @@ export async function getCodeQLForCmd(
       // Only pass external repository token if a config file is going to be parsed by the CLI.
       let externalRepositoryToken: string | undefined;
       if (configLocation) {
-        extraArgs.push(`--codescanning-config=${configLocation}`);
         externalRepositoryToken = getOptionalInput("external-repository-token");
+        extraArgs.push(`--codescanning-config=${configLocation}`);
         if (externalRepositoryToken) {
           extraArgs.push("--external-repository-token-stdin");
         }
       }
 
+      if (
+        await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG)
+      ) {
+        extraArgs.push(`--qlconfig=${qlconfigFile}`);
+      }
       await runTool(
         cmd,
         [

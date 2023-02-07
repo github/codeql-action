@@ -33,6 +33,12 @@
             "alphabetize": {"order": "asc"},
             "newlines-between": "always"
         }],
+        "max-len": ["error", {
+            "code": 120,
+            "ignoreUrls": true,
+            "ignoreStrings": true,
+            "ignoreTemplateLiterals": true
+        }],
         "no-async-foreach/no-async-foreach": "error",
         "no-console": "off",
         "no-sequences": "error",

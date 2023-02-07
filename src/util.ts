@@ -808,7 +808,8 @@ export function isHostedRunner() {
  * @param languagesInput Languages input from the workflow
  * @param repository The owner/name of the repository
  * @param logger A logger
- * @returns A boolean indicating whether or not the toolcache should be bypassed and the latest codeql should be downloaded.
+ * @returns A boolean indicating whether or not the toolcache should be bypassed
+ *          and the latest codeql should be downloaded.
  */
 export async function shouldBypassToolcache(
   featuresEnablement: FeatureEnablement,

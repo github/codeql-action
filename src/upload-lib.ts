@@ -416,7 +416,8 @@ export async function waitForProcessing(
         statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
       ) {
         // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
-        // It's possible the analysis will eventually finish processing, but it's not worth spending more Actions time waiting.
+        // It's possible the analysis will eventually finish processing, but it's not worth spending more
+        // Actions time waiting.
         logger.warning(
           "Timed out waiting for analysis to finish processing. Continuing."
         );

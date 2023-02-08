@@ -27,7 +27,6 @@ export async function initCodeQL(
   apiDetails: GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
 ): Promise<{
@@ -43,7 +42,6 @@ export async function initCodeQL(
       apiDetails,
       tempDir,
       variant,
-      bypassToolcache,
       defaultCliVersion,
       logger,
       true

@@ -279,13 +279,17 @@ export const CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS = "2.9.0";
 export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 
 /**
+ * Versions 2.11.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for each language.
+ */
+export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
  * @param apiDetails
  * @param tempDir
  * @param variant
- * @param bypassToolcache
  * @param defaultCliVersion
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
@@ -297,7 +301,6 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
   checkVersion: boolean
@@ -314,7 +317,6 @@ export async function setupCodeQL(
         apiDetails,
         tempDir,
         variant,
-        bypassToolcache,
         defaultCliVersion,
         logger
       );

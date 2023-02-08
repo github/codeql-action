@@ -143,7 +143,6 @@ async function installIntoToolcache({
     apiDetails,
     tmpDir,
     util.GitHubVariant.GHES,
-    false,
     cliVersion !== undefined
       ? { cliVersion, tagName, variant: util.GitHubVariant.GHES }
       : SAMPLE_DEFAULT_CLI_VERSION,
@@ -205,7 +204,6 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
         sampleApiDetails,
         tmpDir,
         util.GitHubVariant.DOTCOM,
-        false,
         SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
         false
@@ -239,7 +237,6 @@ test("downloads an explicitly requested bundle even if a different version is ca
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      false,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
       false
@@ -290,7 +287,6 @@ for (const {
         sampleApiDetails,
         tmpDir,
         util.GitHubVariant.DOTCOM,
-        false,
         SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
         false
@@ -358,7 +354,6 @@ for (const { githubReleases, toolcacheVersion } of [
           sampleApiDetails,
           tmpDir,
           util.GitHubVariant.DOTCOM,
-          false,
           SAMPLE_DEFAULT_CLI_VERSION,
           getRunnerLogger(true),
           false
@@ -387,7 +382,6 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         sampleApiDetails,
         tmpDir,
         variant,
-        false,
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
@@ -423,7 +417,6 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         sampleApiDetails,
         tmpDir,
         variant,
-        false,
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
@@ -460,7 +453,6 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      false,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
       false
@@ -533,7 +525,6 @@ for (const isBundleVersionInUrl of [true, false]) {
         sampleGHAEApiDetails,
         tmpDir,
         util.GitHubVariant.GHAE,
-        false,
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
@@ -573,7 +564,6 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,
-      false,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
       false

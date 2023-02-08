@@ -290,7 +290,6 @@ export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
  * @param apiDetails
  * @param tempDir
  * @param variant
- * @param bypassToolcache
  * @param defaultCliVersion
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
@@ -302,7 +301,6 @@ export async function setupCodeQL(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
   checkVersion: boolean
@@ -319,7 +317,6 @@ export async function setupCodeQL(
         apiDetails,
         tempDir,
         variant,
-        bypassToolcache,
         defaultCliVersion,
         logger
       );

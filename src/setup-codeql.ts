@@ -354,7 +354,6 @@ async function findOverridingToolsInCache(
 
 export async function getCodeQLSource(
   toolsInput: string | undefined,
-  bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
@@ -368,25 +367,18 @@ export async function getCodeQLSource(
     };
   }
 
-  /** The reason why the tools shipped with the Action have been forced. */
-  const forceShippedToolsReason =
-    // We use the special value of 'latest' to prioritize the version in the
-    // defaults over any pinned cached version.
-    toolsInput === "latest"
-      ? '"tools: latest" was requested'
-      : // If the user hasn't requested a particular CodeQL version, then bypass
-      // the toolcache when the appropriate feature is enabled. This
-      // allows us to quickly rollback a broken bundle that has made its way
-      // into the toolcache.
-      toolsInput === undefined && bypassToolcache
-      ? "a specific version of the CodeQL tools was not requested and the bypass toolcache feature is enabled"
-      : undefined;
-  /** Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced. */
-  const forceShippedTools = forceShippedToolsReason !== undefined;
+  /**
+   * Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced.
+   *
+   * We use the special value of 'latest' to prioritize the version in `defaults.json` over the
+   * version specified by the feature flags on Dotcom and over any pinned cached version on
+   * Enterprise Server.
+   */
+  const forceShippedTools = toolsInput === "latest";
   if (forceShippedTools) {
     logger.info(
       "Overriding the version of the CodeQL tools by the version shipped with the Action since " +
-        `${forceShippedToolsReason}.`
+        `"tools: latest" was requested.`
     );
   }
 
@@ -714,7 +706,6 @@ export function getCodeQLURLVersion(url: string): string {
  * @param apiDetails
  * @param tempDir
  * @param variant
- * @param bypassToolcache
  * @param defaultCliVersion
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
@@ -726,7 +717,6 @@ export async function setupCodeQLBundle(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  bypassToolcache: boolean,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
 ): Promise<{
@@ -737,7 +727,6 @@ export async function setupCodeQLBundle(
 }> {
   const source = await getCodeQLSource(
     toolsInput,
-    bypassToolcache,
     defaultCliVersion,
     apiDetails,
     variant,

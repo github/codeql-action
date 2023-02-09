@@ -21,8 +21,6 @@ export const LANGUAGE_ALIASES: { [lang: string]: Language } = {
 
 export type LanguageOrAlias = Language | keyof typeof LANGUAGE_ALIASES;
 
-export const KOTLIN_SWIFT_BYPASS = ["kotlin", "swift"];
-
 export function resolveAlias(lang: LanguageOrAlias): Language {
   return LANGUAGE_ALIASES[lang] || lang;
 }

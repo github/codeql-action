@@ -43,7 +43,6 @@ import {
   GitHubVariant,
   initializeEnvironment,
   isHostedRunner,
-  shouldBypassToolcache,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -239,13 +238,6 @@ async function run() {
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
-      await shouldBypassToolcache(
-        features,
-        getOptionalInput("tools"),
-        getOptionalInput("languages"),
-        repositoryNwo,
-        logger
-      ),
       codeQLDefaultVersionInfo,
       logger
     );

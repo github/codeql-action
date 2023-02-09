@@ -111,9 +111,10 @@ export async function runInit(
 
   try {
     if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-      // Only create the qlconfig file if we haven't already created it.
-      // If we are not parsing the config file in the cli, then the qlconfig
-      // file has already been created.
+      // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.
+      // So, create it now.
+      // If we are parsing the config file in the Action, then the qlconfig file was already created
+      // before the `pack download` command was invoked. It is not required for the init command.
       let registriesAuthTokens: string | undefined;
       let qlconfigFile: string | undefined;
       if (await util.useCodeScanningConfigInCli(codeql, featureEnablement)) {

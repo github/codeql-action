@@ -285,7 +285,7 @@ export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 
 /**
- * Versions 2.12.2+ of the CodeQL CLI support the `--qlconfig` flag in calls to `database init`.
+ * Versions 2.12.3+ of the CodeQL CLI support the `--qlconfig` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.3";
 
@@ -595,8 +595,8 @@ export async function getCodeQLForCmd(
         }
       }
 
-      // A config file is only generated if the CliConfigFileEnabled feature flag is enabled.
-      const configLocation = await generateCodeScanningConfig(
+      // A code scanning config file is only generated if the CliConfigFileEnabled feature flag is enabled.
+      const codeScanningConfigFile = await generateCodeScanningConfig(
         codeql,
         config,
         featureEnablement,
@@ -604,9 +604,9 @@ export async function getCodeQLForCmd(
       );
       // Only pass external repository token if a config file is going to be parsed by the CLI.
       let externalRepositoryToken: string | undefined;
-      if (configLocation) {
+      if (codeScanningConfigFile) {
         externalRepositoryToken = getOptionalInput("external-repository-token");
-        extraArgs.push(`--codescanning-config=${configLocation}`);
+        extraArgs.push(`--codescanning-config=${codeScanningConfigFile}`);
         if (externalRepositoryToken) {
           extraArgs.push("--external-repository-token-stdin");
         }
@@ -1112,7 +1112,10 @@ async function generateCodeScanningConfig(
   if (!(await util.useCodeScanningConfigInCli(codeql, featureEnablement))) {
     return;
   }
-  const configLocation = path.resolve(config.tempDir, "user-config.yaml");
+  const codeScanningConfigFile = path.resolve(
+    config.tempDir,
+    "user-config.yaml"
+  );
   // make a copy so we can modify it
   const augmentedConfig = cloneObject(config.originalUserInput);
 
@@ -1169,13 +1172,15 @@ async function generateCodeScanningConfig(
       augmentedConfig.packs["javascript"].push(packString);
     }
   }
-  logger.info(`Writing augmented user configuration file to ${configLocation}`);
+  logger.info(
+    `Writing augmented user configuration file to ${codeScanningConfigFile}`
+  );
   logger.startGroup("Augmented user configuration file contents");
   logger.info(yaml.dump(augmentedConfig));
   logger.endGroup();
 
-  fs.writeFileSync(configLocation, yaml.dump(augmentedConfig));
-  return configLocation;
+  fs.writeFileSync(codeScanningConfigFile, yaml.dump(augmentedConfig));
+  return codeScanningConfigFile;
 }
 
 function cloneObject<T>(obj: T): T {

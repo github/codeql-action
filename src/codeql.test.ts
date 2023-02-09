@@ -1002,12 +1002,11 @@ test(
   {}
 );
 
-test("does not use injected config", async (t: ExecutionContext<unknown>) => {
+test("does not pass a code scanning config or qlconfig file to the CLI when CLI config passing is disabled", async (t: ExecutionContext<unknown>) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon
-    .stub(codeqlObject, "getVersion")
-    .resolves(featureConfig[Feature.CliConfigFileEnabled].minimumVersion);
+  // stubbed version doesn't matter. It just needs to be valid semver.
+  sinon.stub(codeqlObject, "getVersion").resolves("0.0.0");
 
   await codeqlObject.databaseInitCluster(
     stubConfig,
@@ -1020,17 +1019,19 @@ test("does not use injected config", async (t: ExecutionContext<unknown>) => {
 
   const args = runnerConstructorStub.firstCall.args[1];
   // should not have used a config file
-  const configArg = args.find((arg: string) =>
+  const hasConfigArg = args.some((arg: string) =>
     arg.startsWith("--codescanning-config=")
   );
-  t.falsy(configArg, "Should NOT have injected a codescanning config");
+  t.false(hasConfigArg, "Should NOT have injected a codescanning config");
 
   // should not have passed a qlconfig file
-  const qlconfigArg = args.find((arg: string) => arg.startsWith("--qlconfig="));
-  t.falsy(qlconfigArg, "Should NOT have injected a codescanning config");
+  const hasQlconfigArg = args.find((arg: string) =>
+    arg.startsWith("--qlconfig=")
+  );
+  t.false(hasQlconfigArg, "Should NOT have passed a qlconfig file");
 });
 
-test("uses injected config AND qlconfig", async (t: ExecutionContext<unknown>) => {
+test("passes a code scanning config AND qlconfig to the CLI when CLI config passing is enabled", async (t: ExecutionContext<unknown>) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon
@@ -1048,14 +1049,43 @@ test("uses injected config AND qlconfig", async (t: ExecutionContext<unknown>) =
 
   const args = runnerConstructorStub.firstCall.args[1];
   // should have used a config file
-  const configArg = args.find((arg: string) =>
+  const hasCodeScanningConfigArg = args.some((arg: string) =>
     arg.startsWith("--codescanning-config=")
   );
-  t.truthy(configArg, "Should have injected a qlconfig");
+  t.true(hasCodeScanningConfigArg, "Should have injected a qlconfig");
 
   // should have passed a qlconfig file
-  const qlconfigArg = args.find((arg: string) => arg.startsWith("--qlconfig="));
-  t.truthy(qlconfigArg, "Should have injected a codescanning config");
+  const hasQlconfigArg = args.some((arg: string) =>
+    arg.startsWith("--qlconfig=")
+  );
+  t.truthy(hasQlconfigArg, "Should have injected a codescanning config");
+});
+test("passes a code scanning config BUT NOT a qlconfig to the CLI when CLI config passing is enabled", async (t: ExecutionContext<unknown>) => {
+  const runnerConstructorStub = stubToolRunnerConstructor();
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.12.2");
+
+  await codeqlObject.databaseInitCluster(
+    stubConfig,
+    "",
+    undefined,
+    createFeatures([Feature.CliConfigFileEnabled]),
+    "/path/to/qlconfig.yml",
+    getRunnerLogger(true)
+  );
+
+  const args = runnerConstructorStub.firstCall.args[1] as any[];
+  // should have used a config file
+  const hasCodeScanningConfigArg = args.some((arg: string) =>
+    arg.startsWith("--codescanning-config=")
+  );
+  t.true(hasCodeScanningConfigArg, "Should NOT have injected a qlconfig");
+
+  // should have passed a qlconfig file
+  const hasQlconfigArg = args.some((arg: string) =>
+    arg.startsWith("--qlconfig=")
+  );
+  t.false(hasQlconfigArg, "Should have injected a codescanning config");
 });
 
 test("databaseInterpretResults() sets --sarif-add-baseline-file-info for 2.11.3", async (t) => {

@@ -155,7 +155,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
 
   // We cache whether the feature flags were accessed or not in order to accurately report whether flags were
   // incorrectly configured vs. inaccessible in our telemetry.
-  private areRemoteFeatureFlagsAccessible: boolean;
+  private hasAccessedRemoteFeatureFlags: boolean;
 
   constructor(
     private readonly gitHubVersion: util.GitHubVersion,
@@ -163,7 +163,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
     private readonly featureFlagsFile: string,
     private readonly logger: Logger
   ) {
-    this.areRemoteFeatureFlagsAccessible = false; // Not accessed by default.
+    this.hasAccessedRemoteFeatureFlags = false; // Not accessed by default.
   }
 
   private getCliVersionFromFeatureFlag(f: string): string | undefined {
@@ -196,7 +196,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
       const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
       return {
         cliVersion: defaultDotComCliVersion.version,
-        toolsFeatureFlagsValid: this.areRemoteFeatureFlagsAccessible
+        toolsFeatureFlagsValid: this.hasAccessedRemoteFeatureFlags
           ? defaultDotComCliVersion.toolsFeatureFlagsValid
           : undefined,
         variant,
@@ -239,7 +239,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
       );
       return {
         version: defaults.cliVersion,
-        toolsFeatureFlagsValid: this.areRemoteFeatureFlagsAccessible
+        toolsFeatureFlagsValid: this.hasAccessedRemoteFeatureFlags
           ? false
           : undefined,
       };
@@ -288,10 +288,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
     }
 
     // if not, request flags from the server
-    const apiResponse = await this.loadApiResponse();
-    this.areRemoteFeatureFlagsAccessible = apiResponse.featureFlagsAccessed;
-
-    let remoteFlags = apiResponse.gitHubFeatureFlagsApiResponse;
+    let remoteFlags = await this.loadApiResponse();
     if (remoteFlags === undefined) {
       remoteFlags = {};
     }
@@ -336,19 +333,14 @@ class GitHubFeatureFlags implements FeatureEnablement {
     }
   }
 
-  private async loadApiResponse(): Promise<{
-    gitHubFeatureFlagsApiResponse: GitHubFeatureFlagsApiResponse;
-    featureFlagsAccessed: boolean;
-  }> {
+  private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
     if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features."
       );
-      return {
-        gitHubFeatureFlagsApiResponse: {},
-        featureFlagsAccessed: false,
-      };
+      this.hasAccessedRemoteFeatureFlags = false;
+      return {};
     }
     try {
       const response = await getApiClient().request(
@@ -363,10 +355,8 @@ class GitHubFeatureFlags implements FeatureEnablement {
         "Loaded the following default values for the feature flags from the Code Scanning API: " +
           `${JSON.stringify(remoteFlags)}`
       );
-      return {
-        gitHubFeatureFlagsApiResponse: remoteFlags,
-        featureFlagsAccessed: true,
-      };
+      this.hasAccessedRemoteFeatureFlags = true;
+      return remoteFlags;
     } catch (e) {
       if (util.isHTTPError(e) && e.status === 403) {
         this.logger.warning(
@@ -375,10 +365,8 @@ class GitHubFeatureFlags implements FeatureEnablement {
             "This could be because the Action is running on a pull request from a fork. If not, " +
             `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
         );
-        return {
-          gitHubFeatureFlagsApiResponse: {},
-          featureFlagsAccessed: false,
-        };
+        this.hasAccessedRemoteFeatureFlags = false;
+        return {};
       } else {
         // Some features, such as `ml_powered_queries_enabled` affect the produced alerts.
         // Considering these features disabled in the event of a transient error could

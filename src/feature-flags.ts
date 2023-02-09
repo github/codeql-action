@@ -153,13 +153,17 @@ export class Features implements FeatureEnablement {
 class GitHubFeatureFlags implements FeatureEnablement {
   private cachedApiResponse: GitHubFeatureFlagsApiResponse | undefined;
 
+  // We cache whether the feature flags were accessed or not in order to accurately report whether flags were
+  // incorrectly configured vs. inaccessible in our telemetry.
+  private areRemoteFeatureFlagsAccessible: boolean;
+
   constructor(
     private readonly gitHubVersion: util.GitHubVersion,
     private readonly repositoryNwo: RepositoryNwo,
     private readonly featureFlagsFile: string,
     private readonly logger: Logger
   ) {
-    /**/
+    this.areRemoteFeatureFlagsAccessible = false; // Not accessed by default.
   }
 
   private getCliVersionFromFeatureFlag(f: string): string | undefined {
@@ -192,7 +196,9 @@ class GitHubFeatureFlags implements FeatureEnablement {
       const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
       return {
         cliVersion: defaultDotComCliVersion.version,
-        toolsFeatureFlagsValid: defaultDotComCliVersion.toolsFeatureFlagsValid,
+        toolsFeatureFlagsValid: this.areRemoteFeatureFlagsAccessible
+          ? defaultDotComCliVersion.toolsFeatureFlagsValid
+          : undefined,
         variant,
       };
     }
@@ -205,7 +211,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
 
   async getDefaultDotcomCliVersion(): Promise<{
     version: string;
-    toolsFeatureFlagsValid: boolean;
+    toolsFeatureFlagsValid: boolean | undefined;
   }> {
     const response = await this.getAllFeatures();
 
@@ -233,7 +239,9 @@ class GitHubFeatureFlags implements FeatureEnablement {
       );
       return {
         version: defaults.cliVersion,
-        toolsFeatureFlagsValid: false,
+        toolsFeatureFlagsValid: this.areRemoteFeatureFlagsAccessible
+          ? false
+          : undefined,
       };
     }
 
@@ -280,7 +288,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
     }
 
     // if not, request flags from the server
-    let remoteFlags = await this.loadApiResponse();
+    const apiResponse = await this.loadApiResponse();
+    this.areRemoteFeatureFlagsAccessible = apiResponse.featureFlagsAccessed;
+
+    let remoteFlags = apiResponse.gitHubFeatureFlagsApiResponse;
     if (remoteFlags === undefined) {
       remoteFlags = {};
     }
@@ -325,13 +336,19 @@ class GitHubFeatureFlags implements FeatureEnablement {
     }
   }
 
-  private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
+  private async loadApiResponse(): Promise<{
+    gitHubFeatureFlagsApiResponse: GitHubFeatureFlagsApiResponse;
+    featureFlagsAccessed: boolean;
+  }> {
     // Do nothing when not running against github.com
     if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features."
       );
-      return {};
+      return {
+        gitHubFeatureFlagsApiResponse: {},
+        featureFlagsAccessed: false,
+      };
     }
     try {
       const response = await getApiClient().request(
@@ -346,7 +363,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
         "Loaded the following default values for the feature flags from the Code Scanning API: " +
           `${JSON.stringify(remoteFlags)}`
       );
-      return remoteFlags;
+      return {
+        gitHubFeatureFlagsApiResponse: remoteFlags,
+        featureFlagsAccessed: true,
+      };
     } catch (e) {
       if (util.isHTTPError(e) && e.status === 403) {
         this.logger.warning(
@@ -355,7 +375,10 @@ class GitHubFeatureFlags implements FeatureEnablement {
             "This could be because the Action is running on a pull request from a fork. If not, " +
             `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
         );
-        return {};
+        return {
+          gitHubFeatureFlagsApiResponse: {},
+          featureFlagsAccessed: false,
+        };
       } else {
         // Some features, such as `ml_powered_queries_enabled` affect the produced alerts.
         // Considering these features disabled in the event of a transient error could
@@ -366,6 +389,5 @@ class GitHubFeatureFlags implements FeatureEnablement {
         );
       }
     }
-    return {};
   }
 }

@@ -2283,7 +2283,7 @@ test("downloadPacks-no-registries", async (t) => {
       },
       sampleApiDetails,
       undefined, // registriesAuthTokens
-      tmpDir, // qlconfig file path
+      tmpDir,
       logger
     );
 
@@ -2481,12 +2481,6 @@ test("no generateRegistries when CLI is too old", async (t) => {
         packages: ["codeql/*", "dsp-testing/*"],
         token: "not-a-token",
       },
-      {
-        // with slash
-        url: "https://containers.GHEHOSTNAME1/v2/",
-        packages: "semmle/*",
-        token: "still-not-a-token",
-      },
     ]);
     const codeQL = setCodeQL({
       // Accepted CLI versions are 2.10.4 or higher
@@ -2504,9 +2498,6 @@ test("no generateRegistries when CLI is too old", async (t) => {
       undefined,
       "'registries' input is not supported on CodeQL versions less than 2.10.4."
     );
-
-    // t.is(registriesAuthTokens, undefined);
-    // t.is(qlconfigFile, undefined);
   });
 });
 test("no generateRegistries when registries is undefined", async (t) => {

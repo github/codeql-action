@@ -1993,7 +1993,7 @@ export async function generateRegistries(
   return {
     registriesAuthTokens:
       // if the user has explicitly set the CODEQL_REGISTRIES_AUTH env var then use that
-      process.env["CODEQL_REGISTRIES_AUTH"] ?? registriesAuthTokens,
+      process.env.CODEQL_REGISTRIES_AUTH ?? registriesAuthTokens,
     qlconfigFile,
   };
 }

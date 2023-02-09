@@ -1025,7 +1025,7 @@ test("does not pass a code scanning config or qlconfig file to the CLI when CLI 
   t.false(hasConfigArg, "Should NOT have injected a codescanning config");
 
   // should not have passed a qlconfig file
-  const hasQlconfigArg = args.find((arg: string) =>
+  const hasQlconfigArg = args.some((arg: string) =>
     arg.startsWith("--qlconfig=")
   );
   t.false(hasQlconfigArg, "Should NOT have passed a qlconfig file");

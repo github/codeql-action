@@ -2300,7 +2300,7 @@ test("downloadPacks-with-registries", async (t) => {
   // associated env vars
   return await util.withTmpDir(async (tmpDir) => {
     process.env.GITHUB_TOKEN = "not-a-token";
-    process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
+    process.env.CODEQL_REGISTRIES_AUTH = undefined;
     const logger = getRunnerLogger(true);
 
     const registriesInput = yaml.dump([
@@ -2382,7 +2382,7 @@ test("downloadPacks-with-registries", async (t) => {
 
     // Verify that the env vars were unset.
     t.deepEqual(process.env.GITHUB_TOKEN, "not-a-token");
-    t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, "not-a-registries-auth");
+    t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, undefined);
   });
 });
 
@@ -2518,6 +2518,34 @@ test("no generateRegistries when registries is undefined", async (t) => {
 
     t.is(registriesAuthTokens, undefined);
     t.is(qlconfigFile, undefined);
+  });
+});
+
+test("generateRegistries prefers original CODEQL_REGISTRIES_AUTH", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env.CODEQL_REGISTRIES_AUTH = "original";
+    const registriesInput = yaml.dump([
+      {
+        url: "http://ghcr.io",
+        packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
+      },
+    ]);
+    const codeQL = setCodeQL({
+      // Accepted CLI versions are 2.10.4 or higher
+      getVersion: () => Promise.resolve(CODEQL_VERSION_GHES_PACK_DOWNLOAD),
+    });
+    const logger = getRunnerLogger(true);
+    const { registriesAuthTokens, qlconfigFile } =
+      await configUtils.generateRegistries(
+        registriesInput,
+        codeQL,
+        tmpDir,
+        logger
+      );
+
+    t.is(registriesAuthTokens, "original");
+    t.is(qlconfigFile, path.join(tmpDir, "qlconfig.yml"));
   });
 });
 

@@ -37,7 +37,6 @@ export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
-  TrapCachingEnabled = "trap_caching_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -56,10 +55,6 @@ export const featureConfig: Record<
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
-  },
-  [Feature.TrapCachingEnabled]: {
-    envVar: "CODEQL_TRAP_CACHING",
-    minimumVersion: undefined,
   },
   [Feature.UploadFailedSarifEnabled]: {
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",

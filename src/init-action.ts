@@ -118,13 +118,14 @@ async function sendInitStatusReport(
     workflow_languages: workflowLanguages || "",
   };
 
-  let initToolsDownloadFields: InitToolsDownloadFields = {};
+  const initToolsDownloadFields: InitToolsDownloadFields = {};
 
-  if (toolsSource === ToolsSource.Download) {
-    initToolsDownloadFields = {
-      tools_download_duration_ms: toolsDownloadDurationMs,
-      tools_feature_flags_valid: toolsFeatureFlagsValid,
-    };
+  if (toolsDownloadDurationMs !== undefined) {
+    initToolsDownloadFields.tools_download_duration_ms =
+      toolsDownloadDurationMs;
+  }
+  if (toolsFeatureFlagsValid !== undefined) {
+    initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
   }
 
   if (config !== undefined) {

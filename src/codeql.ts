@@ -153,8 +153,7 @@ export interface CodeQL {
     databasePath: string,
     extraSearchPath: string | undefined,
     querySuitePath: string | undefined,
-    memoryFlag: string,
-    threadsFlag: string
+    flags: string[]
   ): Promise<void>;
   /**
    * Run 'codeql database interpret-results'.
@@ -789,14 +788,12 @@ export async function getCodeQLForCmd(
       databasePath: string,
       extraSearchPath: string | undefined,
       querySuitePath: string | undefined,
-      memoryFlag: string,
-      threadsFlag: string
+      flags: string[]
     ): Promise<void> {
       const codeqlArgs = [
         "database",
         "run-queries",
-        memoryFlag,
-        threadsFlag,
+        ...flags,
         databasePath,
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",

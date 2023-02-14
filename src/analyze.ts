@@ -212,6 +212,7 @@ export async function runQueries(
   const statusReport: QueriesStatusReport = {};
 
   const codeql = await getCodeQL(config.codeQLCmd);
+  const queryFlags = [memoryFlag, threadsFlag];
 
   await util.logCodeScanningConfigInCli(codeql, featureEnablement, logger);
 
@@ -391,8 +392,7 @@ export async function runQueries(
       databasePath,
       searchPath,
       querySuitePath,
-      memoryFlag,
-      threadsFlag
+      queryFlags
     );
 
     logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
@@ -424,8 +424,7 @@ export async function runQueries(
       databasePath,
       undefined,
       querySuitePath,
-      memoryFlag,
-      threadsFlag
+      queryFlags
     );
 
     return querySuitePath;

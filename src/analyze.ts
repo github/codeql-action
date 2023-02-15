@@ -392,7 +392,8 @@ export async function runQueries(
       databasePath,
       searchPath,
       querySuitePath,
-      queryFlags
+      queryFlags,
+      false
     );
 
     logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
@@ -424,7 +425,8 @@ export async function runQueries(
       databasePath,
       undefined,
       querySuitePath,
-      queryFlags
+      queryFlags,
+      false
     );
 
     return querySuitePath;

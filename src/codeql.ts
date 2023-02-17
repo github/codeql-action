@@ -287,7 +287,7 @@ export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 /**
  * Versions 2.12.3+ of the CodeQL CLI support the `--qlconfig` flag in calls to `database init`.
  */
-export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.3";
+export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 
 /**
  * Set up CodeQL CLI access.

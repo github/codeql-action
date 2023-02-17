@@ -268,15 +268,22 @@ export async function runQueries(
           );
         }
 
+        const customQueryIndices: number[] = [];
+        for (let i = 0; i < queries.custom.length; ++i) {
+          if (queries.custom[i].queries.length > 0) {
+            customQueryIndices.push(i);
+          }
+        }
+
         logger.startGroup(`Running queries for ${language}`);
         const querySuitePaths: string[] = [];
-        if (queries["builtin"].length > 0) {
+        if (queries.builtin.length > 0) {
           const startTimeBuiltIn = new Date().getTime();
           querySuitePaths.push(
             (await runQueryGroup(
               language,
               "builtin",
-              createQuerySuiteContents(queries["builtin"], queryFilters),
+              createQuerySuiteContents(queries.builtin, queryFilters),
               undefined
             )) as string
           );
@@ -285,21 +292,16 @@ export async function runQueries(
         }
         const startTimeCustom = new Date().getTime();
         let ranCustom = false;
-        for (let i = 0; i < queries["custom"].length; ++i) {
-          if (queries["custom"][i].queries.length > 0) {
-            querySuitePaths.push(
-              (await runQueryGroup(
-                language,
-                `custom-${i}`,
-                createQuerySuiteContents(
-                  queries["custom"][i].queries,
-                  queryFilters
-                ),
-                queries["custom"][i].searchPath
-              )) as string
-            );
-            ranCustom = true;
-          }
+        for (const i of customQueryIndices) {
+          querySuitePaths.push(
+            (await runQueryGroup(
+              language,
+              `custom-${i}`,
+              createQuerySuiteContents(queries.custom[i].queries, queryFilters),
+              queries.custom[i].searchPath
+            )) as string
+          );
+          ranCustom = true;
         }
         if (packsWithVersion.length > 0) {
           querySuitePaths.push(

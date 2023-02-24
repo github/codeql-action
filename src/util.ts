@@ -548,14 +548,36 @@ export async function bundleDb(
   return databaseBundlePath;
 }
 
-export async function delay(milliseconds: number) {
-  // Immediately `unref` the timer such that it only prevents the process from exiting if the
-  // surrounding promise is being awaited.
-  return new Promise((resolve) => setTimeout(resolve, milliseconds).unref());
+/**
+ * @param milliseconds time to delay
+ * @param opts options
+ * @param opts.allowProcessExit if true, the timer will not prevent the process from exiting
+ */
+export async function delay(
+  milliseconds: number,
+  { allowProcessExit }: { allowProcessExit: boolean }
+) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, milliseconds);
+    if (allowProcessExit) {
+      // Immediately `unref` the timer such that it only prevents the process from exiting if the
+      // surrounding promise is being awaited.
+      timer.unref();
+    }
+  });
 }
 
 export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
+}
+
+/**
+ * Checks whether the CodeQL CLI supports the `--expect-discarded-cache` command-line flag.
+ */
+export async function supportExpectDiscardedCache(
+  codeQL: CodeQL
+): Promise<boolean> {
+  return codeQlVersionAbove(codeQL, "2.12.1");
 }
 
 export const ML_POWERED_JS_QUERIES_PACK_NAME =
@@ -748,7 +770,7 @@ export async function withTimeout<T>(
     return result;
   };
   const timeoutTask = async () => {
-    await delay(timeoutMs);
+    await delay(timeoutMs, { allowProcessExit: true });
     if (!finished) {
       // Workaround: While the promise racing below will allow the main code
       // to continue, the process won't normally exit until the asynchronous
@@ -773,7 +795,7 @@ export async function checkForTimeout() {
     core.info(
       "A timeout occurred, force exiting the process after 30 seconds to prevent hanging."
     );
-    await delay(30_000);
+    await delay(30_000, { allowProcessExit: true });
     process.exit();
   }
 }

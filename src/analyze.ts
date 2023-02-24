@@ -212,6 +212,7 @@ export async function runQueries(
   const statusReport: QueriesStatusReport = {};
 
   const codeql = await getCodeQL(config.codeQLCmd);
+  const queryFlags = [memoryFlag, threadsFlag];
 
   await util.logCodeScanningConfigInCli(codeql, featureEnablement, logger);
 
@@ -231,7 +232,7 @@ export async function runQueries(
         // another to interpret the results.
         logger.startGroup(`Running queries for ${language}`);
         const startTimeBuiltIn = new Date().getTime();
-        await runQueryGroup(language, "all", undefined, undefined);
+        await runQueryGroup(language, "all", undefined, undefined, true);
         // TODO should not be using `builtin` here. We should be using `all` instead.
         // The status report does not support `all` yet.
         statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
@@ -267,16 +268,24 @@ export async function runQueries(
           );
         }
 
+        const customQueryIndices: number[] = [];
+        for (let i = 0; i < queries.custom.length; ++i) {
+          if (queries.custom[i].queries.length > 0) {
+            customQueryIndices.push(i);
+          }
+        }
+
         logger.startGroup(`Running queries for ${language}`);
         const querySuitePaths: string[] = [];
-        if (queries["builtin"].length > 0) {
+        if (queries.builtin.length > 0) {
           const startTimeBuiltIn = new Date().getTime();
           querySuitePaths.push(
             (await runQueryGroup(
               language,
               "builtin",
-              createQuerySuiteContents(queries["builtin"], queryFilters),
-              undefined
+              createQuerySuiteContents(queries.builtin, queryFilters),
+              undefined,
+              customQueryIndices.length === 0 && packsWithVersion.length === 0
             )) as string
           );
           statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
@@ -284,21 +293,18 @@ export async function runQueries(
         }
         const startTimeCustom = new Date().getTime();
         let ranCustom = false;
-        for (let i = 0; i < queries["custom"].length; ++i) {
-          if (queries["custom"][i].queries.length > 0) {
-            querySuitePaths.push(
-              (await runQueryGroup(
-                language,
-                `custom-${i}`,
-                createQuerySuiteContents(
-                  queries["custom"][i].queries,
-                  queryFilters
-                ),
-                queries["custom"][i].searchPath
-              )) as string
-            );
-            ranCustom = true;
-          }
+        for (const i of customQueryIndices) {
+          querySuitePaths.push(
+            (await runQueryGroup(
+              language,
+              `custom-${i}`,
+              createQuerySuiteContents(queries.custom[i].queries, queryFilters),
+              queries.custom[i].searchPath,
+              i === customQueryIndices[customQueryIndices.length - 1] &&
+                packsWithVersion.length === 0
+            )) as string
+          );
+          ranCustom = true;
         }
         if (packsWithVersion.length > 0) {
           querySuitePaths.push(
@@ -306,7 +312,8 @@ export async function runQueries(
               language,
               "packs",
               packsWithVersion,
-              queryFilters
+              queryFilters,
+              true
             )
           );
           ranCustom = true;
@@ -373,7 +380,8 @@ export async function runQueries(
     language: Language,
     type: string,
     querySuiteContents: string | undefined,
-    searchPath: string | undefined
+    searchPath: string | undefined,
+    optimizeForLastQueryRun: boolean
   ): Promise<string | undefined> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     // Pass the queries to codeql using a file instead of using the command
@@ -391,8 +399,8 @@ export async function runQueries(
       databasePath,
       searchPath,
       querySuitePath,
-      memoryFlag,
-      threadsFlag
+      queryFlags,
+      optimizeForLastQueryRun
     );
 
     logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
@@ -402,7 +410,8 @@ export async function runQueries(
     language: Language,
     type: string,
     packs: string[],
-    queryFilters: configUtils.QueryFilter[]
+    queryFilters: configUtils.QueryFilter[],
+    optimizeForLastQueryRun: boolean
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
 
@@ -424,8 +433,8 @@ export async function runQueries(
       databasePath,
       undefined,
       querySuitePath,
-      memoryFlag,
-      threadsFlag
+      queryFlags,
+      optimizeForLastQueryRun
     );
 
     return querySuitePath;

@@ -463,7 +463,9 @@ export async function waitForProcessing(
         util.assertNever(status);
       }
 
-      await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
+      await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS, {
+        allowProcessExit: false,
+      });
     }
   } finally {
     logger.endGroup();

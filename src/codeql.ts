@@ -148,13 +148,19 @@ export interface CodeQL {
   ): Promise<void>;
   /**
    * Run 'codeql database run-queries'.
+   *
+   * @param optimizeForLastQueryRun Whether to apply additional optimization for
+   *                                the last database query run in the action.
+   *                                It is always safe to set it to false.
+   *                                It should be set to true only for the very
+   *                                last databaseRunQueries() call.
    */
   databaseRunQueries(
     databasePath: string,
     extraSearchPath: string | undefined,
     querySuitePath: string | undefined,
-    memoryFlag: string,
-    threadsFlag: string
+    flags: string[],
+    optimizeForLastQueryRun: boolean
   ): Promise<void>;
   /**
    * Run 'codeql database interpret-results'.
@@ -789,19 +795,24 @@ export async function getCodeQLForCmd(
       databasePath: string,
       extraSearchPath: string | undefined,
       querySuitePath: string | undefined,
-      memoryFlag: string,
-      threadsFlag: string
+      flags: string[],
+      optimizeForLastQueryRun: boolean
     ): Promise<void> {
       const codeqlArgs = [
         "database",
         "run-queries",
-        memoryFlag,
-        threadsFlag,
+        ...flags,
         databasePath,
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
         ...getExtraOptionsFromEnv(["database", "run-queries"]),
       ];
+      if (
+        optimizeForLastQueryRun &&
+        (await util.supportExpectDiscardedCache(this))
+      ) {
+        codeqlArgs.push("--expect-discarded-cache");
+      }
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }

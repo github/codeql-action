@@ -37,7 +37,6 @@ export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
-  TrapCachingEnabled = "trap_caching_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -56,10 +55,6 @@ export const featureConfig: Record<
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
-  },
-  [Feature.TrapCachingEnabled]: {
-    envVar: "CODEQL_TRAP_CACHING",
-    minimumVersion: undefined,
   },
   [Feature.UploadFailedSarifEnabled]: {
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
@@ -153,13 +148,17 @@ export class Features implements FeatureEnablement {
 class GitHubFeatureFlags implements FeatureEnablement {
   private cachedApiResponse: GitHubFeatureFlagsApiResponse | undefined;
 
+  // We cache whether the feature flags were accessed or not in order to accurately report whether flags were
+  // incorrectly configured vs. inaccessible in our telemetry.
+  private hasAccessedRemoteFeatureFlags: boolean;
+
   constructor(
     private readonly gitHubVersion: util.GitHubVersion,
     private readonly repositoryNwo: RepositoryNwo,
     private readonly featureFlagsFile: string,
     private readonly logger: Logger
   ) {
-    /**/
+    this.hasAccessedRemoteFeatureFlags = false; // Not accessed by default.
   }
 
   private getCliVersionFromFeatureFlag(f: string): string | undefined {
@@ -192,7 +191,9 @@ class GitHubFeatureFlags implements FeatureEnablement {
       const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
       return {
         cliVersion: defaultDotComCliVersion.version,
-        toolsFeatureFlagsValid: defaultDotComCliVersion.toolsFeatureFlagsValid,
+        toolsFeatureFlagsValid: this.hasAccessedRemoteFeatureFlags
+          ? defaultDotComCliVersion.toolsFeatureFlagsValid
+          : undefined,
         variant,
       };
     }
@@ -205,7 +206,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
 
   async getDefaultDotcomCliVersion(): Promise<{
     version: string;
-    toolsFeatureFlagsValid: boolean;
+    toolsFeatureFlagsValid: boolean | undefined;
   }> {
     const response = await this.getAllFeatures();
 
@@ -233,7 +234,9 @@ class GitHubFeatureFlags implements FeatureEnablement {
       );
       return {
         version: defaults.cliVersion,
-        toolsFeatureFlagsValid: false,
+        toolsFeatureFlagsValid: this.hasAccessedRemoteFeatureFlags
+          ? false
+          : undefined,
       };
     }
 
@@ -331,6 +334,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features."
       );
+      this.hasAccessedRemoteFeatureFlags = false;
       return {};
     }
     try {
@@ -346,6 +350,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
         "Loaded the following default values for the feature flags from the Code Scanning API: " +
           `${JSON.stringify(remoteFlags)}`
       );
+      this.hasAccessedRemoteFeatureFlags = true;
       return remoteFlags;
     } catch (e) {
       if (util.isHTTPError(e) && e.status === 403) {
@@ -355,6 +360,7 @@ class GitHubFeatureFlags implements FeatureEnablement {
             "This could be because the Action is running on a pull request from a fork. If not, " +
             `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
         );
+        this.hasAccessedRemoteFeatureFlags = false;
         return {};
       } else {
         // Some features, such as `ml_powered_queries_enabled` affect the produced alerts.
@@ -366,6 +372,5 @@ class GitHubFeatureFlags implements FeatureEnablement {
         );
       }
     }
-    return {};
   }
 }

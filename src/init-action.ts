@@ -16,7 +16,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Feature, FeatureEnablement, Features } from "./feature-flags";
+import { Feature, Features } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
@@ -86,7 +86,8 @@ interface InitWithConfigStatusReport extends InitStatusReport {
 interface InitToolsDownloadFields {
   /** Time taken to download the bundle, in milliseconds. */
   tools_download_duration_ms?: number;
-  /** Whether the relevant tools dotcom feature flags have been misconfigured.
+  /**
+   * Whether the relevant tools dotcom feature flags have been misconfigured.
    * Only populated if we attempt to determine the default version based on the dotcom feature flags. */
   tools_feature_flags_valid?: boolean;
 }
@@ -117,13 +118,14 @@ async function sendInitStatusReport(
     workflow_languages: workflowLanguages || "",
   };
 
-  let initToolsDownloadFields: InitToolsDownloadFields = {};
+  const initToolsDownloadFields: InitToolsDownloadFields = {};
 
-  if (toolsSource === ToolsSource.Download) {
-    initToolsDownloadFields = {
-      tools_download_duration_ms: toolsDownloadDurationMs,
-      tools_feature_flags_valid: toolsFeatureFlagsValid,
-    };
+  if (toolsDownloadDurationMs !== undefined) {
+    initToolsDownloadFields.tools_download_duration_ms =
+      toolsDownloadDurationMs;
+  }
+  if (toolsFeatureFlagsValid !== undefined) {
+    initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
   }
 
   if (config !== undefined) {
@@ -254,7 +256,7 @@ async function run() {
       registriesInput,
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
-      await getTrapCachingEnabled(features),
+      getTrapCachingEnabled(),
       // Debug mode is enabled if:
       // - The `init` Action is passed `debug: true`.
       // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
@@ -388,9 +390,7 @@ async function run() {
   );
 }
 
-async function getTrapCachingEnabled(
-  featureEnablement: FeatureEnablement
-): Promise<boolean> {
+function getTrapCachingEnabled(): boolean {
   // If the workflow specified something always respect that
   const trapCaching = getOptionalInput("trap-caching");
   if (trapCaching !== undefined) return trapCaching === "true";
@@ -398,8 +398,8 @@ async function getTrapCachingEnabled(
   // On self-hosted runners which may have slow network access, disable TRAP caching by default
   if (!isHostedRunner()) return false;
 
-  // On hosted runners, respect the feature flag
-  return await featureEnablement.getValue(Feature.TrapCachingEnabled);
+  // On hosted runners, enable TRAP caching by default
+  return true;
 }
 
 async function runWrapper() {

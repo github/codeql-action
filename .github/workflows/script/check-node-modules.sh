@@ -10,6 +10,10 @@ fi
 # When updating this, make sure to update the npm version in
 # `.github/workflows/update-dependencies.yml` too.
 sudo npm install --force -g npm@9.2.0
+
+# clean the npm cache to ensure we don't have any files owned by root
+sudo npm cache clean --force
+
 # Reinstall modules and then clean to remove absolute paths
 # Use 'npm ci' instead of 'npm install' as this is intended to be reproducible
 npm ci

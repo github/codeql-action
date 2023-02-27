@@ -2,6 +2,10 @@
 
 ## [UNRELEASED]
 
+- Update default CodeQL bundle version to 2.12.3. [#1543](https://github.com/github/codeql-action/pull/1543)
+
+## 2.2.4 - 10 Feb 2023
+
 No user facing changes.
 
 ## 2.2.3 - 08 Feb 2023

@@ -1990,6 +1990,13 @@ export async function generateRegistries(
       .map((registry) => `${registry.url}=${registry.token}`)
       .join(",");
   }
+
+  if (typeof process.env.CODEQL_REGISTRIES_AUTH === "string") {
+    logger.debug(
+      "Using CODEQL_REGISTRIES_AUTH environment variable to authenticate with registries."
+    );
+  }
+
   return {
     registriesAuthTokens:
       // if the user has explicitly set the CODEQL_REGISTRIES_AUTH env var then use that

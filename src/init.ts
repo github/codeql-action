@@ -102,20 +102,46 @@ export async function runInit(
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
+  registriesInput: string | undefined,
   featureEnablement: FeatureEnablement,
+  apiDetails: GitHubApiCombinedDetails,
   logger: Logger
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
   try {
     if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-      // Init a database cluster
-      await codeql.databaseInitCluster(
-        config,
-        sourceRoot,
-        processName,
-        featureEnablement,
-        logger
+      // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.
+      // So, create it now.
+      // If we are parsing the config file in the Action, then the qlconfig file was already created
+      // before the `pack download` command was invoked. It is not required for the init command.
+      let registriesAuthTokens: string | undefined;
+      let qlconfigFile: string | undefined;
+      if (await util.useCodeScanningConfigInCli(codeql, featureEnablement)) {
+        ({ registriesAuthTokens, qlconfigFile } =
+          await configUtils.generateRegistries(
+            registriesInput,
+            codeql,
+            config.tempDir,
+            logger
+          ));
+      }
+      await configUtils.wrapEnvironment(
+        {
+          GITHUB_TOKEN: apiDetails.auth,
+          CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+        },
+
+        // Init a database cluster
+        async () =>
+          await codeql.databaseInitCluster(
+            config,
+            sourceRoot,
+            processName,
+            featureEnablement,
+            qlconfigFile,
+            logger
+          )
       );
     } else {
       for (const language of config.languages) {

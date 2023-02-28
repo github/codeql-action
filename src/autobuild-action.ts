@@ -3,29 +3,22 @@ import * as core from "@actions/core";
 import {
   createStatusReportBase,
   getActionsStatus,
+  getActionVersion,
   getOptionalInput,
   getTemporaryDirectory,
   sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
-import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
 import {
   DID_AUTOBUILD_GO_ENV_VAR_NAME,
-  checkActionVersion,
   checkGitHubVersionInRange,
-  getRequiredEnvParam,
   initializeEnvironment,
-  Mode,
 } from "./util";
-
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
 
 interface AutobuildStatusReport extends StatusReportBase {
   /** Comma-separated set of languages being auto-built. */
@@ -40,7 +33,7 @@ async function sendCompletedStatusReport(
   failingLanguage?: string,
   cause?: Error
 ) {
-  initializeEnvironment(Mode.actions, pkg.version);
+  initializeEnvironment(getActionVersion());
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
@@ -61,7 +54,6 @@ async function sendCompletedStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  await checkActionVersion(pkg.version);
   let currentLanguage: Language | undefined = undefined;
   let languages: Language[] | undefined = undefined;
   try {
@@ -73,15 +65,8 @@ async function run() {
       return;
     }
 
-    const gitHubVersion = await getGitHubVersionActionsOnly();
-    checkGitHubVersionInRange(gitHubVersion, logger, Mode.actions);
-
-    const features = new Features(
-      gitHubVersion,
-      getApiDetails(),
-      parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
-      logger
-    );
+    const gitHubVersion = await getGitHubVersion();
+    checkGitHubVersionInRange(gitHubVersion, logger);
 
     const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
@@ -90,7 +75,7 @@ async function run() {
       );
     }
 
-    languages = await determineAutobuildLanguages(config, features, logger);
+    languages = await determineAutobuildLanguages(config, logger);
     if (languages !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {

@@ -4,7 +4,7 @@ var GetIntrinsic = require('get-intrinsic');
 
 var has = require('has');
 
-var $assign = GetIntrinsic('%Object%').assign;
+var $assign = GetIntrinsic('%Object.assign%', true);
 
 module.exports = function assign(target, source) {
 	if ($assign) {

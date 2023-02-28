@@ -2,12 +2,18 @@ name: "CodeQL action"
 
 on:
   push:
-    branches: [main, releases/v1, releases/v2]
+    branches: [main, releases/v2]
   pull_request:
-    branches: [main, releases/v1, releases/v2]
+    branches: [main, releases/v2]
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    # Weekly on Sunday.
+    - cron: '30 1 * * 0'
+
+env:
+  CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
 
 jobs:
   # Identify the CodeQL tool versions to use in the analysis job.
@@ -51,7 +57,7 @@ jobs:
         # be the same as `tools: null`. This allows us to make the job for each of the bundles a
         # required status check.
         #
-        # If we're running on push, then we can skip running with `tools: latest` when it would be
+        # If we're running on push or schedule, then we can skip running with `tools: latest` when it would be
         # the same as running with `tools: null`.
         if [[ "$GITHUB_EVENT_NAME" != "pull_request" && "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
           VERSIONS_JSON='[null]'
@@ -75,8 +81,10 @@ jobs:
       security-events: write
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: ./init
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Initialize CodeQL
+      uses: ./init
       id: init
       with:
         languages: javascript
@@ -85,4 +93,5 @@ jobs:
     # confirm steps.init.outputs.codeql-path points to the codeql binary
     - name: Print CodeQL Version
       run: ${{steps.init.outputs.codeql-path}} version --format=json
-    - uses: ./analyze
+    - name: Perform CodeQL Analysis
+      uses: ./analyze

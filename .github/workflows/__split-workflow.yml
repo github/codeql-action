@@ -7,11 +7,11 @@ name: PR Check - Split workflow
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:
@@ -54,8 +54,6 @@ jobs:
         packs: +dsp-testing/codeql-pack1@1.0.0
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -63,8 +61,6 @@ jobs:
       with:
         skip-queries: true
         output: ${{ runner.temp }}/results
-      env:
-        TEST_MODE: true
 
     - name: Assert No Results
       shell: bash
@@ -77,8 +73,6 @@ jobs:
       with:
         output: ${{ runner.temp }}/results
         upload-database: false
-      env:
-        TEST_MODE: true
     - name: Assert Results
       shell: bash
       run: |
@@ -94,4 +88,4 @@ jobs:
           exit 1
         fi
     env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

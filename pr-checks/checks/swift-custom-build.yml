@@ -1,0 +1,32 @@
+name: "Swift analysis using a custom build command"
+description: "Tests creation of a Swift database using custom build"
+versions: ["latest", "cached", "nightly-latest"]
+operatingSystems: ["ubuntu", "macos"]
+env:
+  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+steps:
+  - uses: ./../action/init
+    id: init
+    with:
+      languages: swift
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/.github/setup-swift
+    with:
+      codeql-path: ${{steps.init.outputs.codeql-path}}
+  - name: Check working directory
+    shell: bash
+    run: pwd
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    id: analysis
+  - name: Check database
+    shell: bash
+    run: |
+      SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+      if [[ ! -d "$SWIFT_DB" ]]; then
+        echo "Did not create a database for Swift."
+        exit 1
+      fi

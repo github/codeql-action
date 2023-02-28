@@ -1,23 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
     if (kind === "m") throw new TypeError("Private method is not writable");
     if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
@@ -32,10 +13,9 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 var _UnusedVarsVisitor_scopeManager;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.collectUnusedVariables = void 0;
-const experimental_utils_1 = require("@typescript-eslint/experimental-utils");
 const scope_manager_1 = require("@typescript-eslint/scope-manager");
 const Visitor_1 = require("@typescript-eslint/scope-manager/dist/referencer/Visitor");
-const util = __importStar(require("."));
+const utils_1 = require("@typescript-eslint/utils");
 class UnusedVarsVisitor extends Visitor_1.Visitor {
     // readonly #unusedVariables = new Set<TSESLint.Scope.Variable>();
     constructor(context) {
@@ -59,7 +39,7 @@ class UnusedVarsVisitor extends Visitor_1.Visitor {
         this.TSEmptyBodyFunctionExpression = this.visitFunctionTypeSignature;
         this.TSFunctionType = this.visitFunctionTypeSignature;
         this.TSMethodSignature = this.visitFunctionTypeSignature;
-        __classPrivateFieldSet(this, _UnusedVarsVisitor_scopeManager, util.nullThrows(context.getSourceCode().scopeManager, 'Missing required scope manager'), "f");
+        __classPrivateFieldSet(this, _UnusedVarsVisitor_scopeManager, utils_1.ESLintUtils.nullThrows(context.getSourceCode().scopeManager, 'Missing required scope manager'), "f");
     }
     static collectUnusedVariables(context) {
         const program = context.getSourceCode().ast;
@@ -100,7 +80,7 @@ class UnusedVarsVisitor extends Visitor_1.Visitor {
     //#region HELPERS
     getScope(currentNode) {
         // On Program node, get the outermost scope to avoid return Node.js special function scope or ES modules scope.
-        const inner = currentNode.type !== experimental_utils_1.AST_NODE_TYPES.Program;
+        const inner = currentNode.type !== utils_1.AST_NODE_TYPES.Program;
         let node = currentNode;
         while (node) {
             const scope = __classPrivateFieldGet(this, _UnusedVarsVisitor_scopeManager, "f").acquire(node, inner);
@@ -195,34 +175,34 @@ class UnusedVarsVisitor extends Visitor_1.Visitor {
          * https://github.com/eslint/eslint/issues/2342
          */
         let idOrVariable;
-        if (node.left.type === experimental_utils_1.AST_NODE_TYPES.VariableDeclaration) {
+        if (node.left.type === utils_1.AST_NODE_TYPES.VariableDeclaration) {
             const variable = __classPrivateFieldGet(this, _UnusedVarsVisitor_scopeManager, "f").getDeclaredVariables(node.left)[0];
             if (!variable) {
                 return;
             }
             idOrVariable = variable;
         }
-        if (node.left.type === experimental_utils_1.AST_NODE_TYPES.Identifier) {
+        if (node.left.type === utils_1.AST_NODE_TYPES.Identifier) {
             idOrVariable = node.left;
         }
         if (idOrVariable == null) {
             return;
         }
         let body = node.body;
-        if (node.body.type === experimental_utils_1.AST_NODE_TYPES.BlockStatement) {
+        if (node.body.type === utils_1.AST_NODE_TYPES.BlockStatement) {
             if (node.body.body.length !== 1) {
                 return;
             }
             body = node.body.body[0];
         }
-        if (body.type !== experimental_utils_1.AST_NODE_TYPES.ReturnStatement) {
+        if (body.type !== utils_1.AST_NODE_TYPES.ReturnStatement) {
             return;
         }
         this.markVariableAsUsed(idOrVariable);
     }
     Identifier(node) {
         const scope = this.getScope(node);
-        if (scope.type === experimental_utils_1.TSESLint.Scope.ScopeType.function &&
+        if (scope.type === utils_1.TSESLint.Scope.ScopeType.function &&
             node.name === 'this') {
             // this parameters should always be considered used as they're pseudo-parameters
             if ('params' in scope.block && scope.block.params.includes(node)) {
@@ -244,7 +224,7 @@ class UnusedVarsVisitor extends Visitor_1.Visitor {
         this.markVariableAsUsed(node.typeParameter.name);
     }
     TSModuleDeclaration(node) {
-        // global augmentation can be in any file, and they do not need exports
+        // -- global augmentation can be in any file, and they do not need exports
         if (node.global === true) {
             this.markVariableAsUsed('global', node.parent);
         }
@@ -252,12 +232,12 @@ class UnusedVarsVisitor extends Visitor_1.Visitor {
     TSParameterProperty(node) {
         let identifier = null;
         switch (node.parameter.type) {
-            case experimental_utils_1.AST_NODE_TYPES.AssignmentPattern:
-                if (node.parameter.left.type === experimental_utils_1.AST_NODE_TYPES.Identifier) {
+            case utils_1.AST_NODE_TYPES.AssignmentPattern:
+                if (node.parameter.left.type === utils_1.AST_NODE_TYPES.Identifier) {
                     identifier = node.parameter.left;
                 }
                 break;
-            case experimental_utils_1.AST_NODE_TYPES.Identifier:
+            case utils_1.AST_NODE_TYPES.Identifier:
                 identifier = node.parameter;
                 break;
         }
@@ -296,11 +276,11 @@ function isSelfReference(ref, nodes) {
     return false;
 }
 const MERGABLE_TYPES = new Set([
-    experimental_utils_1.AST_NODE_TYPES.TSInterfaceDeclaration,
-    experimental_utils_1.AST_NODE_TYPES.TSTypeAliasDeclaration,
-    experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration,
-    experimental_utils_1.AST_NODE_TYPES.ClassDeclaration,
-    experimental_utils_1.AST_NODE_TYPES.FunctionDeclaration,
+    utils_1.AST_NODE_TYPES.TSInterfaceDeclaration,
+    utils_1.AST_NODE_TYPES.TSTypeAliasDeclaration,
+    utils_1.AST_NODE_TYPES.TSModuleDeclaration,
+    utils_1.AST_NODE_TYPES.ClassDeclaration,
+    utils_1.AST_NODE_TYPES.FunctionDeclaration,
 ]);
 /**
  * Determine if the variable is directly exported
@@ -314,12 +294,12 @@ function isMergableExported(variable) {
         // parameters can never be exported.
         // their `node` prop points to the function decl, which can be exported
         // so we need to special case them
-        if (def.type === experimental_utils_1.TSESLint.Scope.DefinitionType.Parameter) {
+        if (def.type === utils_1.TSESLint.Scope.DefinitionType.Parameter) {
             continue;
         }
         if ((MERGABLE_TYPES.has(def.node.type) &&
-            ((_a = def.node.parent) === null || _a === void 0 ? void 0 : _a.type) === experimental_utils_1.AST_NODE_TYPES.ExportNamedDeclaration) ||
-            ((_b = def.node.parent) === null || _b === void 0 ? void 0 : _b.type) === experimental_utils_1.AST_NODE_TYPES.ExportDefaultDeclaration) {
+            ((_a = def.node.parent) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.ExportNamedDeclaration) ||
+            ((_b = def.node.parent) === null || _b === void 0 ? void 0 : _b.type) === utils_1.AST_NODE_TYPES.ExportDefaultDeclaration) {
             return true;
         }
     }
@@ -334,10 +314,10 @@ function isExported(variable) {
     const definition = variable.defs[0];
     if (definition) {
         let node = definition.node;
-        if (node.type === experimental_utils_1.AST_NODE_TYPES.VariableDeclarator) {
+        if (node.type === utils_1.AST_NODE_TYPES.VariableDeclarator) {
             node = node.parent;
         }
-        else if (definition.type === experimental_utils_1.TSESLint.Scope.DefinitionType.Parameter) {
+        else if (definition.type === utils_1.TSESLint.Scope.DefinitionType.Parameter) {
             return false;
         }
         return node.parent.type.indexOf('Export') === 0;
@@ -360,13 +340,13 @@ function isUsedVariable(variable) {
         variable.defs.forEach(def => {
             var _a, _b;
             // FunctionDeclarations
-            if (def.type === experimental_utils_1.TSESLint.Scope.DefinitionType.FunctionName) {
+            if (def.type === utils_1.TSESLint.Scope.DefinitionType.FunctionName) {
                 functionDefinitions.add(def.node);
             }
             // FunctionExpressions
-            if (def.type === experimental_utils_1.TSESLint.Scope.DefinitionType.Variable &&
-                (((_a = def.node.init) === null || _a === void 0 ? void 0 : _a.type) === experimental_utils_1.AST_NODE_TYPES.FunctionExpression ||
-                    ((_b = def.node.init) === null || _b === void 0 ? void 0 : _b.type) === experimental_utils_1.AST_NODE_TYPES.ArrowFunctionExpression)) {
+            if (def.type === utils_1.TSESLint.Scope.DefinitionType.Variable &&
+                (((_a = def.node.init) === null || _a === void 0 ? void 0 : _a.type) === utils_1.AST_NODE_TYPES.FunctionExpression ||
+                    ((_b = def.node.init) === null || _b === void 0 ? void 0 : _b.type) === utils_1.AST_NODE_TYPES.ArrowFunctionExpression)) {
                 functionDefinitions.add(def.node.init);
             }
         });
@@ -375,8 +355,8 @@ function isUsedVariable(variable) {
     function getTypeDeclarations(variable) {
         const nodes = new Set();
         variable.defs.forEach(def => {
-            if (def.node.type === experimental_utils_1.AST_NODE_TYPES.TSInterfaceDeclaration ||
-                def.node.type === experimental_utils_1.AST_NODE_TYPES.TSTypeAliasDeclaration) {
+            if (def.node.type === utils_1.AST_NODE_TYPES.TSInterfaceDeclaration ||
+                def.node.type === utils_1.AST_NODE_TYPES.TSTypeAliasDeclaration) {
                 nodes.add(def.node);
             }
         });
@@ -385,7 +365,7 @@ function isUsedVariable(variable) {
     function getModuleDeclarations(variable) {
         const nodes = new Set();
         variable.defs.forEach(def => {
-            if (def.node.type === experimental_utils_1.AST_NODE_TYPES.TSModuleDeclaration) {
+            if (def.node.type === utils_1.AST_NODE_TYPES.TSModuleDeclaration) {
                 nodes.add(def.node);
             }
         });
@@ -425,10 +405,10 @@ function isUsedVariable(variable) {
         function isInLoop(node) {
             let currentNode = node;
             while (currentNode) {
-                if (util.isFunction(currentNode)) {
+                if (utils_1.ASTUtils.isFunction(currentNode)) {
                     break;
                 }
-                if (util.isLoop(currentNode)) {
+                if (utils_1.ASTUtils.isLoop(currentNode)) {
                     return true;
                 }
                 currentNode = currentNode.parent;
@@ -448,8 +428,8 @@ function isUsedVariable(variable) {
         if (prevRhsNode && isInside(id, prevRhsNode)) {
             return prevRhsNode;
         }
-        if (parent.type === experimental_utils_1.AST_NODE_TYPES.AssignmentExpression &&
-            grandparent.type === experimental_utils_1.AST_NODE_TYPES.ExpressionStatement &&
+        if (parent.type === utils_1.AST_NODE_TYPES.AssignmentExpression &&
+            grandparent.type === utils_1.AST_NODE_TYPES.ExpressionStatement &&
             id === parent.left &&
             !canBeUsedLater) {
             return parent.right;
@@ -485,7 +465,7 @@ function isUsedVariable(variable) {
             function getUpperFunction(node) {
                 let currentNode = node;
                 while (currentNode) {
-                    if (util.isFunction(currentNode)) {
+                    if (utils_1.ASTUtils.isFunction(currentNode)) {
                         return currentNode;
                     }
                     currentNode = currentNode.parent;
@@ -507,17 +487,17 @@ function isUsedVariable(variable) {
                 let parent = funcNode.parent;
                 while (parent && isInside(parent, rhsNode)) {
                     switch (parent.type) {
-                        case experimental_utils_1.AST_NODE_TYPES.SequenceExpression:
+                        case utils_1.AST_NODE_TYPES.SequenceExpression:
                             if (parent.expressions[parent.expressions.length - 1] !== node) {
                                 return false;
                             }
                             break;
-                        case experimental_utils_1.AST_NODE_TYPES.CallExpression:
-                        case experimental_utils_1.AST_NODE_TYPES.NewExpression:
+                        case utils_1.AST_NODE_TYPES.CallExpression:
+                        case utils_1.AST_NODE_TYPES.NewExpression:
                             return parent.callee !== node;
-                        case experimental_utils_1.AST_NODE_TYPES.AssignmentExpression:
-                        case experimental_utils_1.AST_NODE_TYPES.TaggedTemplateExpression:
-                        case experimental_utils_1.AST_NODE_TYPES.YieldExpression:
+                        case utils_1.AST_NODE_TYPES.AssignmentExpression:
+                        case utils_1.AST_NODE_TYPES.TaggedTemplateExpression:
+                        case utils_1.AST_NODE_TYPES.YieldExpression:
                             return true;
                         default:
                             if (parent.type.endsWith('Statement') ||
@@ -544,11 +524,11 @@ function isUsedVariable(variable) {
         const grandparent = parent.parent;
         return (ref.isRead() && // in RHS of an assignment for itself. e.g. `a = a + 1`
             // self update. e.g. `a += 1`, `a++`
-            ((parent.type === experimental_utils_1.AST_NODE_TYPES.AssignmentExpression &&
-                grandparent.type === experimental_utils_1.AST_NODE_TYPES.ExpressionStatement &&
+            ((parent.type === utils_1.AST_NODE_TYPES.AssignmentExpression &&
+                grandparent.type === utils_1.AST_NODE_TYPES.ExpressionStatement &&
                 parent.left === id) ||
-                (parent.type === experimental_utils_1.AST_NODE_TYPES.UpdateExpression &&
-                    grandparent.type === experimental_utils_1.AST_NODE_TYPES.ExpressionStatement) ||
+                (parent.type === utils_1.AST_NODE_TYPES.UpdateExpression &&
+                    grandparent.type === utils_1.AST_NODE_TYPES.ExpressionStatement) ||
                 (!!rhsNode &&
                     isInside(id, rhsNode) &&
                     !isInsideOfStorableFunction(id, rhsNode))));

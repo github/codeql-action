@@ -1,0 +1,88 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: 'PR Check - Go: tracing with autobuilder step'
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+on:
+  push:
+    branches:
+    - main
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  go-tracing-autobuilder:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-20.04
+          version: stable-20211005
+        - os: macos-latest
+          version: stable-20211005
+        - os: ubuntu-20.04
+          version: stable-20220120
+        - os: macos-latest
+          version: stable-20220120
+        - os: ubuntu-latest
+          version: stable-20220401
+        - os: macos-latest
+          version: stable-20220401
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+    name: 'Go: tracing with autobuilder step'
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - name: Set up Go
+      if: matrix.os == 'ubuntu-20.04' || matrix.os == 'windows-2019'
+      uses: actions/setup-go@v3
+      with:
+        go-version: ^1.13.1
+    - uses: ./../action/init
+      with:
+        languages: go
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/autobuild
+    - uses: ./../action/analyze
+    - shell: bash
+      run: |
+        if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
+          echo "Expected the Go autobuilder to be run, but the" \
+            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+          exit 1
+        fi
+        cd "$RUNNER_TEMP/codeql_databases"
+        if [[ ! -d go ]]; then
+          echo "Did not find a Go database"
+          exit 1
+        fi
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true

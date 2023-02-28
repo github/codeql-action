@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import path from "path";
-// We need to import `performance` on Node 12
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
@@ -9,28 +8,27 @@ import * as actionsUtil from "./actions-util";
 import { DatabaseCreationTimings } from "./actions-util";
 import {
   CodeQLAnalysisError,
+  dbIsFinalized,
   QueriesStatusReport,
   runCleanup,
   runFinalize,
   runQueries,
 } from "./analyze";
-import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
+import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { FeatureEnablement, Features } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY } from "./shared-environment";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
 import { checkForTimeout } from "./util";
-
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
 
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
@@ -127,45 +125,44 @@ function doesGoExtractionOutputExist(config: Config): boolean {
 }
 
 /**
- * When Go extraction reconciliation is enabled, either via the feature
- * or an environment variable, we will attempt to autobuild Go to preserve
- * compatibility for users who have set up Go using a legacy scanning style
- * CodeQL workflow, i.e. one without an autobuild step or manual build
- * steps.
+ * We attempt to autobuild Go to preserve compatibility for users who have
+ * set up Go using a legacy scanning style CodeQL workflow, i.e. one without
+ * an autobuild step or manual build steps.
  *
  * - We detect whether an autobuild step is present by checking the
  * `util.DID_AUTOBUILD_GO_ENV_VAR_NAME` environment variable, which is set
  * when the autobuilder is invoked.
+ * - We detect whether the Go database has already been finalized in case it
+ * has been manually set in a prior Action step.
  * - We approximate whether manual build steps are present by looking at
  * whether any extraction output already exists for Go.
  */
-async function runAutobuildIfLegacyGoWorkflow(
-  config: Config,
-  featureEnablement: FeatureEnablement,
-  logger: Logger
-) {
+async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
-  if (!(await util.isGoExtractionReconciliationEnabled(featureEnablement))) {
-    logger.debug(
-      "Won't run Go autobuild since Go extraction reconciliation is not enabled."
-    );
+  if (process.env[util.DID_AUTOBUILD_GO_ENV_VAR_NAME] === "true") {
+    logger.debug("Won't run Go autobuild since it has already been run.");
     return;
   }
-  if (process.env[util.DID_AUTOBUILD_GO_ENV_VAR_NAME] === "true") {
-    // This log line is info level while Go extraction reconciliation is in beta.
-    // We will make it debug level once Go extraction reconciliation is GA.
-    logger.info("Won't run Go autobuild since it has already been run.");
+  if (dbIsFinalized(config, Language.go, logger)) {
+    logger.debug(
+      "Won't run Go autobuild since there is already a finalized database for Go."
+    );
     return;
   }
   // This captures whether a user has added manual build steps for Go
   if (doesGoExtractionOutputExist(config)) {
-    // This log line is info level while Go extraction reconciliation is in beta.
-    // We will make it debug level once Go extraction reconciliation is GA.
-    logger.info(
+    logger.debug(
       "Won't run Go autobuild since at least one file of Go code has already been extracted."
     );
+    // If the user has run the manual build step, and has set the `CODEQL_EXTRACTOR_GO_BUILD_TRACING`
+    // variable, we suggest they remove it from their workflow.
+    if ("CODEQL_EXTRACTOR_GO_BUILD_TRACING" in process.env) {
+      logger.warning(
+        `The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable has no effect on workflows with manual build steps, so we recommend that you remove it from your workflow.`
+      );
+    }
     return;
   }
   await runAutobuild(Language.go, config, logger);
@@ -179,8 +176,7 @@ async function run() {
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
-  util.initializeEnvironment(util.Mode.actions, pkg.version);
-  await util.checkActionVersion(pkg.version);
+  util.initializeEnvironment(actionsUtil.getActionVersion());
 
   const logger = getActionsLogger();
   try {
@@ -208,10 +204,7 @@ async function run() {
       );
     }
 
-    await util.enrichEnvironment(
-      util.Mode.actions,
-      await getCodeQL(config.codeQLCmd)
-    );
+    await util.enrichEnvironment(await getCodeQL(config.codeQLCmd));
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
@@ -227,24 +220,23 @@ async function run() {
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
     );
 
-    const gitHubVersion = await getGitHubVersionActionsOnly();
+    const gitHubVersion = await getGitHubVersion();
 
     const features = new Features(
       gitHubVersion,
-      apiDetails,
       repositoryNwo,
+      actionsUtil.getTemporaryDirectory(),
       logger
     );
 
-    await runAutobuildIfLegacyGoWorkflow(config, features, logger);
+    await runAutobuildIfLegacyGoWorkflow(config, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,
       threads,
       memory,
       config,
-      logger,
-      features
+      logger
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
@@ -277,8 +269,8 @@ async function run() {
     if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
       uploadResult = await upload_lib.uploadFromActions(
         outputDir,
-        config.gitHubVersion,
-        apiDetails,
+        actionsUtil.getRequiredInput("checkout_path"),
+        actionsUtil.getOptionalInput("category"),
         logger
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
@@ -305,7 +297,6 @@ async function run() {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,
-        apiDetails,
         getActionsLogger()
       );
     }
@@ -315,6 +306,10 @@ async function run() {
         `expect-error input was set to true but no error was thrown.`
       );
     }
+    core.exportVariable(
+      CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY,
+      "true"
+    );
   } catch (origError) {
     const error =
       origError instanceof Error ? origError : new Error(String(origError));
@@ -324,8 +319,6 @@ async function run() {
     ) {
       core.setFailed(error.message);
     }
-
-    console.log(error);
 
     if (error instanceof CodeQLAnalysisError) {
       const stats = { ...error.queriesStatusReport };
@@ -401,7 +394,6 @@ async function runWrapper() {
     await runPromise;
   } catch (error) {
     core.setFailed(`analyze action failed: ${error}`);
-    console.log(error);
   }
   await checkForTimeout();
 }

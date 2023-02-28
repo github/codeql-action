@@ -1,5 +1,7 @@
 'use strict';
 
+var orig = Array.prototype.includes;
+
 require('../auto');
 
 var test = require('tape');
@@ -11,6 +13,7 @@ var functionsHaveNames = require('functions-have-names')();
 var runTests = require('./tests');
 
 test('shimmed', function (t) {
+	t.comment('shimmed: ' + (orig === Array.prototype.includes ? 'no' : 'yes'));
 	t.equal(Array.prototype.includes.length, 1, 'Array#includes has a length of 1');
 	t.test('Function name', { skip: !functionsHaveNames }, function (st) {
 		st.equal(Array.prototype.includes.name, 'includes', 'Array#includes has name "includes"');

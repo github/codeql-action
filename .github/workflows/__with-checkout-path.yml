@@ -7,11 +7,11 @@ name: PR Check - Use a custom `checkout_path`
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:
@@ -26,23 +26,23 @@ jobs:
       matrix:
         include:
         - os: ubuntu-20.04
-          version: stable-20210308
+          version: stable-20211005
         - os: macos-latest
-          version: stable-20210308
+          version: stable-20211005
         - os: windows-2019
-          version: stable-20210308
+          version: stable-20211005
         - os: ubuntu-20.04
-          version: stable-20210319
+          version: stable-20220120
         - os: macos-latest
-          version: stable-20210319
+          version: stable-20220120
         - os: windows-2019
-          version: stable-20210319
-        - os: ubuntu-20.04
-          version: stable-20210809
+          version: stable-20220120
+        - os: ubuntu-latest
+          version: stable-20220401
         - os: macos-latest
-          version: stable-20210809
-        - os: windows-2019
-          version: stable-20210809
+          version: stable-20220401
+        - os: windows-latest
+          version: stable-20220401
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
@@ -72,6 +72,11 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
+    - name: Set up Go
+      if: matrix.os == 'ubuntu-20.04' || matrix.os == 'windows-2019'
+      uses: actions/setup-go@v3
+      with:
+        go-version: ^1.13.1
     - uses: actions/checkout@v3
       with:
         ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
@@ -83,8 +88,6 @@ jobs:
         languages: csharp,javascript
         source-path: x/y/z/some-path/tests/multi-language-repo
         debug: true
-      env:
-        TEST_MODE: true
     - name: Build code (non-windows)
       shell: bash
       if: ${{ runner.os != 'Windows' }}
@@ -101,16 +104,12 @@ jobs:
         ref: v1.1.0
         sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
         upload: false
-      env:
-        TEST_MODE: true
 
     - uses: ./../action/upload-sarif
       with:
         ref: v1.1.0
         sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
         checkout_path: x/y/z/some-path/tests/multi-language-repo
-      env:
-        TEST_MODE: true
 
     - name: Verify SARIF after upload
       shell: bash
@@ -141,4 +140,4 @@ jobs:
           exit 1
         fi
     env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

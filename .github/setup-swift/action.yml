@@ -1,0 +1,32 @@
+name: "Set up Swift"
+description: Performs necessary steps to set up appropriate Swift version.
+inputs:
+  codeql-path:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Get Swift version
+      id: get_swift_version
+      # We don't support Swift on Windows or prior versions of CLI.
+      if: "(runner.os != 'Windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+      shell: bash
+      env: 
+        CODEQL_PATH: ${{inputs.codeql-path}}
+      run: |
+        if [ $RUNNER_OS = "macOS" ]; then
+          PLATFORM="osx64"
+        else # We do not run this step on Windows.
+          PLATFORM="linux64"
+        fi 
+        SWIFT_EXTRACTOR_DIR="$("$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]')"
+        VERSION="$("$SWIFT_EXTRACTOR_DIR/tools/$PLATFORM/extractor" --version | awk '/version/ { print $3 }')"
+        # Specify 5.7.0, otherwise setup Action will default to latest minor version. 
+        if [ $VERSION = "5.7" ]; then
+          VERSION="5.7.0"
+        fi
+        echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
+    - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
+      if: "(runner.os != 'Windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+      with:
+        swift-version: "${{steps.get_swift_version.outputs.version}}"

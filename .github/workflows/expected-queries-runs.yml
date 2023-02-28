@@ -4,7 +4,6 @@ on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:
@@ -17,6 +16,8 @@ on:
 jobs:
   expected-queries:
     name: Expected Queries Tests
+    env:
+      CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
@@ -31,15 +32,11 @@ jobs:
       with:
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
         upload-database: false
         upload: false
-      env:
-        TEST_MODE: true
 
     - name: Check Sarif
       uses: ./../action/.github/check-sarif

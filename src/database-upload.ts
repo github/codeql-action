@@ -32,33 +32,38 @@ export async function uploadDatabases(
     return;
   }
 
-  const client = getApiClient(apiDetails);
+  const client = getApiClient();
   const codeql = await getCodeQL(config.codeQLCmd);
 
   for (const language of config.languages) {
-    // Upload the database bundle.
-    // Although we are uploading arbitrary file contents to the API, it's worth
-    // noting that it's the API's job to validate that the contents is acceptable.
-    // This API method is available to anyone with write access to the repo.
-    const payload = fs.readFileSync(
-      await bundleDb(config, language, codeql, language)
-    );
     try {
-      await client.request(
-        `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
-        {
-          owner: repositoryNwo.owner,
-          repo: repositoryNwo.repo,
-          language,
-          name: `${language}-database`,
-          data: payload,
-          headers: {
-            authorization: `token ${apiDetails.auth}`,
-            "Content-Type": "application/zip",
-          },
-        }
-      );
-      logger.debug(`Successfully uploaded database for ${language}`);
+      // Upload the database bundle.
+      // Although we are uploading arbitrary file contents to the API, it's worth
+      // noting that it's the API's job to validate that the contents is acceptable.
+      // This API method is available to anyone with write access to the repo.
+      const bundledDb = await bundleDb(config, language, codeql, language);
+      const bundledDbSize = fs.statSync(bundledDb).size;
+      const bundledDbReadStream = fs.createReadStream(bundledDb);
+      try {
+        await client.request(
+          `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
+          {
+            owner: repositoryNwo.owner,
+            repo: repositoryNwo.repo,
+            language,
+            name: `${language}-database`,
+            data: bundledDbReadStream,
+            headers: {
+              authorization: `token ${apiDetails.auth}`,
+              "Content-Type": "application/zip",
+              "Content-Length": bundledDbSize,
+            },
+          }
+        );
+        logger.debug(`Successfully uploaded database for ${language}`);
+      } finally {
+        bundledDbReadStream.close();
+      }
     } catch (e) {
       console.log(e);
       // Log a warning but don't fail the workflow

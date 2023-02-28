@@ -10,10 +10,11 @@ import {
   createQuerySuiteContents,
   runQueries,
   validateQueryFilters,
+  QueriesStatusReport,
 } from "./analyze";
-import { setCodeQL } from "./codeql";
-import { Config } from "./config-utils";
-import * as count from "./count-loc";
+import { CodeQL, setCodeQL } from "./codeql";
+import { Config, QueriesWithSearchPath } from "./config-utils";
+import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
@@ -25,12 +26,6 @@ setupTests(test);
 // and correct case of builtin or custom. Also checks the correct search
 // paths are set in the database analyze invocation.
 test("status report fields and search path setting", async (t) => {
-  const mockLinesOfCode = Object.values(Language).reduce((obj, lang, i) => {
-    // use a different line count for each language
-    obj[lang] = i + 1;
-    return obj;
-  }, {});
-  sinon.stub(count, "countLoc").resolves(mockLinesOfCode);
   let searchPathsUsed: Array<string | undefined> = [];
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
@@ -96,6 +91,7 @@ test("status report fields and search path setting", async (t) => {
           );
           return "";
         },
+        databasePrintBaseline: async () => "",
       });
 
       searchPathsUsed = [];
@@ -202,34 +198,8 @@ test("status report fields and search path setting", async (t) => {
       t.true(`interpret_results_${language}_duration_ms` in customStatusReport);
     }
 
-    verifyLineCounts(tmpDir);
     verifyQuerySuites(tmpDir);
   });
-
-  function verifyLineCounts(tmpDir: string) {
-    // eslint-disable-next-line github/array-foreach
-    Object.keys(Language).forEach((lang, i) => {
-      verifyLineCountForFile(path.join(tmpDir, `${lang}.sarif`), i + 1);
-    });
-  }
-
-  function verifyLineCountForFile(filePath: string, lineCount: number) {
-    const sarif = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    t.deepEqual(sarif.runs[0].properties.metricResults, [
-      {
-        rule: {
-          index: 0,
-          toolComponent: {
-            index: 0,
-          },
-        },
-        value: 123,
-        baseline: lineCount,
-      },
-    ]);
-    // when the rule doesn't exist, it should not be added
-    t.deepEqual(sarif.runs[1].properties.metricResults, []);
-  }
 
   function verifyQuerySuites(tmpDir: string) {
     const qlsContent = [
@@ -260,6 +230,175 @@ test("status report fields and search path setting", async (t) => {
       );
     }
   }
+});
+
+function mockCodeQL(): Partial<CodeQL> {
+  return {
+    getVersion: async () => "2.12.2",
+    databaseRunQueries: sinon.spy(),
+    databaseInterpretResults: async () => "",
+    databasePrintBaseline: async () => "",
+  };
+}
+
+function createBaseConfig(tmpDir: string): Config {
+  return {
+    languages: [],
+    queries: {},
+    pathsIgnore: [],
+    paths: [],
+    originalUserInput: {},
+    tempDir: "tempDir",
+    codeQLCmd: "",
+    gitHubVersion: {
+      type: util.GitHubVariant.DOTCOM,
+    } as util.GitHubVersion,
+    dbLocation: path.resolve(tmpDir, "codeql_databases"),
+    packs: {},
+    debugMode: false,
+    debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
+    debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
+    augmentationProperties: {
+      injectedMlQueries: false,
+      packsInputCombines: false,
+      queriesInputCombines: false,
+    },
+    trapCaches: {},
+    trapCacheDownloadTime: 0,
+  };
+}
+
+function createQueryConfig(
+  builtin: string[],
+  custom: string[]
+): { builtin: string[]; custom: QueriesWithSearchPath[] } {
+  return {
+    builtin,
+    custom: custom.map((c) => ({ searchPath: "/search", queries: [c] })),
+  };
+}
+
+async function runQueriesWithConfig(
+  config: Config,
+  features: Feature[]
+): Promise<QueriesStatusReport> {
+  for (const language of config.languages) {
+    fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
+      recursive: true,
+    });
+  }
+  return runQueries(
+    "sarif-folder",
+    "--memFlag",
+    "--addSnippetsFlag",
+    "--threadsFlag",
+    undefined,
+    config,
+    getRunnerLogger(true),
+    createFeatures(features)
+  );
+}
+
+function getDatabaseRunQueriesCalls(mock: Partial<CodeQL>) {
+  return (mock.databaseRunQueries as sinon.SinonSpy).getCalls();
+}
+
+test("optimizeForLastQueryRun for one language", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeql = mockCodeQL();
+    setCodeQL(codeql);
+    const config: Config = createBaseConfig(tmpDir);
+    config.languages = [Language.cpp];
+    config.queries.cpp = createQueryConfig(["foo.ql"], []);
+
+    await runQueriesWithConfig(config, []);
+    t.deepEqual(
+      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
+      [true]
+    );
+  });
+});
+
+test("optimizeForLastQueryRun for two languages", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeql = mockCodeQL();
+    setCodeQL(codeql);
+    const config: Config = createBaseConfig(tmpDir);
+    config.languages = [Language.cpp, Language.java];
+    config.queries.cpp = createQueryConfig(["foo.ql"], []);
+    config.queries.java = createQueryConfig(["bar.ql"], []);
+
+    await runQueriesWithConfig(config, []);
+    t.deepEqual(
+      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
+      [true, true]
+    );
+  });
+});
+
+test("optimizeForLastQueryRun for two languages, with custom queries", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeql = mockCodeQL();
+    setCodeQL(codeql);
+    const config: Config = createBaseConfig(tmpDir);
+    config.languages = [Language.cpp, Language.java];
+    config.queries.cpp = createQueryConfig(["foo.ql"], ["c1.ql", "c2.ql"]);
+    config.queries.java = createQueryConfig(["bar.ql"], ["c3.ql"]);
+
+    await runQueriesWithConfig(config, []);
+    t.deepEqual(
+      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
+      [false, false, true, false, true]
+    );
+  });
+});
+
+test("optimizeForLastQueryRun for two languages, with custom queries and packs", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeql = mockCodeQL();
+    setCodeQL(codeql);
+    const config: Config = createBaseConfig(tmpDir);
+    config.languages = [Language.cpp, Language.java];
+    config.queries.cpp = createQueryConfig(["foo.ql"], ["c1.ql", "c2.ql"]);
+    config.queries.java = createQueryConfig(["bar.ql"], ["c3.ql"]);
+    config.packs.cpp = ["a/cpp-pack1@0.1.0"];
+    config.packs.java = ["b/java-pack1@0.2.0", "b/java-pack2@0.3.3"];
+    await runQueriesWithConfig(config, []);
+    t.deepEqual(
+      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
+      [false, false, false, true, false, false, true]
+    );
+  });
+});
+
+test("optimizeForLastQueryRun for one language, CliConfigFileEnabled", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeql = mockCodeQL();
+    setCodeQL(codeql);
+    const config: Config = createBaseConfig(tmpDir);
+    config.languages = [Language.cpp];
+
+    await runQueriesWithConfig(config, [Feature.CliConfigFileEnabled]);
+    t.deepEqual(
+      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
+      [true]
+    );
+  });
+});
+
+test("optimizeForLastQueryRun for two languages, CliConfigFileEnabled", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const codeql = mockCodeQL();
+    setCodeQL(codeql);
+    const config: Config = createBaseConfig(tmpDir);
+    config.languages = [Language.cpp, Language.java];
+
+    await runQueriesWithConfig(config, [Feature.CliConfigFileEnabled]);
+    t.deepEqual(
+      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
+      [true, true]
+    );
+  });
 });
 
 test("validateQueryFilters", (t) => {
@@ -315,6 +454,7 @@ test("validateQueryFilters", (t) => {
 
   t.throws(
     () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return validateQueryFilters({ exclude: "foo" } as any);
     },
     {

@@ -1,6 +1,6 @@
 # CodeQL Action
 
-This action runs GitHub's industry-leading semantic code analysis engine, CodeQL, against a repository's source code to find security vulnerabilities. It then automatically uploads the results to GitHub so they can be displayed in the repository's security tab. CodeQL runs an extensible set of [queries](https://github.com/github/codeql), which have been developed by the community and the [GitHub Security Lab](https://securitylab.github.com/) to find common vulnerabilities in your code.
+This action runs GitHub's industry-leading semantic code analysis engine, [CodeQL](https://codeql.github.com/), against a repository's source code to find security vulnerabilities. It then automatically uploads the results to GitHub so they can be displayed in the repository's security tab. CodeQL runs an extensible set of [queries](https://github.com/github/codeql), which have been developed by the community and the [GitHub Security Lab](https://securitylab.github.com/) to find common vulnerabilities in your code.
 
 For a list of recent changes, see the CodeQL Action's [changelog](CHANGELOG.md).
 
@@ -59,7 +59,7 @@ jobs:
         uses: github/codeql-action/init@v2
         # Override language selection by uncommenting this and choosing your languages
         # with:
-        #   languages: go, javascript, csharp, python, cpp, java
+        #   languages: go, javascript, csharp, python, cpp, java, ruby
 
       # Autobuild attempts to build any compiled languages (C/C++, C#, Go, or Java).
       # If this step fails, then you should remove it and run the build manually (see below).

@@ -1,16 +1,14 @@
 import * as fs from "fs";
 import * as os from "os";
 import path from "path";
-import * as stream from "stream";
 
-import * as core from "@actions/core";
 import * as github from "@actions/github";
-import test, { ExecutionContext } from "ava";
+import test from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
-import { getRunnerLogger, Logger } from "./logging";
+import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -21,7 +19,7 @@ test("getToolNames", (t) => {
     `${__dirname}/../src/testdata/tool-names.sarif`,
     "utf8"
   );
-  const toolNames = util.getToolNames(JSON.parse(input));
+  const toolNames = util.getToolNames(JSON.parse(input) as util.SarifFile);
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
 });
 
@@ -199,6 +197,7 @@ function mockGetMetaVersionHeader(
   };
   const spyGetContents = sinon
     .stub(client.meta, "get")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   return spyGetContents;
@@ -239,65 +238,6 @@ test("getGitHubVersion", async (t) => {
   });
   t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
 });
-
-test("getGitHubAuth", async (t) => {
-  const msgs: string[] = [];
-  const mockLogger = {
-    warning: (msg: string) => msgs.push(msg),
-  } as unknown as Logger;
-
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  t.throwsAsync(async () => util.getGitHubAuth(mockLogger, "abc", true));
-
-  process.env.GITHUB_TOKEN = "123";
-  t.is("123", await util.getGitHubAuth(mockLogger, undefined, undefined));
-  t.is(msgs.length, 0);
-  t.is("abc", await util.getGitHubAuth(mockLogger, "abc", undefined));
-  t.is(msgs.length, 1); // warning expected
-
-  msgs.length = 0;
-  await mockStdInForAuth(t, mockLogger, "def", "def");
-  await mockStdInForAuth(t, mockLogger, "def", "", "def");
-  await mockStdInForAuth(
-    t,
-    mockLogger,
-    "def",
-    "def\n some extra garbage",
-    "ghi"
-  );
-  await mockStdInForAuth(t, mockLogger, "defghi", "def", "ghi\n123");
-
-  await mockStdInForAuthExpectError(t, mockLogger, "");
-  await mockStdInForAuthExpectError(t, mockLogger, "", " ", "abc");
-  await mockStdInForAuthExpectError(
-    t,
-    mockLogger,
-    "  def\n some extra garbage",
-    "ghi"
-  );
-  t.is(msgs.length, 0);
-});
-
-async function mockStdInForAuth(
-  t: ExecutionContext<any>,
-  mockLogger: Logger,
-  expected: string,
-  ...text: string[]
-) {
-  const stdin = stream.Readable.from(text) as any;
-  t.is(expected, await util.getGitHubAuth(mockLogger, undefined, true, stdin));
-}
-
-async function mockStdInForAuthExpectError(
-  t: ExecutionContext<unknown>,
-  mockLogger: Logger,
-  ...text: string[]
-) {
-  const stdin = stream.Readable.from(text) as any;
-  await t.throwsAsync(async () =>
-    util.getGitHubAuth(mockLogger, undefined, true, stdin)
-  );
-}
 
 const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
   // If no packs are loaded, status is false.
@@ -362,65 +302,6 @@ for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
 
       t.is(util.getMlPoweredJsQueriesStatus(config), expectedStatus);
     });
-  });
-}
-
-function formatGitHubVersion(version: util.GitHubVersion): string {
-  switch (version.type) {
-    case util.GitHubVariant.DOTCOM:
-      return "dotcom";
-    case util.GitHubVariant.GHAE:
-      return "GHAE";
-    case util.GitHubVariant.GHES:
-      return `GHES ${version.version}`;
-    default:
-      util.assertNever(version);
-  }
-}
-
-const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
-  [
-    ["1.2.1", { type: util.GitHubVariant.DOTCOM }, true],
-    ["1.2.1", { type: util.GitHubVariant.GHAE }, true],
-    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, false],
-    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, true],
-    ["1.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, true],
-    ["2.2.1", { type: util.GitHubVariant.DOTCOM }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHAE }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.3" }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.4" }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.5" }, false],
-  ];
-
-for (const [
-  version,
-  githubVersion,
-  shouldReportWarning,
-] of CHECK_ACTION_VERSION_TESTS) {
-  const reportWarningDescription = shouldReportWarning
-    ? "reports warning"
-    : "doesn't report warning";
-  const versionsDescription = `CodeQL Action version ${version} and GitHub version ${formatGitHubVersion(
-    githubVersion
-  )}`;
-  test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {
-    const warningSpy = sinon.spy(core, "warning");
-    const versionStub = sinon
-      .stub(api, "getGitHubVersionActionsOnly")
-      .resolves(githubVersion);
-    const isActionsStub = sinon.stub(util, "isActions").returns(true);
-    await util.checkActionVersion(version);
-    if (shouldReportWarning) {
-      t.true(
-        warningSpy.calledOnceWithExactly(
-          sinon.match("CodeQL Action v1 will be deprecated")
-        )
-      );
-    } else {
-      t.false(warningSpy.called);
-    }
-    versionStub.restore();
-    isActionsStub.restore();
   });
 }
 

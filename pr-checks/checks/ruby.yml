@@ -1,0 +1,19 @@
+name: "Ruby analysis"
+description: "Tests creation of a Ruby database"
+versions: ["latest", "cached", "nightly-latest"]
+operatingSystems: ["ubuntu", "macos"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: ruby
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    id: analysis
+  - name: Check database
+    shell: bash
+    run: |
+      RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
+      if [[ ! -d "$RUBY_DB" ]]; then
+        echo "Did not create a database for Ruby."
+        exit 1
+      fi

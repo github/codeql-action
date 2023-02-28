@@ -14,9 +14,9 @@ var _TypeVisitor_referencer;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TypeVisitor = void 0;
 const types_1 = require("@typescript-eslint/types");
-const Visitor_1 = require("./Visitor");
 const definition_1 = require("../definition");
 const scope_1 = require("../scope");
+const Visitor_1 = require("./Visitor");
 class TypeVisitor extends Visitor_1.Visitor {
     constructor(referencer) {
         super(referencer);
@@ -132,6 +132,7 @@ class TypeVisitor extends Visitor_1.Visitor {
             }
         }
         scope.defineIdentifier(typeParameter.name, new definition_1.TypeDefinition(typeParameter.name, typeParameter));
+        this.visit(typeParameter.constraint);
     }
     TSInterfaceDeclaration(node) {
         var _a, _b;
@@ -201,16 +202,21 @@ class TypeVisitor extends Visitor_1.Visitor {
     }
     // a type query `typeof foo` is a special case that references a _non-type_ variable,
     TSTypeQuery(node) {
-        if (node.exprName.type === types_1.AST_NODE_TYPES.Identifier) {
-            __classPrivateFieldGet(this, _TypeVisitor_referencer, "f").currentScope().referenceValue(node.exprName);
+        let entityName;
+        if (node.exprName.type === types_1.AST_NODE_TYPES.TSQualifiedName) {
+            let iter = node.exprName;
+            while (iter.left.type === types_1.AST_NODE_TYPES.TSQualifiedName) {
+                iter = iter.left;
+            }
+            entityName = iter.left;
         }
         else {
-            let expr = node.exprName.left;
-            while (expr.type !== types_1.AST_NODE_TYPES.Identifier) {
-                expr = expr.left;
-            }
-            __classPrivateFieldGet(this, _TypeVisitor_referencer, "f").currentScope().referenceValue(expr);
+            entityName = node.exprName;
         }
+        if (entityName.type === types_1.AST_NODE_TYPES.Identifier) {
+            __classPrivateFieldGet(this, _TypeVisitor_referencer, "f").currentScope().referenceValue(entityName);
+        }
+        this.visit(node.typeParameters);
     }
     TSTypeAnnotation(node) {
         // check

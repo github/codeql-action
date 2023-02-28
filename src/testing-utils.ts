@@ -1,5 +1,8 @@
+import { TextDecoder } from "node:util";
+
 import * as github from "@actions/github";
 import { TestFn } from "ava";
+import * as nock from "nock";
 import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
@@ -90,6 +93,9 @@ export function setupTests(test: TestFn<any>) {
       process.stdout.write(t.context.testOutput);
     }
 
+    // Undo any modifications made by nock
+    nock.cleanAll();
+
     // Undo any modifications made by sinon
     sinon.restore();
 
@@ -162,6 +168,27 @@ export function mockFeatureFlagApiEndpoint(
   sinon.stub(apiClient, "getApiClient").value(() => client);
 }
 
+export function mockLanguagesInRepo(languages: string[]) {
+  const mockClient = sinon.stub(apiClient, "getApiClient");
+  const listLanguages = sinon.stub().resolves({
+    status: 200,
+    data: languages.reduce((acc, lang) => {
+      acc[lang] = 1;
+      return acc;
+    }, {}),
+    headers: {},
+    url: "GET /repos/:owner/:repo/languages",
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  mockClient.returns({
+    repos: {
+      listLanguages,
+    },
+  } as any);
+  return listLanguages;
+}
+
 export function mockCodeQLVersion(version) {
   return {
     async getVersion() {
@@ -177,6 +204,9 @@ export function mockCodeQLVersion(version) {
  */
 export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
   return {
+    getDefaultCliVersion: async () => {
+      throw new Error("not implemented");
+    },
     getValue: async (feature) => {
       return enabledFeatures.includes(feature);
     },

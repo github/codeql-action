@@ -2,12 +2,14 @@
 # when the analyze step fails.
 name: PR Check - Debug artifacts after failure
 env:
+  # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
+  # workaround for our PR checks.
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:
@@ -23,6 +25,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     name: Upload debug artifacts after failure in analyze
     continue-on-error: true
+    env:
+      CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -35,14 +39,15 @@ jobs:
         uses: ./.github/prepare-test
         with:
           version: latest
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.13.1
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
           debug: true
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
-        env:
-          TEST_MODE: true
       - name: Build code
         shell: bash
         run: ./build.sh
@@ -51,8 +56,6 @@ jobs:
         with:
           expect-error: true
           ram: 1
-        env:
-          TEST_MODE: true
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts
@@ -87,4 +90,4 @@ jobs:
             popd
           done
         env:
-          INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+          GO111MODULE: auto

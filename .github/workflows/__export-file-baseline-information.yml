@@ -7,11 +7,11 @@ name: PR Check - Export file baseline information
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:
@@ -43,12 +43,15 @@ jobs:
       with:
         version: ${{ matrix.version }}
     - uses: ./../action/init
+      id: init
       with:
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
-        TEST_MODE: true
+    - uses: ./../action/.github/setup-swift
+      with:
+        codeql-path: ${{steps.init.outputs.codeql-path}}
     - name: Build code
       shell: bash
       run: ./build.sh
@@ -57,7 +60,6 @@ jobs:
         output: ${{ runner.temp }}/results
       env:
         CODEQL_FILE_BASELINE_INFORMATION: true
-        TEST_MODE: true
     - name: Upload SARIF
       uses: actions/upload-artifact@v3
       with:
@@ -68,7 +70,7 @@ jobs:
       shell: bash
       run: |
         cd "$RUNNER_TEMP/results"
-        expected_baseline_languages="cpp csharp go java js py ruby"
+        expected_baseline_languages="cpp cs go java js py rb swift"
 
         for lang in ${expected_baseline_languages}; do
           rule_name="${lang}/baseline/expected-extracted-files"
@@ -82,4 +84,5 @@ jobs:
           fi
         done
     env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true # Remove when Swift is GA.
+      CODEQL_ACTION_TEST_MODE: true

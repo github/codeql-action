@@ -16,7 +16,10 @@
     "rules": {
         "filenames/match-regex": ["error", "^[a-z0-9-]+(\\.test)?$"],
         "i18n-text/no-en": "off",
-        "import/extensions": "error",
+        "import/extensions": ["error", {
+            // Allow importing JSON files
+            "json": {}
+        }],
         "import/no-amd": "error",
         "import/no-commonjs": "error",
         "import/no-dynamic-require": "error",
@@ -29,6 +32,12 @@
         "import/order": ["error", {
             "alphabetize": {"order": "asc"},
             "newlines-between": "always"
+        }],
+        "max-len": ["error", {
+            "code": 120,
+            "ignoreUrls": true,
+            "ignoreStrings": true,
+            "ignoreTemplateLiterals": true
         }],
         "no-async-foreach/no-async-foreach": "error",
         "no-console": "off",
@@ -55,5 +64,13 @@
             "func-style": "off",
             "sort-imports": "off"
         }
-    }]
+    }],
+    "settings": {
+        "import/resolver": {
+            "node": {
+                "moduleDirectory": ["node_modules", "src"]
+            },
+            "typescript": {}
+        }
+    }
 }

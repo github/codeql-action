@@ -1,12 +1,14 @@
 # Checks logs, SARIF, and database bundle debug artifacts exist.
 name: PR Check - Debug artifact upload
 env:
+  # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
+  # workaround for our PR checks.
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:
@@ -20,31 +22,33 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
-            version: stable-20210308
-          - os: macos-latest
-            version: stable-20210308
-          - os: ubuntu-20.04
-            version: stable-20210319
-          - os: macos-latest
-            version: stable-20210319
-          - os: ubuntu-20.04
-            version: stable-20210809
-          - os: macos-latest
-            version: stable-20210809
-          - os: ubuntu-latest
-            version: cached
-          - os: macos-latest
-            version: cached
-          - os: ubuntu-latest
-            version: latest
-          - os: macos-latest
-            version: latest
-          - os: ubuntu-latest
-            version: nightly-latest
-          - os: macos-latest
-            version: nightly-latest
+        - os: ubuntu-20.04
+          version: stable-20211005
+        - os: macos-latest
+          version: stable-20211005
+        - os: ubuntu-20.04
+          version: stable-20220120
+        - os: macos-latest
+          version: stable-20220120
+        - os: ubuntu-latest
+          version: stable-20220401
+        - os: macos-latest
+          version: stable-20220401
+        - os: ubuntu-latest
+          version: cached
+        - os: macos-latest
+          version: cached
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
     name: Upload debug artifacts
+    env:
+      CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -55,21 +59,20 @@ jobs:
         uses: ./.github/prepare-test
         with:
           version: ${{ matrix.version }}
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.13.1
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
           debug: true
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
-        env:
-          TEST_MODE: true
       - name: Build code
         shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis  
-        env:
-          TEST_MODE: true
   download-and-check-artifacts:
     name: Download and check debug artifacts
     needs: upload-artifacts
@@ -81,10 +84,10 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20210308 stable-20210319 stable-20210809 cached latest nightly-latest"
+          VERSIONS="stable-20211005 stable-20220120 stable-20220401 cached latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
-            if [[ "$version" =~ stable-(20210308|20210319|20210809) ]]; then
+            if [[ "$version" =~ stable-(20211005|20220120|20210809) ]]; then
               # Note the absence of the period in "ubuntu-2004": this is present in the image name
               # but not the artifact name
               OPERATING_SYSTEMS="ubuntu-2004 macos-latest"
@@ -113,4 +116,4 @@ jobs:
             done
           done
         env:
-          INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+          GO111MODULE: auto

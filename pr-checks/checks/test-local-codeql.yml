@@ -12,11 +12,7 @@ steps:
   - uses: ./../action/init
     with:
       tools: ./codeql-bundle.tar.gz
-    env:
-      TEST_MODE: true
   - name: Build code
     shell: bash
     run: ./build.sh
   - uses: ./../action/analyze
-    env:
-      TEST_MODE: true

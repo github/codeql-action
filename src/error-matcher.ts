@@ -18,6 +18,10 @@ export const namedMatchersForTesting: { [key: string]: ErrorMatcher } = {
       "No code found during the build. Please see:\n" +
       "https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning#no-code-found-during-the-build",
   },
+  fatalError: {
+    outputRegex: new RegExp("A fatal error occurred"),
+    message: "A fatal error occurred.",
+  },
 };
 
 // we collapse the matches into an array for use in execErrorCatcher

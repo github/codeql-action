@@ -7,11 +7,11 @@ name: PR Check - Custom source root
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
     - main
-    - releases/v1
     - releases/v2
   pull_request:
     types:
@@ -52,8 +52,6 @@ jobs:
         languages: javascript
         source-root: ../new-source-root
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-      env:
-        TEST_MODE: true
     - uses: ./../action/analyze
       with:
         skip-queries: true
@@ -67,4 +65,4 @@ jobs:
           exit 1
         fi
     env:
-      INTERNAL_CODEQL_ACTION_DEBUG_LOC: true
+      CODEQL_ACTION_TEST_MODE: true

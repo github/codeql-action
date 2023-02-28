@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-// We need to import `performance` on Node 12
 import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
@@ -11,11 +10,17 @@ import {
   CodeQL,
   CODEQL_VERSION_GHES_PACK_DOWNLOAD,
   CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS,
+  CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE,
   ResolveQueriesOutput,
 } from "./codeql";
 import * as externalQueries from "./external-queries";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { Language, parseLanguage } from "./languages";
+import {
+  Language,
+  LanguageOrAlias,
+  parseLanguage,
+  resolveAlias,
+} from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
@@ -376,7 +381,11 @@ async function addDefaultQueries(
 }
 
 // The set of acceptable values for built-in suites from the codeql bundle
-const builtinSuites = ["security-extended", "security-and-quality"] as const;
+const builtinSuites = [
+  "security-experimental",
+  "security-extended",
+  "security-and-quality",
+] as const;
 
 /**
  * Determine the set of queries associated with suiteName's suites and add them to resultMap.
@@ -397,6 +406,19 @@ async function addBuiltinSuiteQueries(
   if (!found) {
     throw new Error(getQueryUsesInvalid(configFile, suiteName));
   }
+  if (
+    suiteName === "security-experimental" &&
+    !(await codeQlVersionAbove(
+      codeQL,
+      CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE
+    ))
+  ) {
+    throw new Error(
+      `The 'security-experimental' suite is not supported on CodeQL CLI versions earlier than
+      ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE}. Please upgrade to CodeQL CLI version
+      ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE} or later.`
+    );
+  }
 
   // If we're running the JavaScript security-extended analysis (or a superset of it), the repo is
   // opted into the ML-powered queries beta, and a user hasn't already added the ML-powered query
@@ -409,7 +431,9 @@ async function addBuiltinSuiteQueries(
         CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS
       ))) &&
     languages.includes("javascript") &&
-    (found === "security-extended" || found === "security-and-quality") &&
+    (found === "security-experimental" ||
+      found === "security-extended" ||
+      found === "security-and-quality") &&
     !packs.javascript?.some(isMlPoweredJsQueriesPack) &&
     (await featureEnablement.getValue(Feature.MlPoweredQueriesEnabled, codeQL))
   ) {
@@ -577,16 +601,20 @@ async function parseQueryUses(
     );
   }
 
-  // Otherwise, must be a reference to another repo
-  await addRemoteQueries(
-    codeQL,
-    resultMap,
-    queryUses,
-    tempDir,
-    apiDetails,
-    logger,
-    configFile
-  );
+  // Otherwise, must be a reference to another repo.
+  // If config parsing is handled in CLI, then this repo will be downloaded
+  // later by the CLI.
+  if (!(await useCodeScanningConfigInCli(codeQL, featureEnablement))) {
+    await addRemoteQueries(
+      codeQL,
+      resultMap,
+      queryUses,
+      tempDir,
+      apiDetails,
+      logger,
+      configFile
+    );
+  }
   return false;
 }
 
@@ -852,15 +880,15 @@ export function getUnknownLanguagesError(languages: string[]): string {
 }
 
 /**
- * Gets the set of languages in the current repository
+ * Gets the set of languages in the current repository that are
+ * scannable by CodeQL.
  */
-async function getLanguagesInRepo(
+export async function getLanguagesInRepo(
   repository: RepositoryNwo,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
-): Promise<Language[]> {
+): Promise<LanguageOrAlias[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
-  const response = await api.getApiClient(apiDetails).repos.listLanguages({
+  const response = await api.getApiClient().repos.listLanguages({
     owner: repository.owner,
     repo: repository.repo,
   });
@@ -871,7 +899,7 @@ async function getLanguagesInRepo(
   // When we pick a language to autobuild we want to pick the most popular traced language
   // Since sets in javascript maintain insertion order, using a set here and then splatting it
   // into an array gives us an array of languages ordered by popularity
-  const languages: Set<Language> = new Set();
+  const languages: Set<LanguageOrAlias> = new Set();
   for (const lang of Object.keys(response.data)) {
     const parsedLang = parseLanguage(lang);
     if (parsedLang !== undefined) {
@@ -891,28 +919,27 @@ async function getLanguagesInRepo(
  * If no languages could be detected from either the workflow or the repository
  * then throw an error.
  */
-async function getLanguages(
+export async function getLanguages(
   codeQL: CodeQL,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<Language[]> {
-  // Obtain from action input 'languages' if set
-  let languages = (languagesInput || "")
-    .split(",")
-    .map((x) => x.trim())
-    .filter((x) => x.length > 0);
-  logger.info(`Languages from configuration: ${JSON.stringify(languages)}`);
+  // Obtain languages without filtering them.
+  const { rawLanguages, autodetected } = await getRawLanguages(
+    languagesInput,
+    repository,
+    logger
+  );
 
-  if (languages.length === 0) {
-    // Obtain languages as all languages in the repo that can be analysed
-    languages = await getLanguagesInRepo(repository, apiDetails, logger);
+  let languages = rawLanguages.map(resolveAlias);
+
+  if (autodetected) {
     const availableLanguages = await codeQL.resolveLanguages();
     languages = languages.filter((value) => value in availableLanguages);
-    logger.info(
-      `Automatically detected languages: ${JSON.stringify(languages)}`
-    );
+    logger.info(`Automatically detected languages: ${languages.join(", ")}`);
+  } else {
+    logger.info(`Languages from configuration: ${languages.join(", ")}`);
   }
 
   // If the languages parameter was not given and no languages were
@@ -925,18 +952,54 @@ async function getLanguages(
   const parsedLanguages: Language[] = [];
   const unknownLanguages: string[] = [];
   for (const language of languages) {
-    const parsedLanguage = parseLanguage(language);
+    // We know this is not an alias since we resolved it above.
+    const parsedLanguage = parseLanguage(language) as Language;
     if (parsedLanguage === undefined) {
       unknownLanguages.push(language);
-    } else if (parsedLanguages.indexOf(parsedLanguage) === -1) {
+    } else if (!parsedLanguages.includes(parsedLanguage)) {
       parsedLanguages.push(parsedLanguage);
     }
   }
+
+  // Any unknown languages here would have come directly from the input
+  // since we filter unknown languages coming from the GitHub API.
   if (unknownLanguages.length > 0) {
     throw new Error(getUnknownLanguagesError(unknownLanguages));
   }
 
   return parsedLanguages;
+}
+
+/**
+ * Gets the set of languages in the current repository without checking to
+ * see if these languages are actually supported by CodeQL.
+ *
+ * @param languagesInput The languages from the workflow input
+ * @param repository the owner/name of the repository
+ * @param logger a logger
+ * @returns A tuple containing a list of languages in this repository that might be
+ * analyzable and whether or not this list was determined automatically.
+ */
+export async function getRawLanguages(
+  languagesInput: string | undefined,
+  repository: RepositoryNwo,
+  logger: Logger
+) {
+  // Obtain from action input 'languages' if set
+  let rawLanguages = (languagesInput || "")
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter((x) => x.length > 0);
+  let autodetected: boolean;
+  if (rawLanguages.length) {
+    autodetected = false;
+  } else {
+    autodetected = true;
+
+    // Obtain all languages in the repo that can be analysed
+    rawLanguages = (await getLanguagesInRepo(repository, logger)) as string[];
+  }
+  return { rawLanguages, autodetected };
 }
 
 async function addQueriesAndPacksFromWorkflow(
@@ -1012,7 +1075,6 @@ export async function getDefaultConfig(
     codeQL,
     languagesInput,
     repository,
-    apiDetails,
     logger
   );
   const queries: Queries = {};
@@ -1142,7 +1204,6 @@ async function loadConfig(
     codeQL,
     languagesInput,
     repository,
-    apiDetails,
     logger
   );
 
@@ -1342,7 +1403,7 @@ function parseQueriesFromInput(
 
   const trimmedInput = queriesInputCombines
     ? rawQueriesInput.trim().slice(1).trim()
-    : rawQueriesInput?.trim();
+    : rawQueriesInput?.trim() ?? "";
   if (queriesInputCombines && trimmedInput.length === 0) {
     throw new Error(
       getConfigFilePropertyError(
@@ -1589,7 +1650,8 @@ export function parsePacks(
  * Without a '+', an input value will override the corresponding value in the config file.
  *
  * @param inputValue The input value to process.
- * @returns true if the input value should replace the corresponding value in the config file, false if it should be appended.
+ * @returns true if the input value should replace the corresponding value in the config file,
+ *          false if it should be appended.
  */
 function shouldCombine(inputValue?: string): boolean {
   return !!inputValue?.trim().startsWith("+");
@@ -1686,33 +1748,33 @@ export async function initConfig(
     );
   }
 
-  // The list of queries should not be empty for any language. If it is then
-  // it is a user configuration error.
-  for (const language of config.languages) {
-    const hasBuiltinQueries = config.queries[language]?.builtin.length > 0;
-    const hasCustomQueries = config.queries[language]?.custom.length > 0;
-    const hasPacks = (config.packs[language]?.length || 0) > 0;
-    if (!hasPacks && !hasBuiltinQueries && !hasCustomQueries) {
-      throw new Error(
-        `Did not detect any queries to run for ${language}. ` +
-          "Please make sure that the default queries are enabled, or you are specifying queries to run."
-      );
-    }
-  }
-
   // When using the codescanning config in the CLI, pack downloads
   // happen in the CLI during the `database init` command, so no need
   // to download them here.
   await logCodeScanningConfigInCli(codeQL, featureEnablement, logger);
 
   if (!(await useCodeScanningConfigInCli(codeQL, featureEnablement))) {
-    const registries = parseRegistries(registriesInput);
+    // The list of queries should not be empty for any language. If it is then
+    // it is a user configuration error.
+    // This check occurs in the CLI when it parses the config file.
+    for (const language of config.languages) {
+      const hasBuiltinQueries = config.queries[language]?.builtin.length > 0;
+      const hasCustomQueries = config.queries[language]?.custom.length > 0;
+      const hasPacks = (config.packs[language]?.length || 0) > 0;
+      if (!hasPacks && !hasBuiltinQueries && !hasCustomQueries) {
+        throw new Error(
+          `Did not detect any queries to run for ${language}. ` +
+            "Please make sure that the default queries are enabled, or you are specifying queries to run."
+        );
+      }
+    }
+
     await downloadPacks(
       codeQL,
       config.languages,
       config.packs,
-      registries,
       apiDetails,
+      registriesInput,
       config.tempDir,
       logger
     );
@@ -1773,7 +1835,7 @@ async function getRemoteConfig(
   }
 
   const response = await api
-    .getApiClient(apiDetails, { allowExternal: true })
+    .getApiClientWithExternalAuth(apiDetails)
     .repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,
@@ -1836,32 +1898,18 @@ export async function downloadPacks(
   codeQL: CodeQL,
   languages: Language[],
   packs: Packs,
-  registries: RegistryConfigWithCredentials[] | undefined,
   apiDetails: api.GitHubApiDetails,
-  tmpDir: string,
+  registriesInput: string | undefined,
+  tempDir: string,
   logger: Logger
 ) {
-  let qlconfigFile: string | undefined;
-  let registriesAuthTokens: string | undefined;
-  if (registries) {
-    if (
-      !(await codeQlVersionAbove(codeQL, CODEQL_VERSION_GHES_PACK_DOWNLOAD))
-    ) {
-      throw new Error(
-        `'registries' input is not supported on CodeQL versions less than ${CODEQL_VERSION_GHES_PACK_DOWNLOAD}.`
-      );
-    }
-
-    // generate a qlconfig.yml file to hold the registry configs.
-    const qlconfig = createRegistriesBlock(registries);
-    qlconfigFile = path.join(tmpDir, "qlconfig.yml");
-    fs.writeFileSync(qlconfigFile, yaml.dump(qlconfig), "utf8");
-
-    registriesAuthTokens = registries
-      .map((registry) => `${registry.url}=${registry.token}`)
-      .join(",");
-  }
-
+  // This code path is only used when config parsing occurs in the Action.
+  const { registriesAuthTokens, qlconfigFile } = await generateRegistries(
+    registriesInput,
+    codeQL,
+    tempDir,
+    logger
+  );
   await wrapEnvironment(
     {
       GITHUB_TOKEN: apiDetails.auth,
@@ -1888,7 +1936,9 @@ export async function downloadPacks(
       }
       if (numPacksDownloaded > 0) {
         logger.info(
-          `Downloaded ${numPacksDownloaded} ${packs === 1 ? "pack" : "packs"}`
+          `Downloaded ${numPacksDownloaded} ${
+            numPacksDownloaded === 1 ? "pack" : "packs"
+          }`
         );
       } else {
         logger.info("No packs to download");
@@ -1896,6 +1946,63 @@ export async function downloadPacks(
       logger.endGroup();
     }
   );
+}
+
+/**
+ * Generate a `qlconfig.yml` file from the `registries` input.
+ * This file is used by the CodeQL CLI to list the registries to use for each
+ * pack.
+ *
+ * @param registriesInput The value of the `registries` input.
+ * @param codeQL a codeQL object, used only for checking the version of CodeQL.
+ * @param tempDir a temporary directory to store the generated qlconfig.yml file.
+ * @param logger a logger object.
+ * @returns The path to the generated `qlconfig.yml` file and the auth tokens to
+ *        use for each registry.
+ */
+export async function generateRegistries(
+  registriesInput: string | undefined,
+  codeQL: CodeQL,
+  tempDir: string,
+  logger: Logger
+) {
+  const registries = parseRegistries(registriesInput);
+  let registriesAuthTokens: string | undefined;
+  let qlconfigFile: string | undefined;
+  if (registries) {
+    if (
+      !(await codeQlVersionAbove(codeQL, CODEQL_VERSION_GHES_PACK_DOWNLOAD))
+    ) {
+      throw new Error(
+        `The 'registries' input is not supported on CodeQL CLI versions earlier than ${CODEQL_VERSION_GHES_PACK_DOWNLOAD}. Please upgrade to CodeQL CLI version ${CODEQL_VERSION_GHES_PACK_DOWNLOAD} or later.`
+      );
+    }
+
+    // generate a qlconfig.yml file to hold the registry configs.
+    const qlconfig = createRegistriesBlock(registries);
+    qlconfigFile = path.join(tempDir, "qlconfig.yml");
+    const qlconfigContents = yaml.dump(qlconfig);
+    fs.writeFileSync(qlconfigFile, qlconfigContents, "utf8");
+
+    logger.debug("Generated qlconfig.yml:");
+    logger.debug(qlconfigContents);
+    registriesAuthTokens = registries
+      .map((registry) => `${registry.url}=${registry.token}`)
+      .join(",");
+  }
+
+  if (typeof process.env.CODEQL_REGISTRIES_AUTH === "string") {
+    logger.debug(
+      "Using CODEQL_REGISTRIES_AUTH environment variable to authenticate with registries."
+    );
+  }
+
+  return {
+    registriesAuthTokens:
+      // if the user has explicitly set the CODEQL_REGISTRIES_AUTH env var then use that
+      process.env.CODEQL_REGISTRIES_AUTH ?? registriesAuthTokens,
+    qlconfigFile,
+  };
 }
 
 function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
@@ -1934,7 +2041,7 @@ function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
  * @param env
  * @param operation
  */
-async function wrapEnvironment(
+export async function wrapEnvironment(
   env: Record<string, string | undefined>,
   operation: Function
 ) {

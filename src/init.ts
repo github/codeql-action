@@ -8,34 +8,47 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureEnablement } from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 import { codeQlVersionAbove } from "./util";
 
+export enum ToolsSource {
+  Unknown = "UNKNOWN",
+  Local = "LOCAL",
+  Toolcache = "TOOLCACHE",
+  Download = "DOWNLOAD",
+}
+
 export async function initCodeQL(
-  codeqlURL: string | undefined,
+  toolsInput: string | undefined,
   apiDetails: GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  featureEnablement: FeatureEnablement,
+  defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger
-): Promise<{ codeql: CodeQL; toolsVersion: string }> {
+): Promise<{
+  codeql: CodeQL;
+  toolsDownloadDurationMs?: number;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+}> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsVersion } = await setupCodeQL(
-    codeqlURL,
-    apiDetails,
-    tempDir,
-    variant,
-    featureEnablement,
-    logger,
-    true
-  );
+  const { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion } =
+    await setupCodeQL(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      defaultCliVersion,
+      logger,
+      true
+    );
   await codeql.printVersion();
   logger.endGroup();
-  return { codeql, toolsVersion };
+  return { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion };
 }
 
 export async function initConfig(
@@ -89,22 +102,46 @@ export async function runInit(
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
-  processLevel: number | undefined,
+  registriesInput: string | undefined,
   featureEnablement: FeatureEnablement,
+  apiDetails: GitHubApiCombinedDetails,
   logger: Logger
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
   try {
     if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-      // Init a database cluster
-      await codeql.databaseInitCluster(
-        config,
-        sourceRoot,
-        processName,
-        processLevel,
-        featureEnablement,
-        logger
+      // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.
+      // So, create it now.
+      // If we are parsing the config file in the Action, then the qlconfig file was already created
+      // before the `pack download` command was invoked. It is not required for the init command.
+      let registriesAuthTokens: string | undefined;
+      let qlconfigFile: string | undefined;
+      if (await util.useCodeScanningConfigInCli(codeql, featureEnablement)) {
+        ({ registriesAuthTokens, qlconfigFile } =
+          await configUtils.generateRegistries(
+            registriesInput,
+            codeql,
+            config.tempDir,
+            logger
+          ));
+      }
+      await configUtils.wrapEnvironment(
+        {
+          GITHUB_TOKEN: apiDetails.auth,
+          CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+        },
+
+        // Init a database cluster
+        async () =>
+          await codeql.databaseInitCluster(
+            config,
+            sourceRoot,
+            processName,
+            featureEnablement,
+            qlconfigFile,
+            logger
+          )
       );
     } else {
       for (const language of config.languages) {
@@ -119,12 +156,7 @@ export async function runInit(
   } catch (e) {
     throw processError(e);
   }
-  return await getCombinedTracerConfig(
-    config,
-    codeql,
-    await util.isGoExtractionReconciliationEnabled(featureEnablement),
-    logger
-  );
+  return await getCombinedTracerConfig(config, codeql);
 }
 
 /**

@@ -7,7 +7,6 @@ import * as core from "@actions/core";
 import { OctokitResponse } from "@octokit/types";
 import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
-import * as semver from "semver";
 
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
@@ -17,6 +16,7 @@ import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as sharedEnv from "./shared-environment";
 import * as util from "./util";
 import { SarifFile, SarifResult, SarifRun } from "./util";
+import * as workflow from "./workflow";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
@@ -50,7 +50,7 @@ export function combineSarifFiles(sarifFiles: string[]): SarifFile {
 export function populateRunAutomationDetails(
   sarif: SarifFile,
   category: string | undefined,
-  analysis_key: string | undefined,
+  analysis_key: string,
   environment: string | undefined
 ): SarifFile {
   const automationID = getAutomationID(category, analysis_key, environment);
@@ -70,7 +70,7 @@ export function populateRunAutomationDetails(
 
 function getAutomationID(
   category: string | undefined,
-  analysis_key: string | undefined,
+  analysis_key: string,
   environment: string | undefined
 ): string | undefined {
   if (category !== undefined) {
@@ -81,12 +81,7 @@ function getAutomationID(
     return automationID;
   }
 
-  // analysis_key is undefined for the runner.
-  if (analysis_key !== undefined) {
-    return actionsUtil.computeAutomationID(analysis_key, environment);
-  }
-
-  return undefined;
+  return actionsUtil.computeAutomationID(analysis_key, environment);
 }
 
 // Upload the given payload.
@@ -94,7 +89,6 @@ function getAutomationID(
 async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ) {
   logger.info("Uploading results");
@@ -113,16 +107,16 @@ async function uploadPayload(
     return;
   }
 
-  const client = api.getApiClient(apiDetails);
+  const client = api.getApiClient();
 
-  const reqURL = util.isActions()
-    ? "PUT /repos/:owner/:repo/code-scanning/analysis"
-    : "POST /repos/:owner/:repo/code-scanning/sarifs";
-  const response = await client.request(reqURL, {
-    owner: repositoryNwo.owner,
-    repo: repositoryNwo.repo,
-    data: payload,
-  });
+  const response = await client.request(
+    "PUT /repos/:owner/:repo/code-scanning/analysis",
+    {
+      owner: repositoryNwo.owner,
+      repo: repositoryNwo.repo,
+      data: payload,
+    }
+  );
 
   logger.debug(`response status: ${response.status}`);
   logger.info("Successfully uploaded results");
@@ -164,59 +158,23 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 
 // Uploads a single sarif file or a directory of sarif files
 // depending on what the path happens to refer to.
-// Returns true iff the upload occurred and succeeded
 export async function uploadFromActions(
   sarifPath: string,
-  gitHubVersion: util.GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
+  checkoutPath: string,
+  category: string | undefined,
   logger: Logger
 ): Promise<UploadResult> {
   return await uploadFiles(
     getSarifFilePaths(sarifPath),
     parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    await actionsUtil.getCommitOid(
-      actionsUtil.getRequiredInput("checkout_path")
-    ),
+    await actionsUtil.getCommitOid(checkoutPath),
     await actionsUtil.getRef(),
     await actionsUtil.getAnalysisKey(),
-    actionsUtil.getOptionalInput("category"),
-    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-    actionsUtil.getWorkflowRunID(),
-    actionsUtil.getRequiredInput("checkout_path"),
-    actionsUtil.getRequiredInput("matrix"),
-    gitHubVersion,
-    apiDetails,
-    logger
-  );
-}
-
-// Uploads a single sarif file or a directory of sarif files
-// depending on what the path happens to refer to.
-// Returns true iff the upload occurred and succeeded
-export async function uploadFromRunner(
-  sarifPath: string,
-  repositoryNwo: RepositoryNwo,
-  commitOid: string,
-  ref: string,
-  category: string | undefined,
-  sourceRoot: string,
-  gitHubVersion: util.GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
-  logger: Logger
-): Promise<UploadResult> {
-  return await uploadFiles(
-    getSarifFilePaths(sarifPath),
-    repositoryNwo,
-    commitOid,
-    ref,
-    undefined,
     category,
-    undefined,
-    undefined,
-    sourceRoot,
-    undefined,
-    gitHubVersion,
-    apiDetails,
+    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
+    workflow.getWorkflowRunID(),
+    checkoutPath,
+    actionsUtil.getRequiredInput("matrix"),
     logger
   );
 }
@@ -268,7 +226,8 @@ export function countResultsInSarif(sarif: string): number {
 // Throws an error if the file is invalid.
 export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
   const sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8"));
-  const schema = require("../src/sarif_v2.1.0_schema.json");
+  const schema =
+    require("../src/sarif_v2.1.0_schema.json") as jsonschema.Schema;
 
   const result = new jsonschema.Validator().validate(sarif, schema);
   if (!result.valid) {
@@ -302,64 +261,47 @@ export function buildPayload(
   checkoutURI: string,
   environment: string | undefined,
   toolNames: string[],
-  gitHubVersion: util.GitHubVersion,
   mergeBaseCommitOid: string | undefined
 ) {
-  if (util.isActions()) {
-    const payloadObj = {
-      commit_oid: commitOid,
-      ref,
-      analysis_key: analysisKey,
-      analysis_name: analysisName,
-      sarif: zippedSarif,
-      workflow_run_id: workflowRunID,
-      checkout_uri: checkoutURI,
-      environment,
-      started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
-      tool_names: toolNames,
-      base_ref: undefined as undefined | string,
-      base_sha: undefined as undefined | string,
-    };
+  const payloadObj = {
+    commit_oid: commitOid,
+    ref,
+    analysis_key: analysisKey,
+    analysis_name: analysisName,
+    sarif: zippedSarif,
+    workflow_run_id: workflowRunID,
+    checkout_uri: checkoutURI,
+    environment,
+    started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
+    tool_names: toolNames,
+    base_ref: undefined as undefined | string,
+    base_sha: undefined as undefined | string,
+  };
 
-    // This behaviour can be made the default when support for GHES 3.0 is discontinued.
+  if (actionsUtil.workflowEventName() === "pull_request") {
     if (
-      gitHubVersion.type !== util.GitHubVariant.GHES ||
-      semver.satisfies(gitHubVersion.version, `>=3.1`)
+      commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
+      mergeBaseCommitOid
     ) {
-      if (actionsUtil.workflowEventName() === "pull_request") {
-        if (
-          commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
-          mergeBaseCommitOid
-        ) {
-          // We're uploading results for the merge commit
-          // and were able to determine the merge base.
-          // So we use that as the most accurate base.
-          payloadObj.base_ref = `refs/heads/${util.getRequiredEnvParam(
-            "GITHUB_BASE_REF"
-          )}`;
-          payloadObj.base_sha = mergeBaseCommitOid;
-        } else if (process.env.GITHUB_EVENT_PATH) {
-          // Either we're not uploading results for the merge commit
-          // or we could not determine the merge base.
-          // Using the PR base is the only option here
-          const githubEvent = JSON.parse(
-            fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
-          );
-          payloadObj.base_ref = `refs/heads/${githubEvent.pull_request.base.ref}`;
-          payloadObj.base_sha = githubEvent.pull_request.base.sha;
-        }
-      }
+      // We're uploading results for the merge commit
+      // and were able to determine the merge base.
+      // So we use that as the most accurate base.
+      payloadObj.base_ref = `refs/heads/${util.getRequiredEnvParam(
+        "GITHUB_BASE_REF"
+      )}`;
+      payloadObj.base_sha = mergeBaseCommitOid;
+    } else if (process.env.GITHUB_EVENT_PATH) {
+      // Either we're not uploading results for the merge commit
+      // or we could not determine the merge base.
+      // Using the PR base is the only option here
+      const githubEvent = JSON.parse(
+        fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")
+      );
+      payloadObj.base_ref = `refs/heads/${githubEvent.pull_request.base.ref}`;
+      payloadObj.base_sha = githubEvent.pull_request.base.sha;
     }
-    return payloadObj;
-  } else {
-    return {
-      commit_sha: commitOid,
-      ref,
-      sarif: zippedSarif,
-      checkout_uri: checkoutURI,
-      tool_name: toolNames[0],
-    };
   }
+  return payloadObj;
 }
 
 // Uploads the given set of sarif files.
@@ -369,14 +311,12 @@ async function uploadFiles(
   repositoryNwo: RepositoryNwo,
   commitOid: string,
   ref: string,
-  analysisKey: string | undefined,
+  analysisKey: string,
   category: string | undefined,
   analysisName: string | undefined,
   workflowRunID: number | undefined,
   sourceRoot: string,
   environment: string | undefined,
-  gitHubVersion: util.GitHubVersion,
-  apiDetails: api.GitHubApiDetails,
   logger: Logger
 ): Promise<UploadResult> {
   logger.startGroup("Uploading results");
@@ -417,7 +357,6 @@ async function uploadFiles(
     checkoutURI,
     environment,
     toolNames,
-    gitHubVersion,
     await actionsUtil.determineMergeBaseCommitOid()
   );
 
@@ -430,12 +369,7 @@ async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  const sarifID = await uploadPayload(
-    payload,
-    repositoryNwo,
-    apiDetails,
-    logger
-  );
+  const sarifID = await uploadPayload(payload, repositoryNwo, logger);
 
   logger.endGroup();
 
@@ -452,89 +386,147 @@ async function uploadFiles(
 const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;
 const STATUS_CHECK_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
 
-// Waits until either the analysis is successfully processed, a processing error is reported, or STATUS_CHECK_TIMEOUT_MILLISECONDS elapses.
+type ProcessingStatus = "pending" | "complete" | "failed";
+
+/**
+ * Waits until either the analysis is successfully processed, a processing error
+ * is reported, or `STATUS_CHECK_TIMEOUT_MILLISECONDS` elapses.
+ *
+ * If `isUnsuccessfulExecution` is passed, will throw an error if the analysis
+ * processing does not produce a single error mentioning the unsuccessful
+ * execution.
+ */
 export async function waitForProcessing(
   repositoryNwo: RepositoryNwo,
   sarifID: string,
-  apiDetails: api.GitHubApiDetails,
-  logger: Logger
+  logger: Logger,
+  options: { isUnsuccessfulExecution: boolean } = {
+    isUnsuccessfulExecution: false,
+  }
 ): Promise<void> {
   logger.startGroup("Waiting for processing to finish");
-  const client = api.getApiClient(apiDetails);
+  try {
+    const client = api.getApiClient();
 
-  const statusCheckingStarted = Date.now();
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    if (
-      Date.now() >
-      statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
-    ) {
-      // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
-      // It's possible the analysis will eventually finish processing, but it's not worth spending more Actions time waiting.
-      logger.warning(
-        "Timed out waiting for analysis to finish processing. Continuing."
-      );
-      break;
-    }
-    let response: OctokitResponse<any> | undefined = undefined;
-    try {
-      response = await client.request(
-        "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
-        {
-          owner: repositoryNwo.owner,
-          repo: repositoryNwo.repo,
-          sarif_id: sarifID,
-        }
-      );
-    } catch (e) {
-      logger.warning(
-        `An error occurred checking the status of the delivery. ${e} It should still be processed in the background, but errors that occur during processing may not be reported.`
-      );
-      break;
-    }
-    const status = response.data.processing_status;
-    logger.info(`Analysis upload status is ${status}.`);
-    if (status === "complete") {
-      break;
-    } else if (status === "pending") {
-      logger.debug("Analysis processing is still pending...");
-    } else if (status === "failed") {
-      throw new Error(
-        `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
-      );
-    }
+    const statusCheckingStarted = Date.now();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if (
+        Date.now() >
+        statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
+      ) {
+        // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
+        // It's possible the analysis will eventually finish processing, but it's not worth spending more
+        // Actions time waiting.
+        logger.warning(
+          "Timed out waiting for analysis to finish processing. Continuing."
+        );
+        break;
+      }
+      let response: OctokitResponse<any> | undefined = undefined;
+      try {
+        response = await client.request(
+          "GET /repos/:owner/:repo/code-scanning/sarifs/:sarif_id",
+          {
+            owner: repositoryNwo.owner,
+            repo: repositoryNwo.repo,
+            sarif_id: sarifID,
+          }
+        );
+      } catch (e) {
+        logger.warning(
+          `An error occurred checking the status of the delivery. ${e} It should still be processed in the background, but errors that occur during processing may not be reported.`
+        );
+        break;
+      }
+      const status = response.data.processing_status as ProcessingStatus;
+      logger.info(`Analysis upload status is ${status}.`);
 
-    await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS);
+      if (status === "pending") {
+        logger.debug("Analysis processing is still pending...");
+      } else if (options.isUnsuccessfulExecution) {
+        // We expect a specific processing error for unsuccessful executions, so
+        // handle these separately.
+        handleProcessingResultForUnsuccessfulExecution(
+          response,
+          status,
+          logger
+        );
+        break;
+      } else if (status === "complete") {
+        break;
+      } else if (status === "failed") {
+        throw new Error(
+          `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`
+        );
+      } else {
+        util.assertNever(status);
+      }
+
+      await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS, {
+        allowProcessExit: false,
+      });
+    }
+  } finally {
+    logger.endGroup();
   }
-  logger.endGroup();
+}
+
+/**
+ * Checks the processing result for an unsuccessful execution. Throws if the
+ * result is not a failure with a single "unsuccessful execution" error.
+ */
+function handleProcessingResultForUnsuccessfulExecution(
+  response: OctokitResponse<any, number>,
+  status: Exclude<ProcessingStatus, "pending">,
+  logger: Logger
+): void {
+  if (
+    status === "failed" &&
+    Array.isArray(response.data.errors) &&
+    response.data.errors.length === 1 &&
+    response.data.errors[0].toString().startsWith("unsuccessful execution")
+  ) {
+    logger.debug(
+      "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
+        '"unsuccessful execution" error, and no other errors.'
+    );
+  } else {
+    const shortMessage =
+      "Failed to upload a SARIF file for the unsuccessful execution. Code scanning status " +
+      "information for the repository may be out of date as a result.";
+    const longMessage =
+      shortMessage + status === "failed"
+        ? ` Processing errors: ${response.data.errors}`
+        : ' Encountered no processing errors, but expected to receive an "unsuccessful execution" error.';
+    logger.debug(longMessage);
+    throw new Error(shortMessage);
+  }
 }
 
 export function validateUniqueCategory(sarif: SarifFile): void {
-  // This check only works on actions as env vars don't persist between calls to the runner
-  if (util.isActions()) {
-    // duplicate categories are allowed in the same sarif file
-    // but not across multiple sarif files
-    const categories = {} as Record<string, { id?: string; tool?: string }>;
+  // duplicate categories are allowed in the same sarif file
+  // but not across multiple sarif files
+  const categories = {} as Record<string, { id?: string; tool?: string }>;
 
-    for (const run of sarif.runs) {
-      const id = run?.automationDetails?.id;
-      const tool = run.tool?.driver?.name;
-      const category = `${sanitize(id)}_${sanitize(tool)}`;
-      categories[category] = { id, tool };
-    }
+  for (const run of sarif.runs) {
+    const id = run?.automationDetails?.id;
+    const tool = run.tool?.driver?.name;
+    const category = `${sanitize(id)}_${sanitize(tool)}`;
+    categories[category] = { id, tool };
+  }
 
-    for (const [category, { id, tool }] of Object.entries(categories)) {
-      const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
-      if (process.env[sentinelEnvVar]) {
-        throw new Error(
-          "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
-            "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
-            "in the sarif file, that will take precedence over your configured `category`. " +
-            `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`
-        );
-      }
-      core.exportVariable(sentinelEnvVar, sentinelEnvVar);
+  for (const [category, { id, tool }] of Object.entries(categories)) {
+    const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
+    if (process.env[sentinelEnvVar]) {
+      throw new Error(
+        "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
+          "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
+          "in the sarif file, that will take precedence over your configured `category`. " +
+          `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`
+      );
     }
+    core.exportVariable(sentinelEnvVar, sentinelEnvVar);
   }
 }
 

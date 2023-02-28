@@ -4,11 +4,6 @@ on:
   # This will open a PR to update the v2 release branch.
   workflow_dispatch:
 
-  # When the v2 release is complete, this workflow will open a PR to update the v1 release branch.
-  push:
-    branches:
-      - releases/v2
-
 jobs:
   update:
     timeout-minutes: 45
@@ -29,7 +24,7 @@ jobs:
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: 3.8
 
@@ -43,20 +38,9 @@ jobs:
         git config --global user.email "github-actions@github.com"
         git config --global user.name "github-actions[bot]"
 
-    - name: Update v2 release branch
-      if: github.event_name == 'workflow_dispatch'
+    - name: Update release branch
       run: |
         python .github/update-release-branch.py \
           --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
-          --mode v2-release \
-          --conductor ${GITHUB_ACTOR}
-
-    - name: Update v1 release branch
-      if: github.event_name == 'push'
-      run: |
-        python .github/update-release-branch.py \
-          --github-token ${{ secrets.GITHUB_TOKEN }} \
-          --repository-nwo ${{ github.repository }} \
-          --mode v1-release \
           --conductor ${GITHUB_ACTOR}

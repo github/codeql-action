@@ -7,12 +7,22 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
+import {
+  CODEQL_VERSION_GHES_PACK_DOWNLOAD,
+  getCachedCodeQL,
+  PackDownloadOutput,
+  setCodeQL,
+} from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
-import { setupTests, createFeatures } from "./testing-utils";
+import { parseRepositoryNwo } from "./repository";
+import {
+  setupTests,
+  createFeatures,
+  mockLanguagesInRepo as mockLanguagesInRepo,
+} from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -46,8 +56,10 @@ function mockGetContents(
   };
   const spyGetContents = sinon
     .stub(client.repos, "getContent")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
+  sinon.stub(api, "getApiClientWithExternalAuth").value(() => client);
   return spyGetContents;
 }
 
@@ -60,6 +72,7 @@ function mockListLanguages(languages: string[]) {
   for (const language of languages) {
     response.data[language] = 123;
   }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   sinon.stub(client.repos, "listLanguages").resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
 }
@@ -1758,11 +1771,7 @@ function parseInputAndConfigMacro(
 parseInputAndConfigMacro.title = (providedTitle: string) =>
   `Parse Packs input and config: ${providedTitle}`;
 
-const mockLogger = {
-  info: (message: string) => {
-    console.log(message);
-  },
-} as Logger;
+const mockLogger = getRunnerLogger(true);
 
 function parseInputAndConfigErrorMacro(
   t: ExecutionContext<unknown>,
@@ -1988,7 +1997,7 @@ test(
   process.platform === "win32" ? undefined : "~0.1.0"
 );
 // Test that ML-powered queries aren't run when the user hasn't specified that we should run the
-// `security-extended` or `security-and-quality` query suite.
+//  `security-extended`, `security-and-quality`, or `security-experimental` query suite.
 test(mlPoweredQueriesMacro, "2.7.5", true, undefined, undefined, undefined);
 // Test that ML-powered queries are run on non-Windows platforms running `security-extended` on
 // versions of the CodeQL CLI prior to 2.9.0.
@@ -2069,7 +2078,6 @@ test(
   "security-extended",
   "~0.4.0"
 );
-
 // Test that ML-powered queries are run on all platforms running `security-and-quality` on CodeQL
 // CLI 2.11.3+.
 test(
@@ -2078,6 +2086,16 @@ test(
   true,
   undefined,
   "security-and-quality",
+  "~0.4.0"
+);
+// Test that ML-powered queries are run on all platforms running `security-experimental` on CodeQL
+// CLI 2.12.1+.
+test(
+  mlPoweredQueriesMacro,
+  "2.12.1",
+  true,
+  undefined,
+  "security-experimental",
   "~0.4.0"
 );
 
@@ -2263,8 +2281,8 @@ test("downloadPacks-no-registries", async (t) => {
         go: ["c", "d"],
         python: ["e", "f"],
       },
-      undefined, // registries
       sampleApiDetails,
+      undefined, // registriesAuthTokens
       tmpDir,
       logger
     );
@@ -2282,10 +2300,10 @@ test("downloadPacks-with-registries", async (t) => {
   // associated env vars
   return await util.withTmpDir(async (tmpDir) => {
     process.env.GITHUB_TOKEN = "not-a-token";
-    process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
+    process.env.CODEQL_REGISTRIES_AUTH = undefined;
     const logger = getRunnerLogger(true);
 
-    const registries = [
+    const registriesInput = yaml.dump([
       {
         // no slash
         url: "http://ghcr.io",
@@ -2298,9 +2316,12 @@ test("downloadPacks-with-registries", async (t) => {
         packages: "semmle/*",
         token: "still-not-a-token",
       },
-    ];
+    ]);
 
     // append a slash to the first url
+    const registries = yaml.load(
+      registriesInput
+    ) as configUtils.RegistryConfigWithCredentials[];
     const expectedRegistries = registries.map((r, i) => ({
       packages: r.packages,
       url: i === 0 ? `${r.url}/` : r.url,
@@ -2308,7 +2329,7 @@ test("downloadPacks-with-registries", async (t) => {
 
     const expectedConfigFile = path.join(tmpDir, "qlconfig.yml");
     const packDownloadStub = sinon.stub();
-    packDownloadStub.callsFake((packs, configFile) => {
+    packDownloadStub.callsFake((packs, configFile: string) => {
       t.deepEqual(configFile, expectedConfigFile);
       // verify the env vars were set correctly
       t.deepEqual(process.env.GITHUB_TOKEN, sampleApiDetails.auth);
@@ -2342,8 +2363,8 @@ test("downloadPacks-with-registries", async (t) => {
         go: ["c", "d"],
         python: ["e", "f"],
       },
-      registries,
       sampleApiDetails,
+      registriesInput,
       tmpDir,
       logger
     );
@@ -2361,7 +2382,7 @@ test("downloadPacks-with-registries", async (t) => {
 
     // Verify that the env vars were unset.
     t.deepEqual(process.env.GITHUB_TOKEN, "not-a-token");
-    t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, "not-a-registries-auth");
+    t.deepEqual(process.env.CODEQL_REGISTRIES_AUTH, undefined);
   });
 });
 
@@ -2373,7 +2394,7 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
     process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
     const logger = getRunnerLogger(true);
 
-    const registries = [
+    const registriesInput = yaml.dump([
       {
         url: "http://ghcr.io",
         packages: ["codeql/*", "dsp-testing/*"],
@@ -2384,7 +2405,7 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
         packages: "semmle/*",
         token: "still-not-a-token",
       },
-    ];
+    ]);
 
     const codeQL = setCodeQL({
       getVersion: () => Promise.resolve("2.10.3"),
@@ -2395,8 +2416,8 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
           codeQL,
           [Language.javascript, Language.java, Language.python],
           {},
-          registries,
           sampleApiDetails,
+          registriesInput,
           tmpDir,
           logger
         );
@@ -2415,7 +2436,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
     process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
     const logger = getRunnerLogger(true);
 
-    const registries = [
+    const registriesInput = yaml.dump([
       {
         // missing url property
         packages: ["codeql/*", "dsp-testing/*"],
@@ -2426,7 +2447,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
         packages: "semmle/*",
         token: "still-not-a-token",
       },
-    ];
+    ]);
 
     const codeQL = setCodeQL({
       getVersion: () => Promise.resolve("2.10.4"),
@@ -2437,8 +2458,8 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
           codeQL,
           [Language.javascript, Language.java, Language.python],
           {},
-          registries as any,
           sampleApiDetails,
+          registriesInput,
           tmpDir,
           logger
         );
@@ -2446,5 +2467,186 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
       { instanceOf: Error },
       "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties."
     );
+  });
+});
+
+// the happy path for generateRegistries is already tested in downloadPacks.
+// these following tests are for the error cases and when nothing is generated.
+test("no generateRegistries when CLI is too old", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const registriesInput = yaml.dump([
+      {
+        // no slash
+        url: "http://ghcr.io",
+        packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
+      },
+    ]);
+    const codeQL = setCodeQL({
+      // Accepted CLI versions are 2.10.4 or higher
+      getVersion: () => Promise.resolve("2.10.3"),
+    });
+    const logger = getRunnerLogger(true);
+    await t.throwsAsync(
+      async () =>
+        await configUtils.generateRegistries(
+          registriesInput,
+          codeQL,
+          tmpDir,
+          logger
+        ),
+      undefined,
+      "'registries' input is not supported on CodeQL versions less than 2.10.4."
+    );
+  });
+});
+test("no generateRegistries when registries is undefined", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const registriesInput = undefined;
+    const codeQL = setCodeQL({
+      // Accepted CLI versions are 2.10.4 or higher
+      getVersion: () => Promise.resolve(CODEQL_VERSION_GHES_PACK_DOWNLOAD),
+    });
+    const logger = getRunnerLogger(true);
+    const { registriesAuthTokens, qlconfigFile } =
+      await configUtils.generateRegistries(
+        registriesInput,
+        codeQL,
+        tmpDir,
+        logger
+      );
+
+    t.is(registriesAuthTokens, undefined);
+    t.is(qlconfigFile, undefined);
+  });
+});
+
+test("generateRegistries prefers original CODEQL_REGISTRIES_AUTH", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env.CODEQL_REGISTRIES_AUTH = "original";
+    const registriesInput = yaml.dump([
+      {
+        url: "http://ghcr.io",
+        packages: ["codeql/*", "dsp-testing/*"],
+        token: "not-a-token",
+      },
+    ]);
+    const codeQL = setCodeQL({
+      // Accepted CLI versions are 2.10.4 or higher
+      getVersion: () => Promise.resolve(CODEQL_VERSION_GHES_PACK_DOWNLOAD),
+    });
+    const logger = getRunnerLogger(true);
+    const { registriesAuthTokens, qlconfigFile } =
+      await configUtils.generateRegistries(
+        registriesInput,
+        codeQL,
+        tmpDir,
+        logger
+      );
+
+    t.is(registriesAuthTokens, "original");
+    t.is(qlconfigFile, path.join(tmpDir, "qlconfig.yml"));
+  });
+});
+
+// getLanguages
+
+const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
+// eslint-disable-next-line github/array-foreach
+[
+  {
+    name: "languages from input",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "jAvAscript, \n jaVa",
+    languagesInRepository: ["SwiFt", "other"],
+    expectedLanguages: ["javascript", "java"],
+    expectedApiCall: false,
+  },
+  {
+    name: "languages from github api",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "",
+    languagesInRepository: ["  jAvAscript\n \t", " jaVa", "SwiFt", "other"],
+    expectedLanguages: ["javascript", "java"],
+    expectedApiCall: true,
+  },
+  {
+    name: "aliases from input",
+    codeqlResolvedLanguages: ["javascript", "csharp", "cpp", "java", "python"],
+    languagesInput: "  typEscript\n \t, C#, c , KoTlin",
+    languagesInRepository: ["SwiFt", "other"],
+    expectedLanguages: ["javascript", "csharp", "cpp", "java"],
+    expectedApiCall: false,
+  },
+  {
+    name: "duplicate languages from input",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "jAvAscript, \n jaVa, kotlin, typescript",
+    languagesInRepository: ["SwiFt", "other"],
+    expectedLanguages: ["javascript", "java"],
+    expectedApiCall: false,
+  },
+  {
+    name: "aliases from github api",
+    codeqlResolvedLanguages: ["javascript", "csharp", "cpp", "java", "python"],
+    languagesInput: "",
+    languagesInRepository: ["  typEscript\n \t", " C#", "c", "other"],
+    expectedLanguages: ["javascript", "csharp", "cpp"],
+    expectedApiCall: true,
+  },
+  {
+    name: "no languages",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "",
+    languagesInRepository: [],
+    expectedApiCall: true,
+    expectedError: configUtils.getNoLanguagesError(),
+  },
+  {
+    name: "unrecognized languages from input",
+    codeqlResolvedLanguages: ["javascript", "java", "python"],
+    languagesInput: "a, b, c, javascript",
+    languagesInRepository: [],
+    expectedApiCall: false,
+    expectedError: configUtils.getUnknownLanguagesError(["a", "b"]),
+  },
+].forEach((args) => {
+  test(`getLanguages: ${args.name}`, async (t) => {
+    const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
+    const languages = args.codeqlResolvedLanguages.reduce(
+      (acc, lang) => ({
+        ...acc,
+        [lang]: true,
+      }),
+      {}
+    );
+    const codeQL = setCodeQL({
+      resolveLanguages: () => Promise.resolve(languages),
+    });
+
+    if (args.expectedLanguages) {
+      // happy path
+      const actualLanguages = await configUtils.getLanguages(
+        codeQL,
+        args.languagesInput,
+        mockRepositoryNwo,
+        mockLogger
+      );
+
+      t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
+    } else {
+      // there is an error
+      await t.throwsAsync(
+        async () =>
+          await configUtils.getLanguages(
+            codeQL,
+            args.languagesInput,
+            mockRepositoryNwo,
+            mockLogger
+          ),
+        { message: args.expectedError }
+      );
+    }
+    t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
 });

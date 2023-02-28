@@ -1,20 +1,15 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getApiDetails, getGitHubVersionActionsOnly } from "./api-client";
+import { getActionVersion } from "./actions-util";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
 import {
-  checkActionVersion,
   getRequiredEnvParam,
   initializeEnvironment,
   isInTestMode,
-  Mode,
 } from "./util";
-
-// eslint-disable-next-line import/no-commonjs
-const pkg = require("../package.json");
 
 interface UploadSarifStatusReport
   extends actionsUtil.StatusReportBase,
@@ -38,8 +33,7 @@ async function sendSuccessStatusReport(
 
 async function run() {
   const startedAt = new Date();
-  initializeEnvironment(Mode.actions, pkg.version);
-  await checkActionVersion(pkg.version);
+  initializeEnvironment(getActionVersion());
   if (
     !(await actionsUtil.sendStatusReport(
       await actionsUtil.createStatusReportBase(
@@ -53,13 +47,10 @@ async function run() {
   }
 
   try {
-    const apiDetails = getApiDetails();
-    const gitHubVersion = await getGitHubVersionActionsOnly();
-
     const uploadResult = await upload_lib.uploadFromActions(
       actionsUtil.getRequiredInput("sarif_file"),
-      gitHubVersion,
-      apiDetails,
+      actionsUtil.getRequiredInput("checkout_path"),
+      actionsUtil.getOptionalInput("category"),
       getActionsLogger()
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
@@ -71,7 +62,6 @@ async function run() {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,
-        apiDetails,
         getActionsLogger()
       );
     }

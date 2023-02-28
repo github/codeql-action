@@ -1,0 +1,27 @@
+name: "Go: tracing with custom build steps"
+description: "Checks that Go tracing traces the build when using custom build steps"
+operatingSystems: ["ubuntu", "macos"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: go
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Build code
+    shell: bash
+    run: go build main.go
+  - uses: ./../action/analyze
+  - shell: bash
+    run: |
+      # Once we start running Bash 4.2 in all environments, we can replace the
+      # `! -z` flag with the more elegant `-v` which confirms that the variable
+      # is actually unset and not potentially set to a blank value.
+      if [[ ! -z "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" ]]; then
+        echo "Expected the Go autobuilder not to be run, but the" \
+          "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was set."
+        exit 1
+      fi
+      cd "$RUNNER_TEMP/codeql_databases"
+      if [[ ! -d go ]]; then
+        echo "Did not find a Go database"
+        exit 1
+      fi

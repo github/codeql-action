@@ -38,10 +38,6 @@ To see the effect of your changes and to test them, push your changes in a branc
 
 As well as the unit tests (see _Common tasks_ above), there are integration tests, defined in `.github/workflows/integration-testing.yml`.  These are run by a CI check.  Depending on the change you’re making, you may want to add a test to this file or extend an existing one.
 
-### Building the CodeQL runner
-
-Navigate to the `runner` directory and run `npm install` to install dependencies needed only for compiling the CodeQL runner. Run `npm run build-runner` to output files to the `runner/dist` directory.
-
 ## Submitting a pull request
 
 1. [Fork][fork] and clone the repository
@@ -71,12 +67,8 @@ Here are a few things you can do that will increase the likelihood of your pull 
     This mergeback incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into releases/v2" pull request, and bumps the patch version of the CodeQL Action.
 
     Approve the mergeback PR and automerge it.
-1. When the "Merge main into releases/v2" pull request is merged into the `releases/v2` branch, the "Update release branch" workflow will create a "Merge releases/v2 into releases/v1" pull request to merge the changes since the last release into the `releases/v1` release branch.
-    This ensures we keep both the `releases/v1` and `releases/v2` release branches up to date and fully supported.
 
-    Review the checklist items in the pull request description.
-    Once you've checked off all the items, approve the PR and automerge it.
-1. Once the mergeback has been merged to `main` and the "Merge releases/v2 into releases/v1" PR has been merged to `releases/v1`, the release is complete.
+Once the mergeback has been merged to `main`, the release is complete.
 
 ## Keeping the PR checks up to date (admin access required)
 

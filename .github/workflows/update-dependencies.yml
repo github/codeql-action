@@ -1,6 +1,6 @@
 name: Update dependencies
 on:
-  pull_request_target:
+  rr:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
 
 jobs:

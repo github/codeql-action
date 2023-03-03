@@ -132,7 +132,7 @@ test("doesn't upload failed SARIF for workflow with upload: false", async (t) =>
   const result = await testFailedSarifUpload(t, actionsWorkflow, {
     expectUpload: false,
   });
-  t.is(result.upload_failed_run_skipped_because, "SARIF upload is disabled");
+  t.is(result[0].upload_failed_run_skipped_because, "SARIF upload is disabled");
 });
 
 test("uploading failed SARIF run succeeds when workflow uses an input with a matrix var", async (t) => {
@@ -187,7 +187,7 @@ test("uploading failed SARIF run fails when workflow uses a complex upload input
     expectUpload: false,
   });
   t.is(
-    result.upload_failed_run_error,
+    result[0].upload_failed_run_error,
     "Could not get upload input to github/codeql-action/analyze since it contained an " +
       "unrecognized dynamic value."
   );
@@ -204,11 +204,11 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
     expectUpload: false,
   });
   t.is(
-    result.upload_failed_run_error,
+    result[0].upload_failed_run_error,
     "Could not get upload input to github/codeql-action/analyze since the analyze job does not " +
       "call github/codeql-action/analyze."
   );
-  t.truthy(result.upload_failed_run_stack_trace);
+  t.truthy(result[0].upload_failed_run_stack_trace);
 });
 
 function createTestWorkflow(
@@ -246,7 +246,7 @@ async function testFailedSarifUpload(
     expectUpload?: boolean;
     matrix?: { [key: string]: string };
   } = {}
-): Promise<initActionPostHelper.UploadFailedSarifResult> {
+): Promise<initActionPostHelper.UploadFailedSarifResult[]> {
   const config = {
     codeQLCmd: "codeql",
     debugMode: true,
@@ -282,10 +282,12 @@ async function testFailedSarifUpload(
     getRunnerLogger(true)
   );
   if (expectUpload) {
-    t.deepEqual(result, {
-      raw_upload_size_bytes: 20,
-      zipped_upload_size_bytes: 10,
-    });
+    t.deepEqual(result, [
+      {
+        raw_upload_size_bytes: 20,
+        zipped_upload_size_bytes: 10,
+      },
+    ]);
   }
   if (expectUpload) {
     t.true(

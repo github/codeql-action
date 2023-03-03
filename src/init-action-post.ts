@@ -28,8 +28,8 @@ interface InitPostStatusReport
 
 async function runWrapper() {
   const startedAt = new Date();
-  let uploadFailedSarifResult:
-    | initActionPostHelper.UploadFailedSarifResult
+  let uploadFailedSarifResults:
+    | initActionPostHelper.UploadFailedSarifResult[]
     | undefined;
   try {
     const logger = getActionsLogger();
@@ -46,7 +46,7 @@ async function runWrapper() {
       logger
     );
 
-    uploadFailedSarifResult = await initActionPostHelper.run(
+    uploadFailedSarifResults = await initActionPostHelper.run(
       debugArtifacts.uploadDatabaseBundleDebugArtifact,
       debugArtifacts.uploadLogsDebugArtifact,
       printDebugLogs,
@@ -74,11 +74,13 @@ async function runWrapper() {
     "success",
     startedAt
   );
-  const statusReport: InitPostStatusReport = {
-    ...statusReportBase,
-    ...uploadFailedSarifResult,
-  };
-  await sendStatusReport(statusReport);
+  for (const result of uploadFailedSarifResults ?? []) {
+    const statusReport: InitPostStatusReport = {
+      ...statusReportBase,
+      ...result,
+    };
+    await sendStatusReport(statusReport);
+  }
 }
 
 void runWrapper();

@@ -26,7 +26,7 @@ runs:
           VERSION="5.7.0"
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
-    - uses: swift-actions/setup-swift@194625b58a582570f61cc707c3b558086c26b723
+    - uses: swift-actions/setup-swift@da0e3e04b5e3e15dbc3861bd835ad9f0afe56296
       if: "(runner.os != 'Windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
       with:
         swift-version: "${{steps.get_swift_version.outputs.version}}"

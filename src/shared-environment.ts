@@ -1,10 +1,4 @@
 /**
- * Environment variable that is set to true when `codeql database init --db-cluster" is run.
- */
-export const CODEQL_ACTION_IS_DATABASE_CLUSTER =
-  "CODEQL_ACTION_IS_DATABASE_CLUSTER";
-
-/**
  * Environment variable that is set to true when the CodeQL Action has invoked
  * the Go autobuilder.
  */

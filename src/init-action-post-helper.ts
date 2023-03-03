@@ -1,3 +1,5 @@
+import * as fs from "fs";
+
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -6,17 +8,9 @@ import { Config, getConfig } from "./config-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import {
-  CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY,
-  CODEQL_ACTION_IS_DATABASE_CLUSTER,
-} from "./shared-environment";
+import { CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY } from "./shared-environment";
 import * as uploadLib from "./upload-lib";
-import {
-  getExistingDatabasePaths,
-  getRequiredEnvParam,
-  isInTestMode,
-  parseMatrixInput,
-} from "./util";
+import { getRequiredEnvParam, isInTestMode, parseMatrixInput } from "./util";
 import {
   getCategoryInputOrThrow,
   getCheckoutPathInputOrThrow,
@@ -53,9 +47,9 @@ async function maybeUploadFailedSarif(
   repositoryNwo: RepositoryNwo,
   featureEnablement: FeatureEnablement,
   logger: Logger
-): Promise<UploadFailedSarifResult[]> {
+): Promise<UploadFailedSarifResult> {
   if (!config.codeQLCmd) {
-    return [{ upload_failed_run_skipped_because: "CodeQL command not found" }];
+    return { upload_failed_run_skipped_because: "CodeQL command not found" };
   }
   const codeql = await getCodeQL(config.codeQLCmd);
   if (
@@ -64,7 +58,7 @@ async function maybeUploadFailedSarif(
       codeql
     ))
   ) {
-    return [{ upload_failed_run_skipped_because: "Feature disabled" }];
+    return { upload_failed_run_skipped_because: "Feature disabled" };
   }
   const workflow = await getWorkflow();
   const jobName = getRequiredEnvParam("GITHUB_JOB");
@@ -73,62 +67,40 @@ async function maybeUploadFailedSarif(
     getUploadInputOrThrow(workflow, jobName, matrix) !== "true" ||
     isInTestMode()
   ) {
-    return [{ upload_failed_run_skipped_because: "SARIF upload is disabled" }];
+    return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
+  const databasePath = config.dbLocation;
 
-  const existingDatabasePaths = getExistingDatabasePaths(config);
-  if (existingDatabasePaths.length === 0) {
-    const sarifFile = "../codeql-failed-run.sarif";
+  // We call 'database export-diagnostics' to find any per-database diagnostics.
+  const sarifFile = "../codeql-failed-run.sarif";
+  await codeql.databaseExportDiagnostics(
+    databasePath,
+    true, // Database is always a cluster for CodeQL versions that support diagnostics.
+    sarifFile,
+    category
+  );
+
+  // If there was no SARIF file produced, then we fall back on 'export diagnostics'.
+  if (!fs.existsSync(sarifFile)) {
     await codeql.diagnosticsExport(sarifFile, category);
-    core.info(`Uploading failed SARIF file ${sarifFile}`);
-    const uploadResult = await uploadLib.uploadFromActions(
-      sarifFile,
-      checkoutPath,
-      category,
-      logger
-    );
-    await uploadLib.waitForProcessing(
-      repositoryNwo,
-      uploadResult.sarifID,
-      logger,
-      { isUnsuccessfulExecution: true }
-    );
-    return [uploadResult?.statusReport ?? {}];
-  } else {
-    const uploadStatusReports: uploadLib.UploadStatusReport[] = [];
-    const maybeIsDatabaseCluster =
-      process.env[CODEQL_ACTION_IS_DATABASE_CLUSTER];
-    // If we have already created database(s), then we call database diagnostic export.
-    existingDatabasePaths.map(async (databasePath) => {
-      const databaseSarifFile = `../codeql-failed-run-${existingDatabasePaths}.sarif`;
-      await codeql.databaseExportDiagnostics(
-        databasePath,
-        maybeIsDatabaseCluster === undefined ||
-          maybeIsDatabaseCluster.length === 0
-          ? false
-          : true,
-        databaseSarifFile,
-        category
-      );
-      core.info(`Uploading failed SARIF file ${databaseSarifFile}`);
-      const uploadResult = await uploadLib.uploadFromActions(
-        databaseSarifFile,
-        checkoutPath,
-        category,
-        logger
-      );
-      await uploadLib.waitForProcessing(
-        repositoryNwo,
-        uploadResult.sarifID,
-        logger,
-        { isUnsuccessfulExecution: true }
-      );
-      uploadStatusReports.push(uploadResult.statusReport);
-    });
-    return uploadStatusReports ?? [];
   }
+
+  core.info(`Uploading failed SARIF file ${sarifFile}`);
+  const uploadResult = await uploadLib.uploadFromActions(
+    sarifFile,
+    checkoutPath,
+    category,
+    logger
+  );
+  await uploadLib.waitForProcessing(
+    repositoryNwo,
+    uploadResult.sarifID,
+    logger,
+    { isUnsuccessfulExecution: true }
+  );
+  return uploadResult?.statusReport ?? {};
 }
 
 export async function tryUploadSarifIfRunFailed(
@@ -136,7 +108,7 @@ export async function tryUploadSarifIfRunFailed(
   repositoryNwo: RepositoryNwo,
   featureEnablement: FeatureEnablement,
   logger: Logger
-): Promise<UploadFailedSarifResult[]> {
+): Promise<UploadFailedSarifResult> {
   if (process.env[CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
     try {
       return await maybeUploadFailedSarif(
@@ -149,15 +121,13 @@ export async function tryUploadSarifIfRunFailed(
       logger.debug(
         `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`
       );
-      return [createFailedUploadFailedSarifResult(e)];
+      return createFailedUploadFailedSarifResult(e);
     }
   } else {
-    return [
-      {
-        upload_failed_run_skipped_because:
-          "Analyze Action completed successfully",
-      },
-    ];
+    return {
+      upload_failed_run_skipped_because:
+        "Analyze Action completed successfully",
+    };
   }
 }
 
@@ -177,29 +147,28 @@ export async function run(
     return;
   }
 
-  const uploadFailedSarifResults = await tryUploadSarifIfRunFailed(
+  const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
     repositoryNwo,
     featureEnablement,
     logger
   );
 
-  // If the upload was skipped, it is the only item in the results array.
-  if (uploadFailedSarifResults[0].upload_failed_run_skipped_because) {
+  if (uploadFailedSarifResult.upload_failed_run_skipped_because) {
     logger.debug(
       "Won't upload a failed SARIF file for this CodeQL code scanning run because: " +
-        `${uploadFailedSarifResults[0].upload_failed_run_skipped_because}.`
+        `${uploadFailedSarifResult.upload_failed_run_skipped_because}.`
     );
   }
   // Throw an error if in integration tests, we expected to upload a SARIF file for a failed run
   // but we didn't upload anything.
   if (
     process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true" &&
-    !uploadFailedSarifResults[0].raw_upload_size_bytes
+    !uploadFailedSarifResult.raw_upload_size_bytes
   ) {
     throw new Error(
       "Expected to upload a failed SARIF file for this CodeQL code scanning run, " +
-        `but the result was instead ${uploadFailedSarifResults}.`
+        `but the result was instead ${uploadFailedSarifResult}.`
     );
   }
 
@@ -214,5 +183,5 @@ export async function run(
     await printDebugLogs(config);
   }
 
-  return uploadFailedSarifResults;
+  return uploadFailedSarifResult;
 }

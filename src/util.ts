@@ -253,15 +253,6 @@ export function getCodeQLDatabasePath(config: Config, language: Language) {
 }
 
 /**
- * Gets the paths of all CodeQL databases that currently exist.
- */
-export function getExistingDatabasePaths(config: Config): string[] {
-  return config.languages
-    .map((language) => getCodeQLDatabasePath(config, language))
-    .filter((databasePath) => fs.existsSync(databasePath));
-}
-
-/**
  * Parses user input of a github.com or GHES URL to a canonical form.
  * Removes any API prefix or suffix if one is present.
  */

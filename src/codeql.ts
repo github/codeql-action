@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
@@ -14,7 +13,6 @@ import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
-import { CODEQL_ACTION_IS_DATABASE_CLUSTER } from "./shared-environment";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import {
   getTrapCachingExtractorConfigArgs,
@@ -651,7 +649,6 @@ export async function getCodeQLForCmd(
         ],
         { stdin: externalRepositoryToken }
       );
-      core.exportVariable(CODEQL_ACTION_IS_DATABASE_CLUSTER, "true");
     },
     async runAutobuild(language: Language) {
       const cmdName =
@@ -994,8 +991,7 @@ export async function getCodeQLForCmd(
     ): Promise<void> {
       const args = [
         "database",
-        "export",
-        "diagnostics",
+        "export-diagnostics",
         "--format=sarif-latest",
         `--output=${sarifFile}`,
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),

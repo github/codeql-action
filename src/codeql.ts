@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
@@ -13,6 +14,7 @@ import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
+import { CODEQL_ACTION_IS_DATABASE_CLUSTER } from "./shared-environment";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import {
   getTrapCachingExtractorConfigArgs,
@@ -179,6 +181,15 @@ export interface CodeQL {
    * Run 'codeql database print-baseline'.
    */
   databasePrintBaseline(databasePath: string): Promise<string>;
+  /**
+   * Run 'codeql database export-diagnostics'.
+   */
+  databaseExportDiagnostics(
+    databasePath: string,
+    isCluster: boolean,
+    sarifFile: string,
+    automationDetailsId: string | undefined
+  ): Promise<void>;
   /**
    * Run 'codeql diagnostics export'.
    */
@@ -421,6 +432,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "databasePrintBaseline"
     ),
+    databaseExportDiagnostics: resolveFunction(
+      partialCodeql,
+      "databaseExportDiagnostics"
+    ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
   };
   return cachedCodeQL;
@@ -636,6 +651,7 @@ export async function getCodeQLForCmd(
         ],
         { stdin: externalRepositoryToken }
       );
+      core.exportVariable(CODEQL_ACTION_IS_DATABASE_CLUSTER, "true");
     },
     async runAutobuild(language: Language) {
       const cmdName =
@@ -968,6 +984,29 @@ export async function getCodeQLForCmd(
         `--name=${databaseName}`,
         ...getExtraOptionsFromEnv(["database", "bundle"]),
       ];
+      await new toolrunner.ToolRunner(cmd, args).exec();
+    },
+    async databaseExportDiagnostics(
+      databasePath: string,
+      isCluster: boolean,
+      sarifFile: string,
+      automationDetailsId: string | undefined
+    ): Promise<void> {
+      const args = [
+        "database",
+        "export",
+        "diagnostics",
+        "--format=sarif-latest",
+        `--output=${sarifFile}`,
+        ...getExtraOptionsFromEnv(["diagnostics", "export"]),
+      ];
+      if (isCluster) {
+        args.push("--db-cluster");
+      }
+      args.push(databasePath);
+      if (automationDetailsId !== undefined) {
+        args.push("--sarif-category", automationDetailsId);
+      }
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
     async diagnosticsExport(

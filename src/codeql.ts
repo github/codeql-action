@@ -619,7 +619,8 @@ export async function getCodeQLForCmd(
       }
 
       if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG)
+        qlconfigFile !== undefined &&
+        (await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG))
       ) {
         extraArgs.push(`--qlconfig=${qlconfigFile}`);
       }

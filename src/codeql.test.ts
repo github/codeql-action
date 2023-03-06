@@ -1027,7 +1027,7 @@ test("does not pass a code scanning config or qlconfig file to the CLI when CLI 
 
     // should not have passed a qlconfig file
     const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig=")
+      arg.startsWith("--qlconfig-file=")
     );
     t.false(hasQlconfigArg, "Should NOT have passed a qlconfig file");
   });
@@ -1059,7 +1059,7 @@ test("passes a code scanning config AND qlconfig to the CLI when CLI config pass
 
     // should have passed a qlconfig file
     const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig=")
+      arg.startsWith("--qlconfig-file=")
     );
     t.truthy(hasQlconfigArg, "Should have injected a codescanning config");
   });
@@ -1092,7 +1092,7 @@ test("passes a code scanning config BUT NOT a qlconfig to the CLI when CLI confi
 
     // should not have passed a qlconfig file
     const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig=")
+      arg.startsWith("--qlconfig-file=")
     );
     t.false(hasQlconfigArg, "should NOT have injected a qlconfig");
   });
@@ -1117,7 +1117,7 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
 
     const args = runnerConstructorStub.firstCall.args[1] as any[];
     const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig=")
+      arg.startsWith("--qlconfig-file=")
     );
     t.false(hasQlconfigArg, "should NOT have injected a qlconfig");
   });

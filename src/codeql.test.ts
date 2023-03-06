@@ -1064,6 +1064,7 @@ test("passes a code scanning config AND qlconfig to the CLI when CLI config pass
     t.truthy(hasQlconfigArg, "Should have injected a codescanning config");
   });
 });
+
 test("passes a code scanning config BUT NOT a qlconfig to the CLI when CLI config passing is enabled", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
@@ -1084,13 +1085,41 @@ test("passes a code scanning config BUT NOT a qlconfig to the CLI when CLI confi
     const hasCodeScanningConfigArg = args.some((arg: string) =>
       arg.startsWith("--codescanning-config=")
     );
-    t.true(hasCodeScanningConfigArg, "Should NOT have injected a qlconfig");
+    t.true(
+      hasCodeScanningConfigArg,
+      "Should have injected a codescanning config"
+    );
 
-    // should have passed a qlconfig file
+    // should not have passed a qlconfig file
     const hasQlconfigArg = args.some((arg: string) =>
       arg.startsWith("--qlconfig=")
     );
-    t.false(hasQlconfigArg, "Should have injected a codescanning config");
+    t.false(hasQlconfigArg, "should NOT have injected a qlconfig");
+  });
+});
+
+test("does not pass a qlconfig to the CLI when it is undefined", async (t: ExecutionContext<unknown>) => {
+  await util.withTmpDir(async (tempDir) => {
+    const runnerConstructorStub = stubToolRunnerConstructor();
+    const codeqlObject = await codeql.getCodeQLForTesting();
+    sinon
+      .stub(codeqlObject, "getVersion")
+      .resolves(codeql.CODEQL_VERSION_INIT_WITH_QLCONFIG);
+
+    await codeqlObject.databaseInitCluster(
+      { ...stubConfig, tempDir },
+      "",
+      undefined,
+      createFeatures([Feature.CliConfigFileEnabled]),
+      undefined, // undefined qlconfigFile
+      getRunnerLogger(true)
+    );
+
+    const args = runnerConstructorStub.firstCall.args[1] as any[];
+    const hasQlconfigArg = args.some((arg: string) =>
+      arg.startsWith("--qlconfig=")
+    );
+    t.false(hasQlconfigArg, "should NOT have injected a qlconfig");
   });
 });
 

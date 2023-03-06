@@ -15,3 +15,7 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+  - package-ecosystem: github-actions
+    directory: "/.github/setup-swift/" # All subdirectories outside of "/.github/workflows" must be explicitly included.
+    schedule:
+      interval: weekly

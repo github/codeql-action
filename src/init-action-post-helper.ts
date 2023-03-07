@@ -71,7 +71,7 @@ async function maybeUploadFailedSarif(
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
 
   const sarifFile = "../codeql-failed-run.sarif";
-  await codeql.diagnosticsExport(sarifFile, category);
+  await codeql.diagnosticsExport(sarifFile, category, config);
 
   core.info(`Uploading failed SARIF file ${sarifFile}`);
   const uploadResult = await uploadLib.uploadFromActions(

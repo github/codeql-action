@@ -173,7 +173,8 @@ export interface CodeQL {
     addSnippetsFlag: string,
     threadsFlag: string,
     verbosityFlag: string | undefined,
-    automationDetailsId: string | undefined
+    automationDetailsId: string | undefined,
+    config: Config
   ): Promise<string>;
   /**
    * Run 'codeql database print-baseline'.
@@ -848,7 +849,8 @@ export async function getCodeQLForCmd(
       addSnippetsFlag: string,
       threadsFlag: string,
       verbosityFlag: string,
-      automationDetailsId: string | undefined
+      automationDetailsId: string | undefined,
+      config: Config
     ): Promise<string> {
       const codeqlArgs = [
         "database",
@@ -861,6 +863,7 @@ export async function getCodeQLForCmd(
         "--print-diagnostics-summary",
         "--print-metrics-summary",
         "--sarif-group-rules-by-pack",
+        ...(await getCodeScanningConfigExportArguments(config, this)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (await util.codeQlVersionAbove(this, CODEQL_VERSION_CUSTOM_QUERY_HELP))

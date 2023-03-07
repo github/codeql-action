@@ -291,7 +291,7 @@ export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 
 /**
- * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig` flag in calls to `database init`.
+ * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 
@@ -619,9 +619,10 @@ export async function getCodeQLForCmd(
       }
 
       if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG)
+        qlconfigFile !== undefined &&
+        (await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG))
       ) {
-        extraArgs.push(`--qlconfig=${qlconfigFile}`);
+        extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
       await runTool(
         cmd,

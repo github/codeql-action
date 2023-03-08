@@ -73,18 +73,24 @@ async function maybeUploadFailedSarif(
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
   const databasePath = config.dbLocation;
 
-  // We call 'database export-diagnostics' to find any per-database diagnostics.
   const sarifFile = "../codeql-failed-run.sarif";
-  await codeql.databaseExportDiagnostics(
-    databasePath,
-    true, // Database is always a cluster for CodeQL versions that support diagnostics.
-    sarifFile,
-    category
-  );
 
-  // If there was no SARIF file produced, then we fall back on 'export diagnostics'.
-  if (!fs.existsSync(sarifFile)) {
+  // If there is no database, we run 'export diagnostics'
+  if (databasePath === undefined) {
     await codeql.diagnosticsExport(sarifFile, category);
+  } else {
+    // We call 'database export-diagnostics' to find any per-database diagnostics.
+    await codeql.databaseExportDiagnostics(
+      databasePath,
+      true, // Database is always a cluster for CodeQL versions that support diagnostics.
+      sarifFile,
+      category
+    );
+
+    // If there was no SARIF file produced, then we fall back on 'export diagnostics'.
+    if (!fs.existsSync(sarifFile)) {
+      await codeql.diagnosticsExport(sarifFile, category);
+    }
   }
 
   core.info(`Uploading failed SARIF file ${sarifFile}`);

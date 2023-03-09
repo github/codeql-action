@@ -207,14 +207,14 @@ export async function runQueries(
   automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger,
-  featureEnablement: FeatureEnablement
+  features: FeatureEnablement
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
   const codeql = await getCodeQL(config.codeQLCmd);
   const queryFlags = [memoryFlag, threadsFlag];
 
-  await util.logCodeScanningConfigInCli(codeql, featureEnablement, logger);
+  await util.logCodeScanningConfigInCli(codeql, features, logger);
 
   for (const language of config.languages) {
     const queries = config.queries[language];
@@ -224,7 +224,7 @@ export async function runQueries(
     const packsWithVersion = config.packs[language] || [];
 
     try {
-      if (await util.useCodeScanningConfigInCli(codeql, featureEnablement)) {
+      if (await util.useCodeScanningConfigInCli(codeql, features)) {
         // If we are using the code scanning config in the CLI,
         // much of the work needed to generate the query suites
         // is done in the CLI. We just need to make a single
@@ -369,7 +369,7 @@ export async function runQueries(
       enableDebugLogging ? "-vv" : "-v",
       automationDetailsId,
       config,
-      featureEnablement
+      features
     );
   }
 

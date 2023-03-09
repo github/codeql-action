@@ -264,14 +264,14 @@ class GitHubFeatureFlags implements FeatureEnablement {
       );
       return false;
     }
-    const featureEnablement = response[feature];
-    if (featureEnablement === undefined) {
+    const features = response[feature];
+    if (features === undefined) {
       this.logger.debug(
         `Feature '${feature}' undefined in API response, considering it disabled.`
       );
       return false;
     }
-    return !!featureEnablement;
+    return !!features;
   }
 
   private async getAllFeatures(): Promise<GitHubFeatureFlagsApiResponse> {

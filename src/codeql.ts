@@ -94,7 +94,7 @@ export interface CodeQL {
     config: Config,
     sourceRoot: string,
     processName: string | undefined,
-    featureEnablement: FeatureEnablement,
+    features: FeatureEnablement,
     qlconfigFile: string | undefined,
     logger: Logger
   ): Promise<void>;
@@ -584,7 +584,7 @@ export async function getCodeQLForCmd(
       config: Config,
       sourceRoot: string,
       processName: string | undefined,
-      featureEnablement: FeatureEnablement,
+      features: FeatureEnablement,
       qlconfigFile: string | undefined,
       logger: Logger
     ) {
@@ -619,7 +619,7 @@ export async function getCodeQLForCmd(
       const codeScanningConfigFile = await generateCodeScanningConfig(
         codeql,
         config,
-        featureEnablement,
+        features,
         logger
       );
       // Only pass external repository token if a config file is going to be parsed by the CLI.
@@ -1138,10 +1138,10 @@ async function runTool(
 async function generateCodeScanningConfig(
   codeql: CodeQL,
   config: Config,
-  featureEnablement: FeatureEnablement,
+  features: FeatureEnablement,
   logger: Logger
 ): Promise<string | undefined> {
-  if (!(await util.useCodeScanningConfigInCli(codeql, featureEnablement))) {
+  if (!(await util.useCodeScanningConfigInCli(codeql, features))) {
     return;
   }
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);

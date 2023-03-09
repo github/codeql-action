@@ -664,17 +664,17 @@ export function isInTestMode(): boolean {
  */
 export async function useCodeScanningConfigInCli(
   codeql: CodeQL,
-  featureEnablement: FeatureEnablement
+  features: FeatureEnablement
 ): Promise<boolean> {
-  return await featureEnablement.getValue(Feature.CliConfigFileEnabled, codeql);
+  return await features.getValue(Feature.CliConfigFileEnabled, codeql);
 }
 
 export async function logCodeScanningConfigInCli(
   codeql: CodeQL,
-  featureEnablement: FeatureEnablement,
+  features: FeatureEnablement,
   logger: Logger
 ) {
-  if (await useCodeScanningConfigInCli(codeql, featureEnablement)) {
+  if (await useCodeScanningConfigInCli(codeql, features)) {
     logger.info(
       "Code Scanning configuration file being processed in the codeql CLI."
     );

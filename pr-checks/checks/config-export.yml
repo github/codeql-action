@@ -22,13 +22,14 @@ steps:
       retention-days: 7
   - name: Check config properties appear in SARIF
     uses: actions/github-script@v6
+    env:
+      SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
     with:
       script: |
         const fs = require('fs');
         const path = require('path');
 
-        const sarifFile = path.join('${{ runner.temp }}', 'results', 'javascript.sarif');
-        const sarif = JSON.parse(fs.readFileSync(sarifFile, 'utf8'));
+        const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
         const run = sarif.runs[0];
         const configSummary = run.properties.codeqlConfigSummary;
 

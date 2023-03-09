@@ -636,7 +636,8 @@ test("databaseInterpretResults() does not set --sarif-add-query-help for 2.7.0",
     "",
     "-v",
     "",
-    stubConfig
+    stubConfig,
+    createFeatures([])
   );
   t.false(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
@@ -658,7 +659,8 @@ test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (
     "",
     "-v",
     "",
-    stubConfig
+    stubConfig,
+    createFeatures([])
   );
   t.true(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
@@ -1155,7 +1157,8 @@ test("databaseInterpretResults() sets --sarif-add-baseline-file-info for 2.11.3"
     "",
     "-v",
     "",
-    stubConfig
+    stubConfig,
+    createFeatures([])
   );
   t.true(
     runnerConstructorStub.firstCall.args[1].includes(
@@ -1179,7 +1182,8 @@ test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for
     "",
     "-v",
     "",
-    stubConfig
+    stubConfig,
+    createFeatures([])
   );
   t.false(
     runnerConstructorStub.firstCall.args[1].includes(

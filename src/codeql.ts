@@ -8,7 +8,11 @@ import { getOptionalInput } from "./actions-util";
 import * as api from "./api-client";
 import { Config, getGeneratedCodeScanningConfigPath } from "./config-utils";
 import { errorMatchers } from "./error-matcher";
-import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -174,7 +178,8 @@ export interface CodeQL {
     threadsFlag: string,
     verbosityFlag: string | undefined,
     automationDetailsId: string | undefined,
-    config: Config
+    config: Config,
+    features: FeatureEnablement
   ): Promise<string>;
   /**
    * Run 'codeql database print-baseline'.
@@ -186,7 +191,8 @@ export interface CodeQL {
   diagnosticsExport(
     sarifFile: string,
     automationDetailsId: string | undefined,
-    config: Config
+    config: Config,
+    features: FeatureEnablement
   ): Promise<void>;
 }
 
@@ -850,7 +856,8 @@ export async function getCodeQLForCmd(
       threadsFlag: string,
       verbosityFlag: string,
       automationDetailsId: string | undefined,
-      config: Config
+      config: Config,
+      features: FeatureEnablement
     ): Promise<string> {
       const codeqlArgs = [
         "database",
@@ -863,7 +870,7 @@ export async function getCodeQLForCmd(
         "--print-diagnostics-summary",
         "--print-metrics-summary",
         "--sarif-group-rules-by-pack",
-        ...(await getCodeScanningConfigExportArguments(config, this)),
+        ...(await getCodeScanningConfigExportArguments(config, this, features)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (await util.codeQlVersionAbove(this, CODEQL_VERSION_CUSTOM_QUERY_HELP))
@@ -984,14 +991,15 @@ export async function getCodeQLForCmd(
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
-      config: Config
+      config: Config,
+      features: FeatureEnablement
     ): Promise<void> {
       const args = [
         "diagnostics",
         "export",
         "--format=sarif-latest",
         `--output=${sarifFile}`,
-        ...(await getCodeScanningConfigExportArguments(config, this)),
+        ...(await getCodeScanningConfigExportArguments(config, this, features)),
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
       if (automationDetailsId !== undefined) {
@@ -1217,15 +1225,13 @@ function cloneObject<T>(obj: T): T {
  */
 async function getCodeScanningConfigExportArguments(
   config: Config,
-  codeql: CodeQL
+  codeql: CodeQL,
+  features: FeatureEnablement
 ): Promise<string[]> {
   const codeScanningConfigPath = getGeneratedCodeScanningConfigPath(config);
   if (
     fs.existsSync(codeScanningConfigPath) &&
-    (await util.codeQlVersionAbove(
-      codeql,
-      CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG
-    ))
+    (await features.getValue(Feature.ExportCodeScanningConfigEnabled, codeql))
   ) {
     return ["--sarif-codescanning-config", codeScanningConfigPath];
   }

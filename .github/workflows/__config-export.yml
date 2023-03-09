@@ -11,6 +11,7 @@ env:
 on:
   push:
     branches:
+    - henrymercer/diagnostics-code-scanning-config-check
     - main
     - releases/v2
   pull_request:

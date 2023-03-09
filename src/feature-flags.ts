@@ -43,27 +43,32 @@ export enum Feature {
 
 export const featureConfig: Record<
   Feature,
-  { envVar: string; minimumVersion: string | undefined }
+  { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
   [Feature.DisableKotlinAnalysisEnabled]: {
     envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
     minimumVersion: undefined,
+    defaultValue: false,
   },
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.6",
+    defaultValue: true,
   },
   [Feature.ExportCodeScanningConfigEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG",
     minimumVersion: CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG,
+    defaultValue: false,
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
+    defaultValue: false,
   },
   [Feature.UploadFailedSarifEnabled]: {
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
     minimumVersion: "2.11.3",
+    defaultValue: false,
   },
 };
 
@@ -146,11 +151,14 @@ export class Features implements FeatureEnablement {
       return true;
     }
     // Ask the GitHub API if the feature is enabled.
-    return await this.gitHubFeatureFlags.getValue(feature);
+    return (
+      (await this.gitHubFeatureFlags.getValue(feature)) ??
+      featureConfig[feature].defaultValue
+    );
   }
 }
 
-class GitHubFeatureFlags implements FeatureEnablement {
+class GitHubFeatureFlags {
   private cachedApiResponse: GitHubFeatureFlagsApiResponse | undefined;
 
   // We cache whether the feature flags were accessed or not in order to accurately report whether flags were
@@ -256,20 +264,16 @@ class GitHubFeatureFlags implements FeatureEnablement {
     return { version: maxCliVersion, toolsFeatureFlagsValid: true };
   }
 
-  async getValue(feature: Feature): Promise<boolean> {
+  async getValue(feature: Feature): Promise<boolean | undefined> {
     const response = await this.getAllFeatures();
     if (response === undefined) {
-      this.logger.debug(
-        `No feature flags API response for ${feature}, considering it disabled.`
-      );
-      return false;
+      this.logger.debug(`No feature flags API response for ${feature}.`);
+      return undefined;
     }
     const features = response[feature];
     if (features === undefined) {
-      this.logger.debug(
-        `Feature '${feature}' undefined in API response, considering it disabled.`
-      );
-      return false;
+      this.logger.debug(`Feature '${feature}' undefined in API response.`);
+      return undefined;
     }
     return !!features;
   }

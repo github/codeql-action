@@ -54,8 +54,9 @@ for (const variant of ALL_FEATURES_DISABLED_VARIANTS) {
       );
 
       for (const feature of Object.values(Feature)) {
-        t.false(
-          await features.getValue(feature, includeCodeQlIfRequired(feature))
+        t.deepEqual(
+          await features.getValue(feature, includeCodeQlIfRequired(feature)),
+          featureConfig[feature].defaultValue
         );
       }
 
@@ -71,7 +72,7 @@ for (const variant of ALL_FEATURES_DISABLED_VARIANTS) {
   });
 }
 
-test("API response missing", async (t) => {
+test("API response missing and features use default value", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
     const features = setUpFeatureFlagTests(
@@ -84,14 +85,14 @@ test("API response missing", async (t) => {
     for (const feature of Object.values(Feature)) {
       t.assert(
         (await features.getValue(feature, includeCodeQlIfRequired(feature))) ===
-          false
+          featureConfig[feature].defaultValue
       );
     }
     assertAllFeaturesUndefinedInApi(t, loggedMessages);
   });
 });
 
-test("Features are disabled if they're not returned in API response", async (t) => {
+test("Features use default value if they're not returned in API response", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
     const features = setUpFeatureFlagTests(
@@ -104,7 +105,7 @@ test("Features are disabled if they're not returned in API response", async (t) 
     for (const feature of Object.values(Feature)) {
       t.assert(
         (await features.getValue(feature, includeCodeQlIfRequired(feature))) ===
-          false
+          featureConfig[feature].defaultValue
       );
     }
 
@@ -455,7 +456,7 @@ function assertAllFeaturesUndefinedInApi(
         (v) =>
           v.type === "debug" &&
           (v.message as string).includes(feature) &&
-          (v.message as string).includes("considering it disabled")
+          (v.message as string).includes("undefined in API response")
       ) !== undefined
     );
   }

@@ -4,7 +4,7 @@ import * as path from "path";
 import * as semver from "semver";
 
 import { getApiClient } from "./api-client";
-import { CodeQL } from "./codeql";
+import { CodeQL, CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -36,6 +36,7 @@ export interface FeatureEnablement {
 export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
+  ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
@@ -51,6 +52,10 @@ export const featureConfig: Record<
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.6",
+  },
+  [Feature.ExportCodeScanningConfigEnabled]: {
+    envVar: "CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG",
+    minimumVersion: CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG,
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",

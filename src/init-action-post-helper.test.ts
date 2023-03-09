@@ -292,6 +292,7 @@ async function testFailedSarifUpload(
       diagnosticsExportStub.calledOnceWith(
         sinon.match.string,
         category,
+        sinon.match.any,
         sinon.match.any
       ),
       `Actual args were: ${diagnosticsExportStub.args}`

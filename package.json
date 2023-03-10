@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -41,7 +41,7 @@
     "file-url": "^3.0.0",
     "fs": "0.0.1-security",
     "get-folder-size": "^2.0.1",
-    "glob": "^8.0.1",
+    "glob": "^9.2.1",
     "js-yaml": "^4.1.0",
     "jsonschema": "1.2.6",
     "long": "^5.2.0",

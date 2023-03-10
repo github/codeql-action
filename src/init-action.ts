@@ -204,6 +204,8 @@ async function run() {
     getRequiredEnvParam("GITHUB_REPOSITORY")
   );
 
+  const registriesInput = getOptionalInput("registries");
+
   const features = new Features(
     gitHubVersion,
     repositoryNwo,
@@ -251,7 +253,7 @@ async function run() {
       getOptionalInput("languages"),
       getOptionalInput("queries"),
       getOptionalInput("packs"),
-      getOptionalInput("registries"),
+      registriesInput,
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
       getTrapCachingEnabled(),
@@ -335,7 +337,9 @@ async function run() {
       config,
       sourceRoot,
       "Runner.Worker.exe",
+      registriesInput,
       features,
+      apiDetails,
       logger
     );
     if (tracerConfig !== undefined) {

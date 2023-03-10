@@ -414,7 +414,7 @@ async function addBuiltinSuiteQueries(
     ))
   ) {
     throw new Error(
-      `The 'security-experimental' suite is not supported on CodeQL CLI versions earlier than 
+      `The 'security-experimental' suite is not supported on CodeQL CLI versions earlier than
       ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE}. Please upgrade to CodeQL CLI version
       ${CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE} or later.`
     );
@@ -1403,7 +1403,7 @@ function parseQueriesFromInput(
 
   const trimmedInput = queriesInputCombines
     ? rawQueriesInput.trim().slice(1).trim()
-    : rawQueriesInput?.trim();
+    : rawQueriesInput?.trim() ?? "";
   if (queriesInputCombines && trimmedInput.length === 0) {
     throw new Error(
       getConfigFilePropertyError(
@@ -1769,13 +1769,12 @@ export async function initConfig(
       }
     }
 
-    const registries = parseRegistries(registriesInput);
     await downloadPacks(
       codeQL,
       config.languages,
       config.packs,
-      registries,
       apiDetails,
+      registriesInput,
       config.tempDir,
       logger
     );
@@ -1899,32 +1898,18 @@ export async function downloadPacks(
   codeQL: CodeQL,
   languages: Language[],
   packs: Packs,
-  registries: RegistryConfigWithCredentials[] | undefined,
   apiDetails: api.GitHubApiDetails,
-  tmpDir: string,
+  registriesInput: string | undefined,
+  tempDir: string,
   logger: Logger
 ) {
-  let qlconfigFile: string | undefined;
-  let registriesAuthTokens: string | undefined;
-  if (registries) {
-    if (
-      !(await codeQlVersionAbove(codeQL, CODEQL_VERSION_GHES_PACK_DOWNLOAD))
-    ) {
-      throw new Error(
-        `'registries' input is not supported on CodeQL versions less than ${CODEQL_VERSION_GHES_PACK_DOWNLOAD}.`
-      );
-    }
-
-    // generate a qlconfig.yml file to hold the registry configs.
-    const qlconfig = createRegistriesBlock(registries);
-    qlconfigFile = path.join(tmpDir, "qlconfig.yml");
-    fs.writeFileSync(qlconfigFile, yaml.dump(qlconfig), "utf8");
-
-    registriesAuthTokens = registries
-      .map((registry) => `${registry.url}=${registry.token}`)
-      .join(",");
-  }
-
+  // This code path is only used when config parsing occurs in the Action.
+  const { registriesAuthTokens, qlconfigFile } = await generateRegistries(
+    registriesInput,
+    codeQL,
+    tempDir,
+    logger
+  );
   await wrapEnvironment(
     {
       GITHUB_TOKEN: apiDetails.auth,
@@ -1963,6 +1948,63 @@ export async function downloadPacks(
   );
 }
 
+/**
+ * Generate a `qlconfig.yml` file from the `registries` input.
+ * This file is used by the CodeQL CLI to list the registries to use for each
+ * pack.
+ *
+ * @param registriesInput The value of the `registries` input.
+ * @param codeQL a codeQL object, used only for checking the version of CodeQL.
+ * @param tempDir a temporary directory to store the generated qlconfig.yml file.
+ * @param logger a logger object.
+ * @returns The path to the generated `qlconfig.yml` file and the auth tokens to
+ *        use for each registry.
+ */
+export async function generateRegistries(
+  registriesInput: string | undefined,
+  codeQL: CodeQL,
+  tempDir: string,
+  logger: Logger
+) {
+  const registries = parseRegistries(registriesInput);
+  let registriesAuthTokens: string | undefined;
+  let qlconfigFile: string | undefined;
+  if (registries) {
+    if (
+      !(await codeQlVersionAbove(codeQL, CODEQL_VERSION_GHES_PACK_DOWNLOAD))
+    ) {
+      throw new Error(
+        `The 'registries' input is not supported on CodeQL CLI versions earlier than ${CODEQL_VERSION_GHES_PACK_DOWNLOAD}. Please upgrade to CodeQL CLI version ${CODEQL_VERSION_GHES_PACK_DOWNLOAD} or later.`
+      );
+    }
+
+    // generate a qlconfig.yml file to hold the registry configs.
+    const qlconfig = createRegistriesBlock(registries);
+    qlconfigFile = path.join(tempDir, "qlconfig.yml");
+    const qlconfigContents = yaml.dump(qlconfig);
+    fs.writeFileSync(qlconfigFile, qlconfigContents, "utf8");
+
+    logger.debug("Generated qlconfig.yml:");
+    logger.debug(qlconfigContents);
+    registriesAuthTokens = registries
+      .map((registry) => `${registry.url}=${registry.token}`)
+      .join(",");
+  }
+
+  if (typeof process.env.CODEQL_REGISTRIES_AUTH === "string") {
+    logger.debug(
+      "Using CODEQL_REGISTRIES_AUTH environment variable to authenticate with registries."
+    );
+  }
+
+  return {
+    registriesAuthTokens:
+      // if the user has explicitly set the CODEQL_REGISTRIES_AUTH env var then use that
+      process.env.CODEQL_REGISTRIES_AUTH ?? registriesAuthTokens,
+    qlconfigFile,
+  };
+}
+
 function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
   registries: RegistryConfigNoCredentials[];
 } {
@@ -1999,7 +2041,7 @@ function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
  * @param env
  * @param operation
  */
-async function wrapEnvironment(
+export async function wrapEnvironment(
   env: Record<string, string | undefined>,
   operation: Function
 ) {

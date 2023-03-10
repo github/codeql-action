@@ -4,7 +4,12 @@
 # basic mechanics of multi-registry auth is working.
 name: "Packaging: Download using registries"
 description: "Checks that specifying a registries block and associated auth works as expected"
-versions: ["nightly-latest"] # This feature is not compatible with old CLIs
+versions: [
+    # This feature is not compatible with older CLIs
+    "cached",
+    "latest",
+    "nightly-latest",
+]
 
 steps:
   - name: Init with registries
@@ -38,5 +43,35 @@ steps:
           echo "$CODEQL_PACK1 was installed."
       else
           echo "::error $CODEQL_PACK1 pack was not installed."
+          exit 1
+      fi
+
+  - name: Verify qlconfig.yml file was created
+    shell: bash
+    run: |
+      QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
+      echo "Expected qlconfig.yml file to be created at $QLCONFIG_PATH"
+      if [[ -f $QLCONFIG_PATH ]]
+      then
+          echo "qlconfig.yml file was created."
+      else
+          echo "::error qlconfig.yml file was not created."
+          exit 1
+      fi
+
+  - name: Verify contents of qlconfig.yml
+    # yq is not available on windows
+    if: runner.os != 'Windows'
+    shell: bash
+    run: |
+      QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
+      cat $QLCONFIG_PATH | yq -e '.registries[] | select(.url == "https://ghcr.io/v2/") | select(.packages == "*/*")'
+      if [[ $? -eq 0 ]]
+      then
+          echo "Registry was added to qlconfig.yml file."
+      else
+          echo "::error Registry was not added to qlconfig.yml file."
+          echo "Contents of qlconfig.yml file:"
+          cat $QLCONFIG_PATH
           exit 1
       fi

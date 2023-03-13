@@ -75,21 +75,34 @@ async function maybeUploadFailedSarif(
 
   const sarifFile = "../codeql-failed-run.sarif";
 
+  const exportDiagnosticsEnabled = await featureEnablement.getValue(
+    Feature.ExportDiagnosticsEnabled,
+    codeql
+  );
+
   // If there is no database, we run 'export diagnostics'
   if (databasePath === undefined) {
-    await codeql.diagnosticsExport(sarifFile, category);
+    await codeql.diagnosticsExport(
+      sarifFile,
+      exportDiagnosticsEnabled,
+      category
+    );
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
     await codeql.databaseExportDiagnostics(
       databasePath,
-      true, // Database is always a cluster for CodeQL versions that support diagnostics.
       sarifFile,
+      exportDiagnosticsEnabled,
       category
     );
 
     // If there was no SARIF file produced, then we fall back on 'export diagnostics'.
     if (!fs.existsSync(sarifFile)) {
-      await codeql.diagnosticsExport(sarifFile, category);
+      await codeql.diagnosticsExport(
+        sarifFile,
+        exportDiagnosticsEnabled,
+        category
+      );
     }
   }
 

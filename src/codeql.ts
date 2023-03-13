@@ -184,8 +184,8 @@ export interface CodeQL {
    */
   databaseExportDiagnostics(
     databasePath: string,
-    isCluster: boolean,
     sarifFile: string,
+    exportDiagnosticsEnabled: boolean,
     automationDetailsId: string | undefined
   ): Promise<void>;
   /**
@@ -193,6 +193,7 @@ export interface CodeQL {
    */
   diagnosticsExport(
     sarifFile: string,
+    exportDiagnosticsEnabled: boolean,
     automationDetailsId: string | undefined
   ): Promise<void>;
 }
@@ -985,21 +986,24 @@ export async function getCodeQLForCmd(
     },
     async databaseExportDiagnostics(
       databasePath: string,
-      isCluster: boolean,
       sarifFile: string,
+      exportDiagnosticsEnabled: boolean,
       automationDetailsId: string | undefined
     ): Promise<void> {
       const args = [
         "database",
         "export-diagnostics",
+        "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
         `--output=${sarifFile}`,
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
-      if (isCluster) {
-        args.push("--db-cluster");
-      }
+
       args.push(databasePath);
+      if (exportDiagnosticsEnabled === true) {
+        args.push("--sarif-include-diagnostics");
+      }
+
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }
@@ -1007,6 +1011,7 @@ export async function getCodeQLForCmd(
     },
     async diagnosticsExport(
       sarifFile: string,
+      exportDiagnosticsEnabled: boolean,
       automationDetailsId: string | undefined
     ): Promise<void> {
       const args = [
@@ -1016,6 +1021,9 @@ export async function getCodeQLForCmd(
         `--output=${sarifFile}`,
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
+      if (exportDiagnosticsEnabled === true) {
+        args.push("--sarif-include-diagnostics");
+      }
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }

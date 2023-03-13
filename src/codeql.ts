@@ -6,9 +6,13 @@ import * as yaml from "js-yaml";
 
 import { getOptionalInput } from "./actions-util";
 import * as api from "./api-client";
-import { Config } from "./config-utils";
+import { Config, getGeneratedCodeScanningConfigPath } from "./config-utils";
 import { errorMatchers } from "./error-matcher";
-import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -90,7 +94,7 @@ export interface CodeQL {
     config: Config,
     sourceRoot: string,
     processName: string | undefined,
-    featureEnablement: FeatureEnablement,
+    features: FeatureEnablement,
     qlconfigFile: string | undefined,
     logger: Logger
   ): Promise<void>;
@@ -173,7 +177,9 @@ export interface CodeQL {
     addSnippetsFlag: string,
     threadsFlag: string,
     verbosityFlag: string | undefined,
-    automationDetailsId: string | undefined
+    automationDetailsId: string | undefined,
+    config: Config,
+    features: FeatureEnablement
   ): Promise<string>;
   /**
    * Run 'codeql database print-baseline'.
@@ -185,16 +191,17 @@ export interface CodeQL {
   databaseExportDiagnostics(
     databasePath: string,
     sarifFile: string,
-    exportDiagnosticsEnabled: boolean,
-    automationDetailsId: string | undefined
+    automationDetailsId: string | undefined,
+    features: FeatureEnablement
   ): Promise<void>;
   /**
    * Run 'codeql diagnostics export'.
    */
   diagnosticsExport(
     sarifFile: string,
-    exportDiagnosticsEnabled: boolean,
-    automationDetailsId: string | undefined
+    automationDetailsId: string | undefined,
+    config: Config,
+    features: FeatureEnablement
   ): Promise<void>;
 }
 
@@ -301,7 +308,13 @@ export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 
 /**
- * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig` flag in calls to `database init`.
+ * Versions 2.12.3+ of the CodeQL CLI support exporting information in the code scanning
+ * configuration file to SARIF.
+ */
+export const CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG = "2.12.3";
+
+/**
+ * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 
@@ -584,7 +597,7 @@ export async function getCodeQLForCmd(
       config: Config,
       sourceRoot: string,
       processName: string | undefined,
-      featureEnablement: FeatureEnablement,
+      features: FeatureEnablement,
       qlconfigFile: string | undefined,
       logger: Logger
     ) {
@@ -619,7 +632,7 @@ export async function getCodeQLForCmd(
       const codeScanningConfigFile = await generateCodeScanningConfig(
         codeql,
         config,
-        featureEnablement,
+        features,
         logger
       );
       // Only pass external repository token if a config file is going to be parsed by the CLI.
@@ -633,9 +646,10 @@ export async function getCodeQLForCmd(
       }
 
       if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG)
+        qlconfigFile !== undefined &&
+        (await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG))
       ) {
-        extraArgs.push(`--qlconfig=${qlconfigFile}`);
+        extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
       await runTool(
         cmd,
@@ -854,7 +868,9 @@ export async function getCodeQLForCmd(
       addSnippetsFlag: string,
       threadsFlag: string,
       verbosityFlag: string,
-      automationDetailsId: string | undefined
+      automationDetailsId: string | undefined,
+      config: Config,
+      features: FeatureEnablement
     ): Promise<string> {
       const codeqlArgs = [
         "database",
@@ -867,6 +883,7 @@ export async function getCodeQLForCmd(
         "--print-diagnostics-summary",
         "--print-metrics-summary",
         "--sarif-group-rules-by-pack",
+        ...(await getCodeScanningConfigExportArguments(config, this, features)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (await util.codeQlVersionAbove(this, CODEQL_VERSION_CUSTOM_QUERY_HELP))
@@ -987,8 +1004,8 @@ export async function getCodeQLForCmd(
     async databaseExportDiagnostics(
       databasePath: string,
       sarifFile: string,
-      exportDiagnosticsEnabled: boolean,
-      automationDetailsId: string | undefined
+      automationDetailsId: string | undefined,
+      features: FeatureEnablement
     ): Promise<void> {
       const args = [
         "database",
@@ -996,14 +1013,11 @@ export async function getCodeQLForCmd(
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
         `--output=${sarifFile}`,
+        await getSarifIncludeDiagnosticsArgument(this, features),
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
 
       args.push(databasePath);
-      if (exportDiagnosticsEnabled === true) {
-        args.push("--sarif-include-diagnostics");
-      }
-
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }
@@ -1011,19 +1025,19 @@ export async function getCodeQLForCmd(
     },
     async diagnosticsExport(
       sarifFile: string,
-      exportDiagnosticsEnabled: boolean,
-      automationDetailsId: string | undefined
+      automationDetailsId: string | undefined,
+      config: Config,
+      features: FeatureEnablement
     ): Promise<void> {
       const args = [
         "diagnostics",
         "export",
         "--format=sarif-latest",
         `--output=${sarifFile}`,
+        await getSarifIncludeDiagnosticsArgument(this, features),
+        ...(await getCodeScanningConfigExportArguments(config, this, features)),
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
-      if (exportDiagnosticsEnabled === true) {
-        args.push("--sarif-include-diagnostics");
-      }
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }
@@ -1160,16 +1174,14 @@ async function runTool(
 async function generateCodeScanningConfig(
   codeql: CodeQL,
   config: Config,
-  featureEnablement: FeatureEnablement,
+  features: FeatureEnablement,
   logger: Logger
 ): Promise<string | undefined> {
-  if (!(await util.useCodeScanningConfigInCli(codeql, featureEnablement))) {
+  if (!(await util.useCodeScanningConfigInCli(codeql, features))) {
     return;
   }
-  const codeScanningConfigFile = path.resolve(
-    config.tempDir,
-    "user-config.yaml"
-  );
+  const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
+
   // make a copy so we can modify it
   const augmentedConfig = cloneObject(config.originalUserInput);
 
@@ -1239,4 +1251,40 @@ async function generateCodeScanningConfig(
 
 function cloneObject<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
+}
+
+/**
+ * Gets arguments for passing the code scanning configuration file to interpretation commands like
+ * `codeql database interpret-results` and `codeql database export-diagnostics`.
+ *
+ * Returns an empty list if a code scanning configuration file was not generated by the CLI.
+ */
+async function getCodeScanningConfigExportArguments(
+  config: Config,
+  codeql: CodeQL,
+  features: FeatureEnablement
+): Promise<string[]> {
+  const codeScanningConfigPath = getGeneratedCodeScanningConfigPath(config);
+  if (
+    fs.existsSync(codeScanningConfigPath) &&
+    (await features.getValue(Feature.ExportCodeScanningConfigEnabled, codeql))
+  ) {
+    return ["--sarif-codescanning-config", codeScanningConfigPath];
+  }
+  return [];
+}
+
+async function getSarifIncludeDiagnosticsArgument(
+  codeql: CodeQL,
+  features: FeatureEnablement
+): Promise<string> {
+  if (
+    (await features.getValue(
+      Feature.ExportCodeScanningConfigEnabled,
+      codeql
+    )) === true
+  ) {
+    return "--sarif-include-diagnostics";
+  }
+  return "";
 }

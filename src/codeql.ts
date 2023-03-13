@@ -1010,16 +1010,15 @@ export async function getCodeQLForCmd(
       const args = [
         "database",
         "export-diagnostics",
+        `${databasePath}`,
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
         `--output=${sarifFile}`,
-        (await features.getValue(Feature.ExportCodeScanningConfigEnabled, this))
-          ? "--sarif-include-diagnostics"
-          : "",
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
-
-      args.push(databasePath);
+      if (await features.getValue(Feature.ExportDiagnosticsEnabled, this)) {
+        args.push("--sarif-include-diagnostics");
+      }
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }

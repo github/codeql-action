@@ -46,4 +46,4 @@ steps:
           core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` + 
             `${JSON.stringify(configSummary.queries)}.`);
         }
-        console.log('Finished config export tests.');
+        core.info('Finished config export tests.');

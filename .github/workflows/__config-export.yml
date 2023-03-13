@@ -83,7 +83,7 @@ jobs:
             core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` + 
               `${JSON.stringify(configSummary.queries)}.`);
           }
-          console.log('Finished config export tests.');
+          core.info('Finished config export tests.');
     env:
       CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG: true
       CODEQL_PASS_CONFIG_TO_CLI: true

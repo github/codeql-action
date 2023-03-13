@@ -1,28 +1,29 @@
-'use strict';
+export function isStream(stream) {
+	return stream !== null
+		&& typeof stream === 'object'
+		&& typeof stream.pipe === 'function';
+}
 
-const isStream = stream =>
-	stream !== null &&
-	typeof stream === 'object' &&
-	typeof stream.pipe === 'function';
+export function isWritableStream(stream) {
+	return isStream(stream)
+		&& stream.writable !== false
+		&& typeof stream._write === 'function'
+		&& typeof stream._writableState === 'object';
+}
 
-isStream.writable = stream =>
-	isStream(stream) &&
-	stream.writable !== false &&
-	typeof stream._write === 'function' &&
-	typeof stream._writableState === 'object';
+export function isReadableStream(stream) {
+	return isStream(stream)
+		&& stream.readable !== false
+		&& typeof stream._read === 'function'
+		&& typeof stream._readableState === 'object';
+}
 
-isStream.readable = stream =>
-	isStream(stream) &&
-	stream.readable !== false &&
-	typeof stream._read === 'function' &&
-	typeof stream._readableState === 'object';
+export function isDuplexStream(stream) {
+	return isWritableStream(stream)
+		&& isReadableStream(stream);
+}
 
-isStream.duplex = stream =>
-	isStream.writable(stream) &&
-	isStream.readable(stream);
-
-isStream.transform = stream =>
-	isStream.duplex(stream) &&
-	typeof stream._transform === 'function';
-
-module.exports = isStream;
+export function isTransformStream(stream) {
+	return isDuplexStream(stream)
+		&& typeof stream._transform === 'function';
+}

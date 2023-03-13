@@ -1,4 +1,4 @@
-# onetime [![Build Status](https://travis-ci.com/sindresorhus/onetime.svg?branch=master)](https://travis-ci.com/github/sindresorhus/onetime)
+# onetime
 
 > Ensure a function is only called once
 
@@ -15,11 +15,11 @@ $ npm install onetime
 ## Usage
 
 ```js
-const onetime = require('onetime');
+import onetime from 'onetime';
 
-let i = 0;
+let index = 0;
 
-const foo = onetime(() => ++i);
+const foo = onetime(() => ++index);
 
 foo(); //=> 1
 foo(); //=> 1
@@ -29,7 +29,7 @@ onetime.callCount(foo); //=> 3
 ```
 
 ```js
-const onetime = require('onetime');
+import onetime from 'onetime';
 
 const foo = onetime(() => {}, {throw: true});
 
@@ -69,7 +69,7 @@ Returns a number representing how many times `fn` has been called.
 Note: It throws an error if you pass in a function that is not wrapped by `onetime`.
 
 ```js
-const onetime = require('onetime');
+import onetime from 'onetime';
 
 const foo = onetime(() => {});
 

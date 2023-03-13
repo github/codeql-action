@@ -11,8 +11,8 @@ $ npm install is-stream
 ## Usage
 
 ```js
-const fs = require('fs');
-const isStream = require('is-stream');
+import fs from 'node:fs';
+import {isStream} from 'is-stream';
 
 isStream(fs.createReadStream('unicorn.png'));
 //=> true
@@ -27,19 +27,19 @@ isStream({});
 
 Returns a `boolean` for whether it's a [`Stream`](https://nodejs.org/api/stream.html#stream_stream).
 
-#### isStream.writable(stream)
+#### isWritableStream(stream)
 
 Returns a `boolean` for whether it's a [`stream.Writable`](https://nodejs.org/api/stream.html#stream_class_stream_writable).
 
-#### isStream.readable(stream)
+#### isReadableStream(stream)
 
 Returns a `boolean` for whether it's a [`stream.Readable`](https://nodejs.org/api/stream.html#stream_class_stream_readable).
 
-#### isStream.duplex(stream)
+#### isDuplexStream(stream)
 
 Returns a `boolean` for whether it's a [`stream.Duplex`](https://nodejs.org/api/stream.html#stream_class_stream_duplex).
 
-#### isStream.transform(stream)
+#### isTransformStream(stream)
 
 Returns a `boolean` for whether it's a [`stream.Transform`](https://nodejs.org/api/stream.html#stream_class_stream_transform).
 

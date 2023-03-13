@@ -43,19 +43,14 @@ function createFailedUploadFailedSarifResult(
 async function maybeUploadFailedSarif(
   config: Config,
   repositoryNwo: RepositoryNwo,
-  featureEnablement: FeatureEnablement,
+  features: FeatureEnablement,
   logger: Logger
 ): Promise<UploadFailedSarifResult> {
   if (!config.codeQLCmd) {
     return { upload_failed_run_skipped_because: "CodeQL command not found" };
   }
   const codeql = await getCodeQL(config.codeQLCmd);
-  if (
-    !(await featureEnablement.getValue(
-      Feature.UploadFailedSarifEnabled,
-      codeql
-    ))
-  ) {
+  if (!(await features.getValue(Feature.UploadFailedSarifEnabled, codeql))) {
     return { upload_failed_run_skipped_because: "Feature disabled" };
   }
   const workflow = await getWorkflow();
@@ -71,7 +66,7 @@ async function maybeUploadFailedSarif(
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
 
   const sarifFile = "../codeql-failed-run.sarif";
-  await codeql.diagnosticsExport(sarifFile, category);
+  await codeql.diagnosticsExport(sarifFile, category, config, features);
 
   core.info(`Uploading failed SARIF file ${sarifFile}`);
   const uploadResult = await uploadLib.uploadFromActions(
@@ -92,7 +87,7 @@ async function maybeUploadFailedSarif(
 export async function tryUploadSarifIfRunFailed(
   config: Config,
   repositoryNwo: RepositoryNwo,
-  featureEnablement: FeatureEnablement,
+  features: FeatureEnablement,
   logger: Logger
 ): Promise<UploadFailedSarifResult> {
   if (process.env[CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
@@ -100,7 +95,7 @@ export async function tryUploadSarifIfRunFailed(
       return await maybeUploadFailedSarif(
         config,
         repositoryNwo,
-        featureEnablement,
+        features,
         logger
       );
     } catch (e) {
@@ -122,7 +117,7 @@ export async function run(
   uploadLogsDebugArtifact: Function,
   printDebugLogs: Function,
   repositoryNwo: RepositoryNwo,
-  featureEnablement: FeatureEnablement,
+  features: FeatureEnablement,
   logger: Logger
 ) {
   const config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
@@ -136,7 +131,7 @@ export async function run(
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
     repositoryNwo,
-    featureEnablement,
+    features,
     logger
   );
   if (uploadFailedSarifResult.upload_failed_run_skipped_because) {

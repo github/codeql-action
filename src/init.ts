@@ -68,7 +68,7 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
-  featureEnablement: FeatureEnablement,
+  features: FeatureEnablement,
   logger: Logger
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -89,7 +89,7 @@ export async function initConfig(
     workspacePath,
     gitHubVersion,
     apiDetails,
-    featureEnablement,
+    features,
     logger
   );
   analysisPaths.printPathFiltersWarning(config, logger);
@@ -103,7 +103,7 @@ export async function runInit(
   sourceRoot: string,
   processName: string | undefined,
   registriesInput: string | undefined,
-  featureEnablement: FeatureEnablement,
+  features: FeatureEnablement,
   apiDetails: GitHubApiCombinedDetails,
   logger: Logger
 ): Promise<TracerConfig | undefined> {
@@ -117,7 +117,7 @@ export async function runInit(
       // before the `pack download` command was invoked. It is not required for the init command.
       let registriesAuthTokens: string | undefined;
       let qlconfigFile: string | undefined;
-      if (await util.useCodeScanningConfigInCli(codeql, featureEnablement)) {
+      if (await util.useCodeScanningConfigInCli(codeql, features)) {
         ({ registriesAuthTokens, qlconfigFile } =
           await configUtils.generateRegistries(
             registriesInput,
@@ -138,7 +138,7 @@ export async function runInit(
             config,
             sourceRoot,
             processName,
-            featureEnablement,
+            features,
             qlconfigFile,
             logger
           )

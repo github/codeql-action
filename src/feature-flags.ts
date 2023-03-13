@@ -129,6 +129,11 @@ export class Features implements FeatureEnablement {
       );
     }
 
+    if (feature === Feature.ExportCodeScanningConfigEnabled) {
+      // Always enable for testing
+      return true;
+    }
+
     const envVar = (
       process.env[featureConfig[feature].envVar] || ""
     ).toLocaleLowerCase();

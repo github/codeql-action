@@ -1,0 +1,90 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Config export
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+on:
+  push:
+    branches:
+    - main
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  config-export:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: windows-latest
+          version: latest
+    name: Config export
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: ./../action/init
+      with:
+        languages: javascript
+        queries: security-extended
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/analyze
+      with:
+        output: ${{ runner.temp }}/results
+        upload-database: false
+    - name: Upload SARIF
+      uses: actions/upload-artifact@v3
+      with:
+        name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+        path: ${{ runner.temp }}/results/javascript.sarif
+        retention-days: 7
+    - name: Check config properties appear in SARIF
+      uses: actions/github-script@v6
+      env:
+        SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+          const run = sarif.runs[0];
+          const configSummary = run.properties.codeqlConfigSummary;
+
+          if (configSummary === undefined) {
+            core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
+          }
+          if (configSummary.disableDefaultQueries !== false) {
+            core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' + 
+              `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
+          }
+          const expectedQueries = [{ type: 'builtinSuite', uses: 'security-extended' }];
+          // Use JSON.stringify to deep-equal the arrays.
+          if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
+            core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` + 
+              `${JSON.stringify(configSummary.queries)}.`);
+          }
+          core.info('Finished config export tests.');
+    env:
+      CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG: true
+      CODEQL_PASS_CONFIG_TO_CLI: true
+      CODEQL_ACTION_TEST_MODE: true

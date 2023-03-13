@@ -289,7 +289,12 @@ async function testFailedSarifUpload(
   }
   if (expectUpload) {
     t.true(
-      diagnosticsExportStub.calledOnceWith(sinon.match.string, category),
+      diagnosticsExportStub.calledOnceWith(
+        sinon.match.string,
+        category,
+        sinon.match.any,
+        sinon.match.any
+      ),
       `Actual args were: ${diagnosticsExportStub.args}`
     );
     t.true(

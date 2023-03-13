@@ -1,5 +1,4 @@
-'use strict';
-const mimicFn = require('mimic-fn');
+import mimicFunction from 'mimic-fn';
 
 const calledFunctions = new WeakMap();
 
@@ -25,20 +24,18 @@ const onetime = (function_, options = {}) => {
 		return returnValue;
 	};
 
-	mimicFn(onetime, function_);
+	mimicFunction(onetime, function_);
 	calledFunctions.set(onetime, callCount);
 
 	return onetime;
 };
 
-module.exports = onetime;
-// TODO: Remove this for the next major release
-module.exports.default = onetime;
-
-module.exports.callCount = function_ => {
+onetime.callCount = function_ => {
 	if (!calledFunctions.has(function_)) {
 		throw new Error(`The given function \`${function_.name}\` is not wrapped by the \`onetime\` package`);
 	}
 
 	return calledFunctions.get(function_);
 };
+
+export default onetime;

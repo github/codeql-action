@@ -1,12 +1,10 @@
-declare namespace onetime {
-	interface Options {
-		/**
-		Throw an error when called more than once.
+export interface Options {
+	/**
+	Throw an error when called more than once.
 
-		@default false
-		*/
-		throw?: boolean;
-	}
+	@default false
+	*/
+	readonly throw?: boolean;
 }
 
 declare const onetime: {
@@ -18,11 +16,11 @@ declare const onetime: {
 
 	@example
 	```
-	import onetime = require('onetime');
+	import onetime from 'onetime';
 
-	let i = 0;
+	let index = 0;
 
-	const foo = onetime(() => ++i);
+	const foo = onetime(() => ++index);
 
 	foo(); //=> 1
 	foo(); //=> 1
@@ -33,7 +31,7 @@ declare const onetime: {
 	*/
 	<ArgumentsType extends unknown[], ReturnType>(
 		fn: (...arguments: ArgumentsType) => ReturnType,
-		options?: onetime.Options
+		options?: Options
 	): (...arguments: ArgumentsType) => ReturnType;
 
 	/**
@@ -44,7 +42,7 @@ declare const onetime: {
 
 	@example
 	```
-	import onetime = require('onetime');
+	import onetime from 'onetime';
 
 	const foo = onetime(() => {});
 	foo();
@@ -56,9 +54,6 @@ declare const onetime: {
 	```
 	*/
 	callCount(fn: (...arguments: any[]) => unknown): number;
-
-	// TODO: Remove this for the next major release
-	default: typeof onetime;
 };
 
-export = onetime;
+export default onetime;

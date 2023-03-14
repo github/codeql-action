@@ -13,6 +13,8 @@ steps:
     run: env -i CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN=true PATH="$PATH" HOME="$HOME" ./build.sh
   - uses: ./../action/analyze
     id: analysis
+    with:
+      upload-database: false
   - shell: bash
     run: |
       CPP_DB="${{ fromJson(steps.analysis.outputs.db-locations).cpp }}"

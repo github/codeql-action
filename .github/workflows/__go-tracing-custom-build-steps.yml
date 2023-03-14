@@ -73,6 +73,8 @@ jobs:
       shell: bash
       run: go build main.go
     - uses: ./../action/analyze
+      with:
+        upload-database: false
     - shell: bash
       run: |
         # Once we start running Bash 4.2 in all environments, we can replace the

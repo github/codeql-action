@@ -81,6 +81,8 @@ jobs:
 
     - uses: ./../action/analyze
       id: analysis
+      with:
+        upload-database: false
 
     - name: Check language autodetect for all languages excluding Ruby, Swift
       shell: bash

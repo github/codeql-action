@@ -16,6 +16,7 @@ steps:
     with:
       skip-queries: true
       output: "${{ runner.temp }}/results"
+      upload-database: false
 
   - name: Assert No Results
     shell: bash

@@ -88,6 +88,7 @@ jobs:
       run: ./build.sh
     - uses: ./../action/analyze
       with:
+        upload-database: false
         ref: refs/heads/main
         sha: 5e235361806c361d4d3f8859e3c897658025a9a2
         upload: false

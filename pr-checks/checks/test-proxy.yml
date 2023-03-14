@@ -18,3 +18,5 @@ steps:
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/analyze
+    with:
+      upload-database: false

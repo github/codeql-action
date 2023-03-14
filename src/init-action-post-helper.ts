@@ -87,7 +87,6 @@ async function maybeUploadFailedSarif(
       await codeql.diagnosticsExport(sarifFile, category, config, features);
     }
   }
-  await codeql.diagnosticsExport(sarifFile, category, config, features);
 
   core.info(`Uploading failed SARIF file ${sarifFile}`);
   const uploadResult = await uploadLib.uploadFromActions(

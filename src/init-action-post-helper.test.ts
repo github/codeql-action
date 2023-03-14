@@ -83,7 +83,7 @@ test("post: init action with debug mode on", async (t) => {
   });
 });
 
-test("uploads failed SARIF run for typical workflow", async (t) => {
+test("uploads failed SARIF run if the database exists for typical workflow", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
@@ -105,6 +105,33 @@ test("uploads failed SARIF run for typical workflow", async (t) => {
     },
   ]);
   await testFailedSarifUpload(t, actionsWorkflow, { category: "my-category" });
+});
+
+test("uploads failed SARIF run if the database doesn't exist for typical workflow", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "my-category",
+    databaseExists: false,
+  });
 });
 
 test("doesn't upload failed SARIF for workflow with upload: false", async (t) => {
@@ -239,10 +266,12 @@ async function testFailedSarifUpload(
   actionsWorkflow: workflow.Workflow,
   {
     category,
+    databaseExists = true,
     expectUpload = true,
     matrix = {},
   }: {
     category?: string;
+    databaseExists?: boolean;
     expectUpload?: boolean;
     matrix?: { [key: string]: string };
   } = {}
@@ -253,6 +282,9 @@ async function testFailedSarifUpload(
     languages: [],
     packs: [],
   } as unknown as configUtils.Config;
+  if (databaseExists) {
+    config.dbLocation = "path/to/database";
+  }
   process.env["GITHUB_JOB"] = "analyze";
   process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   process.env["GITHUB_WORKSPACE"] =
@@ -264,6 +296,10 @@ async function testFailedSarifUpload(
 
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+  const databaseExportDiagnosticsStub = sinon.stub(
+    codeqlObject,
+    "databaseExportDiagnostics"
+  );
   const diagnosticsExportStub = sinon.stub(codeqlObject, "diagnosticsExport");
 
   sinon.stub(workflow, "getWorkflow").resolves(actionsWorkflow);
@@ -288,15 +324,26 @@ async function testFailedSarifUpload(
     });
   }
   if (expectUpload) {
-    t.true(
-      diagnosticsExportStub.calledOnceWith(
-        sinon.match.string,
-        category,
-        sinon.match.any,
-        sinon.match.any
-      ),
-      `Actual args were: ${diagnosticsExportStub.args}`
-    );
+    if (databaseExists) {
+      t.true(
+        databaseExportDiagnosticsStub.calledOnceWith(
+          config.dbLocation,
+          sinon.match.string,
+          category,
+          sinon.match.any
+        )
+      );
+    } else {
+      t.true(
+        diagnosticsExportStub.calledOnceWith(
+          sinon.match.string,
+          category,
+          config,
+          sinon.match.any
+        ),
+        `Actual args were: ${diagnosticsExportStub.args}`
+      );
+    }
     t.true(
       uploadFromActions.calledOnceWith(
         sinon.match.string,

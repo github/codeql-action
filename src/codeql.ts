@@ -299,12 +299,6 @@ export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 
 /**
- * Versions 2.12.3+ of the CodeQL CLI support exporting information in the code scanning
- * configuration file to SARIF.
- */
-export const CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG = "2.12.3";
-
-/**
  * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";

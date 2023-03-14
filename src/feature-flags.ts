@@ -94,7 +94,7 @@ export class Features implements FeatureEnablement {
     gitHubVersion: util.GitHubVersion,
     repositoryNwo: RepositoryNwo,
     tempDir: string,
-    logger: Logger
+    private readonly logger: Logger
   ) {
     this.gitHubFeatureFlags = new GitHubFeatureFlags(
       gitHubVersion,
@@ -135,26 +135,58 @@ export class Features implements FeatureEnablement {
 
     // Do not use this feature if user explicitly disables it via an environment variable.
     if (envVar === "false") {
+      this.logger.debug(
+        `Feature ${feature} is disabled via the environment variable ${featureConfig[feature].envVar}.`
+      );
       return false;
     }
 
     // Never use this feature if the CLI version explicitly can't support it.
     const minimumVersion = featureConfig[feature].minimumVersion;
+    this.logger.debug(
+      `Minimum version for feature ${feature} is ${minimumVersion}.`
+    );
+
     if (codeql && minimumVersion) {
       if (!(await util.codeQlVersionAbove(codeql, minimumVersion))) {
+        this.logger.debug(
+          `Feature ${feature} is disabled because the CodeQL CLI version is older than the minimum ` +
+            `version ${minimumVersion}.`
+        );
         return false;
+      } else {
+        this.logger.debug(
+          `CodeQL CLI version ${await codeql.getVersion()} is newer than the minimum ` +
+            `version ${minimumVersion} for feature ${feature}.`
+        );
       }
     }
 
     // Use this feature if user explicitly enables it via an environment variable.
     if (envVar === "true") {
+      this.logger.debug(
+        `Feature ${feature} is enabled via the environment variable ${featureConfig[feature].envVar}.`
+      );
       return true;
     }
+
     // Ask the GitHub API if the feature is enabled.
-    return (
-      (await this.gitHubFeatureFlags.getValue(feature)) ??
-      featureConfig[feature].defaultValue
+    const apiValue = await this.gitHubFeatureFlags.getValue(feature);
+    if (apiValue !== undefined) {
+      this.logger.debug(
+        `Feature ${feature} is ${
+          apiValue ? "enabled" : "disabled"
+        } via the GitHub API.`
+      );
+      return apiValue;
+    }
+
+    this.logger.debug(
+      `Feature ${feature} is ${
+        featureConfig[feature].defaultValue ? "enabled" : "disabled"
+      } due to its default value.`
     );
+    return featureConfig[feature].defaultValue;
   }
 }
 

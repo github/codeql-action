@@ -71,6 +71,8 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - uses: ./../action/autobuild
     - uses: ./../action/analyze
+      with:
+        upload-database: false
     - shell: bash
       run: |
         if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then

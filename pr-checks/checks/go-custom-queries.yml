@@ -1,6 +1,6 @@
 name: "Go: Custom queries"
 description: "Checks that Go works in conjunction with a config file specifying custom queries"
-env: 
+env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
   - uses: ./../action/init
@@ -12,3 +12,5 @@ steps:
     shell: bash
     run: ./build.sh
   - uses: ./../action/analyze
+    with:
+      upload-database: false

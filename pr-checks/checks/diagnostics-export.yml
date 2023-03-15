@@ -1,0 +1,43 @@
+name: "Diagnostics export"
+description: "Tests that diagnostics are exported to SARIF correctly."
+versions: ["latest"]
+env:
+  CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
+steps:
+  - uses: ./../action/init
+    id: init
+    with:
+      languages: javascript
+      queries: security-extended
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+      upload-database: false
+  - name: Run `diagnostics add`
+    shell: bash
+    env:
+      CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+    run: |
+      sudo mkdir -p ${{ runner.temp }}/javascript/diagnostic
+      sudo chmod -R 777 ${{ runner.temp }}/javascript/diagnostic
+      "$("$CODEQL_PATH" diagnostics add --diagnostic-dir=${{ runner.temp }}/javascript/diagnostic --plaintext-message="Plaintext message" --source-id="lang/diagnostics/example" --source-name="Diagnostic name")"
+  - name: Upload SARIF
+    uses: actions/upload-artifact@v3
+    with:
+      name: diagnostics-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+      path: "${{ runner.temp }}/results/javascript.sarif"
+      retention-days: 7
+  - name: Check diagnostics appear in SARIF
+    uses: actions/github-script@v6
+    env:
+      SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
+    # TODO
+    with:
+      script: |
+        const fs = require('fs');
+        const path = require('path');
+
+        const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+        const run = sarif.runs[0];
+        core.info(run);

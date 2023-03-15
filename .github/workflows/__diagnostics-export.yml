@@ -1,0 +1,80 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Diagnostics export
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+on:
+  push:
+    branches:
+    - main
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  diagnostics-export:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: windows-latest
+          version: latest
+    name: Diagnostics export
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: ./../action/init
+      with:
+        languages: javascript
+        queries: security-extended
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/analyze
+      with:
+        output: ${{ runner.temp }}/results
+        upload-database: false
+    - name: Run `diagnostics add`
+      shell: bash
+      env: null
+      run: |
+        ${{steps.init.outputs.codeql-path}} diagnostics add --diagnostics-dir ${{ runner.temp }}/javascript/diagnostic --plaintext-message "Plaintext message" --source-id "lang/diagnostics/example" --source-name "Diagnostic name"
+    - name: Upload SARIF
+      uses: actions/upload-artifact@v3
+      with:
+        name: diagnostics-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+        path: ${{ runner.temp }}/results/javascript.sarif
+        retention-days: 7
+    - name: Check diagnostics appear in SARIF
+      uses: actions/github-script@v6
+      env:
+        SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
+    # TODO
+      with:
+        script: |-
+          const fs = require('fs');
+          const path = require('path');
+
+          const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+          const run = sarif.runs[0];
+          core.info(run);
+    env:
+      CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
+      CODEQL_ACTION_TEST_MODE: true

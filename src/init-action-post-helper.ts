@@ -1,5 +1,3 @@
-import * as fs from "fs";
-
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -70,22 +68,15 @@ async function maybeUploadFailedSarif(
 
   const sarifFile = "../codeql-failed-run.sarif";
 
-  // If there is no database, we run 'export diagnostics'
-  if (databasePath === undefined) {
+  // If there is no database or the feature flag is off, we run 'export diagnostics'
+  if (
+    databasePath === undefined ||
+    !(await features.getValue(Feature.ExportDiagnosticsEnabled, codeql))
+  ) {
     await codeql.diagnosticsExport(sarifFile, category, config, features);
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
-    await codeql.databaseExportDiagnostics(
-      databasePath,
-      sarifFile,
-      category,
-      features
-    );
-
-    // If there was no SARIF file produced, then we fall back on 'export diagnostics'.
-    if (!fs.existsSync(sarifFile)) {
-      await codeql.diagnosticsExport(sarifFile, category, config, features);
-    }
+    await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);
   }
 
   core.info(`Uploading failed SARIF file ${sarifFile}`);

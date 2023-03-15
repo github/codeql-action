@@ -191,8 +191,7 @@ export interface CodeQL {
   databaseExportDiagnostics(
     databasePath: string,
     sarifFile: string,
-    automationDetailsId: string | undefined,
-    features: FeatureEnablement
+    automationDetailsId: string | undefined
   ): Promise<void>;
   /**
    * Run 'codeql diagnostics export'.
@@ -998,8 +997,7 @@ export async function getCodeQLForCmd(
     async databaseExportDiagnostics(
       databasePath: string,
       sarifFile: string,
-      automationDetailsId: string | undefined,
-      features: FeatureEnablement
+      automationDetailsId: string | undefined
     ): Promise<void> {
       const args = [
         "database",
@@ -1008,11 +1006,9 @@ export async function getCodeQLForCmd(
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
         `--output=${sarifFile}`,
+        "--sarif-include-diagnostics",
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
-      if (await features.getValue(Feature.ExportDiagnosticsEnabled, this)) {
-        args.push("--sarif-include-diagnostics");
-      }
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }

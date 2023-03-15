@@ -83,7 +83,7 @@ test("post: init action with debug mode on", async (t) => {
   });
 });
 
-test("uploads failed SARIF run if the database exists for typical workflow", async (t) => {
+test("uploads failed SARIF run with export diagnostics if feature flag is off", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
@@ -107,7 +107,7 @@ test("uploads failed SARIF run if the database exists for typical workflow", asy
   await testFailedSarifUpload(t, actionsWorkflow, { category: "my-category" });
 });
 
-test("uploads failed SARIF run if the database doesn't exist for typical workflow", async (t) => {
+test("uploads failed SARIF run with export diagnostics if the database doesn't exist", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
@@ -131,6 +131,34 @@ test("uploads failed SARIF run if the database doesn't exist for typical workflo
   await testFailedSarifUpload(t, actionsWorkflow, {
     category: "my-category",
     databaseExists: false,
+  });
+});
+
+// TODO(angelapwen): Write test for when feature flag is overridden to true.
+test("uploads failed SARIF run with database export-diagnostics if the database exists and feature flag is on", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "my-category",
+    exportDiagnosticsEnabled: true,
   });
 });
 
@@ -267,11 +295,13 @@ async function testFailedSarifUpload(
   {
     category,
     databaseExists = true,
+    exportDiagnosticsEnabled = false,
     expectUpload = true,
     matrix = {},
   }: {
     category?: string;
     databaseExists?: boolean;
+    exportDiagnosticsEnabled?: boolean;
     expectUpload?: boolean;
     matrix?: { [key: string]: string };
   } = {}
@@ -311,10 +341,15 @@ async function testFailedSarifUpload(
   } as uploadLib.UploadResult);
   const waitForProcessing = sinon.stub(uploadLib, "waitForProcessing");
 
+  const features = [Feature.UploadFailedSarifEnabled];
+  if (exportDiagnosticsEnabled) {
+    features.push(Feature.ExportDiagnosticsEnabled);
+  }
+
   const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
     config,
     parseRepositoryNwo("github/codeql-action"),
-    createFeatures([Feature.UploadFailedSarifEnabled]),
+    createFeatures(features),
     getRunnerLogger(true)
   );
   if (expectUpload) {
@@ -324,13 +359,12 @@ async function testFailedSarifUpload(
     });
   }
   if (expectUpload) {
-    if (databaseExists) {
+    if (databaseExists && exportDiagnosticsEnabled) {
       t.true(
         databaseExportDiagnosticsStub.calledOnceWith(
           config.dbLocation,
           sinon.match.string,
-          category,
-          sinon.match.any
+          category
         )
       );
     } else {

@@ -16,3 +16,5 @@ steps:
     shell: bash
     run: ./build.sh
   - uses: ./../action/analyze
+    with:
+      upload-database: false

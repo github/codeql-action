@@ -1,0 +1,49 @@
+name: "Config export"
+description: "Tests that the code scanning configuration file is exported to SARIF correctly."
+versions: ["latest"]
+env:
+  CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG: true
+  CODEQL_PASS_CONFIG_TO_CLI: true
+steps:
+  - uses: ./../action/init
+    with:
+      languages: javascript
+      queries: security-extended
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+      upload-database: false
+  - name: Upload SARIF
+    uses: actions/upload-artifact@v3
+    with:
+      name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+      path: "${{ runner.temp }}/results/javascript.sarif"
+      retention-days: 7
+  - name: Check config properties appear in SARIF
+    uses: actions/github-script@v6
+    env:
+      SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
+    with:
+      script: |
+        const fs = require('fs');
+        const path = require('path');
+
+        const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+        const run = sarif.runs[0];
+        const configSummary = run.properties.codeqlConfigSummary;
+
+        if (configSummary === undefined) {
+          core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
+        }
+        if (configSummary.disableDefaultQueries !== false) {
+          core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' + 
+            `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
+        }
+        const expectedQueries = [{ type: 'builtinSuite', uses: 'security-extended' }];
+        // Use JSON.stringify to deep-equal the arrays.
+        if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
+          core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` + 
+            `${JSON.stringify(configSummary.queries)}.`);
+        }
+        core.info('Finished config export tests.');

@@ -15,6 +15,7 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/analyze
     with:
+      upload-database: false
       skip-queries: true
       upload: false
   - name: Assert database exists

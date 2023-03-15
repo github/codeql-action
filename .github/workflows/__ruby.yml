@@ -54,6 +54,8 @@ jobs:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - uses: ./../action/analyze
       id: analysis
+      with:
+        upload-database: false
     - name: Check database
       shell: bash
       run: |

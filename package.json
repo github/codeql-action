@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -55,7 +55,7 @@
     "micromatch is an unspecified dependency of ava"
   ],
   "devDependencies": {
-    "@ava/typescript": "3.0.1",
+    "@ava/typescript": "4.0.0",
     "@types/adm-zip": "^0.5.0",
     "@types/get-folder-size": "^2.0.0",
     "@types/js-yaml": "^4.0.5",

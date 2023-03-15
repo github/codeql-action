@@ -86,6 +86,8 @@ jobs:
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
+      with:
+        upload-database: false
     env:
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       CODEQL_ACTION_TEST_MODE: true

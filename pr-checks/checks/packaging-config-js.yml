@@ -13,6 +13,7 @@ steps:
   - uses: ./../action/analyze
     with:
       output: "${{ runner.temp }}/results"
+      upload-database: false
 
   - name: Check results
     uses: ./../action/.github/check-sarif

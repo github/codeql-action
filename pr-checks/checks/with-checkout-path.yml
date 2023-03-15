@@ -30,6 +30,7 @@ steps:
       ref: v1.1.0
       sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
       upload: false
+      upload-database: false
 
   - uses: ./../action/upload-sarif
     with:

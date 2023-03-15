@@ -628,7 +628,17 @@ test("databaseInterpretResults() does not set --sarif-add-query-help for 2.7.0",
   sinon.stub(codeqlObject, "getVersion").resolves("2.7.0");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
+  await codeqlObject.databaseInterpretResults(
+    "",
+    [],
+    "",
+    "",
+    "",
+    "-v",
+    "",
+    stubConfig,
+    createFeatures([])
+  );
   t.false(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be absent, but it is present"
@@ -641,7 +651,17 @@ test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (
   sinon.stub(codeqlObject, "getVersion").resolves("2.7.1");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
+  await codeqlObject.databaseInterpretResults(
+    "",
+    [],
+    "",
+    "",
+    "",
+    "-v",
+    "",
+    stubConfig,
+    createFeatures([])
+  );
   t.true(
     runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
     "--sarif-add-query-help should be present, but it is absent"
@@ -1129,7 +1149,17 @@ test("databaseInterpretResults() sets --sarif-add-baseline-file-info for 2.11.3"
   sinon.stub(codeqlObject, "getVersion").resolves("2.11.3");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
+  await codeqlObject.databaseInterpretResults(
+    "",
+    [],
+    "",
+    "",
+    "",
+    "-v",
+    "",
+    stubConfig,
+    createFeatures([])
+  );
   t.true(
     runnerConstructorStub.firstCall.args[1].includes(
       "--sarif-add-baseline-file-info"
@@ -1144,7 +1174,17 @@ test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for
   sinon.stub(codeqlObject, "getVersion").resolves("2.11.2");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults("", [], "", "", "", "-v", "");
+  await codeqlObject.databaseInterpretResults(
+    "",
+    [],
+    "",
+    "",
+    "",
+    "-v",
+    "",
+    stubConfig,
+    createFeatures([])
+  );
   t.false(
     runnerConstructorStub.firstCall.args[1].includes(
       "--sarif-add-baseline-file-info"

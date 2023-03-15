@@ -36,6 +36,7 @@ export interface FeatureEnablement {
 export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
+  ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
@@ -53,6 +54,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.6",
     defaultValue: true,
+  },
+  [Feature.ExportCodeScanningConfigEnabled]: {
+    envVar: "CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG",
+    minimumVersion: "2.12.3",
+    defaultValue: false,
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
@@ -88,7 +94,7 @@ export class Features implements FeatureEnablement {
     gitHubVersion: util.GitHubVersion,
     repositoryNwo: RepositoryNwo,
     tempDir: string,
-    logger: Logger
+    private readonly logger: Logger
   ) {
     this.gitHubFeatureFlags = new GitHubFeatureFlags(
       gitHubVersion,
@@ -129,6 +135,9 @@ export class Features implements FeatureEnablement {
 
     // Do not use this feature if user explicitly disables it via an environment variable.
     if (envVar === "false") {
+      this.logger.debug(
+        `Feature ${feature} is disabled via the environment variable ${featureConfig[feature].envVar}.`
+      );
       return false;
     }
 
@@ -136,19 +145,45 @@ export class Features implements FeatureEnablement {
     const minimumVersion = featureConfig[feature].minimumVersion;
     if (codeql && minimumVersion) {
       if (!(await util.codeQlVersionAbove(codeql, minimumVersion))) {
+        this.logger.debug(
+          `Feature ${feature} is disabled because the CodeQL CLI version is older than the minimum ` +
+            `version ${minimumVersion}.`
+        );
         return false;
+      } else {
+        this.logger.debug(
+          `CodeQL CLI version ${await codeql.getVersion()} is newer than the minimum ` +
+            `version ${minimumVersion} for feature ${feature}.`
+        );
       }
     }
 
     // Use this feature if user explicitly enables it via an environment variable.
     if (envVar === "true") {
+      this.logger.debug(
+        `Feature ${feature} is enabled via the environment variable ${featureConfig[feature].envVar}.`
+      );
       return true;
     }
+
     // Ask the GitHub API if the feature is enabled.
-    return (
-      (await this.gitHubFeatureFlags.getValue(feature)) ??
-      featureConfig[feature].defaultValue
+    const apiValue = await this.gitHubFeatureFlags.getValue(feature);
+    if (apiValue !== undefined) {
+      this.logger.debug(
+        `Feature ${feature} is ${
+          apiValue ? "enabled" : "disabled"
+        } via the GitHub API.`
+      );
+      return apiValue;
+    }
+
+    const defaultValue = featureConfig[feature].defaultValue;
+    this.logger.debug(
+      `Feature ${feature} is ${
+        defaultValue ? "enabled" : "disabled"
+      } due to its default value.`
     );
+    return defaultValue;
   }
 }
 
@@ -264,12 +299,12 @@ class GitHubFeatureFlags {
       this.logger.debug(`No feature flags API response for ${feature}.`);
       return undefined;
     }
-    const featureEnablement = response[feature];
-    if (featureEnablement === undefined) {
+    const features = response[feature];
+    if (features === undefined) {
       this.logger.debug(`Feature '${feature}' undefined in API response.`);
       return undefined;
     }
-    return !!featureEnablement;
+    return !!features;
   }
 
   private async getAllFeatures(): Promise<GitHubFeatureFlagsApiResponse> {

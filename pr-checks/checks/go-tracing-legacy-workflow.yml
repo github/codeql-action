@@ -9,6 +9,8 @@ steps:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/analyze
+    with:
+      upload-database: false
   - shell: bash
     run: |
       cd "$RUNNER_TEMP/codeql_databases"

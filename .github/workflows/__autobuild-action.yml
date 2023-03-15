@@ -56,6 +56,8 @@ jobs:
         CORECLR_PROFILER: ''
         CORECLR_PROFILER_PATH_64: ''
     - uses: ./../action/analyze
+      with:
+        upload-database: false
     - name: Check database
       shell: bash
       run: |

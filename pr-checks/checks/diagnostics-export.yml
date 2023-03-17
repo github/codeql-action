@@ -1,5 +1,5 @@
-name: "Diagnostics export"
-description: "Tests that diagnostics are exported to SARIF correctly."
+name: "Diagnostic export"
+description: "Tests that a manually added diagnostic is exported to SARIF."
 versions: ["latest"]
 env:
   CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
@@ -10,7 +10,7 @@ steps:
       languages: javascript
       queries: security-extended
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-  - name: Add a diagnostic
+  - name: Manually add a diagnostic
     shell: bash
     env:
       CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
@@ -19,6 +19,7 @@ steps:
   - uses: ./../action/analyze
     with:
       output: "${{ runner.temp }}/results"
+      upload-database: false
   - name: Upload SARIF
     uses: actions/upload-artifact@v3
     with:

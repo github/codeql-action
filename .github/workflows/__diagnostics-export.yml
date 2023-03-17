@@ -3,7 +3,7 @@
 #     pip install ruamel.yaml && python3 sync.py
 # to regenerate this file.
 
-name: PR Check - Diagnostics export
+name: PR Check - Diagnostic export
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -31,7 +31,7 @@ jobs:
           version: latest
         - os: windows-latest
           version: latest
-    name: Diagnostics export
+    name: Diagnostic export
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -48,7 +48,7 @@ jobs:
         languages: javascript
         queries: security-extended
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - name: Add a diagnostic
+    - name: Manually add a diagnostic
       shell: bash
       env:
         CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
@@ -57,6 +57,7 @@ jobs:
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
+        upload-database: false
     - name: Upload SARIF
       uses: actions/upload-artifact@v3
       with:

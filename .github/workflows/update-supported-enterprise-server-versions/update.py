@@ -15,6 +15,11 @@ def main():
 	api_compatibility_data = json.loads(_API_COMPATIBILITY_PATH.read_text())
 
 	releases = json.loads(_RELEASE_FILE_PATH.read_text())
+
+	# Remove GHES version using a previous version numbering scheme.
+	if "11.10.340" in releases:
+		del releases["11.10.340"]
+
 	oldest_supported_release = None
 	newest_supported_release = semver.VersionInfo.parse(api_compatibility_data["maximumVersion"] + ".0")
 

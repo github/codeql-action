@@ -892,6 +892,9 @@ export async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--sarif-add-baseline-file-info");
       }
+      if (await features.getValue(Feature.ExportDiagnosticsEnabled, this)) {
+        codeqlArgs.push("--sarif-include-diagnostics");
+      }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {
         codeqlArgs.push(...querySuitePaths);
@@ -1006,7 +1009,7 @@ export async function getCodeQLForCmd(
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
         `--output=${sarifFile}`,
-        "--sarif-include-diagnostics",
+        "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
       if (automationDetailsId !== undefined) {

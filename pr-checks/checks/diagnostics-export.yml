@@ -10,15 +10,15 @@ steps:
       languages: javascript
       queries: security-extended
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-  - uses: ./../action/analyze
-    with:
-      output: "${{ runner.temp }}/results"
-  - name: Run `diagnostics add`
+  - name: Add a diagnostic
     shell: bash
     env:
       CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
     run: |
       "$CODEQL_PATH" database add-diagnostic "$RUNNER_TEMP/codeql_databases/javascript" --plaintext-message="Plaintext message" --source-id="lang/diagnostics/example" --source-name="Diagnostic name"
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
   - name: Upload SARIF
     uses: actions/upload-artifact@v3
     with:
@@ -33,9 +33,7 @@ steps:
     with:
       script: |
         const fs = require('fs');
-        const path = require('path');
 
         const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
         const run = sarif.runs[0];
-        core.info(Object.keys(run));
-        core.info(Object.keys(run.properties));
+        core.info(JSON.stringify(run));

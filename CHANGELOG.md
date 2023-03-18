@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Add `configuration` parameter to the `init` action https://github.com/github/codeql-action/pull/1590
 
 ## 2.2.7 - 15 Mar 2023
 

@@ -58,6 +58,7 @@ export async function initConfig(
   registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  queryFilters: string | undefined,
   trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
@@ -79,6 +80,7 @@ export async function initConfig(
     registriesInput,
     configFile,
     dbLocation,
+    queryFilters,
     trapCachingEnabled,
     debugMode,
     debugArtifactName,
@@ -108,7 +110,6 @@ export async function runInit(
   logger: Logger
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
-
   try {
     if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
       // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.

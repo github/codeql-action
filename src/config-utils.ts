@@ -1690,6 +1690,7 @@ export async function initConfig(
   registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  configuration: string | undefined,
   trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
@@ -1704,6 +1705,15 @@ export async function initConfig(
   logger: Logger
 ): Promise<Config> {
   let config: Config;
+
+  // if configuration is set, it takes precedence over configFile
+  if (configuration) {
+    const configFileToCreate = path.resolve(workspacePath, "user-config-from-action.yml");
+    fs.writeFileSync(configFileToCreate, configuration);
+    configFile = configFileToCreate;
+    logger.debug(`Using configuration from action input: ${configFile}`);
+  }
+  
 
   // If no config file was provided create an empty one
   if (!configFile) {
@@ -1747,6 +1757,7 @@ export async function initConfig(
       logger
     );
   }
+
 
   // When using the codescanning config in the CLI, pack downloads
   // happen in the CLI during the `database init` command, so no need

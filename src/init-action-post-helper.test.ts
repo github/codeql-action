@@ -134,7 +134,6 @@ test("uploads failed SARIF run with export diagnostics if the database doesn't e
   });
 });
 
-// TODO(angelapwen): Write test for when feature flag is overridden to true.
 test("uploads failed SARIF run with database export-diagnostics if the database exists and feature flag is on", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {

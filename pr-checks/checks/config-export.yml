@@ -27,7 +27,6 @@ steps:
     with:
       script: |
         const fs = require('fs');
-        const path = require('path');
 
         const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
         const run = sarif.runs[0];

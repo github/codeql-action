@@ -1010,6 +1010,7 @@ export async function getCodeQLForCmd(
         "--format=sarif-latest",
         `--output=${sarifFile}`,
         "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
+        "-vvv",
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
       if (automationDetailsId !== undefined) {

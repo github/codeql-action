@@ -178,7 +178,7 @@ Use the `configuration` parameter of the `init` action to enable a workflow base
   Use workflow input parameter:
 
   ```yaml
-    - uses: tgrall/codeql-action/init@query-filter
+    - uses: github/codeql-action/init@v2
     with:
       languages: ${{ matrix.language }}
       configuration: |

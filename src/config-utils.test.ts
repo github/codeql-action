@@ -105,6 +105,7 @@ test("load empty config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -176,6 +177,7 @@ test("loading config saves config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -213,6 +215,7 @@ test("load input outside of workspace", async (t) => {
         undefined,
         undefined,
         "../input",
+        undefined,
         undefined,
         false,
         false,
@@ -254,6 +257,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         undefined,
         configFile,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -294,6 +298,7 @@ test("load non-existent input", async (t) => {
         undefined,
         undefined,
         configFile,
+        undefined,
         undefined,
         false,
         false,
@@ -402,6 +407,7 @@ test("load non-empty input", async (t) => {
       undefined,
       configFilePath,
       undefined,
+      undefined,
       false,
       false,
       "my-artifact",
@@ -472,6 +478,7 @@ test("Default queries are used", async (t) => {
       undefined,
       undefined,
       configFilePath,
+      undefined,
       undefined,
       false,
       false,
@@ -552,6 +559,7 @@ test("Queries can be specified in config file", async (t) => {
       undefined,
       configFilePath,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -630,6 +638,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       undefined,
       configFilePath,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -706,6 +715,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       undefined,
       configFilePath,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -769,6 +779,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const config = await configUtils.initConfig(
       languages,
       testQueries,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -861,6 +872,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       undefined,
       configFilePath,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -913,6 +925,91 @@ test("Queries in workflow file can be added to the set of queries without overri
   });
 });
 
+test("Queries can be specified in configuration, same as file", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo
+      packs:
+        javascript:
+          - a/b@1.2.3
+        python:
+          - c/d@1.2.3
+      `;        
+      
+
+
+    fs.mkdirSync(path.join(tmpDir, "foo"));
+
+    const resolveQueriesArgs: Array<{
+      queries: string[];
+      extraSearchPath: string | undefined;
+    }> = [];
+    const codeQL = setCodeQL({
+      async resolveQueries(
+        queries: string[],
+        extraSearchPath: string | undefined
+      ) {
+        resolveQueriesArgs.push({ queries, extraSearchPath });
+        return queriesToResolvedQueryForm(queries);
+      },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
+    });
+
+    // Only JS, python packs will be ignored
+    const languages = "javascript";
+
+    const config = await configUtils.initConfig(
+      languages,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      inputFileContents,
+      false,
+      false,
+      "",
+      "",
+      { owner: "github", repo: "example " },
+      tmpDir,
+      codeQL,
+      tmpDir,
+      gitHubVersion,
+      sampleApiDetails,
+      createFeatures([]),
+      getRunnerLogger(true)
+    );
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries
+    // and once for `./foo` from the config file.
+    t.deepEqual(resolveQueriesArgs.length, 2);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.true(resolveQueriesArgs[1].queries[0].endsWith(`${path.sep}foo`));
+    t.deepEqual(config.packs as unknown, {
+      [Language.javascript]: ["a/b@1.2.3"],
+    });
+
+    // Now check that the end result contains the default queries and the query from config
+    t.deepEqual(config.queries["javascript"].builtin.length, 1);
+    t.deepEqual(config.queries["javascript"].custom.length, 1);
+    t.true(
+      config.queries["javascript"].builtin[0].endsWith(
+        "javascript-code-scanning.qls"
+      )
+    );
+    t.true(
+      config.queries["javascript"].custom[0].queries[0].endsWith(
+        `${path.sep}foo`
+      )
+    );
+  });
+});
+
 test("Invalid queries in workflow file handled correctly", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     const queries = "foo/bar@v1@v3";
@@ -939,6 +1036,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
       await configUtils.initConfig(
         languages,
         queries,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1015,6 +1113,7 @@ test("API client used when reading remote config", async (t) => {
       undefined,
       configFile,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -1045,6 +1144,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
         undefined,
         undefined,
         repoReference,
+        undefined,
         undefined,
         false,
         false,
@@ -1084,6 +1184,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
         undefined,
         undefined,
         repoReference,
+        undefined,
         undefined,
         false,
         false,
@@ -1128,6 +1229,7 @@ test("No detected languages", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -1155,6 +1257,7 @@ test("Unknown languages", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1217,6 +1320,7 @@ test("Config specifies packages", async (t) => {
       undefined,
       configFile,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -1277,6 +1381,7 @@ test("Config specifies packages for multiple languages", async (t) => {
       undefined,
       undefined,
       configFile,
+      undefined,
       undefined,
       false,
       false,
@@ -1349,6 +1454,7 @@ function doInvalidInputTest(
           undefined,
           undefined,
           configFile,
+          undefined,
           undefined,
           false,
           false,
@@ -1931,6 +2037,7 @@ const mlPoweredQueriesMacro = test.macro({
         "javascript",
         queriesInput,
         packsInput,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -2650,3 +2757,5 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
 });
+
+

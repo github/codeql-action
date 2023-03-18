@@ -189,7 +189,7 @@ Use the `configuration` parameter of the `init` action to enable a workflow base
         query-filters:
           - include:
               tags: /${{ github.event.inputs.codeql-include-tags }}/ 
-  ``
+  ```
 
 ## Troubleshooting
 

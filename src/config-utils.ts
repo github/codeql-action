@@ -1708,12 +1708,14 @@ export async function initConfig(
 
   // if configuration is set, it takes precedence over configFile
   if (configuration) {
-    const configFileToCreate = path.resolve(workspacePath, "user-config-from-action.yml");
+    const configFileToCreate = path.resolve(
+      workspacePath,
+      "user-config-from-action.yml"
+    );
     fs.writeFileSync(configFileToCreate, configuration);
     configFile = configFileToCreate;
     logger.debug(`Using configuration from action input: ${configFile}`);
   }
-  
 
   // If no config file was provided create an empty one
   if (!configFile) {
@@ -1757,7 +1759,6 @@ export async function initConfig(
       logger
     );
   }
-
 
   // When using the codescanning config in the CLI, pack downloads
   // happen in the CLI during the `database init` command, so no need

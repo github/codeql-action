@@ -936,9 +936,7 @@ test("Queries can be specified in configuration, same as file", async (t) => {
           - a/b@1.2.3
         python:
           - c/d@1.2.3
-      `;        
-      
-
+    `;
 
     fs.mkdirSync(path.join(tmpDir, "foo"));
 
@@ -2757,5 +2755,3 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
 });
-
-

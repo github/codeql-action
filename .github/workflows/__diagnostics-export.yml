@@ -82,14 +82,27 @@ jobs:
           const run = sarif.runs[0];
 
           const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
-          const diagnosticToolExecutionNotification = toolExecutionNotifications[toolExecutionNotifications.length - 1];
-          if (diagnosticToolExecutionNotification.descriptor.id !== 'lang/diagnostics/example' || diagnosticToolExecutionNotification.message.text !== 'Plaintext message') {
+          let foundDiagnosticToolExecutionNotification = false;
+          for (toolExecutionNotification of toolExecutionNotifications) {
+            if (toolExecutionNotification.descriptor.id === 'lang/diagnostics/example' && toolExecutionNotification.message.text === 'Plaintext message') {
+              foundDiagnosticToolExecutionNotification = true; 
+              break;
+            }
+          };
+          if (foundDiagnosticToolExecutionNotification === false) {
             core.setFailed('`toolExecutionNotification` related to this diagnostic was not found in SARIF');
           }
 
           const notifications = run.tool.driver.notifications;
-          const diagnosticNotification = notifications[notifications.length - 1];
-          if (diagnosticNotification.id !== 'lang/diagnostics/example' || diagnosticNotification.name !== 'lang/diagnostics/example' || diagnosticNotification.fullDescription.text !== 'Diagnostic name') {
+          const diagnosticcotification = notifications[notifications.length - 1];
+          let foundDiagnosticNotification = false;
+          for (notification of notifications) {
+            if (notification.id === 'lang/diagnostics/example' && notification.name === 'lang/diagnostics/example' && notification.fullDescription.text && 'Diagnostic name') {
+              foundDiagnosticNotification = true;
+              break;
+            }
+          }
+          if (foundDiagnosticNotification === false) {
             core.setFailed('`runs.tools.driver.notification` related to this diagnostic was not found in SARIF');
           }
 

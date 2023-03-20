@@ -38,27 +38,15 @@ steps:
         const run = sarif.runs[0];
 
         const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
-        let foundDiagnosticToolExecutionNotification = false;
-        for (toolExecutionNotification of toolExecutionNotifications) {
-          if (toolExecutionNotification.descriptor.id === 'lang/diagnostics/example' && toolExecutionNotification.message.text === 'Plaintext message') {
-            foundDiagnosticToolExecutionNotification = true; 
-            break;
-          }
-        };
-        if (foundDiagnosticToolExecutionNotification === false) {
-          core.setFailed('An entry for this diagnostic was not found in the `runs[].invocations[].toolExecutionNotifications` SARIF property');
+        const diagnosticToolExecutionNotification = toolExecutionNotifications.filter(n => n.descriptor.id === 'lang/diagnostics/example' && n.message.text === 'Plaintext message');
+        if (diagnosticToolExecutionNotification.length !== 1) {
+          core.setFailed(`Expected exactly 1 entry for this diagnostic in the 'runs[].invocations[].toolExecutionNotifications[]' SARIF property, found ${diagnosticToolExecutionNotification.length}`);
         }
 
         const notifications = run.tool.driver.notifications;
-        let foundDiagnosticNotification = false;
-        for (notification of notifications) {
-          if (notification.id === 'lang/diagnostics/example' && notification.name === 'lang/diagnostics/example' && notification.fullDescription.text && 'Diagnostic name') {
-            foundDiagnosticNotification = true;
-            break;
-          }
-        }
-        if (foundDiagnosticNotification === false) {
-          core.setFailed('An entry for this diagnostic was not found in the `runs[].tool.driver.notifications[]` SARIF property.');
+        const diagnosticNotification = notifications.filter(n => n.id === 'lang/diagnostics/example' && n.name === 'lang/diagnostics/example' && n.fullDescription.text && 'Diagnostic name');
+        if (diagnosticNotification.length !== 1) {
+          core.setFailed(`Expected exactly 1 entry for this diagnostic in the 'runs[].tool.driver.notifications[]' SARIF property, found ${diagnosticNotification.length}`);
         }
 
         core.info('Finished diagnostic export test');

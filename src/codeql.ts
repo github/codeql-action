@@ -186,6 +186,17 @@ export interface CodeQL {
    */
   databasePrintBaseline(databasePath: string): Promise<string>;
   /**
+   * Run 'codeql database export-diagnostics'
+   *
+   * Note that the "--sarif-include-diagnostics" option is always used, as the command should
+   * only be run if the ExportDiagnosticsEnabled feature flag is on.
+   */
+  databaseExportDiagnostics(
+    databasePath: string,
+    sarifFile: string,
+    automationDetailsId: string | undefined
+  ): Promise<void>;
+  /**
    * Run 'codeql diagnostics export'.
    */
   diagnosticsExport(
@@ -428,6 +439,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     databasePrintBaseline: resolveFunction(
       partialCodeql,
       "databasePrintBaseline"
+    ),
+    databaseExportDiagnostics: resolveFunction(
+      partialCodeql,
+      "databaseExportDiagnostics"
     ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
   };
@@ -880,6 +895,9 @@ export async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--sarif-add-baseline-file-info");
       }
+      if (await features.getValue(Feature.ExportDiagnosticsEnabled, this)) {
+        codeqlArgs.push("--sarif-include-diagnostics");
+      }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {
         codeqlArgs.push(...querySuitePaths);
@@ -980,6 +998,27 @@ export async function getCodeQLForCmd(
         `--name=${databaseName}`,
         ...getExtraOptionsFromEnv(["database", "bundle"]),
       ];
+      await new toolrunner.ToolRunner(cmd, args).exec();
+    },
+    async databaseExportDiagnostics(
+      databasePath: string,
+      sarifFile: string,
+      automationDetailsId: string | undefined
+    ): Promise<void> {
+      const args = [
+        "database",
+        "export-diagnostics",
+        `${databasePath}`,
+        "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
+        "--format=sarif-latest",
+        `--output=${sarifFile}`,
+        "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
+        "-vvv",
+        ...getExtraOptionsFromEnv(["diagnostics", "export"]),
+      ];
+      if (automationDetailsId !== undefined) {
+        args.push("--sarif-category", automationDetailsId);
+      }
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
     async diagnosticsExport(

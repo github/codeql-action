@@ -42,13 +42,6 @@ export const DEFAULT_DEBUG_ARTIFACT_NAME = "debug-artifacts";
  */
 export const DEFAULT_DEBUG_DATABASE_NAME = "db";
 
-/**
- * Environment variable that is set to "true" when the CodeQL Action has invoked
- * the Go autobuilder.
- */
-export const DID_AUTOBUILD_GO_ENV_VAR_NAME =
-  "CODEQL_ACTION_DID_AUTOBUILD_GOLANG";
-
 export interface SarifFile {
   version?: string | null;
   runs: SarifRun[];

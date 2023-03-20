@@ -83,7 +83,7 @@ test("post: init action with debug mode on", async (t) => {
   });
 });
 
-test("uploads failed SARIF run with export diagnostics if feature flag is off", async (t) => {
+test("uploads failed SARIF run with `diagnostics export` if feature flag is off", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
@@ -107,7 +107,7 @@ test("uploads failed SARIF run with export diagnostics if feature flag is off", 
   await testFailedSarifUpload(t, actionsWorkflow, { category: "my-category" });
 });
 
-test("uploads failed SARIF run with export diagnostics if the database doesn't exist", async (t) => {
+test("uploads failed SARIF run with `diagnostics export` if the database doesn't exist", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",

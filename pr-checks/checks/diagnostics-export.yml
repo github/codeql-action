@@ -58,7 +58,7 @@ steps:
           }
         }
         if (foundDiagnosticNotification === false) {
-          core.setFailed('`runs.tools.driver.notification` related to this diagnostic was not found in SARIF');
+          core.setFailed('An entry for this diagnostic was not found in the `runs[].tool.driver.notifications[]` SARIF property.');
         }
 
         core.info('Finished diagnostic export test');

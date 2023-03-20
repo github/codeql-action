@@ -90,11 +90,10 @@ jobs:
             }
           };
           if (foundDiagnosticToolExecutionNotification === false) {
-            core.setFailed('`toolExecutionNotification` related to this diagnostic was not found in SARIF');
+            core.setFailed('An entry for this diagnostic was not found in the `runs[].invocations[].toolExecutionNotifications` SARIF property');
           }
 
           const notifications = run.tool.driver.notifications;
-          const diagnosticcotification = notifications[notifications.length - 1];
           let foundDiagnosticNotification = false;
           for (notification of notifications) {
             if (notification.id === 'lang/diagnostics/example' && notification.name === 'lang/diagnostics/example' && notification.fullDescription.text && 'Diagnostic name') {
@@ -103,7 +102,7 @@ jobs:
             }
           }
           if (foundDiagnosticNotification === false) {
-            core.setFailed('`runs.tools.driver.notification` related to this diagnostic was not found in SARIF');
+            core.setFailed('An entry for this diagnostic was not found in the `runs[].tool.driver.notifications[]` SARIF property.');
           }
 
           core.info('Finished diagnostic export test');

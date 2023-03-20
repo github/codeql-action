@@ -46,7 +46,7 @@ steps:
           }
         };
         if (foundDiagnosticToolExecutionNotification === false) {
-          core.setFailed('`toolExecutionNotification` related to this diagnostic was not found in SARIF');
+          core.setFailed('An entry for this diagnostic was not found in the `runs[].invocations[].toolExecutionNotifications` SARIF property');
         }
 
         const notifications = run.tool.driver.notifications;

@@ -186,7 +186,10 @@ export interface CodeQL {
    */
   databasePrintBaseline(databasePath: string): Promise<string>;
   /**
-   * Run 'codeql database export-diagnostics'.
+   * Run 'codeql database export-diagnostics'
+   *
+   * Note that the "--sarif-include-diagnostics" option is always used, as the command should
+   * only be run if the ExportDiagnosticsEnabled feature flag is on.
    */
   databaseExportDiagnostics(
     databasePath: string,

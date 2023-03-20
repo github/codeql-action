@@ -364,7 +364,8 @@ async function testFailedSarifUpload(
           config.dbLocation,
           sinon.match.string,
           category
-        )
+        ),
+        `Actual args were: ${databaseExportDiagnosticsStub.args}`
       );
     } else {
       t.true(

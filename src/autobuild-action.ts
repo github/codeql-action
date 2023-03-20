@@ -14,11 +14,8 @@ import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
-import {
-  DID_AUTOBUILD_GO_ENV_VAR_NAME,
-  checkGitHubVersionInRange,
-  initializeEnvironment,
-} from "./util";
+import { CODEQL_ACTION_DID_AUTOBUILD_GOLANG } from "./shared-environment";
+import { checkGitHubVersionInRange, initializeEnvironment } from "./util";
 
 interface AutobuildStatusReport extends StatusReportBase {
   /** Comma-separated set of languages being auto-built. */
@@ -88,7 +85,7 @@ async function run() {
         currentLanguage = language;
         await runAutobuild(language, config, logger);
         if (language === Language.go) {
-          core.exportVariable(DID_AUTOBUILD_GO_ENV_VAR_NAME, "true");
+          core.exportVariable(CODEQL_ACTION_DID_AUTOBUILD_GOLANG, "true");
         }
       }
     }

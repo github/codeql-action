@@ -349,15 +349,14 @@ async function testFailedSarifUpload(
   {
     category,
     databaseExists = true,
-    exportDiagnosticsEnabled = false,
     expectUpload = true,
+    exportDiagnosticsEnabled = false,
     matrix = {},
   }: {
     category?: string;
     databaseExists?: boolean;
-    exportDiagnosticsEnabled?: boolean;
     expectUpload?: boolean;
-
+    exportDiagnosticsEnabled?: boolean;
     matrix?: { [key: string]: string };
   } = {}
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
@@ -412,8 +411,6 @@ async function testFailedSarifUpload(
       raw_upload_size_bytes: 20,
       zipped_upload_size_bytes: 10,
     });
-  }
-  if (expectUpload) {
     if (databaseExists && exportDiagnosticsEnabled) {
       t.true(
         databaseExportDiagnosticsStub.calledOnceWith(

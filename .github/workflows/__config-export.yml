@@ -31,6 +31,12 @@ jobs:
           version: latest
         - os: windows-latest
           version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+        - os: windows-latest
+          version: nightly-latest
     name: Config export
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
@@ -64,7 +70,6 @@ jobs:
       with:
         script: |
           const fs = require('fs');
-          const path = require('path');
 
           const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
           const run = sarif.runs[0];

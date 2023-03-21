@@ -268,8 +268,13 @@ async function run() {
       dbLocations[language] = util.getCodeQLDatabasePath(config, language);
     }
     core.setOutput("db-locations", dbLocations);
+    const uploadInput = actionsUtil.getOptionalInput("upload");
+    const shouldUpload =
+      uploadInput === undefined || uploadInput === "true"
+        ? "always"
+        : uploadInput;
 
-    if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
+    if (runStats && shouldUpload === "always") {
       uploadResult = await upload_lib.uploadFromActions(
         outputDir,
         actionsUtil.getRequiredInput("checkout_path"),

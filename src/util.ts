@@ -305,10 +305,12 @@ export enum GitHubVariant {
   DOTCOM,
   GHES,
   GHAE,
+  GHE_DOTCOM,
 }
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }
   | { type: GitHubVariant.GHAE }
+  | { type: GitHubVariant.GHE_DOTCOM }
   | { type: GitHubVariant.GHES; version: string };
 
 export async function getGitHubVersion(
@@ -332,6 +334,10 @@ export async function getGitHubVersion(
 
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "GitHub AE") {
     return { type: GitHubVariant.GHAE };
+  }
+
+  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
+    return { type: GitHubVariant.GHE_DOTCOM };
   }
 
   const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;

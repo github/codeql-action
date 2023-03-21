@@ -237,6 +237,14 @@ test("getGitHubVersion", async (t) => {
     apiURL: undefined,
   });
   t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
+
+  mockGetMetaVersionHeader("ghe.com");
+  const gheDotcom = await util.getGitHubVersion({
+    auth: "",
+    url: "https://foo.ghe.com",
+    apiURL: undefined,
+  });
+  t.deepEqual({ type: util.GitHubVariant.GHE_DOTCOM }, gheDotcom);
 });
 
 const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [

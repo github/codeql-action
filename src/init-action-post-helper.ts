@@ -56,10 +56,8 @@ async function maybeUploadFailedSarif(
   const workflow = await getWorkflow();
   const jobName = getRequiredEnvParam("GITHUB_JOB");
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
-  if (
-    getUploadInputOrThrow(workflow, jobName, matrix) !== "true" ||
-    isInTestMode()
-  ) {
+  const shouldUpload = getUploadInputOrThrow(workflow, jobName, matrix);
+  if (!["always", "failure-only"].includes(shouldUpload) || isInTestMode()) {
     return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);

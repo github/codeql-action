@@ -424,9 +424,13 @@ export function getCategoryInputOrThrow(
  * Makes a best effort attempt to retrieve the upload input for the particular job,
  * given a set of matrix variables.
  *
+ * The "true" and "false" upload inputs are now deprecated, and we convert them to
+ * "always" and "failure-only", respectively. If the input is unspecified, the default
+ * remains "always".
+ *
  * Typically you'll want to wrap this function in a try/catch block and handle the error.
  *
- * @returns the upload input
+ * @returns the upload input: "always", "failure-only", or "never"
  * @throws an error if the upload input could not be determined
  */
 export function getUploadInputOrThrow(
@@ -434,15 +438,20 @@ export function getUploadInputOrThrow(
   jobName: string,
   matrixVars: { [key: string]: string } | undefined
 ): string {
-  return (
-    getInputOrThrow(
-      workflow,
-      jobName,
-      getAnalyzeActionName(),
-      "upload",
-      matrixVars
-    ) || "true" // if unspecified, upload defaults to true
+  const userInput = getInputOrThrow(
+    workflow,
+    jobName,
+    getAnalyzeActionName(),
+    "upload",
+    matrixVars
   );
+  if (userInput === undefined || userInput === "true") {
+    return "always";
+  }
+  if (userInput === "false") {
+    return "failure-only";
+  }
+  return userInput;
 }
 
 /**

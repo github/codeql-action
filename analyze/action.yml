@@ -10,10 +10,10 @@ inputs:
     required: false
     default: "../results"
   upload:
-    description: Upload the SARIF file to Code Scanning
+    description: Upload the SARIF file to Code Scanning. This should be one of 'always', 'failure-only', or 'never'
     required: false
     # If changing this, make sure to update workflow.ts accordingly.
-    default: "true"
+    default: "always"
   cleanup-level:
     description: "Level of cleanup to perform on CodeQL databases at the end of the analyze step. This should either be 'none' to skip cleanup, or be a valid argument for the --mode flag of the CodeQL CLI command 'codeql database cleanup' as documented at https://codeql.github.com/docs/codeql-cli/manual/database-cleanup"
     required: false

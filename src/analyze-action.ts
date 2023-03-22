@@ -269,15 +269,9 @@ async function run() {
     }
     core.setOutput("db-locations", dbLocations);
     const uploadInput = actionsUtil.getOptionalInput("upload");
-    const shouldUpload =
-      uploadInput === undefined || uploadInput === "true"
-        ? "always"
-        : uploadInput;
-
     if (
       runStats &&
-      (shouldUpload === "always" ||
-        !(await actionsUtil.isValidUploadInput(uploadInput))) // Fall back to always uploading.
+      (await actionsUtil.getUploadValue(uploadInput)) === "always"
     ) {
       uploadResult = await upload_lib.uploadFromActions(
         outputDir,

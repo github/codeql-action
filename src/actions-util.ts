@@ -681,7 +681,23 @@ export async function printDebugLogs(config: Config) {
   }
 }
 
-export async function isValidUploadInput(input: string | undefined) {
-  if (input === undefined) return true;
-  return ["always", "failure-only", "never", "true", "false"].includes(input);
+export type ValidUploadValues = "always" | "failure-only" | "never";
+
+// Returns a ValidUploadValue, converting unspecified and deprecated upload inputs appropriately.
+export async function getUploadValue(
+  input: string | undefined
+): Promise<ValidUploadValues> {
+  if (input === undefined || input === "true") {
+    return "always";
+  }
+  if (input === "false") {
+    return "failure-only";
+  }
+  if (!["always", "failure-only", "never", "true", "false"].includes(input)) {
+    core.warning(
+      `Unrecognized 'upload' input to 'analyze' Action: ${input}. Defaulting to 'always'.`
+    );
+    return "always";
+  }
+  return <ValidUploadValues>input;
 }

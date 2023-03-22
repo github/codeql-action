@@ -58,8 +58,10 @@ async function maybeUploadFailedSarif(
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
   const shouldUpload = getUploadInputOrThrow(workflow, jobName, matrix);
   if (
-    (await actionsUtil.isValidUploadInput(shouldUpload)) && // Fall back to always uploading.
-    (!["always", "failure-only"].includes(shouldUpload) || isInTestMode())
+    !["always", "failure-only"].includes(
+      await actionsUtil.getUploadValue(shouldUpload)
+    ) ||
+    isInTestMode()
   ) {
     return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
   }

@@ -161,6 +161,33 @@ test("uploads failed SARIF run with database export-diagnostics if the database 
   });
 });
 
+test("uploads failed SARIF run for workflow with upload: always", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
+        upload: "false",
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "my-category",
+  });
+});
+
 test("uploads failed SARIF run for workflow with upload: failure-only", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
@@ -179,7 +206,61 @@ test("uploads failed SARIF run for workflow with upload: failure-only", async (t
       uses: "github/codeql-action/analyze@v2",
       with: {
         category: "my-category",
-        upload: "failure-only",
+        upload: "always",
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "my-category",
+  });
+});
+
+test("uploads failed SARIF run for workflow with upload: true", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
+        upload: "true",
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "my-category",
+  });
+});
+
+test("uploads failed SARIF run for workflow with upload: false", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
+        upload: "false",
       },
     },
   ]);

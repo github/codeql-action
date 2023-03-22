@@ -7,7 +7,7 @@ No user facing changes.
 ## 2.2.8 - 22 Mar 2023
 
 - Update default CodeQL bundle version to 2.12.5. [#1585](https://github.com/github/codeql-action/pull/1585)
-- Add "always", "failure-only", and "never" as recognized values for the `upload` input for the `analyze` Action. The prior values of "true" and "false" will continue to be supported, and map to "always" and "never", respectively. [#1598](https://github.com/github/codeql-action/pull/1598)
+- Customers using `upload: false` to post-process the SARIF output of the `analyze` Action before uploading it to Code Scanning will benefit from an improved debugging experience. The CodeQL Action will now upload a SARIF file with debugging information to Code Scanning on failed runs for these customers. Previously, this was only available for customers using the default value of the `upload` input. You can disable this behavior by passing an `upload: never` input to the `analyze` Action. [#1598](https://github.com/github/codeql-action/pull/1598)
 
 ## 2.2.7 - 15 Mar 2023
 

@@ -10,7 +10,12 @@ inputs:
     required: false
     default: "../results"
   upload:
-    description: Upload the SARIF file to Code Scanning. This should be one of 'always', 'failure-only', or 'never'
+    description: >-
+      Upload the SARIF file to Code Scanning.
+      This defaults to 'always' which uploads the SARIF file to Code Scanning for successful and failed runs.
+      You can specify 'failure-only' to only upload the SARIF file to Code Scanning for failed runs, for instance if you are post-processing the SARIF file before uploading it to Code Scanning.
+      Setting this input to 'never' avoids uploading the SARIF file to Code Scanning even if the code scanning run fails.
+      This is not recommended for external users since it complicates debugging.
     required: false
     # If changing this, make sure to update workflow.ts accordingly.
     default: "always"

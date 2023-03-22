@@ -680,3 +680,8 @@ export async function printDebugLogs(config: Config) {
     walkLogFiles(logsDirectory);
   }
 }
+
+export async function isValidUploadInput(input: string | undefined) {
+  if (input === undefined) return true;
+  return ["always", "failure-only", "never", "true", "false"].includes(input);
+}

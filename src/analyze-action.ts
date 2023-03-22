@@ -274,7 +274,11 @@ async function run() {
         ? "always"
         : uploadInput;
 
-    if (runStats && shouldUpload === "always") {
+    if (
+      runStats &&
+      (shouldUpload === "always" ||
+        !(await actionsUtil.isValidUploadInput(uploadInput))) // Fall back to always uploading.
+    ) {
       uploadResult = await upload_lib.uploadFromActions(
         outputDir,
         actionsUtil.getRequiredInput("checkout_path"),

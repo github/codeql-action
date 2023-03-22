@@ -188,6 +188,33 @@ test("uploads failed SARIF run for workflow with upload: failure-only", async (t
   });
 });
 
+test("uploads failed SARIF run for workflow with unrecognized upload input", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
+        upload: "unrecognized string",
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "my-category",
+  });
+});
+
 test("uploading failed SARIF run fails for workflow with upload: never", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
@@ -207,34 +234,6 @@ test("uploading failed SARIF run fails for workflow with upload: never", async (
       with: {
         category: "my-category",
         upload: "never",
-      },
-    },
-  ]);
-  const result = await testFailedSarifUpload(t, actionsWorkflow, {
-    expectUpload: false,
-  });
-  t.is(result.upload_failed_run_skipped_because, "SARIF upload is disabled");
-});
-
-test("uploading failed SARIF run fails for workflow with unrecognized upload input", async (t) => {
-  const actionsWorkflow = createTestWorkflow([
-    {
-      name: "Checkout repository",
-      uses: "actions/checkout@v3",
-    },
-    {
-      name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
-      with: {
-        languages: "javascript",
-      },
-    },
-    {
-      name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
-      with: {
-        category: "my-category",
-        upload: "unrecognized string",
       },
     },
   ]);

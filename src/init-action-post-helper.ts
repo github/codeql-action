@@ -64,9 +64,20 @@ async function maybeUploadFailedSarif(
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
+  const databasePath = config.dbLocation;
 
   const sarifFile = "../codeql-failed-run.sarif";
-  await codeql.diagnosticsExport(sarifFile, category, config, features);
+
+  // If there is no database or the feature flag is off, we run 'export diagnostics'
+  if (
+    databasePath === undefined ||
+    !(await features.getValue(Feature.ExportDiagnosticsEnabled, codeql))
+  ) {
+    await codeql.diagnosticsExport(sarifFile, category, config, features);
+  } else {
+    // We call 'database export-diagnostics' to find any per-database diagnostics.
+    await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);
+  }
 
   core.info(`Uploading failed SARIF file ${sarifFile}`);
   const uploadResult = await uploadLib.uploadFromActions(
@@ -134,6 +145,7 @@ export async function run(
     features,
     logger
   );
+
   if (uploadFailedSarifResult.upload_failed_run_skipped_because) {
     logger.debug(
       "Won't upload a failed SARIF file for this CodeQL code scanning run because: " +

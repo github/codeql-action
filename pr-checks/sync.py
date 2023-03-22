@@ -90,7 +90,7 @@ for file in os.listdir('checks'):
         steps.append({
             'name': 'Set up Go',
             'if': "matrix.os == 'ubuntu-20.04' || matrix.os == 'windows-2019'",
-            'uses': 'actions/setup-go@v3',
+            'uses': 'actions/setup-go@v4',
             'with': {
                 'go-version': '^1.13.1'
             }

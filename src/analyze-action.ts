@@ -23,7 +23,10 @@ import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY } from "./shared-environment";
+import {
+  CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY,
+  CODEQL_ACTION_DID_AUTOBUILD_GOLANG,
+} from "./shared-environment";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
@@ -130,7 +133,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * an autobuild step or manual build steps.
  *
  * - We detect whether an autobuild step is present by checking the
- * `util.DID_AUTOBUILD_GO_ENV_VAR_NAME` environment variable, which is set
+ * `CODEQL_ACTION_DID_AUTOBUILD_GOLANG` environment variable, which is set
  * when the autobuilder is invoked.
  * - We detect whether the Go database has already been finalized in case it
  * has been manually set in a prior Action step.
@@ -141,7 +144,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
-  if (process.env[util.DID_AUTOBUILD_GO_ENV_VAR_NAME] === "true") {
+  if (process.env[CODEQL_ACTION_DID_AUTOBUILD_GOLANG] === "true") {
     logger.debug("Won't run Go autobuild since it has already been run.");
     return;
   }

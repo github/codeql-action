@@ -1,4 +1,11 @@
 /**
+ * Environment variable that is set to true when the CodeQL Action has invoked
+ * the Go autobuilder.
+ */
+export const CODEQL_ACTION_DID_AUTOBUILD_GOLANG =
+  "CODEQL_ACTION_DID_AUTOBUILD_GOLANG";
+
+/**
  * This environment variable is set to true when the `analyze` Action
  * completes successfully.
  */

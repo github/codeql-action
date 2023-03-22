@@ -296,7 +296,7 @@ test("uploads failed SARIF run for workflow with unrecognized upload input", asy
   });
 });
 
-test("uploading failed SARIF run fails for workflow with upload: never", async (t) => {
+test("uploading failed SARIF run skipped for workflow with upload: never", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",

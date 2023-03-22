@@ -22,7 +22,10 @@ export type CodeQLDefaultVersionInfo =
   | {
       cliVersion: string;
       tagName: string;
-      variant: util.GitHubVariant.GHAE | util.GitHubVariant.GHES;
+      variant:
+        | util.GitHubVariant.GHAE
+        | util.GitHubVariant.GHES
+        | util.GitHubVariant.GHE_DOTCOM;
     };
 
 export interface FeatureEnablement {

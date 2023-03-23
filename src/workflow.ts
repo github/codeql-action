@@ -426,22 +426,20 @@ export function getCategoryInputOrThrow(
  *
  * Typically you'll want to wrap this function in a try/catch block and handle the error.
  *
- * @returns the upload input
+ * @returns the user input to upload, or undefined if input was unspecified
  * @throws an error if the upload input could not be determined
  */
 export function getUploadInputOrThrow(
   workflow: Workflow,
   jobName: string,
   matrixVars: { [key: string]: string } | undefined
-): string {
-  return (
-    getInputOrThrow(
-      workflow,
-      jobName,
-      getAnalyzeActionName(),
-      "upload",
-      matrixVars
-    ) || "true" // if unspecified, upload defaults to true
+): string | undefined {
+  return getInputOrThrow(
+    workflow,
+    jobName,
+    getAnalyzeActionName(),
+    "upload",
+    matrixVars
   );
 }
 

@@ -680,3 +680,25 @@ export async function printDebugLogs(config: Config) {
     walkLogFiles(logsDirectory);
   }
 }
+
+export type UploadKind = "always" | "failure-only" | "never";
+
+// Parses the `upload` input into an `UploadKind`, converting unspecified and deprecated upload inputs appropriately.
+export function getUploadValue(input: string | undefined): UploadKind {
+  switch (input) {
+    case undefined:
+    case "true":
+    case "always":
+      return "always";
+    case "false":
+    case "failure-only":
+      return "failure-only";
+    case "never":
+      return "never";
+    default:
+      core.warning(
+        `Unrecognized 'upload' input to 'analyze' Action: ${input}. Defaulting to 'always'.`
+      );
+      return "always";
+  }
+}

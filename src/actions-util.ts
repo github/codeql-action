@@ -627,9 +627,15 @@ function removeRefsHeadsPrefix(ref: string): string {
   return ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : ref;
 }
 
-// Is the version of the repository we are currently analyzing from the default branch,
-// or alternatively from another branch or a pull request.
+// Returns whether we are analyzing the default branch for the repository.
+// For cases where the repository information might not be available (e.g.,
+// dynamic workflows), this can be forced by the environment variable
+// CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH.
 export async function isAnalyzingDefaultBranch(): Promise<boolean> {
+  if (process.env.CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH === "true") {
+    return true;
+  }
+
   // Get the current ref and trim and refs/heads/ prefix
   let currentRef = await getRef();
   currentRef = removeRefsHeadsPrefix(currentRef);

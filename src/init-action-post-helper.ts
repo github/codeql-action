@@ -59,7 +59,7 @@ async function maybeUploadFailedSarif(
   const shouldUpload = getUploadInputOrThrow(workflow, jobName, matrix);
   if (
     !["always", "failure-only"].includes(
-      await actionsUtil.getUploadValue(shouldUpload)
+      actionsUtil.getUploadValue(shouldUpload)
     ) ||
     isInTestMode()
   ) {

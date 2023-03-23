@@ -684,9 +684,7 @@ export async function printDebugLogs(config: Config) {
 export type UploadKind = "always" | "failure-only" | "never";
 
 // Returns a ValidUploadValue, converting unspecified and deprecated upload inputs appropriately.
-export async function getUploadValue(
-  input: string | undefined
-): Promise<UploadKind> {
+export function getUploadValue(input: string | undefined): UploadKind {
   if (input === undefined || input === "true" || input === "always") {
     return "always";
   }

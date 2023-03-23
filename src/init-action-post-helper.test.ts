@@ -161,33 +161,70 @@ test("uploads failed SARIF run with database export-diagnostics if the database 
   });
 });
 
-test("doesn't upload failed SARIF for workflow with upload: false", async (t) => {
-  const actionsWorkflow = createTestWorkflow([
-    {
-      name: "Checkout repository",
-      uses: "actions/checkout@v3",
-    },
-    {
-      name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
-      with: {
-        languages: "javascript",
+const UPLOAD_INPUT_TEST_CASES = [
+  {
+    uploadInput: "true",
+    shouldUpload: true,
+  },
+  {
+    uploadInput: "false",
+    shouldUpload: true,
+  },
+  {
+    uploadInput: "always",
+    shouldUpload: true,
+  },
+  {
+    uploadInput: "failure-only",
+    shouldUpload: true,
+  },
+  {
+    uploadInput: "never",
+    shouldUpload: false,
+  },
+  {
+    uploadInput: "unrecognized-value",
+    shouldUpload: true,
+  },
+];
+
+for (const { uploadInput, shouldUpload } of UPLOAD_INPUT_TEST_CASES) {
+  test(`does ${
+    shouldUpload ? "" : "not "
+  }upload failed SARIF run for workflow with upload: ${uploadInput}`, async (t) => {
+    const actionsWorkflow = createTestWorkflow([
+      {
+        name: "Checkout repository",
+        uses: "actions/checkout@v3",
       },
-    },
-    {
-      name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
-      with: {
-        category: "my-category",
-        upload: false,
+      {
+        name: "Initialize CodeQL",
+        uses: "github/codeql-action/init@v2",
+        with: {
+          languages: "javascript",
+        },
       },
-    },
-  ]);
-  const result = await testFailedSarifUpload(t, actionsWorkflow, {
-    expectUpload: false,
+      {
+        name: "Perform CodeQL Analysis",
+        uses: "github/codeql-action/analyze@v2",
+        with: {
+          category: "my-category",
+          upload: uploadInput,
+        },
+      },
+    ]);
+    const result = await testFailedSarifUpload(t, actionsWorkflow, {
+      category: "my-category",
+      expectUpload: shouldUpload,
+    });
+    if (!shouldUpload) {
+      t.is(
+        result.upload_failed_run_skipped_because,
+        "SARIF upload is disabled"
+      );
+    }
   });
-  t.is(result.upload_failed_run_skipped_because, "SARIF upload is disabled");
-});
+}
 
 test("uploading failed SARIF run succeeds when workflow uses an input with a matrix var", async (t) => {
   const actionsWorkflow = createTestWorkflow([
@@ -294,14 +331,14 @@ async function testFailedSarifUpload(
   {
     category,
     databaseExists = true,
-    exportDiagnosticsEnabled = false,
     expectUpload = true,
+    exportDiagnosticsEnabled = false,
     matrix = {},
   }: {
     category?: string;
     databaseExists?: boolean;
-    exportDiagnosticsEnabled?: boolean;
     expectUpload?: boolean;
+    exportDiagnosticsEnabled?: boolean;
     matrix?: { [key: string]: string };
   } = {}
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
@@ -356,8 +393,6 @@ async function testFailedSarifUpload(
       raw_upload_size_bytes: 20,
       zipped_upload_size_bytes: 10,
     });
-  }
-  if (expectUpload) {
     if (databaseExists && exportDiagnosticsEnabled) {
       t.true(
         databaseExportDiagnosticsStub.calledOnceWith(

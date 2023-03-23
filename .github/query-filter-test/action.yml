@@ -40,7 +40,7 @@ runs:
       with:
         output: ${{ runner.temp }}/results
         upload-database: false
-        upload: false
+        upload: never
       env:
         CODEQL_ACTION_TEST_MODE: "true"
     - name: Check SARIF

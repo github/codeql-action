@@ -52,7 +52,6 @@ jobs:
       id: init
       with:
         languages: javascript
-        queries: security-extended
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - name: Add test diagnostics
       shell: bash

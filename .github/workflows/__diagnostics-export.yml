@@ -54,12 +54,22 @@ jobs:
         languages: javascript
         queries: security-extended
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - name: Manually add a diagnostic
+    - name: Add test diagnostics
       shell: bash
       env:
         CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
       run: |
-        "$CODEQL_PATH" database add-diagnostic "$RUNNER_TEMP/codeql_databases/javascript" --plaintext-message="Plaintext message" --source-id="lang/diagnostics/example" --source-name="Diagnostic name"
+        for i in {1..2}; do
+          # Use the same location twice to test the workaround for the bug in CodeQL CLI 2.12.5 that
+          # produces an invalid diagnostic with multiple identical location objects.
+          "$CODEQL_PATH" database add-diagnostic \
+            "$RUNNER_TEMP/codeql_databases/javascript" \
+            --file-path /path/to/file \
+            --plaintext-message "Plaintext message $i" \
+            --source-id "lang/diagnostics/example" \
+            --source-name "Diagnostic name" \
+            --ready-for-status-page
+        done
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
@@ -75,22 +85,52 @@ jobs:
       env:
         SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
       with:
-        script: |-
+        script: |
           const fs = require('fs');
+
+          function checkStatusPageNotification(n) {
+            const expectedMessage = 'Plaintext message 1\n\nCodeQL also found 1 other diagnostic like this. See the workflow log for details.';
+            if (n.message.text !== expectedMessage) {
+              core.setFailed(`Expected the status page diagnostic to have the message '${expectedMessage}', but found '${n.message.text}'.`);
+            }
+            if (n.locations.length !== 1) {
+              core.setFailed(`Expected the status page diagnostic to have exactly 1 location, but found ${n.locations.length}.`);
+            }
+            const actualUri = n.locations[0].physicalLocation?.artifactLocation?.uri
+            if (actualUri !== '/path/to/file') {
+              core.setFailed(`Expected the status page diagnostic to have a location with the URI '/path/to/file', but found '${actualUri}'.`);
+            }
+          }
 
           const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
           const run = sarif.runs[0];
 
           const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
-          const diagnosticToolExecutionNotification = toolExecutionNotifications.filter(n => n.descriptor.id === 'lang/diagnostics/example' && n.message.text === 'Plaintext message');
-          if (diagnosticToolExecutionNotification.length !== 1) {
-            core.setFailed(`Expected exactly 1 entry for this diagnostic in the 'runs[].invocations[].toolExecutionNotifications[]' SARIF property, found ${diagnosticToolExecutionNotification.length}`);
+          const statusPageNotifications = toolExecutionNotifications.filter(n =>
+            n.descriptor.id === 'lang/diagnostics/example' && n.properties?.visibility?.statusPage
+          );
+          if (statusPageNotifications.length !== 1) {
+            core.setFailed(
+              'Expected exactly one status page reporting descriptor for this diagnostic in the ' +
+                `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
+                `${statusPageNotifications.length}. All notification reporting descriptors: ` + 
+                `${JSON.stringify(toolExecutionNotifications)}.`
+            );
           }
+          checkStatusPageNotification(statusPageNotifications[0]);
 
           const notifications = run.tool.driver.notifications;
-          const diagnosticNotification = notifications.filter(n => n.id === 'lang/diagnostics/example' && n.name === 'lang/diagnostics/example' && n.fullDescription.text && 'Diagnostic name');
+          const diagnosticNotification = notifications.filter(n =>
+            n.id === 'lang/diagnostics/example' && n.name === 'lang/diagnostics/example' &&
+              n.fullDescription.text === 'Diagnostic name'
+          );
           if (diagnosticNotification.length !== 1) {
-            core.setFailed(`Expected exactly 1 entry for this diagnostic in the 'runs[].tool.driver.notifications[]' SARIF property, found ${diagnosticNotification.length}`);
+            core.setFailed(
+              'Expected exactly one notification for this diagnostic in the ' +
+                `'runs[].tool.driver.notifications[]' SARIF property, but found ` +
+                `${diagnosticNotification.length}. All notifications: ` +
+                `${JSON.stringify(notifications)}.`
+            );
           }
 
           core.info('Finished diagnostic export test');

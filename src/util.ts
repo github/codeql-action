@@ -10,7 +10,7 @@ import * as semver from "semver";
 
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
+import { CodeQL } from "./codeql";
 import {
   Config,
   parsePacksSpecification,
@@ -22,6 +22,7 @@ import { Logger } from "./logging";
 import {
   CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX,
   CODEQL_ACTION_TEST_MODE,
+  EnvVar,
 } from "./shared-environment";
 
 /**
@@ -433,42 +434,6 @@ export function assertNever(value: never): never {
 }
 
 /**
- * Environment variables to be set by codeql-action and used by the
- * CLI.
- */
-export enum EnvVar {
-  /**
-   * Semver of the codeql-action as specified in package.json.
-   */
-  VERSION = "CODEQL_ACTION_VERSION",
-
-  /**
-   * If set to a truthy value, then the codeql-action might combine SARIF
-   * output from several `interpret-results` runs for the same Language.
-   */
-  FEATURE_SARIF_COMBINE = "CODEQL_ACTION_FEATURE_SARIF_COMBINE",
-
-  /**
-   * If set to the "true" string, then the codeql-action will upload SARIF,
-   * not the cli.
-   */
-  FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
-
-  /**
-   * If set to the "true" string, then the codeql-action is using its
-   * own deprecated and non-standard way of scanning for multiple
-   * languages.
-   */
-  FEATURE_MULTI_LANGUAGE = "CODEQL_ACTION_FEATURE_MULTI_LANGUAGE",
-
-  /**
-   * If set to the "true" string, then the codeql-action is using its
-   * own sandwiched workflow mechanism
-   */
-  FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
-}
-
-/**
  * Set some initial environment variables that we can set even without
  * knowing what version of CodeQL we're running.
  */
@@ -476,20 +441,6 @@ export function initializeEnvironment(version: string) {
   core.exportVariable(EnvVar.VERSION, version);
   core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
   core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-}
-
-/**
- * Enrich the environment variables with further flags that we cannot
- * know the value of until we know what version of CodeQL we're running.
- */
-export async function enrichEnvironment(codeql: CodeQL) {
-  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-    core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  } else {
-    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
-    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
-  }
 }
 
 /**

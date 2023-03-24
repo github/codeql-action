@@ -369,7 +369,8 @@ export async function runQueries(
       enableDebugLogging ? "-vv" : "-v",
       automationDetailsId,
       config,
-      features
+      features,
+      logger
     );
   }
 

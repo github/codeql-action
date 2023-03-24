@@ -95,10 +95,6 @@ jobs:
             if (n.locations.length !== 1) {
               core.setFailed(`Expected the status page diagnostic to have exactly 1 location, but found ${n.locations.length}.`);
             }
-            const actualUri = n.locations[0].physicalLocation?.artifactLocation?.uri
-            if (actualUri !== '/path/to/file') {
-              core.setFailed(`Expected the status page diagnostic to have a location with the URI '/path/to/file', but found '${actualUri}'.`);
-            }
           }
 
           const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));

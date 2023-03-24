@@ -197,7 +197,9 @@ export interface CodeQL {
   databaseExportDiagnostics(
     databasePath: string,
     sarifFile: string,
-    automationDetailsId: string | undefined
+    automationDetailsId: string | undefined,
+    tempDir: string,
+    logger: Logger
   ): Promise<void>;
   /**
    * Run 'codeql diagnostics export'.
@@ -1023,15 +1025,21 @@ export async function getCodeQLForCmd(
     async databaseExportDiagnostics(
       databasePath: string,
       sarifFile: string,
-      automationDetailsId: string | undefined
+      automationDetailsId: string | undefined,
+      tempDir: string,
+      logger: Logger
     ): Promise<void> {
+      const intermediateSarifFile = path.join(
+        tempDir,
+        "codeql-intermediate-results.sarif"
+      );
       const args = [
         "database",
         "export-diagnostics",
         `${databasePath}`,
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
-        `--output=${sarifFile}`,
+        `--output=${intermediateSarifFile}`,
         "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
         "-vvv",
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
@@ -1040,6 +1048,13 @@ export async function getCodeQLForCmd(
         args.push("--sarif-category", automationDetailsId);
       }
       await new toolrunner.ToolRunner(cmd, args).exec();
+
+      // Fix invalid notifications in the SARIF file output by CodeQL.
+      let sarif = JSON.parse(
+        fs.readFileSync(intermediateSarifFile, "utf8")
+      ) as util.SarifFile;
+      sarif = util.fixInvalidNotifications(sarif, logger);
+      fs.writeFileSync(sarifFile, JSON.stringify(sarif));
     },
     async diagnosticsExport(
       sarifFile: string,

@@ -19,7 +19,10 @@ import {
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { CODEQL_ACTION_TEST_MODE } from "./shared-environment";
+import {
+  CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX,
+  CODEQL_ACTION_TEST_MODE,
+} from "./shared-environment";
 
 /**
  * Specifies bundle versions that are known to be broken
@@ -58,7 +61,12 @@ export interface SarifRun {
     id?: string;
   };
   artifacts?: string[];
+  invocations?: SarifInvocation[];
   results?: SarifResult[];
+}
+
+export interface SarifInvocation {
+  toolExecutionNotifications?: SarifNotification[];
 }
 
 export interface SarifResult {
@@ -78,6 +86,18 @@ export interface SarifResult {
   }>;
   partialFingerprints: {
     primaryLocationLineHash?: string;
+  };
+}
+
+export interface SarifNotification {
+  locations?: SarifLocation[];
+}
+
+export interface SarifLocation {
+  physicalLocation?: {
+    artifactLocation?: {
+      uri?: string;
+    };
   };
 }
 
@@ -827,4 +847,83 @@ export function parseMatrixInput(
     return undefined;
   }
   return JSON.parse(matrixInput);
+}
+
+function removeDuplicateLocations(locations: SarifLocation[]): SarifLocation[] {
+  const newJsonLocations = new Set<string>();
+  return locations.filter((location) => {
+    const jsonLocation = JSON.stringify(location);
+    if (!newJsonLocations.has(jsonLocation)) {
+      newJsonLocations.add(jsonLocation);
+      return true;
+    }
+    return false;
+  });
+}
+
+export function fixInvalidNotifications(
+  sarif: SarifFile,
+  logger: Logger
+): SarifFile {
+  if (process.env[CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
+    logger.info(
+      "SARIF notification object duplicate location fix disabled by the " +
+        `${CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
+    );
+    return sarif;
+  }
+  if (!(sarif.runs instanceof Array)) {
+    return sarif;
+  }
+
+  // Ensure that the array of locations for each SARIF notification contains unique locations.
+  // This is a workaround for a bug in the CodeQL CLI that causes duplicate locations to be
+  // emitted in some cases.
+  let numDuplicateLocationsRemoved = 0;
+
+  const newSarif = {
+    ...sarif,
+    runs: sarif.runs.map((run) => {
+      if (
+        run.tool?.driver?.name !== "CodeQL" ||
+        !(run.invocations instanceof Array)
+      ) {
+        return run;
+      }
+      return {
+        ...run,
+        invocations: run.invocations.map((invocation) => {
+          if (!(invocation.toolExecutionNotifications instanceof Array)) {
+            return invocation;
+          }
+          return {
+            ...invocation,
+            toolExecutionNotifications:
+              invocation.toolExecutionNotifications.map((notification) => {
+                if (!(notification.locations instanceof Array)) {
+                  return notification;
+                }
+                const newLocations = removeDuplicateLocations(
+                  notification.locations
+                );
+                numDuplicateLocationsRemoved +=
+                  notification.locations.length - newLocations.length;
+                return {
+                  ...notification,
+                  locations: newLocations,
+                };
+              }),
+          };
+        }),
+      };
+    }),
+  };
+
+  if (numDuplicateLocationsRemoved > 0) {
+    logger.info(
+      `Removed ${numDuplicateLocationsRemoved} duplicate locations from SARIF notification ` +
+        "objects."
+    );
+  }
+  return newSarif;
 }

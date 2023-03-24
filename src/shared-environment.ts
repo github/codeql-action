@@ -19,6 +19,13 @@ export const CODEQL_ACTION_TESTING_ENVIRONMENT =
 export const CODEQL_ACTION_TEST_MODE = "CODEQL_ACTION_TEST_MODE";
 
 /**
+ * Used to disable the SARIF post-processing in the Action that removes duplicate locations from
+ * notifications in the `run[].invocations[].toolExecutionNotifications` SARIF property.
+ */
+export const CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX =
+  "CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX";
+
+/**
  * The time at which the first action (normally init) started executing.
  * If a workflow invokes a different action without first invoking the init
  * action (i.e. the upload action is being used by a third-party integrator)

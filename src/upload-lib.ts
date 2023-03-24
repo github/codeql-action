@@ -13,7 +13,7 @@ import * as api from "./api-client";
 import * as fingerprints from "./fingerprints";
 import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
-import * as sharedEnv from "./shared-environment";
+import { CODEQL_WORKFLOW_STARTED_AT } from "./shared-environment";
 import * as util from "./util";
 import { SarifFile, SarifResult, SarifRun } from "./util";
 import * as workflow from "./workflow";
@@ -272,7 +272,7 @@ export function buildPayload(
     workflow_run_id: workflowRunID,
     checkout_uri: checkoutURI,
     environment,
-    started_at: process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT],
+    started_at: process.env[CODEQL_WORKFLOW_STARTED_AT],
     tool_names: toolNames,
     base_ref: undefined as undefined | string,
     base_sha: undefined as undefined | string,

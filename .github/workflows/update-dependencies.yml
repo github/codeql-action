@@ -1,4 +1,4 @@
-name: Update dependencies
+name: Update dependenciesv
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
@@ -19,12 +19,8 @@ jobs:
         PR_NUMBER: '${{ github.event.pull_request.number }}'
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
       run: |
-        gh api "repos/$REPOSITORY/issues/$PR_NUMBER/labels/Update%20dependencies" -X DELETE
-
-    - name: Push updated dependencies
-      env:
+        gh api "repos/$REPOSITORY/issues/$PR_NUMBER/Update%20dependencies" -X DELETE
         BRANCH: '${{ github.head_ref }}'
-      run: |
         git fetch origin "$BRANCH" --depth=1
         git checkout "origin/$BRANCH"
         .github/workflows/script/update-node-modules.sh update

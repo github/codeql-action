@@ -1,6 +1,6 @@
 # CodeQL Action Changelog
 
-## [UNRELEASED]
+## 2.2.9 - 27 Mar 2023
 
 No user facing changes.
 

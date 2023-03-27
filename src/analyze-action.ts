@@ -16,7 +16,7 @@ import {
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
-import { getCodeQL } from "./codeql";
+import { enrichEnvironment, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { Features } from "./feature-flags";
@@ -207,7 +207,7 @@ async function run() {
       );
     }
 
-    await util.enrichEnvironment(await getCodeQL(config.codeQLCmd));
+    await enrichEnvironment(await getCodeQL(config.codeQLCmd));
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");

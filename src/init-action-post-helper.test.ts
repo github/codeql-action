@@ -398,7 +398,9 @@ async function testFailedSarifUpload(
         databaseExportDiagnosticsStub.calledOnceWith(
           config.dbLocation,
           sinon.match.string,
-          category
+          category,
+          sinon.match.any,
+          sinon.match.any
         ),
         `Actual args were: ${databaseExportDiagnosticsStub.args}`
       );

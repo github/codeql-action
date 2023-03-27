@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.2.9 - 27 Mar 2023
 
 - Customers post-processing the SARIF output of the `analyze` Action before uploading it to Code Scanning will benefit from an improved debugging experience. [#1598](https://github.com/github/codeql-action/pull/1598)

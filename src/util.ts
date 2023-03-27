@@ -878,3 +878,13 @@ export function fixInvalidNotifications(
   }
   return newSarif;
 }
+
+export function fixInvalidNotificationsInFile(
+  inputPath: string,
+  outputPath: string,
+  logger: Logger
+): void {
+  let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
+  sarif = fixInvalidNotifications(sarif, logger);
+  fs.writeFileSync(outputPath, JSON.stringify(sarif));
+}

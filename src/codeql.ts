@@ -923,11 +923,7 @@ export async function getCodeQLForCmd(
       );
 
       if (shouldExportDiagnostics) {
-        let sarif = JSON.parse(
-          fs.readFileSync(codeqlOutputFile, "utf8")
-        ) as util.SarifFile;
-        sarif = util.fixInvalidNotifications(sarif, logger);
-        fs.writeFileSync(sarifFile, JSON.stringify(sarif));
+        util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
       }
 
       return returnState.stdout;
@@ -1050,11 +1046,11 @@ export async function getCodeQLForCmd(
       await new toolrunner.ToolRunner(cmd, args).exec();
 
       // Fix invalid notifications in the SARIF file output by CodeQL.
-      let sarif = JSON.parse(
-        fs.readFileSync(intermediateSarifFile, "utf8")
-      ) as util.SarifFile;
-      sarif = util.fixInvalidNotifications(sarif, logger);
-      fs.writeFileSync(sarifFile, JSON.stringify(sarif));
+      util.fixInvalidNotificationsInFile(
+        intermediateSarifFile,
+        sarifFile,
+        logger
+      );
     },
     async diagnosticsExport(
       sarifFile: string,

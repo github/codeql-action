@@ -14,7 +14,11 @@ import {
   StatusReportBase,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
+import {
+  CodeQL,
+  CODEQL_VERSION_NEW_TRACING,
+  enrichEnvironment,
+} from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature, Features } from "./feature-flags";
 import {
@@ -35,7 +39,6 @@ import {
   codeQlVersionAbove,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
-  enrichEnvironment,
   getMemoryFlagValue,
   getMlPoweredJsQueriesStatus,
   getRequiredEnvParam,

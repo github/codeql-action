@@ -56,8 +56,11 @@ async function maybeUploadFailedSarif(
   const workflow = await getWorkflow();
   const jobName = getRequiredEnvParam("GITHUB_JOB");
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
+  const shouldUpload = getUploadInputOrThrow(workflow, jobName, matrix);
   if (
-    getUploadInputOrThrow(workflow, jobName, matrix) !== "true" ||
+    !["always", "failure-only"].includes(
+      actionsUtil.getUploadValue(shouldUpload)
+    ) ||
     isInTestMode()
   ) {
     return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
@@ -76,7 +79,13 @@ async function maybeUploadFailedSarif(
     await codeql.diagnosticsExport(sarifFile, category, config, features);
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
-    await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);
+    await codeql.databaseExportDiagnostics(
+      databasePath,
+      sarifFile,
+      category,
+      config.tempDir,
+      logger
+    );
   }
 
   core.info(`Uploading failed SARIF file ${sarifFile}`);

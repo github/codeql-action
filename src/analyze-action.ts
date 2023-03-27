@@ -16,7 +16,7 @@ import {
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
-import { getCodeQL } from "./codeql";
+import { enrichEnvironment, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { Features } from "./feature-flags";
@@ -207,7 +207,7 @@ async function run() {
       );
     }
 
-    await util.enrichEnvironment(await getCodeQL(config.codeQLCmd));
+    await enrichEnvironment(await getCodeQL(config.codeQLCmd));
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
@@ -268,8 +268,8 @@ async function run() {
       dbLocations[language] = util.getCodeQLDatabasePath(config, language);
     }
     core.setOutput("db-locations", dbLocations);
-
-    if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
+    const uploadInput = actionsUtil.getOptionalInput("upload");
+    if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
       uploadResult = await upload_lib.uploadFromActions(
         outputDir,
         actionsUtil.getRequiredInput("checkout_path"),

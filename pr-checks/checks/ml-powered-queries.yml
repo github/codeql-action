@@ -1,12 +1,5 @@
 name: "ML-powered queries"
 description: "Tests that ML-powered queries are run with the security-extended suite and that they produce alerts on a test DB"
-versions: [
-    # Latest release in 2.7.x series
-    "stable-20220120",
-    "cached",
-    "latest",
-    "nightly-latest",
-  ]
 steps:
   - uses: ./../action/init
     with:
@@ -30,7 +23,7 @@ steps:
   - name: Check sarif
     uses: ./../action/.github/check-sarif
     # Running on Windows requires CodeQL CLI 2.9.0+.
-    if: "!(matrix.version == 'stable-20220120' && runner.os == 'Windows')"
+    if: "!(matrix.version == 'stable-20220401' && runner.os == 'Windows')"
     with:
       sarif-file: ${{ runner.temp }}/results/javascript.sarif
       queries-run: js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
@@ -39,7 +32,7 @@ steps:
   - name: Check results
     env:
       # Running on Windows requires CodeQL CLI 2.9.0+.
-      SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220120' && runner.os == 'Windows') }}
+      SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220401' && runner.os == 'Windows') }}
     shell: bash
     run: |
       echo "Expecting ML-powered queries to be run: ${SHOULD_RUN_ML_POWERED_QUERIES}"

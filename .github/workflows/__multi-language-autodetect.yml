@@ -25,18 +25,22 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-20.04
-          version: stable-20211005
-        - os: macos-latest
-          version: stable-20211005
-        - os: ubuntu-20.04
-          version: stable-20220120
-        - os: macos-latest
-          version: stable-20220120
         - os: ubuntu-latest
           version: stable-20220401
         - os: macos-latest
           version: stable-20220401
+        - os: ubuntu-latest
+          version: stable-20220615
+        - os: macos-latest
+          version: stable-20220615
+        - os: ubuntu-latest
+          version: stable-20220908
+        - os: macos-latest
+          version: stable-20220908
+        - os: ubuntu-latest
+          version: stable-20221211
+        - os: macos-latest
+          version: stable-20221211
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
@@ -60,11 +64,14 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - name: Set up Go
-      if: matrix.os == 'ubuntu-20.04' || matrix.os == 'windows-2019'
-      uses: actions/setup-go@v4
-      with:
-        go-version: ^1.13.1
+    - name: Set environment variable for Swift enablement
+      if: "\n                runner.os != 'Windows' && (\n                    matrix.version\
+        \ == '20220908' ||\n                    matrix.version == '20221211' ||\n\
+        \                    matrix.version == 'cached' ||\n                    matrix.version\
+        \ == 'latest' ||\n                    matrix.version == 'nightly-latest'\n\
+        \                )\n            "
+      shell: bash
+      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - uses: ./../action/init
       id: init
       with:
@@ -119,8 +126,7 @@ jobs:
         fi
 
     - name: Check language autodetect for Ruby
-      if: (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version
-        == 'nightly-latest')
+      if: env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true'
       shell: bash
       run: |
         RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
@@ -130,8 +136,7 @@ jobs:
         fi
 
     - name: Check language autodetect for Swift
-      if: (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version
-        == 'nightly-latest')
+      if: env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true'
       shell: bash
       run: |
         SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
@@ -140,5 +145,4 @@ jobs:
           exit 1
         fi
     env:
-      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

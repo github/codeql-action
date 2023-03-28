@@ -15,7 +15,7 @@ import {
   runQueries,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
-import { runAutobuild } from "./autobuild";
+import { runAutobuildScript } from "./autobuild";
 import { enrichEnvironment, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
@@ -168,7 +168,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
     }
     return;
   }
-  await runAutobuild(Language.go, config, logger);
+  await runAutobuildScript(Language.go, config, logger);
 }
 
 async function run() {

@@ -91,13 +91,13 @@ export async function determineAutobuildLanguages(
   return languages;
 }
 
-export async function runAutobuild(
+export async function runAutobuildScript(
   language: Language,
   config: configUtils.Config,
   logger: Logger
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
   const codeQL = await getCodeQL(config.codeQLCmd);
-  await codeQL.runAutobuild(language);
+  await codeQL.runAutobuildScript(language);
   logger.endGroup();
 }

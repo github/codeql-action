@@ -1,0 +1,74 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pip install ruamel.yaml && python3 sync.py
+# to regenerate this file.
+
+name: PR Check - Autobuild via the CLI
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+on:
+  push:
+    branches:
+    - main
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  autobuild-cli:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: latest
+        - os: macos-latest
+          version: latest
+        - os: ubuntu-latest
+          version: nightly-latest
+        - os: macos-latest
+          version: nightly-latest
+    name: Autobuild via the CLI
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/actions/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: ./../action/init
+      with:
+        languages: go
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/autobuild
+    - name: Check that the Go autobuilder was run
+      shell: bash
+      run: |
+        if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
+          echo "Expected the Go autobuilder to be run, but the" \
+            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+          exit 1
+        fi
+    - uses: ./../action/analyze
+      with:
+        upload-database: false
+    - name: Check that the Go database was created
+      shell: bash
+      run: |
+        cd "$RUNNER_TEMP/codeql_databases"
+        if [[ ! -d go ]]; then
+          echo "Did not find a Go database"
+          exit 1
+        fi
+    env:
+      CODEQL_ACTION_USE_CLI_AUTOBUILD: true
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true

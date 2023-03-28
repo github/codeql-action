@@ -101,9 +101,9 @@ export interface CodeQL {
     logger: Logger
   ): Promise<void>;
   /**
-   * Runs the autobuilder for the given language.
+   * Runs the autobuild script for the given language.
    */
-  runAutobuild(language: Language): Promise<void>;
+  runAutobuildScript(language: Language): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
@@ -209,6 +209,13 @@ export interface CodeQL {
     automationDetailsId: string | undefined,
     config: Config,
     features: FeatureEnablement
+  ): Promise<void>;
+  /**
+   * Run 'codeql database autobuild'.
+   */
+  databaseAutobuild(
+    dbClusterPath: string,
+    workingDirectory: string | undefined
   ): Promise<void>;
 }
 
@@ -421,7 +428,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     getTracerEnv: resolveFunction(partialCodeql, "getTracerEnv"),
     databaseInit: resolveFunction(partialCodeql, "databaseInit"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
-    runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
+    runAutobuildScript: resolveFunction(partialCodeql, "runAutobuildScript"),
     extractScannedLanguage: resolveFunction(
       partialCodeql,
       "extractScannedLanguage"
@@ -450,6 +457,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "databaseExportDiagnostics"
     ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
+    databaseAutobuild: resolveFunction(partialCodeql, "databaseAutobuild"),
   };
   return cachedCodeQL;
 }
@@ -666,7 +674,7 @@ export async function getCodeQLForCmd(
         { stdin: externalRepositoryToken }
       );
     },
-    async runAutobuild(language: Language) {
+    async runAutobuildScript(language: Language) {
       const cmdName =
         process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh";
       // The autobuilder for Swift is located in the experimental/ directory.
@@ -680,17 +688,7 @@ export async function getCodeQLForCmd(
         cmdName
       );
 
-      // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
-      // This is because of an issue with Azure pipelines timing out connections after 4 minutes
-      // and Maven not properly handling closed connections
-      // Otherwise long build processes will timeout when pulling down Java packages
-      // https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
-      const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
-      process.env["JAVA_TOOL_OPTIONS"] = [
-        ...javaToolOptions.split(/\s+/),
-        "-Dhttp.keepAlive=false",
-        "-Dmaven.wagon.http.pool=false",
-      ].join(" ");
+      updateEnvForAutobuild();
 
       // On macOS, System Integrity Protection (SIP) typically interferes with
       // CodeQL build tracing of protected binaries.
@@ -1073,6 +1071,23 @@ export async function getCodeQLForCmd(
       }
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
+    async databaseAutobuild(
+      databasePath: string,
+      workingDirectory: string | undefined
+    ): Promise<void> {
+      const args = [
+        "database",
+        "autobuild",
+        "--db-cluster",
+        databasePath,
+        ...getExtraOptionsFromEnv(["database", "autobuild"]),
+      ];
+      if (workingDirectory !== undefined) {
+        args.push("--working-dir", workingDirectory);
+      }
+      updateEnvForAutobuild();
+      await new toolrunner.ToolRunner(cmd, args).exec();
+    },
   };
   // To ensure that status reports include the CodeQL CLI version wherever
   // possible, we want to call getVersion(), which populates the version value
@@ -1316,4 +1331,18 @@ export async function enrichEnvironment(codeql: CodeQL) {
     core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
     core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
   }
+}
+
+function updateEnvForAutobuild(): void {
+  // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
+  // This is because of an issue with Azure pipelines timing out connections after 4 minutes
+  // and Maven not properly handling closed connections
+  // Otherwise long build processes will timeout when pulling down Java packages
+  // https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
+  const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
+  process.env["JAVA_TOOL_OPTIONS"] = [
+    ...javaToolOptions.split(/\s+/),
+    "-Dhttp.keepAlive=false",
+    "-Dmaven.wagon.http.pool=false",
+  ].join(" ");
 }

@@ -10,12 +10,19 @@ import {
   StatusReportBase,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
+import { determineAutobuildLanguages, runAutobuildScript } from "./autobuild";
+import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { Feature, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
 import { CODEQL_ACTION_DID_AUTOBUILD_GOLANG } from "./shared-environment";
-import { checkGitHubVersionInRange, initializeEnvironment } from "./util";
+import {
+  checkGitHubVersionInRange,
+  getRequiredEnvParam,
+  initializeEnvironment,
+} from "./util";
 
 interface AutobuildStatusReport extends StatusReportBase {
   /** Comma-separated set of languages being auto-built. */
@@ -72,20 +79,39 @@ async function run() {
       );
     }
 
-    languages = await determineAutobuildLanguages(config, logger);
-    if (languages !== undefined) {
-      const workingDirectory = getOptionalInput("working-directory");
-      if (workingDirectory) {
-        logger.info(
-          `Changing autobuilder working directory to ${workingDirectory}`
-        );
-        process.chdir(workingDirectory);
-      }
-      for (const language of languages) {
-        currentLanguage = language;
-        await runAutobuild(language, config, logger);
-        if (language === Language.go) {
-          core.exportVariable(CODEQL_ACTION_DID_AUTOBUILD_GOLANG, "true");
+    const repositoryNwo = parseRepositoryNwo(
+      getRequiredEnvParam("GITHUB_REPOSITORY")
+    );
+
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger
+    );
+
+    const codeql = await getCodeQL(config.codeQLCmd);
+    const workingDirectory = getOptionalInput("working-directory");
+
+    if (await features.getValue(Feature.CliAutobuildEnabled, codeql)) {
+      logger.debug("Autobuilding using the CLI.");
+      await codeql.databaseAutobuild(config.dbLocation, workingDirectory);
+    } else {
+      logger.debug("Autobuilding using the Action.");
+      languages = await determineAutobuildLanguages(config, logger);
+      if (languages !== undefined) {
+        if (workingDirectory) {
+          logger.info(
+            `Changing autobuilder working directory to ${workingDirectory}`
+          );
+          process.chdir(workingDirectory);
+        }
+        for (const language of languages) {
+          currentLanguage = language;
+          await runAutobuildScript(language, config, logger);
+          if (language === Language.go) {
+            core.exportVariable(CODEQL_ACTION_DID_AUTOBUILD_GOLANG, "true");
+          }
         }
       }
     }

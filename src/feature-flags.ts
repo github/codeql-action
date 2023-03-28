@@ -37,6 +37,7 @@ export interface FeatureEnablement {
 }
 
 export enum Feature {
+  CliAutobuildEnabled = "cli_autobuild_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
@@ -49,15 +50,20 @@ export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
-  [Feature.DisableKotlinAnalysisEnabled]: {
-    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
-    minimumVersion: undefined,
+  [Feature.CliAutobuildEnabled]: {
+    envVar: "CODEQL_ACTION_USE_CLI_AUTOBUILD",
+    minimumVersion: "2.12.6",
     defaultValue: false,
   },
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.6",
     defaultValue: true,
+  },
+  [Feature.DisableKotlinAnalysisEnabled]: {
+    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
+    minimumVersion: undefined,
+    defaultValue: false,
   },
   [Feature.ExportCodeScanningConfigEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG",
@@ -69,7 +75,6 @@ export const featureConfig: Record<
     minimumVersion: "2.12.4",
     defaultValue: true,
   },
-
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",

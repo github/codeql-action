@@ -14,17 +14,12 @@ import {
   StatusReportBase,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import {
-  CodeQL,
-  CODEQL_VERSION_NEW_TRACING,
-  enrichEnvironment,
-} from "./codeql";
+import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature, Features } from "./feature-flags";
 import {
   initCodeQL,
   initConfig,
-  injectWindowsTracer,
   installPythonDeps,
   runInit,
   ToolsSource,
@@ -36,7 +31,6 @@ import { getTotalCacheSize } from "./trap-caching";
 import {
   checkForTimeout,
   checkGitHubVersionInRange,
-  codeQlVersionAbove,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMemoryFlagValue,
@@ -250,7 +244,6 @@ async function run() {
     toolsDownloadDurationMs = initCodeQLResult.toolsDownloadDurationMs;
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
-    await enrichEnvironment(codeql);
 
     config = await initConfig(
       getOptionalInput("languages"),
@@ -348,19 +341,6 @@ async function run() {
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
         core.exportVariable(key, value);
-      }
-
-      if (
-        process.platform === "win32" &&
-        !(await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING))
-      ) {
-        await injectWindowsTracer(
-          "Runner.Worker.exe",
-          undefined,
-          config,
-          codeql,
-          tracerConfig
-        );
       }
     }
 

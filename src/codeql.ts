@@ -266,7 +266,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.6.3";
+const CODEQL_MINIMUM_VERSION = "2.8.5";
 
 /**
  * Versions of CodeQL that version-flag certain functionality in the Action.

@@ -25,12 +25,30 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-20.04
-          version: stable-20220120
+        - os: ubuntu-latest
+          version: stable-20220401
         - os: macos-latest
-          version: stable-20220120
-        - os: windows-2019
-          version: stable-20220120
+          version: stable-20220401
+        - os: windows-latest
+          version: stable-20220401
+        - os: ubuntu-latest
+          version: stable-20220615
+        - os: macos-latest
+          version: stable-20220615
+        - os: windows-latest
+          version: stable-20220615
+        - os: ubuntu-latest
+          version: stable-20220908
+        - os: macos-latest
+          version: stable-20220908
+        - os: windows-latest
+          version: stable-20220908
+        - os: ubuntu-latest
+          version: stable-20221211
+        - os: macos-latest
+          version: stable-20221211
+        - os: windows-latest
+          version: stable-20221211
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
@@ -60,11 +78,14 @@ jobs:
       uses: ./.github/prepare-test
       with:
         version: ${{ matrix.version }}
-    - name: Set up Go
-      if: matrix.os == 'ubuntu-20.04' || matrix.os == 'windows-2019'
-      uses: actions/setup-go@v4
-      with:
-        go-version: ^1.13.1
+    - name: Set environment variable for Swift enablement
+      if: "\n                runner.os != 'Windows' && (\n                    matrix.version\
+        \ == '20220908' ||\n                    matrix.version == '20221211' ||\n\
+        \                    matrix.version == 'cached' ||\n                    matrix.version\
+        \ == 'latest' ||\n                    matrix.version == 'nightly-latest'\n\
+        \                )\n            "
+      shell: bash
+      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - uses: ./../action/init
       with:
         languages: javascript
@@ -87,7 +108,7 @@ jobs:
     - name: Check sarif
       uses: ./../action/.github/check-sarif
     # Running on Windows requires CodeQL CLI 2.9.0+.
-      if: "!(matrix.version == 'stable-20220120' && runner.os == 'Windows')"
+      if: "!(matrix.version == 'stable-20220401' && runner.os == 'Windows')"
       with:
         sarif-file: ${{ runner.temp }}/results/javascript.sarif
         queries-run: js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
@@ -96,7 +117,7 @@ jobs:
     - name: Check results
       env:
       # Running on Windows requires CodeQL CLI 2.9.0+.
-        SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220120' &&
+        SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220401' &&
           runner.os == 'Windows') }}
       shell: bash
       run: |

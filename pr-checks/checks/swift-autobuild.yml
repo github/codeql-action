@@ -3,8 +3,6 @@ description: "Tests creation of a Swift database using autobuild"
 versions: ["latest", "cached", "nightly-latest"]
 # Swift autobuilder is only supported on MacOS for private beta
 operatingSystems: ["macos"]
-env:
-  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
 steps:
   - uses: ./../action/init
     id: init

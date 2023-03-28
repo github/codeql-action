@@ -22,18 +22,22 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-20.04
-          version: stable-20211005
-        - os: macos-latest
-          version: stable-20211005
-        - os: ubuntu-20.04
-          version: stable-20220120
-        - os: macos-latest
-          version: stable-20220120
         - os: ubuntu-latest
           version: stable-20220401
         - os: macos-latest
           version: stable-20220401
+        - os: ubuntu-latest
+          version: stable-20220615
+        - os: macos-latest
+          version: stable-20220615
+        - os: ubuntu-latest
+          version: stable-20220908
+        - os: macos-latest
+          version: stable-20220908
+        - os: ubuntu-latest
+          version: stable-20221211
+        - os: macos-latest
+          version: stable-20221211
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
@@ -84,17 +88,10 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20211005 stable-20220120 stable-20220401 cached latest nightly-latest"
+          VERSIONS="stable-20220401 stable-20220615 stable-20220908 stable-20221211 cached latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
-            if [[ "$version" =~ stable-(20211005|20220120|20210809) ]]; then
-              # Note the absence of the period in "ubuntu-2004": this is present in the image name
-              # but not the artifact name
-              OPERATING_SYSTEMS="ubuntu-2004 macos-latest"
-            else
-              OPERATING_SYSTEMS="ubuntu-latest macos-latest"
-            fi
-            for os in $OPERATING_SYSTEMS; do
+            for os in ubuntu-latest macos-latest; do
               pushd "./my-debug-artifacts-$os-$version"
               echo "Artifacts from version $version on $os:"
               for language in $LANGUAGES; do

@@ -1,8 +1,6 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
 operatingSystems: ["ubuntu", "macos"]
-env:
-  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
 steps:
   - uses: ./../action/init
     id: init
@@ -58,7 +56,7 @@ steps:
       fi
 
   - name: Check language autodetect for Ruby
-    if: "(matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+    if: env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true'
     shell: bash
     run: |
       RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
@@ -68,7 +66,7 @@ steps:
       fi
 
   - name: Check language autodetect for Swift
-    if: "(matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+    if: env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true'
     shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

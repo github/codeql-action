@@ -44,6 +44,7 @@ jobs:
       id: analysis
       with:
         upload-database: false
+        skip-queries: true
     - name: Check database
       shell: bash
       run: |

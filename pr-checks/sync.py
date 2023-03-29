@@ -1,5 +1,7 @@
 import ruamel.yaml
+from ruamel.yaml.scalarstring import FoldedScalarString
 import os
+import textwrap
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
@@ -39,6 +41,7 @@ def writeHeader(checkStream):
 
 yaml = ruamel.yaml.YAML()
 yaml.Representer = NonAliasingRTRepresenter
+
 allJobs = {}
 for file in os.listdir('checks'):
     with open(f"checks/{file}", 'r') as checkStream:
@@ -73,7 +76,9 @@ for file in os.listdir('checks'):
         # We don't support Swift on Windows or prior versions of the CLI.
         {
             'name': 'Set environment variable for Swift enablement',
-            'if': '''
+            # Ensure that this is serialized as a folded (`>`) string to preserve the readability
+            # of the generated workflow.
+            'if': FoldedScalarString(textwrap.dedent('''
                 runner.os != 'Windows' && (
                     matrix.version == '20220908' ||
                     matrix.version == '20221211' ||
@@ -81,7 +86,7 @@ for file in os.listdir('checks'):
                     matrix.version == 'latest' ||
                     matrix.version == 'nightly-latest'
                 )
-            ''',
+            ''').strip()),
             'shell': 'bash',
             'run': 'echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV'
         },

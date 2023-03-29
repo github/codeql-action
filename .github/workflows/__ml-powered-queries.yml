@@ -79,11 +79,14 @@ jobs:
       with:
         version: ${{ matrix.version }}
     - name: Set environment variable for Swift enablement
-      if: "\n                runner.os != 'Windows' && (\n                    matrix.version\
-        \ == '20220908' ||\n                    matrix.version == '20221211' ||\n\
-        \                    matrix.version == 'cached' ||\n                    matrix.version\
-        \ == 'latest' ||\n                    matrix.version == 'nightly-latest'\n\
-        \                )\n            "
+      if: >-
+        runner.os != 'Windows' && (
+            matrix.version == '20220908' ||
+            matrix.version == '20221211' ||
+            matrix.version == 'cached' ||
+            matrix.version == 'latest' ||
+            matrix.version == 'nightly-latest'
+        )
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - uses: ./../action/init

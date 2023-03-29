@@ -21,35 +21,17 @@ jobs:
   upload-artifacts:
     strategy:
       matrix:
-        include:
-        - os: ubuntu-latest
-          version: stable-20220401
-        - os: macos-latest
-          version: stable-20220401
-        - os: ubuntu-latest
-          version: stable-20220615
-        - os: macos-latest
-          version: stable-20220615
-        - os: ubuntu-latest
-          version: stable-20220908
-        - os: macos-latest
-          version: stable-20220908
-        - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: cached
-        - os: macos-latest
-          version: cached
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
+        os:
+        - ubuntu-latest
+        - macos-latest
+        version:
+        - stable-20220401
+        - stable-20220615
+        - stable-20220908
+        - stable-20221211
+        - cached
+        - latest
+        - nightly-latest
     name: Upload debug artifacts
     env:
       CODEQL_ACTION_TEST_MODE: true

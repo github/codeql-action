@@ -5,9 +5,9 @@ import os
 defaultTestVersions = [
     # The oldest supported CodeQL version: 2.8.5. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
     "stable-20220401",
-    # The last CodeQL release in the 2.9 series: 2.9.6.
+    # The last CodeQL release in the 2.9 series: 2.9.4.
     "stable-20220615",
-    # The last CodeQL release in the 2.10 series: 2.10.6.
+    # The last CodeQL release in the 2.10 series: 2.10.5.
     "stable-20220908",
     # The last CodeQL release in the 2.11 series: 2.11.6.
     "stable-20221211",

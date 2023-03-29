@@ -910,6 +910,8 @@ export async function getCodeQLForCmd(
       }
       if (shouldExportDiagnostics) {
         codeqlArgs.push("--sarif-include-diagnostics");
+      } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
+        codeqlArgs.push("--no-sarif-include-diagnostics");
       }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {

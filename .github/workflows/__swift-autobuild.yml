@@ -12,12 +12,10 @@ jobs:
   swift-autobuild:
     strategy:
       matrix:
-        include:
-        - os: macos-latest
-          version: cached
+        slice: [1,2,3,4]
     name: Swift analysis using autobuild
     timeout-minutes: 15
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
@@ -25,7 +23,7 @@ jobs:
       id: prepare-test
       uses: ./.github/prepare-test
       with:
-        version: ${{ matrix.version }}
+        version: cached
     - uses: ./../action/init
       id: init
       with:
@@ -56,7 +54,7 @@ jobs:
       if: failure() || cancelled()
       uses: actions/upload-artifact@v3
       with:
-        name: swift-autobuild-db
+        name: swift-autobuild-db-${{ matrix.slice }}
         path: ${{ fromJson(steps.analysis.outputs.db-locations).swift }}
     env:
       CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.

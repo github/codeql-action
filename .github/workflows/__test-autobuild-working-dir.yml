@@ -13,6 +13,7 @@ on:
     branches:
     - main
     - releases/v2
+    - henrymercer/cli-autobuild-testing
   pull_request:
     types:
     - opened
@@ -48,7 +49,7 @@ jobs:
     - uses: ./../action/init
       with:
         languages: java
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
+        tools: https://github.com/dsp-testing/henrymercer-status-test/releases/download/codeql-bundle-20230322/codeql-bundle-linux64.tar.gz
     - uses: ./../action/autobuild
       with:
         working-directory: autobuild-dir

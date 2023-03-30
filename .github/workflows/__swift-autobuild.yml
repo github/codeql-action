@@ -13,6 +13,7 @@ jobs:
     strategy:
       matrix:
         slice: [1,2,3,4]
+        version: [cached]
     name: Swift analysis using autobuild
     timeout-minutes: 15
     runs-on: macos-latest
@@ -23,7 +24,7 @@ jobs:
       id: prepare-test
       uses: ./.github/prepare-test
       with:
-        version: cached
+        version: ${{ matrix.version }}
     - uses: ./../action/init
       id: init
       with:

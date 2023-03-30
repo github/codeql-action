@@ -55,8 +55,9 @@ jobs:
       if: failure() || cancelled()
       uses: actions/upload-artifact@v3
       with:
-        name: swift-autobuild-db-${{ matrix.slice }}
-        path: ${{ fromJson(steps.analysis.outputs.db-locations).swift }}
+        name: swift-autobuild-dbs-${{ matrix.slice }}
+        # relocator working directory is under codeql_databases, not the language-specific DB
+        path: ${{ runner.temp }}/codeql_databases
     env:
       CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

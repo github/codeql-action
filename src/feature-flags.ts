@@ -62,12 +62,12 @@ export const featureConfig: Record<
   [Feature.ExportCodeScanningConfigEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG",
     minimumVersion: "2.12.3",
-    defaultValue: false,
+    defaultValue: true,
   },
   [Feature.ExportDiagnosticsEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     minimumVersion: "2.12.4",
-    defaultValue: false,
+    defaultValue: true,
   },
 
   [Feature.MlPoweredQueriesEnabled]: {
@@ -78,7 +78,7 @@ export const featureConfig: Record<
   [Feature.UploadFailedSarifEnabled]: {
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
     minimumVersion: "2.11.3",
-    defaultValue: false,
+    defaultValue: true,
   },
 };
 

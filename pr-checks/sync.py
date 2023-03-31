@@ -79,7 +79,7 @@ for file in os.listdir('checks'):
         {
             'name': 'Prepare test',
             'id': 'prepare-test',
-            'uses': './.github/prepare-test',
+            'uses': './.github/actions/prepare-test',
             'with': {
                 'version': '${{ matrix.version }}'
             }

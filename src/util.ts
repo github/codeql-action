@@ -10,7 +10,7 @@ import * as semver from "semver";
 
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import { CodeQL, CODEQL_VERSION_NEW_TRACING } from "./codeql";
+import { CodeQL } from "./codeql";
 import {
   Config,
   parsePacksSpecification,
@@ -19,7 +19,11 @@ import {
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { CODEQL_ACTION_TEST_MODE } from "./shared-environment";
+import {
+  CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX,
+  CODEQL_ACTION_TEST_MODE,
+  EnvVar,
+} from "./shared-environment";
 
 /**
  * Specifies bundle versions that are known to be broken
@@ -42,13 +46,6 @@ export const DEFAULT_DEBUG_ARTIFACT_NAME = "debug-artifacts";
  */
 export const DEFAULT_DEBUG_DATABASE_NAME = "db";
 
-/**
- * Environment variable that is set to "true" when the CodeQL Action has invoked
- * the Go autobuilder.
- */
-export const DID_AUTOBUILD_GO_ENV_VAR_NAME =
-  "CODEQL_ACTION_DID_AUTOBUILD_GOLANG";
-
 export interface SarifFile {
   version?: string | null;
   runs: SarifRun[];
@@ -65,7 +62,12 @@ export interface SarifRun {
     id?: string;
   };
   artifacts?: string[];
+  invocations?: SarifInvocation[];
   results?: SarifResult[];
+}
+
+export interface SarifInvocation {
+  toolExecutionNotifications?: SarifNotification[];
 }
 
 export interface SarifResult {
@@ -85,6 +87,18 @@ export interface SarifResult {
   }>;
   partialFingerprints: {
     primaryLocationLineHash?: string;
+  };
+}
+
+export interface SarifNotification {
+  locations?: SarifLocation[];
+}
+
+export interface SarifLocation {
+  physicalLocation?: {
+    artifactLocation?: {
+      uri?: string;
+    };
   };
 }
 
@@ -312,10 +326,12 @@ export enum GitHubVariant {
   DOTCOM,
   GHES,
   GHAE,
+  GHE_DOTCOM,
 }
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }
   | { type: GitHubVariant.GHAE }
+  | { type: GitHubVariant.GHE_DOTCOM }
   | { type: GitHubVariant.GHES; version: string };
 
 export async function getGitHubVersion(
@@ -339,6 +355,10 @@ export async function getGitHubVersion(
 
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "GitHub AE") {
     return { type: GitHubVariant.GHAE };
+  }
+
+  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
+    return { type: GitHubVariant.GHE_DOTCOM };
   }
 
   const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
@@ -414,42 +434,6 @@ export function assertNever(value: never): never {
 }
 
 /**
- * Environment variables to be set by codeql-action and used by the
- * CLI.
- */
-export enum EnvVar {
-  /**
-   * Semver of the codeql-action as specified in package.json.
-   */
-  VERSION = "CODEQL_ACTION_VERSION",
-
-  /**
-   * If set to a truthy value, then the codeql-action might combine SARIF
-   * output from several `interpret-results` runs for the same Language.
-   */
-  FEATURE_SARIF_COMBINE = "CODEQL_ACTION_FEATURE_SARIF_COMBINE",
-
-  /**
-   * If set to the "true" string, then the codeql-action will upload SARIF,
-   * not the cli.
-   */
-  FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
-
-  /**
-   * If set to the "true" string, then the codeql-action is using its
-   * own deprecated and non-standard way of scanning for multiple
-   * languages.
-   */
-  FEATURE_MULTI_LANGUAGE = "CODEQL_ACTION_FEATURE_MULTI_LANGUAGE",
-
-  /**
-   * If set to the "true" string, then the codeql-action is using its
-   * own sandwiched workflow mechanism
-   */
-  FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
-}
-
-/**
  * Set some initial environment variables that we can set even without
  * knowing what version of CodeQL we're running.
  */
@@ -457,20 +441,6 @@ export function initializeEnvironment(version: string) {
   core.exportVariable(EnvVar.VERSION, version);
   core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
   core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-}
-
-/**
- * Enrich the environment variables with further flags that we cannot
- * know the value of until we know what version of CodeQL we're running.
- */
-export async function enrichEnvironment(codeql: CodeQL) {
-  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-    core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  } else {
-    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
-    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
-  }
 }
 
 /**
@@ -828,4 +798,93 @@ export function parseMatrixInput(
     return undefined;
   }
   return JSON.parse(matrixInput);
+}
+
+function removeDuplicateLocations(locations: SarifLocation[]): SarifLocation[] {
+  const newJsonLocations = new Set<string>();
+  return locations.filter((location) => {
+    const jsonLocation = JSON.stringify(location);
+    if (!newJsonLocations.has(jsonLocation)) {
+      newJsonLocations.add(jsonLocation);
+      return true;
+    }
+    return false;
+  });
+}
+
+export function fixInvalidNotifications(
+  sarif: SarifFile,
+  logger: Logger
+): SarifFile {
+  if (process.env[CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
+    logger.info(
+      "SARIF notification object duplicate location fix disabled by the " +
+        `${CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
+    );
+    return sarif;
+  }
+  if (!Array.isArray(sarif.runs)) {
+    return sarif;
+  }
+
+  // Ensure that the array of locations for each SARIF notification contains unique locations.
+  // This is a workaround for a bug in the CodeQL CLI that causes duplicate locations to be
+  // emitted in some cases.
+  let numDuplicateLocationsRemoved = 0;
+
+  const newSarif = {
+    ...sarif,
+    runs: sarif.runs.map((run) => {
+      if (
+        run.tool?.driver?.name !== "CodeQL" ||
+        !Array.isArray(run.invocations)
+      ) {
+        return run;
+      }
+      return {
+        ...run,
+        invocations: run.invocations.map((invocation) => {
+          if (!Array.isArray(invocation.toolExecutionNotifications)) {
+            return invocation;
+          }
+          return {
+            ...invocation,
+            toolExecutionNotifications:
+              invocation.toolExecutionNotifications.map((notification) => {
+                if (!Array.isArray(notification.locations)) {
+                  return notification;
+                }
+                const newLocations = removeDuplicateLocations(
+                  notification.locations
+                );
+                numDuplicateLocationsRemoved +=
+                  notification.locations.length - newLocations.length;
+                return {
+                  ...notification,
+                  locations: newLocations,
+                };
+              }),
+          };
+        }),
+      };
+    }),
+  };
+
+  if (numDuplicateLocationsRemoved > 0) {
+    logger.info(
+      `Removed ${numDuplicateLocationsRemoved} duplicate locations from SARIF notification ` +
+        "objects."
+    );
+  }
+  return newSarif;
+}
+
+export function fixInvalidNotificationsInFile(
+  inputPath: string,
+  outputPath: string,
+  logger: Logger
+): void {
+  let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
+  sarif = fixInvalidNotifications(sarif, logger);
+  fs.writeFileSync(outputPath, JSON.stringify(sarif));
 }

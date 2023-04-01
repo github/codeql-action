@@ -22,7 +22,10 @@ export type CodeQLDefaultVersionInfo =
   | {
       cliVersion: string;
       tagName: string;
-      variant: util.GitHubVariant.GHAE | util.GitHubVariant.GHES;
+      variant:
+        | util.GitHubVariant.GHAE
+        | util.GitHubVariant.GHES
+        | util.GitHubVariant.GHE_DOTCOM;
     };
 
 export interface FeatureEnablement {
@@ -37,6 +40,7 @@ export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
+  ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
@@ -58,8 +62,14 @@ export const featureConfig: Record<
   [Feature.ExportCodeScanningConfigEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG",
     minimumVersion: "2.12.3",
-    defaultValue: false,
+    defaultValue: true,
   },
+  [Feature.ExportDiagnosticsEnabled]: {
+    envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
+    minimumVersion: "2.12.4",
+    defaultValue: true,
+  },
+
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
@@ -68,7 +78,7 @@ export const featureConfig: Record<
   [Feature.UploadFailedSarifEnabled]: {
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
     minimumVersion: "2.11.3",
-    defaultValue: false,
+    defaultValue: true,
   },
 };
 

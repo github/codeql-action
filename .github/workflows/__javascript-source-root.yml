@@ -56,7 +56,7 @@ jobs:
       with:
         upload-database: false
         skip-queries: true
-        upload: false
+        upload: never
     - name: Assert database exists
       shell: bash
       run: |

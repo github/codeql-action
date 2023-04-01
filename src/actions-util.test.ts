@@ -214,6 +214,10 @@ test("initializeEnvironment", (t) => {
 });
 
 test("isAnalyzingDefaultBranch()", async (t) => {
+  process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "true";
+  t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
+  process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "false";
+
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     const envFile = path.join(tmpDir, "event.json");

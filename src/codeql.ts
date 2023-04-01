@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
@@ -17,6 +18,7 @@ import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
+import { EnvVar } from "./shared-environment";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import {
   getTrapCachingExtractorConfigArgs,
@@ -179,12 +181,26 @@ export interface CodeQL {
     verbosityFlag: string | undefined,
     automationDetailsId: string | undefined,
     config: Config,
-    features: FeatureEnablement
+    features: FeatureEnablement,
+    logger: Logger
   ): Promise<string>;
   /**
    * Run 'codeql database print-baseline'.
    */
   databasePrintBaseline(databasePath: string): Promise<string>;
+  /**
+   * Run 'codeql database export-diagnostics'
+   *
+   * Note that the "--sarif-include-diagnostics" option is always used, as the command should
+   * only be run if the ExportDiagnosticsEnabled feature flag is on.
+   */
+  databaseExportDiagnostics(
+    databasePath: string,
+    sarifFile: string,
+    automationDetailsId: string | undefined,
+    tempDir: string,
+    logger: Logger
+  ): Promise<void>;
   /**
    * Run 'codeql diagnostics export'.
    */
@@ -428,6 +444,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     databasePrintBaseline: resolveFunction(
       partialCodeql,
       "databasePrintBaseline"
+    ),
+    databaseExportDiagnostics: resolveFunction(
+      partialCodeql,
+      "databaseExportDiagnostics"
     ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
   };
@@ -851,15 +871,23 @@ export async function getCodeQLForCmd(
       verbosityFlag: string,
       automationDetailsId: string | undefined,
       config: Config,
-      features: FeatureEnablement
+      features: FeatureEnablement,
+      logger: Logger
     ): Promise<string> {
+      const shouldExportDiagnostics = await features.getValue(
+        Feature.ExportDiagnosticsEnabled,
+        this
+      );
+      const codeqlOutputFile = shouldExportDiagnostics
+        ? path.join(config.tempDir, "codeql-intermediate-results.sarif")
+        : sarifFile;
       const codeqlArgs = [
         "database",
         "interpret-results",
         threadsFlag,
         "--format=sarif-latest",
         verbosityFlag,
-        `--output=${sarifFile}`,
+        `--output=${codeqlOutputFile}`,
         addSnippetsFlag,
         "--print-diagnostics-summary",
         "--print-metrics-summary",
@@ -880,6 +908,11 @@ export async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--sarif-add-baseline-file-info");
       }
+      if (shouldExportDiagnostics) {
+        codeqlArgs.push("--sarif-include-diagnostics");
+      } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
+        codeqlArgs.push("--no-sarif-include-diagnostics");
+      }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {
         codeqlArgs.push(...querySuitePaths);
@@ -890,6 +923,11 @@ export async function getCodeQLForCmd(
         codeqlArgs,
         errorMatchers
       );
+
+      if (shouldExportDiagnostics) {
+        util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
+      }
+
       return returnState.stdout;
     },
     async databasePrintBaseline(databasePath: string): Promise<string> {
@@ -981,6 +1019,40 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "bundle"]),
       ];
       await new toolrunner.ToolRunner(cmd, args).exec();
+    },
+    async databaseExportDiagnostics(
+      databasePath: string,
+      sarifFile: string,
+      automationDetailsId: string | undefined,
+      tempDir: string,
+      logger: Logger
+    ): Promise<void> {
+      const intermediateSarifFile = path.join(
+        tempDir,
+        "codeql-intermediate-results.sarif"
+      );
+      const args = [
+        "database",
+        "export-diagnostics",
+        `${databasePath}`,
+        "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
+        "--format=sarif-latest",
+        `--output=${intermediateSarifFile}`,
+        "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
+        "-vvv",
+        ...getExtraOptionsFromEnv(["diagnostics", "export"]),
+      ];
+      if (automationDetailsId !== undefined) {
+        args.push("--sarif-category", automationDetailsId);
+      }
+      await new toolrunner.ToolRunner(cmd, args).exec();
+
+      // Fix invalid notifications in the SARIF file output by CodeQL.
+      util.fixInvalidNotificationsInFile(
+        intermediateSarifFile,
+        sarifFile,
+        logger
+      );
     },
     async diagnosticsExport(
       sarifFile: string,
@@ -1230,4 +1302,18 @@ async function getCodeScanningConfigExportArguments(
     return ["--sarif-codescanning-config", codeScanningConfigPath];
   }
   return [];
+}
+
+/**
+ * Enrich the environment variables with further flags that we cannot
+ * know the value of until we know what version of CodeQL we're running.
+ */
+export async function enrichEnvironment(codeql: CodeQL) {
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+    core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
+  } else {
+    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
+  }
 }

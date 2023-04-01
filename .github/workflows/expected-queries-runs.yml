@@ -36,7 +36,7 @@ jobs:
       with:
         output: ${{ runner.temp }}/results
         upload-database: false
-        upload: false
+        upload: never
 
     - name: Check Sarif
       uses: ./../action/.github/check-sarif

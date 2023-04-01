@@ -2,7 +2,21 @@
 
 ## [UNRELEASED]
 
-- Add `configuration` parameter to the `init` action https://github.com/github/codeql-action/pull/1590
+- Add `config` parameter to the `init` action https://github.com/github/codeql-action/pull/1590
+
+## 2.2.9 - 27 Mar 2023
+
+- Customers post-processing the SARIF output of the `analyze` Action before uploading it to Code Scanning will benefit from an improved debugging experience. [#1598](https://github.com/github/codeql-action/pull/1598)
+  - The CodeQL Action will now upload a SARIF file with debugging information to Code Scanning on failed runs for customers using `upload: false`. Previously, this was only available for customers using the default value of the `upload` input.
+  - The `upload` input to the `analyze` Action now accepts the following values:
+    - `always` is the default value, which uploads the SARIF file to Code Scanning for successful and failed runs.
+    - `failure-only` is recommended for customers post-processing the SARIF file before uploading it to Code Scanning. This option uploads debugging information to Code Scanning for failed runs to improve the debugging experience.
+    - `never` avoids uploading the SARIF file to Code Scanning even if the code scanning run fails. This is not recommended for external users since it complicates debugging.
+    - The legacy `true` and `false` options will be interpreted as `always` and `failure-only` respectively.
+
+## 2.2.8 - 22 Mar 2023
+
+- Update default CodeQL bundle version to 2.12.5. [#1585](https://github.com/github/codeql-action/pull/1585)
 
 ## 2.2.7 - 15 Mar 2023
 
@@ -10,7 +24,7 @@ No user facing changes.
 
 ## 2.2.6 - 10 Mar 2023
 
-- Update default CodeQL bundle version to 2.12.4.
+- Update default CodeQL bundle version to 2.12.4. [#1561](https://github.com/github/codeql-action/pull/1561)
 
 ## 2.2.5 - 24 Feb 2023
 

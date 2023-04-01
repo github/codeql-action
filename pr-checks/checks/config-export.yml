@@ -1,6 +1,6 @@
 name: "Config export"
 description: "Tests that the code scanning configuration file is exported to SARIF correctly."
-versions: ["latest"]
+versions: ["latest", "nightly-latest"]
 env:
   CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG: true
   CODEQL_PASS_CONFIG_TO_CLI: true
@@ -27,7 +27,6 @@ steps:
     with:
       script: |
         const fs = require('fs');
-        const path = require('path');
 
         const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
         const run = sarif.runs[0];

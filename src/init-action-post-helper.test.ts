@@ -83,7 +83,7 @@ test("post: init action with debug mode on", async (t) => {
   });
 });
 
-test("uploads failed SARIF run for typical workflow", async (t) => {
+test("uploads failed SARIF run with `diagnostics export` if feature flag is off", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
@@ -107,7 +107,7 @@ test("uploads failed SARIF run for typical workflow", async (t) => {
   await testFailedSarifUpload(t, actionsWorkflow, { category: "my-category" });
 });
 
-test("doesn't upload failed SARIF for workflow with upload: false", async (t) => {
+test("uploads failed SARIF run with `diagnostics export` if the database doesn't exist", async (t) => {
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
@@ -125,15 +125,106 @@ test("doesn't upload failed SARIF for workflow with upload: false", async (t) =>
       uses: "github/codeql-action/analyze@v2",
       with: {
         category: "my-category",
-        upload: false,
       },
     },
   ]);
-  const result = await testFailedSarifUpload(t, actionsWorkflow, {
-    expectUpload: false,
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "my-category",
+    databaseExists: false,
   });
-  t.is(result.upload_failed_run_skipped_because, "SARIF upload is disabled");
 });
+
+test("uploads failed SARIF run with database export-diagnostics if the database exists and feature flag is on", async (t) => {
+  const actionsWorkflow = createTestWorkflow([
+    {
+      name: "Checkout repository",
+      uses: "actions/checkout@v3",
+    },
+    {
+      name: "Initialize CodeQL",
+      uses: "github/codeql-action/init@v2",
+      with: {
+        languages: "javascript",
+      },
+    },
+    {
+      name: "Perform CodeQL Analysis",
+      uses: "github/codeql-action/analyze@v2",
+      with: {
+        category: "my-category",
+      },
+    },
+  ]);
+  await testFailedSarifUpload(t, actionsWorkflow, {
+    category: "my-category",
+    exportDiagnosticsEnabled: true,
+  });
+});
+
+const UPLOAD_INPUT_TEST_CASES = [
+  {
+    uploadInput: "true",
+    shouldUpload: true,
+  },
+  {
+    uploadInput: "false",
+    shouldUpload: true,
+  },
+  {
+    uploadInput: "always",
+    shouldUpload: true,
+  },
+  {
+    uploadInput: "failure-only",
+    shouldUpload: true,
+  },
+  {
+    uploadInput: "never",
+    shouldUpload: false,
+  },
+  {
+    uploadInput: "unrecognized-value",
+    shouldUpload: true,
+  },
+];
+
+for (const { uploadInput, shouldUpload } of UPLOAD_INPUT_TEST_CASES) {
+  test(`does ${
+    shouldUpload ? "" : "not "
+  }upload failed SARIF run for workflow with upload: ${uploadInput}`, async (t) => {
+    const actionsWorkflow = createTestWorkflow([
+      {
+        name: "Checkout repository",
+        uses: "actions/checkout@v3",
+      },
+      {
+        name: "Initialize CodeQL",
+        uses: "github/codeql-action/init@v2",
+        with: {
+          languages: "javascript",
+        },
+      },
+      {
+        name: "Perform CodeQL Analysis",
+        uses: "github/codeql-action/analyze@v2",
+        with: {
+          category: "my-category",
+          upload: uploadInput,
+        },
+      },
+    ]);
+    const result = await testFailedSarifUpload(t, actionsWorkflow, {
+      category: "my-category",
+      expectUpload: shouldUpload,
+    });
+    if (!shouldUpload) {
+      t.is(
+        result.upload_failed_run_skipped_because,
+        "SARIF upload is disabled"
+      );
+    }
+  });
+}
 
 test("uploading failed SARIF run succeeds when workflow uses an input with a matrix var", async (t) => {
   const actionsWorkflow = createTestWorkflow([
@@ -239,11 +330,15 @@ async function testFailedSarifUpload(
   actionsWorkflow: workflow.Workflow,
   {
     category,
+    databaseExists = true,
     expectUpload = true,
+    exportDiagnosticsEnabled = false,
     matrix = {},
   }: {
     category?: string;
+    databaseExists?: boolean;
     expectUpload?: boolean;
+    exportDiagnosticsEnabled?: boolean;
     matrix?: { [key: string]: string };
   } = {}
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
@@ -253,6 +348,9 @@ async function testFailedSarifUpload(
     languages: [],
     packs: [],
   } as unknown as configUtils.Config;
+  if (databaseExists) {
+    config.dbLocation = "path/to/database";
+  }
   process.env["GITHUB_JOB"] = "analyze";
   process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   process.env["GITHUB_WORKSPACE"] =
@@ -264,6 +362,10 @@ async function testFailedSarifUpload(
 
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+  const databaseExportDiagnosticsStub = sinon.stub(
+    codeqlObject,
+    "databaseExportDiagnostics"
+  );
   const diagnosticsExportStub = sinon.stub(codeqlObject, "diagnosticsExport");
 
   sinon.stub(workflow, "getWorkflow").resolves(actionsWorkflow);
@@ -275,10 +377,15 @@ async function testFailedSarifUpload(
   } as uploadLib.UploadResult);
   const waitForProcessing = sinon.stub(uploadLib, "waitForProcessing");
 
+  const features = [Feature.UploadFailedSarifEnabled];
+  if (exportDiagnosticsEnabled) {
+    features.push(Feature.ExportDiagnosticsEnabled);
+  }
+
   const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
     config,
     parseRepositoryNwo("github/codeql-action"),
-    createFeatures([Feature.UploadFailedSarifEnabled]),
+    createFeatures(features),
     getRunnerLogger(true)
   );
   if (expectUpload) {
@@ -286,17 +393,28 @@ async function testFailedSarifUpload(
       raw_upload_size_bytes: 20,
       zipped_upload_size_bytes: 10,
     });
-  }
-  if (expectUpload) {
-    t.true(
-      diagnosticsExportStub.calledOnceWith(
-        sinon.match.string,
-        category,
-        sinon.match.any,
-        sinon.match.any
-      ),
-      `Actual args were: ${diagnosticsExportStub.args}`
-    );
+    if (databaseExists && exportDiagnosticsEnabled) {
+      t.true(
+        databaseExportDiagnosticsStub.calledOnceWith(
+          config.dbLocation,
+          sinon.match.string,
+          category,
+          sinon.match.any,
+          sinon.match.any
+        ),
+        `Actual args were: ${databaseExportDiagnosticsStub.args}`
+      );
+    } else {
+      t.true(
+        diagnosticsExportStub.calledOnceWith(
+          sinon.match.string,
+          category,
+          config,
+          sinon.match.any
+        ),
+        `Actual args were: ${diagnosticsExportStub.args}`
+      );
+    }
     t.true(
       uploadFromActions.calledOnceWith(
         sinon.match.string,

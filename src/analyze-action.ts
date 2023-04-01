@@ -16,14 +16,17 @@ import {
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
-import { getCodeQL } from "./codeql";
+import { enrichEnvironment, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY } from "./shared-environment";
+import {
+  CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY,
+  CODEQL_ACTION_DID_AUTOBUILD_GOLANG,
+} from "./shared-environment";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
@@ -130,7 +133,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * an autobuild step or manual build steps.
  *
  * - We detect whether an autobuild step is present by checking the
- * `util.DID_AUTOBUILD_GO_ENV_VAR_NAME` environment variable, which is set
+ * `CODEQL_ACTION_DID_AUTOBUILD_GOLANG` environment variable, which is set
  * when the autobuilder is invoked.
  * - We detect whether the Go database has already been finalized in case it
  * has been manually set in a prior Action step.
@@ -141,7 +144,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
-  if (process.env[util.DID_AUTOBUILD_GO_ENV_VAR_NAME] === "true") {
+  if (process.env[CODEQL_ACTION_DID_AUTOBUILD_GOLANG] === "true") {
     logger.debug("Won't run Go autobuild since it has already been run.");
     return;
   }
@@ -204,7 +207,7 @@ async function run() {
       );
     }
 
-    await util.enrichEnvironment(await getCodeQL(config.codeQLCmd));
+    await enrichEnvironment(await getCodeQL(config.codeQLCmd));
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
@@ -265,8 +268,8 @@ async function run() {
       dbLocations[language] = util.getCodeQLDatabasePath(config, language);
     }
     core.setOutput("db-locations", dbLocations);
-
-    if (runStats && actionsUtil.getRequiredInput("upload") === "true") {
+    const uploadInput = actionsUtil.getOptionalInput("upload");
+    if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
       uploadResult = await upload_lib.uploadFromActions(
         outputDir,
         actionsUtil.getRequiredInput("checkout_path"),

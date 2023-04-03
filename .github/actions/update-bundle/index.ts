@@ -34,19 +34,19 @@ function getCodeQLCliVersionForRelease(release): string {
       }
       return cliVersionsFromMarkerFiles[0];
     }
-    
+
     async function getBundleInfoFromRelease(release): Promise<BundleInfo> {
       return {
         bundleVersion: release.tag_name.substring(CODEQL_BUNDLE_PREFIX.length),
         cliVersion: getCodeQLCliVersionForRelease(release)
       };
     }
-    
+
     async function getNewDefaults(currentDefaults: Defaults): Promise<Defaults> {
       const release = github.context.payload.release;
       console.log('Updating default bundle as a result of the following release: ' +
       `${JSON.stringify(release)}.`)
-      
+
       const bundleInfo = await getBundleInfoFromRelease(release);
       return {
         bundleVersion: bundleInfo.bundleVersion,
@@ -55,14 +55,15 @@ function getCodeQLCliVersionForRelease(release): string {
         priorCliVersion: currentDefaults.cliVersion
       };
     }
-    
+
     async function main() {
       const previousDefaults: Defaults = JSON.parse(fs.readFileSync('../../../src/defaults.json', 'utf8'));
       const newDefaults = await getNewDefaults(previousDefaults);
+      // Update the source file in the repository. Calling workflows should subsequently rebuild
+      // the Action to update `lib/defaults.json`.
       fs.writeFileSync('../../../src/defaults.json', JSON.stringify(newDefaults, null, 2) + "\n");
     }
-    
+
     // Ideally, we'd await main() here, but that doesn't work well with `ts-node`.
     // So instead we rely on the fact that Node won't exit until the event loop is empty.
     main();
-    

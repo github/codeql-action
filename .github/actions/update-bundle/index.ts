@@ -2,63 +2,64 @@ import * as fs from 'fs';
 import * as github from '@actions/github';
 
 interface BundleInfo {
-    bundleVersion: string;
-    cliVersion: string;
+  bundleVersion: string;
+  cliVersion: string;
 }
 
 interface Defaults {
-    bundleVersion: string;
-    cliVersion: string;
-    priorBundleVersion: string;
-    priorCliVersion: string;
+  bundleVersion: string;
+  cliVersion: string;
+  priorBundleVersion: string;
+  priorCliVersion: string;
 }
 
 const CODEQL_BUNDLE_PREFIX = 'codeql-bundle-';
 
 function getCodeQLCliVersionForRelease(release): string {
-    const cliVersionsFromMarkerFiles = release.assets
-      .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
-      .filter((v) => v)
-      .map((v) => v as string);
-    if (cliVersionsFromMarkerFiles.length > 1) {
-      throw new Error(
-        `Release ${release.tag_name} has multiple CLI version marker files.`
+  const cliVersionsFromMarkerFiles = release.assets
+  .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
+  .filter((v) => v)
+  .map((v) => v as string);
+  if (cliVersionsFromMarkerFiles.length > 1) {
+    throw new Error(
+      `Release ${release.tag_name} has multiple CLI version marker files.`
       );
     } else if (cliVersionsFromMarkerFiles.length === 0) {
       throw new Error(
         `Failed to find the CodeQL CLI version for release ${release.tag_name}.`
-      );
+        );
+      }
+      return cliVersionsFromMarkerFiles[0];
     }
-    return cliVersionsFromMarkerFiles[0];
-  }
-
-async function getBundleInfoFromRelease(release): Promise<BundleInfo> {
-    return {
+    
+    async function getBundleInfoFromRelease(release): Promise<BundleInfo> {
+      return {
         bundleVersion: release.tag_name.substring(CODEQL_BUNDLE_PREFIX.length),
         cliVersion: getCodeQLCliVersionForRelease(release)
-    };
-}
-
-async function getNewDefaults(currentDefaults: Defaults): Promise<Defaults> {
-    const release = github.context.payload.release;
-    console.log('Updating default bundle as a result of the following release: ' +
-        `${JSON.stringify(release)}.`)
-
-    const bundleInfo = await getBundleInfoFromRelease(release);
-    return {
+      };
+    }
+    
+    async function getNewDefaults(currentDefaults: Defaults): Promise<Defaults> {
+      const release = github.context.payload.release;
+      console.log('Updating default bundle as a result of the following release: ' +
+      `${JSON.stringify(release)}.`)
+      
+      const bundleInfo = await getBundleInfoFromRelease(release);
+      return {
         bundleVersion: bundleInfo.bundleVersion,
         cliVersion: bundleInfo.cliVersion,
         priorBundleVersion: currentDefaults.bundleVersion,
         priorCliVersion: currentDefaults.cliVersion
-    };
-}
-
-async function main() {
-  const previousDefaults: Defaults = JSON.parse(fs.readFileSync('../../../src/defaults.json', 'utf8'));
-  const newDefaults = await getNewDefaults(previousDefaults);
-  fs.writeFileSync('../../../src/defaults.json', JSON.stringify(newDefaults, null, 2) + "\n");
-}
-
-// Ideally, we'd await main() here, but that doesn't work well with `ts-node`.
-// So instead we rely on the fact that Node won't exit until the event loop is empty.
-main();
+      };
+    }
+    
+    async function main() {
+      const previousDefaults: Defaults = JSON.parse(fs.readFileSync('../../../src/defaults.json', 'utf8'));
+      const newDefaults = await getNewDefaults(previousDefaults);
+      fs.writeFileSync('../../../src/defaults.json', JSON.stringify(newDefaults, null, 2) + "\n");
+    }
+    
+    // Ideally, we'd await main() here, but that doesn't work well with `ts-node`.
+    // So instead we rely on the fact that Node won't exit until the event loop is empty.
+    main();
+    

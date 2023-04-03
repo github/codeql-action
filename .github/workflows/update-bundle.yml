@@ -15,7 +15,7 @@ jobs:
       - name: Dump GitHub context
         env:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
-        run: echo "${GITHUB_CONTEXT}"
+        run: echo "$GITHUB_CONTEXT"
 
       - uses: actions/checkout@v3
 
@@ -34,9 +34,9 @@ jobs:
         env:
           RELEASE_TAG: "${{ github.event.release.tag_name }}"
         run: |
-          git checkout -b "update-bundle/${RELEASE_TAG}"
-          git commit -am "Update default bundle to ${RELEASE_TAG}"
-          git push --set-upstream origin "update-bundle/${RELEASE_TAG}"
+          git checkout -b "update-bundle/$RELEASE_TAG"
+          git commit -am "Update default bundle to $RELEASE_TAG"
+          git push --set-upstream origin "update-bundle/$RELEASE_TAG"
 
       - name: Open pull request
         env:
@@ -46,11 +46,11 @@ jobs:
           pr_url=$(gh pr create \
             --title "Update default bundle to $cli_version" \
             --body "This pull request updates the default CodeQL bundle, as used with \`tools: latest\` and on GHES, to $cli_version." \
-            --assignee "${GITHUB_ACTOR}" \
+            --assignee "$GITHUB_ACTOR" \
             --draft \
           )
-          echo "CLI_VERSION=$cli_version" >> $GITHUB_ENV
-          echo "PR_URL=$pr_url" >> $GITHUB_ENV
+          echo "CLI_VERSION=$cli_version" | tee -a "$GITHUB_ENV"
+          echo "PR_URL=$pr_url" | tee -a "$GITHUB_ENV"
 
       - name: Create changelog note
         shell: python

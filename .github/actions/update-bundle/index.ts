@@ -16,6 +16,9 @@ interface Defaults {
 const CODEQL_BUNDLE_PREFIX = 'codeql-bundle-';
 
 function getCodeQLCliVersionForRelease(release): string {
+  // We do not currently tag CodeQL bundles based on the CLI version they contain.
+  // Instead, we use a marker file `cli-version-<version>.txt` to record the CLI version.
+  // This marker file is uploaded as a release asset for all new CodeQL bundles.
   const cliVersionsFromMarkerFiles = release.assets
   .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
   .filter((v) => v)

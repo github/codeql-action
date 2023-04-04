@@ -69,8 +69,8 @@ jobs:
     - name: Verify packages installed
       shell: bash
       run: |
-        PRIVATE_PACK="$HOME/.codeql/packages/dsp-testing/private-pack"
-        CODEQL_PACK1="$HOME/.codeql/packages/dsp-testing/codeql-pack1"
+        PRIVATE_PACK="$HOME/.codeql/packages/codeql-testing/private-pack"
+        CODEQL_PACK1="$HOME/.codeql/packages/codeql-testing/codeql-pack1"
 
         if [[ -d $PRIVATE_PACK ]]
         then
@@ -117,5 +117,9 @@ jobs:
             cat $QLCONFIG_PATH
             exit 1
         fi
+    permissions:
+      contents: read
+      packages: read
+
     env:
       CODEQL_ACTION_TEST_MODE: true

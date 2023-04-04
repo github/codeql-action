@@ -5,7 +5,7 @@ disable-default-queries: true
 packs:
   javascript:
     - codeql/javascript-queries
-    - dsp-testing/codeql-pack1@1.0.0
+    - codeql-testing/codeql-pack1@1.0.0
 
 query-filters:
 # This should run js/path-injection and js/zipslip

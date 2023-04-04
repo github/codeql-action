@@ -107,8 +107,10 @@ for file in os.listdir('checks'):
         'name': checkSpecification['name'],
         'timeout-minutes': 45,
         'runs-on': '${{ matrix.os }}',
-        'steps': steps
+        'steps': steps,
     }
+    if 'permissions' in checkSpecification:
+        checkJob['permissions'] = checkSpecification['permissions']
 
     for key in ["env", "container", "services"]:
         if key in checkSpecification:

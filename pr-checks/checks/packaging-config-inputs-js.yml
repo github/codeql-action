@@ -5,7 +5,7 @@ steps:
   - uses: ./../action/init
     with:
       config-file: ".github/codeql/codeql-config-packaging3.yml"
-      packs: +dsp-testing/codeql-pack1@1.0.0
+      packs: +codeql-testing/codeql-pack1@1.0.0
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code

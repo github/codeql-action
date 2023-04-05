@@ -823,7 +823,7 @@ export function fixInvalidNotifications(
     );
     return sarif;
   }
-  if (!(sarif.runs instanceof Array)) {
+  if (!Array.isArray(sarif.runs)) {
     return sarif;
   }
 
@@ -837,21 +837,21 @@ export function fixInvalidNotifications(
     runs: sarif.runs.map((run) => {
       if (
         run.tool?.driver?.name !== "CodeQL" ||
-        !(run.invocations instanceof Array)
+        !Array.isArray(run.invocations)
       ) {
         return run;
       }
       return {
         ...run,
         invocations: run.invocations.map((invocation) => {
-          if (!(invocation.toolExecutionNotifications instanceof Array)) {
+          if (!Array.isArray(invocation.toolExecutionNotifications)) {
             return invocation;
           }
           return {
             ...invocation,
             toolExecutionNotifications:
               invocation.toolExecutionNotifications.map((notification) => {
-                if (!(notification.locations instanceof Array)) {
+                if (!Array.isArray(notification.locations)) {
                   return notification;
                 }
                 const newLocations = removeDuplicateLocations(
@@ -875,6 +875,18 @@ export function fixInvalidNotifications(
       `Removed ${numDuplicateLocationsRemoved} duplicate locations from SARIF notification ` +
         "objects."
     );
+  } else {
+    logger.debug("No duplicate locations found in SARIF notification objects.");
   }
   return newSarif;
+}
+
+export function fixInvalidNotificationsInFile(
+  inputPath: string,
+  outputPath: string,
+  logger: Logger
+): void {
+  let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
+  sarif = fixInvalidNotifications(sarif, logger);
+  fs.writeFileSync(outputPath, JSON.stringify(sarif));
 }

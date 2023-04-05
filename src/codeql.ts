@@ -320,6 +320,12 @@ export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 
 /**
+ * Versions 2.12.6+ of the CodeQL CLI fix a bug where duplicate notification objects could be produced,
+ * leading to an invalid SARIF output.
+ */
+export const CODEQL_VERSION_DUPLICATE_NOTIFICATIONS_FIXED = "2.12.6";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -878,7 +884,13 @@ export async function getCodeQLForCmd(
         Feature.ExportDiagnosticsEnabled,
         this
       );
-      const codeqlOutputFile = shouldExportDiagnostics
+      const shouldWorkaroundInvalidNotifications =
+        shouldExportDiagnostics &&
+        !(await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_DUPLICATE_NOTIFICATIONS_FIXED
+        ));
+      const codeqlOutputFile = shouldWorkaroundInvalidNotifications
         ? path.join(config.tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;
       const codeqlArgs = [
@@ -910,6 +922,8 @@ export async function getCodeQLForCmd(
       }
       if (shouldExportDiagnostics) {
         codeqlArgs.push("--sarif-include-diagnostics");
+      } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
+        codeqlArgs.push("--no-sarif-include-diagnostics");
       }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {
@@ -922,12 +936,8 @@ export async function getCodeQLForCmd(
         errorMatchers
       );
 
-      if (shouldExportDiagnostics) {
-        let sarif = JSON.parse(
-          fs.readFileSync(codeqlOutputFile, "utf8")
-        ) as util.SarifFile;
-        sarif = util.fixInvalidNotifications(sarif, logger);
-        fs.writeFileSync(sarifFile, JSON.stringify(sarif));
+      if (shouldWorkaroundInvalidNotifications) {
+        util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
       }
 
       return returnState.stdout;
@@ -1029,17 +1039,21 @@ export async function getCodeQLForCmd(
       tempDir: string,
       logger: Logger
     ): Promise<void> {
-      const intermediateSarifFile = path.join(
-        tempDir,
-        "codeql-intermediate-results.sarif"
-      );
+      const shouldWorkaroundInvalidNotifications =
+        !(await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_DUPLICATE_NOTIFICATIONS_FIXED
+        ));
+      const codeqlOutputFile = shouldWorkaroundInvalidNotifications
+        ? path.join(tempDir, "codeql-intermediate-results.sarif")
+        : sarifFile;
       const args = [
         "database",
         "export-diagnostics",
         `${databasePath}`,
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
-        `--output=${intermediateSarifFile}`,
+        `--output=${codeqlOutputFile}`,
         "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
         "-vvv",
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
@@ -1049,12 +1063,10 @@ export async function getCodeQLForCmd(
       }
       await new toolrunner.ToolRunner(cmd, args).exec();
 
-      // Fix invalid notifications in the SARIF file output by CodeQL.
-      let sarif = JSON.parse(
-        fs.readFileSync(intermediateSarifFile, "utf8")
-      ) as util.SarifFile;
-      sarif = util.fixInvalidNotifications(sarif, logger);
-      fs.writeFileSync(sarifFile, JSON.stringify(sarif));
+      if (shouldWorkaroundInvalidNotifications) {
+        // Fix invalid notifications in the SARIF file output by CodeQL.
+        util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
+      }
     },
     async diagnosticsExport(
       sarifFile: string,

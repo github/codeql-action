@@ -6,7 +6,7 @@ steps:
     with:
       config-file: ".github/codeql/codeql-config-packaging2.yml"
       languages: javascript
-      packs: dsp-testing/codeql-pack1@1.0.0, dsp-testing/codeql-pack2, dsp-testing/codeql-pack3:other-query.ql
+      packs: codeql-testing/codeql-pack1@1.0.0, codeql-testing/codeql-pack2, codeql-testing/codeql-pack3:other-query.ql
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code
     shell: bash
@@ -16,7 +16,7 @@ steps:
       output: "${{ runner.temp }}/results"
 
   - name: Check results
-    uses: ./../action/.github/check-sarif
+    uses: ./../action/.github/actions/check-sarif
     with:
       sarif-file: ${{ runner.temp }}/results/javascript.sarif
       queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block

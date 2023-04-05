@@ -3,5 +3,5 @@ name: Pack testing in the CodeQL Action
 disable-default-queries: true
 packs:
   javascript:
-    - dsp-testing/private-pack
-    - dsp-testing/codeql-pack1
+    - codeql-testing/private-pack
+    - codeql-testing/codeql-pack1

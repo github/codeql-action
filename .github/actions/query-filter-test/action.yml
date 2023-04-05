@@ -44,7 +44,7 @@ runs:
       env:
         CODEQL_ACTION_TEST_MODE: "true"
     - name: Check SARIF
-      uses: ./../action/.github/check-sarif
+      uses: ./../action/.github/actions/check-sarif
       with:
         sarif-file:  ${{ inputs.sarif-file }}
         queries-run: ${{ inputs.queries-run}}

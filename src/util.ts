@@ -877,6 +877,8 @@ export function fixInvalidNotifications(
       `Removed ${numDuplicateLocationsRemoved} duplicate locations from SARIF notification ` +
         "objects."
     );
+  } else {
+    logger.debug("No duplicate locations found in SARIF notification objects.");
   }
   return newSarif;
 }

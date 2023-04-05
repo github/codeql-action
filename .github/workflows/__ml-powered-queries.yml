@@ -75,7 +75,7 @@ jobs:
       uses: actions/checkout@v3
     - name: Prepare test
       id: prepare-test
-      uses: ./.github/prepare-test
+      uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
     - name: Set environment variable for Swift enablement
@@ -109,7 +109,7 @@ jobs:
         retention-days: 7
 
     - name: Check sarif
-      uses: ./../action/.github/check-sarif
+      uses: ./../action/.github/actions/check-sarif
     # Running on Windows requires CodeQL CLI 2.9.0+.
       if: "!(matrix.version == 'stable-20220401' && runner.os == 'Windows')"
       with:

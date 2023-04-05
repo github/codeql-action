@@ -56,17 +56,6 @@ test("getWorkflowErrors() when on.push is a valid superset", (t) => {
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push should not have a path", (t) => {
-  const errors = getWorkflowErrors({
-    on: {
-      push: { branches: ["main"], paths: ["test/*"] },
-      pull_request: { branches: ["main"] },
-    },
-  });
-
-  t.deepEqual(...errorCodes(errors, [WorkflowErrors.PathsSpecified]));
-});
-
 test("getWorkflowErrors() when on.push is a correct object", (t) => {
   const errors = getWorkflowErrors({
     on: { push: { branches: ["main"] }, pull_request: { branches: ["main"] } },
@@ -317,7 +306,7 @@ test("formatWorkflowErrors() when there is one error", (t) => {
 test("formatWorkflowErrors() when there are multiple errors", (t) => {
   const message = formatWorkflowErrors([
     WorkflowErrors.CheckoutWrongHead,
-    WorkflowErrors.PathsSpecified,
+    WorkflowErrors.MismatchedBranches,
   ]);
   t.true(message.startsWith("2 issues were detected with this workflow:"));
 });
@@ -331,10 +320,10 @@ test("formatWorkflowCause() with no errors", (t) => {
 test("formatWorkflowCause()", (t) => {
   const message = formatWorkflowCause([
     WorkflowErrors.CheckoutWrongHead,
-    WorkflowErrors.PathsSpecified,
+    WorkflowErrors.MismatchedBranches,
   ]);
 
-  t.deepEqual(message, "CheckoutWrongHead,PathsSpecified");
+  t.deepEqual(message, "CheckoutWrongHead,MismatchedBranches");
   t.deepEqual(formatWorkflowCause([]), undefined);
 });
 

@@ -11,6 +11,10 @@ versions: [
     "nightly-latest",
 ]
 
+permissions:
+  contents: read
+  packages: read
+
 steps:
   - name: Init with registries
     uses: ./../action/init
@@ -27,8 +31,8 @@ steps:
   - name: Verify packages installed
     shell: bash
     run: |
-      PRIVATE_PACK="$HOME/.codeql/packages/dsp-testing/private-pack"
-      CODEQL_PACK1="$HOME/.codeql/packages/dsp-testing/codeql-pack1"
+      PRIVATE_PACK="$HOME/.codeql/packages/codeql-testing/private-pack"
+      CODEQL_PACK1="$HOME/.codeql/packages/codeql-testing/codeql-pack1"
 
       if [[ -d $PRIVATE_PACK ]]
       then

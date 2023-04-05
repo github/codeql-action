@@ -441,7 +441,11 @@ test("fixInvalidNotifications leaves notifications with unique locations alone",
     getRecordingLogger(messages)
   );
   t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
-  t.is(messages.length, 0);
+  t.is(messages.length, 1);
+  t.deepEqual(messages[0], {
+    type: "debug",
+    message: "No duplicate locations found in SARIF notification objects.",
+  });
 });
 
 test("fixInvalidNotifications removes duplicate locations", (t) => {

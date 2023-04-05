@@ -26,6 +26,12 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
+          version: stable-20230317
+        - os: macos-latest
+          version: stable-20230317
+        - os: windows-latest
+          version: stable-20230317
+        - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest

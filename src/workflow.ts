@@ -108,8 +108,6 @@ function toCodedErrors(errors: {
 export const WorkflowErrors = toCodedErrors({
   MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that Code Scanning can compare pull requests against the state of the base branch.`,
   MissingPushHook: `Please specify an on.push hook so that Code Scanning can compare pull requests against the state of the base branch.`,
-  PathsSpecified: `Using on.push.paths can prevent Code Scanning annotating new alerts in your pull requests.`,
-  PathsIgnoreSpecified: `Using on.push.paths-ignore can prevent Code Scanning annotating new alerts in your pull requests.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 
@@ -161,19 +159,6 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
 
     if (!hasPush && hasPullRequest) {
       missingPush = true;
-    }
-    if (hasPush && hasPullRequest) {
-      const paths = doc.on.push?.paths;
-      // if you specify paths or paths-ignore you can end up with commits that have no baseline
-      // if they didn't change any files
-      // currently we cannot go back through the history and find the most recent baseline
-      if (Array.isArray(paths) && paths.length > 0) {
-        errors.push(WorkflowErrors.PathsSpecified);
-      }
-      const pathsIgnore = doc.on.push?.["paths-ignore"];
-      if (Array.isArray(pathsIgnore) && pathsIgnore.length > 0) {
-        errors.push(WorkflowErrors.PathsIgnoreSpecified);
-      }
     }
 
     // if doc.on.pull_request is null that means 'all branches'

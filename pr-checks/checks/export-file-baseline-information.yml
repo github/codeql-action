@@ -30,7 +30,10 @@ steps:
     shell: bash
     run: |
       cd "$RUNNER_TEMP/results"
-      expected_baseline_languages="cpp cs go java js py rb swift"
+      expected_baseline_languages="cpp cs go java js py rb"
+      if [[ $RUNNER_OS != "Windows" ]]; then
+        expected_baseline_languages+=" swift"
+      fi
 
       for lang in ${expected_baseline_languages}; do
         rule_name="${lang}/baseline/expected-extracted-files"

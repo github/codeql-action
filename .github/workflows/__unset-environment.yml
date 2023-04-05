@@ -62,9 +62,13 @@ jobs:
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - uses: ./../action/init
+      id: init
       with:
         db-location: ${{ runner.temp }}/customDbLocation
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/.github/actions/setup-swift
+      with:
+        codeql-path: ${{ steps.init.outputs.codeql-path }}
     - name: Build code
       shell: bash
     # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a

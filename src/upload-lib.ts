@@ -15,7 +15,7 @@ import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import { CODEQL_WORKFLOW_STARTED_AT } from "./shared-environment";
 import * as util from "./util";
-import { SarifFile, SarifResult, SarifRun } from "./util";
+import { SarifFile, SarifResult, SarifRun, wrapError } from "./util";
 import * as workflow from "./workflow";
 
 // Takes a list of paths to sarif files and combines them together,
@@ -204,9 +204,7 @@ export function countResultsInSarif(sarif: string): number {
     parsedSarif = JSON.parse(sarif);
   } catch (e) {
     throw new Error(
-      `Invalid SARIF. JSON syntax error: ${
-        e instanceof Error ? e.message : String(e)
-      }`
+      `Invalid SARIF. JSON syntax error: ${wrapError(e).message}`
     );
   }
   if (!Array.isArray(parsedSarif.runs)) {

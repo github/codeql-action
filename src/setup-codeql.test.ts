@@ -8,7 +8,7 @@ import * as api from "./api-client";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import { setupTests } from "./testing-utils";
-import { initializeEnvironment } from "./util";
+import { initializeEnvironment, wrapError } from "./util";
 
 setupTests(test);
 
@@ -43,7 +43,7 @@ test("convert to semver", (t) => {
       );
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
-      t.fail(e instanceof Error ? e.message : String(e));
+      t.fail(wrapError(e).message);
     }
   }
 });

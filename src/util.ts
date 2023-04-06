@@ -113,10 +113,10 @@ export function getExtraOptionsEnvParam(): object {
   }
   try {
     return JSON.parse(raw);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
     throw new Error(
-      `${varName} environment variable is set, but does not contain valid JSON: ${message}`
+      `${varName} environment variable is set, but does not contain valid JSON: ${error.message}`
     );
   }
 }
@@ -889,4 +889,8 @@ export function fixInvalidNotificationsInFile(
   let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
   sarif = fixInvalidNotifications(sarif, logger);
   fs.writeFileSync(outputPath, JSON.stringify(sarif));
+}
+
+export function wrapError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }

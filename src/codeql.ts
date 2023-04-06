@@ -25,6 +25,7 @@ import {
   getTrapCachingExtractorConfigArgsForLang,
 } from "./trap-caching";
 import * as util from "./util";
+import { wrapError } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -371,7 +372,7 @@ export async function setupCodeQL(
       toolsVersion,
     };
   } catch (e) {
-    logger.error(e instanceof Error ? e : new Error(String(e)));
+    logger.error(wrapError(e).message);
     throw new Error("Unable to download and extract CodeQL CLI");
   }
 }

@@ -15,7 +15,11 @@ import * as configUtils from "./config-utils";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { CODEQL_ACTION_DID_AUTOBUILD_GOLANG } from "./shared-environment";
-import { checkGitHubVersionInRange, initializeEnvironment } from "./util";
+import {
+  checkGitHubVersionInRange,
+  initializeEnvironment,
+  wrapError,
+} from "./util";
 
 interface AutobuildStatusReport extends StatusReportBase {
   /** Comma-separated set of languages being auto-built. */
@@ -89,18 +93,16 @@ async function run() {
         }
       }
     }
-  } catch (error) {
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
     core.setFailed(
-      `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps.  ${
-        error instanceof Error ? error.message : String(error)
-      }`
+      `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps. ${error.message}`
     );
-    console.log(error);
     await sendCompletedStatusReport(
       startedAt,
       languages ?? [],
       currentLanguage,
-      error instanceof Error ? error : new Error(String(error))
+      error
     );
     return;
   }
@@ -112,8 +114,7 @@ async function runWrapper() {
   try {
     await run();
   } catch (error) {
-    core.setFailed(`autobuild action failed. ${error}`);
-    console.log(error);
+    core.setFailed(`autobuild action failed. ${wrapError(error).message}`);
   }
 }
 

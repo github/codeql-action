@@ -3,6 +3,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
 import { ErrorMatcher } from "./error-matcher";
+import { wrapError } from "./util";
 
 export interface ReturnState {
   exitCode: number;
@@ -81,7 +82,6 @@ export async function toolrunnerErrorCatcher(
       );
     }
   } catch (e) {
-    const error = e instanceof Error ? e : new Error(String(e));
-    throw error;
+    throw wrapError(e);
   }
 }

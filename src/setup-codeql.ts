@@ -18,7 +18,7 @@ import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { ToolsSource } from "./init";
 import { Logger } from "./logging";
 import * as util from "./util";
-import { isGoodVersion } from "./util";
+import { isGoodVersion, wrapError } from "./util";
 
 export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
@@ -145,7 +145,7 @@ export async function tryFindCliVersionDotcomOnly(
   } catch (e) {
     logger.debug(
       `Failed to find the CLI version for the CodeQL bundle tagged ${tagName}. ${
-        e instanceof Error ? e.message : e
+        wrapError(e).message
       }`
     );
     return undefined;

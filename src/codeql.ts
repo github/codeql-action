@@ -320,12 +320,6 @@ export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 
 /**
- * Versions 2.12.6+ of the CodeQL CLI fix a bug where duplicate notification objects could be produced,
- * leading to an invalid SARIF output.
- */
-export const CODEQL_VERSION_DUPLICATE_NOTIFICATIONS_FIXED = "2.12.6";
-
-/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -884,12 +878,8 @@ export async function getCodeQLForCmd(
         Feature.ExportDiagnosticsEnabled,
         this
       );
-      const shouldWorkaroundInvalidNotifications =
-        shouldExportDiagnostics &&
-        !(await util.codeQlVersionAbove(
-          this,
-          CODEQL_VERSION_DUPLICATE_NOTIFICATIONS_FIXED
-        ));
+      // Update this to take into account the CodeQL version when we have a version with the fix.
+      const shouldWorkaroundInvalidNotifications = shouldExportDiagnostics;
       const codeqlOutputFile = shouldWorkaroundInvalidNotifications
         ? path.join(config.tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;
@@ -1039,11 +1029,8 @@ export async function getCodeQLForCmd(
       tempDir: string,
       logger: Logger
     ): Promise<void> {
-      const shouldWorkaroundInvalidNotifications =
-        !(await util.codeQlVersionAbove(
-          this,
-          CODEQL_VERSION_DUPLICATE_NOTIFICATIONS_FIXED
-        ));
+      // Update this to take into account the CodeQL version when we have a version with the fix.
+      const shouldWorkaroundInvalidNotifications = true;
       const codeqlOutputFile = shouldWorkaroundInvalidNotifications
         ? path.join(tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;

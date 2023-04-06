@@ -45,6 +45,7 @@ import {
   GitHubVariant,
   initializeEnvironment,
   isHostedRunner,
+  wrapError,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -284,19 +285,24 @@ async function run() {
     ) {
       try {
         await installPythonDeps(codeql, logger);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+      } catch (unwrappedError) {
+        const error = wrapError(unwrappedError);
         logger.warning(
-          `${message} You can call this action with 'setup-python-dependencies: false' to disable this process`
+          `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
         );
       }
     }
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    core.setFailed(message);
-    console.log(e);
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
+    core.setFailed(error.message);
     await sendStatusReport(
-      await createStatusReportBase("init", "aborted", startedAt, message)
+      await createStatusReportBase(
+        "init",
+        "aborted",
+        startedAt,
+        error.message,
+        error.stack
+      )
     );
     return;
   }
@@ -366,9 +372,9 @@ async function run() {
     }
 
     core.setOutput("codeql-path", config.codeQLCmd);
-  } catch (error) {
-    core.setFailed(error instanceof Error ? error.message : String(error));
-    console.log(error);
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
+    core.setFailed(error.message);
     await sendCompletedStatusReport(
       startedAt,
       config,
@@ -377,7 +383,7 @@ async function run() {
       toolsSource,
       toolsVersion,
       logger,
-      error instanceof Error ? error : new Error(String(error))
+      error
     );
     return;
   }
@@ -408,8 +414,7 @@ async function runWrapper() {
   try {
     await run();
   } catch (error) {
-    core.setFailed(`init action failed: ${error}`);
-    console.log(error);
+    core.setFailed(`init action failed: ${wrapError(error).message}`);
   }
   await checkForTimeout();
 }

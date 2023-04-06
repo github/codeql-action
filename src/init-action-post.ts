@@ -20,7 +20,11 @@ import { Features } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { checkGitHubVersionInRange, getRequiredEnvParam } from "./util";
+import {
+  checkGitHubVersionInRange,
+  getRequiredEnvParam,
+  wrapError,
+} from "./util";
 
 interface InitPostStatusReport
   extends StatusReportBase,
@@ -54,17 +58,17 @@ async function runWrapper() {
       features,
       logger
     );
-  } catch (e) {
-    core.setFailed(e instanceof Error ? e.message : String(e));
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
+    core.setFailed(error.message);
 
-    console.log(e);
     await sendStatusReport(
       await createStatusReportBase(
         "init-post",
-        getActionsStatus(e),
+        getActionsStatus(error),
         startedAt,
-        String(e),
-        e instanceof Error ? e.stack : undefined
+        error.message,
+        error.stack
       )
     );
     return;

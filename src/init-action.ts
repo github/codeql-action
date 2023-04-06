@@ -3,7 +3,6 @@ import * as path from "path";
 import * as core from "@actions/core";
 
 import {
-  ActionStatus,
   createStatusReportBase,
   getActionsStatus,
   getActionVersion,
@@ -95,20 +94,22 @@ interface InitToolsDownloadFields {
   tools_feature_flags_valid?: boolean;
 }
 
-async function sendInitStatusReport(
-  actionStatus: ActionStatus,
+async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
   toolsDownloadDurationMs: number | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
-  logger: Logger
+  logger: Logger,
+  error?: Error
 ) {
   const statusReportBase = await createStatusReportBase(
     "init",
-    actionStatus,
-    startedAt
+    getActionsStatus(error),
+    startedAt,
+    error?.message,
+    error?.stack
   );
 
   const workflowLanguages = getOptionalInput("languages");
@@ -366,23 +367,21 @@ async function run() {
 
     core.setOutput("codeql-path", config.codeQLCmd);
   } catch (error) {
-    core.setFailed(String(error));
-
+    core.setFailed(error instanceof Error ? error.message : String(error));
     console.log(error);
-    await sendInitStatusReport(
-      getActionsStatus(error),
+    await sendCompletedStatusReport(
       startedAt,
       config,
       toolsDownloadDurationMs,
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
-      logger
+      logger,
+      error instanceof Error ? error : new Error(String(error))
     );
     return;
   }
-  await sendInitStatusReport(
-    "success",
+  await sendCompletedStatusReport(
     startedAt,
     config,
     toolsDownloadDurationMs,

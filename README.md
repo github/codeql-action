@@ -160,7 +160,7 @@ Use the `config` parameter of the `init` action to enable a workflow based confi
 
 - **Actions Variables**
   
-  You can use actions or environment variables to use dynamic configuration.
+  You can use actions or environment variables to share configuration across multiple repositories and to modify configuration without needing to edit the workflow file.
 
   ```yaml
   - uses: github/codeql-action/init@v2

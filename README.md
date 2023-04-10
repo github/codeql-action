@@ -166,8 +166,7 @@ Use the `config` parameter of the `init` action to enable a workflow based confi
   - uses: github/codeql-action/init@v2
     with:
       languages: ${{ matrix.language }}
-      config: |
-            ${{vars.CODEQL_CONF}}    
+      config: ${{ vars.CODEQL_CONF }}
   ```
 
 

@@ -170,7 +170,7 @@ Use the `config` parameter of the `init` action to enable a workflow based confi
   ```
 
 
-  where `vars.CODEQL_CONF` references a [Action Variables](https://docs.github.com/en/actions/learn-github-actions/variables#defining-configuration-variables-for-multiple-workflows) with the following content, that will only execute the queries related to the [CWE-020](https://cwe.mitre.org/data/definitions/20.html).
+  where `vars.CODEQL_CONF` references an [Actions configuration variable](https://docs.github.com/en/actions/learn-github-actions/variables#defining-configuration-variables-for-multiple-workflows).
 
 - **Input Parameters**
 

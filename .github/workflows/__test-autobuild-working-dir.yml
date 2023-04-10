@@ -35,7 +35,7 @@ jobs:
       uses: actions/checkout@v3
     - name: Prepare test
       id: prepare-test
-      uses: ./.github/prepare-test
+      uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
     - name: Test setup

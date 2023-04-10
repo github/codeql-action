@@ -28,7 +28,7 @@ steps:
       retention-days: 7
 
   - name: Check sarif
-    uses: ./../action/.github/check-sarif
+    uses: ./../action/.github/actions/check-sarif
     # Running on Windows requires CodeQL CLI 2.9.0+.
     if: "!(matrix.version == 'stable-20220120' && runner.os == 'Windows')"
     with:

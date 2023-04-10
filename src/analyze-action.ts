@@ -31,7 +31,7 @@ import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
-import { checkForTimeout } from "./util";
+import { checkForTimeout, wrapError } from "./util";
 
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
@@ -313,9 +313,8 @@ async function run() {
       CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY,
       "true"
     );
-  } catch (origError) {
-    const error =
-      origError instanceof Error ? origError : new Error(String(origError));
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
     if (
       actionsUtil.getOptionalInput("expect-error") !== "true" ||
       hasBadExpectErrorInput()
@@ -396,7 +395,7 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    core.setFailed(`analyze action failed: ${error}`);
+    core.setFailed(`analyze action failed: ${wrapError(error).message}`);
   }
   await checkForTimeout();
 }

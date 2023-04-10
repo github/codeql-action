@@ -554,13 +554,13 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
       tagName: "codeql-bundle-20230203",
     });
     mockDownloadApi({
-      repo: "dsp-testing/codeql-cli-nightlies",
+      repo: "codeql-testing/codeql-cli-nightlies",
       platformSpecific: false,
       tagName: "codeql-bundle-20230203",
     });
 
     const result = await codeql.setupCodeQL(
-      "https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20230203/codeql-bundle.tar.gz",
+      "https://github.com/codeql-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20230203/codeql-bundle.tar.gz",
       sampleApiDetails,
       tmpDir,
       util.GitHubVariant.DOTCOM,

@@ -25,6 +25,7 @@ import {
   getTrapCachingExtractorConfigArgsForLang,
 } from "./trap-caching";
 import * as util from "./util";
+import { wrapError } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -371,7 +372,7 @@ export async function setupCodeQL(
       toolsVersion,
     };
   } catch (e) {
-    logger.error(e instanceof Error ? e : new Error(String(e)));
+    logger.error(wrapError(e).message);
     throw new Error("Unable to download and extract CodeQL CLI");
   }
 }
@@ -878,7 +879,9 @@ export async function getCodeQLForCmd(
         Feature.ExportDiagnosticsEnabled,
         this
       );
-      const codeqlOutputFile = shouldExportDiagnostics
+      // Update this to take into account the CodeQL version when we have a version with the fix.
+      const shouldWorkaroundInvalidNotifications = shouldExportDiagnostics;
+      const codeqlOutputFile = shouldWorkaroundInvalidNotifications
         ? path.join(config.tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;
       const codeqlArgs = [
@@ -924,7 +927,7 @@ export async function getCodeQLForCmd(
         errorMatchers
       );
 
-      if (shouldExportDiagnostics) {
+      if (shouldWorkaroundInvalidNotifications) {
         util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
       }
 
@@ -1027,17 +1030,18 @@ export async function getCodeQLForCmd(
       tempDir: string,
       logger: Logger
     ): Promise<void> {
-      const intermediateSarifFile = path.join(
-        tempDir,
-        "codeql-intermediate-results.sarif"
-      );
+      // Update this to take into account the CodeQL version when we have a version with the fix.
+      const shouldWorkaroundInvalidNotifications = true;
+      const codeqlOutputFile = shouldWorkaroundInvalidNotifications
+        ? path.join(tempDir, "codeql-intermediate-results.sarif")
+        : sarifFile;
       const args = [
         "database",
         "export-diagnostics",
         `${databasePath}`,
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
-        `--output=${intermediateSarifFile}`,
+        `--output=${codeqlOutputFile}`,
         "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
         "-vvv",
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
@@ -1047,12 +1051,10 @@ export async function getCodeQLForCmd(
       }
       await new toolrunner.ToolRunner(cmd, args).exec();
 
-      // Fix invalid notifications in the SARIF file output by CodeQL.
-      util.fixInvalidNotificationsInFile(
-        intermediateSarifFile,
-        sarifFile,
-        logger
-      );
+      if (shouldWorkaroundInvalidNotifications) {
+        // Fix invalid notifications in the SARIF file output by CodeQL.
+        util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
+      }
     },
     async diagnosticsExport(
       sarifFile: string,

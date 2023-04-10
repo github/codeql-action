@@ -4,6 +4,14 @@
 
 - Add `config` parameter to the `init` action https://github.com/github/codeql-action/pull/1590
 
+## 2.2.11 - 06 Apr 2023
+
+No user facing changes.
+
+## 2.2.10 - 05 Apr 2023
+
+- Update default CodeQL bundle version to 2.12.6. [#1629](https://github.com/github/codeql-action/pull/1629)
+
 ## 2.2.9 - 27 Mar 2023
 
 - Customers post-processing the SARIF output of the `analyze` Action before uploading it to Code Scanning will benefit from an improved debugging experience. [#1598](https://github.com/github/codeql-action/pull/1598)

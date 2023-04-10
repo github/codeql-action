@@ -1,7 +1,7 @@
 packs:
   javascript:
-    - dsp-testing/codeql-pack1@1.0.0
-    - dsp-testing/codeql-pack2
+    - codeql-testing/codeql-pack1@1.0.0
+    - codeql-testing/codeql-pack2
   ruby:
     - codeql/ruby-queries
 

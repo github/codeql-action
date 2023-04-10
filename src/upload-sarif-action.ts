@@ -9,6 +9,7 @@ import {
   getRequiredEnvParam,
   initializeEnvironment,
   isInTestMode,
+  wrapError,
 } from "./util";
 
 interface UploadSarifStatusReport
@@ -66,9 +67,9 @@ async function run() {
       );
     }
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : String(error);
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
+    const message = error.message;
     core.setFailed(message);
     console.log(error);
     await actionsUtil.sendStatusReport(
@@ -77,7 +78,7 @@ async function run() {
         actionsUtil.getActionsStatus(error),
         startedAt,
         message,
-        stack
+        error.stack
       )
     );
     return;
@@ -88,8 +89,9 @@ async function runWrapper() {
   try {
     await run();
   } catch (error) {
-    core.setFailed(`codeql/upload-sarif action failed: ${error}`);
-    console.log(error);
+    core.setFailed(
+      `codeql/upload-sarif action failed: ${wrapError(error).message}`
+    );
   }
 }
 

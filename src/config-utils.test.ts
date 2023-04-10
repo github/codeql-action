@@ -2412,7 +2412,7 @@ test("downloadPacks-with-registries", async (t) => {
       {
         // no slash
         url: "http://ghcr.io",
-        packages: ["codeql/*", "dsp-testing/*"],
+        packages: ["codeql/*", "codeql-testing/*"],
         token: "not-a-token",
       },
       {
@@ -2502,7 +2502,7 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
     const registriesInput = yaml.dump([
       {
         url: "http://ghcr.io",
-        packages: ["codeql/*", "dsp-testing/*"],
+        packages: ["codeql/*", "codeql-testing/*"],
         token: "not-a-token",
       },
       {
@@ -2544,7 +2544,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
     const registriesInput = yaml.dump([
       {
         // missing url property
-        packages: ["codeql/*", "dsp-testing/*"],
+        packages: ["codeql/*", "codeql-testing/*"],
         token: "not-a-token",
       },
       {
@@ -2583,7 +2583,7 @@ test("no generateRegistries when CLI is too old", async (t) => {
       {
         // no slash
         url: "http://ghcr.io",
-        packages: ["codeql/*", "dsp-testing/*"],
+        packages: ["codeql/*", "codeql-testing/*"],
         token: "not-a-token",
       },
     ]);
@@ -2632,7 +2632,7 @@ test("generateRegistries prefers original CODEQL_REGISTRIES_AUTH", async (t) => 
     const registriesInput = yaml.dump([
       {
         url: "http://ghcr.io",
-        packages: ["codeql/*", "dsp-testing/*"],
+        packages: ["codeql/*", "codeql-testing/*"],
         token: "not-a-token",
       },
     ]);

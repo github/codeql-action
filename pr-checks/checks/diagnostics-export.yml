@@ -1,6 +1,8 @@
 name: "Diagnostic export"
 description: "Tests that manually added diagnostics are correctly exported to SARIF."
-versions: ["latest", "nightly-latest"]
+# Test on 2.12.5 (which requires a workaround in the Action), the latest release, and the latest
+# nightly.
+versions: ["stable-20230317", "latest", "nightly-latest"]
 env:
   CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
 steps:

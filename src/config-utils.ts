@@ -1690,7 +1690,7 @@ export async function initConfig(
   registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
-  configAsParameter: string | undefined,
+  configInput: string | undefined,
   trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
@@ -1706,14 +1706,10 @@ export async function initConfig(
 ): Promise<Config> {
   let config: Config;
 
-  // if configAsParameter is set, it takes precedence over configFile
-  if (configAsParameter) {
-    const configFileToCreate = path.resolve(
-      workspacePath,
-      "user-config-from-action.yml"
-    );
-    fs.writeFileSync(configFileToCreate, configAsParameter);
-    configFile = configFileToCreate;
+  // if configInput is set, it takes precedence over configFile
+  if (configInput) {
+    configFile = path.resolve(workspacePath, "user-config-from-action.yml");
+    fs.writeFileSync(configFile, configInput);
     logger.debug(`Using config from action input: ${configFile}`);
   }
 

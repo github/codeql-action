@@ -135,10 +135,11 @@ By default, this will override any queries specified in a config file. If you wi
     queries: +<local-or-remote-query>,<another-query>
 ```
 
-### Configuration 
+### Configuration via `config` input
 
 
-Use the `config` parameter of the `init` action to enable a workflow based configuration. The value of `configuration` should be compliant with the configuration file format documented at [Using a custom configuration file](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration-file)."
+You can alternatively configure CodeQL using the `config` input to the `init` Action. The value of this input must be a YAML string that follows the configuration file format documented at "[Using a custom configuration file](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration-file)."
+
 
 
 - **Complete Configuration**

@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-- Add `config` parameter to the `init` action https://github.com/github/codeql-action/pull/1590
+- You can now configure CodeQL within your code scanning workflow by passing a `config` parameter to the `init` Action. [#1590](https://github.com/github/codeql-action/pull/1590)
 
 ## 2.2.11 - 06 Apr 2023
 

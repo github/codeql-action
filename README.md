@@ -173,24 +173,6 @@ You can alternatively configure CodeQL using the `config` input to the `init` Ac
 
   where `vars.CODEQL_CONF` references an [Actions configuration variable](https://docs.github.com/en/actions/learn-github-actions/variables#defining-configuration-variables-for-multiple-workflows).
 
-- **Input Parameters**
-
-  Use workflow input parameter:
-
-  ```yaml
-    - uses: github/codeql-action/init@v2
-    with:
-      languages: ${{ matrix.language }}
-      config: |
-        disable-default-queries: true
-        queries:
-          - uses: security-extended
-          - uses: security-and-quality
-        query-filters:
-          - include:
-              tags: /${{ github.event.inputs.codeql-include-tags }}/ 
-  ```
-
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).

@@ -8,7 +8,12 @@ import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY } from "./shared-environment";
 import * as uploadLib from "./upload-lib";
-import { getRequiredEnvParam, isInTestMode, parseMatrixInput } from "./util";
+import {
+  getRequiredEnvParam,
+  isInTestMode,
+  parseMatrixInput,
+  wrapError,
+} from "./util";
 import {
   getCategoryInputOrThrow,
   getCheckoutPathInputOrThrow,
@@ -28,11 +33,10 @@ export interface UploadFailedSarifResult extends uploadLib.UploadStatusReport {
 function createFailedUploadFailedSarifResult(
   error: unknown
 ): UploadFailedSarifResult {
+  const wrappedError = wrapError(error);
   return {
-    upload_failed_run_error:
-      error instanceof Error ? error.message : String(error),
-    upload_failed_run_stack_trace:
-      error instanceof Error ? error.stack : undefined,
+    upload_failed_run_error: wrappedError.message,
+    upload_failed_run_stack_trace: wrappedError.stack,
   };
 }
 

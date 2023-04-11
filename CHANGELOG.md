@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Include the value of the `GITHUB_RUN_ATTEMPT` environment variable in the telemetry sent to GitHub. [#1640](https://github.com/github/codeql-action/pull/1640)
 
 ## 2.2.11 - 06 Apr 2023
 

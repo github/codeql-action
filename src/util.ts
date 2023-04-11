@@ -113,10 +113,10 @@ export function getExtraOptionsEnvParam(): object {
   }
   try {
     return JSON.parse(raw);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
     throw new Error(
-      `${varName} environment variable is set, but does not contain valid JSON: ${message}`
+      `${varName} environment variable is set, but does not contain valid JSON: ${error.message}`
     );
   }
 }
@@ -438,11 +438,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  core.exportVariable(EnvVar.VERSION, version);
+  core.exportVariable(String(EnvVar.FEATURE_MULTI_LANGUAGE), "false");
+  core.exportVariable(String(EnvVar.FEATURE_SANDWICH), "false");
+  core.exportVariable(String(EnvVar.FEATURE_SARIF_COMBINE), "true");
+  core.exportVariable(String(EnvVar.FEATURE_WILL_UPLOAD), "true");
+  core.exportVariable(String(EnvVar.VERSION), version);
 }
 
 /**
@@ -891,4 +891,8 @@ export function fixInvalidNotificationsInFile(
   let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
   sarif = fixInvalidNotifications(sarif, logger);
   fs.writeFileSync(outputPath, JSON.stringify(sarif));
+}
+
+export function wrapError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }

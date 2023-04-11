@@ -313,6 +313,8 @@ export type ActionStatus =
 export interface StatusReportBase {
   /** ID of the workflow run containing the action run. */
   workflow_run_id: number;
+  /** Attempt number of the run containing the action run. */
+  workflow_run_attempt: number;
   /** Workflow name. Converted to analysis_name further down the pipeline.. */
   workflow_name: string;
   /** Job name from the workflow. */
@@ -410,6 +412,11 @@ export async function createStatusReportBase(
   if (workflowRunIDStr) {
     workflowRunID = parseInt(workflowRunIDStr, 10);
   }
+  const workflowRunAttemptStr = process.env["GITHUB_RUN_ATTEMPT"];
+  let workflowRunAttempt = -1;
+  if (workflowRunAttemptStr) {
+    workflowRunAttempt = parseInt(workflowRunAttemptStr, 10);
+  }
   const workflowName = process.env["GITHUB_WORKFLOW"] || "";
   const jobName = process.env["GITHUB_JOB"] || "";
   const analysis_key = await getAnalysisKey();
@@ -437,6 +444,7 @@ export async function createStatusReportBase(
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
+    workflow_run_attempt: workflowRunAttempt,
     workflow_name: workflowName,
     job_name: jobName,
     analysis_key,

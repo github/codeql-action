@@ -3,7 +3,6 @@ import * as path from "path";
 import * as core from "@actions/core";
 
 import {
-  ActionStatus,
   createStatusReportBase,
   getActionsStatus,
   getActionVersion,
@@ -40,6 +39,7 @@ import {
   GitHubVariant,
   initializeEnvironment,
   isHostedRunner,
+  wrapError,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -89,20 +89,22 @@ interface InitToolsDownloadFields {
   tools_feature_flags_valid?: boolean;
 }
 
-async function sendInitStatusReport(
-  actionStatus: ActionStatus,
+async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
   toolsDownloadDurationMs: number | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
-  logger: Logger
+  logger: Logger,
+  error?: Error
 ) {
   const statusReportBase = await createStatusReportBase(
     "init",
-    actionStatus,
-    startedAt
+    getActionsStatus(error),
+    startedAt,
+    error?.message,
+    error?.stack
   );
 
   const workflowLanguages = getOptionalInput("languages");
@@ -276,19 +278,24 @@ async function run() {
     ) {
       try {
         await installPythonDeps(codeql, logger);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+      } catch (unwrappedError) {
+        const error = wrapError(unwrappedError);
         logger.warning(
-          `${message} You can call this action with 'setup-python-dependencies: false' to disable this process`
+          `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
         );
       }
     }
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    core.setFailed(message);
-    console.log(e);
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
+    core.setFailed(error.message);
     await sendStatusReport(
-      await createStatusReportBase("init", "aborted", startedAt, message)
+      await createStatusReportBase(
+        "init",
+        "aborted",
+        startedAt,
+        error.message,
+        error.stack
+      )
     );
     return;
   }
@@ -345,24 +352,22 @@ async function run() {
     }
 
     core.setOutput("codeql-path", config.codeQLCmd);
-  } catch (error) {
-    core.setFailed(String(error));
-
-    console.log(error);
-    await sendInitStatusReport(
-      getActionsStatus(error),
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
+    core.setFailed(error.message);
+    await sendCompletedStatusReport(
       startedAt,
       config,
       toolsDownloadDurationMs,
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
-      logger
+      logger,
+      error
     );
     return;
   }
-  await sendInitStatusReport(
-    "success",
+  await sendCompletedStatusReport(
     startedAt,
     config,
     toolsDownloadDurationMs,
@@ -389,8 +394,7 @@ async function runWrapper() {
   try {
     await run();
   } catch (error) {
-    core.setFailed(`init action failed: ${error}`);
-    console.log(error);
+    core.setFailed(`init action failed: ${wrapError(error).message}`);
   }
   await checkForTimeout();
 }

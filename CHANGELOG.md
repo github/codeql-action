@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.2.12 - 13 Apr 2023
 
 - Include the value of the `GITHUB_RUN_ATTEMPT` environment variable in the telemetry sent to GitHub. [#1640](https://github.com/github/codeql-action/pull/1640)

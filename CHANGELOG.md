@@ -1,6 +1,6 @@
 # CodeQL Action Changelog
 
-## [UNRELEASED]
+## 2.2.12 - 13 Apr 2023
 
 - Include the value of the `GITHUB_RUN_ATTEMPT` environment variable in the telemetry sent to GitHub. [#1640](https://github.com/github/codeql-action/pull/1640)
 - Improve the ease of debugging failed runs configured using [default setup](https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning-for-a-repository#configuring-code-scanning-automatically). The CodeQL Action will now upload diagnostic information to Code Scanning from failed runs configured using default setup. You can view this diagnostic information on the [tool status page](https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/about-the-tool-status-page). [#1619](https://github.com/github/codeql-action/pull/1619)

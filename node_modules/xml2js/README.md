@@ -113,7 +113,7 @@ var xml = '<foo></foo>';
 
 // With parser
 var parser = new xml2js.Parser(/* options */);
-parser.parseStringPromise(data).then(function (result) {
+parser.parseStringPromise(xml).then(function (result) {
   console.dir(result);
   console.log('Done');
 })
@@ -122,7 +122,7 @@ parser.parseStringPromise(data).then(function (result) {
 });
 
 // Without parser
-xml2js.parseStringPromise(data /*, options */).then(function (result) {
+xml2js.parseStringPromise(xml /*, options */).then(function (result) {
   console.dir(result);
   console.log('Done');
 })
@@ -180,6 +180,16 @@ var obj = {name: "Super", Surname: "Man", age: 23};
 var builder = new xml2js.Builder();
 var xml = builder.buildObject(obj);
 ```
+will result in:
+
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root>
+  <name>Super</name>
+  <Surname>Man</Surname>
+  <age>23</age>
+</root>
+```
 
 At the moment, a one to one bi-directional conversion is guaranteed only for
 default configuration, except for `attrkey`, `charkey` and `explicitArray` options
@@ -194,6 +204,11 @@ var obj = {root: {$: {id: "my id"}, _: "my inner text"}};
 
 var builder = new xml2js.Builder();
 var xml = builder.buildObject(obj);
+```
+will result in:
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="my id">my inner text</root>
 ```
 
 ### Adding xmlns attributes
@@ -309,14 +324,18 @@ value})``. Possible options are:
     Version 0.1 default was `@`.
   * `charkey` (default: `_`): Prefix that is used to access the character
     content. Version 0.1 default was `#`.
-  * `explicitCharkey` (default: `false`)
+  * `explicitCharkey` (default: `false`) Determines whether or not to use 
+    a `charkey` prefix for elements with no attributes.
   * `trim` (default: `false`): Trim the whitespace at the beginning and end of
     text nodes.
   * `normalizeTags` (default: `false`): Normalize all tag names to lowercase.
   * `normalize` (default: `false`): Trim whitespaces inside text nodes.
   * `explicitRoot` (default: `true`): Set this if you want to get the root
     node in the resulting object.
-  * `emptyTag` (default: `''`): what will the value of empty nodes be.
+  * `emptyTag` (default: `''`): what will the value of empty nodes be. In case
+  you want to use an empty object as a default value, it is better to provide a factory
+   function `() => ({})` instead. Without this function a plain object would
+  become a shared reference across all occurrences with unwanted behavior.
   * `explicitArray` (default: `true`): Always put child nodes in an array if
     true; otherwise an array is created only if there is more than one.
   * `ignoreAttrs` (default: `false`): Ignore all XML attributes and only create

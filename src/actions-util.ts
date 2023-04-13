@@ -21,7 +21,7 @@ import {
   parseMatrixInput,
   UserError,
 } from "./util";
-import { getWorkflowPath } from "./workflow";
+import { getWorkflowRelativePath } from "./workflow";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
@@ -174,7 +174,7 @@ export async function getAnalysisKey(): Promise<string> {
     return analysisKey;
   }
 
-  const workflowPath = await getWorkflowPath();
+  const workflowPath = await getWorkflowRelativePath();
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;

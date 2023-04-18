@@ -13,8 +13,6 @@ interface Defaults {
   priorCliVersion: string;
 }
 
-const CODEQL_BUNDLE_PREFIX = 'codeql-bundle-';
-
 function getCodeQLCliVersionForRelease(release): string {
   // We do not currently tag CodeQL bundles based on the CLI version they contain.
   // Instead, we use a marker file `cli-version-<version>.txt` to record the CLI version.
@@ -37,7 +35,7 @@ function getCodeQLCliVersionForRelease(release): string {
 
     async function getBundleInfoFromRelease(release): Promise<BundleInfo> {
       return {
-        bundleVersion: release.tag_name.substring(CODEQL_BUNDLE_PREFIX.length),
+        bundleVersion: release.tag_name,
         cliVersion: getCodeQLCliVersionForRelease(release)
       };
     }

@@ -1708,6 +1708,11 @@ export async function initConfig(
 
   // if configInput is set, it takes precedence over configFile
   if (configInput) {
+    if (configFile) {
+      logger.warning(
+        `Both a config file and config input were provided. Ignoring config file.`
+      );
+    }
     configFile = path.resolve(workspacePath, "user-config-from-action.yml");
     fs.writeFileSync(configFile, configInput);
     logger.debug(`Using config from action input: ${configFile}`);

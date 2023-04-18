@@ -925,9 +925,9 @@ test("Queries in workflow file can be added to the set of queries without overri
   });
 });
 
-test("Queries can be specified in configuration, same as file", async (t) => {
+test("Queries can be specified using config input", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
-    const inputFileContents = `
+    const configInput = `
       name: my config
       queries:
         - uses: ./foo
@@ -967,7 +967,7 @@ test("Queries can be specified in configuration, same as file", async (t) => {
       undefined,
       undefined,
       undefined,
-      inputFileContents,
+      configInput,
       false,
       false,
       "",

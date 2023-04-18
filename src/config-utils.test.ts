@@ -1008,6 +1008,98 @@ test("Queries can be specified using config input", async (t) => {
   });
 });
 
+test("Using config input and file together, config input should be used.", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env["RUNNER_TEMP"] = tmpDir;
+    process.env["GITHUB_WORKSPACE"] = tmpDir;
+
+    const inputFileContents = `
+      name: my config
+      queries:
+        - uses: ./foo_file`;
+    const configFilePath = createConfigFile(inputFileContents, tmpDir);
+
+    const configInput = `
+      name: my config
+      queries:
+        - uses: ./foo
+      packs:
+        javascript:
+          - a/b@1.2.3
+        python:
+          - c/d@1.2.3
+    `;
+
+    fs.mkdirSync(path.join(tmpDir, "foo"));
+
+    const resolveQueriesArgs: Array<{
+      queries: string[];
+      extraSearchPath: string | undefined;
+    }> = [];
+    const codeQL = setCodeQL({
+      async resolveQueries(
+        queries: string[],
+        extraSearchPath: string | undefined
+      ) {
+        resolveQueriesArgs.push({ queries, extraSearchPath });
+        return queriesToResolvedQueryForm(queries);
+      },
+      async packDownload(): Promise<PackDownloadOutput> {
+        return { packs: [] };
+      },
+    });
+
+    // Only JS, python packs will be ignored
+    const languages = "javascript";
+
+    const config = await configUtils.initConfig(
+      languages,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      configFilePath,
+      configInput,
+      false,
+      false,
+      "",
+      "",
+      { owner: "github", repo: "example" },
+      tmpDir,
+      codeQL,
+      tmpDir,
+      gitHubVersion,
+      sampleApiDetails,
+      createFeatures([]),
+      getRunnerLogger(true)
+    );
+
+    // Check resolveQueries was called correctly
+    // It'll be called once for the default queries
+    // and once for `./foo` from the config file.
+    t.deepEqual(resolveQueriesArgs.length, 2);
+    t.deepEqual(resolveQueriesArgs[1].queries.length, 1);
+    t.true(resolveQueriesArgs[1].queries[0].endsWith(`${path.sep}foo`));
+    t.deepEqual(config.packs as unknown, {
+      [Language.javascript]: ["a/b@1.2.3"],
+    });
+
+    // Now check that the end result contains the default queries and the query from config
+    t.deepEqual(config.queries["javascript"].builtin.length, 1);
+    t.deepEqual(config.queries["javascript"].custom.length, 1);
+    t.true(
+      config.queries["javascript"].builtin[0].endsWith(
+        "javascript-code-scanning.qls"
+      )
+    );
+    t.true(
+      config.queries["javascript"].custom[0].queries[0].endsWith(
+        `${path.sep}foo`
+      )
+    );
+  });
+});
+
 test("Invalid queries in workflow file handled correctly", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     const queries = "foo/bar@v1@v3";

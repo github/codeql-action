@@ -15,7 +15,7 @@ jobs:
         slice: [1,2,3,4]
         version: [nightly-latest]
     name: Swift analysis using autobuild
-    timeout-minutes: 15
+    timeout-minutes: 25
     runs-on: macos-latest
     steps:
     - name: Check out repository
@@ -58,6 +58,7 @@ jobs:
         name: swift-autobuild-dbs-${{ matrix.slice }}
         # relocator working directory is under codeql_databases, not the language-specific DB
         path: ${{ runner.temp }}/codeql_databases
+        retention-days: 7
     env:
       CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

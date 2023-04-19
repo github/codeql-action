@@ -7,7 +7,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { Config } from "./config-utils";
+import { Config, defaultAugmentationProperties } from "./config-utils";
 import { getRunnerLogger } from "./logging";
 import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -299,11 +299,7 @@ for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
         debugMode: false,
         debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
         debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-        augmentationProperties: {
-          injectedMlQueries: false,
-          packsInputCombines: false,
-          queriesInputCombines: false,
-        },
+        augmentationProperties: defaultAugmentationProperties,
         trapCaches: {},
         trapCacheDownloadTime: 0,
       };

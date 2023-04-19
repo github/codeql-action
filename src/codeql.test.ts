@@ -69,6 +69,7 @@ test.beforeEach(() => {
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     augmentationProperties: {
+      threatModelsInputCombines: false,
       injectedMlQueries: false,
       packsInputCombines: false,
       queriesInputCombines: false,
@@ -682,6 +683,7 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
       ...stubConfig,
       tempDir,
       augmentationProperties: {
+        threatModelsInputCombines: false,
         injectedMlQueries: false,
         queriesInputCombines: false,
         packsInputCombines: false,
@@ -762,6 +764,7 @@ test(
     injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: false,
+    threatModelsInputCombines: false,
   },
   {},
   {}
@@ -774,6 +777,7 @@ test(
     injectedMlQueries: true,
     queriesInputCombines: false,
     packsInputCombines: false,
+    threatModelsInputCombines: false,
   },
   {},
   {
@@ -788,6 +792,7 @@ test(
     injectedMlQueries: true,
     queriesInputCombines: false,
     packsInputCombines: false,
+    threatModelsInputCombines: false,
   },
   {
     originalUserInput: {
@@ -811,6 +816,7 @@ test(
     injectedMlQueries: true,
     queriesInputCombines: false,
     packsInputCombines: false,
+    threatModelsInputCombines: false,
   },
   {
     originalUserInput: {
@@ -833,6 +839,7 @@ test(
     queriesInputCombines: false,
     packsInputCombines: false,
     packsInput: ["xxx", "yyy"],
+    threatModelsInputCombines: false,
   },
   {},
   {
@@ -848,6 +855,7 @@ test(
     queriesInputCombines: false,
     packsInputCombines: true,
     packsInput: ["xxx", "yyy"],
+    threatModelsInputCombines: false,
   },
   {
     originalUserInput: {
@@ -871,6 +879,7 @@ test(
     queriesInputCombines: false,
     packsInputCombines: false,
     packsInput: ["xxx", "yyy"],
+    threatModelsInputCombines: false,
   },
   {
     originalUserInput: {
@@ -892,6 +901,7 @@ test(
     queriesInputCombines: false,
     packsInputCombines: false,
     packsInput: ["xxx", "yyy"],
+    threatModelsInputCombines: false,
   },
   {
     originalUserInput: {
@@ -913,6 +923,7 @@ test(
     injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: false,
+    threatModelsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {},
@@ -935,6 +946,7 @@ test(
     injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: false,
+    threatModelsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {
@@ -961,6 +973,7 @@ test(
     injectedMlQueries: false,
     queriesInputCombines: true,
     packsInputCombines: false,
+    threatModelsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {
@@ -990,6 +1003,7 @@ test(
     injectedMlQueries: false,
     queriesInputCombines: true,
     packsInputCombines: true,
+    threatModelsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {},
@@ -1012,6 +1026,7 @@ test(
     injectedMlQueries: false,
     queriesInputCombines: true,
     packsInputCombines: true,
+    threatModelsInputCombines: false,
     queriesInput: [],
     packsInput: [],
   },
@@ -1022,6 +1037,71 @@ test(
     },
   },
   {}
+);
+
+test(
+  "threat model from config",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: true,
+    packsInputCombines: true,
+    threatModelsInputCombines: false,
+    queriesInput: [],
+    packsInput: [],
+  },
+  {
+    originalUserInput: {
+      "threat-models": ["a", "b"],
+    },
+  },
+  {
+    "threat-models": ["a", "b"],
+  }
+);
+
+test(
+  "threat model from input overrides config",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: true,
+    packsInputCombines: true,
+    threatModelsInputCombines: false,
+    threatModelsInput: ["a", "b"],
+    queriesInput: [],
+    packsInput: [],
+  },
+  {
+    originalUserInput: {
+      "threat-models": ["c", "d"],
+    },
+  },
+  {
+    "threat-models": ["a", "b"],
+  }
+);
+
+test(
+  "threat model from input combines with config",
+  injectedConfigMacro,
+  {
+    injectedMlQueries: false,
+    queriesInputCombines: true,
+    packsInputCombines: true,
+    threatModelsInputCombines: true,
+    threatModelsInput: ["a", "b"],
+    queriesInput: [],
+    packsInput: [],
+  },
+  {
+    originalUserInput: {
+      "threat-models": ["c", "d"],
+    },
+  },
+  {
+    "threat-models": ["c", "d", "a", "b"],
+  }
 );
 
 test("does not pass a code scanning config or qlconfig file to the CLI when CLI config passing is disabled", async (t: ExecutionContext<unknown>) => {

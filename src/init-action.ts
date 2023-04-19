@@ -251,6 +251,7 @@ async function run() {
       getOptionalInput("languages"),
       getOptionalInput("queries"),
       getOptionalInput("packs"),
+      getOptionalInput("threat-models"),
       registriesInput,
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),

@@ -45,16 +45,21 @@ inputs:
     description: Path where CodeQL databases should be created. If not specified, a temporary directory will be used.
     required: false
   queries:
-    description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
+    description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to combine both sets of queries.
     required: false
   packs:
     description: >-
       [Experimental] Comma-separated list of packs to run. Reference a pack in the format `scope/name[@version]`. If `version` is not
       specified, then the latest version of the pack is used. By default, this overrides the same setting in a
-      configuration file; prefix with "+" to use both sets of packs.
+      configuration file; prefix with "+" to combine both sets of packs.
 
       This input is only available in single-language analyses. To use packs in multi-language
       analyses, you must specify packs in the codeql-config.yml file.
+    required: false
+  threat-models:
+    description: >-
+      [Experimental] Comma-separated list of threat models to include in this analysis. By default, this overrides the same setting in a
+      configuration file; prefix with "+" to combine both sets of threat-models.
     required: false
   external-repository-token:
     description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.

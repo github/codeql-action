@@ -3,6 +3,7 @@ import * as path from "path";
 import test from "ava";
 
 import * as analysisPaths from "./analysis-paths";
+import { defaultAugmentationProperties } from "./config-utils";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -24,11 +25,7 @@ test("emptyPaths", async (t) => {
       debugMode: false,
       debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-      augmentationProperties: {
-        injectedMlQueries: false,
-        packsInputCombines: false,
-        queriesInputCombines: false,
-      },
+      augmentationProperties: defaultAugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
     };
@@ -55,11 +52,7 @@ test("nonEmptyPaths", async (t) => {
       debugMode: false,
       debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-      augmentationProperties: {
-        injectedMlQueries: false,
-        packsInputCombines: false,
-        queriesInputCombines: false,
-      },
+      augmentationProperties: defaultAugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
     };
@@ -89,11 +82,7 @@ test("exclude temp dir", async (t) => {
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: {
-      injectedMlQueries: false,
-      packsInputCombines: false,
-      queriesInputCombines: false,
-    },
+    augmentationProperties: defaultAugmentationProperties,
     trapCaches: {},
     trapCacheDownloadTime: 0,
   };

@@ -105,6 +105,7 @@ test("load empty config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -123,6 +124,7 @@ test("load empty config", async (t) => {
       config,
       await configUtils.getDefaultConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -176,6 +178,7 @@ test("loading config saves config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       false,
       false,
       "",
@@ -208,6 +211,7 @@ test("load input outside of workspace", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -252,6 +256,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         configFile,
         undefined,
         false,
@@ -290,6 +295,7 @@ test("load non-existent input", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -400,6 +406,7 @@ test("load non-empty input", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -468,6 +475,7 @@ test("Default queries are used", async (t) => {
 
     await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -550,6 +558,7 @@ test("Queries can be specified in config file", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -628,6 +637,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       testQueries,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -704,6 +714,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       testQueries,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -769,6 +780,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const config = await configUtils.initConfig(
       languages,
       testQueries,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -859,6 +871,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       testQueries,
       undefined,
       undefined,
+      undefined,
       configFilePath,
       undefined,
       false,
@@ -943,6 +956,7 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -1013,6 +1027,7 @@ test("API client used when reading remote config", async (t) => {
       undefined,
       undefined,
       undefined,
+      undefined,
       configFile,
       undefined,
       false,
@@ -1040,6 +1055,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1079,6 +1095,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1128,6 +1145,7 @@ test("No detected languages", async (t) => {
         undefined,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -1155,6 +1173,7 @@ test("Unknown languages", async (t) => {
     try {
       await configUtils.initConfig(
         languages,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -1212,6 +1231,7 @@ test("Config specifies packages", async (t) => {
 
     const { packs } = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -1273,6 +1293,7 @@ test("Config specifies packages for multiple languages", async (t) => {
 
     const { packs, queries } = await configUtils.initConfig(
       languages,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -1345,6 +1366,7 @@ function doInvalidInputTest(
       try {
         await configUtils.initConfig(
           languages,
+          undefined,
           undefined,
           undefined,
           undefined,
@@ -1934,6 +1956,7 @@ const mlPoweredQueriesMacro = test.macro({
         undefined,
         undefined,
         undefined,
+        undefined,
         false,
         false,
         "",
@@ -2105,12 +2128,14 @@ const calculateAugmentationMacro = test.macro({
     _title: string,
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
+    rawThreatModelsInput: string | undefined,
     languages: Language[],
     expectedAugmentationProperties: configUtils.AugmentationProperties
   ) => {
     const actualAugmentationProperties = configUtils.calculateAugmentation(
       rawPacksInput,
       rawQueriesInput,
+      rawThreatModelsInput,
       languages
     );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
@@ -2123,12 +2148,15 @@ test(
   "All empty",
   undefined,
   undefined,
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
     packsInputCombines: false,
     packsInput: undefined,
+    threatModelsInputCombines: false,
+    threatModelsInput: undefined,
     injectedMlQueries: false,
   } as configUtils.AugmentationProperties
 );
@@ -2138,12 +2166,15 @@ test(
   "With queries",
   undefined,
   " a, b , c, d",
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: false,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
     packsInputCombines: false,
     packsInput: undefined,
+    threatModelsInputCombines: false,
+    threatModelsInput: undefined,
     injectedMlQueries: false,
   } as configUtils.AugmentationProperties
 );
@@ -2153,12 +2184,15 @@ test(
   "With queries combining",
   undefined,
   "   +   a, b , c, d ",
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: true,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
     packsInputCombines: false,
     packsInput: undefined,
+    threatModelsInputCombines: false,
+    threatModelsInput: undefined,
     injectedMlQueries: false,
   } as configUtils.AugmentationProperties
 );
@@ -2168,12 +2202,15 @@ test(
   "With packs",
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
     packsInputCombines: false,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
+    threatModelsInputCombines: false,
+    threatModelsInput: undefined,
     injectedMlQueries: false,
   } as configUtils.AugmentationProperties
 );
@@ -2183,12 +2220,51 @@ test(
   "With packs combining",
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
   undefined,
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
     packsInputCombines: true,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
+    threatModelsInputCombines: false,
+    threatModelsInput: undefined,
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With threat model",
+  undefined,
+  undefined,
+  "   a , b   , c  , d  ",
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: undefined,
+    packsInput: undefined,
+    packsInputCombines: false,
+    threatModelsInput: ["a", "b", "c", "d"],
+    threatModelsInputCombines: false,
+    injectedMlQueries: false,
+  } as configUtils.AugmentationProperties
+);
+
+test(
+  calculateAugmentationMacro,
+  "With threat model combining",
+  undefined,
+  undefined,
+  " +  a , b   , c  , d  ",
+  [Language.javascript],
+  {
+    queriesInput: undefined,
+    queriesInputCombines: false,
+    packsInput: undefined,
+    packsInputCombines: false,
+    threatModelsInput: ["a", "b", "c", "d"],
+    threatModelsInputCombines: true,
     injectedMlQueries: false,
   } as configUtils.AugmentationProperties
 );
@@ -2199,6 +2275,7 @@ const calculateAugmentationErrorMacro = test.macro({
     _title: string,
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
+    rawThreatModelsInput: string | undefined,
     languages: Language[],
     expectedError: RegExp | string
   ) => {
@@ -2207,6 +2284,7 @@ const calculateAugmentationErrorMacro = test.macro({
         configUtils.calculateAugmentation(
           rawPacksInput,
           rawQueriesInput,
+          rawThreatModelsInput,
           languages
         ),
       { message: expectedError }
@@ -2220,6 +2298,7 @@ test(
   "Plus (+) with nothing else (queries)",
   undefined,
   "   +   ",
+  undefined,
   [Language.javascript],
   /The workflow property "queries" is invalid/
 );
@@ -2228,6 +2307,7 @@ test(
   calculateAugmentationErrorMacro,
   "Plus (+) with nothing else (packs)",
   "   +   ",
+  undefined,
   undefined,
   [Language.javascript],
   /The workflow property "packs" is invalid/
@@ -2238,6 +2318,7 @@ test(
   "Packs input with multiple languages",
   "   +  a/b, c/d ",
   undefined,
+  undefined,
   [Language.javascript, Language.java],
   /Cannot specify a 'packs' input in a multi-language analysis/
 );
@@ -2246,6 +2327,7 @@ test(
   calculateAugmentationErrorMacro,
   "Packs input with no languages",
   "   +  a/b, c/d ",
+  undefined,
   undefined,
   [],
   /No languages specified/
@@ -2256,8 +2338,19 @@ test(
   "Invalid packs",
   " a-pack-without-a-scope ",
   undefined,
+  undefined,
   [Language.javascript],
   /"a-pack-without-a-scope" is not a valid pack/
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Invalid threat-models",
+  undefined,
+  undefined,
+  "   + ",
+  [Language.javascript],
+  /A '\+' was used in the 'threat-models'/
 );
 
 test("downloadPacks-no-registries", async (t) => {

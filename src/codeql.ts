@@ -1134,6 +1134,7 @@ async function generateCodeScanningConfig(
   if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
     delete augmentedConfig.packs;
   }
+
   if (config.augmentationProperties.injectedMlQueries) {
     // We need to inject the ML queries into the original user input before
     // we pass this on to the CLI, to make sure these get run.
@@ -1148,6 +1149,28 @@ async function generateCodeScanningConfig(
       augmentedConfig.packs["javascript"].push(packString);
     }
   }
+
+  // Inject the threat-models from the input
+  if (config.augmentationProperties.threatModelsInput) {
+    if (config.augmentationProperties.threatModelsInputCombines) {
+      // threat-models input combines with threat-models from the config file
+      // (if any were defined).
+      augmentedConfig["threat-models"] = (
+        augmentedConfig["threat-models"] || []
+      ).concat(config.augmentationProperties.threatModelsInput);
+    } else {
+      // threat-models input overrides threat-models from the config file
+      augmentedConfig["threat-models"] =
+        config.augmentationProperties.threatModelsInput;
+    }
+  }
+  if (
+    Array.isArray(augmentedConfig["threat-models"]) &&
+    !augmentedConfig["threat-models"].length
+  ) {
+    delete augmentedConfig["threat-models"];
+  }
+
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`
   );

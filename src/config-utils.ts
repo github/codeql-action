@@ -63,6 +63,10 @@ export interface UserConfig {
   // Set of query filters to include and exclude extra queries based on
   // codeql query suite `include` and `exclude` properties
   "query-filters"?: QueryFilter[];
+
+  // The set of threat models to consider for this analysis. If left unset,
+  // the "standard" threat model will be used.
+  "threat-models"?: string[];
 }
 
 export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
@@ -241,10 +245,22 @@ export interface AugmentationProperties {
    * Whether or not the packs input combines with the packs in the config.
    */
   packsInputCombines: boolean;
+
   /**
    * The packs input from the `with` block of the action declaration
    */
   packsInput?: string[];
+
+  /**
+   * Whether or not the threat-models input combines with the threat-model in the config.
+   */
+  threatModelsInputCombines: boolean;
+
+  /**
+   * The threat-modesl input from the `with` block of the action declaration
+   */
+  threatModelsInput?: string[];
+
   /**
    * Whether we injected ML queries into this configuration.
    */
@@ -258,9 +274,11 @@ export interface AugmentationProperties {
 export const defaultAugmentationProperties: AugmentationProperties = {
   queriesInputCombines: false,
   packsInputCombines: false,
+  threatModelsInputCombines: false,
   injectedMlQueries: false,
   packsInput: undefined,
   queriesInput: undefined,
+  threatModelsInput: undefined,
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -1057,6 +1075,7 @@ export async function getDefaultConfig(
   languagesInput: string | undefined,
   rawQueriesInput: string | undefined,
   rawPacksInput: string | undefined,
+  rawThreatModelsInput: string | undefined,
   dbLocation: string | undefined,
   trapCachingEnabled: boolean,
   debugMode: boolean,
@@ -1088,6 +1107,7 @@ export async function getDefaultConfig(
   const augmentationProperties = calculateAugmentation(
     rawPacksInput,
     rawQueriesInput,
+    rawThreatModelsInput,
     languages
   );
   const packs = augmentationProperties.packsInput
@@ -1164,6 +1184,7 @@ async function loadConfig(
   languagesInput: string | undefined,
   rawQueriesInput: string | undefined,
   rawPacksInput: string | undefined,
+  rawThreatModelsInput: string | undefined,
   configFile: string,
   dbLocation: string | undefined,
   trapCachingEnabled: boolean,
@@ -1230,6 +1251,7 @@ async function loadConfig(
   const augmentationProperties = calculateAugmentation(
     rawPacksInput,
     rawQueriesInput,
+    rawThreatModelsInput,
     languages
   );
   const packs = parsePacks(
@@ -1370,6 +1392,7 @@ async function loadConfig(
 export function calculateAugmentation(
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
+  rawThreatModelsInput: string | undefined,
   languages: Language[]
 ): AugmentationProperties {
   const packsInputCombines = shouldCombine(rawPacksInput);
@@ -1384,12 +1407,20 @@ export function calculateAugmentation(
     queriesInputCombines
   );
 
+  const threatModelsInputCombines = shouldCombine(rawThreatModelsInput);
+  const threatModelsInput = parseThreatModelsFromInput(
+    rawThreatModelsInput,
+    threatModelsInputCombines
+  );
+
   return {
     injectedMlQueries: false, // filled in later
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
+    threatModelsInputCombines,
+    threatModelsInput,
   };
 }
 
@@ -1510,6 +1541,31 @@ function parsePacksFromInput(
       return packs;
     }, [] as string[]),
   };
+}
+
+function parseThreatModelsFromInput(
+  rawThreatModelsInput: string | undefined,
+  threatModelsInputCombines: boolean
+): string[] | undefined {
+  if (!rawThreatModelsInput?.trim()) {
+    return undefined;
+  }
+
+  rawThreatModelsInput = rawThreatModelsInput.trim();
+  if (threatModelsInputCombines) {
+    rawThreatModelsInput = rawThreatModelsInput.trim().substring(1).trim();
+    if (!rawThreatModelsInput) {
+      throw new Error(
+        getConfigFilePropertyError(
+          undefined,
+          "threat-models",
+          "A '+' was used in the 'threat-models' input to specify that you wished to add some packs to your CodeQL analysis. However, no threat models were specified. Please either remove the '+' or specify some threat models."
+        )
+      );
+    }
+  }
+
+  return rawThreatModelsInput.split(",").map((t) => t.trim());
 }
 
 /**
@@ -1687,6 +1743,7 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   packsInput: string | undefined,
+  threatModelsInput: string | undefined,
   registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
@@ -1712,6 +1769,7 @@ export async function initConfig(
       languagesInput,
       queriesInput,
       packsInput,
+      threatModelsInput,
       dbLocation,
       trapCachingEnabled,
       debugMode,
@@ -1731,6 +1789,7 @@ export async function initConfig(
       languagesInput,
       queriesInput,
       packsInput,
+      threatModelsInput,
       configFile,
       dbLocation,
       trapCachingEnabled,

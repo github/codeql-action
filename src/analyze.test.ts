@@ -13,7 +13,11 @@ import {
   QueriesStatusReport,
 } from "./analyze";
 import { CodeQL, setCodeQL } from "./codeql";
-import { Config, QueriesWithSearchPath } from "./config-utils";
+import {
+  Config,
+  QueriesWithSearchPath,
+  defaultAugmentationProperties,
+} from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -111,11 +115,7 @@ test("status report fields and search path setting", async (t) => {
         debugMode: false,
         debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
         debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-        augmentationProperties: {
-          injectedMlQueries: false,
-          packsInputCombines: false,
-          queriesInputCombines: false,
-        },
+        augmentationProperties: defaultAugmentationProperties,
         trapCaches: {},
         trapCacheDownloadTime: 0,
       };
@@ -258,11 +258,7 @@ function createBaseConfig(tmpDir: string): Config {
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: {
-      injectedMlQueries: false,
-      packsInputCombines: false,
-      queriesInputCombines: false,
-    },
+    augmentationProperties: defaultAugmentationProperties,
     trapCaches: {},
     trapCacheDownloadTime: 0,
   };

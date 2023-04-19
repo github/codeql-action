@@ -26,7 +26,7 @@ runs:
           VERSION="5.7.0"
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
-    - uses: swift-actions/setup-swift@da0e3e04b5e3e15dbc3861bd835ad9f0afe56296 # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
+    - uses: swift-actions/setup-swift@65540b95f51493d65f5e59e97dcef9629ddf11bf # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
       if: env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true'
       with:
         swift-version: "${{ steps.get_swift_version.outputs.version }}"

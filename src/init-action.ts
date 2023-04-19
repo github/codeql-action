@@ -213,7 +213,7 @@ async function run() {
   );
 
   try {
-    const workflowErrors = await validateWorkflow();
+    const workflowErrors = await validateWorkflow(logger);
 
     if (
       !(await sendStatusReport(

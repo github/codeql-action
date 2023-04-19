@@ -57,7 +57,7 @@ async function maybeUploadFailedSarif(
   if (!(await features.getValue(Feature.UploadFailedSarifEnabled, codeql))) {
     return { upload_failed_run_skipped_because: "Feature disabled" };
   }
-  const workflow = await getWorkflow();
+  const workflow = await getWorkflow(logger);
   const jobName = getRequiredEnvParam("GITHUB_JOB");
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
   const shouldUpload = getUploadInputOrThrow(workflow, jobName, matrix);

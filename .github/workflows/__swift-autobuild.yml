@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         slice: [1,2,3,4]
-        version: [cached]
+        version: [nightly-latest]
     name: Swift analysis using autobuild
     timeout-minutes: 15
     runs-on: macos-latest
@@ -52,7 +52,7 @@ jobs:
           echo "Did not create a database for Swift."
         fi
     - name: Upload artifact
-      if: failure() || cancelled()
+      if: always()
       uses: actions/upload-artifact@v3
       with:
         name: swift-autobuild-dbs-${{ matrix.slice }}

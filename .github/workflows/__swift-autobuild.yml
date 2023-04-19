@@ -15,7 +15,6 @@ jobs:
         slice: [1,2,3,4]
         version: [nightly-latest]
     name: Swift analysis using autobuild
-    timeout-minutes: 25
     runs-on: macos-latest
     steps:
     - name: Check out repository
@@ -37,6 +36,12 @@ jobs:
     - name: Check working directory
       shell: bash
       run: pwd
+    - uses: ./../action/autobuild
+      timeout-minutes: 10
+    - uses: ./../action/autobuild
+      timeout-minutes: 10
+    - uses: ./../action/autobuild
+      timeout-minutes: 10
     - uses: ./../action/autobuild
       timeout-minutes: 10
     - uses: ./../action/analyze

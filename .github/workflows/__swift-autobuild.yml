@@ -38,10 +38,10 @@ jobs:
       run: pwd
     - uses: ./../action/autobuild
       timeout-minutes: 10
-    - uses: ./../action/autobuild
-      timeout-minutes: 10
-    - uses: ./../action/autobuild
-      timeout-minutes: 10
+    - name: Clean build
+      shell: bash
+      run: |
+        swift package clean
     - uses: ./../action/autobuild
       timeout-minutes: 10
     - uses: ./../action/analyze

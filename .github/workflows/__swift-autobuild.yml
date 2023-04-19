@@ -52,7 +52,7 @@ jobs:
           echo "Did not create a database for Swift."
         fi
     - name: Upload artifact
-      if: always()
+      if: ${{ failure() || cancelled() }}
       uses: actions/upload-artifact@v3
       with:
         name: swift-autobuild-dbs-${{ matrix.slice }}

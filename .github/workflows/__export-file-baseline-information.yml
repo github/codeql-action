@@ -42,6 +42,17 @@ jobs:
       uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
+    - name: Set environment variable for Swift enablement
+      if: >-
+        runner.os != 'Windows' && (
+            matrix.version == '20220908' ||
+            matrix.version == '20221211' ||
+            matrix.version == 'cached' ||
+            matrix.version == 'latest' ||
+            matrix.version == 'nightly-latest'
+        )
+      shell: bash
+      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - uses: ./../action/init
       id: init
       with:
@@ -70,7 +81,10 @@ jobs:
       shell: bash
       run: |
         cd "$RUNNER_TEMP/results"
-        expected_baseline_languages="cpp cs go java js py rb swift"
+        expected_baseline_languages="cpp cs go java js py rb"
+        if [[ $RUNNER_OS != "Windows" ]]; then
+          expected_baseline_languages+=" swift"
+        fi
 
         for lang in ${expected_baseline_languages}; do
           rule_name="${lang}/baseline/expected-extracted-files"
@@ -84,5 +98,4 @@ jobs:
           fi
         done
     env:
-      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

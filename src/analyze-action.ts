@@ -16,7 +16,7 @@ import {
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
-import { enrichEnvironment, getCodeQL } from "./codeql";
+import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { Features } from "./feature-flags";
@@ -206,8 +206,6 @@ async function run() {
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork."
       );
     }
-
-    await enrichEnvironment(await getCodeQL(config.codeQLCmd));
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");

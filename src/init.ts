@@ -6,14 +6,13 @@ import * as safeWhich from "@chrisgavin/safe-which";
 
 import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
-import { CodeQL, CODEQL_VERSION_NEW_TRACING, setupCodeQL } from "./codeql";
+import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
-import { codeQlVersionAbove } from "./util";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -110,53 +109,42 @@ export async function runInit(
   fs.mkdirSync(config.dbLocation, { recursive: true });
 
   try {
-    if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-      // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.
-      // So, create it now.
-      // If we are parsing the config file in the Action, then the qlconfig file was already created
-      // before the `pack download` command was invoked. It is not required for the init command.
-      let registriesAuthTokens: string | undefined;
-      let qlconfigFile: string | undefined;
-      if (await util.useCodeScanningConfigInCli(codeql, features)) {
-        ({ registriesAuthTokens, qlconfigFile } =
-          await configUtils.generateRegistries(
-            registriesInput,
-            codeql,
-            config.tempDir,
-            logger
-          ));
-      }
-      await configUtils.wrapEnvironment(
-        {
-          GITHUB_TOKEN: apiDetails.auth,
-          CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-        },
-
-        // Init a database cluster
-        async () =>
-          await codeql.databaseInitCluster(
-            config,
-            sourceRoot,
-            processName,
-            features,
-            qlconfigFile,
-            logger
-          )
-      );
-    } else {
-      for (const language of config.languages) {
-        // Init language database
-        await codeql.databaseInit(
-          util.getCodeQLDatabasePath(config, language),
-          language,
-          sourceRoot
-        );
-      }
+    // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.
+    // So, create it now.
+    // If we are parsing the config file in the Action, then the qlconfig file was already created
+    // before the `pack download` command was invoked. It is not required for the init command.
+    let registriesAuthTokens: string | undefined;
+    let qlconfigFile: string | undefined;
+    if (await util.useCodeScanningConfigInCli(codeql, features)) {
+      ({ registriesAuthTokens, qlconfigFile } =
+        await configUtils.generateRegistries(
+          registriesInput,
+          codeql,
+          config.tempDir,
+          logger
+        ));
     }
+    await configUtils.wrapEnvironment(
+      {
+        GITHUB_TOKEN: apiDetails.auth,
+        CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+      },
+
+      // Init a database cluster
+      async () =>
+        await codeql.databaseInitCluster(
+          config,
+          sourceRoot,
+          processName,
+          features,
+          qlconfigFile,
+          logger
+        )
+    );
   } catch (e) {
     throw processError(e);
   }
-  return await getCombinedTracerConfig(config, codeql);
+  return await getCombinedTracerConfig(config);
 }
 
 /**
@@ -193,105 +181,6 @@ function processError(e: any): Error {
   }
 
   return e;
-}
-
-// Runs a powershell script to inject the tracer into a parent process
-// so it can tracer future processes, hopefully including the build process.
-// If processName is given then injects into the nearest parent process with
-// this name, otherwise uses the processLevel-th parent if defined, otherwise
-// defaults to the 3rd parent as a rough guess.
-export async function injectWindowsTracer(
-  processName: string | undefined,
-  processLevel: number | undefined,
-  config: configUtils.Config,
-  codeql: CodeQL,
-  tracerConfig: TracerConfig
-) {
-  let script: string;
-  if (processName !== undefined) {
-    script = `
-      Param(
-          [Parameter(Position=0)]
-          [String]
-          $tracer
-      )
-
-      $id = $PID
-      while ($true) {
-        $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
-        Write-Host "Found process: $p"
-        if ($p -eq $null) {
-          throw "Could not determine ${processName} process"
-        }
-        if ($p[0].Name -eq "${processName}") {
-          Break
-        } else {
-          $id = $p[0].ParentProcessId
-        }
-      }
-      Write-Host "Final process: $p"
-
-      Invoke-Expression "&$tracer --inject=$id"`;
-  } else {
-    // If the level is not defined then guess at the 3rd parent process.
-    // This won't be correct in every setting but it should be enough in most settings,
-    // and overestimating is likely better in this situation so we definitely trace
-    // what we want, though this does run the risk of interfering with future CI jobs.
-    // Note that the default of 3 doesn't work on github actions, so we include a
-    // special case in the script that checks for Runner.Worker.exe so we can still work
-    // on actions if the runner is invoked there.
-    processLevel = processLevel || 3;
-    script = `
-      Param(
-          [Parameter(Position=0)]
-          [String]
-          $tracer
-      )
-
-      $id = $PID
-      for ($i = 0; $i -le ${processLevel}; $i++) {
-        $p = Get-CimInstance -Class Win32_Process -Filter "ProcessId = $id"
-        Write-Host "Parent process \${i}: $p"
-        if ($p -eq $null) {
-          throw "Process tree ended before reaching required level"
-        }
-        # Special case just in case the runner is used on actions
-        if ($p[0].Name -eq "Runner.Worker.exe") {
-          Write-Host "Found Runner.Worker.exe process which means we are running on GitHub Actions"
-          Write-Host "Aborting search early and using process: $p"
-          Break
-        } elseif ($p[0].Name -eq "Agent.Worker.exe") {
-          Write-Host "Found Agent.Worker.exe process which means we are running on Azure Pipelines"
-          Write-Host "Aborting search early and using process: $p"
-          Break
-        } else {
-          $id = $p[0].ParentProcessId
-        }
-      }
-      Write-Host "Final process: $p"
-
-      Invoke-Expression "&$tracer --inject=$id"`;
-  }
-
-  const injectTracerPath = path.join(config.tempDir, "inject-tracer.ps1");
-  fs.writeFileSync(injectTracerPath, script);
-
-  await new toolrunner.ToolRunner(
-    await safeWhich.safeWhich("powershell"),
-    [
-      "-ExecutionPolicy",
-      "Bypass",
-      "-file",
-      injectTracerPath,
-      path.resolve(
-        path.dirname(codeql.getPath()),
-        "tools",
-        "win64",
-        "tracer.exe"
-      ),
-    ],
-    { env: { ODASA_TRACER_CONFIGURATION: tracerConfig.spec } }
-  ).exec();
 }
 
 export async function installPythonDeps(codeql: CodeQL, logger: Logger) {

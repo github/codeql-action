@@ -1,18 +1,18 @@
 name: "Set up Swift"
-description: Performs necessary steps to set up appropriate Swift version.
+description: Sets up an appropriate Swift version if Swift is enabled via CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT.
 inputs:
   codeql-path:
+    description: Path to the CodeQL CLI executable.
     required: true
 runs:
   using: "composite"
   steps:
     - name: Get Swift version
       id: get_swift_version
-      # We don't support Swift on Windows or prior versions of CLI.
-      if: "(runner.os != 'Windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+      if: env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true'
       shell: bash
       env: 
-        CODEQL_PATH: ${{inputs.codeql-path}}
+        CODEQL_PATH: ${{ inputs.codeql-path }}
       run: |
         if [ $RUNNER_OS = "macOS" ]; then
           PLATFORM="osx64"
@@ -27,6 +27,6 @@ runs:
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
     - uses: swift-actions/setup-swift@65540b95f51493d65f5e59e97dcef9629ddf11bf # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
-      if: "(runner.os != 'Windows') && (matrix.version == 'cached' || matrix.version == 'latest' || matrix.version == 'nightly-latest')"
+      if: env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true'
       with:
-        swift-version: "${{steps.get_swift_version.outputs.version}}"
+        swift-version: "${{ steps.get_swift_version.outputs.version }}"

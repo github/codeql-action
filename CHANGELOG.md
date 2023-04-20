@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.13.0. [#1649](https://github.com/github/codeql-action/pull/1649)
+- Bump the minimum CodeQL bundle version to 2.8.5. [#1618](https://github.com/github/codeql-action/pull/1618)
 
 ## 2.2.12 - 13 Apr 2023
 

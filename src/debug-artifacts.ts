@@ -8,13 +8,12 @@ import del from "del";
 
 import { getRequiredInput } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
-import { CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
+import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import {
   bundleDb,
-  codeQlVersionAbove,
   doesDirectoryExist,
   getCodeQLDatabasePath,
   listFolder,
@@ -72,8 +71,6 @@ export async function uploadSarifDebugArtifact(
 }
 
 export async function uploadLogsDebugArtifact(config: Config) {
-  const codeql = await getCodeQL(config.codeQLCmd);
-
   let toUpload: string[] = [];
   for (const language of config.languages) {
     const databaseDirectory = getCodeQLDatabasePath(config, language);
@@ -83,36 +80,20 @@ export async function uploadLogsDebugArtifact(config: Config) {
     }
   }
 
-  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    // Multilanguage tracing: there are additional logs in the root of the cluster
-    const multiLanguageTracingLogsDirectory = path.resolve(
-      config.dbLocation,
-      "log"
-    );
-    if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
-      toUpload = toUpload.concat(listFolder(multiLanguageTracingLogsDirectory));
-    }
+  // Multilanguage tracing: there are additional logs in the root of the cluster
+  const multiLanguageTracingLogsDirectory = path.resolve(
+    config.dbLocation,
+    "log"
+  );
+  if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
+    toUpload = toUpload.concat(listFolder(multiLanguageTracingLogsDirectory));
   }
+
   await uploadDebugArtifacts(
     toUpload,
     config.dbLocation,
     config.debugArtifactName
   );
-
-  // Before multi-language tracing, we wrote a compound-build-tracer.log in the temp dir
-  if (!(await codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING))) {
-    const compoundBuildTracerLogDirectory = path.resolve(
-      config.tempDir,
-      "compound-build-tracer.log"
-    );
-    if (doesDirectoryExist(compoundBuildTracerLogDirectory)) {
-      await uploadDebugArtifacts(
-        [compoundBuildTracerLogDirectory],
-        config.tempDir,
-        config.debugArtifactName
-      );
-    }
-  }
 }
 
 /**

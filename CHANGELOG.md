@@ -1,5 +1,10 @@
 # CodeQL Action Changelog
 
+## 2.3.0 - 21 Apr 2023
+
+- Update default CodeQL bundle version to 2.13.0. [#1649](https://github.com/github/codeql-action/pull/1649)
+- Bump the minimum CodeQL bundle version to 2.8.5. [#1618](https://github.com/github/codeql-action/pull/1618)
+
 ## 2.2.12 - 13 Apr 2023
 
 - Include the value of the `GITHUB_RUN_ATTEMPT` environment variable in the telemetry sent to GitHub. [#1640](https://github.com/github/codeql-action/pull/1640)

@@ -319,6 +319,22 @@ export function getWorkflowRunID(): number {
   return workflowRunID;
 }
 
+/**
+ * Get the workflow run attempt number.
+ */
+export function getWorkflowRunAttempt(): number {
+  const workflowRunAttempt = parseInt(
+    getRequiredEnvParam("GITHUB_RUN_ATTEMPT"),
+    10
+  );
+  if (Number.isNaN(workflowRunAttempt)) {
+    throw new Error(
+      "GITHUB_RUN_ATTEMPT must define a non NaN workflow run attempt"
+    );
+  }
+  return workflowRunAttempt;
+}
+
 function getStepsCallingAction(
   job: WorkflowJob,
   actionName: string

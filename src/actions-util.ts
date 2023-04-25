@@ -21,7 +21,7 @@ import {
   parseMatrixInput,
   UserError,
 } from "./util";
-import { getWorkflowRelativePath } from "./workflow";
+import { getWorkflowRunID, getWorkflowRunAttempt, getWorkflowRelativePath } from "./workflow";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
@@ -407,16 +407,8 @@ export async function createStatusReportBase(
 ): Promise<StatusReportBase> {
   const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
-  const workflowRunIDStr = process.env["GITHUB_RUN_ID"];
-  let workflowRunID = -1;
-  if (workflowRunIDStr) {
-    workflowRunID = parseInt(workflowRunIDStr, 10);
-  }
-  const workflowRunAttemptStr = process.env["GITHUB_RUN_ATTEMPT"];
-  let workflowRunAttempt = -1;
-  if (workflowRunAttemptStr) {
-    workflowRunAttempt = parseInt(workflowRunAttemptStr, 10);
-  }
+  const workflowRunID = getWorkflowRunID();
+  const workflowRunAttempt = getWorkflowRunAttempt();
   const workflowName = process.env["GITHUB_WORKFLOW"] || "";
   const jobName = process.env["GITHUB_JOB"] || "";
   const analysis_key = await getAnalysisKey();

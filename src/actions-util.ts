@@ -21,7 +21,11 @@ import {
   parseMatrixInput,
   UserError,
 } from "./util";
-import { getWorkflowRunID, getWorkflowRunAttempt, getWorkflowRelativePath } from "./workflow";
+import {
+  getWorkflowRunID,
+  getWorkflowRunAttempt,
+  getWorkflowRelativePath,
+} from "./workflow";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;

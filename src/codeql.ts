@@ -340,8 +340,9 @@ export async function setupCodeQL(
       toolsVersion,
     };
   } catch (e) {
-    logger.error(wrapError(e).message);
-    throw new Error("Unable to download and extract CodeQL CLI");
+    throw new Error(
+      `Unable to download and extract CodeQL CLI: ${wrapError(e).message}`
+    );
   }
 }
 

@@ -312,11 +312,38 @@ export async function getWorkflowRelativePath(): Promise<string> {
  * Get the workflow run ID.
  */
 export function getWorkflowRunID(): number {
-  const workflowRunID = parseInt(getRequiredEnvParam("GITHUB_RUN_ID"), 10);
+  const workflowRunIdString = getRequiredEnvParam("GITHUB_RUN_ID");
+  const workflowRunID = parseInt(workflowRunIdString, 10);
   if (Number.isNaN(workflowRunID)) {
-    throw new Error("GITHUB_RUN_ID must define a non NaN workflow run ID");
+    throw new Error(
+      `GITHUB_RUN_ID must define a non NaN workflow run ID. Current value is ${workflowRunIdString}`
+    );
+  }
+  if (workflowRunID < 0) {
+    throw new Error(
+      `GITHUB_RUN_ID must be a non-negative integer. Current value is ${workflowRunIdString}`
+    );
   }
   return workflowRunID;
+}
+
+/**
+ * Get the workflow run attempt number.
+ */
+export function getWorkflowRunAttempt(): number {
+  const workflowRunAttemptString = getRequiredEnvParam("GITHUB_RUN_ID");
+  const workflowRunAttempt = parseInt(workflowRunAttemptString, 10);
+  if (Number.isNaN(workflowRunAttempt)) {
+    throw new Error(
+      `GITHUB_RUN_ATTEMPT must define a non NaN workflow run attempt. Current value is ${workflowRunAttemptString}`
+    );
+  }
+  if (workflowRunAttempt <= 0) {
+    throw new Error(
+      `GITHUB_RUN_ATTEMPT must be a positive integer. Current value is ${workflowRunAttemptString}`
+    );
+  }
+  return workflowRunAttempt;
 }
 
 function getStepsCallingAction(

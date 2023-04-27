@@ -331,7 +331,7 @@ export function getWorkflowRunID(): number {
  * Get the workflow run attempt number.
  */
 export function getWorkflowRunAttempt(): number {
-  const workflowRunAttemptString = getRequiredEnvParam("GITHUB_RUN_ID");
+  const workflowRunAttemptString = getRequiredEnvParam("GITHUB_RUN_ATTEMPT");
   const workflowRunAttempt = parseInt(workflowRunAttemptString, 10);
   if (Number.isNaN(workflowRunAttempt)) {
     throw new Error(

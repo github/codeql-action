@@ -438,9 +438,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  core.exportVariable(EnvVar.VERSION, version);
-  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  core.exportVariable(String(EnvVar.FEATURE_MULTI_LANGUAGE), "false");
+  core.exportVariable(String(EnvVar.FEATURE_SANDWICH), "false");
+  core.exportVariable(String(EnvVar.FEATURE_SARIF_COMBINE), "true");
+  core.exportVariable(String(EnvVar.FEATURE_WILL_UPLOAD), "true");
+  core.exportVariable(String(EnvVar.VERSION), version);
 }
 
 /**

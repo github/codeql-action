@@ -4,6 +4,24 @@
 
 - You can now configure CodeQL within your code scanning workflow by passing a `config` parameter to the `init` Action. [#1590](https://github.com/github/codeql-action/pull/1590)
 
+## 2.3.2 - 27 Apr 2023
+
+No user facing changes.
+
+## 2.3.1 - 26 Apr 2023
+
+No user facing changes.
+
+## 2.3.0 - 21 Apr 2023
+
+- Update default CodeQL bundle version to 2.13.0. [#1649](https://github.com/github/codeql-action/pull/1649)
+- Bump the minimum CodeQL bundle version to 2.8.5. [#1618](https://github.com/github/codeql-action/pull/1618)
+
+## 2.2.12 - 13 Apr 2023
+
+- Include the value of the `GITHUB_RUN_ATTEMPT` environment variable in the telemetry sent to GitHub. [#1640](https://github.com/github/codeql-action/pull/1640)
+- Improve the ease of debugging failed runs configured using [default setup](https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning-for-a-repository#configuring-code-scanning-automatically). The CodeQL Action will now upload diagnostic information to Code Scanning from failed runs configured using default setup. You can view this diagnostic information on the [tool status page](https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/about-the-tool-status-page). [#1619](https://github.com/github/codeql-action/pull/1619)
+
 ## 2.2.11 - 06 Apr 2023
 
 No user facing changes.

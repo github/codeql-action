@@ -21,7 +21,11 @@ import {
   parseMatrixInput,
   UserError,
 } from "./util";
-import { getWorkflowPath } from "./workflow";
+import {
+  getWorkflowRunID,
+  getWorkflowRunAttempt,
+  getWorkflowRelativePath,
+} from "./workflow";
 
 // eslint-disable-next-line import/no-commonjs
 const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
@@ -174,7 +178,7 @@ export async function getAnalysisKey(): Promise<string> {
     return analysisKey;
   }
 
-  const workflowPath = await getWorkflowPath();
+  const workflowPath = await getWorkflowRelativePath();
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;
@@ -313,6 +317,8 @@ export type ActionStatus =
 export interface StatusReportBase {
   /** ID of the workflow run containing the action run. */
   workflow_run_id: number;
+  /** Attempt number of the run containing the action run. */
+  workflow_run_attempt: number;
   /** Workflow name. Converted to analysis_name further down the pipeline.. */
   workflow_name: string;
   /** Job name from the workflow. */
@@ -405,11 +411,8 @@ export async function createStatusReportBase(
 ): Promise<StatusReportBase> {
   const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
-  const workflowRunIDStr = process.env["GITHUB_RUN_ID"];
-  let workflowRunID = -1;
-  if (workflowRunIDStr) {
-    workflowRunID = parseInt(workflowRunIDStr, 10);
-  }
+  const workflowRunID = getWorkflowRunID();
+  const workflowRunAttempt = getWorkflowRunAttempt();
   const workflowName = process.env["GITHUB_WORKFLOW"] || "";
   const jobName = process.env["GITHUB_JOB"] || "";
   const analysis_key = await getAnalysisKey();
@@ -437,6 +440,7 @@ export async function createStatusReportBase(
 
   const statusReport: StatusReportBase = {
     workflow_run_id: workflowRunID,
+    workflow_run_attempt: workflowRunAttempt,
     workflow_name: workflowName,
     job_name: jobName,
     analysis_key,

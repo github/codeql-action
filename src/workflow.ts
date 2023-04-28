@@ -1,10 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
+import zlib from "zlib";
 
 import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
+import { Logger } from "./logging";
 import { getRequiredEnvParam } from "./util";
 
 export interface WorkflowJobStep {
@@ -195,10 +197,12 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
   return errors;
 }
 
-export async function validateWorkflow(): Promise<undefined | string> {
+export async function validateWorkflow(
+  logger: Logger
+): Promise<undefined | string> {
   let workflow: Workflow;
   try {
-    workflow = await getWorkflow();
+    workflow = await getWorkflow(logger);
   } catch (e) {
     return `error: getWorkflow() failed: ${String(e)}`;
   }
@@ -237,30 +241,52 @@ export function formatWorkflowCause(errors: CodedError[]): undefined | string {
   return errors.map((e) => e.code).join(",");
 }
 
-export async function getWorkflow(): Promise<Workflow> {
-  const relativePath = await getWorkflowPath();
+export async function getWorkflow(logger: Logger): Promise<Workflow> {
+  // In default setup, the currently executing workflow is not checked into the repository.
+  // Instead, a gzipped then base64 encoded version of the workflow file is provided via the
+  // `CODE_SCANNING_WORKFLOW_FILE` environment variable.
+  const maybeWorkflow = process.env["CODE_SCANNING_WORKFLOW_FILE"];
+  if (maybeWorkflow) {
+    logger.debug(
+      "Using the workflow specified by the CODE_SCANNING_WORKFLOW_FILE environment variable."
+    );
+    return yaml.load(
+      zlib.gunzipSync(Buffer.from(maybeWorkflow, "base64")).toString()
+    ) as Workflow;
+  }
+
+  const workflowPath = await getWorkflowAbsolutePath(logger);
+  return yaml.load(fs.readFileSync(workflowPath, "utf-8")) as Workflow;
+}
+
+/**
+ * Get the absolute path of the currently executing workflow.
+ */
+async function getWorkflowAbsolutePath(logger: Logger): Promise<string> {
+  const relativePath = await getWorkflowRelativePath();
   const absolutePath = path.join(
     getRequiredEnvParam("GITHUB_WORKSPACE"),
     relativePath
   );
 
-  try {
-    return yaml.load(fs.readFileSync(absolutePath, "utf-8")) as Workflow;
-  } catch (e) {
-    if (e instanceof Error && e["code"] === "ENOENT") {
-      throw new Error(
-        `Unable to load code scanning workflow from ${absolutePath}. This can happen if the currently ` +
-          "running workflow checks out a branch that doesn't contain the corresponding workflow file."
-      );
-    }
-    throw e;
+  if (fs.existsSync(absolutePath)) {
+    logger.debug(
+      `Derived the following absolute path for the currently executing workflow: ${absolutePath}.`
+    );
+    return absolutePath;
   }
+
+  throw new Error(
+    `Expected to find a code scanning workflow file at ${absolutePath}, but no such file existed. ` +
+      "This can happen if the currently running workflow checks out a branch that doesn't contain " +
+      "the corresponding workflow file."
+  );
 }
 
 /**
- * Get the path of the currently executing workflow.
+ * Get the path of the currently executing workflow relative to the repository root.
  */
-export async function getWorkflowPath(): Promise<string> {
+export async function getWorkflowRelativePath(): Promise<string> {
   const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];
@@ -286,11 +312,38 @@ export async function getWorkflowPath(): Promise<string> {
  * Get the workflow run ID.
  */
 export function getWorkflowRunID(): number {
-  const workflowRunID = parseInt(getRequiredEnvParam("GITHUB_RUN_ID"), 10);
+  const workflowRunIdString = getRequiredEnvParam("GITHUB_RUN_ID");
+  const workflowRunID = parseInt(workflowRunIdString, 10);
   if (Number.isNaN(workflowRunID)) {
-    throw new Error("GITHUB_RUN_ID must define a non NaN workflow run ID");
+    throw new Error(
+      `GITHUB_RUN_ID must define a non NaN workflow run ID. Current value is ${workflowRunIdString}`
+    );
+  }
+  if (workflowRunID < 0) {
+    throw new Error(
+      `GITHUB_RUN_ID must be a non-negative integer. Current value is ${workflowRunIdString}`
+    );
   }
   return workflowRunID;
+}
+
+/**
+ * Get the workflow run attempt number.
+ */
+export function getWorkflowRunAttempt(): number {
+  const workflowRunAttemptString = getRequiredEnvParam("GITHUB_RUN_ATTEMPT");
+  const workflowRunAttempt = parseInt(workflowRunAttemptString, 10);
+  if (Number.isNaN(workflowRunAttempt)) {
+    throw new Error(
+      `GITHUB_RUN_ATTEMPT must define a non NaN workflow run attempt. Current value is ${workflowRunAttemptString}`
+    );
+  }
+  if (workflowRunAttempt <= 0) {
+    throw new Error(
+      `GITHUB_RUN_ATTEMPT must be a positive integer. Current value is ${workflowRunAttemptString}`
+    );
+  }
+  return workflowRunAttempt;
 }
 
 function getStepsCallingAction(

@@ -2,11 +2,20 @@ name: Update default CodeQL bundle
 
 on:
   release:
-    types: [prereleased]
+    # From https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release
+    # Note: The prereleased type will not trigger for pre-releases published
+    # from draft releases, but the published type will trigger. If you want a
+    # workflow to run when stable and pre-releases publish, subscribe to
+    # published instead of released and prereleased.
+    #
+    # From https://github.com/orgs/community/discussions/26281
+    # As a work around, in published type workflow,  you could add if condition
+    # to filter pre-release attribute.
+    types: [published]
 
 jobs:
   update-bundle:
-    if: startsWith(github.event.release.tag_name, 'codeql-bundle-')
+    if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'codeql-bundle-')
     runs-on: ubuntu-latest
     steps:
       - name: Dump environment

@@ -9,9 +9,13 @@ steps:
       CODEQL_URL: ${{ steps.prepare-test.outputs.tools-url }}
     run: |
       wget "$CODEQL_URL"
-  - uses: ./../action/init
+  - id: init
+    uses: ./../action/init
     with:
       tools: ./codeql-bundle.tar.gz
+  - uses: ./../action/.github/actions/setup-swift
+    with:
+      codeql-path: ${{ steps.init.outputs.codeql-path }}
   - name: Build code
     shell: bash
     run: ./build.sh

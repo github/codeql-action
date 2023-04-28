@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
@@ -18,7 +17,6 @@ import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
-import { EnvVar } from "./shared-environment";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import {
   getTrapCachingExtractorConfigArgs,
@@ -77,19 +75,6 @@ export interface CodeQL {
    * Print version information about CodeQL.
    */
   printVersion(): Promise<void>;
-  /**
-   * Run 'codeql database trace-command' on 'tracer-env.js' and parse
-   * the result to get environment variables set by CodeQL.
-   */
-  getTracerEnv(databasePath: string): Promise<{ [key: string]: string }>;
-  /**
-   * Run 'codeql database init'.
-   */
-  databaseInit(
-    databasePath: string,
-    language: Language,
-    sourceRoot: string
-  ): Promise<void>;
   /**
    * Run 'codeql database init --db-cluster'.
    */
@@ -267,7 +252,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.6.3";
+const CODEQL_MINIMUM_VERSION = "2.8.5";
 
 /**
  * Versions of CodeQL that version-flag certain functionality in the Action.
@@ -279,23 +264,6 @@ const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
 export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
 const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
-
-/**
- * This variable controls using the new style of tracing from the CodeQL
- * CLI. In particular, with versions above this we will use both indirect
- * tracing, and multi-language tracing together with database clusters.
- *
- * Note that there were bugs in both of these features that were fixed in
- * release 2.7.0 of the CodeQL CLI, therefore this flag is only enabled for
- * versions above that.
- */
-export const CODEQL_VERSION_NEW_TRACING = "2.7.0";
-
-/**
- * Versions 2.7.3+ of the CodeQL CLI support build tracing with glibc 2.34 on Linux. Versions before
- * this cannot perform build tracing when running on the Actions `ubuntu-22.04` runner image.
- */
-export const CODEQL_VERSION_TRACING_GLIBC_2_34 = "2.7.3";
 
 /**
  * Versions 2.9.0+ of the CodeQL CLI run machine learning models from a temporary directory, which
@@ -372,8 +340,9 @@ export async function setupCodeQL(
       toolsVersion,
     };
   } catch (e) {
-    logger.error(wrapError(e).message);
-    throw new Error("Unable to download and extract CodeQL CLI");
+    throw new Error(
+      `Unable to download and extract CodeQL CLI: ${wrapError(e).message}`
+    );
   }
 }
 
@@ -419,8 +388,6 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       () => new Promise((resolve) => resolve("1.0.0"))
     ),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
-    getTracerEnv: resolveFunction(partialCodeql, "getTracerEnv"),
-    databaseInit: resolveFunction(partialCodeql, "databaseInit"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
     runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
     extractScannedLanguage: resolveFunction(
@@ -506,94 +473,6 @@ export async function getCodeQLForCmd(
     },
     async printVersion() {
       await runTool(cmd, ["version", "--format=json"]);
-    },
-    async getTracerEnv(databasePath: string) {
-      // Write tracer-env.js to a temp location.
-      // BEWARE: The name and location of this file is recognized by `codeql database
-      // trace-command` in order to enable special support for concatenable tracer
-      // configurations. Consequently the name must not be changed.
-      // (This warning can be removed once a different way to recognize the
-      // action/runner has been implemented in `codeql database trace-command`
-      // _and_ is present in the latest supported CLI release.)
-      const tracerEnvJs = path.resolve(
-        databasePath,
-        "working",
-        "tracer-env.js"
-      );
-
-      fs.mkdirSync(path.dirname(tracerEnvJs), { recursive: true });
-      fs.writeFileSync(
-        tracerEnvJs,
-        `
-        const fs = require('fs');
-        const env = {};
-        for (let entry of Object.entries(process.env)) {
-          const key = entry[0];
-          const value = entry[1];
-          if (typeof value !== 'undefined' && key !== '_' && !key.startsWith('JAVA_MAIN_CLASS_')) {
-            env[key] = value;
-          }
-        }
-        process.stdout.write(process.argv[2]);
-        fs.writeFileSync(process.argv[2], JSON.stringify(env), 'utf-8');`
-      );
-
-      // BEWARE: The name and location of this file is recognized by `codeql database
-      // trace-command` in order to enable special support for concatenable tracer
-      // configurations. Consequently the name must not be changed.
-      // (This warning can be removed once a different way to recognize the
-      // action/runner has been implemented in `codeql database trace-command`
-      // _and_ is present in the latest supported CLI release.)
-      const envFile = path.resolve(databasePath, "working", "env.tmp");
-
-      try {
-        await runTool(cmd, [
-          "database",
-          "trace-command",
-          databasePath,
-          ...getExtraOptionsFromEnv(["database", "trace-command"]),
-          process.execPath,
-          tracerEnvJs,
-          envFile,
-        ]);
-      } catch (e) {
-        if (
-          e instanceof CommandInvocationError &&
-          e.output.includes(
-            "undefined symbol: __libc_dlopen_mode, version GLIBC_PRIVATE"
-          ) &&
-          process.platform === "linux" &&
-          !(await util.codeQlVersionAbove(
-            this,
-            CODEQL_VERSION_TRACING_GLIBC_2_34
-          ))
-        ) {
-          throw new util.UserError(
-            "The CodeQL CLI is incompatible with the version of glibc on your system. " +
-              `Please upgrade to CodeQL CLI version ${CODEQL_VERSION_TRACING_GLIBC_2_34} or ` +
-              "later. If you cannot upgrade to a newer version of the CodeQL CLI, you can " +
-              `alternatively run your workflow on another runner image such as "ubuntu-20.04" ` +
-              "that has glibc 2.33 or earlier installed."
-          );
-        } else {
-          throw e;
-        }
-      }
-      return JSON.parse(fs.readFileSync(envFile, "utf-8"));
-    },
-    async databaseInit(
-      databasePath: string,
-      language: Language,
-      sourceRoot: string
-    ) {
-      await runTool(cmd, [
-        "database",
-        "init",
-        databasePath,
-        `--language=${language}`,
-        `--source-root=${sourceRoot}`,
-        ...getExtraOptionsFromEnv(["database", "init"]),
-      ]);
     },
     async databaseInitCluster(
       config: Config,
@@ -1304,18 +1183,4 @@ async function getCodeScanningConfigExportArguments(
     return ["--sarif-codescanning-config", codeScanningConfigPath];
   }
   return [];
-}
-
-/**
- * Enrich the environment variables with further flags that we cannot
- * know the value of until we know what version of CodeQL we're running.
- */
-export async function enrichEnvironment(codeql: CodeQL) {
-  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-    core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  } else {
-    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
-    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
-  }
 }

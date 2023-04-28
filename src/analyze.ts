@@ -8,12 +8,11 @@ import * as yaml from "js-yaml";
 
 import { DatabaseCreationTimings } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
-import { CodeQL, CODEQL_VERSION_NEW_TRACING, getCodeQL } from "./codeql";
+import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { FeatureEnablement } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import * as sharedEnv from "./shared-environment";
 import { endTracingForCluster } from "./tracer-config";
 import * as util from "./util";
 
@@ -493,19 +492,13 @@ export async function runFinalize(
     logger
   );
 
-  const codeql = await getCodeQL(config.codeQLCmd);
   // WARNING: This does not _really_ end tracing, as the tracer will restore its
   // critical environment variables and it'll still be active for all processes
   // launched from this build step.
   // However, it will stop tracing for all steps past the codeql-action/analyze
   // step.
-  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
-    // Delete variables as specified by the end-tracing script
-    await endTracingForCluster(config);
-  } else {
-    // Delete the tracer config env var to avoid tracing ourselves
-    delete process.env[sharedEnv.ODASA_TRACER_CONFIGURATION];
-  }
+  // Delete variables as specified by the end-tracing script
+  await endTracingForCluster(config);
   return timings;
 }
 

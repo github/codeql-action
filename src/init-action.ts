@@ -254,6 +254,7 @@ async function run() {
       registriesInput,
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
+      getOptionalInput("config"),
       getTrapCachingEnabled(),
       // Debug mode is enabled if:
       // - The `init` Action is passed `debug: true`.

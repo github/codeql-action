@@ -137,7 +137,7 @@ By default, this will override any queries specified in a config file. If you wi
 
 ### Configuration via `config` input
 
-You can alternatively configure CodeQL using the `config` input to the `init` Action. The value of this input must be a YAML string that follows the configuration file format documented at "[Using a custom configuration file](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#using-a-custom-configuration-file)."
+You can alternatively configure CodeQL using the `config` input to the `init` Action. The value of this input must be a YAML string that follows the configuration file format documented at "[Using a custom configuration file](https://aka.ms/code-scanning-docs/config-file)."
 
 #### Example configuration
 
@@ -157,7 +157,7 @@ You can alternatively configure CodeQL using the `config` input to the `init` Ac
 
 
 #### Sharing configuration across multiple repositories
-  
+
 You can use Actions or environment variables to share configuration across multiple repositories and to modify configuration without needing to edit the workflow file.  In the following example, `vars.CODEQL_CONF` is an [Actions configuration variable](https://docs.github.com/en/actions/learn-github-actions/variables#defining-configuration-variables-for-multiple-workflows):
 
 ```yaml
@@ -170,4 +170,3 @@ You can use Actions or environment variables to share configuration across multi
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).
-

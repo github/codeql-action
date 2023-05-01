@@ -1690,6 +1690,7 @@ export async function initConfig(
   registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
+  configInput: string | undefined,
   trapCachingEnabled: boolean,
   debugMode: boolean,
   debugArtifactName: string,
@@ -1704,6 +1705,18 @@ export async function initConfig(
   logger: Logger
 ): Promise<Config> {
   let config: Config;
+
+  // if configInput is set, it takes precedence over configFile
+  if (configInput) {
+    if (configFile) {
+      logger.warning(
+        `Both a config file and config input were provided. Ignoring config file.`
+      );
+    }
+    configFile = path.resolve(workspacePath, "user-config-from-action.yml");
+    fs.writeFileSync(configFile, configInput);
+    logger.debug(`Using config from action input: ${configFile}`);
+  }
 
   // If no config file was provided create an empty one
   if (!configFile) {

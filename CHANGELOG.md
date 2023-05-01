@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- You can now configure CodeQL within your code scanning workflow by passing a `config` input to the `init` Action. [#1590](https://github.com/github/codeql-action/pull/1590)
 
 ## 2.3.2 - 27 Apr 2023
 

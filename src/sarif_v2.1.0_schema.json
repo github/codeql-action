@@ -2695,8 +2695,8 @@
           ]
         },
 
-        "state": {
-          "description": "A string that indicates the state of the suppression.",
+        "status": {
+          "description": "A string that indicates the status of the suppression.",
           "enum": [
             "accepted",
             "underReview",

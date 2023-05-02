@@ -41,7 +41,7 @@
     "fs": "0.0.1-security",
     "get-folder-size": "^2.0.1",
     "js-yaml": "^4.1.0",
-    "jsonschema": "1.2.6",
+    "jsonschema": "1.4.1",
     "long": "^5.2.0",
     "path": "^0.12.7",
     "semver": "^7.3.2",

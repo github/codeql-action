@@ -114,7 +114,8 @@ jobs:
       if: "!(matrix.version == 'stable-20220401' && runner.os == 'Windows')"
       with:
         sarif-file: ${{ runner.temp }}/results/javascript.sarif
-        queries-run: js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
+        queries-run: 
+          js/ml-powered/nosql-injection,js/ml-powered/path-injection,js/ml-powered/sql-injection,js/ml-powered/xss
         queries-not-run: foo,bar
 
     - name: Check results

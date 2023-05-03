@@ -135,7 +135,38 @@ By default, this will override any queries specified in a config file. If you wi
     queries: +<local-or-remote-query>,<another-query>
 ```
 
+### Configuration via `config` input
+
+You can alternatively configure CodeQL using the `config` input to the `init` Action. The value of this input must be a YAML string that follows the configuration file format documented at "[Using a custom configuration file](https://aka.ms/code-scanning-docs/config-file)."
+
+#### Example configuration
+
+```yaml
+- uses: github/codeql-action/init@v2
+  with:
+    languages: ${{ matrix.language }}
+    config: |
+      disable-default-queries: true
+      queries:
+        - uses: security-extended
+        - uses: security-and-quality
+      query-filters:
+        - include:
+      tags: /cwe-020/
+```
+
+
+#### Sharing configuration across multiple repositories
+
+You can use Actions or environment variables to share configuration across multiple repositories and to modify configuration without needing to edit the workflow file.  In the following example, `vars.CODEQL_CONF` is an [Actions configuration variable](https://docs.github.com/en/actions/learn-github-actions/variables#defining-configuration-variables-for-multiple-workflows):
+
+```yaml
+- uses: github/codeql-action/init@v2
+  with:
+    languages: ${{ matrix.language }}
+    config: ${{ vars.CODEQL_CONF }}
+```
+
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).
-

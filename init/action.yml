@@ -44,6 +44,9 @@ inputs:
   db-location:
     description: Path where CodeQL databases should be created. If not specified, a temporary directory will be used.
     required: false
+  config:    
+    description: Configuration passed as a YAML string in the same format as the config-file input. This takes precedence over the config-file input.
+    required: false
   queries:
     description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
     required: false

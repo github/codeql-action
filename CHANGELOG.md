@@ -1,5 +1,10 @@
 # CodeQL Action Changelog
 
+## 2.3.3 - 04 May 2023
+
+- Update default CodeQL bundle version to 2.13.1. [#1664](https://github.com/github/codeql-action/pull/1664)
+- You can now configure CodeQL within your code scanning workflow by passing a `config` input to the `init` Action. See [Using a custom configuration file](https://aka.ms/code-scanning-docs/config-file) for more information about configuring code scanning. [#1590](https://github.com/github/codeql-action/pull/1590)
+
 ## 2.3.2 - 27 Apr 2023
 
 No user facing changes.

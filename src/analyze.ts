@@ -87,6 +87,20 @@ async function setupPythonExtractor(logger: Logger) {
     return;
   }
 
+  // CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION is the internal environment
+  // variable used by the python extractor. This is set in init-action.ts only if the
+  // feature-flag is enabled.
+  if (
+    (process.env["CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION"] || "")
+      .length > 0
+  ) {
+    logger.warning(
+      "Library extraction is disabled now. Please remove your logic that sets the CODEQL_PYTHON environment variable." +
+        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7 or CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11."
+    );
+    return;
+  }
+
   const scriptsFolder = path.resolve(__dirname, "../python-setup");
 
   let output = "";

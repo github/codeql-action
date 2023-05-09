@@ -277,13 +277,22 @@ async function run() {
       config.languages.includes(Language.python) &&
       getRequiredInput("setup-python-dependencies") === "true"
     ) {
-      try {
-        await installPythonDeps(codeql, logger);
-      } catch (unwrappedError) {
-        const error = wrapError(unwrappedError);
-        logger.warning(
-          `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
-        );
+      if (
+        await features.getValue(
+          Feature.DisablePythonDependencyInstallation,
+          codeql
+        )
+      ) {
+        logger.info("Skipping python dependency installation");
+      } else {
+        try {
+          await installPythonDeps(codeql, logger);
+        } catch (unwrappedError) {
+          const error = wrapError(unwrappedError);
+          logger.warning(
+            `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
+          );
+        }
       }
     }
   } catch (unwrappedError) {
@@ -329,6 +338,19 @@ async function run() {
     // Disable Kotlin extractor if feature flag set
     if (await features.getValue(Feature.DisableKotlinAnalysisEnabled)) {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
+    }
+
+    // Disable Python dependency extraction if feature flag set
+    if (
+      await features.getValue(
+        Feature.DisablePythonDependencyInstallation,
+        codeql
+      )
+    ) {
+      core.exportVariable(
+        "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
+        "true"
+      );
     }
 
     const sourceRoot = path.resolve(

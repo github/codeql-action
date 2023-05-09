@@ -249,9 +249,7 @@ test("formatWorkflowCause() with no errors", (t) => {
 });
 
 test("formatWorkflowCause()", (t) => {
-  const message = formatWorkflowCause([
-    WorkflowErrors.CheckoutWrongHead,
-  ]);
+  const message = formatWorkflowCause([WorkflowErrors.CheckoutWrongHead]);
 
   t.deepEqual(message, "CheckoutWrongHead");
   t.deepEqual(formatWorkflowCause([]), undefined);

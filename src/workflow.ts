@@ -44,10 +44,6 @@ export interface Workflow {
   on?: string | string[] | WorkflowTriggers;
 }
 
-function isObject(o: unknown): o is object {
-  return o !== null && typeof o === "object";
-}
-
 const GLOB_PATTERN = new RegExp("(\\*\\*?)");
 
 function escapeRegExp(string) {
@@ -79,18 +75,6 @@ export function patternIsSuperset(patternA: string, patternB: string): boolean {
   return patternToRegExp(patternA).test(patternB);
 }
 
-function branchesToArray(branches?: string | null | string[]): string[] | "**" {
-  if (typeof branches === "string") {
-    return [branches];
-  }
-  if (Array.isArray(branches)) {
-    if (branches.length === 0) {
-      return "**";
-    }
-    return branches;
-  }
-  return "**";
-}
 export interface CodedError {
   message: string;
   code: string;
@@ -108,8 +92,6 @@ function toCodedErrors(errors: {
 // code to send back via status report
 // message to add as a warning annotation to the run
 export const WorkflowErrors = toCodedErrors({
-  MismatchedBranches: `Please make sure that every branch in on.pull_request is also in on.push so that Code Scanning can compare pull requests against the state of the base branch.`,
-  MissingPushHook: `Please specify an on.push hook so that Code Scanning can compare pull requests against the state of the base branch.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 
@@ -136,62 +118,6 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
         }
       }
     }
-  }
-
-  let missingPush = false;
-
-  if (doc.on === undefined) {
-    // this is not a valid config
-  } else if (typeof doc.on === "string") {
-    if (doc.on === "pull_request") {
-      missingPush = true;
-    }
-  } else if (Array.isArray(doc.on)) {
-    const hasPush = doc.on.includes("push");
-    const hasPullRequest = doc.on.includes("pull_request");
-    if (hasPullRequest && !hasPush) {
-      missingPush = true;
-    }
-  } else if (isObject(doc.on)) {
-    const hasPush = Object.prototype.hasOwnProperty.call(doc.on, "push");
-    const hasPullRequest = Object.prototype.hasOwnProperty.call(
-      doc.on,
-      "pull_request"
-    );
-
-    if (!hasPush && hasPullRequest) {
-      missingPush = true;
-    }
-
-    // if doc.on.pull_request is null that means 'all branches'
-    // if doc.on.pull_request is undefined that means 'off'
-    // we only want to check for mismatched branches if pull_request is on.
-    if (doc.on.pull_request !== undefined) {
-      const push = branchesToArray(doc.on.push?.branches);
-
-      if (push !== "**") {
-        const pull_request = branchesToArray(doc.on.pull_request?.branches);
-
-        if (pull_request !== "**") {
-          const difference = pull_request.filter(
-            (value) => !push.some((o) => patternIsSuperset(o, value))
-          );
-          if (difference.length > 0) {
-            // there are branches in pull_request that may not have a baseline
-            // because we are not building them on push
-            errors.push(WorkflowErrors.MismatchedBranches);
-          }
-        } else if (push.length > 0) {
-          // push is set up to run on a subset of branches
-          // and you could open a PR against a branch with no baseline
-          errors.push(WorkflowErrors.MismatchedBranches);
-        }
-      }
-    }
-  }
-
-  if (missingPush) {
-    errors.push(WorkflowErrors.MissingPushHook);
   }
 
   return errors;

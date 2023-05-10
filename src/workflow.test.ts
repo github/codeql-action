@@ -34,6 +34,12 @@ test("getWorkflowErrors() when on.push is an array missing pull_request", (t) =>
   t.deepEqual(...errorCodes(errors, []));
 });
 
+test("getWorkflowErrors() when on.push is an array missing push", (t) => {
+  const errors = getWorkflowErrors({ on: ["pull_request"] });
+
+  t.deepEqual(...errorCodes(errors, [WorkflowErrors.MissingPushHook]));
+});
+
 test("getWorkflowErrors() when on.push is valid", (t) => {
   const errors = getWorkflowErrors({
     on: ["push", "pull_request"],
@@ -242,6 +248,14 @@ test("formatWorkflowErrors() when there is one error", (t) => {
   t.true(message.startsWith("1 issue was detected with this workflow:"));
 });
 
+test("formatWorkflowErrors() when there are multiple errors", (t) => {
+  const message = formatWorkflowErrors([
+    WorkflowErrors.CheckoutWrongHead,
+    WorkflowErrors.MissingPushHook,
+  ]);
+  t.true(message.startsWith("2 issues were detected with this workflow:"));
+});
+
 test("formatWorkflowCause() with no errors", (t) => {
   const message = formatWorkflowCause([]);
 
@@ -249,9 +263,12 @@ test("formatWorkflowCause() with no errors", (t) => {
 });
 
 test("formatWorkflowCause()", (t) => {
-  const message = formatWorkflowCause([WorkflowErrors.CheckoutWrongHead]);
+  const message = formatWorkflowCause([
+    WorkflowErrors.CheckoutWrongHead,
+    WorkflowErrors.MissingPushHook,
+  ]);
 
-  t.deepEqual(message, "CheckoutWrongHead");
+  t.deepEqual(message, "CheckoutWrongHead,MissingPushHook");
   t.deepEqual(formatWorkflowCause([]), undefined);
 });
 

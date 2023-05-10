@@ -44,6 +44,10 @@ export interface Workflow {
   on?: string | string[] | WorkflowTriggers;
 }
 
+function isObject(o: unknown): o is object {
+  return o !== null && typeof o === "object";
+}
+
 const GLOB_PATTERN = new RegExp("(\\*\\*?)");
 
 function escapeRegExp(string) {
@@ -92,6 +96,7 @@ function toCodedErrors(errors: {
 // code to send back via status report
 // message to add as a warning annotation to the run
 export const WorkflowErrors = toCodedErrors({
+  MissingPushHook: `Please specify an on.push hook.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 
@@ -118,6 +123,36 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
         }
       }
     }
+  }
+
+  let missingPush = false;
+
+  if (doc.on === undefined) {
+    // this is not a valid config
+  } else if (typeof doc.on === "string") {
+    if (doc.on === "pull_request") {
+      missingPush = true;
+    }
+  } else if (Array.isArray(doc.on)) {
+    const hasPush = doc.on.includes("push");
+    const hasPullRequest = doc.on.includes("pull_request");
+    if (hasPullRequest && !hasPush) {
+      missingPush = true;
+    }
+  } else if (isObject(doc.on)) {
+    const hasPush = Object.prototype.hasOwnProperty.call(doc.on, "push");
+    const hasPullRequest = Object.prototype.hasOwnProperty.call(
+      doc.on,
+      "pull_request"
+    );
+
+    if (!hasPush && hasPullRequest) {
+      missingPush = true;
+    }
+  }
+
+  if (missingPush) {
+    errors.push(WorkflowErrors.MissingPushHook);
   }
 
   return errors;

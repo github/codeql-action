@@ -4,6 +4,10 @@
 
 No user facing changes.
 
+## 2.3.4 - 10 May 2023
+
+- Remove some checks from code scanning workflow validation. [#1675](https://github.com/github/codeql-action/pull/1675)
+
 ## 2.3.3 - 04 May 2023
 
 - Update default CodeQL bundle version to 2.13.1. [#1664](https://github.com/github/codeql-action/pull/1664)

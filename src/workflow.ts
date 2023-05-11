@@ -96,7 +96,7 @@ function toCodedErrors(errors: {
 // code to send back via status report
 // message to add as a warning annotation to the run
 export const WorkflowErrors = toCodedErrors({
-  MissingPushHook: `Please specify an on.push hook.`,
+  MissingPushHook: `Please specify an on.push hook to analyze and see code scanning alerts from the default branch on the Security tab.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 

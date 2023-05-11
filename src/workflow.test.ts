@@ -64,14 +64,6 @@ test("getWorkflowErrors() when on.push is a correct object", (t) => {
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.pull_requests is a string", (t) => {
-  const errors = getWorkflowErrors({
-    on: { push: { branches: ["main"] }, pull_request: { branches: "*" } },
-  });
-
-  t.deepEqual(...errorCodes(errors, [WorkflowErrors.MismatchedBranches]));
-});
-
 test("getWorkflowErrors() when on.pull_requests is a string and correct", (t) => {
   const errors = getWorkflowErrors({
     on: { push: { branches: "*" }, pull_request: { branches: "*" } },
@@ -92,17 +84,6 @@ test("getWorkflowErrors() when on.push is correct with empty objects", (t) => {
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push is mismatched", (t) => {
-  const errors = getWorkflowErrors({
-    on: {
-      push: { branches: ["main"] },
-      pull_request: { branches: ["feature"] },
-    },
-  });
-
-  t.deepEqual(...errorCodes(errors, [WorkflowErrors.MismatchedBranches]));
-});
-
 test("getWorkflowErrors() when on.push is not mismatched", (t) => {
   const errors = getWorkflowErrors({
     on: {
@@ -112,17 +93,6 @@ test("getWorkflowErrors() when on.push is not mismatched", (t) => {
   });
 
   t.deepEqual(...errorCodes(errors, []));
-});
-
-test("getWorkflowErrors() when on.push is mismatched for pull_request", (t) => {
-  const errors = getWorkflowErrors({
-    on: {
-      push: { branches: ["main"] },
-      pull_request: { branches: ["main", "feature"] },
-    },
-  });
-
-  t.deepEqual(...errorCodes(errors, [WorkflowErrors.MismatchedBranches]));
 });
 
 test("getWorkflowErrors() for a range of malformed workflows", (t) => {
@@ -251,20 +221,6 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
   );
 });
 
-test("getWorkflowErrors() when on.pull_request for every branch but push specifies branches", (t) => {
-  const errors = getWorkflowErrors(
-    yaml.load(`
-  name: "CodeQL"
-  on:
-    push:
-      branches: ["main"]
-    pull_request:
-  `) as Workflow
-  );
-
-  t.deepEqual(...errorCodes(errors, [WorkflowErrors.MismatchedBranches]));
-});
-
 test("getWorkflowErrors() when on.pull_request for wildcard branches", (t) => {
   const errors = getWorkflowErrors({
     on: {
@@ -274,17 +230,6 @@ test("getWorkflowErrors() when on.pull_request for wildcard branches", (t) => {
   });
 
   t.deepEqual(...errorCodes(errors, []));
-});
-
-test("getWorkflowErrors() when on.pull_request for mismatched wildcard branches", (t) => {
-  const errors = getWorkflowErrors({
-    on: {
-      push: { branches: ["feature/moose"] },
-      pull_request: { branches: "feature/*" },
-    },
-  });
-
-  t.deepEqual(...errorCodes(errors, [WorkflowErrors.MismatchedBranches]));
 });
 
 test("getWorkflowErrors() when HEAD^2 is checked out", (t) => {
@@ -306,7 +251,7 @@ test("formatWorkflowErrors() when there is one error", (t) => {
 test("formatWorkflowErrors() when there are multiple errors", (t) => {
   const message = formatWorkflowErrors([
     WorkflowErrors.CheckoutWrongHead,
-    WorkflowErrors.MismatchedBranches,
+    WorkflowErrors.MissingPushHook,
   ]);
   t.true(message.startsWith("2 issues were detected with this workflow:"));
 });
@@ -320,10 +265,10 @@ test("formatWorkflowCause() with no errors", (t) => {
 test("formatWorkflowCause()", (t) => {
   const message = formatWorkflowCause([
     WorkflowErrors.CheckoutWrongHead,
-    WorkflowErrors.MismatchedBranches,
+    WorkflowErrors.MissingPushHook,
   ]);
 
-  t.deepEqual(message, "CheckoutWrongHead,MismatchedBranches");
+  t.deepEqual(message, "CheckoutWrongHead,MissingPushHook");
   t.deepEqual(formatWorkflowCause([]), undefined);
 });
 

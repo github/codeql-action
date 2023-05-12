@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - For Python we will start disabling dependency installation for new users of the codeql-action. This will improve speed of analysis, while only having a very minor impact on results. [#1676](https://github.com/github/codeql-action/pull/1676)
+- Remove the requirement for `on.push` and `on.pull_request` to trigger on the same branches. [#1675](https://github.com/github/codeql-action/pull/1675)
 
 ## 2.3.3 - 04 May 2023
 

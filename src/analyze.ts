@@ -96,7 +96,7 @@ async function setupPythonExtractor(
   ) {
     logger.warning(
       "Library extraction is disabled now. Please remove your logic that sets the CODEQL_PYTHON environment variable." +
-        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7 or CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11."
+        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'."
     );
     return;
   }

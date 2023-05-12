@@ -14,6 +14,8 @@ predicate isSafeForDefaultSetup(string envVar) {
   envVar.matches("CODEQL_%") or
   envVar.matches("CODESCANNING_%") or
   envVar.matches("LGTM_%") or
+  // We flag up usage of potentially unsafe parts of the GitHub event in `default-setup-event-context.ql`.
+  envVar = "GITHUB_EVENT_PATH" or
   // The following environment variables are known to be safe for use with default setup
   envVar =
     [

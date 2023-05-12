@@ -80,20 +80,23 @@ export interface QueriesStatusReport {
   analyze_failure_language?: string;
 }
 
-async function setupPythonExtractor(logger: Logger, features: FeatureEnablement, codeql: CodeQL) {
+async function setupPythonExtractor(
+  logger: Logger,
+  features: FeatureEnablement,
+  codeql: CodeQL
+) {
   const codeqlPython = process.env["CODEQL_PYTHON"];
   if (codeqlPython === undefined || codeqlPython.length === 0) {
     // If CODEQL_PYTHON is not set, no dependencies were installed, so we don't need to do anything
     return;
   }
 
-  if (await features.getValue(
-    Feature.DisablePythonDependencyInstallation,
-    codeql
-  )) {
+  if (
+    await features.getValue(Feature.DisablePythonDependencyInstallation, codeql)
+  ) {
     logger.warning(
       "Library extraction is disabled now. Please remove your logic that sets the CODEQL_PYTHON environment variable." +
-      "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7 or CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11."
+        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7 or CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11."
     );
     return;
   }

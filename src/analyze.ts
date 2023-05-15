@@ -95,7 +95,7 @@ async function setupPythonExtractor(
     await features.getValue(Feature.DisablePythonDependencyInstallation, codeql)
   ) {
     logger.warning(
-      "Library extraction is disabled now. Please remove your logic that sets the CODEQL_PYTHON environment variable." +
+      "We recommend that you remove the CODEQL_PYTHON environment variable from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
         "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'."
     );
     return;

@@ -2,7 +2,7 @@
  * @name Some context properties may not exist in default setup workflows
  * @id javascript/codeql-action/default-setup-context-properties
  * @kind path-problem
- * @severity error
+ * @severity warning
  */
 
 import javascript
@@ -47,16 +47,6 @@ class EventContextAccessConfiguration extends DataFlow::Configuration {
     ) and
     inlbl = outlbl
   }
-}
-
-predicate deepPropertyRead(DataFlow::PropRead originalRead, DataFlow::PropRead read, int depth) {
-  read = originalRead and depth = 1
-  or
-  exists(DataFlow::PropRead prevRead, int prevDepth |
-    deepPropertyRead(originalRead, prevRead, prevDepth) and
-    read = prevRead.getAPropertyRead() and
-    depth = prevDepth + 1
-  )
 }
 
 from EventContextAccessConfiguration cfg, DataFlow::PathNode source, DataFlow::PathNode sink

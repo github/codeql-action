@@ -43,6 +43,7 @@ export enum Feature {
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
+  DisablePythonDependencyInstallation = "disable_python_dependency_installation",
 }
 
 export const featureConfig: Record<
@@ -79,6 +80,16 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
     minimumVersion: "2.11.3",
     defaultValue: true,
+  },
+  [Feature.DisablePythonDependencyInstallation]: {
+    envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
+    // Although the python extractor only started supporting not extracting installed
+    // dependencies in 2.13.1, the init-action can still benefit from not installing
+    // dependencies no matter what codeql version we are using, so therefore the
+    // minimumVersion is set to 'undefined'. This means that with an old CodeQL version,
+    // packages available with current python3 installation might get extracted.
+    minimumVersion: undefined,
+    defaultValue: false,
   },
 };
 

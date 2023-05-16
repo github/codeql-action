@@ -237,7 +237,8 @@ async function run() {
       threads,
       memory,
       config,
-      logger
+      logger,
+      features
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {

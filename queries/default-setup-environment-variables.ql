@@ -2,7 +2,7 @@
  * @name Some environment variables may not exist in default setup workflows
  * @id javascript/codeql-action/default-setup-env-vars
  * @kind problem
- * @severity error
+ * @severity warning
  */
 
 import javascript

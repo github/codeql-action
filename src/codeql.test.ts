@@ -622,54 +622,6 @@ test("getExtraOptions throws for bad content", (t) => {
   );
 });
 
-test("databaseInterpretResults() does not set --sarif-add-query-help for 2.7.0", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.7.0");
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    stubConfig,
-    createFeatures([]),
-    getRunnerLogger(true)
-  );
-  t.false(
-    runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
-    "--sarif-add-query-help should be absent, but it is present"
-  );
-});
-
-test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.7.1");
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    stubConfig,
-    createFeatures([]),
-    getRunnerLogger(true)
-  );
-  t.true(
-    runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
-    "--sarif-add-query-help should be present, but it is absent"
-  );
-});
-
 test("databaseInitCluster() without injected codescanning config", async (t) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();

@@ -261,7 +261,6 @@ const CODEQL_MINIMUM_VERSION = "2.8.5";
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
  */
-const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
 export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
@@ -743,12 +742,11 @@ export async function getCodeQLForCmd(
         addSnippetsFlag,
         "--print-diagnostics-summary",
         "--print-metrics-summary",
+        "--sarif-add-query-help",
         "--sarif-group-rules-by-pack",
         ...(await getCodeScanningConfigExportArguments(config, this, features)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
-      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_CUSTOM_QUERY_HELP))
-        codeqlArgs.push("--sarif-add-query-help");
       if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }

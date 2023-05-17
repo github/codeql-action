@@ -3,6 +3,10 @@
 ## [UNRELEASED]
 
 - We are rolling out a feature in May 2023 that will disable Python dependency installation for new users of the CodeQL Action. This improves the speed of analysis while having only a very minor impact on results. [#1676](https://github.com/github/codeql-action/pull/1676)
+- We are improving the way that the CodeQL bundle is tagged to streamline the process of obtaining the CodeQL tools.
+  - As of CodeQL CLI 2.13.3, the CodeQL bundle will be tagged using a semantic version, for example `codeql-bundle-v2.13.3` instead of a timestamp like `codeql-bundle-20230601`.
+  - This change does not affect the majority of workflows, and we will not be changing tags for existing bundle releases.
+  - Users may need to update any workflows that depend on the specific format of the CodeQL bundle tag.
 - Remove the requirement for `on.push` and `on.pull_request` to trigger on the same branches. [#1675](https://github.com/github/codeql-action/pull/1675)
 
 ## 2.3.3 - 04 May 2023

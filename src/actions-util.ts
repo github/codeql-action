@@ -315,6 +315,8 @@ export type ActionStatus =
   | "user-error";
 
 export interface StatusReportBase {
+  /** UUID representing the job run that this status report belongs to. */
+  job_run_uuid: string;
   /** ID of the workflow run containing the action run. */
   workflow_run_id: number;
   /** Attempt number of the run containing the action run. */
@@ -411,6 +413,7 @@ export async function createStatusReportBase(
 ): Promise<StatusReportBase> {
   const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
+  const jobRunUUID = process.env[sharedEnv.JOB_RUN_UUID] || "";
   const workflowRunID = getWorkflowRunID();
   const workflowRunAttempt = getWorkflowRunAttempt();
   const workflowName = process.env["GITHUB_WORKFLOW"] || "";
@@ -439,6 +442,7 @@ export async function createStatusReportBase(
   }
 
   const statusReport: StatusReportBase = {
+    job_run_uuid: jobRunUUID,
     workflow_run_id: workflowRunID,
     workflow_run_attempt: workflowRunAttempt,
     workflow_name: workflowName,

@@ -1,6 +1,7 @@
 import * as path from "path";
 
 import * as core from "@actions/core";
+import { v4 as uuidV4 } from "uuid";
 
 import {
   createStatusReportBase,
@@ -26,6 +27,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import * as sharedEnv from "./shared-environment";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkForTimeout,
@@ -211,6 +213,8 @@ async function run() {
     getTemporaryDirectory(),
     logger
   );
+
+  core.exportVariable(sharedEnv.JOB_RUN_UUID, uuidV4());
 
   try {
     const workflowErrors = await validateWorkflow(logger);

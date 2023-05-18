@@ -1,0 +1,6 @@
+name: 'CodeQL: Resolve Build Environment'
+description: 'Attempt to infer a suitable environment configuration for the autobuilder'
+author: 'GitHub'
+runs:
+  using: 'node16'
+  main: '../lib/resolve-environment-action.js'

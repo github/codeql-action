@@ -118,6 +118,12 @@ export interface CodeQL {
     queries: string[],
     extraSearchPath: string | undefined
   ): Promise<ResolveQueriesOutput>;
+  /**
+   * Run 'codeql resolve build-environment'
+   */
+  resolveBuildEnvironment(
+    language: Language
+  ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
    * Run 'codeql pack download'.
@@ -226,6 +232,13 @@ export interface ResolveQueriesOutput {
   };
   multipleDeclaredLanguages: {
     [queryPath: string]: {};
+  };
+}
+
+export interface ResolveBuildEnvironmentOutput {
+  configuration?: {
+    os?: string;
+    [language: string]: any;
   };
 }
 
@@ -402,6 +415,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "betterResolveLanguages"
     ),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
+    resolveBuildEnvironment: resolveFunction(
+      partialCodeql,
+      "resolveBuildEnvironment"
+    ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
@@ -679,6 +696,23 @@ export async function getCodeQLForCmd(
         return JSON.parse(output);
       } catch (e) {
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
+      }
+    },
+    async resolveBuildEnvironment(language: Language) {
+      const codeqlArgs = [
+        "resolve",
+        "build-environment",
+        `--language=${language}`,
+        ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
+      ];
+      const output = await runTool(cmd, codeqlArgs);
+
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve build-environment: ${e}`
+        );
       }
     },
     async databaseRunQueries(

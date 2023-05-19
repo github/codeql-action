@@ -36,9 +36,9 @@ const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
  *
  * This allows us to get stronger type checking of required/optional inputs.
  */
-export function getRequiredInput(name: string): string {
+export const getRequiredInput = function (name: string): string {
   return core.getInput(name, { required: true });
-}
+};
 
 /**
  * Wrapper around core.getInput that converts empty inputs to undefined.

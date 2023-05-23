@@ -44,6 +44,9 @@ jobs:
         - os: windows-latest
           version: nightly-latest
     name: 'Packaging: Config and input'
+    permissions:
+      contents: read
+      security-events: write
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

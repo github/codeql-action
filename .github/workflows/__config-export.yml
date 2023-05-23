@@ -38,6 +38,9 @@ jobs:
         - os: windows-latest
           version: nightly-latest
     name: Config export
+    permissions:
+      contents: read
+      security-events: write
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

@@ -9,6 +9,7 @@ runs:
   steps:
     - name: Get Swift version
       id: get_swift_version
+      if: runner.os != 'Windows'
       shell: bash
       env: 
         CODEQL_PATH: ${{ inputs.codeql-path }}
@@ -31,6 +32,6 @@ runs:
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
 
     - uses: swift-actions/setup-swift@65540b95f51493d65f5e59e97dcef9629ddf11bf # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
-      if: steps.get_swift_version.outputs.version != null
+      if: runner.os != 'Windows' && steps.get_swift_version.outputs.version != "null"
       with:
         swift-version: "${{ steps.get_swift_version.outputs.version }}"

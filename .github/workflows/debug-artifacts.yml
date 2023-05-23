@@ -56,7 +56,7 @@ jobs:
           debug-database-name: my-db
       - uses: ./../action/.github/actions/setup-swift
         with:
-        codeql-path: ${{ steps.init.outputs.codeql-path }}
+          codeql-path: ${{ steps.init.outputs.codeql-path }}
       - name: Build code
         shell: bash
         run: ./build.sh

@@ -44,6 +44,10 @@ jobs:
         - os: windows-latest
           version: nightly-latest
     name: 'Packaging: Download using registries'
+    permissions:
+      contents: read
+      packages: read
+
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -128,9 +132,5 @@ jobs:
             cat $QLCONFIG_PATH
             exit 1
         fi
-    permissions:
-      contents: read
-      packages: read
-
     env:
       CODEQL_ACTION_TEST_MODE: true

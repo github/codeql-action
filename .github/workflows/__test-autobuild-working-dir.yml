@@ -28,6 +28,9 @@ jobs:
         - os: ubuntu-latest
           version: latest
     name: Autobuild working directory
+    permissions:
+      contents: read
+      security-events: write
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

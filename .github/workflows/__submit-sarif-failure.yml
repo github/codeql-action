@@ -32,6 +32,9 @@ jobs:
         - os: ubuntu-latest
           version: nightly-latest
     name: Submit SARIF after failure
+    permissions:
+      contents: read
+      security-events: write
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

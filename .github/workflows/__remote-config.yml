@@ -68,6 +68,9 @@ jobs:
         - os: windows-latest
           version: nightly-latest
     name: Remote config file
+    permissions:
+      contents: read
+      security-events: write
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

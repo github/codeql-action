@@ -55,6 +55,7 @@ jobs:
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
       - uses: ./../action/.github/actions/setup-swift
+        if: matrix.version == 'nightly-latest'
         with:
           codeql-path: ${{ steps.init.outputs.codeql-path }}
       - name: Build code

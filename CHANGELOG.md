@@ -2,8 +2,13 @@
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 2.3.4 - 24 May 2023
+
+- Updated the SARIF 2.1.0 JSON schema file to the latest from [oasis-tcs/sarif-spec](https://github.com/oasis-tcs/sarif-spec/blob/123e95847b13fbdd4cbe2120fa5e33355d4a042b/Schemata/sarif-schema-2.1.0.json). [#1668](https://github.com/github/codeql-action/pull/1668)
 - We are rolling out a feature in May 2023 that will disable Python dependency installation for new users of the CodeQL Action. This improves the speed of analysis while having only a very minor impact on results. [#1676](https://github.com/github/codeql-action/pull/1676)
-- We are improving the way that [CodeQL bundles](https://github.com/github/codeql-action/releases) are tagged to make it possible to easily identify bundles by their CodeQL semantic version.
+- We are improving the way that [CodeQL bundles](https://github.com/github/codeql-action/releases) are tagged to make it possible to easily identify bundles by their CodeQL semantic version. [#1682](https://github.com/github/codeql-action/pull/1682)
   - As of CodeQL CLI 2.13.4, CodeQL bundles will be tagged using semantic versions, for example `codeql-bundle-v2.13.4`, instead of timestamps, like `codeql-bundle-20230615`.
   - This change does not affect the majority of workflows, and we will not be changing tags for existing bundle releases.
   - Some workflows with custom logic that depends on the specific format of the CodeQL bundle tag may need to be updated. For example, if your workflow matches CodeQL bundle tag names against a `codeql-bundle-yyyymmdd` pattern, you should update it to also recognize `codeql-bundle-vx.y.z` tags.
@@ -13,7 +18,6 @@
 
 - Update default CodeQL bundle version to 2.13.1. [#1664](https://github.com/github/codeql-action/pull/1664)
 - You can now configure CodeQL within your code scanning workflow by passing a `config` input to the `init` Action. See [Using a custom configuration file](https://aka.ms/code-scanning-docs/config-file) for more information about configuring code scanning. [#1590](https://github.com/github/codeql-action/pull/1590)
-- Updated the SARIF 2.1.0 JSON schema file to the latest from [oasis-tcs/sarif-spec](https://github.com/oasis-tcs/sarif-spec/blob/123e95847b13fbdd4cbe2120fa5e33355d4a042b/Schemata/sarif-schema-2.1.0.json). [#1668](https://github.com/github/codeql-action/pull/1668)
 
 ## 2.3.2 - 27 Apr 2023
 

@@ -21,7 +21,7 @@ steps:
     with:
       upload-database: false
 
-  - name: Check language autodetect for all languages excluding Ruby, Swift
+  - name: Check language autodetect for all languages excluding Swift
     shell: bash
     run: |
       CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
@@ -54,11 +54,6 @@ steps:
         echo "Did not create a database for Python, or created it in the wrong location."
         exit 1
       fi
-
-  - name: Check language autodetect for Ruby
-    if: env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true'
-    shell: bash
-    run: |
       RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
       if [[ ! -d $RUBY_DB ]] || [[ ! $RUBY_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
         echo "Did not create a database for Ruby, or created it in the wrong location."

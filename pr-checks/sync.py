@@ -83,8 +83,7 @@ for file in os.listdir('checks'):
                     matrix.version == '20220908' ||
                     matrix.version == '20221211' ||
                     matrix.version == 'cached' ||
-                    matrix.version == 'latest' ||
-                    matrix.version == 'nightly-latest'
+                    matrix.version == 'latest'
                 )
             ''').strip()),
             'shell': 'bash',

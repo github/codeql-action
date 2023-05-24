@@ -1,6 +1,6 @@
 # CodeQL Action Changelog
 
-## [UNRELEASED]
+## 2.3.4 - 24 May 2023
 
 - We are rolling out a feature in May 2023 that will disable Python dependency installation for new users of the CodeQL Action. This improves the speed of analysis while having only a very minor impact on results. [#1676](https://github.com/github/codeql-action/pull/1676)
 - We are improving the way that [CodeQL bundles](https://github.com/github/codeql-action/releases) are tagged to make it possible to easily identify bundles by their CodeQL semantic version.

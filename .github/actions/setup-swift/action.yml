@@ -1,5 +1,5 @@
 name: "Set up Swift"
-description: Sets up an appropriate Swift version if supported.
+description: Sets up an appropriate Swift version if supported on this platform.
 inputs:
   codeql-path:
     description: Path to the CodeQL CLI executable.

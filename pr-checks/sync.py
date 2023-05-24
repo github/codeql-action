@@ -24,7 +24,7 @@ defaultTestVersions = [
 
 header = """# Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     pip install ruamel.yaml && python3 sync.py
+#     (cd pr-checks; pip install ruamel.yaml && python3 sync.py)
 # to regenerate this file.
 
 """

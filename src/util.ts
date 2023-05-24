@@ -876,6 +876,16 @@ export function fixInvalidNotifications(
   return newSarif;
 }
 
+/**
+ * Removes duplicates from the sarif file.
+ *
+ * When `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX` is set to true, this will
+ * simply rename the input file to the output file. Otherwise, it will parse the
+ * input file as JSON, remove duplicate locations from the SARIF notification
+ * objects, and write the result to the output file.
+ *
+ * For context, see documentation of:
+ * `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX`. */
 export function fixInvalidNotificationsInFile(
   inputPath: string,
   outputPath: string,

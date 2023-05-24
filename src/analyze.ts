@@ -10,7 +10,7 @@ import { DatabaseCreationTimings } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureEnablement } from "./feature-flags";
+import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { endTracingForCluster } from "./tracer-config";
@@ -80,10 +80,24 @@ export interface QueriesStatusReport {
   analyze_failure_language?: string;
 }
 
-async function setupPythonExtractor(logger: Logger) {
+async function setupPythonExtractor(
+  logger: Logger,
+  features: FeatureEnablement,
+  codeql: CodeQL
+) {
   const codeqlPython = process.env["CODEQL_PYTHON"];
   if (codeqlPython === undefined || codeqlPython.length === 0) {
     // If CODEQL_PYTHON is not set, no dependencies were installed, so we don't need to do anything
+    return;
+  }
+
+  if (
+    await features.getValue(Feature.DisablePythonDependencyInstallation, codeql)
+  ) {
+    logger.warning(
+      "We recommend that you remove the CODEQL_PYTHON environment variable from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
+        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'."
+    );
     return;
   }
 
@@ -119,7 +133,8 @@ async function setupPythonExtractor(logger: Logger) {
 export async function createdDBForScannedLanguages(
   codeql: CodeQL,
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
+  features: FeatureEnablement
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
@@ -133,7 +148,7 @@ export async function createdDBForScannedLanguages(
       logger.startGroup(`Extracting ${language}`);
 
       if (language === Language.python) {
-        await setupPythonExtractor(logger);
+        await setupPythonExtractor(logger, features, codeql);
       }
 
       await codeql.extractScannedLanguage(config, language);
@@ -165,12 +180,13 @@ async function finalizeDatabaseCreation(
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
-  logger: Logger
+  logger: Logger,
+  features: FeatureEnablement
 ): Promise<DatabaseCreationTimings> {
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await createdDBForScannedLanguages(codeql, config, logger);
+  await createdDBForScannedLanguages(codeql, config, logger, features);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -474,7 +490,8 @@ export async function runFinalize(
   threadsFlag: string,
   memoryFlag: string,
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
+  features: FeatureEnablement
 ): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });
@@ -489,7 +506,8 @@ export async function runFinalize(
     config,
     threadsFlag,
     memoryFlag,
-    logger
+    logger,
+    features
   );
 
   // WARNING: This does not _really_ end tracing, as the tracer will restore its

@@ -7,8 +7,19 @@ import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
-import { setupTests } from "./testing-utils";
-import { initializeEnvironment, wrapError } from "./util";
+import {
+  SAMPLE_DEFAULT_CLI_VERSION,
+  SAMPLE_DOTCOM_API_DETAILS,
+  mockBundleDownloadApi,
+  setupActionsVars,
+  setupTests,
+} from "./testing-utils";
+import {
+  GitHubVariant,
+  initializeEnvironment,
+  withTmpDir,
+  wrapError,
+} from "./util";
 
 setupTests(test);
 
@@ -122,4 +133,22 @@ test("findCodeQLBundleTagDotcomOnly() errors if no GitHub Release matches marker
         "Failed to find a release of the CodeQL tools that contains CodeQL CLI 2.12.1.",
     }
   );
+});
+
+test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    const tagName = "codeql-bundle-v1.2.3";
+    mockBundleDownloadApi({ tagName });
+    const source = await setupCodeql.getCodeQLSource(
+      `https://github.com/github/codeql-action/releases/download/${tagName}/codeql-bundle-linux64.tar.gz`,
+      SAMPLE_DEFAULT_CLI_VERSION,
+      SAMPLE_DOTCOM_API_DETAILS,
+      GitHubVariant.DOTCOM,
+      getRunnerLogger(true)
+    );
+
+    t.is(source.sourceType, "download");
+    t.is(source["cliVersion"], "1.2.3");
+  });
 });

@@ -16,35 +16,27 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import {
-  CodeQLDefaultVersionInfo,
-  Feature,
-  featureConfig,
-} from "./feature-flags";
+import { Feature, featureConfig } from "./feature-flags";
 import { ToolsSource } from "./init";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests, createFeatures, setupActionsVars } from "./testing-utils";
+import {
+  setupTests,
+  createFeatures,
+  setupActionsVars,
+  SAMPLE_DOTCOM_API_DETAILS,
+  SAMPLE_DEFAULT_CLI_VERSION,
+  mockBundleDownloadApi,
+} from "./testing-utils";
 import * as util from "./util";
 import { initializeEnvironment } from "./util";
 
 setupTests(test);
 
-const sampleApiDetails = {
-  auth: "token",
-  url: "https://github.com",
-  apiURL: "https://api.github.com",
-};
-
 const sampleGHAEApiDetails = {
   auth: "token",
   url: "https://example.githubenterprise.com",
   apiURL: "https://example.githubenterprise.com/api/v3",
-};
-
-const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
-  cliVersion: "2.0.0",
-  variant: util.GitHubVariant.DOTCOM,
 };
 
 let stubConfig: Config;
@@ -78,54 +70,8 @@ test.beforeEach(() => {
   };
 });
 
-/**
- * Mocks the API for downloading the bundle tagged `tagName`.
- *
- * @returns the download URL for the bundle. This can be passed to the tools parameter of
- * `codeql.setupCodeQL`.
- */
-function mockDownloadApi({
-  apiDetails = sampleApiDetails,
-  isPinned,
-  repo = "github/codeql-action",
-  platformSpecific = true,
-  tagName,
-}: {
-  apiDetails?: GitHubApiDetails;
-  isPinned?: boolean;
-  repo?: string;
-  platformSpecific?: boolean;
-  tagName: string;
-}): string {
-  const platform =
-    process.platform === "win32"
-      ? "win64"
-      : process.platform === "linux"
-      ? "linux64"
-      : "osx64";
-
-  const baseUrl = apiDetails?.url ?? "https://example.com";
-  const relativeUrl = apiDetails
-    ? `/${repo}/releases/download/${tagName}/codeql-bundle${
-        platformSpecific ? `-${platform}` : ""
-      }.tar.gz`
-    : `/download/${tagName}/codeql-bundle.tar.gz`;
-
-  nock(baseUrl)
-    .get(relativeUrl)
-    .replyWithFile(
-      200,
-      path.join(
-        __dirname,
-        `/../src/testdata/codeql-bundle${isPinned ? "-pinned" : ""}.tar.gz`
-      )
-    );
-
-  return `${baseUrl}${relativeUrl}`;
-}
-
 async function installIntoToolcache({
-  apiDetails = sampleApiDetails,
+  apiDetails = SAMPLE_DOTCOM_API_DETAILS,
   cliVersion,
   isPinned,
   tagName,
@@ -137,7 +83,7 @@ async function installIntoToolcache({
   tagName: string;
   tmpDir: string;
 }) {
-  const url = mockDownloadApi({ apiDetails, isPinned, tagName });
+  const url = mockBundleDownloadApi({ apiDetails, isPinned, tagName });
   await codeql.setupCodeQL(
     cliVersion !== undefined ? undefined : url,
     apiDetails,
@@ -152,7 +98,7 @@ async function installIntoToolcache({
 }
 
 function mockReleaseApi({
-  apiDetails = sampleApiDetails,
+  apiDetails = SAMPLE_DOTCOM_API_DETAILS,
   assetNames,
   tagName,
 }: {
@@ -195,13 +141,13 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
     for (let i = 0; i < versions.length; i++) {
       const version = versions[i];
 
-      const url = mockDownloadApi({
+      const url = mockBundleDownloadApi({
         tagName: `codeql-bundle-${version}`,
         isPinned: false,
       });
       const result = await codeql.setupCodeQL(
         url,
-        sampleApiDetails,
+        SAMPLE_DOTCOM_API_DETAILS,
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
@@ -229,12 +175,12 @@ test("downloads an explicitly requested bundle even if a different version is ca
       tmpDir,
     });
 
-    const url = mockDownloadApi({
+    const url = mockBundleDownloadApi({
       tagName: "codeql-bundle-20200610",
     });
     const result = await codeql.setupCodeQL(
       url,
-      sampleApiDetails,
+      SAMPLE_DOTCOM_API_DETAILS,
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
@@ -271,20 +217,20 @@ for (const {
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
 
-      mockApiDetails(sampleApiDetails);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
 
       const releaseApiMock = mockReleaseApi({
         assetNames: [`cli-version-${cliVersion}.txt`],
         tagName: "codeql-bundle-20200610",
       });
-      const url = mockDownloadApi({
+      const url = mockBundleDownloadApi({
         tagName: "codeql-bundle-20200610",
       });
 
       const result = await codeql.setupCodeQL(
         url,
-        sampleApiDetails,
+        SAMPLE_DOTCOM_API_DETAILS,
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
@@ -351,7 +297,7 @@ for (const { githubReleases, toolcacheVersion } of [
 
         const result = await codeql.setupCodeQL(
           undefined,
-          sampleApiDetails,
+          SAMPLE_DOTCOM_API_DETAILS,
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
@@ -379,7 +325,7 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
 
       const result = await codeql.setupCodeQL(
         undefined,
-        sampleApiDetails,
+        SAMPLE_DOTCOM_API_DETAILS,
         tmpDir,
         variant,
         {
@@ -409,12 +355,12 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         tmpDir,
       });
 
-      mockDownloadApi({
+      mockBundleDownloadApi({
         tagName: defaults.bundleVersion,
       });
       const result = await codeql.setupCodeQL(
         undefined,
-        sampleApiDetails,
+        SAMPLE_DOTCOM_API_DETAILS,
         tmpDir,
         variant,
         {
@@ -445,12 +391,12 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       tmpDir,
     });
 
-    mockDownloadApi({
+    mockBundleDownloadApi({
       tagName: defaults.bundleVersion,
     });
     const result = await codeql.setupCodeQL(
       "latest",
-      sampleApiDetails,
+      SAMPLE_DOTCOM_API_DETAILS,
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
@@ -547,13 +493,13 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
-    mockApiDetails(sampleApiDetails);
+    mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
     const releasesApiMock = mockReleaseApi({
       assetNames: ["cli-version-2.12.2.txt"],
       tagName: "codeql-bundle-20230203",
     });
-    mockDownloadApi({
+    mockBundleDownloadApi({
       repo: "codeql-testing/codeql-cli-nightlies",
       platformSpecific: false,
       tagName: "codeql-bundle-20230203",
@@ -561,7 +507,7 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
 
     const result = await codeql.setupCodeQL(
       "https://github.com/codeql-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20230203/codeql-bundle.tar.gz",
-      sampleApiDetails,
+      SAMPLE_DOTCOM_API_DETAILS,
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
@@ -619,54 +565,6 @@ test("getExtraOptions throws for bad content", (t) => {
       ["foo", "bar"],
       []
     )
-  );
-});
-
-test("databaseInterpretResults() does not set --sarif-add-query-help for 2.7.0", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.7.0");
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    stubConfig,
-    createFeatures([]),
-    getRunnerLogger(true)
-  );
-  t.false(
-    runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
-    "--sarif-add-query-help should be absent, but it is present"
-  );
-});
-
-test("databaseInterpretResults() sets --sarif-add-query-help for 2.7.1", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.7.1");
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    stubConfig,
-    createFeatures([]),
-    getRunnerLogger(true)
-  );
-  t.true(
-    runnerConstructorStub.firstCall.args[1].includes("--sarif-add-query-help"),
-    "--sarif-add-query-help should be present, but it is absent"
   );
 });
 

@@ -48,8 +48,7 @@ jobs:
             matrix.version == '20220908' ||
             matrix.version == '20221211' ||
             matrix.version == 'cached' ||
-            matrix.version == 'latest' ||
-            matrix.version == 'nightly-latest'
+            matrix.version == 'latest'
         )
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV

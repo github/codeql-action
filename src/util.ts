@@ -818,13 +818,6 @@ export function fixInvalidNotifications(
   sarif: SarifFile,
   logger: Logger
 ): SarifFile {
-  if (process.env[CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
-    logger.info(
-      "SARIF notification object duplicate location fix disabled by the " +
-        `${CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
-    );
-    return sarif;
-  }
   if (!Array.isArray(sarif.runs)) {
     return sarif;
   }
@@ -888,9 +881,17 @@ export function fixInvalidNotificationsInFile(
   outputPath: string,
   logger: Logger
 ): void {
-  let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
-  sarif = fixInvalidNotifications(sarif, logger);
-  fs.writeFileSync(outputPath, JSON.stringify(sarif));
+  if (process.env[CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
+    logger.info(
+      "SARIF notification object duplicate location fix disabled by the " +
+        `${CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
+    );
+    fs.renameSync(inputPath, outputPath);
+  } else {
+    let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
+    sarif = fixInvalidNotifications(sarif, logger);
+    fs.writeFileSync(outputPath, JSON.stringify(sarif));
+  }
 }
 
 export function wrapError(error: unknown): Error {

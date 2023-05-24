@@ -1,15 +1,32 @@
 import { TextDecoder } from "node:util";
+import path from "path";
 
 import * as github from "@actions/github";
 import { TestFn } from "ava";
-import * as nock from "nock";
+import nock from "nock";
 import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
+import { GitHubApiDetails } from "./api-client";
 import * as CodeQL from "./codeql";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { Logger } from "./logging";
-import { HTTPError } from "./util";
+import { GitHubVariant, HTTPError } from "./util";
+
+export const SAMPLE_DOTCOM_API_DETAILS = {
+  auth: "token",
+  url: "https://github.com",
+  apiURL: "https://api.github.com",
+};
+
+export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
+  cliVersion: "2.0.0",
+  variant: GitHubVariant.DOTCOM,
+};
 
 type TestContext = {
   stdoutWrite: any;
@@ -211,4 +228,50 @@ export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
       return enabledFeatures.includes(feature);
     },
   };
+}
+
+/**
+ * Mocks the API for downloading the bundle tagged `tagName`.
+ *
+ * @returns the download URL for the bundle. This can be passed to the tools parameter of
+ * `codeql.setupCodeQL`.
+ */
+export function mockBundleDownloadApi({
+  apiDetails = SAMPLE_DOTCOM_API_DETAILS,
+  isPinned,
+  repo = "github/codeql-action",
+  platformSpecific = true,
+  tagName,
+}: {
+  apiDetails?: GitHubApiDetails;
+  isPinned?: boolean;
+  repo?: string;
+  platformSpecific?: boolean;
+  tagName: string;
+}): string {
+  const platform =
+    process.platform === "win32"
+      ? "win64"
+      : process.platform === "linux"
+      ? "linux64"
+      : "osx64";
+
+  const baseUrl = apiDetails?.url ?? "https://example.com";
+  const relativeUrl = apiDetails
+    ? `/${repo}/releases/download/${tagName}/codeql-bundle${
+        platformSpecific ? `-${platform}` : ""
+      }.tar.gz`
+    : `/download/${tagName}/codeql-bundle.tar.gz`;
+
+  nock(baseUrl)
+    .get(relativeUrl)
+    .replyWithFile(
+      200,
+      path.join(
+        __dirname,
+        `/../src/testdata/codeql-bundle${isPinned ? "-pinned" : ""}.tar.gz`
+      )
+    );
+
+  return `${baseUrl}${relativeUrl}`;
 }

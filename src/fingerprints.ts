@@ -201,7 +201,14 @@ export function resolveUriToFile(
     logger.debug(`Ignoring location as URI "${location.uri}" is invalid`);
     return undefined;
   }
-  let uri = decodeURIComponent(location.uri as string);
+
+  let uri: string;
+  try {
+    uri = decodeURIComponent(location.uri as string);
+  } catch (e: any) {
+    logger.debug(`Ignoring location as URI "${location.uri}" is invalid`);
+    return undefined;
+  }
 
   // Remove a file scheme, and abort if the scheme is anything else
   const fileUriPrefix = "file://";

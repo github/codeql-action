@@ -818,13 +818,6 @@ export function fixInvalidNotifications(
   sarif: SarifFile,
   logger: Logger
 ): SarifFile {
-  if (process.env[CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
-    logger.info(
-      "SARIF notification object duplicate location fix disabled by the " +
-        `${CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
-    );
-    return sarif;
-  }
   if (!Array.isArray(sarif.runs)) {
     return sarif;
   }
@@ -883,14 +876,32 @@ export function fixInvalidNotifications(
   return newSarif;
 }
 
+/**
+ * Removes duplicates from the sarif file.
+ *
+ * When `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX` is set to true, this will
+ * simply rename the input file to the output file. Otherwise, it will parse the
+ * input file as JSON, remove duplicate locations from the SARIF notification
+ * objects, and write the result to the output file.
+ *
+ * For context, see documentation of:
+ * `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX`. */
 export function fixInvalidNotificationsInFile(
   inputPath: string,
   outputPath: string,
   logger: Logger
 ): void {
-  let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
-  sarif = fixInvalidNotifications(sarif, logger);
-  fs.writeFileSync(outputPath, JSON.stringify(sarif));
+  if (process.env[CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
+    logger.info(
+      "SARIF notification object duplicate location fix disabled by the " +
+        `${CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
+    );
+    fs.renameSync(inputPath, outputPath);
+  } else {
+    let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
+    sarif = fixInvalidNotifications(sarif, logger);
+    fs.writeFileSync(outputPath, JSON.stringify(sarif));
+  }
 }
 
 export function wrapError(error: unknown): Error {

@@ -7,7 +7,7 @@ import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import { Logger } from "./logging";
-import { getRequiredEnvParam } from "./util";
+import { getRequiredEnvParam, isInTestMode } from "./util";
 
 export interface WorkflowJobStep {
   name?: string;
@@ -389,7 +389,11 @@ function getInputOrThrow(
  * This allows us to test workflow parsing functionality as a CodeQL Action PR check.
  */
 function getAnalyzeActionName() {
-  if (getRequiredEnvParam("GITHUB_REPOSITORY") === "github/codeql-action") {
+  if (
+    isInTestMode() ||
+    process.env["CODEQL_ACTION_TESTING_ENVIRONMENT"] ===
+      "codeql-action-pr-checks"
+  ) {
     return "./analyze";
   } else {
     return "github/codeql-action/analyze";

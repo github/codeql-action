@@ -170,3 +170,7 @@ You can use Actions or environment variables to share configuration across multi
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).
+
+## Contributing
+
+This project welcomes contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to build, install, and contribute.

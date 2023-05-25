@@ -2,7 +2,12 @@
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 2.3.5 - 25 May 2023
+
 - Allow invalid URIs to be used as values to `artifactLocation.uri` properties. This reverses a change from [#1668](https://github.com/github/codeql-action/pull/1668) that inadvertently led to stricter validation of some URI values. [#1705](https://github.com/github/codeql-action/pull/1705)
+- Gracefully handle invalid URIs when fingerprinting. [#1694](https://github.com/github/codeql-action/pull/1694)
 
 ## 2.3.4 - 24 May 2023
 

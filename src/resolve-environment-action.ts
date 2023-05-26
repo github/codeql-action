@@ -8,11 +8,18 @@ import {
   sendStatusReport,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import * as configUtils from "./config-utils";
+import { Features } from "./feature-flags";
+import { initCodeQL } from "./init";
 import { Language, resolveAlias } from "./languages";
 import { getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
 import { runResolveBuildEnvironment } from "./resolve-environment";
-import { checkForTimeout, checkGitHubVersionInRange, wrapError } from "./util";
+import {
+  checkForTimeout,
+  checkGitHubVersionInRange,
+  getRequiredEnvParam,
+  wrapError,
+} from "./util";
 import { validateWorkflow } from "./workflow";
 
 const actionName = "resolve-environment";
@@ -21,6 +28,17 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   const language: Language = resolveAlias(getRequiredInput("language"));
+
+  const apiDetails = {
+    auth: getRequiredInput("token"),
+    externalRepoAuth: getOptionalInput("external-repository-token"),
+    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+  };
+
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY")
+  );
 
   try {
     const workflowErrors = await validateWorkflow(logger);
@@ -41,12 +59,25 @@ async function run() {
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 
-    const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
-    if (config === undefined) {
-      throw new Error(
-        "Config file could not be found at expected location. Has the 'init' action been called?"
-      );
-    }
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger
+    );
+
+    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
+      gitHubVersion.type
+    );
+
+    const initCodeQLResult = await initCodeQL(
+      getOptionalInput("tools"),
+      apiDetails,
+      getTemporaryDirectory(),
+      gitHubVersion.type,
+      codeQLDefaultVersionInfo,
+      logger
+    );
 
     const workingDirectory = getOptionalInput("working-directory");
     if (workingDirectory) {
@@ -57,7 +88,7 @@ async function run() {
     }
 
     const result = await runResolveBuildEnvironment(
-      config.codeQLCmd,
+      initCodeQLResult.codeql.getPath(),
       logger,
       language
     );

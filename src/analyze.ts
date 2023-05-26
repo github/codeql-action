@@ -352,7 +352,7 @@ export async function runQueries(
         logger.endGroup();
         logger.info(analysisSummary);
       }
-      logger.info(await runPrintLinesOfCode(language));
+      await runPrintLinesOfCode(language);
     } catch (e) {
       logger.info(String(e));
       if (e instanceof Error) {

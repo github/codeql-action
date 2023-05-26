@@ -2,6 +2,10 @@ name: 'CodeQL: Resolve Build Environment'
 description: 'Attempt to infer a suitable environment configuration for the autobuilder'
 author: 'GitHub'
 inputs:
+  token:
+    default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
   language:
     description: The language to infer the build environment configuration for.
     required: true

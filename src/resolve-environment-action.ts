@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import {
   createStatusReportBase,
+  getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
   sendStatusReport,
@@ -45,6 +46,14 @@ async function run() {
       throw new Error(
         "Config file could not be found at expected location. Has the 'init' action been called?"
       );
+    }
+
+    const workingDirectory = getOptionalInput("working-directory");
+    if (workingDirectory) {
+      logger.info(
+        `Changing autobuilder working directory to ${workingDirectory}`
+      );
+      process.chdir(workingDirectory);
     }
 
     const result = await runResolveBuildEnvironment(config.codeQLCmd, logger, language);

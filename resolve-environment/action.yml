@@ -1,6 +1,13 @@
 name: 'CodeQL: Resolve Build Environment'
 description: 'Attempt to infer a suitable environment configuration for the autobuilder'
 author: 'GitHub'
+inputs:
+  language:
+    description: The language to infer the build environment configuration for.
+    required: true
+outputs:
+  configuration:
+    description: The inferred build environment configuration.
 runs:
   using: 'node16'
   main: '../lib/resolve-environment-action.js'

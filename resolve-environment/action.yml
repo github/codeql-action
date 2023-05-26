@@ -9,6 +9,12 @@ inputs:
   language:
     description: The language to infer the build environment configuration for.
     required: true
+  working-directory:
+    description: >-
+      Run the autobuilder using this path (relative to $GITHUB_WORKSPACE) as
+      working directory. If this input is not set, the autobuilder runs with
+      $GITHUB_WORKSPACE as its working directory.
+    required: false
 outputs:
   environment:
     description: The inferred build environment configuration.

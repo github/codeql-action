@@ -48,7 +48,7 @@ async function run() {
     }
 
     const result = await runResolveBuildEnvironment(config.codeQLCmd, logger, language);
-    core.setOutput("configuration", result);
+    core.setOutput("environment", result);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

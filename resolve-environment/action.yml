@@ -10,7 +10,7 @@ inputs:
     description: The language to infer the build environment configuration for.
     required: true
 outputs:
-  configuration:
+  environment:
     description: The inferred build environment configuration.
 runs:
   using: 'node16'

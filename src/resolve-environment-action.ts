@@ -56,7 +56,11 @@ async function run() {
       process.chdir(workingDirectory);
     }
 
-    const result = await runResolveBuildEnvironment(config.codeQLCmd, logger, language);
+    const result = await runResolveBuildEnvironment(
+      config.codeQLCmd,
+      logger,
+      language
+    );
     core.setOutput("environment", result);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);

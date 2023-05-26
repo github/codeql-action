@@ -72,7 +72,7 @@ jobs:
 
     - name: Verify packages installed
       run: |
-        $GITHUB_WORKSPACE/python-setup/tests/check_requests_2_26_0.sh ${PYTHON_VERSION}
+        $GITHUB_WORKSPACE/python-setup/tests/check_requests.sh ${PYTHON_VERSION} 2.31.0
 
   # This one shouldn't fail, but also won't install packages
   test-setup-python-scripts-non-standard-location:
@@ -170,5 +170,5 @@ jobs:
 
     - name: Verify packages installed
       run: |
-        $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\tests\\check_requests_2_26_0.ps1"
-        powershell -File $cmd $Env:PYTHON_VERSION
+        $cmd = $Env:GITHUB_WORKSPACE + "\\python-setup\\tests\\check_requests.ps1"
+        powershell -File $cmd $Env:PYTHON_VERSION 2.31.0

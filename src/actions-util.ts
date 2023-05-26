@@ -306,7 +306,8 @@ type ActionName =
   | "autobuild"
   | "finish"
   | "upload-sarif"
-  | "init-post";
+  | "init-post"
+  | "resolve-environment";
 export type ActionStatus =
   | "starting"
   | "aborted"

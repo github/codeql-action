@@ -25,7 +25,9 @@ class EventContextAccessConfiguration extends DataFlow::Configuration {
   }
 
   override predicate isSink(DataFlow::Node sink, DataFlow::FlowLabel lbl) {
-    sink instanceof DataFlow::PropRead and lbl instanceof ParsedLabel
+    sink instanceof DataFlow::PropRead and
+    lbl instanceof ParsedLabel and
+    not exists(DataFlow::PropRead n | sink = n.getBase())
   }
 
   override predicate isAdditionalFlowStep(

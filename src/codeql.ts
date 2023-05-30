@@ -290,6 +290,12 @@ export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 
 /**
+ * Versions 2.12.6+ of the CodeQL CLI fix a bug where diagnostics export sometimes produced an
+ * invalid SARIF file.
+ */
+export const CODEQL_VERSION_DUPLICATE_DIAGNOSTIC_LOCATIONS_FIXED = "2.12.6";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -727,8 +733,12 @@ export async function getCodeQLForCmd(
         Feature.ExportDiagnosticsEnabled,
         this
       );
-      // Update this to take into account the CodeQL version when we have a version with the fix.
-      const shouldWorkaroundInvalidNotifications = shouldExportDiagnostics;
+      const shouldWorkaroundInvalidNotifications =
+        shouldExportDiagnostics &&
+        !(await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_DUPLICATE_DIAGNOSTIC_LOCATIONS_FIXED
+        ));
       const codeqlOutputFile = shouldWorkaroundInvalidNotifications
         ? path.join(config.tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;
@@ -877,8 +887,11 @@ export async function getCodeQLForCmd(
       tempDir: string,
       logger: Logger
     ): Promise<void> {
-      // Update this to take into account the CodeQL version when we have a version with the fix.
-      const shouldWorkaroundInvalidNotifications = true;
+      const shouldWorkaroundInvalidNotifications =
+        !(await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_DUPLICATE_DIAGNOSTIC_LOCATIONS_FIXED
+        ));
       const codeqlOutputFile = shouldWorkaroundInvalidNotifications
         ? path.join(tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;

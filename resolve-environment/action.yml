@@ -1,5 +1,5 @@
 name: 'CodeQL: Resolve Build Environment'
-description: 'Attempt to infer a suitable environment configuration for the autobuilder'
+description: '[Experimental] Attempt to infer a suitable environment configuration for the autobuilder'
 author: 'GitHub'
 inputs:
   tools:

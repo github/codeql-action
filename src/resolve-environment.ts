@@ -7,7 +7,7 @@ export async function runResolveBuildEnvironment(
   logger: Logger,
   language: Language
 ) {
-  logger.startGroup(`Attempting to resolve build environment`);
+  logger.startGroup(`Attempting to resolve build environment for ${language}`);
   const codeQL = await getCodeQL(cmd);
   const result = await codeQL.resolveBuildEnvironment(language);
   logger.endGroup();

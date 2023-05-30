@@ -15,7 +15,9 @@ import javascript
  */
 class ActionDeclaration extends File {
   ActionDeclaration() {
-    getRelativePath().matches("%/action.yml")
+    getRelativePath().matches("%/action.yml") and
+    // Ignore internal Actions
+    not getRelativePath().matches(".github/actions/%")
   }
 
   /**

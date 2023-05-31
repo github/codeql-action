@@ -4,7 +4,7 @@
  *   must be defined in an identical way to avoid confusion for the user.
  *   This also makes writing queries like required-action-input.ql easier.
  * @kind problem
- * @problem.severity error
+ * @severity error
  * @id javascript/codeql-action/inconsistent-action-input
  */
 
@@ -15,7 +15,9 @@ import javascript
  */
 class ActionDeclaration extends File {
   ActionDeclaration() {
-    getRelativePath().matches("%/action.yml")
+    getRelativePath().matches("%/action.yml") and
+    // Ignore internal Actions
+    not getRelativePath().matches(".github/actions/%")
   }
 
   /**
@@ -25,19 +27,19 @@ class ActionDeclaration extends File {
     result = getRelativePath().regexpCapture("(.*)/action.yml", 1)
   }
 
-  YAMLDocument getRootNode() {
+  YamlDocument getRootNode() {
     result.getFile() = this
   }
 
-  YAMLValue getInput(string inputName) {
-    result = getRootNode().(YAMLMapping).lookup("inputs").(YAMLMapping).lookup(inputName)
+  YamlValue getInput(string inputName) {
+    result = getRootNode().(YamlMapping).lookup("inputs").(YamlMapping).lookup(inputName)
   }
 }
 
-predicate areNotEquivalent(YAMLValue x, YAMLValue y) {
+predicate areNotEquivalent(YamlValue x, YamlValue y) {
   x.getTag() != y.getTag()
   or
-  x.(YAMLScalar).getValue() != y.(YAMLScalar).getValue()
+  x.(YamlScalar).getValue() != y.(YamlScalar).getValue()
   or
   x.getNumChild() != y.getNumChild()
   or

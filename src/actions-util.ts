@@ -645,7 +645,7 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   let defaultBranch = event?.repository?.default_branch;
 
   if (getWorkflowEventName() === "schedule") {
-    defaultBranch = removeRefsHeadsPrefix(getRequiredEnvParam("GITHUB_REF"));
+    defaultBranch = removeRefsHeadsPrefix(getRefFromEnv());
   }
 
   return currentRef === defaultBranch;

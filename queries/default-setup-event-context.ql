@@ -27,7 +27,8 @@ class EventContextAccessConfiguration extends DataFlow::Configuration {
   override predicate isSink(DataFlow::Node sink, DataFlow::FlowLabel lbl) {
     sink instanceof DataFlow::PropRead and
     lbl instanceof ParsedLabel and
-    not exists(DataFlow::PropRead n | sink = n.getBase())
+    not exists(DataFlow::PropRead n | sink = n.getBase()) and
+    not sink.asExpr().getFile().getBaseName().matches("%.test.ts")
   }
 
   override predicate isAdditionalFlowStep(
@@ -52,11 +53,6 @@ class EventContextAccessConfiguration extends DataFlow::Configuration {
 }
 
 from EventContextAccessConfiguration cfg, DataFlow::PathNode source, DataFlow::PathNode sink
-where
-  cfg.hasFlowPath(source, sink) and
-  not sink.getNode().asExpr().getFile().getBaseName().matches("%.test.ts")
+where cfg.hasFlowPath(source, sink)
 select sink.getNode(), source, sink,
-  "This context property may not exist in default setup workflows. If all uses are safe, add it to the list of "
-    + "context properties that are known to be safe in " +
-    "'queries/default-setup-event-context.ql'. If this use is safe but others are not, " +
-    "dismiss this alert as a false positive."
+  "This event context property may not exist in default setup workflows."

@@ -540,7 +540,10 @@ export async function sendStatusReport<S extends StatusReportBase>(
     if (isHTTPError(e)) {
       switch (e.status) {
         case 403:
-          if (workflowIsTriggeredByPushEvent() && isDependabotActor()) {
+          if (
+            getWorkflowEventName() === "push" &&
+            process.env["GITHUB_ACTOR"] === "dependabot[bot]"
+          ) {
             core.setFailed(
               'Workflows triggered by Dependabot on the "push" event run with read-only access. ' +
                 "Uploading Code Scanning results requires write access. " +
@@ -583,16 +586,6 @@ export async function sendStatusReport<S extends StatusReportBase>(
  */
 export function getWorkflowEventName() {
   return getRequiredEnvParam("GITHUB_EVENT_NAME");
-}
-
-// Was the workflow run triggered by a `push` event, for example as opposed to a `pull_request` event.
-function workflowIsTriggeredByPushEvent() {
-  return getWorkflowEventName() === "push";
-}
-
-// Is dependabot the actor that triggered the current workflow run.
-function isDependabotActor() {
-  return process.env["GITHUB_ACTOR"] === "dependabot[bot]";
 }
 
 // Is the current action executing a local copy (i.e. we're running a workflow on the codeql-action repo itself)

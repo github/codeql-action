@@ -35,14 +35,22 @@ jobs:
           npm run build
         env:
           ENTERPRISE_RELEASES_PATH: ${{ github.workspace }}/enterprise-releases/
-      - name: Commit Changes
-        uses: peter-evans/create-pull-request@284f54f989303d2699d373481a0cfa13ad5a6666 # v5.0.1
-        with:
-          commit-message: Update supported GitHub Enterprise Server versions.
-          title: Update supported GitHub Enterprise Server versions.
-          body: ""
-          author: GitHub <noreply@github.com>
-          branch: update-supported-enterprise-server-versions
-          draft: true
+
+      - name: Update git config
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Commit changes and open PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ -z $(git status --porcelain) ]]; then
+            echo "No changes to commit"
+          else
+            git checkout -b update-supported-enterprise-server-versions
+            git add .
+            git commit --message "Update supported GitHub Enterprise Server versions"
+            git push
+            gh pr create --fill --draft
+          fi

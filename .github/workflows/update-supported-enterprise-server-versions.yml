@@ -51,6 +51,6 @@ jobs:
             git checkout -b update-supported-enterprise-server-versions
             git add .
             git commit --message "Update supported GitHub Enterprise Server versions"
-            git push
+            git push origin update-supported-enterprise-server-versions
             gh pr create --fill --draft
           fi

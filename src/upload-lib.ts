@@ -293,7 +293,7 @@ export function buildPayload(
     base_sha: undefined as undefined | string,
   };
 
-  if (actionsUtil.workflowEventName() === "pull_request") {
+  if (actionsUtil.getWorkflowEventName() === "pull_request") {
     if (
       commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
       mergeBaseCommitOid

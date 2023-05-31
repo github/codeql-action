@@ -37,7 +37,8 @@ def main():
 			end_of_life_date = datetime.date.fromisoformat(release_data["end"])
 			# The GHES version is not actually end of life until the end of the day specified by
 			# `end_of_life_date`. Wait an extra week to be safe.
-			if end_of_life_date > datetime.date.today() - datetime.timedelta(weeks=1):
+			is_end_of_life = datetime.date.today() > end_of_life_date + datetime.timedelta(weeks=1)
+			if not is_end_of_life:
 				oldest_supported_release = release_version
 
 	api_compatibility_data = {

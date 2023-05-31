@@ -108,7 +108,7 @@ export const getCommitOid = async function (
 export const determineMergeBaseCommitOid = async function (): Promise<
   string | undefined
 > {
-  if (workflowEventName() !== "pull_request") {
+  if (getWorkflowEventName() !== "pull_request") {
     return undefined;
   }
 
@@ -576,21 +576,18 @@ export async function sendStatusReport<S extends StatusReportBase>(
   }
 }
 
-export function workflowEventName() {
-  // If the original event is dynamic CODESCANNING_EVENT_NAME will contain the right info (push/pull_request)
-  if (process.env["GITHUB_EVENT_NAME"] === "dynamic") {
-    const value = process.env["CODESCANNING_EVENT_NAME"];
-    if (value === undefined || value.length === 0) {
-      return process.env["GITHUB_EVENT_NAME"];
-    }
-    return value;
-  }
-  return process.env["GITHUB_EVENT_NAME"];
+/**
+ * Returns the name of the event that triggered this workflow.
+ *
+ * This will be "dynamic" for default setup workflow runs.
+ */
+export function getWorkflowEventName() {
+  return getRequiredEnvParam("GITHUB_EVENT_NAME");
 }
 
 // Was the workflow run triggered by a `push` event, for example as opposed to a `pull_request` event.
 function workflowIsTriggeredByPushEvent() {
-  return workflowEventName() === "push";
+  return getWorkflowEventName() === "push";
 }
 
 // Is dependabot the actor that triggered the current workflow run.
@@ -647,7 +644,7 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   const event = getWorkflowEvent();
   let defaultBranch = event?.repository?.default_branch;
 
-  if (process.env.GITHUB_EVENT_NAME === "schedule") {
+  if (getWorkflowEventName() === "schedule") {
     defaultBranch = removeRefsHeadsPrefix(getRequiredEnvParam("GITHUB_REF"));
   }
 

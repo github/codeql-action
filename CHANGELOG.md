@@ -18,6 +18,7 @@ No user facing changes.
   - This change does not affect the majority of workflows, and we will not be changing tags for existing bundle releases.
   - Some workflows with custom logic that depends on the specific format of the CodeQL bundle tag may need to be updated. For example, if your workflow matches CodeQL bundle tag names against a `codeql-bundle-yyyymmdd` pattern, you should update it to also recognize `codeql-bundle-vx.y.z` tags.
 - Remove the requirement for `on.push` and `on.pull_request` to trigger on the same branches. [#1675](https://github.com/github/codeql-action/pull/1675)
+- Update default CodeQL bundle version to 2.13.3. [#1698](https://github.com/github/codeql-action/pull/1698)
 
 ## 2.3.3 - 04 May 2023
 

@@ -1,6 +1,6 @@
 # CodeQL Action Changelog
 
-## [UNRELEASED]
+## 2.3.6 - 01 Jun 2023
 
 No user facing changes.
 

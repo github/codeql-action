@@ -1,5 +1,9 @@
 # CodeQL Action Changelog
 
+## 2.3.6 - 01 Jun 2023
+
+No user facing changes.
+
 ## 2.3.5 - 25 May 2023
 
 - Allow invalid URIs to be used as values to `artifactLocation.uri` properties. This reverses a change from [#1668](https://github.com/github/codeql-action/pull/1668) that inadvertently led to stricter validation of some URI values. [#1705](https://github.com/github/codeql-action/pull/1705)
@@ -14,6 +18,7 @@
   - This change does not affect the majority of workflows, and we will not be changing tags for existing bundle releases.
   - Some workflows with custom logic that depends on the specific format of the CodeQL bundle tag may need to be updated. For example, if your workflow matches CodeQL bundle tag names against a `codeql-bundle-yyyymmdd` pattern, you should update it to also recognize `codeql-bundle-vx.y.z` tags.
 - Remove the requirement for `on.push` and `on.pull_request` to trigger on the same branches. [#1675](https://github.com/github/codeql-action/pull/1675)
+- Update default CodeQL bundle version to 2.13.3. [#1698](https://github.com/github/codeql-action/pull/1698)
 
 ## 2.3.3 - 04 May 2023
 

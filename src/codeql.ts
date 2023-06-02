@@ -238,15 +238,10 @@ export interface ResolveQueriesOutput {
 export interface ResolveBuildEnvironmentOutput {
   configuration?: {
     [language: string]: {
-      os?: BuildEnvironmentOS;
+      os?: unknown;
       [key: string]: unknown;
     };
   };
-}
-
-export interface BuildEnvironmentOS {
-  name?: string;
-  version?: string;
 }
 
 export interface PackDownloadOutput {

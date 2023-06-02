@@ -122,6 +122,7 @@ export interface CodeQL {
    * Run 'codeql resolve build-environment'
    */
   resolveBuildEnvironment(
+    workingDir: string | undefined,
     language: Language
   ): Promise<ResolveBuildEnvironmentOutput>;
 
@@ -700,13 +701,19 @@ export async function getCodeQLForCmd(
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
       }
     },
-    async resolveBuildEnvironment(language: Language) {
+    async resolveBuildEnvironment(
+      workingDir: string | undefined,
+      language: Language
+    ) {
       const codeqlArgs = [
         "resolve",
         "build-environment",
         `--language=${language}`,
         ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
       ];
+      if (workingDir !== undefined) {
+        codeqlArgs.push("--working-dir", workingDir);
+      }
       const output = await runTool(cmd, codeqlArgs);
 
       try {

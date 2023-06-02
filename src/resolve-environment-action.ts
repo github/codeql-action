@@ -80,16 +80,10 @@ async function run() {
     );
 
     const workingDirectory = getOptionalInput("working-directory");
-    if (workingDirectory) {
-      logger.info(
-        `Changing autobuilder working directory to ${workingDirectory}`
-      );
-      process.chdir(workingDirectory);
-    }
-
     const result = await runResolveBuildEnvironment(
       initCodeQLResult.codeql.getPath(),
       logger,
+      workingDirectory,
       language
     );
     core.setOutput("environment", result);

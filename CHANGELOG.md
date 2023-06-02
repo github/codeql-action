@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Experimental: add a new `resolve-environment` action which invokes a corresponding, new CLI command that allows CodeQL extractors to try and infer a configuration for the build environment that is required to build a given project. Do not use this in production as it is part of an internal experiment and subject to change at any time.
 
 ## 2.20.0 - 13 Jun 2023
 

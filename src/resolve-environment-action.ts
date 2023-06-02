@@ -22,7 +22,7 @@ import {
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
-const actionName = "resolve-environment";
+const ACTION_NAME = "resolve-environment";
 
 async function run() {
   const startedAt = new Date();
@@ -46,7 +46,7 @@ async function run() {
     if (
       !(await sendStatusReport(
         await createStatusReportBase(
-          actionName,
+          ACTION_NAME,
           "starting",
           startedAt,
           workflowErrors
@@ -98,7 +98,7 @@ async function run() {
     core.setFailed(error.message);
     await sendStatusReport(
       await createStatusReportBase(
-        actionName,
+        ACTION_NAME,
         "aborted",
         startedAt,
         error.message,
@@ -113,7 +113,7 @@ async function runWrapper() {
   try {
     await run();
   } catch (error) {
-    core.setFailed(`${actionName} action failed: ${wrapError(error).message}`);
+    core.setFailed(`${ACTION_NAME} action failed: ${wrapError(error).message}`);
   }
   await checkForTimeout();
 }

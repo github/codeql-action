@@ -720,7 +720,7 @@ export async function getCodeQLForCmd(
         return JSON.parse(output);
       } catch (e) {
         throw new Error(
-          `Unexpected output from codeql resolve build-environment: ${e}`
+          `Unexpected output from codeql resolve build-environment: ${e} in\n${output}`
         );
       }
     },

@@ -81,9 +81,7 @@ for file in os.listdir('checks'):
             'if': FoldedScalarString(textwrap.dedent('''
                 runner.os != 'Windows' && (
                     matrix.version == '20220908' ||
-                    matrix.version == '20221211' ||
-                    matrix.version == 'cached' ||
-                    matrix.version == 'latest'
+                    matrix.version == '20221211'
                 )
             ''').strip()),
             'shell': 'bash',

@@ -267,13 +267,6 @@ export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
 const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
 
 /**
- * Versions 2.9.0+ of the CodeQL CLI run machine learning models from a temporary directory, which
- * resolves an issue on Windows where TensorFlow models are not correctly loaded due to the path of
- * some of their files being greater than MAX_PATH (260 characters).
- */
-export const CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS = "2.9.0";
-
-/**
  * Previous versions had the option already, but were missing the
  * --extractor-options-verbosity that we need.
  */

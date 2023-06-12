@@ -43,7 +43,7 @@ export enum Feature {
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
-  DisablePythonDependencyInstallation = "disable_python_dependency_installation",
+  DisablePythonDependencyInstallation = "disable_python_dependency_installation_enabled",
 }
 
 export const featureConfig: Record<

@@ -2,10 +2,6 @@ name: 'CodeQL: Resolve Build Environment'
 description: '[Experimental] Attempt to infer a suitable environment configuration for the autobuilder'
 author: 'GitHub'
 inputs:
-  tools:
-    description: URL of CodeQL tools
-    required: false
-    # If not specified the Action will check in several places until it finds the CodeQL tools.
   token:
     default: ${{ github.token }}
   matrix:

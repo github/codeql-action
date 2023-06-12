@@ -8,18 +8,11 @@ import {
   sendStatusReport,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { Features } from "./feature-flags";
-import { initCodeQL } from "./init";
+import * as configUtils from "./config-utils";
 import { Language, resolveAlias } from "./languages";
 import { getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
 import { runResolveBuildEnvironment } from "./resolve-environment";
-import {
-  checkForTimeout,
-  checkGitHubVersionInRange,
-  getRequiredEnvParam,
-  wrapError,
-} from "./util";
+import { checkForTimeout, checkGitHubVersionInRange, wrapError } from "./util";
 import { validateWorkflow } from "./workflow";
 
 const ACTION_NAME = "resolve-environment";
@@ -28,17 +21,6 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   const language: Language = resolveAlias(getRequiredInput("language"));
-
-  const apiDetails = {
-    auth: getRequiredInput("token"),
-    externalRepoAuth: getOptionalInput("external-repository-token"),
-    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-  };
-
-  const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY")
-  );
 
   try {
     const workflowErrors = await validateWorkflow(logger);
@@ -59,29 +41,16 @@ async function run() {
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 
-    const features = new Features(
-      gitHubVersion,
-      repositoryNwo,
-      getTemporaryDirectory(),
-      logger
-    );
-
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type
-    );
-
-    const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
-      apiDetails,
-      getTemporaryDirectory(),
-      gitHubVersion.type,
-      codeQLDefaultVersionInfo,
-      logger
-    );
+    const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
+    if (config === undefined) {
+      throw new Error(
+        "Config file could not be found at expected location. Has the 'init' action been called?"
+      );
+    }
 
     const workingDirectory = getOptionalInput("working-directory");
     const result = await runResolveBuildEnvironment(
-      initCodeQLResult.codeql.getPath(),
+      config.codeQLCmd,
       logger,
       workingDirectory,
       language

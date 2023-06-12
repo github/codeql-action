@@ -90,6 +90,7 @@ export const featureConfig: Record<
     // packages available with current python3 installation might get extracted.
     minimumVersion: undefined,
     defaultValue: false,
+    // dummy change to trigger CI
   },
 };
 

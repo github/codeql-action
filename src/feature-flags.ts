@@ -39,11 +39,11 @@ export interface FeatureEnablement {
 export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
+  DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
-  DisablePythonDependencyInstallation = "disable_python_dependency_installation_enabled",
 }
 
 export const featureConfig: Record<
@@ -81,7 +81,7 @@ export const featureConfig: Record<
     minimumVersion: "2.11.3",
     defaultValue: true,
   },
-  [Feature.DisablePythonDependencyInstallation]: {
+  [Feature.DisablePythonDependencyInstallationEnabled]: {
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
     // Although the python extractor only started supporting not extracting installed
     // dependencies in 2.13.1, the init-action can still benefit from not installing

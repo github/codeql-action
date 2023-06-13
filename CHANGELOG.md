@@ -2,7 +2,7 @@
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Bump the version of the Action to 2.20.0. This ensures that users who received a Dependabot upgrade to [`cdcdbb5`](https://github.com/github/codeql-action/commit/cdcdbb579706841c47f7063dda365e292e5cad7a), which was mistakenly marked as Action version 2.13.4, continue to receive updates to the CodeQL Action. Full details in [#1729](https://github.com/github/codeql-action/pull/1729)
 
 ## 2.3.6 - 01 Jun 2023
 

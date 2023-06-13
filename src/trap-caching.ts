@@ -99,7 +99,7 @@ export async function downloadTrapCaches(
   let baseSha = "unknown";
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (
-    actionsUtil.workflowEventName() === "pull_request" &&
+    actionsUtil.getWorkflowEventName() === "pull_request" &&
     eventPath !== undefined
   ) {
     const event = JSON.parse(fs.readFileSync(path.resolve(eventPath), "utf-8"));

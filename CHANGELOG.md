@@ -1,8 +1,12 @@
 # CodeQL Action Changelog
 
+## 2.20.0 - 13 Jun 2023
+
+- Bump the version of the Action to 2.20.0. This ensures that users who received a Dependabot upgrade to [`cdcdbb5`](https://github.com/github/codeql-action/commit/cdcdbb579706841c47f7063dda365e292e5cad7a), which was mistakenly marked as Action version 2.13.4, continue to receive updates to the CodeQL Action. Full details in [#1729](https://github.com/github/codeql-action/pull/1729)
+
 ## 2.3.6 - 01 Jun 2023
 
-No user facing changes.
+- Update default CodeQL bundle version to 2.13.3. [#1698](https://github.com/github/codeql-action/pull/1698)
 
 ## 2.3.5 - 25 May 2023
 
@@ -18,7 +22,6 @@ No user facing changes.
   - This change does not affect the majority of workflows, and we will not be changing tags for existing bundle releases.
   - Some workflows with custom logic that depends on the specific format of the CodeQL bundle tag may need to be updated. For example, if your workflow matches CodeQL bundle tag names against a `codeql-bundle-yyyymmdd` pattern, you should update it to also recognize `codeql-bundle-vx.y.z` tags.
 - Remove the requirement for `on.push` and `on.pull_request` to trigger on the same branches. [#1675](https://github.com/github/codeql-action/pull/1675)
-- Update default CodeQL bundle version to 2.13.3. [#1698](https://github.com/github/codeql-action/pull/1698)
 
 ## 2.3.3 - 04 May 2023
 

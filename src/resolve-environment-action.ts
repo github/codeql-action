@@ -70,6 +70,10 @@ async function run() {
     );
     return;
   }
+
+  await sendStatusReport(
+    await createStatusReportBase(ACTION_NAME, "success", startedAt)
+  );
 }
 
 async function runWrapper() {

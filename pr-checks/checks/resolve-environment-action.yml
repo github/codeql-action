@@ -1,4 +1,4 @@
-name: "resolve-environment-action"
+name: "Resolve environment"
 description: "Tests that the resolve-environment action works for Go"
 versions: ["nightly-latest"]
 steps:

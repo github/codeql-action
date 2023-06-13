@@ -14,7 +14,6 @@ import { Language, resolveAlias } from "./languages";
 import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
 import { checkForTimeout, checkGitHubVersionInRange, wrapError } from "./util";
-import { validateWorkflow } from "./workflow";
 
 const ACTION_NAME = "resolve-environment";
 
@@ -24,16 +23,9 @@ async function run() {
   const language: Language = resolveAlias(getRequiredInput("language"));
 
   try {
-    const workflowErrors = await validateWorkflow(logger);
-
     if (
       !(await sendStatusReport(
-        await createStatusReportBase(
-          ACTION_NAME,
-          "starting",
-          startedAt,
-          workflowErrors
-        )
+        await createStatusReportBase(ACTION_NAME, "starting", startedAt)
       ))
     ) {
       return;

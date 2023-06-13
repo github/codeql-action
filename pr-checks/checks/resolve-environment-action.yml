@@ -1,6 +1,6 @@
 name: "resolve-environment-action"
 description: "Tests that the resolve-environment action works for Go"
-versions: ["latest"]
+versions: ["nightly-latest"]
 steps:
   - uses: ./../action/init
     with:

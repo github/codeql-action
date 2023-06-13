@@ -11,9 +11,9 @@ inputs:
     required: true
   working-directory:
     description: >-
-      Run the autobuilder using this path (relative to $GITHUB_WORKSPACE) as
-      working directory. If this input is not set, the autobuilder runs with
-      $GITHUB_WORKSPACE as its working directory.
+      Resolve the build environment based on the files located at the specified
+      path (relative to $GITHUB_WORKSPACE). If this input is not set, then the
+      build environment is resolved based on the files in $GITHUB_WORKSPACE.
     required: false
 outputs:
   environment:

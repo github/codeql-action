@@ -239,7 +239,6 @@ export interface ResolveQueriesOutput {
 export interface ResolveBuildEnvironmentOutput {
   configuration?: {
     [language: string]: {
-      os?: unknown;
       [key: string]: unknown;
     };
   };

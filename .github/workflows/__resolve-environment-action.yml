@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml && python3 sync.py)
 # to regenerate this file.
 
-name: PR Check - resolve-environment-action
+name: PR Check - Resolve environment
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -31,7 +31,7 @@ jobs:
           version: nightly-latest
         - os: windows-latest
           version: nightly-latest
-    name: resolve-environment-action
+    name: Resolve environment
     permissions:
       contents: read
       security-events: write

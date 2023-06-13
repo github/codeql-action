@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import {
   createStatusReportBase,
+  getActionsStatus,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
@@ -58,11 +59,13 @@ async function run() {
     core.setOutput("environment", result);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
-    core.setFailed(error.message);
+    core.setFailed(
+      `Failed to resolve a build environment suitable for automatically building your code. ${error.message}`
+    );
     await sendStatusReport(
       await createStatusReportBase(
         ACTION_NAME,
-        "aborted",
+        getActionsStatus(error),
         startedAt,
         error.message,
         error.stack

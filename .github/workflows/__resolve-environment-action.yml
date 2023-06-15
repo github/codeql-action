@@ -63,7 +63,7 @@ jobs:
       with:
         language: go
 
-    - name: Check that some Go configuration was returned
+    - name: Fail if no Go configuration was returned
       if: (!fromJSON(steps.resolve-environment.outputs.environment).configuration.go)
       run: exit 1
     env:

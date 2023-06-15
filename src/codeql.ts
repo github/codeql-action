@@ -305,6 +305,11 @@ export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 
 /**
+ * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
+ */
+export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput

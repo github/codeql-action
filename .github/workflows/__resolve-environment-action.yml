@@ -26,11 +26,11 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: nightly-latest
+          version: stable-v2.13.4
         - os: macos-latest
-          version: nightly-latest
+          version: stable-v2.13.4
         - os: windows-latest
-          version: nightly-latest
+          version: stable-v2.13.4
     name: Resolve environment
     permissions:
       contents: read

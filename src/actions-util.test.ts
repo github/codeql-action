@@ -215,6 +215,7 @@ test("initializeEnvironment", (t) => {
 });
 
 test("isAnalyzingDefaultBranch()", async (t) => {
+  process.env["GITHUB_EVENT_NAME"] = "push";
   process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "true";
   t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
   process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "false";
@@ -264,17 +265,6 @@ test("isAnalyzingDefaultBranch()", async (t) => {
     t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), false);
     getAdditionalInputStub.restore();
   });
-});
-
-test("workflowEventName()", async (t) => {
-  process.env["GITHUB_EVENT_NAME"] = "push";
-  t.deepEqual(actionsutil.workflowEventName(), "push");
-
-  process.env["GITHUB_EVENT_NAME"] = "dynamic";
-  t.deepEqual(actionsutil.workflowEventName(), "dynamic");
-
-  process.env["CODESCANNING_EVENT_NAME"] = "push";
-  t.deepEqual(actionsutil.workflowEventName(), "push");
 });
 
 test("createStatusReportBase", async (t) => {

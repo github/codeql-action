@@ -283,7 +283,7 @@ async function run() {
     ) {
       if (
         await features.getValue(
-          Feature.DisablePythonDependencyInstallation,
+          Feature.DisablePythonDependencyInstallationEnabled,
           codeql
         )
       ) {
@@ -347,7 +347,7 @@ async function run() {
     // Disable Python dependency extraction if feature flag set
     if (
       await features.getValue(
-        Feature.DisablePythonDependencyInstallation,
+        Feature.DisablePythonDependencyInstallationEnabled,
         codeql
       )
     ) {

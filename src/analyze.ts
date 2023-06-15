@@ -92,7 +92,10 @@ async function setupPythonExtractor(
   }
 
   if (
-    await features.getValue(Feature.DisablePythonDependencyInstallation, codeql)
+    await features.getValue(
+      Feature.DisablePythonDependencyInstallationEnabled,
+      codeql
+    )
   ) {
     logger.warning(
       "We recommend that you remove the CODEQL_PYTHON environment variable from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
@@ -352,7 +355,7 @@ export async function runQueries(
         logger.endGroup();
         logger.info(analysisSummary);
       }
-      logger.info(await runPrintLinesOfCode(language));
+      await runPrintLinesOfCode(language);
     } catch (e) {
       logger.info(String(e));
       if (e instanceof Error) {

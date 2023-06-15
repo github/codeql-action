@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.3.4",
+  "version": "2.20.1",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -29,7 +29,7 @@
     "@actions/io": "^1.1.2",
     "@actions/tool-cache": "^2.0.1",
     "@chrisgavin/safe-which": "^1.0.2",
-    "@octokit/plugin-retry": "^4.0.4",
+    "@octokit/plugin-retry": "^5.0.2",
     "@octokit/types": "^9.0.0",
     "@schemastore/package": "^0.0.6",
     "@types/uuid": "^9.0.0",

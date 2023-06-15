@@ -228,9 +228,24 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
   const schema = require("../src/sarif-schema-2.1.0.json") as jsonschema.Schema;
 
   const result = new jsonschema.Validator().validate(sarif, schema);
-  if (!result.valid) {
+  // Filter errors related to invalid URIs in the artifactLocation field as this
+  // is a breaking change. See https://github.com/github/codeql-action/issues/1703
+  const errors = (result.errors || []).filter(
+    (err) => err.argument !== "uri-reference"
+  );
+  const warnings = (result.errors || []).filter(
+    (err) => err.argument === "uri-reference"
+  );
+
+  for (const warning of warnings) {
+    logger.info(
+      `Warning: '${warning.instance}' is not a valid URI in '${warning.property}'.`
+    );
+  }
+
+  if (errors.length) {
     // Output the more verbose error messages in groups as these may be very large.
-    for (const error of result.errors) {
+    for (const error of errors) {
       logger.startGroup(`Error details: ${error.stack}`);
       logger.info(JSON.stringify(error, null, 2));
       logger.endGroup();
@@ -238,7 +253,7 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
 
     // Set the main error message to the stacks of all the errors.
     // This should be of a manageable size and may even give enough to fix the error.
-    const sarifErrors = result.errors.map((e) => `- ${e.stack}`);
+    const sarifErrors = errors.map((e) => `- ${e.stack}`);
     throw new Error(
       `Unable to upload "${sarifFilePath}" as it is not valid SARIF:\n${sarifErrors.join(
         "\n"
@@ -278,7 +293,7 @@ export function buildPayload(
     base_sha: undefined as undefined | string,
   };
 
-  if (actionsUtil.workflowEventName() === "pull_request") {
+  if (actionsUtil.getWorkflowEventName() === "pull_request") {
     if (
       commitOid === util.getRequiredEnvParam("GITHUB_SHA") &&
       mergeBaseCommitOid

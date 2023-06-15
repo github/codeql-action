@@ -1,6 +1,6 @@
 # Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     pip install ruamel.yaml && python3 sync.py
+#     (cd pr-checks; pip install ruamel.yaml && python3 sync.py)
 # to regenerate this file.
 
 name: PR Check - Ruby analysis
@@ -38,6 +38,9 @@ jobs:
         - os: macos-latest
           version: nightly-latest
     name: Ruby analysis
+    permissions:
+      contents: read
+      security-events: write
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -52,10 +55,7 @@ jobs:
       if: >-
         runner.os != 'Windows' && (
             matrix.version == '20220908' ||
-            matrix.version == '20221211' ||
-            matrix.version == 'cached' ||
-            matrix.version == 'latest' ||
-            matrix.version == 'nightly-latest'
+            matrix.version == '20221211'
         )
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV

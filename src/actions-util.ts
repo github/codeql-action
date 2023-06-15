@@ -108,7 +108,7 @@ export const getCommitOid = async function (
 export const determineMergeBaseCommitOid = async function (): Promise<
   string | undefined
 > {
-  if (workflowEventName() !== "pull_request") {
+  if (getWorkflowEventName() !== "pull_request") {
     return undefined;
   }
 
@@ -168,7 +168,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
  *
  * This will combine the workflow path and current job name.
  * Computing this the first time requires making requests to
- * the github API, but after that the result will be cached.
+ * the GitHub API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
   const analysisKeyEnvVar = "CODEQL_ACTION_ANALYSIS_KEY";
@@ -306,7 +306,8 @@ type ActionName =
   | "autobuild"
   | "finish"
   | "upload-sarif"
-  | "init-post";
+  | "init-post"
+  | "resolve-environment";
 export type ActionStatus =
   | "starting"
   | "aborted"
@@ -552,7 +553,10 @@ export async function sendStatusReport<S extends StatusReportBase>(
     if (isHTTPError(e)) {
       switch (e.status) {
         case 403:
-          if (workflowIsTriggeredByPushEvent() && isDependabotActor()) {
+          if (
+            getWorkflowEventName() === "push" &&
+            process.env["GITHUB_ACTOR"] === "dependabot[bot]"
+          ) {
             core.setFailed(
               'Workflows triggered by Dependabot on the "push" event run with read-only access. ' +
                 "Uploading Code Scanning results requires write access. " +
@@ -588,30 +592,19 @@ export async function sendStatusReport<S extends StatusReportBase>(
   }
 }
 
-export function workflowEventName() {
-  // If the original event is dynamic CODESCANNING_EVENT_NAME will contain the right info (push/pull_request)
-  if (process.env["GITHUB_EVENT_NAME"] === "dynamic") {
-    const value = process.env["CODESCANNING_EVENT_NAME"];
-    if (value === undefined || value.length === 0) {
-      return process.env["GITHUB_EVENT_NAME"];
-    }
-    return value;
-  }
-  return process.env["GITHUB_EVENT_NAME"];
+/**
+ * Returns the name of the event that triggered this workflow.
+ *
+ * This will be "dynamic" for default setup workflow runs.
+ */
+export function getWorkflowEventName() {
+  return getRequiredEnvParam("GITHUB_EVENT_NAME");
 }
 
-// Was the workflow run triggered by a `push` event, for example as opposed to a `pull_request` event.
-function workflowIsTriggeredByPushEvent() {
-  return workflowEventName() === "push";
-}
-
-// Is dependabot the actor that triggered the current workflow run.
-function isDependabotActor() {
-  return process.env["GITHUB_ACTOR"] === "dependabot[bot]";
-}
-
-// Is the current action executing a local copy (i.e. we're running a workflow on the codeql-action repo itself)
-// as opposed to running a remote action (i.e. when another repo references us)
+/**
+ * Returns whether the current workflow is executing a local copy of the Action, e.g. we're running
+ * a workflow on the codeql-action repo itself.
+ */
 export function isRunningLocalAction(): boolean {
   const relativeScriptPath = getRelativeScriptPath();
   return (
@@ -619,15 +612,18 @@ export function isRunningLocalAction(): boolean {
   );
 }
 
-// Get the location where the action is running from.
-// This can be used to get the actions name or tell if we're running a local action.
+/**
+ * Get the location where the Action is running from.
+ *
+ * This can be used to get the Action's name or tell if we're running a local Action.
+ */
 export function getRelativeScriptPath(): string {
   const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);
 }
 
-// Reads the contents of GITHUB_EVENT_PATH as a JSON object
+/** Returns the contents of `GITHUB_EVENT_PATH` as a JSON object. */
 function getWorkflowEvent(): any {
   const eventJsonFile = getRequiredEnvParam("GITHUB_EVENT_PATH");
   try {
@@ -643,10 +639,13 @@ function removeRefsHeadsPrefix(ref: string): string {
   return ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : ref;
 }
 
-// Returns whether we are analyzing the default branch for the repository.
-// For cases where the repository information might not be available (e.g.,
-// dynamic workflows), this can be forced by the environment variable
-// CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH.
+/**
+ * Returns whether we are analyzing the default branch for the repository.
+ *
+ * This first checks the environment variable `CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH`. This
+ * environment variable can be set in cases where repository information might not be available, for
+ * example dynamic workflows.
+ */
 export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   if (process.env.CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH === "true") {
     return true;
@@ -659,8 +658,8 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   const event = getWorkflowEvent();
   let defaultBranch = event?.repository?.default_branch;
 
-  if (process.env.GITHUB_EVENT_NAME === "schedule") {
-    defaultBranch = removeRefsHeadsPrefix(getRequiredEnvParam("GITHUB_REF"));
+  if (getWorkflowEventName() === "schedule") {
+    defaultBranch = removeRefsHeadsPrefix(getRefFromEnv());
   }
 
   return currentRef === defaultBranch;
@@ -699,7 +698,10 @@ export async function printDebugLogs(config: Config) {
 
 export type UploadKind = "always" | "failure-only" | "never";
 
-// Parses the `upload` input into an `UploadKind`, converting unspecified and deprecated upload inputs appropriately.
+/**
+ * Parses the `upload` input into an `UploadKind`, converting unspecified and deprecated upload
+ * inputs appropriately.
+ */
 export function getUploadValue(input: string | undefined): UploadKind {
   switch (input) {
     case undefined:

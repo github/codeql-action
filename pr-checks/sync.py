@@ -24,7 +24,7 @@ defaultTestVersions = [
 
 header = """# Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     pip install ruamel.yaml && python3 sync.py
+#     (cd pr-checks; pip install ruamel.yaml && python3 sync.py)
 # to regenerate this file.
 
 """
@@ -81,10 +81,7 @@ for file in os.listdir('checks'):
             'if': FoldedScalarString(textwrap.dedent('''
                 runner.os != 'Windows' && (
                     matrix.version == '20220908' ||
-                    matrix.version == '20221211' ||
-                    matrix.version == 'cached' ||
-                    matrix.version == 'latest' ||
-                    matrix.version == 'nightly-latest'
+                    matrix.version == '20221211'
                 )
             ''').strip()),
             'shell': 'bash',
@@ -101,6 +98,10 @@ for file in os.listdir('checks'):
             }
         },
         'name': checkSpecification['name'],
+        'permissions': {
+            'contents': 'read',
+            'security-events': 'write'
+        },
         'timeout-minutes': 45,
         'runs-on': '${{ matrix.os }}',
         'steps': steps,

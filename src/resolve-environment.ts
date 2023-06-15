@@ -17,10 +17,7 @@ export async function runResolveBuildEnvironment(
   // If the CodeQL version in use does not support the `resolve build-environment`
   // command, just return an empty configuration. Otherwise invoke the CLI.
   if (
-    !(await util.codeQlVersionAbove(
-      codeql,
-      CODEQL_VERSION_RESOLVE_ENVIRONMENT
-    ))
+    !(await util.codeQlVersionAbove(codeql, CODEQL_VERSION_RESOLVE_ENVIRONMENT))
   ) {
     logger.warning(
       "Unsupported CodeQL CLI version for `resolve build-environment` command, " +

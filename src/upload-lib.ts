@@ -506,7 +506,7 @@ function handleProcessingResultForUnsuccessfulExecution(
   ) {
     logger.debug(
       "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
-        '"unsuccessful execution" error, and no other errors.'
+        '"unsuccessful execution" processing error, and no other errors.'
     );
   } else if (status === "failed") {
     logger.warning(
@@ -517,9 +517,9 @@ function handleProcessingResultForUnsuccessfulExecution(
     // There is a known transient issue with the code scanning API where it sometimes reports
     // `complete` for an unsuccessful execution submission.
     logger.debug(
-      'Encountered no processing errors, but expected to receive an "unsuccessful execution" ' +
-        "error. This is a known transient issue with the code scanning API, and does not " +
-        "typically mean that code scanning status information will be out of date."
+      "Uploaded a SARIF file for the unsuccessful execution, but did not receive the expected " +
+        '"unsuccessful execution" processing error. This is a known transient issue with the ' +
+        "code scanning API, and does not cause out of date code scanning status information."
     );
   } else {
     util.assertNever(status);

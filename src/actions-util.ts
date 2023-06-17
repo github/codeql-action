@@ -316,14 +316,16 @@ export type ActionStatus =
   | "user-error";
 
 export interface StatusReportBase {
-  /** UUID representing the job run that this status report belongs to.
-   * We generate our own UUID here because Actions currently does not expose
-   * a unique job run identifier. This UUID will allow us to more easily
-   * match reports from different steps in the same workflow job.
+  /**
+   * UUID representing the job run that this status report belongs to. We
+   * generate our own UUID here because Actions currently does not expose a
+   * unique job run identifier. This UUID will allow us to more easily match
+   * reports from different steps in the same workflow job.
    *
-   * If and when Actions does expose a unique job ID, we plan to populate
-   * this field with the Actions-generated identifier, as it will allow us
-   * to more easily join our telemetry data with Actions telemetry tables.
+   * If and when Actions does expose a unique job ID, we plan to populate a
+   * separate int field, `job_run_id`, with the Actions-generated identifier,
+   * as it will allow us to more easily join our telemetry data with Actions
+   * telemetry tables.
    */
   job_run_uuid: string;
   /** ID of the workflow run containing the action run. */

@@ -118,6 +118,13 @@ export interface CodeQL {
     queries: string[],
     extraSearchPath: string | undefined
   ): Promise<ResolveQueriesOutput>;
+  /**
+   * Run 'codeql resolve build-environment'
+   */
+  resolveBuildEnvironment(
+    workingDir: string | undefined,
+    language: Language
+  ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
    * Run 'codeql pack download'.
@@ -229,6 +236,14 @@ export interface ResolveQueriesOutput {
   };
 }
 
+export interface ResolveBuildEnvironmentOutput {
+  configuration?: {
+    [language: string]: {
+      [key: string]: unknown;
+    };
+  };
+}
+
 export interface PackDownloadOutput {
   packs: PackDownloadItem[];
 }
@@ -288,6 +303,11 @@ export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
  * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
+
+/**
+ * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
+ */
+export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
 
 /**
  * Set up CodeQL CLI access.
@@ -402,6 +422,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "betterResolveLanguages"
     ),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
+    resolveBuildEnvironment: resolveFunction(
+      partialCodeql,
+      "resolveBuildEnvironment"
+    ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
@@ -679,6 +703,29 @@ export async function getCodeQLForCmd(
         return JSON.parse(output);
       } catch (e) {
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
+      }
+    },
+    async resolveBuildEnvironment(
+      workingDir: string | undefined,
+      language: Language
+    ) {
+      const codeqlArgs = [
+        "resolve",
+        "build-environment",
+        `--language=${language}`,
+        ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
+      ];
+      if (workingDir !== undefined) {
+        codeqlArgs.push("--working-dir", workingDir);
+      }
+      const output = await runTool(cmd, codeqlArgs);
+
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve build-environment: ${e} in\n${output}`
+        );
       }
     },
     async databaseRunQueries(

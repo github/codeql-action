@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
@@ -17,6 +18,7 @@ import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
+import { EnvVar } from "./shared-environment";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import {
   getTrapCachingExtractorConfigArgs,
@@ -76,6 +78,19 @@ export interface CodeQL {
    */
   printVersion(): Promise<void>;
   /**
+   * Run 'codeql database trace-command' on 'tracer-env.js' and parse
+   * the result to get environment variables set by CodeQL.
+   */
+  getTracerEnv(databasePath: string): Promise<{ [key: string]: string }>;
+  /**
+   * Run 'codeql database init'.
+   */
+  databaseInit(
+    databasePath: string,
+    language: Language,
+    sourceRoot: string
+  ): Promise<void>;
+  /**
    * Run 'codeql database init --db-cluster'.
    */
   databaseInitCluster(
@@ -118,13 +133,6 @@ export interface CodeQL {
     queries: string[],
     extraSearchPath: string | undefined
   ): Promise<ResolveQueriesOutput>;
-  /**
-   * Run 'codeql resolve build-environment'
-   */
-  resolveBuildEnvironment(
-    workingDir: string | undefined,
-    language: Language
-  ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
    * Run 'codeql pack download'.
@@ -203,8 +211,6 @@ export interface CodeQL {
     config: Config,
     features: FeatureEnablement
   ): Promise<void>;
-  /** Get the location of an extractor for the specified language. */
-  resolveExtractor(language: Language): Promise<string>;
 }
 
 export interface ResolveLanguagesOutput {
@@ -236,14 +242,6 @@ export interface ResolveQueriesOutput {
   };
 }
 
-export interface ResolveBuildEnvironmentOutput {
-  configuration?: {
-    [language: string]: {
-      [key: string]: unknown;
-    };
-  };
-}
-
 export interface PackDownloadOutput {
   packs: PackDownloadItem[];
 }
@@ -269,17 +267,35 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.8.5";
+const CODEQL_MINIMUM_VERSION = "2.6.3";
 
 /**
  * Versions of CodeQL that version-flag certain functionality in the Action.
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
  */
+const CODEQL_VERSION_CUSTOM_QUERY_HELP = "2.7.1";
 const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
 export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
 const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
+
+/**
+ * This variable controls using the new style of tracing from the CodeQL
+ * CLI. In particular, with versions above this we will use both indirect
+ * tracing, and multi-language tracing together with database clusters.
+ *
+ * Note that there were bugs in both of these features that were fixed in
+ * release 2.7.0 of the CodeQL CLI, therefore this flag is only enabled for
+ * versions above that.
+ */
+export const CODEQL_VERSION_NEW_TRACING = "2.7.0";
+
+/**
+ * Versions 2.7.3+ of the CodeQL CLI support build tracing with glibc 2.34 on Linux. Versions before
+ * this cannot perform build tracing when running on the Actions `ubuntu-22.04` runner image.
+ */
+export const CODEQL_VERSION_TRACING_GLIBC_2_34 = "2.7.3";
 
 /**
  * Versions 2.9.0+ of the CodeQL CLI run machine learning models from a temporary directory, which
@@ -303,11 +319,6 @@ export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
  * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
-
-/**
- * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
- */
-export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
 
 /**
  * Set up CodeQL CLI access.
@@ -361,9 +372,8 @@ export async function setupCodeQL(
       toolsVersion,
     };
   } catch (e) {
-    throw new Error(
-      `Unable to download and extract CodeQL CLI: ${wrapError(e).message}`
-    );
+    logger.error(wrapError(e).message);
+    throw new Error("Unable to download and extract CodeQL CLI");
   }
 }
 
@@ -409,6 +419,8 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       () => new Promise((resolve) => resolve("1.0.0"))
     ),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
+    getTracerEnv: resolveFunction(partialCodeql, "getTracerEnv"),
+    databaseInit: resolveFunction(partialCodeql, "databaseInit"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
     runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
     extractScannedLanguage: resolveFunction(
@@ -422,10 +434,6 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "betterResolveLanguages"
     ),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
-    resolveBuildEnvironment: resolveFunction(
-      partialCodeql,
-      "resolveBuildEnvironment"
-    ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
@@ -443,7 +451,6 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "databaseExportDiagnostics"
     ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
-    resolveExtractor: resolveFunction(partialCodeql, "resolveExtractor"),
   };
   return cachedCodeQL;
 }
@@ -499,6 +506,94 @@ export async function getCodeQLForCmd(
     },
     async printVersion() {
       await runTool(cmd, ["version", "--format=json"]);
+    },
+    async getTracerEnv(databasePath: string) {
+      // Write tracer-env.js to a temp location.
+      // BEWARE: The name and location of this file is recognized by `codeql database
+      // trace-command` in order to enable special support for concatenable tracer
+      // configurations. Consequently the name must not be changed.
+      // (This warning can be removed once a different way to recognize the
+      // action/runner has been implemented in `codeql database trace-command`
+      // _and_ is present in the latest supported CLI release.)
+      const tracerEnvJs = path.resolve(
+        databasePath,
+        "working",
+        "tracer-env.js"
+      );
+
+      fs.mkdirSync(path.dirname(tracerEnvJs), { recursive: true });
+      fs.writeFileSync(
+        tracerEnvJs,
+        `
+        const fs = require('fs');
+        const env = {};
+        for (let entry of Object.entries(process.env)) {
+          const key = entry[0];
+          const value = entry[1];
+          if (typeof value !== 'undefined' && key !== '_' && !key.startsWith('JAVA_MAIN_CLASS_')) {
+            env[key] = value;
+          }
+        }
+        process.stdout.write(process.argv[2]);
+        fs.writeFileSync(process.argv[2], JSON.stringify(env), 'utf-8');`
+      );
+
+      // BEWARE: The name and location of this file is recognized by `codeql database
+      // trace-command` in order to enable special support for concatenable tracer
+      // configurations. Consequently the name must not be changed.
+      // (This warning can be removed once a different way to recognize the
+      // action/runner has been implemented in `codeql database trace-command`
+      // _and_ is present in the latest supported CLI release.)
+      const envFile = path.resolve(databasePath, "working", "env.tmp");
+
+      try {
+        await runTool(cmd, [
+          "database",
+          "trace-command",
+          databasePath,
+          ...getExtraOptionsFromEnv(["database", "trace-command"]),
+          process.execPath,
+          tracerEnvJs,
+          envFile,
+        ]);
+      } catch (e) {
+        if (
+          e instanceof CommandInvocationError &&
+          e.output.includes(
+            "undefined symbol: __libc_dlopen_mode, version GLIBC_PRIVATE"
+          ) &&
+          process.platform === "linux" &&
+          !(await util.codeQlVersionAbove(
+            this,
+            CODEQL_VERSION_TRACING_GLIBC_2_34
+          ))
+        ) {
+          throw new util.UserError(
+            "The CodeQL CLI is incompatible with the version of glibc on your system. " +
+              `Please upgrade to CodeQL CLI version ${CODEQL_VERSION_TRACING_GLIBC_2_34} or ` +
+              "later. If you cannot upgrade to a newer version of the CodeQL CLI, you can " +
+              `alternatively run your workflow on another runner image such as "ubuntu-20.04" ` +
+              "that has glibc 2.33 or earlier installed."
+          );
+        } else {
+          throw e;
+        }
+      }
+      return JSON.parse(fs.readFileSync(envFile, "utf-8"));
+    },
+    async databaseInit(
+      databasePath: string,
+      language: Language,
+      sourceRoot: string
+    ) {
+      await runTool(cmd, [
+        "database",
+        "init",
+        databasePath,
+        `--language=${language}`,
+        `--source-root=${sourceRoot}`,
+        ...getExtraOptionsFromEnv(["database", "init"]),
+      ]);
     },
     async databaseInitCluster(
       config: Config,
@@ -573,10 +668,17 @@ export async function getCodeQLForCmd(
       );
     },
     async runAutobuild(language: Language) {
+      const cmdName =
+        process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh";
+      // The autobuilder for Swift is located in the experimental/ directory.
+      const possibleExperimentalDir =
+        language === Language.swift ? "experimental" : "";
       const autobuildCmd = path.join(
-        await this.resolveExtractor(language),
+        path.dirname(cmd),
+        possibleExperimentalDir,
+        language,
         "tools",
-        process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh"
+        cmdName
       );
 
       // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
@@ -609,11 +711,37 @@ export async function getCodeQLForCmd(
     },
     async extractScannedLanguage(config: Config, language: Language) {
       const databasePath = util.getCodeQLDatabasePath(config, language);
+      // Get extractor location
+      //
+      // Request it using `format=json` so we don't need to strip the trailing new line generated by
+      // the CLI.
+      let extractorPath = "";
+      await new toolrunner.ToolRunner(
+        cmd,
+        [
+          "resolve",
+          "extractor",
+          "--format=json",
+          `--language=${language}`,
+          ...getExtraOptionsFromEnv(["resolve", "extractor"]),
+        ],
+        {
+          silent: true,
+          listeners: {
+            stdout: (data) => {
+              extractorPath += data.toString();
+            },
+            stderr: (data) => {
+              process.stderr.write(data);
+            },
+          },
+        }
+      ).exec();
 
       // Set trace command
       const ext = process.platform === "win32" ? ".cmd" : ".sh";
       const traceCommand = path.resolve(
-        await this.resolveExtractor(language),
+        JSON.parse(extractorPath) as string,
         "tools",
         `autobuild${ext}`
       );
@@ -705,29 +833,6 @@ export async function getCodeQLForCmd(
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
       }
     },
-    async resolveBuildEnvironment(
-      workingDir: string | undefined,
-      language: Language
-    ) {
-      const codeqlArgs = [
-        "resolve",
-        "build-environment",
-        `--language=${language}`,
-        ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
-      ];
-      if (workingDir !== undefined) {
-        codeqlArgs.push("--working-dir", workingDir);
-      }
-      const output = await runTool(cmd, codeqlArgs);
-
-      try {
-        return JSON.parse(output);
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve build-environment: ${e} in\n${output}`
-        );
-      }
-    },
     async databaseRunQueries(
       databasePath: string,
       extraSearchPath: string | undefined,
@@ -789,11 +894,12 @@ export async function getCodeQLForCmd(
         addSnippetsFlag,
         "--print-diagnostics-summary",
         "--print-metrics-summary",
-        "--sarif-add-query-help",
         "--sarif-group-rules-by-pack",
         ...(await getCodeScanningConfigExportArguments(config, this, features)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
+      if (await util.codeQlVersionAbove(this, CODEQL_VERSION_CUSTOM_QUERY_HELP))
+        codeqlArgs.push("--sarif-add-query-help");
       if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
@@ -968,33 +1074,6 @@ export async function getCodeQLForCmd(
         args.push("--sarif-category", automationDetailsId);
       }
       await new toolrunner.ToolRunner(cmd, args).exec();
-    },
-    async resolveExtractor(language: Language): Promise<string> {
-      // Request it using `format=json` so we don't need to strip the trailing new line generated by
-      // the CLI.
-      let extractorPath = "";
-      await new toolrunner.ToolRunner(
-        cmd,
-        [
-          "resolve",
-          "extractor",
-          "--format=json",
-          `--language=${language}`,
-          ...getExtraOptionsFromEnv(["resolve", "extractor"]),
-        ],
-        {
-          silent: true,
-          listeners: {
-            stdout: (data) => {
-              extractorPath += data.toString();
-            },
-            stderr: (data) => {
-              process.stderr.write(data);
-            },
-          },
-        }
-      ).exec();
-      return JSON.parse(extractorPath);
     },
   };
   // To ensure that status reports include the CodeQL CLI version wherever
@@ -1225,4 +1304,18 @@ async function getCodeScanningConfigExportArguments(
     return ["--sarif-codescanning-config", codeScanningConfigPath];
   }
   return [];
+}
+
+/**
+ * Enrich the environment variables with further flags that we cannot
+ * know the value of until we know what version of CodeQL we're running.
+ */
+export async function enrichEnvironment(codeql: CodeQL) {
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_NEW_TRACING)) {
+    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+    core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
+  } else {
+    core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
+    core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
+  }
 }

@@ -1,0 +1,23 @@
+name: 'CodeQL: Resolve Build Environment'
+description: '[Experimental] Attempt to infer a build environment suitable for automatic builds'
+author: 'GitHub'
+inputs:
+  token:
+    default: ${{ github.token }}
+  matrix:
+    default: ${{ toJson(matrix) }}
+  language:
+    description: The language to infer the build environment configuration for.
+    required: true
+  working-directory:
+    description: >-
+      Resolve the build environment based on the files located at the specified
+      path (relative to $GITHUB_WORKSPACE). If this input is not set, then the
+      build environment is resolved based on the files in $GITHUB_WORKSPACE.
+    required: false
+outputs:
+  environment:
+    description: The inferred build environment configuration.
+runs:
+  using: 'node16'
+  main: '../lib/resolve-environment-action.js'

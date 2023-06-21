@@ -506,18 +506,23 @@ function handleProcessingResultForUnsuccessfulExecution(
   ) {
     logger.debug(
       "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
-        '"unsuccessful execution" error, and no other errors.'
+        '"unsuccessful execution" processing error, and no other errors.'
+    );
+  } else if (status === "failed") {
+    logger.warning(
+      `Failed to upload a SARIF file for the unsuccessful execution. Code scanning status ` +
+        `information for the repository may be out of date as a result. Processing errors: ${response.data.errors}`
+    );
+  } else if (status === "complete") {
+    // There is a known transient issue with the code scanning API where it sometimes reports
+    // `complete` for an unsuccessful execution submission.
+    logger.debug(
+      "Uploaded a SARIF file for the unsuccessful execution, but did not receive the expected " +
+        '"unsuccessful execution" processing error. This is a known transient issue with the ' +
+        "code scanning API, and does not cause out of date code scanning status information."
     );
   } else {
-    const shortMessage =
-      "Failed to upload a SARIF file for the unsuccessful execution. Code scanning status " +
-      "information for the repository may be out of date as a result.";
-    const longMessage =
-      shortMessage + status === "failed"
-        ? ` Processing errors: ${response.data.errors}`
-        : ' Encountered no processing errors, but expected to receive an "unsuccessful execution" error.';
-    logger.debug(longMessage);
-    throw new Error(shortMessage);
+    util.assertNever(status);
   }
 }
 

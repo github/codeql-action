@@ -2,6 +2,10 @@
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 2.20.1 - 21 Jun 2023
+
 - Update default CodeQL bundle version to 2.13.4. [#1721](https://github.com/github/codeql-action/pull/1721)
 - Experimental: add a new `resolve-environment` action which attempts to infer a configuration for the build environment that is required to build a given project. Do not use this in production as it is part of an internal experiment and subject to change at any time.
 

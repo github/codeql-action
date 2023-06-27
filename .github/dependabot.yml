@@ -1,16 +1,18 @@
 version: 2
 updates:
-  - package-ecosystem: npm
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: weekly
-    labels:
-      - Update dependencies
+      interval: "weekly"
     ignore:
-      - dependency-name: "*"
-        update-types:
-          - version-update:semver-minor
-          - version-update:semver-patch
+      - dependency-name: "npm"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "mix"
+    directory: "/resolve/"
+    schedule:
+      interval: "weekly"
+        
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

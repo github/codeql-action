@@ -15,8 +15,8 @@ import {
   runQueries,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
-import { runAutobuild } from "./autobuild";
-import { getCodeQL } from "./codeql";
+import { runAutobuildScript } from "./autobuild";
+import { enrichEnvironment, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { Features } from "./feature-flags";
@@ -31,7 +31,7 @@ import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as upload_lib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
-import { checkForTimeout, wrapError } from "./util";
+import { checkForTimeout } from "./util";
 
 interface AnalysisStatusReport
   extends upload_lib.UploadStatusReport,
@@ -168,7 +168,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
     }
     return;
   }
-  await runAutobuild(Language.go, config, logger);
+  await runAutobuildScript(Language.go, config, logger);
 }
 
 async function run() {
@@ -207,6 +207,8 @@ async function run() {
       );
     }
 
+    await enrichEnvironment(await getCodeQL(config.codeQLCmd));
+
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(
@@ -237,8 +239,7 @@ async function run() {
       threads,
       memory,
       config,
-      logger,
-      features
+      logger
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
@@ -312,8 +313,9 @@ async function run() {
       CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY,
       "true"
     );
-  } catch (unwrappedError) {
-    const error = wrapError(unwrappedError);
+  } catch (origError) {
+    const error =
+      origError instanceof Error ? origError : new Error(String(origError));
     if (
       actionsUtil.getOptionalInput("expect-error") !== "true" ||
       hasBadExpectErrorInput()
@@ -394,7 +396,7 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    core.setFailed(`analyze action failed: ${wrapError(error).message}`);
+    core.setFailed(`analyze action failed: ${error}`);
   }
   await checkForTimeout();
 }

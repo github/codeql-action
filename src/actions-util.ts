@@ -36,9 +36,9 @@ const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
  *
  * This allows us to get stronger type checking of required/optional inputs.
  */
-export function getRequiredInput(name: string): string {
+export const getRequiredInput = function (name: string): string {
   return core.getInput(name, { required: true });
-}
+};
 
 /**
  * Wrapper around core.getInput that converts empty inputs to undefined.
@@ -316,6 +316,18 @@ export type ActionStatus =
   | "user-error";
 
 export interface StatusReportBase {
+  /**
+   * UUID representing the job run that this status report belongs to. We
+   * generate our own UUID here because Actions currently does not expose a
+   * unique job run identifier. This UUID will allow us to more easily match
+   * reports from different steps in the same workflow job.
+   *
+   * If and when Actions does expose a unique job ID, we plan to populate a
+   * separate int field, `job_run_id`, with the Actions-generated identifier,
+   * as it will allow us to more easily join our telemetry data with Actions
+   * telemetry tables.
+   */
+  job_run_uuid: string;
   /** ID of the workflow run containing the action run. */
   workflow_run_id: number;
   /** Attempt number of the run containing the action run. */
@@ -412,6 +424,7 @@ export async function createStatusReportBase(
 ): Promise<StatusReportBase> {
   const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
+  const jobRunUUID = process.env[sharedEnv.JOB_RUN_UUID] || "";
   const workflowRunID = getWorkflowRunID();
   const workflowRunAttempt = getWorkflowRunAttempt();
   const workflowName = process.env["GITHUB_WORKFLOW"] || "";
@@ -440,6 +453,7 @@ export async function createStatusReportBase(
   }
 
   const statusReport: StatusReportBase = {
+    job_run_uuid: jobRunUUID,
     workflow_run_id: workflowRunID,
     workflow_run_attempt: workflowRunAttempt,
     workflow_name: workflowName,

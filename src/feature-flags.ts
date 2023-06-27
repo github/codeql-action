@@ -37,9 +37,9 @@ export interface FeatureEnablement {
 }
 
 export enum Feature {
+  CliAutobuildEnabled = "cli_autobuild_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
-  DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
@@ -50,15 +50,20 @@ export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
-  [Feature.DisableKotlinAnalysisEnabled]: {
-    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
-    minimumVersion: undefined,
+  [Feature.CliAutobuildEnabled]: {
+    envVar: "CODEQL_ACTION_USE_CLI_AUTOBUILD",
+    minimumVersion: "2.12.6",
     defaultValue: false,
   },
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.6",
     defaultValue: true,
+  },
+  [Feature.DisableKotlinAnalysisEnabled]: {
+    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
+    minimumVersion: undefined,
+    defaultValue: false,
   },
   [Feature.ExportCodeScanningConfigEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG",
@@ -70,7 +75,6 @@ export const featureConfig: Record<
     minimumVersion: "2.12.4",
     defaultValue: true,
   },
-
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
@@ -80,16 +84,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
     minimumVersion: "2.11.3",
     defaultValue: true,
-  },
-  [Feature.DisablePythonDependencyInstallationEnabled]: {
-    envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
-    // Although the python extractor only started supporting not extracting installed
-    // dependencies in 2.13.1, the init-action can still benefit from not installing
-    // dependencies no matter what codeql version we are using, so therefore the
-    // minimumVersion is set to 'undefined'. This means that with an old CodeQL version,
-    // packages available with current python3 installation might get extracted.
-    minimumVersion: undefined,
-    defaultValue: false,
   },
 };
 

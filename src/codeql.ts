@@ -25,7 +25,6 @@ import {
   getTrapCachingExtractorConfigArgsForLang,
 } from "./trap-caching";
 import * as util from "./util";
-import { wrapError } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -102,9 +101,9 @@ export interface CodeQL {
     logger: Logger
   ): Promise<void>;
   /**
-   * Runs the autobuilder for the given language.
+   * Runs the autobuild script for the given language.
    */
-  runAutobuild(language: Language): Promise<void>;
+  runAutobuildScript(language: Language): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
@@ -210,6 +209,13 @@ export interface CodeQL {
     automationDetailsId: string | undefined,
     config: Config,
     features: FeatureEnablement
+  ): Promise<void>;
+  /**
+   * Run 'codeql database autobuild'.
+   */
+  databaseAutobuild(
+    dbClusterPath: string,
+    workingDirectory: string | undefined
   ): Promise<void>;
 }
 
@@ -372,7 +378,7 @@ export async function setupCodeQL(
       toolsVersion,
     };
   } catch (e) {
-    logger.error(wrapError(e).message);
+    logger.error(e instanceof Error ? e : new Error(String(e)));
     throw new Error("Unable to download and extract CodeQL CLI");
   }
 }
@@ -422,7 +428,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     getTracerEnv: resolveFunction(partialCodeql, "getTracerEnv"),
     databaseInit: resolveFunction(partialCodeql, "databaseInit"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
-    runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
+    runAutobuildScript: resolveFunction(partialCodeql, "runAutobuildScript"),
     extractScannedLanguage: resolveFunction(
       partialCodeql,
       "extractScannedLanguage"
@@ -451,6 +457,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "databaseExportDiagnostics"
     ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
+    databaseAutobuild: resolveFunction(partialCodeql, "databaseAutobuild"),
   };
   return cachedCodeQL;
 }
@@ -667,7 +674,7 @@ export async function getCodeQLForCmd(
         { stdin: externalRepositoryToken }
       );
     },
-    async runAutobuild(language: Language) {
+    async runAutobuildScript(language: Language) {
       const cmdName =
         process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh";
       // The autobuilder for Swift is located in the experimental/ directory.
@@ -681,17 +688,7 @@ export async function getCodeQLForCmd(
         cmdName
       );
 
-      // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
-      // This is because of an issue with Azure pipelines timing out connections after 4 minutes
-      // and Maven not properly handling closed connections
-      // Otherwise long build processes will timeout when pulling down Java packages
-      // https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
-      const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
-      process.env["JAVA_TOOL_OPTIONS"] = [
-        ...javaToolOptions.split(/\s+/),
-        "-Dhttp.keepAlive=false",
-        "-Dmaven.wagon.http.pool=false",
-      ].join(" ");
+      updateEnvForAutobuild();
 
       // On macOS, System Integrity Protection (SIP) typically interferes with
       // CodeQL build tracing of protected binaries.
@@ -879,9 +876,7 @@ export async function getCodeQLForCmd(
         Feature.ExportDiagnosticsEnabled,
         this
       );
-      // Update this to take into account the CodeQL version when we have a version with the fix.
-      const shouldWorkaroundInvalidNotifications = shouldExportDiagnostics;
-      const codeqlOutputFile = shouldWorkaroundInvalidNotifications
+      const codeqlOutputFile = shouldExportDiagnostics
         ? path.join(config.tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;
       const codeqlArgs = [
@@ -927,7 +922,7 @@ export async function getCodeQLForCmd(
         errorMatchers
       );
 
-      if (shouldWorkaroundInvalidNotifications) {
+      if (shouldExportDiagnostics) {
         util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
       }
 
@@ -1030,18 +1025,17 @@ export async function getCodeQLForCmd(
       tempDir: string,
       logger: Logger
     ): Promise<void> {
-      // Update this to take into account the CodeQL version when we have a version with the fix.
-      const shouldWorkaroundInvalidNotifications = true;
-      const codeqlOutputFile = shouldWorkaroundInvalidNotifications
-        ? path.join(tempDir, "codeql-intermediate-results.sarif")
-        : sarifFile;
+      const intermediateSarifFile = path.join(
+        tempDir,
+        "codeql-intermediate-results.sarif"
+      );
       const args = [
         "database",
         "export-diagnostics",
         `${databasePath}`,
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
-        `--output=${codeqlOutputFile}`,
+        `--output=${intermediateSarifFile}`,
         "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
         "-vvv",
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
@@ -1051,10 +1045,12 @@ export async function getCodeQLForCmd(
       }
       await new toolrunner.ToolRunner(cmd, args).exec();
 
-      if (shouldWorkaroundInvalidNotifications) {
-        // Fix invalid notifications in the SARIF file output by CodeQL.
-        util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
-      }
+      // Fix invalid notifications in the SARIF file output by CodeQL.
+      util.fixInvalidNotificationsInFile(
+        intermediateSarifFile,
+        sarifFile,
+        logger
+      );
     },
     async diagnosticsExport(
       sarifFile: string,
@@ -1073,6 +1069,23 @@ export async function getCodeQLForCmd(
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }
+      await new toolrunner.ToolRunner(cmd, args).exec();
+    },
+    async databaseAutobuild(
+      databasePath: string,
+      workingDirectory: string | undefined
+    ): Promise<void> {
+      const args = [
+        "database",
+        "autobuild",
+        "--db-cluster",
+        databasePath,
+        ...getExtraOptionsFromEnv(["database", "autobuild"]),
+      ];
+      if (workingDirectory !== undefined) {
+        args.push("--working-dir", workingDirectory);
+      }
+      updateEnvForAutobuild();
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
@@ -1318,4 +1331,18 @@ export async function enrichEnvironment(codeql: CodeQL) {
     core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "true");
     core.exportVariable(EnvVar.FEATURE_SANDWICH, "true");
   }
+}
+
+function updateEnvForAutobuild(): void {
+  // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
+  // This is because of an issue with Azure pipelines timing out connections after 4 minutes
+  // and Maven not properly handling closed connections
+  // Otherwise long build processes will timeout when pulling down Java packages
+  // https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
+  const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
+  process.env["JAVA_TOOL_OPTIONS"] = [
+    ...javaToolOptions.split(/\s+/),
+    "-Dhttp.keepAlive=false",
+    "-Dmaven.wagon.http.pool=false",
+  ].join(" ");
 }

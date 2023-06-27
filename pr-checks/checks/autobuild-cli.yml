@@ -1,0 +1,32 @@
+name: "Autobuild via the CLI"
+description: "Tests the autobuild Action with CLI autobuilding enabled"
+versions: ["latest", "nightly-latest"]
+operatingSystems: ["ubuntu", "macos"]
+env:
+  CODEQL_ACTION_USE_CLI_AUTOBUILD: true
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+steps:
+  - uses: ./../action/init
+    with:
+      languages: go
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/autobuild
+  - name: Check that the Go autobuilder was run
+    shell: bash
+    run: |
+      if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
+        echo "Expected the Go autobuilder to be run, but the" \
+          "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+        exit 1
+      fi
+  - uses: ./../action/analyze
+    with:
+      upload-database: false
+  - name: Check that the Go database was created
+    shell: bash
+    run: |
+      cd "$RUNNER_TEMP/codeql_databases"
+      if [[ ! -d go ]]; then
+        echo "Did not find a Go database"
+        exit 1
+      fi

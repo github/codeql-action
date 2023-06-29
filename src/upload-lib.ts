@@ -20,7 +20,7 @@ import * as workflow from "./workflow";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
-export function combineSarifFiles(sarifFiles: string[]): SarifFile {
+function combineSarifFiles(sarifFiles: string[]): SarifFile {
   const combinedSarif: SarifFile = {
     version: null,
     runs: [],
@@ -198,7 +198,7 @@ function getSarifFilePaths(sarifPath: string) {
 }
 
 // Counts the number of results in the given SARIF file
-export function countResultsInSarif(sarif: string): number {
+function countResultsInSarif(sarif: string): number {
   let numResults = 0;
   let parsedSarif;
   try {
@@ -224,7 +224,7 @@ export function countResultsInSarif(sarif: string): number {
 // Validates that the given file path refers to a valid SARIF file.
 // Throws an error if the file is invalid.
 export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
-  const sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8"));
+  const sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
   const schema = require("../src/sarif-schema-2.1.0.json") as jsonschema.Schema;
 
   const result = new jsonschema.Validator().validate(sarif, schema);

@@ -315,6 +315,25 @@ export type ActionStatus =
   | "failure"
   | "user-error";
 
+// Any status report may include an array of EventReports associated with it.
+export interface EventReport {
+  /** An enumerable description of the event. */
+  event: string;
+  /** Time this event started. */
+  started_at: string;
+  /** Time this event ended. */
+  completed_at: string;
+  /** eg: `success`, `failure`, `timeout`, etc. */
+  exit_status?: string;
+  /** If the event is language-specific. */
+  language?: string;
+  /**
+   * A generic JSON blob of data related to this event.
+   * Use Object.assign() to append additional fields to the object.
+   */
+  properties?: object;
+}
+
 export interface StatusReportBase {
   /**
    * UUID representing the job run that this status report belongs to. We

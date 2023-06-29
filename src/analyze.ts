@@ -2,11 +2,12 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import del from "del";
 import * as yaml from "js-yaml";
 
-import { DatabaseCreationTimings } from "./actions-util";
+import { DatabaseCreationTimings, EventReport } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
@@ -14,6 +15,7 @@ import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { endTracingForCluster } from "./tracer-config";
+import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
 
 export class CodeQLAnalysisError extends Error {
@@ -78,6 +80,8 @@ export interface QueriesStatusReport {
   interpret_results_swift_duration_ms?: number;
   /** Name of language that errored during analysis (or undefined if no language failed). */
   analyze_failure_language?: string;
+  /** Reports on discrete events associated with this status report. */
+  event_reports?: EventReport[];
 }
 
 async function setupPythonExtractor(
@@ -242,6 +246,9 @@ export async function runQueries(
     const packsWithVersion = config.packs[language] || [];
 
     try {
+      const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+      let startTimeInterpretResults: number;
+      let endTimeInterpretResults: number;
       if (await util.useCodeScanningConfigInCli(codeql, features)) {
         // If we are using the code scanning config in the CLI,
         // much of the work needed to generate the query suites
@@ -257,16 +264,16 @@ export async function runQueries(
           new Date().getTime() - startTimeBuiltIn;
 
         logger.startGroup(`Interpreting results for ${language}`);
-        const startTimeInterpretResults = new Date().getTime();
-        const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+        startTimeInterpretResults = new Date().getTime();
         const analysisSummary = await runInterpretResults(
           language,
           undefined,
           sarifFile,
           config.debugMode
         );
+        endTimeInterpretResults = new Date().getTime();
         statusReport[`interpret_results_${language}_duration_ms`] =
-          new Date().getTime() - startTimeInterpretResults;
+          endTimeInterpretResults - startTimeInterpretResults;
         logger.endGroup();
         logger.info(analysisSummary);
       } else {
@@ -342,19 +349,43 @@ export async function runQueries(
         }
         logger.endGroup();
         logger.startGroup(`Interpreting results for ${language}`);
-        const startTimeInterpretResults = new Date().getTime();
-        const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+        startTimeInterpretResults = new Date().getTime();
         const analysisSummary = await runInterpretResults(
           language,
           querySuitePaths,
           sarifFile,
           config.debugMode
         );
+        endTimeInterpretResults = new Date().getTime();
         statusReport[`interpret_results_${language}_duration_ms`] =
-          new Date().getTime() - startTimeInterpretResults;
+          endTimeInterpretResults - startTimeInterpretResults;
         logger.endGroup();
         logger.info(analysisSummary);
       }
+      if (await features.getValue(Feature.QaTelemetryEnabled)) {
+        const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile, logger);
+
+        const perQueryAlertCountEventReport: EventReport = {
+          event: "codeql database interpret-results",
+          started_at: startTimeInterpretResults.toString(),
+          completed_at: endTimeInterpretResults.toString(),
+          exit_status: "success",
+          language,
+          properties: perQueryAlertCounts,
+        };
+
+        core.info(
+          `New event report:\n\n${JSON.stringify(
+            perQueryAlertCountEventReport
+          )}`
+        );
+
+        if (statusReport["event_reports"] === undefined) {
+          statusReport["event_reports"] = [];
+        }
+        statusReport["event_reports"].push(perQueryAlertCountEventReport);
+      }
+
       await runPrintLinesOfCode(language);
     } catch (e) {
       logger.info(String(e));
@@ -390,6 +421,38 @@ export async function runQueries(
       features,
       logger
     );
+  }
+
+  /** Get an object with all queries and their counts parsed from a SARIF file path. */
+  function getPerQueryAlertCounts(
+    sarifPath: string,
+    log: Logger
+  ): Record<string, number> {
+    validateSarifFileSchema(sarifPath, log);
+    const sarifObject = JSON.parse(
+      fs.readFileSync(sarifPath, "utf8")
+    ) as util.SarifFile;
+    // We do not need to compute fingerprints because we are not sending data based off of locations.
+
+    // Generate the query: alert count object
+    const perQueryAlertCounts: Record<string, number> = {};
+
+    // All rules (queries), from all results, from all runs
+    for (const sarifRun of sarifObject.runs) {
+      if (sarifRun.results) {
+        for (const result of sarifRun.results) {
+          if (result.ruleId) {
+            if (result.ruleId in perQueryAlertCounts) {
+              perQueryAlertCounts[result.ruleId] =
+                perQueryAlertCounts[result.ruleId] + 1;
+            } else {
+              perQueryAlertCounts[result.ruleId] = 1;
+            }
+          }
+        }
+      }
+    }
+    return perQueryAlertCounts;
   }
 
   async function runPrintLinesOfCode(language: Language): Promise<string> {

@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as semver from "semver";
 
 import { getApiClient } from "./api-client";
@@ -43,6 +44,7 @@ export enum Feature {
   ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
+  QaTelemetryEnabled = "qa_telemetry_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -74,6 +76,11 @@ export const featureConfig: Record<
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
+    defaultValue: false,
+  },
+  [Feature.QaTelemetryEnabled]: {
+    envVar: "CODEQL_ACTION_QA_TELEMETRY",
+    minimumVersion: undefined,
     defaultValue: false,
   },
   [Feature.UploadFailedSarifEnabled]: {

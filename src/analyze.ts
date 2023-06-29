@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
-import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import del from "del";
 import * as yaml from "js-yaml";
@@ -373,12 +372,6 @@ export async function runQueries(
           language,
           properties: perQueryAlertCounts,
         };
-
-        core.info(
-          `New event report:\n\n${JSON.stringify(
-            perQueryAlertCountEventReport
-          )}`
-        );
 
         if (statusReport["event_reports"] === undefined) {
           statusReport["event_reports"] = [];

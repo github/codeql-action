@@ -43,6 +43,7 @@ export enum Feature {
   ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
+  QaTelemetryEnabled = "qa_telemetry_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -74,6 +75,11 @@ export const featureConfig: Record<
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
+    defaultValue: false,
+  },
+  [Feature.QaTelemetryEnabled]: {
+    envVar: "CODEQL_ACTION_QA_TELEMETRY",
+    minimumVersion: undefined,
     defaultValue: false,
   },
   [Feature.UploadFailedSarifEnabled]: {

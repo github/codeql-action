@@ -434,13 +434,9 @@ export async function runQueries(
     for (const sarifRun of sarifObject.runs) {
       if (sarifRun.results) {
         for (const result of sarifRun.results) {
-          if (result.ruleId) {
-            if (result.ruleId in perQueryAlertCounts) {
-              perQueryAlertCounts[result.ruleId] =
-                perQueryAlertCounts[result.ruleId] + 1;
-            } else {
-              perQueryAlertCounts[result.ruleId] = 1;
-            }
+          const query = result.rule?.id || result.ruleId;
+          if (query) {
+            perQueryAlertCounts[query] = (perQueryAlertCounts[query] || 0) + 1;
           }
         }
       }

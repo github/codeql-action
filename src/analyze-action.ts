@@ -28,13 +28,13 @@ import {
   CODEQL_ACTION_DID_AUTOBUILD_GOLANG,
 } from "./shared-environment";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
-import * as upload_lib from "./upload-lib";
+import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
 import { checkForTimeout, wrapError } from "./util";
 
 interface AnalysisStatusReport
-  extends upload_lib.UploadStatusReport,
+  extends uploadLib.UploadStatusReport,
     QueriesStatusReport {}
 
 interface FinishStatusReport
@@ -269,7 +269,7 @@ async function run() {
     core.setOutput("db-locations", dbLocations);
     const uploadInput = actionsUtil.getOptionalInput("upload");
     if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
-      uploadResult = await upload_lib.uploadFromActions(
+      uploadResult = await uploadLib.uploadFromActions(
         outputDir,
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
@@ -296,7 +296,7 @@ async function run() {
       uploadResult !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
     ) {
-      await upload_lib.waitForProcessing(
+      await uploadLib.waitForProcessing(
         parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,
         getActionsLogger()

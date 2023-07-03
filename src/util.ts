@@ -72,6 +72,9 @@ export interface SarifInvocation {
 
 export interface SarifResult {
   ruleId?: string;
+  rule?: {
+    id?: string;
+  };
   message?: {
     text?: string;
   };

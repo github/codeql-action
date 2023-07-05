@@ -80,7 +80,7 @@ async function maybeUploadFailedSarif(
     databasePath === undefined ||
     !(await features.getValue(Feature.ExportDiagnosticsEnabled, codeql))
   ) {
-    await codeql.diagnosticsExport(sarifFile, category, config, features);
+    await codeql.diagnosticsExport(sarifFile, category, config);
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
     await codeql.databaseExportDiagnostics(

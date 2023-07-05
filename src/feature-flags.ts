@@ -4,7 +4,7 @@ import * as path from "path";
 import * as semver from "semver";
 
 import { getApiClient } from "./api-client";
-import { CodeQL } from "./codeql";
+import { CODEQL_VERSION_NEW_ANALYSIS_SUMMARY, CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -42,6 +42,7 @@ export enum Feature {
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
+  NewAnalysisSummaryEnabled = "new_analysis_summary_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
@@ -68,6 +69,11 @@ export const featureConfig: Record<
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",
+    defaultValue: false,
+  },
+  [Feature.NewAnalysisSummaryEnabled]: {
+    envVar: "CODEQL_ACTION_NEW_ANALYSIS_SUMMARY",
+    minimumVersion: CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
     defaultValue: false,
   },
   [Feature.QaTelemetryEnabled]: {

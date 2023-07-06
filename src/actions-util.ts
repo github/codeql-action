@@ -9,7 +9,7 @@ import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
-import * as sharedEnv from "./shared-environment";
+import { EnvVar } from "./environment";
 import {
   doesDirectoryExist,
   getCachedCodeQlVersion,
@@ -443,32 +443,25 @@ export async function createStatusReportBase(
 ): Promise<StatusReportBase> {
   const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
-  const jobRunUUID = process.env[sharedEnv.JOB_RUN_UUID] || "";
+  const jobRunUUID = process.env[EnvVar.JOB_RUN_UUID] || "";
   const workflowRunID = getWorkflowRunID();
   const workflowRunAttempt = getWorkflowRunAttempt();
   const workflowName = process.env["GITHUB_WORKFLOW"] || "";
   const jobName = process.env["GITHUB_JOB"] || "";
   const analysis_key = await getAnalysisKey();
-  let workflowStartedAt = process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT];
+  let workflowStartedAt = process.env[EnvVar.WORKFLOW_STARTED_AT];
   if (workflowStartedAt === undefined) {
     workflowStartedAt = actionStartedAt.toISOString();
-    core.exportVariable(
-      sharedEnv.CODEQL_WORKFLOW_STARTED_AT,
-      workflowStartedAt
-    );
+    core.exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
   }
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
   const codeQlCliVersion = getCachedCodeQlVersion();
   const actionRef = process.env["GITHUB_ACTION_REF"];
-  const testingEnvironment =
-    process.env[sharedEnv.CODEQL_ACTION_TESTING_ENVIRONMENT] || "";
+  const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
   // re-export the testing environment variable so that it is available to subsequent steps,
   // even if it was only set for this step
   if (testingEnvironment !== "") {
-    core.exportVariable(
-      sharedEnv.CODEQL_ACTION_TESTING_ENVIRONMENT,
-      testingEnvironment
-    );
+    core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
   }
 
   const statusReport: StatusReportBase = {

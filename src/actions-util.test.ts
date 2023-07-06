@@ -5,7 +5,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsutil from "./actions-util";
-import * as sharedEnv from "./shared-environment";
+import { EnvVar } from "./environment";
 import { setupActionsVars, setupTests } from "./testing-utils";
 import { initializeEnvironment, withTmpDir } from "./util";
 
@@ -211,7 +211,7 @@ test("computeAutomationID()", async (t) => {
 
 test("initializeEnvironment", (t) => {
   initializeEnvironment("1.2.3");
-  t.deepEqual(process.env.CODEQL_ACTION_VERSION, "1.2.3");
+  t.deepEqual(process.env[EnvVar.VERSION], "1.2.3");
 });
 
 test("isAnalyzingDefaultBranch()", async (t) => {
@@ -303,8 +303,7 @@ test("createStatusReportBase", async (t) => {
     t.assert(statusReport.action_name === "init");
     t.assert(statusReport.action_oid === "unknown");
     t.assert(
-      statusReport.started_at ===
-        process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT]
+      statusReport.started_at === process.env[EnvVar.WORKFLOW_STARTED_AT]
     );
     t.assert(
       statusReport.action_started_at ===

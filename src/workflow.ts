@@ -6,6 +6,7 @@ import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
+import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import { getRequiredEnvParam, isInTestMode } from "./util";
 
@@ -391,8 +392,7 @@ function getInputOrThrow(
 function getAnalyzeActionName() {
   if (
     isInTestMode() ||
-    process.env["CODEQL_ACTION_TESTING_ENVIRONMENT"] ===
-      "codeql-action-pr-checks"
+    process.env[EnvVar.TESTING_ENVIRONMENT] === "codeql-action-pr-checks"
   ) {
     return "./analyze";
   } else {

@@ -4,7 +4,11 @@ import * as path from "path";
 import * as semver from "semver";
 
 import { getApiClient } from "./api-client";
-import { CODEQL_VERSION_NEW_ANALYSIS_SUMMARY, CodeQL } from "./codeql";
+import {
+  CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED,
+  CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
+  CodeQL,
+} from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -16,6 +20,7 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 export type CodeQLDefaultVersionInfo =
   | {
       cliVersion: string;
+      tagName?: string;
       toolsFeatureFlagsValid?: boolean;
       variant: util.GitHubVariant.DOTCOM;
     }
@@ -256,14 +261,24 @@ class GitHubFeatureFlags {
     variant: util.GitHubVariant
   ): Promise<CodeQLDefaultVersionInfo> {
     if (variant === util.GitHubVariant.DOTCOM) {
-      const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
-      return {
-        cliVersion: defaultDotComCliVersion.version,
-        toolsFeatureFlagsValid: this.hasAccessedRemoteFeatureFlags
-          ? defaultDotComCliVersion.toolsFeatureFlagsValid
-          : undefined,
+      const defaultDotcomCliVersion = await this.getDefaultDotcomCliVersion();
+      const cliVersion = defaultDotcomCliVersion.version;
+      const result: CodeQLDefaultVersionInfo = {
+        cliVersion,
         variant,
       };
+      if (
+        semver.gte(cliVersion, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)
+      ) {
+        result.tagName = `codeql-bundle-v${cliVersion}`;
+      }
+
+      if (this.hasAccessedRemoteFeatureFlags) {
+        result.toolsFeatureFlagsValid =
+          defaultDotcomCliVersion.toolsFeatureFlagsValid;
+      }
+
+      return result;
     }
     return {
       cliVersion: defaults.cliVersion,

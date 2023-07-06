@@ -41,6 +41,9 @@ export enum EnvVar {
 
   ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 
+  /** Whether to suppress the warning if the current CLI will soon be unsupported. */
+  SUPPRESS_DEPRECATED_SOON_WARNING = "CODEQL_ACTION_SUPPRESS_DEPRECATED_SOON_WARNING",
+
   /** Used to disable uploading SARIF results or status reports to the GitHub API */
   TEST_MODE = "CODEQL_ACTION_TEST_MODE",
 

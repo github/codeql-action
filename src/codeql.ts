@@ -8,6 +8,7 @@ import * as yaml from "js-yaml";
 import { getOptionalInput } from "./actions-util";
 import * as api from "./api-client";
 import { Config, getGeneratedCodeScanningConfigPath } from "./config-utils";
+import { EnvVar } from "./environment";
 import { errorMatchers } from "./error-matcher";
 import {
   CodeQLDefaultVersionInfo,
@@ -1040,6 +1041,7 @@ export async function getCodeQLForCmd(
     );
   } else if (
     checkVersion &&
+    process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_NEXT_MINIMUM_VERSION))
   ) {
     core.warning(
@@ -1054,6 +1056,8 @@ export async function getCodeQLForCmd(
         "'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue " +
         "using this version of the CodeQL Action."
     );
+    process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] = "true";
+    core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }

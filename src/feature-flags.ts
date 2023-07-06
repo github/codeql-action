@@ -40,7 +40,6 @@ export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
-  ExportCodeScanningConfigEnabled = "export_code_scanning_config_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
@@ -61,17 +60,11 @@ export const featureConfig: Record<
     minimumVersion: "2.11.6",
     defaultValue: true,
   },
-  [Feature.ExportCodeScanningConfigEnabled]: {
-    envVar: "CODEQL_ACTION_EXPORT_CODE_SCANNING_CONFIG",
-    minimumVersion: "2.12.3",
-    defaultValue: true,
-  },
   [Feature.ExportDiagnosticsEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     minimumVersion: "2.12.4",
     defaultValue: true,
   },
-
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: "2.7.5",

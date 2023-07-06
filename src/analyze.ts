@@ -246,8 +246,8 @@ export async function runQueries(
 
     try {
       const sarifFile = path.join(sarifFolder, `${language}.sarif`);
-      let startTimeInterpretResults: number;
-      let endTimeInterpretResults: number;
+      let startTimeInterpretResults: Date;
+      let endTimeInterpretResults: Date;
       if (await util.useCodeScanningConfigInCli(codeql, features)) {
         // If we are using the code scanning config in the CLI,
         // much of the work needed to generate the query suites
@@ -263,16 +263,17 @@ export async function runQueries(
           new Date().getTime() - startTimeBuiltIn;
 
         logger.startGroup(`Interpreting results for ${language}`);
-        startTimeInterpretResults = new Date().getTime();
+        startTimeInterpretResults = new Date();
         const analysisSummary = await runInterpretResults(
           language,
           undefined,
           sarifFile,
           config.debugMode
         );
-        endTimeInterpretResults = new Date().getTime();
+        endTimeInterpretResults = new Date();
         statusReport[`interpret_results_${language}_duration_ms`] =
-          endTimeInterpretResults - startTimeInterpretResults;
+          endTimeInterpretResults.getTime() -
+          startTimeInterpretResults.getTime();
         logger.endGroup();
         logger.info(analysisSummary);
       } else {
@@ -348,16 +349,17 @@ export async function runQueries(
         }
         logger.endGroup();
         logger.startGroup(`Interpreting results for ${language}`);
-        startTimeInterpretResults = new Date().getTime();
+        startTimeInterpretResults = new Date();
         const analysisSummary = await runInterpretResults(
           language,
           querySuitePaths,
           sarifFile,
           config.debugMode
         );
-        endTimeInterpretResults = new Date().getTime();
+        endTimeInterpretResults = new Date();
         statusReport[`interpret_results_${language}_duration_ms`] =
-          endTimeInterpretResults - startTimeInterpretResults;
+          endTimeInterpretResults.getTime() -
+          startTimeInterpretResults.getTime();
         logger.endGroup();
         logger.info(analysisSummary);
       }
@@ -366,8 +368,8 @@ export async function runQueries(
 
         const perQueryAlertCountEventReport: EventReport = {
           event: "codeql database interpret-results",
-          started_at: startTimeInterpretResults.toString(),
-          completed_at: endTimeInterpretResults.toString(),
+          started_at: startTimeInterpretResults.toISOString(),
+          completed_at: endTimeInterpretResults.toISOString(),
           exit_status: "success",
           language,
           properties: perQueryAlertCounts,

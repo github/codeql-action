@@ -16,6 +16,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import {
   initCodeQL,
@@ -27,7 +28,6 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import * as sharedEnv from "./shared-environment";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkForTimeout,
@@ -214,7 +214,7 @@ async function run() {
     logger
   );
 
-  core.exportVariable(sharedEnv.JOB_RUN_UUID, uuidV4());
+  core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
 
   try {
     const workflowErrors = await validateWorkflow(logger);

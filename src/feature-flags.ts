@@ -17,21 +17,11 @@ import * as util from "./util";
 const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
 const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 
-export type CodeQLDefaultVersionInfo =
-  | {
-      cliVersion: string;
-      tagName?: string;
-      toolsFeatureFlagsValid?: boolean;
-      variant: util.GitHubVariant.DOTCOM;
-    }
-  | {
-      cliVersion: string;
-      tagName: string;
-      variant:
-        | util.GitHubVariant.GHAE
-        | util.GitHubVariant.GHES
-        | util.GitHubVariant.GHE_DOTCOM;
-    };
+export interface CodeQLDefaultVersionInfo {
+  cliVersion: string;
+  tagName: string;
+  toolsFeatureFlagsValid?: boolean;
+}
 
 export interface FeatureEnablement {
   /** Gets the default version of the CodeQL tools. */
@@ -261,43 +251,27 @@ class GitHubFeatureFlags {
     variant: util.GitHubVariant
   ): Promise<CodeQLDefaultVersionInfo> {
     if (variant === util.GitHubVariant.DOTCOM) {
-      const defaultDotcomCliVersion = await this.getDefaultDotcomCliVersion();
-      const cliVersion = defaultDotcomCliVersion.version;
-      const result: CodeQLDefaultVersionInfo = {
-        cliVersion,
-        variant,
-      };
-      if (
-        semver.gte(cliVersion, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)
-      ) {
-        result.tagName = `codeql-bundle-v${cliVersion}`;
-      }
-
-      if (this.hasAccessedRemoteFeatureFlags) {
-        result.toolsFeatureFlagsValid =
-          defaultDotcomCliVersion.toolsFeatureFlagsValid;
-      }
-
-      return result;
+      return await this.getDefaultDotcomCliVersion();
     }
     return {
       cliVersion: defaults.cliVersion,
       tagName: defaults.bundleVersion,
-      variant,
     };
   }
 
-  async getDefaultDotcomCliVersion(): Promise<{
-    version: string;
-    toolsFeatureFlagsValid: boolean | undefined;
-  }> {
+  async getDefaultDotcomCliVersion(): Promise<CodeQLDefaultVersionInfo> {
     const response = await this.getAllFeatures();
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
       .map(([f, isEnabled]) =>
         isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined
       )
-      .filter((f) => f !== undefined)
+      .filter(
+        (f) =>
+          f !== undefined &&
+          // Only consider versions that have semantically versioned bundles.
+          semver.gte(f, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)
+      )
       .map((f) => f as string);
 
     if (enabledFeatureFlagCliVersions.length === 0) {
@@ -315,12 +289,14 @@ class GitHubFeatureFlags {
         "Feature flags do not specify a default CLI version. Falling back to the CLI version " +
           `shipped with the Action. This is ${defaults.cliVersion}.`
       );
-      return {
-        version: defaults.cliVersion,
-        toolsFeatureFlagsValid: this.hasAccessedRemoteFeatureFlags
-          ? false
-          : undefined,
+      const result: CodeQLDefaultVersionInfo = {
+        cliVersion: defaults.cliVersion,
+        tagName: defaults.bundleVersion,
       };
+      if (this.hasAccessedRemoteFeatureFlags) {
+        result.toolsFeatureFlagsValid = false;
+      }
+      return result;
     }
 
     const maxCliVersion = enabledFeatureFlagCliVersions.reduce(
@@ -331,7 +307,11 @@ class GitHubFeatureFlags {
     this.logger.debug(
       `Derived default CLI version of ${maxCliVersion} from feature flags.`
     );
-    return { version: maxCliVersion, toolsFeatureFlagsValid: true };
+    return {
+      cliVersion: maxCliVersion,
+      tagName: `codeql-bundle-v${maxCliVersion}`,
+      toolsFeatureFlagsValid: true,
+    };
   }
 
   async getValue(feature: Feature): Promise<boolean | undefined> {

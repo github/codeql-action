@@ -1056,7 +1056,6 @@ export async function getCodeQLForCmd(
         "'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue " +
         "using this version of the CodeQL Action."
     );
-    process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] = "true";
     core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;

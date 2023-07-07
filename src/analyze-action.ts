@@ -210,9 +210,6 @@ async function run() {
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger
     );
-    const memory = util.getMemoryFlag(
-      actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"]
-    );
 
     const repositoryNwo = parseRepositoryNwo(
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
@@ -225,6 +222,11 @@ async function run() {
       repositoryNwo,
       actionsUtil.getTemporaryDirectory(),
       logger
+    );
+
+    const memory = await util.getMemoryFlag(
+      actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
+      features
     );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);

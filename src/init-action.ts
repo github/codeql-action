@@ -38,7 +38,6 @@ import {
   getMlPoweredJsQueriesStatus,
   getRequiredEnvParam,
   getThreadsFlagValue,
-  GitHubVariant,
   initializeEnvironment,
   isHostedRunner,
   wrapError,
@@ -235,9 +234,7 @@ async function run() {
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type
     );
-    if (codeQLDefaultVersionInfo.variant === GitHubVariant.DOTCOM) {
-      toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
-    }
+    toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,

@@ -16,14 +16,10 @@ import {
   parsePacksSpecification,
   prettyPrintPack,
 } from "./config-utils";
+import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import {
-  CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX,
-  CODEQL_ACTION_TEST_MODE,
-  EnvVar,
-} from "./shared-environment";
 
 /**
  * Specifies bundle versions that are known to be broken
@@ -630,7 +626,7 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
  * In test mode, we don't upload SARIF results or status reports to the GitHub API.
  */
 export function isInTestMode(): boolean {
-  return process.env[CODEQL_ACTION_TEST_MODE] === "true";
+  return process.env[EnvVar.TEST_MODE] === "true";
 }
 
 /**
@@ -894,10 +890,10 @@ export function fixInvalidNotificationsInFile(
   outputPath: string,
   logger: Logger
 ): void {
-  if (process.env[CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
+  if (process.env[EnvVar.DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
     logger.info(
       "SARIF notification object duplicate location fix disabled by the " +
-        `${CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
+        `${EnvVar.DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
     );
     fs.renameSync(inputPath, outputPath);
   } else {

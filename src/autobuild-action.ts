@@ -12,9 +12,9 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
-import { CODEQL_ACTION_DID_AUTOBUILD_GOLANG } from "./shared-environment";
 import {
   checkGitHubVersionInRange,
   initializeEnvironment,
@@ -89,7 +89,7 @@ async function run() {
         currentLanguage = language;
         await runAutobuild(language, config, logger);
         if (language === Language.go) {
-          core.exportVariable(CODEQL_ACTION_DID_AUTOBUILD_GOLANG, "true");
+          core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
         }
       }
     }

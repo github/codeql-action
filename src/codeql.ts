@@ -323,6 +323,11 @@ export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
 
 /**
+ * Versions 2.13.4+ of the CodeQL CLI have an associated CodeQL Bundle release that is semantically versioned.
+ */
+export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
+
+/**
  * Versions 2.14.0+ of the CodeQL CLI support new analysis summaries.
  */
 export const CODEQL_VERSION_NEW_ANALYSIS_SUMMARY = "2.14.0";

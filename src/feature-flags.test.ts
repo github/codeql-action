@@ -395,6 +395,25 @@ test("selects CLI v2.12.1 on Dotcom when feature flags enable v2.12.0 and v2.12.
   });
 });
 
+test("includes tag name when feature flags enable version greater than v2.13.4", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const features = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    expectedFeatureEnablement["default_codeql_version_2_20_0_enabled"] = true;
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    const defaultCliVersion = await features.getDefaultCliVersion(
+      GitHubVariant.DOTCOM
+    );
+    t.deepEqual(defaultCliVersion, {
+      cliVersion: "2.20.0",
+      tagName: "codeql-bundle-v2.20.0",
+      toolsFeatureFlagsValid: true,
+      variant: GitHubVariant.DOTCOM,
+    });
+  });
+});
+
 test(`selects CLI from defaults.json on Dotcom when no default version feature flags are enabled`, async (t) => {
   await withTmpDir(async (tmpDir) => {
     const features = setUpFeatureFlagTests(tmpDir);
@@ -406,6 +425,7 @@ test(`selects CLI from defaults.json on Dotcom when no default version feature f
     );
     t.deepEqual(defaultCliVersion, {
       cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
       toolsFeatureFlagsValid: false,
       variant: GitHubVariant.DOTCOM,
     });

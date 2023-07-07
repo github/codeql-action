@@ -429,6 +429,25 @@ test(`selects CLI from defaults.json on Dotcom when no default version feature f
   });
 });
 
+test(`selects CLI from defaults.json on Dotcom when default version feature flags are unsupported`, async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const features = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    // Doesn't have a semantically versioned bundle
+    expectedFeatureEnablement["default_codeql_version_2_13_3_enabled"] = true;
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    const defaultCliVersion = await features.getDefaultCliVersion(
+      GitHubVariant.DOTCOM
+    );
+    t.deepEqual(defaultCliVersion, {
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
+      toolsFeatureFlagsValid: false,
+    });
+  });
+});
+
 test("ignores invalid version numbers in default version feature flags", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages = [];

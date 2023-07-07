@@ -422,24 +422,17 @@ export async function getCodeQLSource(
 
   // Fall back to matching `0.0.0-<bundleVersion>`.
   if (!codeqlFolder && tagName) {
-    if (tagName) {
-      const fallbackVersion = await tryGetFallbackToolcacheVersion(
-        cliVersion,
-        tagName,
-        logger
-      );
-      if (fallbackVersion) {
-        codeqlFolder = toolcache.find("CodeQL", fallbackVersion);
-      } else {
-        logger.debug(
-          "Could not determine a fallback toolcache version number for CodeQL tools version " +
-            `${humanReadableVersion}.`
-        );
-      }
+    const fallbackVersion = await tryGetFallbackToolcacheVersion(
+      cliVersion,
+      tagName,
+      logger
+    );
+    if (fallbackVersion) {
+      codeqlFolder = toolcache.find("CodeQL", fallbackVersion);
     } else {
       logger.debug(
         "Could not determine a fallback toolcache version number for CodeQL tools version " +
-          `${humanReadableVersion} since the tag name is unknown.`
+          `${humanReadableVersion}.`
       );
     }
   }
@@ -506,9 +499,6 @@ export async function tryGetFallbackToolcacheVersion(
   tagName: string,
   logger: Logger
 ): Promise<string | undefined> {
-  if (!tagName) {
-    return undefined;
-  }
   const bundleVersion = tryGetBundleVersionFromTagName(tagName, logger);
   if (!bundleVersion) {
     return undefined;

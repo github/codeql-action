@@ -4,7 +4,6 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import * as api from "./api-client";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import {
@@ -75,64 +74,6 @@ test("getCodeQLActionRepository", (t) => {
   process.env["GITHUB_ACTION_REPOSITORY"] = "xxx/yyy";
   const repoEnv = setupCodeql.getCodeQLActionRepository(logger);
   t.deepEqual(repoEnv, "xxx/yyy");
-});
-
-test("findCodeQLBundleTagDotcomOnly() matches GitHub Release with marker file", async (t) => {
-  // Look for GitHub Releases in github/codeql-action
-  sinon.stub(actionsUtil, "isRunningLocalAction").resolves(true);
-  sinon.stub(api, "getApiClient").value(() => ({
-    repos: {
-      listReleases: sinon.stub().resolves(undefined),
-    },
-    paginate: sinon.stub().resolves([
-      {
-        assets: [
-          {
-            name: "cli-version-2.12.0.txt",
-          },
-        ],
-        tag_name: "codeql-bundle-20230106",
-      },
-    ]),
-  }));
-  t.is(
-    await setupCodeql.findCodeQLBundleTagDotcomOnly(
-      "2.12.0",
-      getRunnerLogger(true)
-    ),
-    "codeql-bundle-20230106"
-  );
-});
-
-test("findCodeQLBundleTagDotcomOnly() errors if no GitHub Release matches marker file", async (t) => {
-  // Look for GitHub Releases in github/codeql-action
-  sinon.stub(actionsUtil, "isRunningLocalAction").resolves(true);
-  sinon.stub(api, "getApiClient").value(() => ({
-    repos: {
-      listReleases: sinon.stub().resolves(undefined),
-    },
-    paginate: sinon.stub().resolves([
-      {
-        assets: [
-          {
-            name: "cli-version-2.12.0.txt",
-          },
-        ],
-        tag_name: "codeql-bundle-20230106",
-      },
-    ]),
-  }));
-  await t.throwsAsync(
-    async () =>
-      await setupCodeql.findCodeQLBundleTagDotcomOnly(
-        "2.12.1",
-        getRunnerLogger(true)
-      ),
-    {
-      message:
-        "Failed to find a release of the CodeQL tools that contains CodeQL CLI 2.12.1.",
-    }
-  );
 });
 
 test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) => {

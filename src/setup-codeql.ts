@@ -50,40 +50,6 @@ export function getCodeQLActionRepository(logger: Logger): string {
   return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
 }
 
-/**
- * Gets the tag name and, if known, the CodeQL CLI version for each CodeQL bundle release.
- *
- * CodeQL bundles are currently tagged in the form `codeql-bundle-yyyymmdd`, so it is not possible
- * to directly find the CodeQL bundle release for a particular CLI version or find the CodeQL CLI
- * version for a particular CodeQL bundle.
- *
- * To get around this, we add a `cli-version-x.y.z.txt` asset to each bundle release that specifies
- * the CLI version for that bundle release. We can then use the GitHub Releases for the CodeQL
- * Action as a source of truth.
- *
- * In the medium term, we should migrate to a tagging scheme that allows us to directly find the
- * CodeQL bundle release for a particular CLI version, for example `codeql-bundle-vx.y.z`.
- */
-async function getCodeQLBundleReleasesDotcomOnly(
-  logger: Logger
-): Promise<Array<{ cliVersion?: string; tagName: string }>> {
-  logger.debug(
-    `Fetching CodeQL CLI version and CodeQL bundle tag name information for releases of the CodeQL tools.`
-  );
-  const apiClient = api.getApiClient();
-  const codeQLActionRepository = getCodeQLActionRepository(logger);
-  const releases = await apiClient.paginate(apiClient.repos.listReleases, {
-    owner: codeQLActionRepository.split("/")[0],
-    repo: codeQLActionRepository.split("/")[1],
-  });
-  logger.debug(`Found ${releases.length} releases.`);
-
-  return releases.map((release) => ({
-    cliVersion: tryGetCodeQLCliVersionForRelease(release, logger),
-    tagName: release.tag_name,
-  }));
-}
-
 function tryGetCodeQLCliVersionForRelease(
   release,
   logger: Logger
@@ -104,26 +70,6 @@ function tryGetCodeQLCliVersionForRelease(
     return undefined;
   }
   return cliVersionsFromMarkerFiles[0];
-}
-
-export async function findCodeQLBundleTagDotcomOnly(
-  cliVersion: string,
-  logger: Logger
-): Promise<string> {
-  const filtered = (await getCodeQLBundleReleasesDotcomOnly(logger)).filter(
-    (release) => release.cliVersion === cliVersion
-  );
-  if (filtered.length === 0) {
-    throw new Error(
-      `Failed to find a release of the CodeQL tools that contains CodeQL CLI ${cliVersion}.`
-    );
-  } else if (filtered.length > 1) {
-    throw new Error(
-      `Found multiple releases of the CodeQL tools that contain CodeQL CLI ${cliVersion}. ` +
-        `Only one such release should exist.`
-    );
-  }
-  return filtered[0].tagName;
 }
 
 export async function tryFindCliVersionDotcomOnly(
@@ -430,7 +376,7 @@ export async function getCodeQLSource(
       `URL: ${url ?? "unspecified"}.`
   );
 
-  let codeqlFolder;
+  let codeqlFolder: string | undefined;
 
   if (cliVersion) {
     // If we find the specified CLI version, we always use that.
@@ -475,12 +421,11 @@ export async function getCodeQLSource(
   }
 
   // Fall back to matching `0.0.0-<bundleVersion>`.
-  if (!codeqlFolder && (cliVersion || tagName)) {
-    if (cliVersion || tagName) {
+  if (!codeqlFolder && tagName) {
+    if (tagName) {
       const fallbackVersion = await tryGetFallbackToolcacheVersion(
         cliVersion,
         tagName,
-        variant,
         logger
       );
       if (fallbackVersion) {
@@ -493,8 +438,8 @@ export async function getCodeQLSource(
       }
     } else {
       logger.debug(
-        "Both the CLI version and the bundle version are unknown, so we will not be able to find " +
-          "the requested version of the CodeQL tools in the toolcache."
+        "Could not determine a fallback toolcache version number for CodeQL tools version " +
+          `${humanReadableVersion} since the tag name is unknown.`
       );
     }
   }
@@ -535,16 +480,8 @@ export async function getCodeQLSource(
   }
 
   if (!url) {
-    if (!tagName && cliVersion && variant === util.GitHubVariant.DOTCOM) {
-      tagName = await findCodeQLBundleTagDotcomOnly(cliVersion, logger);
-    } else if (!tagName) {
-      throw new Error(
-        `Could not obtain the requested version (${humanReadableVersion}) of the CodeQL tools ` +
-          "since we could not compute the tag name."
-      );
-    }
     url = await getCodeQLBundleDownloadURL(
-      tagName,
+      tagName!,
       apiDetails,
       variant,
       logger
@@ -566,16 +503,9 @@ export async function getCodeQLSource(
  */
 export async function tryGetFallbackToolcacheVersion(
   cliVersion: string | undefined,
-  tagName: string | undefined,
-  variant: util.GitHubVariant,
+  tagName: string,
   logger: Logger
 ): Promise<string | undefined> {
-  //
-  // If we are on Dotcom, we will make an HTTP request to the Releases API here
-  // to find the tag name for the requested version.
-  if (cliVersion && !tagName && variant === util.GitHubVariant.DOTCOM) {
-    tagName = await findCodeQLBundleTagDotcomOnly(cliVersion, logger);
-  }
   if (!tagName) {
     return undefined;
   }

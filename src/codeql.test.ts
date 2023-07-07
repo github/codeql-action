@@ -11,7 +11,6 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import * as api from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
@@ -246,21 +245,11 @@ for (const {
   });
 }
 
-for (const { githubReleases, toolcacheVersion } of [
+for (const toolcacheVersion of [
   // Test that we use the tools from the toolcache when `SAMPLE_DEFAULT_CLI_VERSION` is requested
   // and `SAMPLE_DEFAULT_CLI_VERSION-` is in the toolcache.
-  {
-    toolcacheVersion: SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
-  },
-  {
-    githubReleases: {
-      "codeql-bundle-20230101": `cli-version-${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}.txt`,
-    },
-    toolcacheVersion: "0.0.0-20230101",
-  },
-  {
-    toolcacheVersion: `${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}-20230101`,
-  },
+  SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
+  `${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}-20230101`,
 ]) {
   test(
     `uses tools from toolcache when ${SAMPLE_DEFAULT_CLI_VERSION.cliVersion} is requested and ` +
@@ -274,26 +263,6 @@ for (const { githubReleases, toolcacheVersion } of [
           .withArgs("CodeQL", toolcacheVersion)
           .returns("path/to/cached/codeql");
         sinon.stub(toolcache, "findAllVersions").returns([toolcacheVersion]);
-
-        if (githubReleases) {
-          sinon.stub(api, "getApiClient").value(() => ({
-            repos: {
-              listReleases: sinon.stub().resolves(undefined),
-            },
-            paginate: sinon.stub().resolves(
-              Object.entries(githubReleases).map(
-                ([releaseTagName, cliVersionMarkerFile]) => ({
-                  assets: [
-                    {
-                      name: cliVersionMarkerFile,
-                    },
-                  ],
-                  tag_name: releaseTagName,
-                })
-              )
-            ),
-          }));
-        }
 
         const result = await codeql.setupCodeQL(
           undefined,

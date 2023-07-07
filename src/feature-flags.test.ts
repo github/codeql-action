@@ -366,7 +366,6 @@ for (const variant of [GitHubVariant.GHAE, GitHubVariant.GHES]) {
       t.deepEqual(defaultCliVersion, {
         cliVersion: defaults.cliVersion,
         tagName: defaults.bundleVersion,
-        variant,
       });
     });
   });
@@ -391,7 +390,6 @@ test("selects CLI v2.20.1 on Dotcom when feature flags enable v2.20.0 and v2.20.
       cliVersion: "2.20.1",
       tagName: "codeql-bundle-v2.20.1",
       toolsFeatureFlagsValid: true,
-      variant: GitHubVariant.DOTCOM,
     });
   });
 });
@@ -410,7 +408,6 @@ test("includes tag name when feature flags enable version greater than v2.13.4",
       cliVersion: "2.20.0",
       tagName: "codeql-bundle-v2.20.0",
       toolsFeatureFlagsValid: true,
-      variant: GitHubVariant.DOTCOM,
     });
   });
 });
@@ -428,7 +425,6 @@ test(`selects CLI from defaults.json on Dotcom when no default version feature f
       cliVersion: defaults.cliVersion,
       tagName: defaults.bundleVersion,
       toolsFeatureFlagsValid: false,
-      variant: GitHubVariant.DOTCOM,
     });
   });
 });
@@ -454,7 +450,6 @@ test("ignores invalid version numbers in default version feature flags", async (
       cliVersion: "2.20.1",
       tagName: "codeql-bundle-v2.20.1",
       toolsFeatureFlagsValid: true,
-      variant: GitHubVariant.DOTCOM,
     });
 
     t.assert(

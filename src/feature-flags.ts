@@ -21,7 +21,6 @@ export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
   tagName: string;
   toolsFeatureFlagsValid?: boolean;
-  variant: util.GitHubVariant;
 }
 
 export interface FeatureEnablement {
@@ -257,7 +256,6 @@ class GitHubFeatureFlags {
     return {
       cliVersion: defaults.cliVersion,
       tagName: defaults.bundleVersion,
-      variant,
     };
   }
 
@@ -294,7 +292,6 @@ class GitHubFeatureFlags {
       const result: CodeQLDefaultVersionInfo = {
         cliVersion: defaults.cliVersion,
         tagName: defaults.bundleVersion,
-        variant: util.GitHubVariant.DOTCOM,
       };
       if (this.hasAccessedRemoteFeatureFlags) {
         result.toolsFeatureFlagsValid = false;
@@ -314,7 +311,6 @@ class GitHubFeatureFlags {
       cliVersion: maxCliVersion,
       tagName: `codeql-bundle-v${maxCliVersion}`,
       toolsFeatureFlagsValid: true,
-      variant: util.GitHubVariant.DOTCOM,
     };
   }
 

@@ -89,7 +89,7 @@ async function installIntoToolcache({
     tmpDir,
     util.GitHubVariant.GHES,
     cliVersion !== undefined
-      ? { cliVersion, tagName, variant: util.GitHubVariant.GHES }
+      ? { cliVersion, tagName }
       : SAMPLE_DEFAULT_CLI_VERSION,
     getRunnerLogger(true),
     false
@@ -300,7 +300,6 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
-          variant,
         },
         getRunnerLogger(true),
         false
@@ -335,7 +334,6 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
-          variant,
         },
         getRunnerLogger(true),
         false
@@ -443,7 +441,6 @@ for (const isBundleVersionInUrl of [true, false]) {
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
-          variant: util.GitHubVariant.GHAE,
         },
         getRunnerLogger(true),
         false

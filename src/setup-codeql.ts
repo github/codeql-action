@@ -411,7 +411,7 @@ export async function getCodeQLSource(
   } else {
     // Otherwise, use the default CLI version passed in.
     cliVersion = defaultCliVersion.cliVersion;
-    tagName = defaultCliVersion["tagName"];
+    tagName = defaultCliVersion.tagName;
   }
 
   const bundleVersion =

@@ -24,7 +24,8 @@ export const SAMPLE_DOTCOM_API_DETAILS = {
 };
 
 export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
-  cliVersion: "2.0.0",
+  cliVersion: "2.20.0",
+  tagName: "codeql-bundle-v2.20.0",
   variant: GitHubVariant.DOTCOM,
 };
 

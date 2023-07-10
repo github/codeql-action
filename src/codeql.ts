@@ -1,12 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
 import { getOptionalInput } from "./actions-util";
 import * as api from "./api-client";
 import { Config, getGeneratedCodeScanningConfigPath } from "./config-utils";
+import { EnvVar } from "./environment";
 import { errorMatchers } from "./error-matcher";
 import {
   CodeQLDefaultVersionInfo,
@@ -118,6 +120,13 @@ export interface CodeQL {
     queries: string[],
     extraSearchPath: string | undefined
   ): Promise<ResolveQueriesOutput>;
+  /**
+   * Run 'codeql resolve build-environment'
+   */
+  resolveBuildEnvironment(
+    workingDir: string | undefined,
+    language: Language
+  ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
    * Run 'codeql pack download'.
@@ -193,8 +202,7 @@ export interface CodeQL {
   diagnosticsExport(
     sarifFile: string,
     automationDetailsId: string | undefined,
-    config: Config,
-    features: FeatureEnablement
+    config: Config
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
@@ -229,6 +237,14 @@ export interface ResolveQueriesOutput {
   };
 }
 
+export interface ResolveBuildEnvironmentOutput {
+  configuration?: {
+    [language: string]: {
+      [key: string]: unknown;
+    };
+  };
+}
+
 export interface PackDownloadOutput {
   packs: PackDownloadItem[];
 }
@@ -257,6 +273,11 @@ let cachedCodeQL: CodeQL | undefined = undefined;
 const CODEQL_MINIMUM_VERSION = "2.9.4";
 
 /**
+ * This version will shortly become the oldest version of CodeQL that the Action will run with.
+ */
+const CODEQL_NEXT_MINIMUM_VERSION = "2.9.4";
+
+/**
  * Versions of CodeQL that version-flag certain functionality in the Action.
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
@@ -273,14 +294,36 @@ const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
 export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
 
 /**
- * Versions 2.11.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for each language.
+ * Versions 2.11.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for
+ * each language.
  */
 export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
+
+/**
+ * Versions 2.12.3+ of the CodeQL CLI support exporting configuration information from a code
+ * scanning config file to SARIF.
+ */
+export const CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG = "2.12.3";
 
 /**
  * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
+
+/**
+ * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
+ */
+export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
+
+/**
+ * Versions 2.13.4+ of the CodeQL CLI have an associated CodeQL Bundle release that is semantically versioned.
+ */
+export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
+
+/**
+ * Versions 2.14.0+ of the CodeQL CLI support new analysis summaries.
+ */
+export const CODEQL_VERSION_NEW_ANALYSIS_SUMMARY = "2.14.0";
 
 /**
  * Set up CodeQL CLI access.
@@ -395,6 +438,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "betterResolveLanguages"
     ),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
+    resolveBuildEnvironment: resolveFunction(
+      partialCodeql,
+      "resolveBuildEnvironment"
+    ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
@@ -674,6 +721,29 @@ export async function getCodeQLForCmd(
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
       }
     },
+    async resolveBuildEnvironment(
+      workingDir: string | undefined,
+      language: Language
+    ) {
+      const codeqlArgs = [
+        "resolve",
+        "build-environment",
+        `--language=${language}`,
+        ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
+      ];
+      if (workingDir !== undefined) {
+        codeqlArgs.push("--working-dir", workingDir);
+      }
+      const output = await runTool(cmd, codeqlArgs);
+
+      try {
+        return JSON.parse(output);
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve build-environment: ${e} in\n${output}`
+        );
+      }
+    },
     async databaseRunQueries(
       databasePath: string,
       extraSearchPath: string | undefined,
@@ -737,7 +807,7 @@ export async function getCodeQLForCmd(
         "--print-metrics-summary",
         "--sarif-add-query-help",
         "--sarif-group-rules-by-pack",
-        ...(await getCodeScanningConfigExportArguments(config, this, features)),
+        ...(await getCodeScanningConfigExportArguments(config, this)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (automationDetailsId !== undefined) {
@@ -755,6 +825,16 @@ export async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-include-diagnostics");
       } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
         codeqlArgs.push("--no-sarif-include-diagnostics");
+      }
+      if (await features.getValue(Feature.NewAnalysisSummaryEnabled, codeql)) {
+        codeqlArgs.push("--new-analysis-summary");
+      } else if (
+        await util.codeQlVersionAbove(
+          codeql,
+          CODEQL_VERSION_NEW_ANALYSIS_SUMMARY
+        )
+      ) {
+        codeqlArgs.push("--no-new-analysis-summary");
       }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {
@@ -899,15 +979,14 @@ export async function getCodeQLForCmd(
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
-      config: Config,
-      features: FeatureEnablement
+      config: Config
     ): Promise<void> {
       const args = [
         "diagnostics",
         "export",
         "--format=sarif-latest",
         `--output=${sarifFile}`,
-        ...(await getCodeScanningConfigExportArguments(config, this, features)),
+        ...(await getCodeScanningConfigExportArguments(config, this)),
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
       if (automationDetailsId !== undefined) {
@@ -958,6 +1037,24 @@ export async function getCodeQLForCmd(
     throw new Error(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${await codeql.getVersion()}`
     );
+  } else if (
+    checkVersion &&
+    process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
+    !(await util.codeQlVersionAbove(codeql, CODEQL_NEXT_MINIMUM_VERSION))
+  ) {
+    core.warning(
+      `CodeQL CLI version ${await codeql.getVersion()} was deprecated on 2023-06-20 alongside ` +
+        "GitHub Enterprise Server 3.5 and will not be supported by the next release of the " +
+        `CodeQL Action. Please update to CodeQL CLI version ${CODEQL_NEXT_MINIMUM_VERSION} or ` +
+        "later. For instance, if you have specified a custom version of the CLI using the " +
+        "'tools' input to the 'init' Action, you can remove this input to use the default " +
+        "version.\n\n" +
+        "Alternatively, if you want to continue using CodeQL CLI version " +
+        `${await codeql.getVersion()}, you can replace 'github/codeql-action/*@v2' by ` +
+        "'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue " +
+        "using this version of the CodeQL Action."
+    );
+    core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }
@@ -1160,13 +1257,15 @@ function cloneObject<T>(obj: T): T {
  */
 async function getCodeScanningConfigExportArguments(
   config: Config,
-  codeql: CodeQL,
-  features: FeatureEnablement
+  codeql: CodeQL
 ): Promise<string[]> {
   const codeScanningConfigPath = getGeneratedCodeScanningConfigPath(config);
   if (
     fs.existsSync(codeScanningConfigPath) &&
-    (await features.getValue(Feature.ExportCodeScanningConfigEnabled, codeql))
+    (await util.codeQlVersionAbove(
+      codeql,
+      CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG
+    ))
   ) {
     return ["--sarif-codescanning-config", codeScanningConfigPath];
   }

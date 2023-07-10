@@ -366,31 +366,48 @@ for (const variant of [GitHubVariant.GHAE, GitHubVariant.GHES]) {
       t.deepEqual(defaultCliVersion, {
         cliVersion: defaults.cliVersion,
         tagName: defaults.bundleVersion,
-        variant,
       });
     });
   });
 }
 
-test("selects CLI v2.12.1 on Dotcom when feature flags enable v2.12.0 and v2.12.1", async (t) => {
+test("selects CLI v2.20.1 on Dotcom when feature flags enable v2.20.0 and v2.20.1", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const features = setUpFeatureFlagTests(tmpDir);
     const expectedFeatureEnablement = initializeFeatures(true);
-    expectedFeatureEnablement["default_codeql_version_2_12_0_enabled"] = true;
-    expectedFeatureEnablement["default_codeql_version_2_12_1_enabled"] = true;
-    expectedFeatureEnablement["default_codeql_version_2_12_2_enabled"] = false;
-    expectedFeatureEnablement["default_codeql_version_2_12_3_enabled"] = false;
-    expectedFeatureEnablement["default_codeql_version_2_12_4_enabled"] = false;
-    expectedFeatureEnablement["default_codeql_version_2_12_5_enabled"] = false;
+    expectedFeatureEnablement["default_codeql_version_2_20_0_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_20_1_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_20_2_enabled"] = false;
+    expectedFeatureEnablement["default_codeql_version_2_20_3_enabled"] = false;
+    expectedFeatureEnablement["default_codeql_version_2_20_4_enabled"] = false;
+    expectedFeatureEnablement["default_codeql_version_2_20_5_enabled"] = false;
     mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
     const defaultCliVersion = await features.getDefaultCliVersion(
       GitHubVariant.DOTCOM
     );
     t.deepEqual(defaultCliVersion, {
-      cliVersion: "2.12.1",
+      cliVersion: "2.20.1",
+      tagName: "codeql-bundle-v2.20.1",
       toolsFeatureFlagsValid: true,
-      variant: GitHubVariant.DOTCOM,
+    });
+  });
+});
+
+test("includes tag name when feature flags enable version greater than v2.13.4", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const features = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    expectedFeatureEnablement["default_codeql_version_2_20_0_enabled"] = true;
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    const defaultCliVersion = await features.getDefaultCliVersion(
+      GitHubVariant.DOTCOM
+    );
+    t.deepEqual(defaultCliVersion, {
+      cliVersion: "2.20.0",
+      tagName: "codeql-bundle-v2.20.0",
+      toolsFeatureFlagsValid: true,
     });
   });
 });
@@ -406,8 +423,27 @@ test(`selects CLI from defaults.json on Dotcom when no default version feature f
     );
     t.deepEqual(defaultCliVersion, {
       cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
       toolsFeatureFlagsValid: false,
-      variant: GitHubVariant.DOTCOM,
+    });
+  });
+});
+
+test(`selects CLI from defaults.json on Dotcom when default version feature flags are unsupported`, async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const features = setUpFeatureFlagTests(tmpDir);
+    const expectedFeatureEnablement = initializeFeatures(true);
+    // Doesn't have a semantically versioned bundle
+    expectedFeatureEnablement["default_codeql_version_2_13_3_enabled"] = true;
+    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+    const defaultCliVersion = await features.getDefaultCliVersion(
+      GitHubVariant.DOTCOM
+    );
+    t.deepEqual(defaultCliVersion, {
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
+      toolsFeatureFlagsValid: false,
     });
   });
 });
@@ -420,9 +456,9 @@ test("ignores invalid version numbers in default version feature flags", async (
       getRecordingLogger(loggedMessages)
     );
     const expectedFeatureEnablement = initializeFeatures(true);
-    expectedFeatureEnablement["default_codeql_version_2_12_0_enabled"] = true;
-    expectedFeatureEnablement["default_codeql_version_2_12_1_enabled"] = true;
-    expectedFeatureEnablement["default_codeql_version_2_12_invalid_enabled"] =
+    expectedFeatureEnablement["default_codeql_version_2_20_0_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_20_1_enabled"] = true;
+    expectedFeatureEnablement["default_codeql_version_2_20_invalid_enabled"] =
       true;
     mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
@@ -430,9 +466,9 @@ test("ignores invalid version numbers in default version feature flags", async (
       GitHubVariant.DOTCOM
     );
     t.deepEqual(defaultCliVersion, {
-      cliVersion: "2.12.1",
+      cliVersion: "2.20.1",
+      tagName: "codeql-bundle-v2.20.1",
       toolsFeatureFlagsValid: true,
-      variant: GitHubVariant.DOTCOM,
     });
 
     t.assert(
@@ -440,7 +476,7 @@ test("ignores invalid version numbers in default version feature flags", async (
         (v: LoggedMessage) =>
           v.type === "warning" &&
           v.message ===
-            "Ignoring feature flag default_codeql_version_2_12_invalid_enabled as it does not specify a valid CodeQL version."
+            "Ignoring feature flag default_codeql_version_2_20_invalid_enabled as it does not specify a valid CodeQL version."
       ) !== undefined
     );
   });

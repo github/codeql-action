@@ -1,0 +1,17 @@
+name: "Resolve environment"
+description: "Tests that the resolve-environment action works for Go"
+versions: ["stable-v2.13.4"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: go
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - uses: ./../action/resolve-environment
+    id: resolve-environment
+    with:
+      language: go
+
+  - name: "Fail if no Go configuration was returned"
+    if: (!fromJSON(steps.resolve-environment.outputs.environment).configuration.go)
+    run: exit 1

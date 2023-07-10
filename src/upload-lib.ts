@@ -10,17 +10,17 @@ import * as jsonschema from "jsonschema";
 
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
+import { EnvVar } from "./environment";
 import * as fingerprints from "./fingerprints";
 import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
-import { CODEQL_WORKFLOW_STARTED_AT } from "./shared-environment";
 import * as util from "./util";
 import { SarifFile, SarifResult, SarifRun, wrapError } from "./util";
 import * as workflow from "./workflow";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
-export function combineSarifFiles(sarifFiles: string[]): SarifFile {
+function combineSarifFiles(sarifFiles: string[]): SarifFile {
   const combinedSarif: SarifFile = {
     version: null,
     runs: [],
@@ -198,7 +198,7 @@ function getSarifFilePaths(sarifPath: string) {
 }
 
 // Counts the number of results in the given SARIF file
-export function countResultsInSarif(sarif: string): number {
+function countResultsInSarif(sarif: string): number {
   let numResults = 0;
   let parsedSarif;
   try {
@@ -224,7 +224,7 @@ export function countResultsInSarif(sarif: string): number {
 // Validates that the given file path refers to a valid SARIF file.
 // Throws an error if the file is invalid.
 export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
-  const sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8"));
+  const sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
   const schema = require("../src/sarif-schema-2.1.0.json") as jsonschema.Schema;
 
   const result = new jsonschema.Validator().validate(sarif, schema);
@@ -287,7 +287,7 @@ export function buildPayload(
     workflow_run_attempt: workflowRunAttempt,
     checkout_uri: checkoutURI,
     environment,
-    started_at: process.env[CODEQL_WORKFLOW_STARTED_AT],
+    started_at: process.env[EnvVar.WORKFLOW_STARTED_AT],
     tool_names: toolNames,
     base_ref: undefined as undefined | string,
     base_sha: undefined as undefined | string,
@@ -506,18 +506,23 @@ function handleProcessingResultForUnsuccessfulExecution(
   ) {
     logger.debug(
       "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
-        '"unsuccessful execution" error, and no other errors.'
+        '"unsuccessful execution" processing error, and no other errors.'
+    );
+  } else if (status === "failed") {
+    logger.warning(
+      `Failed to upload a SARIF file for the unsuccessful execution. Code scanning status ` +
+        `information for the repository may be out of date as a result. Processing errors: ${response.data.errors}`
+    );
+  } else if (status === "complete") {
+    // There is a known transient issue with the code scanning API where it sometimes reports
+    // `complete` for an unsuccessful execution submission.
+    logger.debug(
+      "Uploaded a SARIF file for the unsuccessful execution, but did not receive the expected " +
+        '"unsuccessful execution" processing error. This is a known transient issue with the ' +
+        "code scanning API, and does not cause out of date code scanning status information."
     );
   } else {
-    const shortMessage =
-      "Failed to upload a SARIF file for the unsuccessful execution. Code scanning status " +
-      "information for the repository may be out of date as a result.";
-    const longMessage =
-      shortMessage + status === "failed"
-        ? ` Processing errors: ${response.data.errors}`
-        : ' Encountered no processing errors, but expected to receive an "unsuccessful execution" error.';
-    logger.debug(longMessage);
-    throw new Error(shortMessage);
+    util.assertNever(status);
   }
 }
 

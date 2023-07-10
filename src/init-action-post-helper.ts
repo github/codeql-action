@@ -3,10 +3,10 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
+import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
-import { CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY } from "./shared-environment";
 import * as uploadLib from "./upload-lib";
 import {
   getRequiredEnvParam,
@@ -80,7 +80,7 @@ async function maybeUploadFailedSarif(
     databasePath === undefined ||
     !(await features.getValue(Feature.ExportDiagnosticsEnabled, codeql))
   ) {
-    await codeql.diagnosticsExport(sarifFile, category, config, features);
+    await codeql.diagnosticsExport(sarifFile, category, config);
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
     await codeql.databaseExportDiagnostics(
@@ -114,7 +114,7 @@ export async function tryUploadSarifIfRunFailed(
   features: FeatureEnablement,
   logger: Logger
 ): Promise<UploadFailedSarifResult> {
-  if (process.env[CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
+  if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
     try {
       return await maybeUploadFailedSarif(
         config,

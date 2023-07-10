@@ -39,6 +39,7 @@ export enum Feature {
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   NewAnalysisSummaryEnabled = "new_analysis_summary_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  ScalingReservedRam = "scaling_reserved_ram",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -73,6 +74,11 @@ export const featureConfig: Record<
   },
   [Feature.QaTelemetryEnabled]: {
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
+    minimumVersion: undefined,
+    defaultValue: false,
+  },
+  [Feature.ScalingReservedRam]: {
+    envVar: "CODEQL_ACTION_SCALING_RESERVED_RAM",
     minimumVersion: undefined,
     defaultValue: false,
   },

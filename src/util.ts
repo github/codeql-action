@@ -157,9 +157,21 @@ export async function withTmpDir<T>(
  * from committing too much of the available memory to CodeQL.
  * @returns number
  */
-function getSystemReservedMemoryMegaBytes(): number {
+async function getSystemReservedMemoryMegaBytes(
+  totalMemoryMegaBytes: number,
+  features: FeatureEnablement
+): Promise<number> {
   // Windows needs more memory for OS processes.
-  return 1024 * (process.platform === "win32" ? 1.5 : 1);
+  const fixedAmount = 1024 * (process.platform === "win32" ? 1.5 : 1);
+
+  if (await features.getValue(Feature.ScalingReservedRam)) {
+    // Reserve an additional 2% of the total memory, since the amount used by
+    // the kernel for page tables scales with the size of physical memory.
+    const scaledAmount = 0.02 * totalMemoryMegaBytes;
+    return fixedAmount + scaledAmount;
+  } else {
+    return fixedAmount;
+  }
 }
 
 /**
@@ -169,7 +181,10 @@ function getSystemReservedMemoryMegaBytes(): number {
  *
  * @returns {number} the amount of RAM to use, in megabytes
  */
-export function getMemoryFlagValue(userInput: string | undefined): number {
+export async function getMemoryFlagValue(
+  userInput: string | undefined,
+  features: FeatureEnablement
+): Promise<number> {
   let memoryToUseMegaBytes: number;
   if (userInput) {
     memoryToUseMegaBytes = Number(userInput);
@@ -179,7 +194,10 @@ export function getMemoryFlagValue(userInput: string | undefined): number {
   } else {
     const totalMemoryBytes = os.totalmem();
     const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
-    const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes();
+    const reservedMemoryMegaBytes = await getSystemReservedMemoryMegaBytes(
+      totalMemoryMegaBytes,
+      features
+    );
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
   return Math.floor(memoryToUseMegaBytes);
@@ -192,8 +210,12 @@ export function getMemoryFlagValue(userInput: string | undefined): number {
  *
  * @returns string
  */
-export function getMemoryFlag(userInput: string | undefined): string {
-  return `--ram=${getMemoryFlagValue(userInput)}`;
+export async function getMemoryFlag(
+  userInput: string | undefined,
+  features: FeatureEnablement
+): Promise<string> {
+  const megabytes = await getMemoryFlagValue(userInput, features);
+  return `--ram=${megabytes}`;
 }
 
 /**

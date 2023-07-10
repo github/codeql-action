@@ -3,6 +3,27 @@
 ## [UNRELEASED]
 
 - Bump the minimum CodeQL bundle version to 2.9.4. [#1724](https://github.com/github/codeql-action/pull/1724)
+- This is the last release of the Action that supports CodeQL CLI versions 2.8.5 to 2.9.3. These versions of the CodeQL CLI were deprecated on June 20, 2023 alongside GitHub Enterprise Server 3.5 and will not be supported by the next release of the CodeQL Action (2.21.0).
+  - If you are using one of these versions, please update to CodeQL CLI version 2.9.4 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
+  - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.8.5 and 2.9.3, you can replace 'github/codeql-action/*@v2' by 'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
+- We are rolling out a feature in July 2023 that will slightly reduce the default amount of RAM used for query execution, in proportion to the runner's total memory. This will help to avoid out-of-memory failures on larger runners. [#1760](https://github.com/github/codeql-action/pull/1760)
+
+## 2.20.3 - 06 Jul 2023
+
+- Update default CodeQL bundle version to 2.13.5. [#1743](https://github.com/github/codeql-action/pull/1743)
+
+## 2.20.2 - 03 Jul 2023
+
+No user facing changes.
+
+## 2.20.1 - 21 Jun 2023
+
+- Update default CodeQL bundle version to 2.13.4. [#1721](https://github.com/github/codeql-action/pull/1721)
+- Experimental: add a new `resolve-environment` action which attempts to infer a configuration for the build environment that is required to build a given project. Do not use this in production as it is part of an internal experiment and subject to change at any time.
+
+## 2.20.0 - 13 Jun 2023
+
+- Bump the version of the Action to 2.20.0. This ensures that users who received a Dependabot upgrade to [`cdcdbb5`](https://github.com/github/codeql-action/commit/cdcdbb579706841c47f7063dda365e292e5cad7a), which was mistakenly marked as Action version 2.13.4, continue to receive updates to the CodeQL Action. Full details in [#1729](https://github.com/github/codeql-action/pull/1729)
 
 ## 2.3.6 - 01 Jun 2023
 

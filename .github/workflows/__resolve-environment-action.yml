@@ -1,0 +1,70 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
+# to regenerate this file.
+
+name: PR Check - Resolve environment
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+on:
+  push:
+    branches:
+    - main
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  resolve-environment-action:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: stable-v2.13.4
+        - os: macos-latest
+          version: stable-v2.13.4
+        - os: windows-latest
+          version: stable-v2.13.4
+    name: Resolve environment
+    permissions:
+      contents: read
+      security-events: write
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/actions/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - name: Set environment variable for Swift enablement
+      if: >-
+        runner.os != 'Windows' && (
+            matrix.version == '20220908' ||
+            matrix.version == '20221211'
+        )
+      shell: bash
+      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+    - uses: ./../action/init
+      with:
+        languages: go
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - uses: ./../action/resolve-environment
+      id: resolve-environment
+      with:
+        language: go
+
+    - name: Fail if no Go configuration was returned
+      if: (!fromJSON(steps.resolve-environment.outputs.environment).configuration.go)
+      run: exit 1
+    env:
+      CODEQL_ACTION_TEST_MODE: true

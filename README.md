@@ -169,7 +169,7 @@ You can use Actions or environment variables to share configuration across multi
 
 ## Troubleshooting
 
-Read about [troubleshooting code scanning](https://help.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning).
+Read about [troubleshooting code scanning](https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning).
 
 ## Contributing
 

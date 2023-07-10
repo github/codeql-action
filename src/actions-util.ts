@@ -9,7 +9,7 @@ import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
-import * as sharedEnv from "./shared-environment";
+import { EnvVar } from "./environment";
 import {
   doesDirectoryExist,
   getCachedCodeQlVersion,
@@ -36,9 +36,9 @@ const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
  *
  * This allows us to get stronger type checking of required/optional inputs.
  */
-export function getRequiredInput(name: string): string {
+export const getRequiredInput = function (name: string): string {
   return core.getInput(name, { required: true });
-}
+};
 
 /**
  * Wrapper around core.getInput that converts empty inputs to undefined.
@@ -306,7 +306,8 @@ type ActionName =
   | "autobuild"
   | "finish"
   | "upload-sarif"
-  | "init-post";
+  | "init-post"
+  | "resolve-environment";
 export type ActionStatus =
   | "starting"
   | "aborted"
@@ -314,7 +315,38 @@ export type ActionStatus =
   | "failure"
   | "user-error";
 
+// Any status report may include an array of EventReports associated with it.
+export interface EventReport {
+  /** An enumerable description of the event. */
+  event: string;
+  /** Time this event started. */
+  started_at: string;
+  /** Time this event ended. */
+  completed_at: string;
+  /** eg: `success`, `failure`, `timeout`, etc. */
+  exit_status?: string;
+  /** If the event is language-specific. */
+  language?: string;
+  /**
+   * A generic JSON blob of data related to this event.
+   * Use Object.assign() to append additional fields to the object.
+   */
+  properties?: object;
+}
+
 export interface StatusReportBase {
+  /**
+   * UUID representing the job run that this status report belongs to. We
+   * generate our own UUID here because Actions currently does not expose a
+   * unique job run identifier. This UUID will allow us to more easily match
+   * reports from different steps in the same workflow job.
+   *
+   * If and when Actions does expose a unique job ID, we plan to populate a
+   * separate int field, `job_run_id`, with the Actions-generated identifier,
+   * as it will allow us to more easily join our telemetry data with Actions
+   * telemetry tables.
+   */
+  job_run_uuid: string;
   /** ID of the workflow run containing the action run. */
   workflow_run_id: number;
   /** Attempt number of the run containing the action run. */
@@ -411,34 +443,29 @@ export async function createStatusReportBase(
 ): Promise<StatusReportBase> {
   const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
+  const jobRunUUID = process.env[EnvVar.JOB_RUN_UUID] || "";
   const workflowRunID = getWorkflowRunID();
   const workflowRunAttempt = getWorkflowRunAttempt();
   const workflowName = process.env["GITHUB_WORKFLOW"] || "";
   const jobName = process.env["GITHUB_JOB"] || "";
   const analysis_key = await getAnalysisKey();
-  let workflowStartedAt = process.env[sharedEnv.CODEQL_WORKFLOW_STARTED_AT];
+  let workflowStartedAt = process.env[EnvVar.WORKFLOW_STARTED_AT];
   if (workflowStartedAt === undefined) {
     workflowStartedAt = actionStartedAt.toISOString();
-    core.exportVariable(
-      sharedEnv.CODEQL_WORKFLOW_STARTED_AT,
-      workflowStartedAt
-    );
+    core.exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
   }
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
   const codeQlCliVersion = getCachedCodeQlVersion();
   const actionRef = process.env["GITHUB_ACTION_REF"];
-  const testingEnvironment =
-    process.env[sharedEnv.CODEQL_ACTION_TESTING_ENVIRONMENT] || "";
+  const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
   // re-export the testing environment variable so that it is available to subsequent steps,
   // even if it was only set for this step
   if (testingEnvironment !== "") {
-    core.exportVariable(
-      sharedEnv.CODEQL_ACTION_TESTING_ENVIRONMENT,
-      testingEnvironment
-    );
+    core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
   }
 
   const statusReport: StatusReportBase = {
+    job_run_uuid: jobRunUUID,
     workflow_run_id: workflowRunID,
     workflow_run_attempt: workflowRunAttempt,
     workflow_name: workflowName,

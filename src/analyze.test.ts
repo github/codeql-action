@@ -18,13 +18,18 @@ import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
+import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 
 setupTests(test);
 
-// Checks that the duration fields are populated for the correct language
-// and correct case of builtin or custom. Also checks the correct search
-// paths are set in the database analyze invocation.
+/** Checks that the duration fields are populated for the correct language
+ * and correct case of builtin or custom. Also checks the correct search
+ * paths are set in the database analyze invocation.
+ *
+ * Mocks the QA telemetry feature flag and checks the appropriate status report
+ * fields.
+ */
 test("status report fields and search path setting", async (t) => {
   let searchPathsUsed: Array<string | undefined> = [];
   return await util.withTmpDir(async (tmpDir) => {
@@ -37,6 +42,8 @@ test("status report fields and search path setting", async (t) => {
       [Language.cpp]: ["a/b@1.0.0"],
       [Language.java]: ["c/d@2.0.0"],
     };
+
+    sinon.stub(uploadLib, "validateSarifFileSchema");
 
     for (const language of Object.values(Language)) {
       setCodeQL({
@@ -135,12 +142,12 @@ test("status report fields and search path setting", async (t) => {
         undefined,
         config,
         getRunnerLogger(true),
-        createFeatures([])
+        createFeatures([Feature.QaTelemetryEnabled])
       );
       const hasPacks = language in packs;
       const statusReportKeys = Object.keys(builtinStatusReport).sort();
       if (hasPacks) {
-        t.deepEqual(statusReportKeys.length, 3, statusReportKeys.toString());
+        t.deepEqual(statusReportKeys.length, 4, statusReportKeys.toString());
         t.deepEqual(
           statusReportKeys[0],
           `analyze_builtin_queries_${language}_duration_ms`
@@ -149,8 +156,9 @@ test("status report fields and search path setting", async (t) => {
           statusReportKeys[1],
           `analyze_custom_queries_${language}_duration_ms`
         );
+        t.deepEqual(statusReportKeys[2], "event_reports");
         t.deepEqual(
-          statusReportKeys[2],
+          statusReportKeys[3],
           `interpret_results_${language}_duration_ms`
         );
       } else {
@@ -158,10 +166,16 @@ test("status report fields and search path setting", async (t) => {
           statusReportKeys[0],
           `analyze_builtin_queries_${language}_duration_ms`
         );
+        t.deepEqual(statusReportKeys[1], "event_reports");
         t.deepEqual(
-          statusReportKeys[1],
+          statusReportKeys[2],
           `interpret_results_${language}_duration_ms`
         );
+      }
+      if (builtinStatusReport.event_reports) {
+        for (const eventReport of builtinStatusReport.event_reports) {
+          t.deepEqual(eventReport.event, "codeql database interpret-results");
+        }
       }
 
       config.queries[language] = {
@@ -185,9 +199,9 @@ test("status report fields and search path setting", async (t) => {
         undefined,
         config,
         getRunnerLogger(true),
-        createFeatures([])
+        createFeatures([Feature.QaTelemetryEnabled])
       );
-      t.deepEqual(Object.keys(customStatusReport).length, 2);
+      t.deepEqual(Object.keys(customStatusReport).length, 3);
       t.true(
         `analyze_custom_queries_${language}_duration_ms` in customStatusReport
       );
@@ -196,6 +210,12 @@ test("status report fields and search path setting", async (t) => {
         : [undefined, "/1", "/2"];
       t.deepEqual(searchPathsUsed, expectedSearchPathsUsed);
       t.true(`interpret_results_${language}_duration_ms` in customStatusReport);
+      t.true("event_reports" in customStatusReport);
+      if (customStatusReport.event_reports) {
+        for (const eventReport of customStatusReport.event_reports) {
+          t.deepEqual(eventReport.event, "codeql database interpret-results");
+        }
+      }
     }
 
     verifyQuerySuites(tmpDir);

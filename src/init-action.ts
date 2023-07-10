@@ -1,6 +1,7 @@
 import * as path from "path";
 
 import * as core from "@actions/core";
+import { v4 as uuidV4 } from "uuid";
 
 import {
   createStatusReportBase,
@@ -15,6 +16,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import {
   initCodeQL,
@@ -36,7 +38,6 @@ import {
   getMlPoweredJsQueriesStatus,
   getRequiredEnvParam,
   getThreadsFlagValue,
-  GitHubVariant,
   initializeEnvironment,
   isHostedRunner,
   wrapError,
@@ -212,6 +213,8 @@ async function run() {
     logger
   );
 
+  core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
+
   try {
     const workflowErrors = await validateWorkflow(logger);
 
@@ -231,9 +234,7 @@ async function run() {
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type
     );
-    if (codeQLDefaultVersionInfo.variant === GitHubVariant.DOTCOM) {
-      toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
-    }
+    toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
@@ -279,7 +280,7 @@ async function run() {
     ) {
       if (
         await features.getValue(
-          Feature.DisablePythonDependencyInstallation,
+          Feature.DisablePythonDependencyInstallationEnabled,
           codeql
         )
       ) {
@@ -328,7 +329,7 @@ async function run() {
     core.exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
-        getMemoryFlagValue(getOptionalInput("ram")).toString()
+        (await getMemoryFlagValue(getOptionalInput("ram"), features)).toString()
     );
     core.exportVariable(
       "CODEQL_THREADS",
@@ -343,7 +344,7 @@ async function run() {
     // Disable Python dependency extraction if feature flag set
     if (
       await features.getValue(
-        Feature.DisablePythonDependencyInstallation,
+        Feature.DisablePythonDependencyInstallationEnabled,
         codeql
       )
     ) {

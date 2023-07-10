@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.4.0",
+  "version": "2.21.0",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -29,8 +29,8 @@
     "@actions/io": "^1.1.2",
     "@actions/tool-cache": "^2.0.1",
     "@chrisgavin/safe-which": "^1.0.2",
-    "@octokit/plugin-retry": "^4.0.4",
-    "@octokit/types": "^9.0.0",
+    "@octokit/plugin-retry": "^5.0.2",
+    "@octokit/types": "^10.0.0",
     "@schemastore/package": "^0.0.6",
     "@types/uuid": "^9.0.0",
     "adm-zip": "^0.5.9",
@@ -44,7 +44,7 @@
     "jsonschema": "1.4.1",
     "long": "^5.2.0",
     "path": "^0.12.7",
-    "semver": "^7.3.2",
+    "semver": "^7.5.2",
     "uuid": "^9.0.0",
     "zlib": "^1.0.5"
   },

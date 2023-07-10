@@ -33,13 +33,13 @@
  * "A request-path path-matches a given cookie-path if at least one of the
  * following conditions holds:"
  */
-function pathMatch (reqPath, cookiePath) {
+function pathMatch(reqPath, cookiePath) {
   // "o  The cookie-path and the request-path are identical."
   if (cookiePath === reqPath) {
     return true;
   }
 
-  var idx = reqPath.indexOf(cookiePath);
+  const idx = reqPath.indexOf(cookiePath);
   if (idx === 0) {
     // "o  The cookie-path is a prefix of the request-path, and the last
     // character of the cookie-path is %x2F ("/")."

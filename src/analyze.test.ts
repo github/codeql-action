@@ -175,6 +175,8 @@ test("status report fields and search path setting", async (t) => {
       if (builtinStatusReport.event_reports) {
         for (const eventReport of builtinStatusReport.event_reports) {
           t.deepEqual(eventReport.event, "codeql database interpret-results");
+          t.true("properties" in eventReport);
+          t.true("alertCounts" in eventReport.properties!);
         }
       }
 
@@ -214,6 +216,8 @@ test("status report fields and search path setting", async (t) => {
       if (customStatusReport.event_reports) {
         for (const eventReport of customStatusReport.event_reports) {
           t.deepEqual(eventReport.event, "codeql database interpret-results");
+          t.true("properties" in eventReport);
+          t.true("alertCounts" in eventReport.properties!);
         }
       }
     }

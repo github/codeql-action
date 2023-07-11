@@ -230,7 +230,7 @@ test("load input outside of workspace", async (t) => {
         createFeatures([]),
         getRunnerLogger(true)
       );
-      throw new UserError("initConfig did not throw error");
+      throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
@@ -271,7 +271,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         createFeatures([]),
         getRunnerLogger(true)
       );
-      throw new UserError("initConfig did not throw error");
+      throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
@@ -313,7 +313,7 @@ test("load non-existent input", async (t) => {
         createFeatures([]),
         getRunnerLogger(true)
       );
-      throw new UserError("initConfig did not throw error");
+      throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
@@ -1251,7 +1251,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
         createFeatures([]),
         getRunnerLogger(true)
       );
-      throw new UserError("initConfig did not throw error");
+      throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
@@ -1293,7 +1293,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
         createFeatures([]),
         getRunnerLogger(true)
       );
-      throw new UserError("initConfig did not throw error");
+      throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
@@ -1339,7 +1339,7 @@ test("No detected languages", async (t) => {
         createFeatures([]),
         getRunnerLogger(true)
       );
-      throw new UserError("initConfig did not throw error");
+      throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(err, new UserError(configUtils.getNoLanguagesError()));
     }
@@ -1372,7 +1372,7 @@ test("Unknown languages", async (t) => {
         createFeatures([]),
         getRunnerLogger(true)
       );
-      throw new UserError("initConfig did not throw error");
+      throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
@@ -1567,7 +1567,7 @@ function doInvalidInputTest(
           createFeatures([]),
           getRunnerLogger(true)
         );
-        throw new UserError("initConfig did not throw error");
+        throw new Error("initConfig did not throw error");
       } catch (err) {
         t.deepEqual(
           err,

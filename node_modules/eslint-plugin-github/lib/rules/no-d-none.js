@@ -3,9 +3,9 @@ module.exports = {
     type: 'problem',
     docs: {
       description: 'disallow usage the `d-none` CSS class',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
   create(context) {
     return {
@@ -21,11 +21,11 @@ module.exports = {
           if (invalidArgument) {
             context.report({
               node,
-              message: 'Prefer hidden property to d-none class'
+              message: 'Prefer hidden property to d-none class',
             })
           }
         }
-      }
+      },
     }
-  }
+  },
 }

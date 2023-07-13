@@ -3,9 +3,9 @@ module.exports = {
     type: 'problem',
     docs: {
       description: 'disallow unescaped HTML literals',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -18,7 +18,7 @@ module.exports = {
 
         context.report({
           node,
-          message
+          message,
         })
       },
       TemplateLiteral(node) {
@@ -27,10 +27,10 @@ module.exports = {
         if (!node.parent.tag || node.parent.tag.name !== 'html') {
           context.report({
             node,
-            message
+            message,
           })
         }
-      }
+      },
     }
-  }
+  },
 }

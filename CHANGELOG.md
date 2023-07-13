@@ -6,6 +6,7 @@
   - If you are using one of these versions, please update to CodeQL CLI version 2.9.4 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
   - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.8.5 and 2.9.3, you can replace 'github/codeql-action/*@v2' by 'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
 - We are rolling out a feature in July 2023 that will slightly reduce the default amount of RAM used for query execution, in proportion to the runner's total memory. This will help to avoid out-of-memory failures on larger runners. [#1760](https://github.com/github/codeql-action/pull/1760)
+- Update default CodeQL bundle version to 2.14.0. [#1762](https://github.com/github/codeql-action/pull/1762)
 
 ## 2.20.3 - 06 Jul 2023
 

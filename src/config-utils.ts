@@ -889,7 +889,7 @@ export async function getLanguagesInRepo(
   logger: Logger
 ): Promise<LanguageOrAlias[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
-  const response = await api.getApiClient().repos.listLanguages({
+  const response = await api.getApiClient().rest.repos.listLanguages({
     owner: repository.owner,
     repo: repository.repo,
   });
@@ -901,7 +901,7 @@ export async function getLanguagesInRepo(
   // Since sets in javascript maintain insertion order, using a set here and then splatting it
   // into an array gives us an array of languages ordered by popularity
   const languages: Set<LanguageOrAlias> = new Set();
-  for (const lang of Object.keys(response.data)) {
+  for (const lang of Object.keys(response.data as Record<string, number>)) {
     const parsedLang = parseLanguage(lang);
     if (parsedLang !== undefined) {
       languages.add(parsedLang);
@@ -1852,7 +1852,7 @@ async function getRemoteConfig(
 
   const response = await api
     .getApiClientWithExternalAuth(apiDetails)
-    .repos.getContent({
+    .rest.repos.getContent({
       owner: pieces.groups.owner,
       repo: pieces.groups.repo,
       path: pieces.groups.path,

@@ -11,7 +11,7 @@ $ npm install is-docker
 ## Usage
 
 ```js
-const isDocker = require('is-docker');
+import isDocker from 'is-docker';
 
 if (isDocker()) {
 	console.log('Running inside a Docker container');

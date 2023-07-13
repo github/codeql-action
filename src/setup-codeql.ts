@@ -82,7 +82,7 @@ export async function tryFindCliVersionDotcomOnly(
     );
     const apiClient = api.getApiClient();
     const codeQLActionRepository = getCodeQLActionRepository(logger);
-    const release = await apiClient.repos.getReleaseByTag({
+    const release = await apiClient.rest.repos.getReleaseByTag({
       owner: codeQLActionRepository.split("/")[0],
       repo: codeQLActionRepository.split("/")[1],
       tag: tagName,
@@ -165,7 +165,7 @@ async function getCodeQLBundleDownloadURL(
     }
     const [repositoryOwner, repositoryName] = repository.split("/");
     try {
-      const release = await api.getApiClient().repos.getReleaseByTag({
+      const release = await api.getApiClient().rest.repos.getReleaseByTag({
         owner: repositoryOwner,
         repo: repositoryName,
         tag: tagName,

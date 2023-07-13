@@ -3,9 +3,9 @@ module.exports = {
     type: 'problem',
     docs: {
       description: 'disallow implicit global variables',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -29,7 +29,7 @@ module.exports = {
             }
           }
         }
-      }
+      },
     }
-  }
+  },
 }

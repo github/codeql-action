@@ -22,6 +22,7 @@ The primary class in this package is `FlatCompat`, which is a utility to transla
 
 ```js
 import { FlatCompat } from "@eslint/eslintrc";
+import js from "@eslint/js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -30,8 +31,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const compat = new FlatCompat({
-    baseDirectory: __dirname,                // optional; default: process.cwd()
-    resolvePluginsRelativeTo: __dirname      // optional
+    baseDirectory: __dirname,                  // optional; default: process.cwd()
+    resolvePluginsRelativeTo: __dirname,       // optional
+    recommendedConfig: js.configs.recommended, // optional
+    allConfig: js.configs.all,                 // optional
 });
 
 export default [

@@ -1,13 +1,12 @@
-'use strict';
-const fs = require('fs');
+import fs from 'node:fs';
 
-let isDocker;
+let isDockerCached;
 
 function hasDockerEnv() {
 	try {
 		fs.statSync('/.dockerenv');
 		return true;
-	} catch (_) {
+	} catch {
 		return false;
 	}
 }
@@ -15,15 +14,16 @@ function hasDockerEnv() {
 function hasDockerCGroup() {
 	try {
 		return fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker');
-	} catch (_) {
+	} catch {
 		return false;
 	}
 }
 
-module.exports = () => {
-	if (isDocker === undefined) {
-		isDocker = hasDockerEnv() || hasDockerCGroup();
+export default function isDocker() {
+	// TODO: Use `??=` when targeting Node.js 16.
+	if (isDockerCached === undefined) {
+		isDockerCached = hasDockerEnv() || hasDockerCGroup();
 	}
 
-	return isDocker;
-};
+	return isDockerCached;
+}

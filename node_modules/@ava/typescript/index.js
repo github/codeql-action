@@ -68,8 +68,14 @@ const configProperties = {
 	},
 };
 
+const changeInterpretations = Object.freeze(Object.assign(Object.create(null), {
+	unspecified: 0,
+	ignoreCompiled: 1,
+	waitForOutOfBandCompilation: 2,
+}));
+
 export default function typescriptProvider({negotiateProtocol}) {
-	const protocol = negotiateProtocol(['ava-3.2'], {version: pkg.version});
+	const protocol = negotiateProtocol(['ava-6', 'ava-3.2'], {version: pkg.version});
 	if (protocol === null) {
 		return;
 	}
@@ -94,7 +100,145 @@ export default function typescriptProvider({negotiateProtocol}) {
 			]);
 			const testFileExtension = new RegExp(`\\.(${extensions.map(ext => escapeStringRegexp(ext)).join('|')})$`);
 
+			const watchMode = protocol.identifier === 'ava-3.2'
+				? {
+					ignoreChange(filePath) {
+						if (!testFileExtension.test(filePath)) {
+							return false;
+						}
+
+						return rewritePaths.some(([from]) => filePath.startsWith(from));
+					},
+
+					resolveTestFile(testfile) { // Used under AVA 3.2 protocol by legacy watcher implementation.
+						if (!testFileExtension.test(testfile)) {
+							return testfile;
+						}
+
+						const rewrite = rewritePaths.find(([from]) => testfile.startsWith(from));
+						if (rewrite === undefined) {
+							return testfile;
+						}
+
+						const [from, to] = rewrite;
+						let newExtension = '.js';
+						if (testfile.endsWith('.cts')) {
+							newExtension = '.cjs';
+						} else if (testfile.endsWith('.mts')) {
+							newExtension = '.mjs';
+						}
+
+						return `${to}${testfile.slice(from.length)}`.replace(testFileExtension, newExtension);
+					},
+				}
+				: {
+					changeInterpretations,
+					interpretChange(filePath) {
+						if (config.compile === false) {
+							for (const [from] of rewritePaths) {
+								if (testFileExtension.test(filePath) && filePath.startsWith(from)) {
+									return changeInterpretations.waitForOutOfBandCompilation;
+								}
+							}
+						}
+
+						if (config.compile === 'tsc') {
+							for (const [, to] of rewritePaths) {
+								if (filePath.startsWith(to)) {
+									return changeInterpretations.ignoreCompiled;
+								}
+							}
+						}
+
+						return changeInterpretations.unspecified;
+					},
+
+					resolvePossibleOutOfBandCompilationSources(filePath) {
+						if (config.compile !== false) {
+							return null;
+						}
+
+						// Only recognize .cjs, .mjs and .js files.
+						if (!/\.(c|m)?js$/.test(filePath)) {
+							return null;
+						}
+
+						for (const [from, to] of rewritePaths) {
+							if (!filePath.startsWith(to)) {
+								continue;
+							}
+
+							const rewritten = `${from}${filePath.slice(to.length)}`;
+							const possibleExtensions = [];
+
+							if (filePath.endsWith('.cjs')) {
+								if (extensions.includes('cjs')) {
+									possibleExtensions.push({replace: /\.cjs$/, extension: 'cjs'});
+								}
+
+								if (extensions.includes('cts')) {
+									possibleExtensions.push({replace: /\.cjs$/, extension: 'cts'});
+								}
+
+								if (possibleExtensions.length === 0) {
+									return null;
+								}
+							}
+
+							if (filePath.endsWith('.mjs')) {
+								if (extensions.includes('mjs')) {
+									possibleExtensions.push({replace: /\.mjs$/, extension: 'mjs'});
+								}
+
+								if (extensions.includes('mts')) {
+									possibleExtensions.push({replace: /\.mjs$/, extension: 'mts'});
+								}
+
+								if (possibleExtensions.length === 0) {
+									return null;
+								}
+							}
+
+							if (filePath.endsWith('.js')) {
+								if (extensions.includes('js')) {
+									possibleExtensions.push({replace: /\.js$/, extension: 'js'});
+								}
+
+								if (extensions.includes('ts')) {
+									possibleExtensions.push({replace: /\.js$/, extension: 'ts'});
+								}
+
+								if (extensions.includes('tsx')) {
+									possibleExtensions.push({replace: /\.js$/, extension: 'tsx'});
+								}
+
+								if (possibleExtensions.length === 0) {
+									return null;
+								}
+							}
+
+							const possibleDeletedFiles = [];
+							for (const {replace, extension} of possibleExtensions) {
+								const possibleFilePath = rewritten.replace(replace, `.${extension}`);
+
+								// Pick the first file path that exists.
+								if (fs.existsSync(possibleFilePath)) {
+									return [possibleFilePath];
+								}
+
+								possibleDeletedFiles.push(possibleFilePath);
+							}
+
+							return possibleDeletedFiles;
+						}
+
+						return null;
+					},
+				};
+
 			return {
+				...watchMode,
+
 				async compile() {
 					if (compile === 'tsc') {
 						await compileTypeScript(protocol.projectDir);
@@ -108,35 +252,6 @@ export default function typescriptProvider({negotiateProtocol}) {
 
 				get extensions() {
 					return [...extensions];
-				},
-
-				ignoreChange(filePath) {
-					if (!testFileExtension.test(filePath)) {
-						return false;
-					}
-
-					return rewritePaths.some(([from]) => filePath.startsWith(from));
-				},
-
-				resolveTestFile(testfile) { // Used under AVA 3.2 protocol by legacy watcher implementation.
-					if (!testFileExtension.test(testfile)) {
-						return testfile;
-					}
-
-					const rewrite = rewritePaths.find(([from]) => testfile.startsWith(from));
-					if (rewrite === undefined) {
-						return testfile;
-					}
-
-					const [from, to] = rewrite;
-					let newExtension = '.js';
-					if (testfile.endsWith('.cts')) {
-						newExtension = '.cjs';
-					} else if (testfile.endsWith('.mts')) {
-						newExtension = '.mjs';
-					}
-
-					return `${to}${testfile.slice(from.length)}`.replace(testFileExtension, newExtension);
 				},
 
 				updateGlobs({filePatterns, ignoredByWatcherPatterns}) {

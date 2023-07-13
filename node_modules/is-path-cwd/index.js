@@ -1,7 +1,7 @@
-'use strict';
-const path = require('path');
+import process from 'node:process';
+import path from 'node:path';
 
-module.exports = path_ => {
+export default function isPathCwd(path_) {
 	let cwd = process.cwd();
 
 	path_ = path.resolve(path_);
@@ -12,4 +12,4 @@ module.exports = path_ => {
 	}
 
 	return path_ === cwd;
-};
+}

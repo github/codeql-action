@@ -329,7 +329,7 @@ async function run() {
     core.exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
-        getMemoryFlagValue(getOptionalInput("ram")).toString()
+        (await getMemoryFlagValue(getOptionalInput("ram"), features)).toString()
     );
     core.exportVariable(
       "CODEQL_THREADS",

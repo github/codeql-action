@@ -1,15 +1,15 @@
 const observerMap = {
   scroll: 'IntersectionObserver',
-  resize: 'ResizeObserver'
+  resize: 'ResizeObserver',
 }
 module.exports = {
   meta: {
     type: 'suggestion',
     docs: {
       description: 'disallow poorly performing event listeners',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -20,9 +20,9 @@ module.exports = {
         if (!(name.value in observerMap)) return
         context.report({
           node,
-          message: `Avoid using "${name.value}" event listener. Consider using ${observerMap[name.value]} instead`
+          message: `Avoid using "${name.value}" event listener. Consider using ${observerMap[name.value]} instead`,
         })
-      }
+      },
     }
-  }
+  },
 }

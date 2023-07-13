@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-'use strict';
-const isDocker = require('.');
+import process from 'node:process';
+import isDocker from './index.js';
 
 process.exitCode = isDocker() ? 0 : 2;

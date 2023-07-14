@@ -1,12 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
 import { getOptionalInput } from "./actions-util";
 import * as api from "./api-client";
 import { Config, getGeneratedCodeScanningConfigPath } from "./config-utils";
+import { EnvVar } from "./environment";
 import { errorMatchers } from "./error-matcher";
 import {
   CodeQLDefaultVersionInfo,
@@ -271,6 +273,11 @@ let cachedCodeQL: CodeQL | undefined = undefined;
 const CODEQL_MINIMUM_VERSION = "2.8.5";
 
 /**
+ * This version will shortly become the oldest version of CodeQL that the Action will run with.
+ */
+const CODEQL_NEXT_MINIMUM_VERSION = "2.9.4";
+
+/**
  * Versions of CodeQL that version-flag certain functionality in the Action.
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
@@ -314,6 +321,11 @@ export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
  * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
  */
 export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
+
+/**
+ * Versions 2.13.4+ of the CodeQL CLI have an associated CodeQL Bundle release that is semantically versioned.
+ */
+export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
 
 /**
  * Versions 2.14.0+ of the CodeQL CLI support new analysis summaries.
@@ -1032,6 +1044,24 @@ export async function getCodeQLForCmd(
     throw new Error(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${await codeql.getVersion()}`
     );
+  } else if (
+    checkVersion &&
+    process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
+    !(await util.codeQlVersionAbove(codeql, CODEQL_NEXT_MINIMUM_VERSION))
+  ) {
+    core.warning(
+      `CodeQL CLI version ${await codeql.getVersion()} was deprecated on 2023-06-20 alongside ` +
+        "GitHub Enterprise Server 3.5 and will not be supported by the next release of the " +
+        `CodeQL Action. Please update to CodeQL CLI version ${CODEQL_NEXT_MINIMUM_VERSION} or ` +
+        "later. For instance, if you have specified a custom version of the CLI using the " +
+        "'tools' input to the 'init' Action, you can remove this input to use the default " +
+        "version.\n\n" +
+        "Alternatively, if you want to continue using CodeQL CLI version " +
+        `${await codeql.getVersion()}, you can replace 'github/codeql-action/*@v2' by ` +
+        "'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue " +
+        "using this version of the CodeQL Action."
+    );
+    core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }

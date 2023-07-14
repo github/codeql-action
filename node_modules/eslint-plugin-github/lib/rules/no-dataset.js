@@ -3,9 +3,9 @@ module.exports = {
     type: 'problem',
     docs: {
       description: 'enforce usage of `Element.prototype.getAttribute` instead of `Element.prototype.datalist`',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -14,7 +14,7 @@ module.exports = {
         if (node.property && node.property.name === 'dataset') {
           context.report({node, message: "Use getAttribute('data-your-attribute') instead of dataset."})
         }
-      }
+      },
     }
-  }
+  },
 }

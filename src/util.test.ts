@@ -8,8 +8,14 @@ import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
+import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
-import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
+import {
+  createFeatures,
+  getRecordingLogger,
+  LoggedMessage,
+  setupTests,
+} from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -23,25 +29,37 @@ test("getToolNames", (t) => {
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
 });
 
-test("getMemoryFlag() should return the correct --ram flag", (t) => {
-  const totalMem = Math.floor(os.totalmem() / (1024 * 1024));
-  const expectedThreshold = process.platform === "win32" ? 1536 : 1024;
+test("getMemoryFlag() should return the correct --ram flag", async (t) => {
+  const totalMem = os.totalmem() / (1024 * 1024);
+  const fixedAmount = process.platform === "win32" ? 1536 : 1024;
+  const scaledAmount = 0.02 * totalMem;
+  const expectedMemoryValue = Math.floor(totalMem - fixedAmount);
+  const expectedMemoryValueWithScaling = Math.floor(
+    totalMem - fixedAmount - scaledAmount
+  );
 
-  const tests: Array<[string | undefined, string]> = [
-    [undefined, `--ram=${totalMem - expectedThreshold}`],
-    ["", `--ram=${totalMem - expectedThreshold}`],
-    ["512", "--ram=512"],
+  const tests: Array<[string | undefined, boolean, string]> = [
+    [undefined, false, `--ram=${expectedMemoryValue}`],
+    ["", false, `--ram=${expectedMemoryValue}`],
+    ["512", false, "--ram=512"],
+    [undefined, true, `--ram=${expectedMemoryValueWithScaling}`],
+    ["", true, `--ram=${expectedMemoryValueWithScaling}`],
   ];
 
-  for (const [input, expectedFlag] of tests) {
-    const flag = util.getMemoryFlag(input);
+  for (const [input, withScaling, expectedFlag] of tests) {
+    const features = createFeatures(
+      withScaling ? [Feature.ScalingReservedRam] : []
+    );
+    const flag = await util.getMemoryFlag(input, features);
     t.deepEqual(flag, expectedFlag);
   }
 });
 
-test("getMemoryFlag() throws if the ram input is < 0 or NaN", (t) => {
+test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   for (const input of ["-1", "hello!"]) {
-    t.throws(() => util.getMemoryFlag(input));
+    await t.throwsAsync(
+      async () => await util.getMemoryFlag(input, createFeatures([]))
+    );
   }
 });
 
@@ -196,7 +214,7 @@ function mockGetMetaVersionHeader(
     },
   };
   const spyGetContents = sinon
-    .stub(client.meta, "get")
+    .stub(client.rest.meta, "get")
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);

@@ -1,33 +1,31 @@
 /**
 Define a [lazily evaluated](https://en.wikipedia.org/wiki/Lazy_evaluation) property on an object.
 
-@param object - Object to add property to.
+@param object - Object to add the property to.
 @param propertyName - Name of the property to add.
-@param fn - Called the first time `propertyName` is accessed.
+@param valueGetter - Called the first time `propertyName` is accessed.
 
 @example
 ```
-import defineLazyProp = require('define-lazy-prop');
+import defineLazyProperty from 'define-lazy-prop';
 
 const unicorn = {
 	// …
 };
 
-defineLazyProp(unicorn, 'rainbow', () => expensiveComputation());
+defineLazyProperty(unicorn, 'rainbow', () => expensiveComputation());
 
 app.on('user-action', () => {
 	doSomething(unicorn.rainbow);
 });
 ```
 */
-declare function defineLazyProp<
-	ObjectType extends {[key: string]: unknown},
+export default function defineLazyProperty<
+	ObjectType extends Record<string, any>,
 	PropertyNameType extends string,
 	PropertyValueType
 >(
 	object: ObjectType,
 	propertyName: PropertyNameType,
-	fn: () => PropertyValueType
+	valueGetter: () => PropertyValueType
 ): ObjectType & {[K in PropertyNameType]: PropertyValueType};
-
-export = defineLazyProp;

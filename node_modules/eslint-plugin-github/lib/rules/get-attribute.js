@@ -22,10 +22,10 @@ module.exports = {
     type: 'problem',
     docs: {
       description: 'disallow wrong usage of attribute names',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
     fixable: 'code',
-    schema: []
+    schema: [],
   },
   create(context) {
     return {
@@ -44,10 +44,10 @@ module.exports = {
             message: 'Attributes should be lowercase and hyphen separated, or part of the SVG whitelist.',
             fix(fixer) {
               return fixer.replaceText(attributeNameNode, `'${attributeNameNode.value.toLowerCase()}'`)
-            }
+            },
           })
         }
-      }
+      },
     }
-  }
+  },
 }

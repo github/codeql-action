@@ -77,7 +77,11 @@ declare class Long {
   /**
    * Returns a Long representation of the given string, written using the specified radix.
    */
-  static fromString(str: string, unsigned?: boolean | number, radix?: number): Long;
+  static fromString(
+    str: string,
+    unsigned?: boolean | number,
+    radix?: number
+  ): Long;
 
   /**
    * Creates a Long from its byte representation.
@@ -102,7 +106,14 @@ declare class Long {
   /**
    * Converts the specified value to a Long.
    */
-  static fromValue(val: Long | number | string | { low: number, high: number, unsigned: boolean }, unsigned?: boolean): Long;
+  static fromValue(
+    val:
+      | Long
+      | number
+      | string
+      | { low: number; high: number; unsigned: boolean },
+    unsigned?: boolean
+  ): Long;
 
   /**
    * Returns the sum of this and the specified Long.
@@ -443,4 +454,4 @@ declare class Long {
   xor(other: Long | number | string): Long;
 }
 
-export = Long; // compatible with `import Long from "long"`
+export default Long; // compatible with `import Long from "long"`

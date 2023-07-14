@@ -3,9 +3,9 @@ module.exports = {
     type: 'suggestion',
     docs: {
       description: 'disallow creating dynamic script tags',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -15,15 +15,15 @@ module.exports = {
 
         context.report({
           node: node.arguments[0],
-          message: "Don't create dynamic script tags, add them in the server template instead."
+          message: "Don't create dynamic script tags, add them in the server template instead.",
         })
       },
       'AssignmentExpression[left.property.name="type"][right.value="text/javascript"]': function (node) {
         context.report({
           node: node.right,
-          message: "Don't create dynamic script tags, add them in the server template instead."
+          message: "Don't create dynamic script tags, add them in the server template instead.",
         })
-      }
+      },
     }
-  }
+  },
 }

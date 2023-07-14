@@ -3,10 +3,10 @@ module.exports = {
     type: 'problem',
     docs: {
       description: 'disallow `Element.prototype.innerText` in favor of `Element.prototype.textContent`',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
     fixable: 'code',
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -15,16 +15,16 @@ module.exports = {
         if (node.property && node.property.name === 'innerText') {
           context.report({
             meta: {
-              fixable: 'code'
+              fixable: 'code',
             },
             node: node.property,
             message: 'Prefer textContent to innerText',
             fix(fixer) {
               return fixer.replaceText(node.property, 'textContent')
-            }
+            },
           })
         }
-      }
+      },
     }
-  }
+  },
 }

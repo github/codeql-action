@@ -423,7 +423,7 @@ class GitHubFeatureFlags {
           "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
             "As a result, it will not be opted into any experimental features. " +
             "This could be because the Action is running on a pull request from a fork. If not, " +
-            `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
+            `please ensure the Action has the 'security-events: write' permission. Details: ${e.message}`
         );
         this.hasAccessedRemoteFeatureFlags = false;
         return {};

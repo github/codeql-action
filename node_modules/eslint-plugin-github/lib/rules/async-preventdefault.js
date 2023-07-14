@@ -3,9 +3,9 @@ module.exports = {
     type: 'problem',
     docs: {
       description: 'disallow `event.preventDefault` calls inside of async functions',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -22,7 +22,7 @@ module.exports = {
             context.report({node, message: 'event.preventDefault() inside an async function is error prone'})
           }
         }
-      }
+      },
     }
-  }
+  },
 }

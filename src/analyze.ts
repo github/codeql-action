@@ -372,7 +372,9 @@ export async function runQueries(
           completed_at: endTimeInterpretResults.toISOString(),
           exit_status: "success",
           language,
-          properties: perQueryAlertCounts,
+          properties: {
+            alertCounts: perQueryAlertCounts,
+          },
         };
 
         if (statusReport["event_reports"] === undefined) {

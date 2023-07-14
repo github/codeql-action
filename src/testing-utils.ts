@@ -199,8 +199,10 @@ export function mockLanguagesInRepo(languages: string[]) {
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   mockClient.returns({
-    repos: {
-      listLanguages,
+    rest: {
+      repos: {
+        listLanguages,
+      },
     },
   } as any);
   return listLanguages;

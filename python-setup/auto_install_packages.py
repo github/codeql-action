@@ -76,7 +76,7 @@ def install_packages_with_pipenv(has_lockfile):
         # In windows the default path were the deps are installed gets wiped out between steps,
         # so we have to set it up to a folder that will be kept
         os.environ['WORKON_HOME'] = os.path.join(os.environ['RUNNER_WORKSPACE'], 'virtualenvs')
-    lock_args = ['--keep-outdated', '--ignore-pipfile'] if has_lockfile else ['--skip-lock']
+    lock_args = ['--ignore-pipfile'] if has_lockfile else ['--skip-lock']
     try:
         _check_call(command + ['install'] + lock_args)
     except subprocess.CalledProcessError:

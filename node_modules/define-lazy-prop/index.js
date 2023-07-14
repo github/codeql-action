@@ -1,12 +1,11 @@
-'use strict';
-module.exports = (object, propertyName, fn) => {
+export default function defineLazyProperty(object, propertyName, valueGetter) {
 	const define = value => Object.defineProperty(object, propertyName, {value, enumerable: true, writable: true});
 
 	Object.defineProperty(object, propertyName, {
 		configurable: true,
 		enumerable: true,
 		get() {
-			const result = fn();
+			const result = valueGetter();
 			define(result);
 			return result;
 		},
@@ -16,4 +15,4 @@ module.exports = (object, propertyName, fn) => {
 	});
 
 	return object;
-};
+}

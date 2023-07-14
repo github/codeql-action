@@ -3,9 +3,9 @@ module.exports = {
     type: 'suggestion',
     docs: {
       description: 'enforce using `async/await` syntax over Promises',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -16,7 +16,7 @@ module.exports = {
         } else if (node.property && node.property.name === 'catch') {
           context.report({node: node.property, message: 'Prefer async/await to Promise.catch()'})
         }
-      }
+      },
     }
-  }
+  },
 }

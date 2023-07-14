@@ -65,7 +65,7 @@ module.exports = function (results) {
       ', ',
       warnings,
       pluralize(' warning', warnings),
-      ')\n'
+      ')\n',
     ].join('')
   }
 

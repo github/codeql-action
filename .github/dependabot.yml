@@ -6,6 +6,17 @@ updates:
       interval: weekly
     labels:
       - Update dependencies
+    # Ignore incompatible dependency updates
+    ignore:
+      # There is a type incompatibility issue between v0.0.9 and our other dependencies.
+      - dependency-name: "@octokit/plugin-retry"
+        versions: ["~6.0.0"]
+      # There is a type incompatibility issue between v0.0.9 and our other dependencies.
+      - dependency-name: "@schemastore/package"
+        versions: ["0.0.9"]
+      # v7 requires ESM
+      - dependency-name: "del"
+        versions: ["^7.0.0"]
     groups:
       npm:
         patterns:

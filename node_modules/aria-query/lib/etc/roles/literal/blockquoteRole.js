@@ -12,7 +12,12 @@ var blockquoteRole = {
   nameFrom: ['author'],
   prohibitedProps: [],
   props: {},
-  relatedConcepts: [],
+  relatedConcepts: [{
+    concept: {
+      name: 'blockquote'
+    },
+    module: 'HTML'
+  }],
   requireContextRole: [],
   requiredContextRole: [],
   requiredOwnedElements: [],

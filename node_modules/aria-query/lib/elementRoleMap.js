@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-var _deepEqual = _interopRequireDefault(require("deep-equal"));
+var _lite = require("dequal/lite");
 var _iterationDecorator = _interopRequireDefault(require("./util/iterationDecorator"));
 var _rolesMap = _interopRequireDefault(require("./rolesMap"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -25,14 +25,13 @@ for (var i = 0; i < keys.length; i++) {
     for (var k = 0; k < concepts.length; k++) {
       var relation = concepts[k];
       if (relation.module === 'HTML') {
-        var concept = relation.concept;
-        if (concept) {
-          (function () {
-            var conceptStr = JSON.stringify(concept);
+        (function () {
+          var concept = relation.concept;
+          if (concept) {
             var elementRoleRelation = elementRoles.find(function (relation) {
-              return JSON.stringify(relation[0]) === conceptStr;
+              return (0, _lite.dequal)(relation, concept);
             });
-            var roles = void 0;
+            var roles;
             if (elementRoleRelation) {
               roles = elementRoleRelation[1];
             } else {
@@ -49,8 +48,8 @@ for (var i = 0; i < keys.length; i++) {
               roles.push(key);
             }
             elementRoles.push([concept, roles]);
-          })();
-        }
+          }
+        })();
       }
     }
   }
@@ -78,7 +77,7 @@ var elementRoleMap = {
   },
   get: function get(key) {
     var item = elementRoles.find(function (tuple) {
-      return (0, _deepEqual.default)(key, tuple[0]);
+      return key.name === tuple[0].name && (0, _lite.dequal)(key.attributes, tuple[0].attributes);
     });
     return item && item[1];
   },

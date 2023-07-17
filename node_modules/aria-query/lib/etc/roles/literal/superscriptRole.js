@@ -12,7 +12,12 @@ var superscriptRole = {
   nameFrom: ['prohibited'],
   prohibitedProps: ['aria-label', 'aria-labelledby'],
   props: {},
-  relatedConcepts: [],
+  relatedConcepts: [{
+    concept: {
+      name: 'sup'
+    },
+    module: 'HTML'
+  }],
   requireContextRole: [],
   requiredContextRole: [],
   requiredOwnedElements: [],

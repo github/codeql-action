@@ -9,7 +9,7 @@ var docBacklinkRole = {
   accessibleNameRequired: true,
   baseConcepts: [],
   childrenPresentational: false,
-  nameFrom: ['author', 'content'],
+  nameFrom: ['author', 'contents'],
   prohibitedProps: [],
   props: {
     'aria-errormessage': null,

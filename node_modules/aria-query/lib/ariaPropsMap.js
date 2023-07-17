@@ -20,6 +20,10 @@ var properties = [['aria-activedescendant', {
 }], ['aria-autocomplete', {
   'type': 'token',
   'values': ['inline', 'list', 'both', 'none']
+}], ['aria-braillelabel', {
+  'type': 'string'
+}], ['aria-brailleroledescription', {
+  'type': 'string'
 }], ['aria-busy', {
   'type': 'boolean'
 }], ['aria-checked', {
@@ -37,6 +41,8 @@ var properties = [['aria-activedescendant', {
   values: ['page', 'step', 'location', 'date', 'time', true, false]
 }], ['aria-describedby', {
   'type': 'idlist'
+}], ['aria-description', {
+  'type': 'string'
 }], ['aria-details', {
   'type': 'id'
 }], ['aria-disabled', {

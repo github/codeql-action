@@ -12,7 +12,12 @@ var paragraphRole = {
   nameFrom: ['prohibited'],
   prohibitedProps: ['aria-label', 'aria-labelledby'],
   props: {},
-  relatedConcepts: [],
+  relatedConcepts: [{
+    concept: {
+      name: 'p'
+    },
+    module: 'HTML'
+  }],
   requireContextRole: [],
   requiredContextRole: [],
   requiredOwnedElements: [],

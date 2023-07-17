@@ -15164,7 +15164,7 @@ export interface JSONSchemaForNPMPackageJsonFiles2 {
          * This interface was referenced by `undefined`'s JSON-Schema definition
          * via the `patternProperty` "^\./.+".
          */
-        [k: string]: PackageExportsEntry | PackageExportsFallback | undefined;
+        [k: string]: PackageExportsEntry | PackageExportsFallback;
       }
     | PackageExportsEntryObject1
     | PackageExportsFallback1;
@@ -15343,9 +15343,15 @@ export interface JSONSchemaForNPMPackageJsonFiles2 {
    */
   bundleDependencies?: string[] | boolean;
   /**
-   * Resolutions is used to support selective version resolutions, which lets you define custom package versions or ranges inside your dependencies. See: https://classic.yarnpkg.com/en/docs/selective-version-resolutions
+   * Resolutions is used to support selective version resolutions using yarn, which lets you define custom package versions or ranges inside your dependencies. For npm, use overrides instead. See: https://classic.yarnpkg.com/en/docs/selective-version-resolutions
    */
   resolutions?: {
+    [k: string]: unknown | undefined;
+  };
+  /**
+   * Overrides is used to support selective version overrides using npm, which lets you define custom package versions or ranges inside your dependencies. For yarn, use resolutions instead. See: https://docs.npmjs.com/cli/v9/configuring-npm/package-json#overrides
+   */
+  overrides?: {
     [k: string]: unknown | undefined;
   };
   /**
@@ -15451,6 +15457,10 @@ export interface PackageExportsEntryObject {
    */
   default?: PackageExportsEntry | PackageExportsFallback;
   /**
+   * The module path that is resolved for TypeScript types when this specifier is imported. Should be listed before other conditions.
+   */
+  types?: PackageExportsEntry | PackageExportsFallback;
+  /**
    * The module path that is resolved when this environment matches the property name.
    *
    * This interface was referenced by `PackageExportsEntryObject`'s JSON-Schema definition
@@ -15459,7 +15469,7 @@ export interface PackageExportsEntryObject {
    * This interface was referenced by `PackageExportsEntryObject1`'s JSON-Schema definition
    * via the `patternProperty` "^(?![\.0-9]).".
    */
-  [k: string]: PackageExportsEntry | PackageExportsFallback | undefined;
+  [k: string]: PackageExportsEntry | PackageExportsFallback;
 }
 /**
  * Used to specify conditional exports, note that Conditional exports are unsupported in older environments, so it's recommended to use the fallback array option if support for those environments is a concern.
@@ -15482,6 +15492,10 @@ export interface PackageExportsEntryObject1 {
    */
   default?: PackageExportsEntry | PackageExportsFallback;
   /**
+   * The module path that is resolved for TypeScript types when this specifier is imported. Should be listed before other conditions.
+   */
+  types?: PackageExportsEntry | PackageExportsFallback;
+  /**
    * The module path that is resolved when this environment matches the property name.
    *
    * This interface was referenced by `PackageExportsEntryObject`'s JSON-Schema definition
@@ -15490,7 +15504,7 @@ export interface PackageExportsEntryObject1 {
    * This interface was referenced by `PackageExportsEntryObject1`'s JSON-Schema definition
    * via the `patternProperty` "^(?![\.0-9]).".
    */
-  [k: string]: PackageExportsEntry | PackageExportsFallback | undefined;
+  [k: string]: PackageExportsEntry | PackageExportsFallback;
 }
 /**
  * Used to inform about ways to help fund development of the package.
@@ -17440,7 +17454,7 @@ export interface Block {
     );
   "block-closing-brace-newline-after"?: NewlineSpaceWithIgnoreRule;
   "block-closing-brace-newline-before"?: NewlineRule;
-  "block-closing-brace-space-afte"?: NewlineSpaceRule;
+  "block-closing-brace-space-after"?: NewlineSpaceRule;
   "block-closing-brace-space-before"?: NewlineSpaceRule1;
   "block-no-empty"?: BooleanRule1;
   "block-no-single-line"?: BooleanRule2;

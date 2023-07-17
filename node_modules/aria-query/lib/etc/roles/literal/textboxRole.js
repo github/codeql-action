@@ -31,6 +31,7 @@ var textboxRole = {
         constraints: ['undefined'],
         name: 'list'
       }],
+      constraints: ['the list attribute is not set'],
       name: 'input'
     },
     module: 'HTML'
@@ -43,6 +44,7 @@ var textboxRole = {
         name: 'type',
         value: 'email'
       }],
+      constraints: ['the list attribute is not set'],
       name: 'input'
     },
     module: 'HTML'
@@ -55,6 +57,7 @@ var textboxRole = {
         name: 'type',
         value: 'tel'
       }],
+      constraints: ['the list attribute is not set'],
       name: 'input'
     },
     module: 'HTML'
@@ -67,6 +70,7 @@ var textboxRole = {
         name: 'type',
         value: 'text'
       }],
+      constraints: ['the list attribute is not set'],
       name: 'input'
     },
     module: 'HTML'
@@ -79,6 +83,7 @@ var textboxRole = {
         name: 'type',
         value: 'url'
       }],
+      constraints: ['the list attribute is not set'],
       name: 'input'
     },
     module: 'HTML'

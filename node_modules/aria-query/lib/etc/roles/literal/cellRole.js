@@ -19,7 +19,7 @@ var cellRole = {
   },
   relatedConcepts: [{
     concept: {
-      constraints: ['descendant of table'],
+      constraints: ['ancestor table element has table role'],
       name: 'td'
     },
     module: 'HTML'

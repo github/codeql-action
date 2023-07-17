@@ -3,7 +3,7 @@ Check if a path is the [current working directory](https://en.wikipedia.org/wiki
 
 @example
 ```
-import isPathCwd = require('is-path-cwd');
+import isPathCwd from 'is-path-cwd';
 
 isPathCwd(process.cwd());
 //=> true
@@ -12,6 +12,4 @@ isPathCwd('unicorn');
 //=> false
 ```
 */
-declare function isPathCwd(path: string): boolean;
-
-export = isPathCwd;
+export default function isPathCwd(path: string): boolean;

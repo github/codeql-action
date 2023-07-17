@@ -1,10 +1,10 @@
 # CodeQL Action Changelog
 
+See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
+
 ## [UNRELEASED]
 
-No user facing changes.
-
-See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
+- CodeQL Action now requires CodeQL CLI 2.9.4 or later. For more information, see the corresponding changelog entry for CodeQL Action version 2.20.4. [#1724](https://github.com/github/codeql-action/pull/1724)
 
 ## 2.20.4 - 14 Jul 2023
 

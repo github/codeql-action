@@ -34,11 +34,6 @@ var regionRole = {
     concept: {
       name: 'Device Independence Glossart perceivable unit'
     }
-  }, {
-    concept: {
-      name: 'frame'
-    },
-    module: 'HTML'
   }],
   requireContextRole: [],
   requiredContextRole: [],

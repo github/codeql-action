@@ -18,7 +18,7 @@ var listitemRole = {
   },
   relatedConcepts: [{
     concept: {
-      constraints: ['direct descendant of ol, ul or menu'],
+      constraints: ['direct descendant of ol', 'direct descendant of ul', 'direct descendant of menu'],
       name: 'li'
     },
     module: 'HTML'

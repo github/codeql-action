@@ -3,9 +3,9 @@ module.exports = {
     type: 'suggestion',
     docs: {
       description: 'enforce `for..of` loops over `Array.forEach`',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -14,7 +14,7 @@ module.exports = {
         if (node.callee.property && node.callee.property.name === 'forEach') {
           context.report({node, message: 'Prefer for...of instead of Array.forEach'})
         }
-      }
+      },
     }
-  }
+  },
 }

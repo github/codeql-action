@@ -10,10 +10,10 @@ import * as jsonschema from "jsonschema";
 
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
+import { EnvVar } from "./environment";
 import * as fingerprints from "./fingerprints";
 import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
-import { CODEQL_WORKFLOW_STARTED_AT } from "./shared-environment";
 import * as util from "./util";
 import { SarifFile, SarifResult, SarifRun, wrapError } from "./util";
 import * as workflow from "./workflow";
@@ -287,7 +287,7 @@ export function buildPayload(
     workflow_run_attempt: workflowRunAttempt,
     checkout_uri: checkoutURI,
     environment,
-    started_at: process.env[CODEQL_WORKFLOW_STARTED_AT],
+    started_at: process.env[EnvVar.WORKFLOW_STARTED_AT],
     tool_names: toolNames,
     base_ref: undefined as undefined | string,
     base_sha: undefined as undefined | string,

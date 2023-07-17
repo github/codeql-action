@@ -1,5 +1,9 @@
 # Changelog
 
+## v3.8.0
+
+- support Harness CI [76a2867](https://github.com/watson/ci-info/commit/76a2867)
+
 ## v3.7.1
 
 - ignore ci detection when CI is set to `'false'` [24cc450](https://github.com/watson/ci-info/commit/24cc450)

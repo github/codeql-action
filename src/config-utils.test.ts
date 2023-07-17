@@ -23,7 +23,7 @@ import {
   createFeatures,
   mockLanguagesInRepo as mockLanguagesInRepo,
 } from "./testing-utils";
-import * as util from "./util";
+import { GitHubVariant, GitHubVersion, UserError, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -35,7 +35,7 @@ const sampleApiDetails = {
   registriesAuthTokens: undefined,
 };
 
-const gitHubVersion = { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion;
+const gitHubVersion = { type: GitHubVariant.DOTCOM } as GitHubVersion;
 
 // Returns the filepath of the newly-created file
 function createConfigFile(inputFileContents: string, tmpDir: string): string {
@@ -55,7 +55,7 @@ function mockGetContents(
     data: content,
   };
   const spyGetContents = sinon
-    .stub(client.repos, "getContent")
+    .stub(client.rest.repos, "getContent")
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
@@ -73,12 +73,12 @@ function mockListLanguages(languages: string[]) {
     response.data[language] = 123;
   }
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  sinon.stub(client.repos, "listLanguages").resolves(response as any);
+  sinon.stub(client.rest.repos, "listLanguages").resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
 }
 
 test("load empty config", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const logger = getRunnerLogger(true);
     const languages = "javascript,python";
 
@@ -145,7 +145,7 @@ test("load empty config", async (t) => {
 });
 
 test("loading config saves config", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const logger = getRunnerLogger(true);
 
     const codeQL = setCodeQL({
@@ -207,7 +207,7 @@ test("loading config saves config", async (t) => {
 });
 
 test("load input outside of workspace", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     try {
       await configUtils.initConfig(
         undefined,
@@ -234,7 +234,7 @@ test("load input outside of workspace", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(
+        new UserError(
           configUtils.getConfigFileOutsideWorkspaceErrorMessage(
             path.join(tmpDir, "../input")
           )
@@ -245,7 +245,7 @@ test("load input outside of workspace", async (t) => {
 });
 
 test("load non-local input with invalid repo syntax", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     // no filename given, just a repo
     const configFile = "octo-org/codeql-config@main";
 
@@ -275,7 +275,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(
+        new UserError(
           configUtils.getConfigFileRepoFormatInvalidMessage(
             "octo-org/codeql-config@main"
           )
@@ -286,7 +286,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
 });
 
 test("load non-existent input", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const languages = "javascript";
     const configFile = "input";
     t.false(fs.existsSync(path.join(tmpDir, configFile)));
@@ -317,7 +317,7 @@ test("load non-existent input", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(
+        new UserError(
           configUtils.getConfigFileDoesNotExistErrorMessage(
             path.join(tmpDir, "input")
           )
@@ -328,7 +328,7 @@ test("load non-existent input", async (t) => {
 });
 
 test("load non-empty input", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const codeQL = setCodeQL({
       async resolveQueries() {
         return {
@@ -428,7 +428,7 @@ test("load non-empty input", async (t) => {
 });
 
 test("Default queries are used", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     // Check that the default behaviour is to add the default queries.
     // In this case if a config file is specified but does not include
     // the disable-default-queries field.
@@ -523,7 +523,7 @@ function queriesToResolvedQueryForm(queries: string[]) {
 }
 
 test("Queries can be specified in config file", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const inputFileContents = `
       name: my config
       queries:
@@ -598,7 +598,7 @@ test("Queries can be specified in config file", async (t) => {
 });
 
 test("Queries from config file can be overridden in workflow file", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const inputFileContents = `
       name: my config
       queries:
@@ -677,7 +677,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
 });
 
 test("Queries in workflow file can be used in tandem with the 'disable default queries' option", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     process.env["RUNNER_TEMP"] = tmpDir;
     process.env["GITHUB_WORKSPACE"] = tmpDir;
 
@@ -751,7 +751,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
 });
 
 test("Multiple queries can be specified in workflow file, no config file required", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     fs.mkdirSync(path.join(tmpDir, "override1"));
     fs.mkdirSync(path.join(tmpDir, "override2"));
 
@@ -829,7 +829,7 @@ test("Multiple queries can be specified in workflow file, no config file require
 });
 
 test("Queries in workflow file can be added to the set of queries without overriding config file", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     process.env["RUNNER_TEMP"] = tmpDir;
     process.env["GITHUB_WORKSPACE"] = tmpDir;
 
@@ -926,7 +926,7 @@ test("Queries in workflow file can be added to the set of queries without overri
 });
 
 test("Queries can be specified using config input", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const configInput = `
       name: my config
       queries:
@@ -1009,7 +1009,7 @@ test("Queries can be specified using config input", async (t) => {
 });
 
 test("Using config input and file together, config input should be used.", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     process.env["RUNNER_TEMP"] = tmpDir;
     process.env["GITHUB_WORKSPACE"] = tmpDir;
 
@@ -1101,7 +1101,7 @@ test("Using config input and file together, config input should be used.", async
 });
 
 test("Invalid queries in workflow file handled correctly", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const queries = "foo/bar@v1@v3";
     const languages = "javascript";
 
@@ -1148,14 +1148,16 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3"))
+        new UserError(
+          configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3")
+        )
       );
     }
   });
 });
 
 test("API client used when reading remote config", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const codeQL = setCodeQL({
       async resolveQueries() {
         return {
@@ -1222,7 +1224,7 @@ test("API client used when reading remote config", async (t) => {
 });
 
 test("Remote config handles the case where a directory is provided", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const dummyResponse = []; // directories are returned as arrays
     mockGetContents(dummyResponse);
 
@@ -1253,14 +1255,16 @@ test("Remote config handles the case where a directory is provided", async (t) =
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(configUtils.getConfigFileDirectoryGivenMessage(repoReference))
+        new UserError(
+          configUtils.getConfigFileDirectoryGivenMessage(repoReference)
+        )
       );
     }
   });
 });
 
 test("Invalid format of remote config handled correctly", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const dummyResponse = {
       // note no "content" property here
     };
@@ -1293,14 +1297,16 @@ test("Invalid format of remote config handled correctly", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(configUtils.getConfigFileFormatInvalidMessage(repoReference))
+        new UserError(
+          configUtils.getConfigFileFormatInvalidMessage(repoReference)
+        )
       );
     }
   });
 });
 
 test("No detected languages", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     mockListLanguages([]);
     const codeQL = setCodeQL({
       async resolveLanguages() {
@@ -1335,13 +1341,13 @@ test("No detected languages", async (t) => {
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
-      t.deepEqual(err, new Error(configUtils.getNoLanguagesError()));
+      t.deepEqual(err, new UserError(configUtils.getNoLanguagesError()));
     }
   });
 });
 
 test("Unknown languages", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const languages = "rubbish,english";
 
     try {
@@ -1370,14 +1376,16 @@ test("Unknown languages", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new Error(configUtils.getUnknownLanguagesError(["rubbish", "english"]))
+        new UserError(
+          configUtils.getUnknownLanguagesError(["rubbish", "english"])
+        )
       );
     }
   });
 });
 
 test("Config specifies packages", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const codeQL = setCodeQL({
       async resolveQueries() {
         return {
@@ -1431,7 +1439,7 @@ test("Config specifies packages", async (t) => {
 });
 
 test("Config specifies packages for multiple languages", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const codeQL = setCodeQL({
       async resolveQueries() {
         return {
@@ -1518,7 +1526,7 @@ function doInvalidInputTest(
   expectedErrorMessageGenerator: (configFile: string) => string
 ) {
   test(`load invalid input - ${testName}`, async (t) => {
-    return await util.withTmpDir(async (tmpDir) => {
+    return await withTmpDir(async (tmpDir) => {
       const codeQL = setCodeQL({
         async resolveQueries() {
           return {
@@ -1561,7 +1569,10 @@ function doInvalidInputTest(
         );
         throw new Error("initConfig did not throw error");
       } catch (err) {
-        t.deepEqual(err, new Error(expectedErrorMessageGenerator(inputFile)));
+        t.deepEqual(
+          err,
+          new UserError(expectedErrorMessageGenerator(inputFile))
+        );
       }
     });
   });
@@ -2104,7 +2115,7 @@ const mlPoweredQueriesMacro = test.macro({
     queriesInput: string | undefined,
     expectedVersionString: string | undefined
   ) => {
-    return await util.withTmpDir(async (tmpDir) => {
+    return await withTmpDir(async (tmpDir) => {
       const codeQL = setCodeQL({
         async getVersion() {
           return codeQLVersion;
@@ -2178,95 +2189,46 @@ const mlPoweredQueriesMacro = test.macro({
 // Test that ML-powered queries aren't run when the feature is off.
 test(
   mlPoweredQueriesMacro,
-  "2.7.5",
+  "2.12.3",
   false,
   undefined,
   "security-extended",
   undefined
 );
-// Test that the ~0.1.0 version of ML-powered queries is run on v2.8.3 of the CLI.
-test(
-  mlPoweredQueriesMacro,
-  "2.8.3",
-  true,
-  undefined,
-  "security-extended",
-  process.platform === "win32" ? undefined : "~0.1.0"
-);
 // Test that ML-powered queries aren't run when the user hasn't specified that we should run the
 //  `security-extended`, `security-and-quality`, or `security-experimental` query suite.
-test(mlPoweredQueriesMacro, "2.7.5", true, undefined, undefined, undefined);
-// Test that ML-powered queries are run on non-Windows platforms running `security-extended` on
-// versions of the CodeQL CLI prior to 2.9.0.
-test(
-  mlPoweredQueriesMacro,
-  "2.8.5",
-  true,
-  undefined,
-  "security-extended",
-  process.platform === "win32" ? undefined : "~0.2.0"
-);
-// Test that ML-powered queries are run on non-Windows platforms running `security-and-quality` on
-// versions of the CodeQL CLI prior to 2.9.0.
-test(
-  mlPoweredQueriesMacro,
-  "2.8.5",
-  true,
-  undefined,
-  "security-and-quality",
-  process.platform === "win32" ? undefined : "~0.2.0"
-);
-// Test that ML-powered queries are run on all platforms running `security-extended` on CodeQL CLI
-// 2.9.0+.
-test(
-  mlPoweredQueriesMacro,
-  "2.9.0",
-  true,
-  undefined,
-  "security-extended",
-  "~0.2.0"
-);
-// Test that ML-powered queries are run on all platforms running `security-and-quality` on CodeQL
-// CLI 2.9.0+.
-test(
-  mlPoweredQueriesMacro,
-  "2.9.0",
-  true,
-  undefined,
-  "security-and-quality",
-  "~0.2.0"
-);
+test(mlPoweredQueriesMacro, "2.12.3", true, undefined, undefined, undefined);
 // Test that we don't inject an ML-powered query pack if the user has already specified one.
 test(
   mlPoweredQueriesMacro,
-  "2.9.0",
+  "2.12.3",
   true,
   "codeql/javascript-experimental-atm-queries@0.0.1",
   "security-and-quality",
   "0.0.1"
 );
-// Test that ML-powered queries are run on all platforms running `security-extended` on CodeQL
-// CLI 2.9.3+.
+// Test that ML-powered queries ~0.3.0 are run on all platforms running `security-extended` on
+// CodeQL CLI 2.9.4+.
 test(
   mlPoweredQueriesMacro,
-  "2.9.3",
+  "2.9.4",
   true,
   undefined,
   "security-extended",
   "~0.3.0"
 );
-// Test that ML-powered queries are run on all platforms running `security-and-quality` on CodeQL
-// CLI 2.9.3+.
+// Test that ML-powered queries ~0.3.0 are run on all platforms running `security-and-quality` on
+// CodeQL CLI 2.9.4+.
 test(
   mlPoweredQueriesMacro,
-  "2.9.3",
+  "2.9.4",
   true,
   undefined,
   "security-and-quality",
   "~0.3.0"
 );
-// Test that ML-powered queries are run on all platforms running `security-extended` on CodeQL
-// CLI 2.11.3+.
+// Test that ML-powered queries ~0.4.0 are run on all platforms running `security-extended` on
+// CodeQL CLI 2.11.3+.
 test(
   mlPoweredQueriesMacro,
   "2.11.3",
@@ -2275,8 +2237,8 @@ test(
   "security-extended",
   "~0.4.0"
 );
-// Test that ML-powered queries are run on all platforms running `security-and-quality` on CodeQL
-// CLI 2.11.3+.
+// Test that ML-powered queries ~0.4.0 are run on all platforms running `security-and-quality` on
+// CodeQL CLI 2.11.3+.
 test(
   mlPoweredQueriesMacro,
   "2.11.3",
@@ -2458,7 +2420,7 @@ test(
 );
 
 test("downloadPacks-no-registries", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const packDownloadStub = sinon.stub();
     packDownloadStub.callsFake((packs) => ({
       packs,
@@ -2495,7 +2457,7 @@ test("downloadPacks-no-registries", async (t) => {
 test("downloadPacks-with-registries", async (t) => {
   // same thing, but this time include a registries block and
   // associated env vars
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     process.env.GITHUB_TOKEN = "not-a-token";
     process.env.CODEQL_REGISTRIES_AUTH = undefined;
     const logger = getRunnerLogger(true);
@@ -2586,7 +2548,7 @@ test("downloadPacks-with-registries", async (t) => {
 test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
   // same thing, but this time include a registries block and
   // associated env vars
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     process.env.GITHUB_TOKEN = "not-a-token";
     process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
     const logger = getRunnerLogger(true);
@@ -2628,7 +2590,7 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
 test("downloadPacks-with-registries fails with invalid registries block", async (t) => {
   // same thing, but this time include a registries block and
   // associated env vars
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     process.env.GITHUB_TOKEN = "not-a-token";
     process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
     const logger = getRunnerLogger(true);
@@ -2670,7 +2632,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
 // the happy path for generateRegistries is already tested in downloadPacks.
 // these following tests are for the error cases and when nothing is generated.
 test("no generateRegistries when CLI is too old", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const registriesInput = yaml.dump([
       {
         // no slash
@@ -2698,7 +2660,7 @@ test("no generateRegistries when CLI is too old", async (t) => {
   });
 });
 test("no generateRegistries when registries is undefined", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     const registriesInput = undefined;
     const codeQL = setCodeQL({
       // Accepted CLI versions are 2.10.4 or higher
@@ -2719,7 +2681,7 @@ test("no generateRegistries when registries is undefined", async (t) => {
 });
 
 test("generateRegistries prefers original CODEQL_REGISTRIES_AUTH", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tmpDir) => {
     process.env.CODEQL_REGISTRIES_AUTH = "original";
     const registriesInput = yaml.dump([
       {

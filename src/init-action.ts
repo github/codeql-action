@@ -16,6 +16,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import {
   initCodeQL,
@@ -27,7 +28,6 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import * as sharedEnv from "./shared-environment";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkForTimeout,
@@ -38,7 +38,6 @@ import {
   getMlPoweredJsQueriesStatus,
   getRequiredEnvParam,
   getThreadsFlagValue,
-  GitHubVariant,
   initializeEnvironment,
   isHostedRunner,
   wrapError,
@@ -214,7 +213,7 @@ async function run() {
     logger
   );
 
-  core.exportVariable(sharedEnv.JOB_RUN_UUID, uuidV4());
+  core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
 
   try {
     const workflowErrors = await validateWorkflow(logger);
@@ -235,9 +234,7 @@ async function run() {
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type
     );
-    if (codeQLDefaultVersionInfo.variant === GitHubVariant.DOTCOM) {
-      toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
-    }
+    toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
@@ -332,7 +329,7 @@ async function run() {
     core.exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
-        getMemoryFlagValue(getOptionalInput("ram")).toString()
+        (await getMemoryFlagValue(getOptionalInput("ram"), features)).toString()
     );
     core.exportVariable(
       "CODEQL_THREADS",

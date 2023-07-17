@@ -15,7 +15,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
-import { GitHubVariant, HTTPError } from "./util";
+import { HTTPError } from "./util";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
   auth: "token",
@@ -24,8 +24,8 @@ export const SAMPLE_DOTCOM_API_DETAILS = {
 };
 
 export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
-  cliVersion: "2.0.0",
-  variant: GitHubVariant.DOTCOM,
+  cliVersion: "2.20.0",
+  tagName: "codeql-bundle-v2.20.0",
 };
 
 type TestContext = {
@@ -199,8 +199,10 @@ export function mockLanguagesInRepo(languages: string[]) {
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   mockClient.returns({
-    repos: {
-      listLanguages,
+    rest: {
+      repos: {
+        listLanguages,
+      },
     },
   } as any);
   return listLanguages;

@@ -4,7 +4,11 @@ import * as path from "path";
 import * as semver from "semver";
 
 import { getApiClient } from "./api-client";
-import { CODEQL_VERSION_NEW_ANALYSIS_SUMMARY, CodeQL } from "./codeql";
+import {
+  CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED,
+  CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
+  CodeQL,
+} from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -13,20 +17,11 @@ import * as util from "./util";
 const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
 const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 
-export type CodeQLDefaultVersionInfo =
-  | {
-      cliVersion: string;
-      toolsFeatureFlagsValid?: boolean;
-      variant: util.GitHubVariant.DOTCOM;
-    }
-  | {
-      cliVersion: string;
-      tagName: string;
-      variant:
-        | util.GitHubVariant.GHAE
-        | util.GitHubVariant.GHES
-        | util.GitHubVariant.GHE_DOTCOM;
-    };
+export interface CodeQLDefaultVersionInfo {
+  cliVersion: string;
+  tagName: string;
+  toolsFeatureFlagsValid?: boolean;
+}
 
 export interface FeatureEnablement {
   /** Gets the default version of the CodeQL tools. */
@@ -44,6 +39,7 @@ export enum Feature {
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   NewAnalysisSummaryEnabled = "new_analysis_summary_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  ScalingReservedRam = "scaling_reserved_ram",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -68,7 +64,7 @@ export const featureConfig: Record<
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
-    minimumVersion: "2.7.5",
+    minimumVersion: undefined,
     defaultValue: false,
   },
   [Feature.NewAnalysisSummaryEnabled]: {
@@ -78,6 +74,11 @@ export const featureConfig: Record<
   },
   [Feature.QaTelemetryEnabled]: {
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
+    minimumVersion: undefined,
+    defaultValue: false,
+  },
+  [Feature.ScalingReservedRam]: {
+    envVar: "CODEQL_ACTION_SCALING_RESERVED_RAM",
     minimumVersion: undefined,
     defaultValue: false,
   },
@@ -256,33 +257,27 @@ class GitHubFeatureFlags {
     variant: util.GitHubVariant
   ): Promise<CodeQLDefaultVersionInfo> {
     if (variant === util.GitHubVariant.DOTCOM) {
-      const defaultDotComCliVersion = await this.getDefaultDotcomCliVersion();
-      return {
-        cliVersion: defaultDotComCliVersion.version,
-        toolsFeatureFlagsValid: this.hasAccessedRemoteFeatureFlags
-          ? defaultDotComCliVersion.toolsFeatureFlagsValid
-          : undefined,
-        variant,
-      };
+      return await this.getDefaultDotcomCliVersion();
     }
     return {
       cliVersion: defaults.cliVersion,
       tagName: defaults.bundleVersion,
-      variant,
     };
   }
 
-  async getDefaultDotcomCliVersion(): Promise<{
-    version: string;
-    toolsFeatureFlagsValid: boolean | undefined;
-  }> {
+  async getDefaultDotcomCliVersion(): Promise<CodeQLDefaultVersionInfo> {
     const response = await this.getAllFeatures();
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
       .map(([f, isEnabled]) =>
         isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined
       )
-      .filter((f) => f !== undefined)
+      .filter(
+        (f) =>
+          f !== undefined &&
+          // Only consider versions that have semantically versioned bundles.
+          semver.gte(f, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)
+      )
       .map((f) => f as string);
 
     if (enabledFeatureFlagCliVersions.length === 0) {
@@ -300,12 +295,14 @@ class GitHubFeatureFlags {
         "Feature flags do not specify a default CLI version. Falling back to the CLI version " +
           `shipped with the Action. This is ${defaults.cliVersion}.`
       );
-      return {
-        version: defaults.cliVersion,
-        toolsFeatureFlagsValid: this.hasAccessedRemoteFeatureFlags
-          ? false
-          : undefined,
+      const result: CodeQLDefaultVersionInfo = {
+        cliVersion: defaults.cliVersion,
+        tagName: defaults.bundleVersion,
       };
+      if (this.hasAccessedRemoteFeatureFlags) {
+        result.toolsFeatureFlagsValid = false;
+      }
+      return result;
     }
 
     const maxCliVersion = enabledFeatureFlagCliVersions.reduce(
@@ -316,7 +313,11 @@ class GitHubFeatureFlags {
     this.logger.debug(
       `Derived default CLI version of ${maxCliVersion} from feature flags.`
     );
-    return { version: maxCliVersion, toolsFeatureFlagsValid: true };
+    return {
+      cliVersion: maxCliVersion,
+      tagName: `codeql-bundle-v${maxCliVersion}`,
+      toolsFeatureFlagsValid: true,
+    };
   }
 
   async getValue(feature: Feature): Promise<boolean | undefined> {
@@ -422,7 +423,7 @@ class GitHubFeatureFlags {
           "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
             "As a result, it will not be opted into any experimental features. " +
             "This could be because the Action is running on a pull request from a fork. If not, " +
-            `please ensure the Action has the 'security-events: write' permission. Details: ${e}`
+            `please ensure the Action has the 'security-events: write' permission. Details: ${e.message}`
         );
         this.hasAccessedRemoteFeatureFlags = false;
         return {};

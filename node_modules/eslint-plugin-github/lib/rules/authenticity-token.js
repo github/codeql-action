@@ -3,9 +3,9 @@ module.exports = {
     type: 'problem',
     docs: {
       description: 'disallow usage of CSRF tokens in JavaScript',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -14,7 +14,7 @@ module.exports = {
         context.report({
           node,
           message:
-            'Form CSRF tokens (authenticity tokens) should not be created in JavaScript and their values should not be used directly for XHR requests.'
+            'Form CSRF tokens (authenticity tokens) should not be created in JavaScript and their values should not be used directly for XHR requests.',
         })
       }
     }
@@ -24,7 +24,7 @@ module.exports = {
         if (typeof node.value === 'string') {
           checkAuthenticityTokenUsage(node, node.value)
         }
-      }
+      },
     }
-  }
+  },
 }

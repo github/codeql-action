@@ -16,14 +16,10 @@ import {
   parsePacksSpecification,
   prettyPrintPack,
 } from "./config-utils";
+import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import {
-  CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX,
-  CODEQL_ACTION_TEST_MODE,
-  EnvVar,
-} from "./shared-environment";
 
 /**
  * Specifies bundle versions that are known to be broken
@@ -161,9 +157,21 @@ export async function withTmpDir<T>(
  * from committing too much of the available memory to CodeQL.
  * @returns number
  */
-function getSystemReservedMemoryMegaBytes(): number {
+async function getSystemReservedMemoryMegaBytes(
+  totalMemoryMegaBytes: number,
+  features: FeatureEnablement
+): Promise<number> {
   // Windows needs more memory for OS processes.
-  return 1024 * (process.platform === "win32" ? 1.5 : 1);
+  const fixedAmount = 1024 * (process.platform === "win32" ? 1.5 : 1);
+
+  if (await features.getValue(Feature.ScalingReservedRam)) {
+    // Reserve an additional 2% of the total memory, since the amount used by
+    // the kernel for page tables scales with the size of physical memory.
+    const scaledAmount = 0.02 * totalMemoryMegaBytes;
+    return fixedAmount + scaledAmount;
+  } else {
+    return fixedAmount;
+  }
 }
 
 /**
@@ -173,7 +181,10 @@ function getSystemReservedMemoryMegaBytes(): number {
  *
  * @returns {number} the amount of RAM to use, in megabytes
  */
-export function getMemoryFlagValue(userInput: string | undefined): number {
+export async function getMemoryFlagValue(
+  userInput: string | undefined,
+  features: FeatureEnablement
+): Promise<number> {
   let memoryToUseMegaBytes: number;
   if (userInput) {
     memoryToUseMegaBytes = Number(userInput);
@@ -183,7 +194,10 @@ export function getMemoryFlagValue(userInput: string | undefined): number {
   } else {
     const totalMemoryBytes = os.totalmem();
     const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
-    const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes();
+    const reservedMemoryMegaBytes = await getSystemReservedMemoryMegaBytes(
+      totalMemoryMegaBytes,
+      features
+    );
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
   return Math.floor(memoryToUseMegaBytes);
@@ -196,8 +210,12 @@ export function getMemoryFlagValue(userInput: string | undefined): number {
  *
  * @returns string
  */
-export function getMemoryFlag(userInput: string | undefined): string {
-  return `--ram=${getMemoryFlagValue(userInput)}`;
+export async function getMemoryFlag(
+  userInput: string | undefined,
+  features: FeatureEnablement
+): Promise<string> {
+  const megabytes = await getMemoryFlagValue(userInput, features);
+  return `--ram=${megabytes}`;
 }
 
 /**
@@ -348,7 +366,7 @@ export async function getGitHubVersion(
   // Doesn't strictly have to be the meta endpoint as we're only
   // using the response headers which are available on every request.
   const apiClient = getApiClient();
-  const response = await apiClient.meta.get();
+  const response = await apiClient.rest.meta.get();
 
   // This happens on dotcom, although we expect to have already returned in that
   // case. This can also serve as a fallback in cases we haven't foreseen.
@@ -568,12 +586,8 @@ export async function getMlPoweredJsQueriesPack(
   let version;
   if (await codeQlVersionAbove(codeQL, "2.11.3")) {
     version = "~0.4.0";
-  } else if (await codeQlVersionAbove(codeQL, "2.9.3")) {
-    version = `~0.3.0`;
-  } else if (await codeQlVersionAbove(codeQL, "2.8.4")) {
-    version = `~0.2.0`;
   } else {
-    version = `~0.1.0`;
+    version = `~0.3.0`;
   }
   return prettyPrintPack({
     name: ML_POWERED_JS_QUERIES_PACK_NAME,
@@ -630,7 +644,7 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
  * In test mode, we don't upload SARIF results or status reports to the GitHub API.
  */
 export function isInTestMode(): boolean {
-  return process.env[CODEQL_ACTION_TEST_MODE] === "true";
+  return process.env[EnvVar.TEST_MODE] === "true";
 }
 
 /**
@@ -894,10 +908,10 @@ export function fixInvalidNotificationsInFile(
   outputPath: string,
   logger: Logger
 ): void {
-  if (process.env[CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
+  if (process.env[EnvVar.DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
     logger.info(
       "SARIF notification object duplicate location fix disabled by the " +
-        `${CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
+        `${EnvVar.DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
     );
     fs.renameSync(inputPath, outputPath);
   } else {

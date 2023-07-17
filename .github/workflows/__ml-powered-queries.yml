@@ -1,6 +1,6 @@
 # Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml && python3 sync.py)
+#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
 name: PR Check - ML-powered queries
@@ -26,12 +26,6 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20220401
-        - os: macos-latest
-          version: stable-20220401
-        - os: windows-latest
-          version: stable-20220401
-        - os: ubuntu-latest
           version: stable-20220615
         - os: macos-latest
           version: stable-20220615
@@ -49,6 +43,12 @@ jobs:
           version: stable-20221211
         - os: windows-latest
           version: stable-20221211
+        - os: ubuntu-latest
+          version: stable-20230418
+        - os: macos-latest
+          version: stable-20230418
+        - os: windows-latest
+          version: stable-20230418
         - os: ubuntu-latest
           version: cached
         - os: macos-latest
@@ -110,8 +110,6 @@ jobs:
 
     - name: Check sarif
       uses: ./../action/.github/actions/check-sarif
-    # Running on Windows requires CodeQL CLI 2.9.0+.
-      if: "!(matrix.version == 'stable-20220401' && runner.os == 'Windows')"
       with:
         sarif-file: ${{ runner.temp }}/results/javascript.sarif
         queries-run: 
@@ -119,14 +117,8 @@ jobs:
         queries-not-run: foo,bar
 
     - name: Check results
-      env:
-      # Running on Windows requires CodeQL CLI 2.9.0+.
-        SHOULD_RUN_ML_POWERED_QUERIES: ${{ !(matrix.version == 'stable-20220401' &&
-          runner.os == 'Windows') }}
       shell: bash
       run: |
-        echo "Expecting ML-powered queries to be run: ${SHOULD_RUN_ML_POWERED_QUERIES}"
-
         cd "$RUNNER_TEMP/results"
         # We should run at least the ML-powered queries in `expected_rules`.
         expected_rules="js/ml-powered/nosql-injection js/ml-powered/path-injection js/ml-powered/sql-injection js/ml-powered/xss"
@@ -135,11 +127,8 @@ jobs:
           found_rule=$(jq --arg rule "${rule}" '[.runs[0].tool.extensions[].rules | select(. != null) |
             flatten | .[].id] | any(. == $rule)' javascript.sarif)
           echo "Did find rule '${rule}': ${found_rule}"
-          if [[ "${found_rule}" != "true" && "${SHOULD_RUN_ML_POWERED_QUERIES}" == "true" ]]; then
+          if [[ "${found_rule}" != "true" ]]; then
             echo "Expected SARIF output to contain rule '${rule}', but found no such rule."
-            exit 1
-          elif [[ "${found_rule}" == "true" && "${SHOULD_RUN_ML_POWERED_QUERIES}" != "true" ]]; then
-            echo "Found rule '${rule}' in the SARIF output which shouldn't have been part of the analysis."
             exit 1
           fi
         done
@@ -149,11 +138,8 @@ jobs:
           select(.properties.score != null and (.rule.id | startswith("js/ml-powered/")))] | length' \
           javascript.sarif)
         echo "Found ${num_alerts} alerts from ML-powered queries.";
-        if [[ "${num_alerts}" -eq 0 && "${SHOULD_RUN_ML_POWERED_QUERIES}" == "true" ]]; then
+        if [[ "${num_alerts}" -eq 0 ]]; then
           echo "Expected to find at least one alert from an ML-powered query but found ${num_alerts}."
-          exit 1
-        elif [[ "${num_alerts}" -ne 0 && "${SHOULD_RUN_ML_POWERED_QUERIES}" != "true" ]]; then
-          echo "Expected not to find any alerts from an ML-powered query but found ${num_alerts}."
           exit 1
         fi
     env:

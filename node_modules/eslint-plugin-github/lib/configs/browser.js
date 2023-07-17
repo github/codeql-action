@@ -1,6 +1,6 @@
 module.exports = {
   env: {
-    browser: true
+    browser: true,
   },
   plugins: ['github', 'escompat'],
   extends: ['plugin:escompat/recommended'],
@@ -22,8 +22,8 @@ module.exports = {
       'error',
       {
         selector: "NewExpression[callee.name='URL'][arguments.length=1]",
-        message: 'Please pass in `window.location.origin` as the 2nd argument to `new URL()`'
-      }
-    ]
-  }
+        message: 'Please pass in `window.location.origin` as the 2nd argument to `new URL()`',
+      },
+    ],
+  },
 }

@@ -19,14 +19,11 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import {
-  CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY,
-  CODEQL_ACTION_DID_AUTOBUILD_GOLANG,
-} from "./shared-environment";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
@@ -144,7 +141,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
-  if (process.env[CODEQL_ACTION_DID_AUTOBUILD_GOLANG] === "true") {
+  if (process.env[EnvVar.DID_AUTOBUILD_GOLANG] === "true") {
     logger.debug("Won't run Go autobuild since it has already been run.");
     return;
   }
@@ -213,9 +210,6 @@ async function run() {
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger
     );
-    const memory = util.getMemoryFlag(
-      actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"]
-    );
 
     const repositoryNwo = parseRepositoryNwo(
       util.getRequiredEnvParam("GITHUB_REPOSITORY")
@@ -228,6 +222,11 @@ async function run() {
       repositoryNwo,
       actionsUtil.getTemporaryDirectory(),
       logger
+    );
+
+    const memory = await util.getMemoryFlag(
+      actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
+      features
     );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);
@@ -308,10 +307,7 @@ async function run() {
         `expect-error input was set to true but no error was thrown.`
       );
     }
-    core.exportVariable(
-      CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY,
-      "true"
-    );
+    core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     if (

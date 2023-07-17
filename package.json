@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.20.4",
+  "version": "2.21.0",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -21,30 +21,30 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/artifact": "^1.1.0",
-    "@actions/cache": "^3.0.5",
+    "@actions/artifact": "^1.1.1",
+    "@actions/cache": "^3.2.1",
     "@actions/core": "^1.10.0",
     "@actions/exec": "^1.1.1",
-    "@actions/github": "^4.0.0",
-    "@actions/io": "^1.1.2",
+    "@actions/github": "^5.1.1",
+    "@actions/io": "^1.1.3",
     "@actions/tool-cache": "^2.0.1",
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^5.0.2",
-    "@octokit/types": "^10.0.0",
-    "@schemastore/package": "^0.0.6",
-    "@types/uuid": "^9.0.0",
-    "adm-zip": "^0.5.9",
+    "@octokit/types": "^11.1.0",
+    "@schemastore/package": "0.0.8",
+    "@types/uuid": "^9.0.2",
+    "adm-zip": "^0.5.10",
     "console-log-level": "^1.4.1",
-    "del": "^6.0.0",
+    "del": "^6.1.1",
     "fast-deep-equal": "^3.1.3",
     "file-url": "^3.0.0",
     "fs": "0.0.1-security",
     "get-folder-size": "^2.0.1",
     "js-yaml": "^4.1.0",
     "jsonschema": "1.4.1",
-    "long": "^5.2.0",
+    "long": "^5.2.3",
     "path": "^0.12.7",
-    "semver": "^7.5.2",
+    "semver": "^7.5.4",
     "uuid": "^9.0.0",
     "zlib": "^1.0.5"
   },
@@ -52,29 +52,41 @@
     "micromatch is an unspecified dependency of ava"
   ],
   "devDependencies": {
-    "@ava/typescript": "4.0.0",
+    "@ava/typescript": "4.1.0",
     "@types/adm-zip": "^0.5.0",
     "@types/get-folder-size": "^2.0.0",
     "@types/js-yaml": "^4.0.5",
     "@types/node": "16.11.22",
-    "@types/semver": "^7.3.8",
+    "@types/semver": "^7.5.0",
     "@types/sinon": "^10.0.2",
-    "@typescript-eslint/eslint-plugin": "^5.48.2",
-    "@typescript-eslint/parser": "^5.56.0",
-    "ava": "^5.1.1",
-    "eslint": "^8.32.0",
-    "eslint-import-resolver-typescript": "^3.5.3",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "ava": "^5.3.1",
+    "eslint": "^8.44.0",
+    "eslint-import-resolver-typescript": "^3.5.5",
     "eslint-plugin-filenames": "^1.3.2",
-    "eslint-plugin-github": "^4.6.0",
+    "eslint-plugin-github": "^4.8.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "micromatch": "4.0.4",
-    "nock": "^13.1.1",
-    "removeNPMAbsolutePaths": "3.0.0",
-    "sinon": "^15.0.1",
-    "typescript": "^5.0.2"
+    "micromatch": "4.0.5",
+    "nock": "^13.3.1",
+    "removeNPMAbsolutePaths": "3.0.1",
+    "sinon": "^15.2.0",
+    "typescript": "^5.1.6"
   },
   "overrides": {
+    "@actions/cache": {
+      "semver": ">=6.3.1"
+    },
+    "@actions/tool-cache": {
+      "semver": ">=6.3.1"
+    },
+    "eslint-plugin-import": {
+      "semver": ">=6.3.1"
+    },
+    "eslint-plugin-jsx-a11y": {
+      "semver": ">=6.3.1"
+    },
     "xml2js": ">=0.5.0"
   }
 }

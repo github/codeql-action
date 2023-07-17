@@ -1,12 +1,12 @@
 module.exports = {
   parserOptions: {
     ecmaFeatures: {
-      ecmaVersion: 6
+      ecmaVersion: 6,
     },
-    sourceType: 'module'
+    sourceType: 'module',
   },
   env: {
-    es6: true
+    es6: true,
   },
   plugins: ['github', 'prettier', 'eslint-comments', 'import', 'filenames', 'i18n-text', 'no-only-tests'],
   rules: {
@@ -41,8 +41,8 @@ module.exports = {
         allowArray: true,
         allowArrowFunction: false,
         allowLiteral: true,
-        allowObject: true
-      }
+        allowObject: true,
+      },
     ],
     'import/no-commonjs': 'error',
     'import/no-deprecated': 'error',
@@ -89,8 +89,8 @@ module.exports = {
     'no-only-tests/no-only-tests': [
       'error',
       {
-        block: ['describe', 'it', 'context', 'test', 'tape', 'fixture', 'serial', 'suite']
-      }
+        block: ['describe', 'it', 'context', 'test', 'tape', 'fixture', 'serial', 'suite'],
+      },
     ],
     'no-redeclare': 'error',
     'no-regex-spaces': 'error',
@@ -122,13 +122,13 @@ module.exports = {
     'use-isnan': 'error',
     'valid-typeof': 'error',
     camelcase: ['error', {properties: 'always'}],
-    eqeqeq: ['error', 'smart']
+    eqeqeq: ['error', 'smart'],
   },
   settings: {
     'import/resolver': {
       node: {
-        extensions: ['.js', '.ts']
-      }
-    }
-  }
+        extensions: ['.js', '.ts'],
+      },
+    },
+  },
 }

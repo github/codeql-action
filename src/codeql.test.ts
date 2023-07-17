@@ -11,7 +11,6 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import * as api from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
@@ -90,7 +89,7 @@ async function installIntoToolcache({
     tmpDir,
     util.GitHubVariant.GHES,
     cliVersion !== undefined
-      ? { cliVersion, tagName, variant: util.GitHubVariant.GHES }
+      ? { cliVersion, tagName }
       : SAMPLE_DEFAULT_CLI_VERSION,
     getRunnerLogger(true),
     false
@@ -246,21 +245,11 @@ for (const {
   });
 }
 
-for (const { githubReleases, toolcacheVersion } of [
+for (const toolcacheVersion of [
   // Test that we use the tools from the toolcache when `SAMPLE_DEFAULT_CLI_VERSION` is requested
   // and `SAMPLE_DEFAULT_CLI_VERSION-` is in the toolcache.
-  {
-    toolcacheVersion: SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
-  },
-  {
-    githubReleases: {
-      "codeql-bundle-20230101": `cli-version-${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}.txt`,
-    },
-    toolcacheVersion: "0.0.0-20230101",
-  },
-  {
-    toolcacheVersion: `${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}-20230101`,
-  },
+  SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
+  `${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}-20230101`,
 ]) {
   test(
     `uses tools from toolcache when ${SAMPLE_DEFAULT_CLI_VERSION.cliVersion} is requested and ` +
@@ -274,26 +263,6 @@ for (const { githubReleases, toolcacheVersion } of [
           .withArgs("CodeQL", toolcacheVersion)
           .returns("path/to/cached/codeql");
         sinon.stub(toolcache, "findAllVersions").returns([toolcacheVersion]);
-
-        if (githubReleases) {
-          sinon.stub(api, "getApiClient").value(() => ({
-            repos: {
-              listReleases: sinon.stub().resolves(undefined),
-            },
-            paginate: sinon.stub().resolves(
-              Object.entries(githubReleases).map(
-                ([releaseTagName, cliVersionMarkerFile]) => ({
-                  assets: [
-                    {
-                      name: cliVersionMarkerFile,
-                    },
-                  ],
-                  tag_name: releaseTagName,
-                })
-              )
-            ),
-          }));
-        }
 
         const result = await codeql.setupCodeQL(
           undefined,
@@ -331,7 +300,6 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
-          variant,
         },
         getRunnerLogger(true),
         false
@@ -366,7 +334,6 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
-          variant,
         },
         getRunnerLogger(true),
         false
@@ -474,7 +441,6 @@ for (const isBundleVersionInUrl of [true, false]) {
         {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
-          variant: util.GitHubVariant.GHAE,
         },
         getRunnerLogger(true),
         false
@@ -572,7 +538,7 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves("2.8.1");
+    sinon.stub(codeqlObject, "getVersion").resolves("2.9.4");
     // safeWhich throws because of the test CodeQL object.
     sinon.stub(safeWhich, "safeWhich").resolves("");
 

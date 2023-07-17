@@ -3,9 +3,9 @@ module.exports = {
     type: 'suggestion',
     docs: {
       description: 'enforce a naming convention for js- prefixed classes',
-      url: require('../url')(module)
+      url: require('../url')(module),
     },
-    schema: []
+    schema: [],
   },
 
   create(context) {
@@ -51,7 +51,7 @@ module.exports = {
             checkStringEndsWithJSClassName(quasi, quasi.value.raw)
           }
         }
-      }
+      },
     }
-  }
+  },
 }

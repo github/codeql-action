@@ -64,7 +64,7 @@ export const featureConfig: Record<
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
-    minimumVersion: "2.7.5",
+    minimumVersion: undefined,
     defaultValue: false,
   },
   [Feature.NewAnalysisSummaryEnabled]: {

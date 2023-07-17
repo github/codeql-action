@@ -538,7 +538,7 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves("2.8.1");
+    sinon.stub(codeqlObject, "getVersion").resolves("2.9.4");
     // safeWhich throws because of the test CodeQL object.
     sinon.stub(safeWhich, "safeWhich").resolves("");
 

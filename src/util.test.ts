@@ -8,7 +8,6 @@ import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
-import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import {
   createFeatures,
@@ -27,32 +26,6 @@ test("getToolNames", (t) => {
   );
   const toolNames = util.getToolNames(JSON.parse(input) as util.SarifFile);
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
-});
-
-test("getMemoryFlag() should return the correct --ram flag", async (t) => {
-  const totalMem = os.totalmem() / (1024 * 1024);
-  const fixedAmount = process.platform === "win32" ? 1536 : 1024;
-  const scaledAmount = 0.02 * totalMem;
-  const expectedMemoryValue = Math.floor(totalMem - fixedAmount);
-  const expectedMemoryValueWithScaling = Math.floor(
-    totalMem - fixedAmount - scaledAmount
-  );
-
-  const tests: Array<[string | undefined, boolean, string]> = [
-    [undefined, false, `--ram=${expectedMemoryValue}`],
-    ["", false, `--ram=${expectedMemoryValue}`],
-    ["512", false, "--ram=512"],
-    [undefined, true, `--ram=${expectedMemoryValueWithScaling}`],
-    ["", true, `--ram=${expectedMemoryValueWithScaling}`],
-  ];
-
-  for (const [input, withScaling, expectedFlag] of tests) {
-    const features = createFeatures(
-      withScaling ? [Feature.ScalingReservedRam] : []
-    );
-    const flag = await util.getMemoryFlag(input, features);
-    t.deepEqual(flag, expectedFlag);
-  }
 });
 
 test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {

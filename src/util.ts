@@ -159,12 +159,14 @@ export async function withTmpDir<T>(
  */
 async function getSystemReservedMemoryMegaBytes(
   totalMemoryMegaBytes: number,
-  features: FeatureEnablement
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _features: FeatureEnablement
 ): Promise<number> {
   // Windows needs more memory for OS processes.
   const fixedAmount = 1024 * (process.platform === "win32" ? 1.5 : 1);
 
-  if (await features.getValue(Feature.ScalingReservedRam)) {
+  // eslint-disable-next-line no-constant-condition
+  if (true) {
     // Reserve an additional 2% of the total memory, since the amount used by
     // the kernel for page tables scales with the size of physical memory.
     const scaledAmount = 0.02 * totalMemoryMegaBytes;

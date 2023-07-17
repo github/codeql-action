@@ -826,7 +826,9 @@ export async function getCodeQLForCmd(
       } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
-      if (await features.getValue(Feature.NewAnalysisSummaryEnabled, codeql)) {
+      if (
+        await util.codeQlVersionAbove(this, CODEQL_VERSION_NEW_ANALYSIS_SUMMARY)
+      ) {
         codeqlArgs.push("--new-analysis-summary");
       } else if (
         await util.codeQlVersionAbove(

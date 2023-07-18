@@ -48,7 +48,7 @@ test("getMemoryFlag() should return the correct --ram flag", async (t) => {
 
   for (const [input, withScaling, expectedFlag] of tests) {
     const features = createFeatures(
-      withScaling ? [Feature.ScalingReservedRam] : []
+      withScaling ? [Feature.ScalingReservedRamEnabled] : []
     );
     const flag = await util.getMemoryFlag(input, features);
     t.deepEqual(flag, expectedFlag);

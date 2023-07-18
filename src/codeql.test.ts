@@ -1061,6 +1061,78 @@ test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for
   );
 });
 
+const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
+  {
+    featureEnabled: true,
+    codeqlVersion: "2.14.0",
+    flagPassed: true,
+    negativeFlagPassed: false,
+  },
+  {
+    featureEnabled: false,
+    codeqlVersion: "2.14.0",
+    flagPassed: false,
+    negativeFlagPassed: true,
+  },
+  {
+    featureEnabled: false,
+    codeqlVersion: "2.13.5",
+    flagPassed: false,
+    negativeFlagPassed: false,
+  },
+];
+
+for (const {
+  featureEnabled,
+  codeqlVersion,
+  flagPassed,
+  negativeFlagPassed,
+} of NEW_ANALYSIS_SUMMARY_TEST_CASES) {
+  test(`database interpret-results passes ${
+    flagPassed
+      ? "--new-analysis-summary"
+      : negativeFlagPassed
+      ? "--no-new-analysis-summary"
+      : "nothing"
+  } for CodeQL CLI v${codeqlVersion} when the new analysis summary feature is ${
+    featureEnabled ? "enabled" : "disabled"
+  }`, async (t) => {
+    const runnerConstructorStub = stubToolRunnerConstructor();
+    const codeqlObject = await codeql.getCodeQLForTesting();
+    sinon.stub(codeqlObject, "getVersion").resolves(codeqlVersion);
+    // safeWhich throws because of the test CodeQL object.
+    sinon.stub(safeWhich, "safeWhich").resolves("");
+    await codeqlObject.databaseInterpretResults(
+      "",
+      [],
+      "",
+      "",
+      "",
+      "-v",
+      "",
+      stubConfig,
+      createFeatures(featureEnabled ? [Feature.NewAnalysisSummaryEnabled] : []),
+      getRunnerLogger(true)
+    );
+    t.is(
+      runnerConstructorStub.firstCall.args[1].includes(
+        "--new-analysis-summary"
+      ),
+      flagPassed,
+      `--new-analysis-summary should${flagPassed ? "" : "n't"} be passed`
+    );
+    t.is(
+      runnerConstructorStub.firstCall.args[1].includes(
+        "--no-new-analysis-summary"
+      ),
+      negativeFlagPassed,
+      `--no-new-analysis-summary should${
+        negativeFlagPassed ? "" : "n't"
+      } be passed`
+    );
+  });
+}
+
 export function stubToolRunnerConstructor(): sinon.SinonStub<
   any[],
   toolrunner.ToolRunner

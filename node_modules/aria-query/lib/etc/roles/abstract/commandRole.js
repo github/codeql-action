@@ -12,12 +12,7 @@ var commandRole = {
   nameFrom: ['author'],
   prohibitedProps: [],
   props: {},
-  relatedConcepts: [{
-    concept: {
-      name: 'menuitem'
-    },
-    module: 'HTML'
-  }],
+  relatedConcepts: [],
   requireContextRole: [],
   requiredContextRole: [],
   requiredOwnedElements: [],

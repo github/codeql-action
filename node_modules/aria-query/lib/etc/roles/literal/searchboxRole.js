@@ -21,6 +21,7 @@ var searchboxRole = {
         name: 'type',
         value: 'search'
       }],
+      constraints: ['the list attribute is not set'],
       name: 'input'
     },
     module: 'HTML'

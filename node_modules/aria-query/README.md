@@ -2,8 +2,8 @@
 
 ![CI](https://github.com/A11yance/aria-query/workflows/CI/badge.svg)
 
-Programmatic access to the [WAI-ARIA 1.2 Roles Model](https://raw.githack.com/w3c/aria/stable/#roles).
-This package tracks the stable editor's draft (last update: 21 July 2020).
+Programmatic access to the [WAI-ARIA 1.2 Roles Model](https://www.w3.org/TR/wai-aria-1.2/#roles).
+This package tracks the W3C Recommendation (last update: 6 June 2023).
 
 CDN URL: <https://unpkg.com/aria-query>
 

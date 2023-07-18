@@ -12,7 +12,12 @@ var subscriptRole = {
   nameFrom: ['prohibited'],
   prohibitedProps: ['aria-label', 'aria-labelledby'],
   props: {},
-  relatedConcepts: [],
+  relatedConcepts: [{
+    concept: {
+      name: 'sub'
+    },
+    module: 'HTML'
+  }],
   requireContextRole: [],
   requiredContextRole: [],
   requiredOwnedElements: [],

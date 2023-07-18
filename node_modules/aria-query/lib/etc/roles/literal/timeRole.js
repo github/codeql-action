@@ -12,7 +12,12 @@ var timeRole = {
   nameFrom: ['author'],
   prohibitedProps: [],
   props: {},
-  relatedConcepts: [],
+  relatedConcepts: [{
+    concept: {
+      name: 'time'
+    },
+    module: 'HTML'
+  }],
   requireContextRole: [],
   requiredContextRole: [],
   requiredOwnedElements: [],

@@ -32,11 +32,6 @@ var roletypeRole = {
   },
   relatedConcepts: [{
     concept: {
-      name: 'rel'
-    },
-    module: 'HTML'
-  }, {
-    concept: {
       name: 'role'
     },
     module: 'XHTML'

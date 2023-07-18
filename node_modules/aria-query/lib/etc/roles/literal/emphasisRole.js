@@ -12,7 +12,12 @@ var emphasisRole = {
   nameFrom: ['prohibited'],
   prohibitedProps: ['aria-label', 'aria-labelledby'],
   props: {},
-  relatedConcepts: [],
+  relatedConcepts: [{
+    concept: {
+      name: 'em'
+    },
+    module: 'HTML'
+  }],
   requireContextRole: [],
   requiredContextRole: [],
   requiredOwnedElements: [],

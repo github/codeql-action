@@ -25,18 +25,8 @@ var listboxRole = {
       attributes: [{
         constraints: ['>1'],
         name: 'size'
-      }, {
-        name: 'multiple'
       }],
-      name: 'select'
-    },
-    module: 'HTML'
-  }, {
-    concept: {
-      attributes: [{
-        constraints: ['>1'],
-        name: 'size'
-      }],
+      constraints: ['the size attribute value is greater than 1'],
       name: 'select'
     },
     module: 'HTML'

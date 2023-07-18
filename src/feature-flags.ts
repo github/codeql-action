@@ -31,6 +31,11 @@ export interface FeatureEnablement {
   getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
 }
 
+/**
+ * Feature enablement as returned by the GitHub API endpoint.
+ *
+ * Each value of this enum should end with `_enabled`.
+ */
 export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
@@ -39,7 +44,7 @@ export enum Feature {
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   NewAnalysisSummaryEnabled = "new_analysis_summary_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  ScalingReservedRam = "scaling_reserved_ram",
+  ScalingReservedRamEnabled = "scaling_reserved_ram_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -77,7 +82,7 @@ export const featureConfig: Record<
     minimumVersion: undefined,
     defaultValue: false,
   },
-  [Feature.ScalingReservedRam]: {
+  [Feature.ScalingReservedRamEnabled]: {
     envVar: "CODEQL_ACTION_SCALING_RESERVED_RAM",
     minimumVersion: undefined,
     defaultValue: false,

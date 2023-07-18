@@ -102,18 +102,7 @@ var comboboxRole = {
         constraints: ['undefined'],
         name: 'size'
       }],
-      name: 'select'
-    },
-    module: 'HTML'
-  }, {
-    concept: {
-      attributes: [{
-        constraints: ['undefined'],
-        name: 'multiple'
-      }, {
-        name: 'size',
-        value: 1
-      }],
+      constraints: ['the multiple attribute is not set and the size attribute does not have a value greater than 1'],
       name: 'select'
     },
     module: 'HTML'

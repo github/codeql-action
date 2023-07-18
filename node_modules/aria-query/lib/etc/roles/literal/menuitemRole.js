@@ -30,11 +30,6 @@ var menuitemRole = {
     module: 'ARIA'
   }, {
     concept: {
-      name: 'menuitem'
-    },
-    module: 'HTML'
-  }, {
-    concept: {
       name: 'option'
     },
     module: 'ARIA'

@@ -18,7 +18,7 @@ var documentRole = {
     }
   }, {
     concept: {
-      name: 'body'
+      name: 'html'
     },
     module: 'HTML'
   }],

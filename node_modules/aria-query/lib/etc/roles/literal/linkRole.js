@@ -19,6 +19,7 @@ var linkRole = {
   relatedConcepts: [{
     concept: {
       attributes: [{
+        constraints: ['set'],
         name: 'href'
       }],
       name: 'a'
@@ -27,17 +28,10 @@ var linkRole = {
   }, {
     concept: {
       attributes: [{
+        constraints: ['set'],
         name: 'href'
       }],
       name: 'area'
-    },
-    module: 'HTML'
-  }, {
-    concept: {
-      attributes: [{
-        name: 'href'
-      }],
-      name: 'link'
     },
     module: 'HTML'
   }],

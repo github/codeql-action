@@ -23,10 +23,7 @@ var gridcellRole = {
   },
   relatedConcepts: [{
     concept: {
-      attributes: [{
-        name: 'role',
-        value: 'gridcell'
-      }],
+      constraints: ['ancestor table element has grid role', 'ancestor table element has treegrid role'],
       name: 'td'
     },
     module: 'HTML'

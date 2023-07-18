@@ -30,6 +30,11 @@ var groupRole = {
       name: 'optgroup'
     },
     module: 'HTML'
+  }, {
+    concept: {
+      name: 'address'
+    },
+    module: 'HTML'
   }],
   requireContextRole: [],
   requiredContextRole: [],

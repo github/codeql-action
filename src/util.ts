@@ -164,7 +164,7 @@ async function getSystemReservedMemoryMegaBytes(
   // Windows needs more memory for OS processes.
   const fixedAmount = 1024 * (process.platform === "win32" ? 1.5 : 1);
 
-  if (await features.getValue(Feature.ScalingReservedRam)) {
+  if (await features.getValue(Feature.ScalingReservedRamEnabled)) {
     // Reserve an additional 2% of the total memory, since the amount used by
     // the kernel for page tables scales with the size of physical memory.
     const scaledAmount = 0.02 * totalMemoryMegaBytes;

@@ -130,7 +130,7 @@ jobs:
           npm version patch --no-git-tag-version
 
           # Update the changelog
-          perl -i -pe 's/^/## \[UNRELEASED\]\n\nNo user facing changes.\n\n/ if($.==3)' CHANGELOG.md
+          perl -i -pe 's/^/## \[UNRELEASED\]\n\nNo user facing changes.\n\n/ if($.==5)' CHANGELOG.md
           git add .
           git commit -m "Update changelog and version after ${VERSION}"
 

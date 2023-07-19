@@ -1,10 +1,10 @@
 # CodeQL Action Changelog
 
+See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
+
 ## [UNRELEASED]
 
 No user facing changes.
-
-See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
 ## 2.21.0 - 19 Jul 2023
 

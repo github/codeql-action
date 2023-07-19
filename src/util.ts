@@ -10,7 +10,7 @@ import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
 import type { CodeQL } from "./codeql";
-import type { Config } from "./config-utils";
+import type { Config, Pack } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger } from "./logging";
@@ -793,4 +793,32 @@ export function fixInvalidNotificationsInFile(
 
 export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
+}
+
+export const ML_POWERED_JS_QUERIES_PACK_NAME =
+  "codeql/javascript-experimental-atm-queries";
+
+/**
+ * Gets the ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
+ * queries beta.
+ */
+export async function getMlPoweredJsQueriesPack(
+  codeQL: CodeQL
+): Promise<string> {
+  let version;
+  if (await codeQlVersionAbove(codeQL, "2.11.3")) {
+    version = "~0.4.0";
+  } else {
+    version = `~0.3.0`;
+  }
+  return prettyPrintPack({
+    name: ML_POWERED_JS_QUERIES_PACK_NAME,
+    version,
+  });
+}
+
+export function prettyPrintPack(pack: Pack) {
+  return `${pack.name}${pack.version ? `@${pack.version}` : ""}${
+    pack.path ? `:${pack.path}` : ""
+  }`;
 }

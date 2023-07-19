@@ -29,7 +29,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     sinon
       .stub(actionsUtil, "createStatusReportBase")
       .resolves({} as actionsUtil.StatusReportBase);
-    sinon.stub(actionsUtil, "sendStatusReport").resolves(true);
+    sinon.stub(api, "sendStatusReport").resolves(true);
     const gitHubVersion: util.GitHubVersion = {
       type: util.GitHubVariant.DOTCOM,
     };

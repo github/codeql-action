@@ -7,17 +7,13 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
-import * as api from "./api-client";
-import { Config } from "./config-utils";
+import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
   doesDirectoryExist,
   getCachedCodeQlVersion,
   getCodeQLDatabasePath,
   getRequiredEnvParam,
-  GITHUB_DOTCOM_URL,
-  isHTTPError,
-  isInTestMode,
   parseMatrixInput,
   UserError,
 } from "./util";
@@ -516,94 +512,6 @@ export async function createStatusReportBase(
   }
 
   return statusReport;
-}
-
-const GENERIC_403_MSG =
-  "The repo on which this action is running is not opted-in to CodeQL code scanning.";
-const GENERIC_404_MSG =
-  "Not authorized to use the CodeQL code scanning feature on this repo.";
-const OUT_OF_DATE_MSG =
-  "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action.";
-const INCOMPATIBLE_MSG =
-  "CodeQL Action version is incompatible with the code scanning endpoint. Please update to a compatible version of codeql-action.";
-
-/**
- * Send a status report to the code_scanning/analysis/status endpoint.
- *
- * Optionally checks the response from the API endpoint and sets the action
- * as failed if the status report failed. This is only expected to be used
- * when sending a 'starting' report.
- *
- * Returns whether sending the status report was successful of not.
- */
-export async function sendStatusReport<S extends StatusReportBase>(
-  statusReport: S
-): Promise<boolean> {
-  const statusReportJSON = JSON.stringify(statusReport);
-  core.debug(`Sending status report: ${statusReportJSON}`);
-  // If in test mode we don't want to upload the results
-  if (isInTestMode()) {
-    core.debug("In test mode. Status reports are not uploaded.");
-    return true;
-  }
-
-  const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
-  const [owner, repo] = nwo.split("/");
-  const client = api.getApiClient();
-
-  try {
-    await client.request(
-      "PUT /repos/:owner/:repo/code-scanning/analysis/status",
-      {
-        owner,
-        repo,
-        data: statusReportJSON,
-      }
-    );
-
-    return true;
-  } catch (e) {
-    console.log(e);
-    if (isHTTPError(e)) {
-      switch (e.status) {
-        case 403:
-          if (
-            getWorkflowEventName() === "push" &&
-            process.env["GITHUB_ACTOR"] === "dependabot[bot]"
-          ) {
-            core.setFailed(
-              'Workflows triggered by Dependabot on the "push" event run with read-only access. ' +
-                "Uploading Code Scanning results requires write access. " +
-                'To use Code Scanning with Dependabot, please ensure you are using the "pull_request" event for this workflow and avoid triggering on the "push" event for Dependabot branches. ' +
-                "See https://docs.github.com/en/code-security/secure-coding/configuring-code-scanning#scanning-on-push for more information on how to configure these events."
-            );
-          } else {
-            core.setFailed(e.message || GENERIC_403_MSG);
-          }
-          return false;
-        case 404:
-          core.setFailed(GENERIC_404_MSG);
-          return false;
-        case 422:
-          // schema incompatibility when reporting status
-          // this means that this action version is no longer compatible with the API
-          // we still want to continue as it is likely the analysis endpoint will work
-          if (getRequiredEnvParam("GITHUB_SERVER_URL") !== GITHUB_DOTCOM_URL) {
-            core.debug(INCOMPATIBLE_MSG);
-          } else {
-            core.debug(OUT_OF_DATE_MSG);
-          }
-          return true;
-      }
-    }
-
-    // something else has gone wrong and the request/response will be logged by octokit
-    // it's possible this is a transient error and we should continue scanning
-    core.error(
-      "An unexpected error occurred when sending code scanning status report."
-    );
-    return true;
-  }
 }
 
 /**

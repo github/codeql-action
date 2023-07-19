@@ -6,10 +6,9 @@ import {
   getActionVersion,
   getOptionalInput,
   getTemporaryDirectory,
-  sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersion, sendStatusReport } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";

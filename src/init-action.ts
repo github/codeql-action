@@ -10,10 +10,9 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersion, sendStatusReport } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { getMlPoweredJsQueriesStatus } from "./config-utils";

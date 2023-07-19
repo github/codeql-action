@@ -4,7 +4,6 @@ import * as core from "@actions/core";
 import { v4 as uuidV4 } from "uuid";
 
 import {
-  createStatusReportBase,
   getActionsStatus,
   getActionVersion,
   getOptionalInput,
@@ -12,7 +11,11 @@ import {
   getTemporaryDirectory,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion, sendStatusReport } from "./api-client";
+import {
+  createStatusReportBase,
+  getGitHubVersion,
+  sendStatusReport,
+} from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { getMlPoweredJsQueriesStatus } from "./config-utils";

@@ -61,7 +61,7 @@ export async function sendStatusReport(
     error,
     stats?.analyze_failure_language
   );
-  const statusReportBase = await actionsUtil.createStatusReportBase(
+  const statusReportBase = await api.createStatusReportBase(
     "finish",
     status,
     startedAt,
@@ -182,11 +182,7 @@ async function run() {
   try {
     if (
       !(await api.sendStatusReport(
-        await actionsUtil.createStatusReportBase(
-          "finish",
-          "starting",
-          startedAt
-        )
+        await api.createStatusReportBase("finish", "starting", startedAt)
       ))
     ) {
       return;

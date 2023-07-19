@@ -27,7 +27,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["GITHUB_API_URL"] = "https://api.github.com";
     sinon
-      .stub(actionsUtil, "createStatusReportBase")
+      .stub(api, "createStatusReportBase")
       .resolves({} as actionsUtil.StatusReportBase);
     sinon.stub(api, "sendStatusReport").resolves(true);
     const gitHubVersion: util.GitHubVersion = {

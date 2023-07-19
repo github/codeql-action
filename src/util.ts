@@ -8,16 +8,10 @@ import del from "del";
 import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
-import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import { CodeQL } from "./codeql";
-import {
-  Config,
-  parsePacksSpecification,
-  prettyPrintPack,
-} from "./config-utils";
+import type { CodeQL } from "./codeql";
+import type { Config, Pack } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -157,14 +151,14 @@ export async function withTmpDir<T>(
  * from committing too much of the available memory to CodeQL.
  * @returns number
  */
-async function getSystemReservedMemoryMegaBytes(
+function getSystemReservedMemoryMegaBytes(
   totalMemoryMegaBytes: number,
-  features: FeatureEnablement
-): Promise<number> {
+  isScalingReservedRamEnabled: boolean
+): number {
   // Windows needs more memory for OS processes.
   const fixedAmount = 1024 * (process.platform === "win32" ? 1.5 : 1);
 
-  if (await features.getValue(Feature.ScalingReservedRamEnabled)) {
+  if (isScalingReservedRamEnabled) {
     // Reserve an additional 2% of the total memory, since the amount used by
     // the kernel for page tables scales with the size of physical memory.
     const scaledAmount = 0.02 * totalMemoryMegaBytes;
@@ -181,10 +175,10 @@ async function getSystemReservedMemoryMegaBytes(
  *
  * @returns {number} the amount of RAM to use, in megabytes
  */
-export async function getMemoryFlagValue(
+export function getMemoryFlagValue(
   userInput: string | undefined,
-  features: FeatureEnablement
-): Promise<number> {
+  isScalingReservedRamEnabled: boolean
+): number {
   let memoryToUseMegaBytes: number;
   if (userInput) {
     memoryToUseMegaBytes = Number(userInput);
@@ -194,9 +188,9 @@ export async function getMemoryFlagValue(
   } else {
     const totalMemoryBytes = os.totalmem();
     const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
-    const reservedMemoryMegaBytes = await getSystemReservedMemoryMegaBytes(
+    const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes(
       totalMemoryMegaBytes,
-      features
+      isScalingReservedRamEnabled
     );
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
@@ -210,11 +204,11 @@ export async function getMemoryFlagValue(
  *
  * @returns string
  */
-export async function getMemoryFlag(
+export function getMemoryFlag(
   userInput: string | undefined,
-  features: FeatureEnablement
-): Promise<string> {
-  const megabytes = await getMemoryFlagValue(userInput, features);
+  isScalingReservedRamEnabled: boolean
+): string {
+  const megabytes = getMemoryFlagValue(userInput, isScalingReservedRamEnabled);
   return `--ram=${megabytes}`;
 }
 
@@ -337,7 +331,6 @@ export function parseGitHubUrl(inputUrl: string): string {
   return url.toString();
 }
 
-const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
   "CODEQL_ACTION_WARNED_ABOUT_VERSION";
 
@@ -354,37 +347,6 @@ export type GitHubVersion =
   | { type: GitHubVariant.GHAE }
   | { type: GitHubVariant.GHE_DOTCOM }
   | { type: GitHubVariant.GHES; version: string };
-
-export async function getGitHubVersion(
-  apiDetails: GitHubApiDetails
-): Promise<GitHubVersion> {
-  // We can avoid making an API request in the standard dotcom case
-  if (parseGitHubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
-    return { type: GitHubVariant.DOTCOM };
-  }
-
-  // Doesn't strictly have to be the meta endpoint as we're only
-  // using the response headers which are available on every request.
-  const apiClient = getApiClient();
-  const response = await apiClient.rest.meta.get();
-
-  // This happens on dotcom, although we expect to have already returned in that
-  // case. This can also serve as a fallback in cases we haven't foreseen.
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
-    return { type: GitHubVariant.DOTCOM };
-  }
-
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "GitHub AE") {
-    return { type: GitHubVariant.GHAE };
-  }
-
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
-    return { type: GitHubVariant.GHE_DOTCOM };
-  }
-
-  const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
-  return { type: GitHubVariant.GHES, version };
-}
 
 export function checkGitHubVersionInRange(
   version: GitHubVersion,
@@ -573,71 +535,6 @@ export async function supportExpectDiscardedCache(
   return codeQlVersionAbove(codeQL, "2.12.1");
 }
 
-export const ML_POWERED_JS_QUERIES_PACK_NAME =
-  "codeql/javascript-experimental-atm-queries";
-
-/**
- * Gets the ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
- * queries beta.
- */
-export async function getMlPoweredJsQueriesPack(
-  codeQL: CodeQL
-): Promise<string> {
-  let version;
-  if (await codeQlVersionAbove(codeQL, "2.11.3")) {
-    version = "~0.4.0";
-  } else {
-    version = `~0.3.0`;
-  }
-  return prettyPrintPack({
-    name: ML_POWERED_JS_QUERIES_PACK_NAME,
-    version,
-  });
-}
-
-/**
- * Get information about ML-powered JS queries to populate status reports with.
- *
- * This will be:
- *
- * - The version string if the analysis is using a single version of the ML-powered query pack.
- * - "latest" if the version string of the ML-powered query pack is undefined. This is unlikely to
- *   occur in practice (see comment below).
- * - "false" if the analysis won't run any ML-powered JS queries.
- * - "other" in all other cases.
- *
- * Our goal of the status report here is to allow us to compare the occurrence of timeouts and other
- * errors with ML-powered queries turned on and off. We also want to be able to compare minor
- * version bumps caused by us bumping the version range of `ML_POWERED_JS_QUERIES_PACK` in a new
- * version of the CodeQL Action. For instance, we might want to compare the `~0.1.0` and `~0.0.2`
- * version strings.
- *
- * This function lives here rather than in `init-action.ts` so it's easier to test, since tests for
- * `init-action.ts` would each need to live in their own file. See `analyze-action-env.ts` for an
- * explanation as to why this is.
- */
-export function getMlPoweredJsQueriesStatus(config: Config): string {
-  const mlPoweredJsQueryPacks = (config.packs.javascript || [])
-    .map((p) => parsePacksSpecification(p))
-    .filter(
-      (pack) =>
-        pack.name === "codeql/javascript-experimental-atm-queries" && !pack.path
-    );
-  switch (mlPoweredJsQueryPacks.length) {
-    case 1:
-      // We should always specify an explicit version string in `getMlPoweredJsQueriesPack`,
-      // otherwise we won't be able to make changes to the pack unless those changes are compatible
-      // with each version of the CodeQL Action. Therefore in practice we should only hit the
-      // `latest` case here when customers have explicitly added the ML-powered query pack to their
-      // CodeQL config.
-      return mlPoweredJsQueryPacks[0].version || "latest";
-    case 0:
-      return "false";
-    default:
-      return "other";
-  }
-}
-
 /*
  * Returns whether we are in test mode.
  *
@@ -645,33 +542,6 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
  */
 export function isInTestMode(): boolean {
   return process.env[EnvVar.TEST_MODE] === "true";
-}
-
-/**
- * @returns true if the action should generate a conde-scanning config file
- * that gets passed to the CLI.
- */
-export async function useCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement
-): Promise<boolean> {
-  return await features.getValue(Feature.CliConfigFileEnabled, codeql);
-}
-
-export async function logCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger
-) {
-  if (await useCodeScanningConfigInCli(codeql, features)) {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql CLI."
-    );
-  } else {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql-action."
-    );
-  }
 }
 
 /*
@@ -923,4 +793,32 @@ export function fixInvalidNotificationsInFile(
 
 export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
+}
+
+export const ML_POWERED_JS_QUERIES_PACK_NAME =
+  "codeql/javascript-experimental-atm-queries";
+
+/**
+ * Gets the ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
+ * queries beta.
+ */
+export async function getMlPoweredJsQueriesPack(
+  codeQL: CodeQL
+): Promise<string> {
+  let version;
+  if (await codeQlVersionAbove(codeQL, "2.11.3")) {
+    version = "~0.4.0";
+  } else {
+    version = `~0.3.0`;
+  }
+  return prettyPrintPack({
+    name: ML_POWERED_JS_QUERIES_PACK_NAME,
+    version,
+  });
+}
+
+export function prettyPrintPack(pack: Pack) {
+  return `${pack.name}${pack.version ? `@${pack.version}` : ""}${
+    pack.path ? `:${pack.path}` : ""
+  }`;
 }

@@ -15,12 +15,13 @@ import {
   runQueries,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
+import * as api from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
-import { Config, getConfig } from "./config-utils";
+import { Config, getConfig, getMlPoweredJsQueriesStatus } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
+import { Feature, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -60,7 +61,7 @@ export async function sendStatusReport(
     error,
     stats?.analyze_failure_language
   );
-  const statusReportBase = await actionsUtil.createStatusReportBase(
+  const statusReportBase = await api.createStatusReportBase(
     "finish",
     status,
     startedAt,
@@ -71,8 +72,7 @@ export async function sendStatusReport(
     ...statusReportBase,
     ...(config
       ? {
-          ml_powered_javascript_queries:
-            util.getMlPoweredJsQueriesStatus(config),
+          ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
         }
       : {}),
     ...(stats || {}),
@@ -86,9 +86,9 @@ export async function sendStatusReport(
         await getTotalCacheSize(config.trapCaches, logger)
       ),
     };
-    await actionsUtil.sendStatusReport(trapCacheUploadStatusReport);
+    await api.sendStatusReport(trapCacheUploadStatusReport);
   } else {
-    await actionsUtil.sendStatusReport(statusReport);
+    await api.sendStatusReport(statusReport);
   }
 }
 
@@ -181,12 +181,8 @@ async function run() {
   const logger = getActionsLogger();
   try {
     if (
-      !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase(
-          "finish",
-          "starting",
-          startedAt
-        )
+      !(await api.sendStatusReport(
+        await api.createStatusReportBase("finish", "starting", startedAt)
       ))
     ) {
       return;
@@ -224,9 +220,9 @@ async function run() {
       logger
     );
 
-    const memory = await util.getMemoryFlag(
+    const memory = util.getMemoryFlag(
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
-      features
+      await features.getValue(Feature.ScalingReservedRamEnabled)
     );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);

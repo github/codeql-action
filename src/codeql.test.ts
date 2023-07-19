@@ -16,9 +16,9 @@ import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { Feature, featureConfig } from "./feature-flags";
-import { ToolsSource } from "./init";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
+import { ToolsSource } from "./setup-codeql";
 import {
   setupTests,
   createFeatures,

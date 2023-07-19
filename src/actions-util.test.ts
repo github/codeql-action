@@ -4,7 +4,8 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
-import * as actionsutil from "./actions-util";
+import * as actionsUtil from "./actions-util";
+import { computeAutomationID, createStatusReportBase } from "./api-client";
 import { EnvVar } from "./environment";
 import { setupActionsVars, setupTests } from "./testing-utils";
 import { initializeEnvironment, withTmpDir } from "./util";
@@ -13,7 +14,7 @@ setupTests(test);
 
 test("getRef() throws on the empty string", async (t) => {
   process.env["GITHUB_REF"] = "";
-  await t.throwsAsync(actionsutil.getRef);
+  await t.throwsAsync(actionsUtil.getRef);
 });
 
 test("getRef() returns merge PR ref if GITHUB_SHA still checked out", async (t) => {
@@ -24,10 +25,10 @@ test("getRef() returns merge PR ref if GITHUB_SHA still checked out", async (t) 
     process.env["GITHUB_REF"] = expectedRef;
     process.env["GITHUB_SHA"] = currentSha;
 
-    const callback = sinon.stub(actionsutil, "getCommitOid");
+    const callback = sinon.stub(actionsUtil, "getCommitOid");
     callback.withArgs("HEAD").resolves(currentSha);
 
-    const actualRef = await actionsutil.getRef();
+    const actualRef = await actionsUtil.getRef();
     t.deepEqual(actualRef, expectedRef);
     callback.restore();
   });
@@ -41,11 +42,11 @@ test("getRef() returns merge PR ref if GITHUB_REF still checked out but sha has 
     process.env["GITHUB_SHA"] = "b".repeat(40);
     const sha = "a".repeat(40);
 
-    const callback = sinon.stub(actionsutil, "getCommitOid");
+    const callback = sinon.stub(actionsUtil, "getCommitOid");
     callback.withArgs("refs/remotes/pull/1/merge").resolves(sha);
     callback.withArgs("HEAD").resolves(sha);
 
-    const actualRef = await actionsutil.getRef();
+    const actualRef = await actionsUtil.getRef();
     t.deepEqual(actualRef, expectedRef);
     callback.restore();
   });
@@ -57,11 +58,11 @@ test("getRef() returns head PR ref if GITHUB_REF no longer checked out", async (
     process.env["GITHUB_REF"] = "refs/pull/1/merge";
     process.env["GITHUB_SHA"] = "a".repeat(40);
 
-    const callback = sinon.stub(actionsutil, "getCommitOid");
+    const callback = sinon.stub(actionsUtil, "getCommitOid");
     callback.withArgs(tmpDir, "refs/pull/1/merge").resolves("a".repeat(40));
     callback.withArgs(tmpDir, "HEAD").resolves("b".repeat(40));
 
-    const actualRef = await actionsutil.getRef();
+    const actualRef = await actionsUtil.getRef();
     t.deepEqual(actualRef, "refs/pull/1/head");
     callback.restore();
   });
@@ -70,7 +71,7 @@ test("getRef() returns head PR ref if GITHUB_REF no longer checked out", async (
 test("getRef() returns ref provided as an input and ignores current HEAD", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupActionsVars(tmpDir, tmpDir);
-    const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+    const getAdditionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     getAdditionalInputStub.withArgs("ref").resolves("refs/pull/2/merge");
     getAdditionalInputStub.withArgs("sha").resolves("b".repeat(40));
 
@@ -78,11 +79,11 @@ test("getRef() returns ref provided as an input and ignores current HEAD", async
     process.env["GITHUB_REF"] = "refs/pull/1/merge";
     process.env["GITHUB_SHA"] = "a".repeat(40);
 
-    const callback = sinon.stub(actionsutil, "getCommitOid");
+    const callback = sinon.stub(actionsUtil, "getCommitOid");
     callback.withArgs("refs/pull/1/merge").resolves("b".repeat(40));
     callback.withArgs("HEAD").resolves("b".repeat(40));
 
-    const actualRef = await actionsutil.getRef();
+    const actualRef = await actionsUtil.getRef();
     t.deepEqual(actualRef, "refs/pull/2/merge");
     callback.restore();
     getAdditionalInputStub.restore();
@@ -98,7 +99,7 @@ test("getRef() returns CODE_SCANNING_REF as a fallback for GITHUB_REF", async (t
     process.env["GITHUB_REF"] = "";
     process.env["GITHUB_SHA"] = currentSha;
 
-    const actualRef = await actionsutil.getRef();
+    const actualRef = await actionsUtil.getRef();
     t.deepEqual(actualRef, expectedRef);
   });
 });
@@ -112,7 +113,7 @@ test("getRef() returns GITHUB_REF over CODE_SCANNING_REF if both are provided", 
     process.env["GITHUB_REF"] = expectedRef;
     process.env["GITHUB_SHA"] = currentSha;
 
-    const actualRef = await actionsutil.getRef();
+    const actualRef = await actionsUtil.getRef();
     t.deepEqual(actualRef, expectedRef);
   });
 });
@@ -120,12 +121,12 @@ test("getRef() returns GITHUB_REF over CODE_SCANNING_REF if both are provided", 
 test("getRef() throws an error if only `ref` is provided as an input", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupActionsVars(tmpDir, tmpDir);
-    const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+    const getAdditionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     getAdditionalInputStub.withArgs("ref").resolves("refs/pull/1/merge");
 
     await t.throwsAsync(
       async () => {
-        await actionsutil.getRef();
+        await actionsUtil.getRef();
       },
       {
         instanceOf: Error,
@@ -141,12 +142,12 @@ test("getRef() throws an error if only `sha` is provided as an input", async (t)
   await withTmpDir(async (tmpDir: string) => {
     setupActionsVars(tmpDir, tmpDir);
     process.env["GITHUB_WORKSPACE"] = "/tmp";
-    const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+    const getAdditionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     getAdditionalInputStub.withArgs("sha").resolves("a".repeat(40));
 
     await t.throwsAsync(
       async () => {
-        await actionsutil.getRef();
+        await actionsUtil.getRef();
       },
       {
         instanceOf: Error,
@@ -159,7 +160,7 @@ test("getRef() throws an error if only `sha` is provided as an input", async (t)
 });
 
 test("computeAutomationID()", async (t) => {
-  let actualAutomationID = actionsutil.computeAutomationID(
+  let actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
     '{"language": "javascript", "os": "linux"}'
   );
@@ -169,7 +170,7 @@ test("computeAutomationID()", async (t) => {
   );
 
   // check the environment sorting
-  actualAutomationID = actionsutil.computeAutomationID(
+  actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
     '{"os": "linux", "language": "javascript"}'
   );
@@ -179,7 +180,7 @@ test("computeAutomationID()", async (t) => {
   );
 
   // check that an empty environment produces the right results
-  actualAutomationID = actionsutil.computeAutomationID(
+  actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
     "{}"
   );
@@ -189,7 +190,7 @@ test("computeAutomationID()", async (t) => {
   );
 
   // check non string environment values
-  actualAutomationID = actionsutil.computeAutomationID(
+  actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
     '{"number": 1, "object": {"language": "javascript"}}'
   );
@@ -199,7 +200,7 @@ test("computeAutomationID()", async (t) => {
   );
 
   // check undefined environment
-  actualAutomationID = actionsutil.computeAutomationID(
+  actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
     undefined
   );
@@ -217,7 +218,7 @@ test("initializeEnvironment", (t) => {
 test("isAnalyzingDefaultBranch()", async (t) => {
   process.env["GITHUB_EVENT_NAME"] = "push";
   process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "true";
-  t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
+  t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), true);
   process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "false";
 
   await withTmpDir(async (tmpDir) => {
@@ -235,13 +236,13 @@ test("isAnalyzingDefaultBranch()", async (t) => {
 
     process.env["GITHUB_REF"] = "main";
     process.env["GITHUB_SHA"] = "1234";
-    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
+    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), true);
 
     process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
+    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), true);
 
     process.env["GITHUB_REF"] = "feature";
-    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), false);
+    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), false);
 
     fs.writeFileSync(
       envFile,
@@ -251,9 +252,9 @@ test("isAnalyzingDefaultBranch()", async (t) => {
     );
     process.env["GITHUB_EVENT_NAME"] = "schedule";
     process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), true);
+    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), true);
 
-    const getAdditionalInputStub = sinon.stub(actionsutil, "getOptionalInput");
+    const getAdditionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     getAdditionalInputStub
       .withArgs("ref")
       .resolves("refs/heads/something-else");
@@ -262,7 +263,7 @@ test("isAnalyzingDefaultBranch()", async (t) => {
       .resolves("0000000000000000000000000000000000000000");
     process.env["GITHUB_EVENT_NAME"] = "schedule";
     process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await actionsutil.isAnalyzingDefaultBranch(), false);
+    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), false);
     getAdditionalInputStub.restore();
   });
 });
@@ -279,10 +280,10 @@ test("createStatusReportBase", async (t) => {
     process.env["CODEQL_ACTION_ANALYSIS_KEY"] = "analysis-key";
     process.env["RUNNER_OS"] = "macOS";
 
-    const getRequiredInput = sinon.stub(actionsutil, "getRequiredInput");
+    const getRequiredInput = sinon.stub(actionsUtil, "getRequiredInput");
     getRequiredInput.withArgs("matrix").resolves("input/matrix");
 
-    const statusReport = await actionsutil.createStatusReportBase(
+    const statusReport = await createStatusReportBase(
       "init",
       "failure",
       new Date("May 19, 2023 05:19:00"),

@@ -5,7 +5,7 @@ import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
-import { getOptionalInput } from "./actions-util";
+import { getOptionalInput, isAnalyzingDefaultBranch } from "./actions-util";
 import * as api from "./api-client";
 import {
   Config,
@@ -21,15 +21,10 @@ import {
   FeatureEnablement,
   useCodeScanningConfigInCli,
 } from "./feature-flags";
-import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
-import {
-  getTrapCachingExtractorConfigArgs,
-  getTrapCachingExtractorConfigArgsForLang,
-} from "./trap-caching";
 import * as util from "./util";
 import { wrapError } from "./util";
 
@@ -345,7 +340,7 @@ export async function setupCodeQL(
 ): Promise<{
   codeql: CodeQL;
   toolsDownloadDurationMs?: number;
-  toolsSource: ToolsSource;
+  toolsSource: setupCodeql.ToolsSource;
   toolsVersion: string;
 }> {
   try {
@@ -1263,4 +1258,32 @@ async function getCodeScanningConfigExportArguments(
     return ["--sarif-codescanning-config", codeScanningConfigPath];
   }
   return [];
+}
+
+// This constant sets the size of each TRAP cache in megabytes.
+const TRAP_CACHE_SIZE_MB = 1024;
+
+export async function getTrapCachingExtractorConfigArgs(
+  config: Config
+): Promise<string[]> {
+  const result: string[][] = [];
+  for (const language of config.languages)
+    result.push(
+      await getTrapCachingExtractorConfigArgsForLang(config, language)
+    );
+  return result.flat();
+}
+
+export async function getTrapCachingExtractorConfigArgsForLang(
+  config: Config,
+  language: Language
+): Promise<string[]> {
+  const cacheDir = config.trapCaches[language];
+  if (cacheDir === undefined) return [];
+  const write = await isAnalyzingDefaultBranch();
+  return [
+    `-O=${language}.trap.cache.dir=${cacheDir}`,
+    `-O=${language}.trap.cache.bound=${TRAP_CACHE_SIZE_MB}`,
+    `-O=${language}.trap.cache.write=${write}`,
+  ];
 }

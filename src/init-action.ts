@@ -21,16 +21,11 @@ import * as configUtils from "./config-utils";
 import { getMlPoweredJsQueriesStatus } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
-import {
-  initCodeQL,
-  initConfig,
-  installPythonDeps,
-  runInit,
-  ToolsSource,
-} from "./init";
+import { initCodeQL, initConfig, installPythonDeps, runInit } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { ToolsSource } from "./setup-codeql";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkForTimeout,

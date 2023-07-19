@@ -22,6 +22,7 @@
         }],
         "import/no-amd": "error",
         "import/no-commonjs": "error",
+        "import/no-cycle": "error",
         "import/no-dynamic-require": "error",
         // Disable the rule that checks that devDependencies aren't imported since we use a single
         // linting configuration file for both source and test code.

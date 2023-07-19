@@ -13,7 +13,12 @@ import {
   ResolveQueriesOutput,
 } from "./codeql";
 import * as externalQueries from "./external-queries";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import {
+  Feature,
+  FeatureEnablement,
+  logCodeScanningConfigInCli,
+  useCodeScanningConfigInCli,
+} from "./feature-flags";
 import {
   Language,
   LanguageOrAlias,
@@ -27,9 +32,7 @@ import {
   codeQlVersionAbove,
   getMlPoweredJsQueriesPack,
   GitHubVersion,
-  logCodeScanningConfigInCli,
   ML_POWERED_JS_QUERIES_PACK_NAME,
-  useCodeScanningConfigInCli,
   UserError,
 } from "./util";
 

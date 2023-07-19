@@ -8,7 +8,11 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  FeatureEnablement,
+  useCodeScanningConfigInCli,
+} from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
@@ -116,7 +120,7 @@ export async function runInit(
     // before the `pack download` command was invoked. It is not required for the init command.
     let registriesAuthTokens: string | undefined;
     let qlconfigFile: string | undefined;
-    if (await util.useCodeScanningConfigInCli(codeql, features)) {
+    if (await useCodeScanningConfigInCli(codeql, features)) {
       ({ registriesAuthTokens, qlconfigFile } =
         await configUtils.generateRegistries(
           registriesInput,

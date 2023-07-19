@@ -8,14 +8,8 @@ import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { Config } from "./config-utils";
-import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
-import {
-  createFeatures,
-  getRecordingLogger,
-  LoggedMessage,
-  setupTests,
-} from "./testing-utils";
+import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -47,19 +41,14 @@ test("getMemoryFlag() should return the correct --ram flag", async (t) => {
   ];
 
   for (const [input, withScaling, expectedFlag] of tests) {
-    const features = createFeatures(
-      withScaling ? [Feature.ScalingReservedRamEnabled] : []
-    );
-    const flag = await util.getMemoryFlag(input, features);
+    const flag = util.getMemoryFlag(input, withScaling);
     t.deepEqual(flag, expectedFlag);
   }
 });
 
 test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   for (const input of ["-1", "hello!"]) {
-    await t.throwsAsync(
-      async () => await util.getMemoryFlag(input, createFeatures([]))
-    );
+    t.throws(() => util.getMemoryFlag(input, false));
   }
 });
 

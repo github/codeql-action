@@ -10,7 +10,12 @@ import { DatabaseCreationTimings, EventReport } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { FeatureEnablement, Feature } from "./feature-flags";
+import {
+  FeatureEnablement,
+  Feature,
+  logCodeScanningConfigInCli,
+  useCodeScanningConfigInCli,
+} from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { endTracingForCluster } from "./tracer-config";
@@ -235,7 +240,7 @@ export async function runQueries(
   const codeql = await getCodeQL(config.codeQLCmd);
   const queryFlags = [memoryFlag, threadsFlag];
 
-  await util.logCodeScanningConfigInCli(codeql, features, logger);
+  await logCodeScanningConfigInCli(codeql, features, logger);
 
   for (const language of config.languages) {
     const queries = config.queries[language];
@@ -248,7 +253,7 @@ export async function runQueries(
       const sarifFile = path.join(sarifFolder, `${language}.sarif`);
       let startTimeInterpretResults: Date;
       let endTimeInterpretResults: Date;
-      if (await util.useCodeScanningConfigInCli(codeql, features)) {
+      if (await useCodeScanningConfigInCli(codeql, features)) {
         // If we are using the code scanning config in the CLI,
         // much of the work needed to generate the query suites
         // is done in the CLI. We just need to make a single

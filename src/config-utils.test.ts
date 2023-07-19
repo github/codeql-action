@@ -23,7 +23,16 @@ import {
   createFeatures,
   mockLanguagesInRepo as mockLanguagesInRepo,
 } from "./testing-utils";
-import { GitHubVariant, GitHubVersion, UserError, withTmpDir } from "./util";
+import {
+  DEFAULT_DEBUG_ARTIFACT_NAME,
+  DEFAULT_DEBUG_DATABASE_NAME,
+  ML_POWERED_JS_QUERIES_PACK_NAME,
+  GitHubVariant,
+  GitHubVersion,
+  prettyPrintPack,
+  UserError,
+  withTmpDir,
+} from "./util";
 
 setupTests(test);
 
@@ -1906,7 +1915,7 @@ const packSpecPrettyPrintingMacro = test.macro({
   exec: (t: ExecutionContext, packStr: string, packObj: configUtils.Pack) => {
     const parsed = configUtils.parsePacksSpecification(packStr);
     t.deepEqual(parsed, packObj, "parsed pack spec is correct");
-    const stringified = configUtils.prettyPrintPack(packObj);
+    const stringified = prettyPrintPack(packObj);
     t.deepEqual(
       stringified,
       packStr.trim(),
@@ -2809,3 +2818,66 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
 });
+
+const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
+  // If no packs are loaded, status is false.
+  [[], "false"],
+  // If another pack is loaded but not the ML-powered query pack, status is false.
+  [["some-other/pack"], "false"],
+  // If the ML-powered query pack is loaded with a specific version, status is that version.
+  [[`${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
+  // If the ML-powered query pack is loaded with a specific version and another pack is loaded, the
+  // status is the version of the ML-powered query pack.
+  [["some-other/pack", `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
+  // If the ML-powered query pack is loaded without a version, the status is "latest".
+  [[ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
+  // If the ML-powered query pack is loaded with two different versions, the status is "other".
+  [
+    [
+      `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.1`,
+      `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.2`,
+    ],
+    "other",
+  ],
+  // If the ML-powered query pack is loaded with no specific version, and another pack is loaded,
+  // the status is "latest".
+  [["some-other/pack", ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
+];
+
+for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
+  const packDescriptions = `[${packs
+    .map((pack) => JSON.stringify(pack))
+    .join(", ")}]`;
+  test(`ML-powered JS queries status report is "${expectedStatus}" for packs = ${packDescriptions}`, (t) => {
+    return withTmpDir(async (tmpDir) => {
+      const config: configUtils.Config = {
+        languages: [],
+        queries: {},
+        paths: [],
+        pathsIgnore: [],
+        originalUserInput: {},
+        tempDir: tmpDir,
+        codeQLCmd: "",
+        gitHubVersion: {
+          type: GitHubVariant.DOTCOM,
+        } as GitHubVersion,
+        dbLocation: "",
+        packs: {
+          javascript: packs,
+        },
+        debugMode: false,
+        debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
+        debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
+        augmentationProperties: {
+          injectedMlQueries: false,
+          packsInputCombines: false,
+          queriesInputCombines: false,
+        },
+        trapCaches: {},
+        trapCacheDownloadTime: 0,
+      };
+
+      t.is(configUtils.getMlPoweredJsQueriesStatus(config), expectedStatus);
+    });
+  });
+}

@@ -1,14 +1,16 @@
 import * as core from "@actions/core";
 
 import {
-  createStatusReportBase,
   getActionsStatus,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  sendStatusReport,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import {
+  createStatusReportBase,
+  getGitHubVersion,
+  sendStatusReport,
+} from "./api-client";
 import { CommandInvocationError } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language, resolveAlias } from "./languages";

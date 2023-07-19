@@ -4,30 +4,28 @@ import * as core from "@actions/core";
 import { v4 as uuidV4 } from "uuid";
 
 import {
-  createStatusReportBase,
   getActionsStatus,
   getActionVersion,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import {
+  createStatusReportBase,
+  getGitHubVersion,
+  sendStatusReport,
+} from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { getMlPoweredJsQueriesStatus } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
-import {
-  initCodeQL,
-  initConfig,
-  installPythonDeps,
-  runInit,
-  ToolsSource,
-} from "./init";
+import { initCodeQL, initConfig, installPythonDeps, runInit } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { ToolsSource } from "./setup-codeql";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkForTimeout,
@@ -35,7 +33,6 @@ import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMemoryFlagValue,
-  getMlPoweredJsQueriesStatus,
   getRequiredEnvParam,
   getThreadsFlagValue,
   initializeEnvironment,
@@ -330,7 +327,10 @@ async function run() {
     core.exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
-        (await getMemoryFlagValue(getOptionalInput("ram"), features)).toString()
+        getMemoryFlagValue(
+          getOptionalInput("ram"),
+          await features.getValue(Feature.ScalingReservedRamEnabled)
+        ).toString()
     );
     core.exportVariable(
       "CODEQL_THREADS",

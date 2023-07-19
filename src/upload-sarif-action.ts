@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionVersion } from "./actions-util";
+import { createStatusReportBase, sendStatusReport } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -20,7 +21,7 @@ async function sendSuccessStatusReport(
   startedAt: Date,
   uploadStats: upload_lib.UploadStatusReport
 ) {
-  const statusReportBase = await actionsUtil.createStatusReportBase(
+  const statusReportBase = await createStatusReportBase(
     "upload-sarif",
     "success",
     startedAt
@@ -29,19 +30,15 @@ async function sendSuccessStatusReport(
     ...statusReportBase,
     ...uploadStats,
   };
-  await actionsUtil.sendStatusReport(statusReport);
+  await sendStatusReport(statusReport);
 }
 
 async function run() {
   const startedAt = new Date();
   initializeEnvironment(getActionVersion());
   if (
-    !(await actionsUtil.sendStatusReport(
-      await actionsUtil.createStatusReportBase(
-        "upload-sarif",
-        "starting",
-        startedAt
-      )
+    !(await sendStatusReport(
+      await createStatusReportBase("upload-sarif", "starting", startedAt)
     ))
   ) {
     return;
@@ -72,8 +69,8 @@ async function run() {
     const message = error.message;
     core.setFailed(message);
     console.log(error);
-    await actionsUtil.sendStatusReport(
-      await actionsUtil.createStatusReportBase(
+    await sendStatusReport(
+      await createStatusReportBase(
         "upload-sarif",
         actionsUtil.getActionsStatus(error),
         startedAt,

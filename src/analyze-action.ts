@@ -15,6 +15,7 @@ import {
   runQueries,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
+import * as api from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig, getMlPoweredJsQueriesStatus } from "./config-utils";
@@ -85,9 +86,9 @@ export async function sendStatusReport(
         await getTotalCacheSize(config.trapCaches, logger)
       ),
     };
-    await actionsUtil.sendStatusReport(trapCacheUploadStatusReport);
+    await api.sendStatusReport(trapCacheUploadStatusReport);
   } else {
-    await actionsUtil.sendStatusReport(statusReport);
+    await api.sendStatusReport(statusReport);
   }
 }
 
@@ -180,7 +181,7 @@ async function run() {
   const logger = getActionsLogger();
   try {
     if (
-      !(await actionsUtil.sendStatusReport(
+      !(await api.sendStatusReport(
         await actionsUtil.createStatusReportBase(
           "finish",
           "starting",

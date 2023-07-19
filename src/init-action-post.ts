@@ -11,10 +11,9 @@ import {
   getActionsStatus,
   getTemporaryDirectory,
   printDebugLogs,
-  sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersion, sendStatusReport } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
 import { Features } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";

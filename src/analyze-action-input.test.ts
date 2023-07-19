@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as analyze from "./analyze";
+import * as api from "./api-client";
 import * as configUtils from "./config-utils";
 import {
   setupTests,
@@ -44,7 +45,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     optionalInputStub.withArgs("cleanup-level").returns("none");
     optionalInputStub.withArgs("expect-error").returns("false");
-    sinon.stub(util, "getGitHubVersion").resolves(gitHubVersion);
+    sinon.stub(api, "getGitHubVersion").resolves(gitHubVersion);
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
     setupActionsVars(tmpDir, tmpDir);
     mockFeatureFlagApiEndpoint(200, {});

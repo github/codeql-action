@@ -7,7 +7,11 @@ import * as yaml from "js-yaml";
 
 import { getOptionalInput } from "./actions-util";
 import * as api from "./api-client";
-import { Config, getGeneratedCodeScanningConfigPath } from "./config-utils";
+import {
+  Config,
+  getGeneratedCodeScanningConfigPath,
+  getMlPoweredJsQueriesPack,
+} from "./config-utils";
 import { EnvVar } from "./environment";
 import { errorMatchers } from "./error-matcher";
 import {
@@ -1212,7 +1216,7 @@ async function generateCodeScanningConfig(
   if (config.augmentationProperties.injectedMlQueries) {
     // We need to inject the ML queries into the original user input before
     // we pass this on to the CLI, to make sure these get run.
-    const packString = await util.getMlPoweredJsQueriesPack(codeql);
+    const packString = await getMlPoweredJsQueriesPack(codeql);
 
     if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
     if (Array.isArray(augmentedConfig.packs)) {

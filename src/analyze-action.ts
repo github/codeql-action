@@ -17,7 +17,7 @@ import {
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
-import { Config, getConfig } from "./config-utils";
+import { Config, getConfig, getMlPoweredJsQueriesStatus } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
@@ -71,8 +71,7 @@ export async function sendStatusReport(
     ...statusReportBase,
     ...(config
       ? {
-          ml_powered_javascript_queries:
-            util.getMlPoweredJsQueriesStatus(config),
+          ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
         }
       : {}),
     ...(stats || {}),

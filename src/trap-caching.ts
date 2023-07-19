@@ -17,9 +17,6 @@ import { codeQlVersionAbove, tryGetFolderBytes, withTimeout } from "./util";
 // goes into the cache key.
 const CACHE_VERSION = 1;
 
-// This constant sets the size of each TRAP cache in megabytes.
-const CACHE_SIZE_MB = 1024;
-
 // This constant sets the minimum size in megabytes of a TRAP
 // cache for us to consider it worth uploading.
 const MINIMUM_CACHE_MB_TO_UPLOAD = 10;
@@ -29,31 +26,6 @@ const MINIMUM_CACHE_MB_TO_UPLOAD = 10;
 // this timeout is per operation, so will be run as many
 // times as there are languages with TRAP caching enabled.
 const MAX_CACHE_OPERATION_MS = 120_000; // Two minutes
-
-export async function getTrapCachingExtractorConfigArgs(
-  config: Config
-): Promise<string[]> {
-  const result: string[][] = [];
-  for (const language of config.languages)
-    result.push(
-      await getTrapCachingExtractorConfigArgsForLang(config, language)
-    );
-  return result.flat();
-}
-
-export async function getTrapCachingExtractorConfigArgsForLang(
-  config: Config,
-  language: Language
-): Promise<string[]> {
-  const cacheDir = config.trapCaches[language];
-  if (cacheDir === undefined) return [];
-  const write = await actionsUtil.isAnalyzingDefaultBranch();
-  return [
-    `-O=${language}.trap.cache.dir=${cacheDir}`,
-    `-O=${language}.trap.cache.bound=${CACHE_SIZE_MB}`,
-    `-O=${language}.trap.cache.write=${write}`,
-  ];
-}
 
 /**
  * Download TRAP caches from the Actions cache.

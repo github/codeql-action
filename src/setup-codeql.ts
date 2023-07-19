@@ -15,10 +15,16 @@ import * as api from "./api-client";
 // these dependents.
 import * as defaults from "./defaults.json";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
-import { ToolsSource } from "./init";
 import { Logger } from "./logging";
 import * as util from "./util";
 import { isGoodVersion, wrapError } from "./util";
+
+export enum ToolsSource {
+  Unknown = "UNKNOWN",
+  Local = "LOCAL",
+  Toolcache = "TOOLCACHE",
+  Download = "DOWNLOAD",
+}
 
 export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 

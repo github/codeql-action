@@ -6,7 +6,11 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import { setCodeQL } from "./codeql";
+import {
+  setCodeQL,
+  getTrapCachingExtractorConfigArgs,
+  getTrapCachingExtractorConfigArgsForLang,
+} from "./codeql";
 import * as configUtils from "./config-utils";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
@@ -14,8 +18,6 @@ import { getRecordingLogger, setupTests } from "./testing-utils";
 import {
   downloadTrapCaches,
   getLanguagesSupportingCaching,
-  getTrapCachingExtractorConfigArgs,
-  getTrapCachingExtractorConfigArgsForLang,
   uploadTrapCaches,
 } from "./trap-caching";
 import * as util from "./util";

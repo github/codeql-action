@@ -15,15 +15,9 @@ import {
 } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { ToolsSource } from "./setup-codeql";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
-
-export enum ToolsSource {
-  Unknown = "UNKNOWN",
-  Local = "LOCAL",
-  Toolcache = "TOOLCACHE",
-  Download = "DOWNLOAD",
-}
 
 export async function initCodeQL(
   toolsInput: string | undefined,

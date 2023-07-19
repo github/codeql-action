@@ -4,7 +4,6 @@ import path from "path";
 
 import test from "ava";
 
-import { Config } from "./config-utils";
 import { getRunnerLogger } from "./logging";
 import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -188,72 +187,6 @@ test("allowed API versions", async (t) => {
     util.DisallowedAPIVersionReason.ACTION_TOO_OLD
   );
 });
-
-const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
-  // If no packs are loaded, status is false.
-  [[], "false"],
-  // If another pack is loaded but not the ML-powered query pack, status is false.
-  [["some-other/pack"], "false"],
-  // If the ML-powered query pack is loaded with a specific version, status is that version.
-  [[`${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
-  // If the ML-powered query pack is loaded with a specific version and another pack is loaded, the
-  // status is the version of the ML-powered query pack.
-  [
-    ["some-other/pack", `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`],
-    "~0.1.0",
-  ],
-  // If the ML-powered query pack is loaded without a version, the status is "latest".
-  [[util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
-  // If the ML-powered query pack is loaded with two different versions, the status is "other".
-  [
-    [
-      `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.1`,
-      `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.2`,
-    ],
-    "other",
-  ],
-  // If the ML-powered query pack is loaded with no specific version, and another pack is loaded,
-  // the status is "latest".
-  [["some-other/pack", util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
-];
-
-for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
-  const packDescriptions = `[${packs
-    .map((pack) => JSON.stringify(pack))
-    .join(", ")}]`;
-  test(`ML-powered JS queries status report is "${expectedStatus}" for packs = ${packDescriptions}`, (t) => {
-    return util.withTmpDir(async (tmpDir) => {
-      const config: Config = {
-        languages: [],
-        queries: {},
-        paths: [],
-        pathsIgnore: [],
-        originalUserInput: {},
-        tempDir: tmpDir,
-        codeQLCmd: "",
-        gitHubVersion: {
-          type: util.GitHubVariant.DOTCOM,
-        } as util.GitHubVersion,
-        dbLocation: "",
-        packs: {
-          javascript: packs,
-        },
-        debugMode: false,
-        debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-        debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-        augmentationProperties: {
-          injectedMlQueries: false,
-          packsInputCombines: false,
-          queriesInputCombines: false,
-        },
-        trapCaches: {},
-        trapCacheDownloadTime: 0,
-      };
-
-      t.is(util.getMlPoweredJsQueriesStatus(config), expectedStatus);
-    });
-  });
-}
 
 test("doesDirectoryExist", async (t) => {
   // Returns false if no file/dir of this name exists

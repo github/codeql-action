@@ -16,6 +16,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { getMlPoweredJsQueriesStatus } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import {
@@ -35,7 +36,6 @@ import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMemoryFlagValue,
-  getMlPoweredJsQueriesStatus,
   getRequiredEnvParam,
   getThreadsFlagValue,
   initializeEnvironment,

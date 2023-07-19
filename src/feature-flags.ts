@@ -444,3 +444,30 @@ class GitHubFeatureFlags {
     }
   }
 }
+
+/**
+ * @returns Whether the Action should generate a code scanning config file
+ * that gets passed to the CLI.
+ */
+export async function useCodeScanningConfigInCli(
+  codeql: CodeQL,
+  features: FeatureEnablement
+): Promise<boolean> {
+  return await features.getValue(Feature.CliConfigFileEnabled, codeql);
+}
+
+export async function logCodeScanningConfigInCli(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+  logger: Logger
+) {
+  if (await useCodeScanningConfigInCli(codeql, features)) {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql CLI."
+    );
+  } else {
+    logger.info(
+      "Code Scanning configuration file being processed in the codeql-action."
+    );
+  }
+}

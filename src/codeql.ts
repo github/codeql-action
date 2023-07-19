@@ -14,6 +14,7 @@ import {
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
+  useCodeScanningConfigInCli,
 } from "./feature-flags";
 import { ToolsSource } from "./init";
 import { isTracedLanguage, Language } from "./languages";
@@ -1170,7 +1171,7 @@ async function generateCodeScanningConfig(
   features: FeatureEnablement,
   logger: Logger
 ): Promise<string | undefined> {
-  if (!(await util.useCodeScanningConfigInCli(codeql, features))) {
+  if (!(await useCodeScanningConfigInCli(codeql, features))) {
     return;
   }
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);

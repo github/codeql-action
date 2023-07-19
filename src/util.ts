@@ -17,7 +17,6 @@ import {
   prettyPrintPack,
 } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -157,14 +156,14 @@ export async function withTmpDir<T>(
  * from committing too much of the available memory to CodeQL.
  * @returns number
  */
-async function getSystemReservedMemoryMegaBytes(
+function getSystemReservedMemoryMegaBytes(
   totalMemoryMegaBytes: number,
-  features: FeatureEnablement
-): Promise<number> {
+  isScalingReservedRamEnabled: boolean
+): number {
   // Windows needs more memory for OS processes.
   const fixedAmount = 1024 * (process.platform === "win32" ? 1.5 : 1);
 
-  if (await features.getValue(Feature.ScalingReservedRamEnabled)) {
+  if (isScalingReservedRamEnabled) {
     // Reserve an additional 2% of the total memory, since the amount used by
     // the kernel for page tables scales with the size of physical memory.
     const scaledAmount = 0.02 * totalMemoryMegaBytes;
@@ -181,10 +180,10 @@ async function getSystemReservedMemoryMegaBytes(
  *
  * @returns {number} the amount of RAM to use, in megabytes
  */
-export async function getMemoryFlagValue(
+export function getMemoryFlagValue(
   userInput: string | undefined,
-  features: FeatureEnablement
-): Promise<number> {
+  isScalingReservedRamEnabled: boolean
+): number {
   let memoryToUseMegaBytes: number;
   if (userInput) {
     memoryToUseMegaBytes = Number(userInput);
@@ -194,9 +193,9 @@ export async function getMemoryFlagValue(
   } else {
     const totalMemoryBytes = os.totalmem();
     const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
-    const reservedMemoryMegaBytes = await getSystemReservedMemoryMegaBytes(
+    const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes(
       totalMemoryMegaBytes,
-      features
+      isScalingReservedRamEnabled
     );
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
@@ -210,11 +209,11 @@ export async function getMemoryFlagValue(
  *
  * @returns string
  */
-export async function getMemoryFlag(
+export function getMemoryFlag(
   userInput: string | undefined,
-  features: FeatureEnablement
-): Promise<string> {
-  const megabytes = await getMemoryFlagValue(userInput, features);
+  isScalingReservedRamEnabled: boolean
+): string {
+  const megabytes = getMemoryFlagValue(userInput, isScalingReservedRamEnabled);
   return `--ram=${megabytes}`;
 }
 
@@ -645,33 +644,6 @@ export function getMlPoweredJsQueriesStatus(config: Config): string {
  */
 export function isInTestMode(): boolean {
   return process.env[EnvVar.TEST_MODE] === "true";
-}
-
-/**
- * @returns true if the action should generate a conde-scanning config file
- * that gets passed to the CLI.
- */
-export async function useCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement
-): Promise<boolean> {
-  return await features.getValue(Feature.CliConfigFileEnabled, codeql);
-}
-
-export async function logCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger
-) {
-  if (await useCodeScanningConfigInCli(codeql, features)) {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql CLI."
-    );
-  } else {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql-action."
-    );
-  }
 }
 
 /*

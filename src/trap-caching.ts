@@ -5,7 +5,7 @@ import * as cache from "@actions/cache";
 
 import * as actionsUtil from "./actions-util";
 import { CodeQL, CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES } from "./codeql";
-import { Config } from "./config-utils";
+import type { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { codeQlVersionAbove, tryGetFolderBytes, withTimeout } from "./util";

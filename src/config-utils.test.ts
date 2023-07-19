@@ -14,7 +14,6 @@ import {
   setCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
-import { ML_POWERED_JS_QUERIES_PACK_NAME } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
@@ -27,8 +26,10 @@ import {
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
+  ML_POWERED_JS_QUERIES_PACK_NAME,
   GitHubVariant,
   GitHubVersion,
+  prettyPrintPack,
   UserError,
   withTmpDir,
 } from "./util";
@@ -1914,7 +1915,7 @@ const packSpecPrettyPrintingMacro = test.macro({
   exec: (t: ExecutionContext, packStr: string, packObj: configUtils.Pack) => {
     const parsed = configUtils.parsePacksSpecification(packStr);
     t.deepEqual(parsed, packObj, "parsed pack spec is correct");
-    const stringified = configUtils.prettyPrintPack(packObj);
+    const stringified = prettyPrintPack(packObj);
     t.deepEqual(
       stringified,
       packStr.trim(),

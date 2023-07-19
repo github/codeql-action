@@ -16,34 +16,25 @@ function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o =
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 var roleElement = [];
 var keys = _rolesMap.default.keys();
-var _loop = function _loop(i) {
+for (var i = 0; i < keys.length; i++) {
   var key = keys[i];
   var role = _rolesMap.default.get(key);
+  var relationConcepts = [];
   if (role) {
     var concepts = [].concat(role.baseConcepts, role.relatedConcepts);
     for (var k = 0; k < concepts.length; k++) {
       var relation = concepts[k];
       if (relation.module === 'HTML') {
         var concept = relation.concept;
-        if (concept) {
-          var roleElementRelation = roleElement.find(function (item) {
-            return item[0] === key;
-          });
-          var relationConcepts = void 0;
-          if (roleElementRelation) {
-            relationConcepts = roleElementRelation[1];
-          } else {
-            relationConcepts = [];
-          }
+        if (concept != null) {
           relationConcepts.push(concept);
-          roleElement.push([key, relationConcepts]);
         }
       }
     }
+    if (relationConcepts.length > 0) {
+      roleElement.push([key, relationConcepts]);
+    }
   }
-};
-for (var i = 0; i < keys.length; i++) {
-  _loop(i);
 }
 var roleElementMap = {
   entries: function entries() {
@@ -56,9 +47,9 @@ var roleElementMap = {
     try {
       for (_iterator.s(); !(_step = _iterator.n()).done;) {
         var _step$value = _slicedToArray(_step.value, 2),
-          key = _step$value[0],
+          _key = _step$value[0],
           values = _step$value[1];
-        fn.call(thisArg, values, key, roleElement);
+        fn.call(thisArg, values, _key, roleElement);
       }
     } catch (err) {
       _iterator.e(err);

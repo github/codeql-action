@@ -5,14 +5,14 @@ import textwrap
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
-    # The oldest supported CodeQL version: 2.8.5. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-20220401",
-    # The last CodeQL release in the 2.9 series: 2.9.4.
+    # The oldest supported CodeQL version: 2.9.4. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
     "stable-20220615",
     # The last CodeQL release in the 2.10 series: 2.10.5.
     "stable-20220908",
     # The last CodeQL release in the 2.11 series: 2.11.6.
     "stable-20221211",
+    # The last CodeQL release in the 2.12 series: 2.12.7.
+    "stable-20230418",
     # The version of CodeQL currently in the toolcache. Typically either the latest release or the one before.
     "cached",
     # The latest release of CodeQL.
@@ -21,10 +21,11 @@ defaultTestVersions = [
     "nightly-latest"
 ]
 
-
+# When updating the ruamel.yaml version here, update the PR check in
+# `.github/workflows/pr-checks.yml` too.
 header = """# Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml && python3 sync.py)
+#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
 """

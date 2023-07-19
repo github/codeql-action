@@ -40,6 +40,7 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
+  UserError,
   wrapError,
 } from "./util";
 import { validateWorkflow } from "./workflow";
@@ -302,7 +303,7 @@ async function run() {
     await sendStatusReport(
       await createStatusReportBase(
         "init",
-        "aborted",
+        error instanceof UserError ? "user-error" : "aborted",
         startedAt,
         error.message,
         error.stack

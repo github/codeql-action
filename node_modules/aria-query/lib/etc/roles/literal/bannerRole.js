@@ -14,7 +14,7 @@ var bannerRole = {
   props: {},
   relatedConcepts: [{
     concept: {
-      constraints: ['direct descendant of document'],
+      constraints: ['scoped to the body element'],
       name: 'header'
     },
     module: 'HTML'

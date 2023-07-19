@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.21.0 - 19 Jul 2023
+
+- CodeQL Action now requires CodeQL CLI 2.9.4 or later. For more information, see the corresponding changelog entry for CodeQL Action version 2.20.4. [#1724](https://github.com/github/codeql-action/pull/1724)
+
 ## 2.20.4 - 14 Jul 2023
 
 - This is the last release of the Action that supports CodeQL CLI versions 2.8.5 to 2.9.3. These versions of the CodeQL CLI were deprecated on June 20, 2023 alongside GitHub Enterprise Server 3.5 and will not be supported by the next release of the CodeQL Action (2.21.0).

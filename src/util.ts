@@ -164,7 +164,7 @@ async function getSystemReservedMemoryMegaBytes(
   // Windows needs more memory for OS processes.
   const fixedAmount = 1024 * (process.platform === "win32" ? 1.5 : 1);
 
-  if (await features.getValue(Feature.ScalingReservedRam)) {
+  if (await features.getValue(Feature.ScalingReservedRamEnabled)) {
     // Reserve an additional 2% of the total memory, since the amount used by
     // the kernel for page tables scales with the size of physical memory.
     const scaledAmount = 0.02 * totalMemoryMegaBytes;
@@ -586,12 +586,8 @@ export async function getMlPoweredJsQueriesPack(
   let version;
   if (await codeQlVersionAbove(codeQL, "2.11.3")) {
     version = "~0.4.0";
-  } else if (await codeQlVersionAbove(codeQL, "2.9.3")) {
-    version = `~0.3.0`;
-  } else if (await codeQlVersionAbove(codeQL, "2.8.4")) {
-    version = `~0.2.0`;
   } else {
-    version = `~0.1.0`;
+    version = `~0.3.0`;
   }
   return prettyPrintPack({
     name: ML_POWERED_JS_QUERIES_PACK_NAME,

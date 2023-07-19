@@ -12,7 +12,12 @@ var captionRole = {
   nameFrom: ['prohibited'],
   prohibitedProps: ['aria-label', 'aria-labelledby'],
   props: {},
-  relatedConcepts: [],
+  relatedConcepts: [{
+    concept: {
+      name: 'caption'
+    },
+    module: 'HTML'
+  }],
   requireContextRole: ['figure', 'grid', 'table'],
   requiredContextRole: ['figure', 'grid', 'table'],
   requiredOwnedElements: [],

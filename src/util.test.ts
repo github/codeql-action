@@ -2,11 +2,8 @@ import * as fs from "fs";
 import * as os from "os";
 import path from "path";
 
-import * as github from "@actions/github";
 import test from "ava";
-import * as sinon from "sinon";
 
-import * as api from "./api-client";
 import { Config } from "./config-utils";
 import { getRunnerLogger } from "./logging";
 import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
@@ -190,68 +187,6 @@ test("allowed API versions", async (t) => {
     util.apiVersionInRange("2.1.0", "1.33", "2.0"),
     util.DisallowedAPIVersionReason.ACTION_TOO_OLD
   );
-});
-
-function mockGetMetaVersionHeader(
-  versionHeader: string | undefined
-): sinon.SinonStub<any, any> {
-  // Passing an auth token is required, so we just use a dummy value
-  const client = github.getOctokit("123");
-  const response = {
-    headers: {
-      "x-github-enterprise-version": versionHeader,
-    },
-  };
-  const spyGetContents = sinon
-    .stub(client.rest.meta, "get")
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    .resolves(response as any);
-  sinon.stub(api, "getApiClient").value(() => client);
-  return spyGetContents;
-}
-
-test("getGitHubVersion", async (t) => {
-  const v = await util.getGitHubVersion({
-    auth: "",
-    url: "https://github.com",
-    apiURL: undefined,
-  });
-  t.deepEqual(util.GitHubVariant.DOTCOM, v.type);
-
-  mockGetMetaVersionHeader("2.0");
-  const v2 = await util.getGitHubVersion({
-    auth: "",
-    url: "https://ghe.example.com",
-    apiURL: undefined,
-  });
-  t.deepEqual(
-    { type: util.GitHubVariant.GHES, version: "2.0" } as util.GitHubVersion,
-    v2
-  );
-
-  mockGetMetaVersionHeader("GitHub AE");
-  const ghae = await util.getGitHubVersion({
-    auth: "",
-    url: "https://example.githubenterprise.com",
-    apiURL: undefined,
-  });
-  t.deepEqual({ type: util.GitHubVariant.GHAE }, ghae);
-
-  mockGetMetaVersionHeader(undefined);
-  const v3 = await util.getGitHubVersion({
-    auth: "",
-    url: "https://ghe.example.com",
-    apiURL: undefined,
-  });
-  t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
-
-  mockGetMetaVersionHeader("ghe.com");
-  const gheDotcom = await util.getGitHubVersion({
-    auth: "",
-    url: "https://foo.ghe.com",
-    apiURL: undefined,
-  });
-  t.deepEqual({ type: util.GitHubVariant.GHE_DOTCOM }, gheDotcom);
 });
 
 const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [

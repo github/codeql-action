@@ -8,9 +8,8 @@ import del from "del";
 import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
-import { getApiClient, GitHubApiDetails } from "./api-client";
 import * as apiCompatibility from "./api-compatibility.json";
-import { CodeQL } from "./codeql";
+import type { CodeQL } from "./codeql";
 import {
   Config,
   parsePacksSpecification,
@@ -336,7 +335,6 @@ export function parseGitHubUrl(inputUrl: string): string {
   return url.toString();
 }
 
-const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
   "CODEQL_ACTION_WARNED_ABOUT_VERSION";
 
@@ -353,37 +351,6 @@ export type GitHubVersion =
   | { type: GitHubVariant.GHAE }
   | { type: GitHubVariant.GHE_DOTCOM }
   | { type: GitHubVariant.GHES; version: string };
-
-export async function getGitHubVersion(
-  apiDetails: GitHubApiDetails
-): Promise<GitHubVersion> {
-  // We can avoid making an API request in the standard dotcom case
-  if (parseGitHubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
-    return { type: GitHubVariant.DOTCOM };
-  }
-
-  // Doesn't strictly have to be the meta endpoint as we're only
-  // using the response headers which are available on every request.
-  const apiClient = getApiClient();
-  const response = await apiClient.rest.meta.get();
-
-  // This happens on dotcom, although we expect to have already returned in that
-  // case. This can also serve as a fallback in cases we haven't foreseen.
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
-    return { type: GitHubVariant.DOTCOM };
-  }
-
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "GitHub AE") {
-    return { type: GitHubVariant.GHAE };
-  }
-
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
-    return { type: GitHubVariant.GHE_DOTCOM };
-  }
-
-  const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
-  return { type: GitHubVariant.GHES, version };
-}
 
 export function checkGitHubVersionInRange(
   version: GitHubVersion,

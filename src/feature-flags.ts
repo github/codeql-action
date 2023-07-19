@@ -4,11 +4,7 @@ import * as path from "path";
 import * as semver from "semver";
 
 import { getApiClient } from "./api-client";
-import {
-  CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED,
-  CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
-  CodeQL,
-} from "./codeql";
+import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -16,6 +12,16 @@ import * as util from "./util";
 
 const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
 const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
+
+/**
+ * Versions 2.13.4+ of the CodeQL CLI have an associated CodeQL Bundle release that is semantically versioned.
+ */
+export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
+
+/**
+ * Versions 2.14.0+ of the CodeQL CLI support new analysis summaries.
+ */
+export const CODEQL_VERSION_NEW_ANALYSIS_SUMMARY = "2.14.0";
 
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;

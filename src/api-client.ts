@@ -3,8 +3,15 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import * as util from "./util";
-import { getRequiredEnvParam, GitHubVersion } from "./util";
+import {
+  getRequiredEnvParam,
+  GITHUB_DOTCOM_URL,
+  GitHubVariant,
+  GitHubVersion,
+  parseGitHubUrl,
+} from "./util";
+
+const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 
 export enum DisallowedAPIVersionReason {
   ACTION_TOO_OLD,
@@ -62,6 +69,37 @@ export function getApiClientWithExternalAuth(
 
 let cachedGitHubVersion: GitHubVersion | undefined = undefined;
 
+export async function getGitHubVersionFromApi(
+  apiClient: any,
+  apiDetails: GitHubApiDetails
+): Promise<GitHubVersion> {
+  // We can avoid making an API request in the standard dotcom case
+  if (parseGitHubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
+    return { type: GitHubVariant.DOTCOM };
+  }
+
+  // Doesn't strictly have to be the meta endpoint as we're only
+  // using the response headers which are available on every request.
+  const response = await apiClient.rest.meta.get();
+
+  // This happens on dotcom, although we expect to have already returned in that
+  // case. This can also serve as a fallback in cases we haven't foreseen.
+  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
+    return { type: GitHubVariant.DOTCOM };
+  }
+
+  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "GitHub AE") {
+    return { type: GitHubVariant.GHAE };
+  }
+
+  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
+    return { type: GitHubVariant.GHE_DOTCOM };
+  }
+
+  const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
+  return { type: GitHubVariant.GHES, version };
+}
+
 /**
  * Report the GitHub server version. This is a wrapper around
  * util.getGitHubVersion() that automatically supplies GitHub API details using
@@ -71,7 +109,10 @@ let cachedGitHubVersion: GitHubVersion | undefined = undefined;
  */
 export async function getGitHubVersion(): Promise<GitHubVersion> {
   if (cachedGitHubVersion === undefined) {
-    cachedGitHubVersion = await util.getGitHubVersion(getApiDetails());
+    cachedGitHubVersion = await getGitHubVersionFromApi(
+      getApiClient(),
+      getApiDetails()
+    );
   }
   return cachedGitHubVersion;
 }

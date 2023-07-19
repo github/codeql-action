@@ -16,7 +16,6 @@ import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as util from "./util";
 import { SarifFile, SarifResult, SarifRun, wrapError } from "./util";
-import * as workflow from "./workflow";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
@@ -81,7 +80,7 @@ function getAutomationID(
     return automationID;
   }
 
-  return actionsUtil.computeAutomationID(analysis_key, environment);
+  return api.computeAutomationID(analysis_key, environment);
 }
 
 // Upload the given payload.
@@ -169,11 +168,11 @@ export async function uploadFromActions(
     parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
     await actionsUtil.getCommitOid(checkoutPath),
     await actionsUtil.getRef(),
-    await actionsUtil.getAnalysisKey(),
+    await api.getAnalysisKey(),
     category,
     util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-    workflow.getWorkflowRunID(),
-    workflow.getWorkflowRunAttempt(),
+    actionsUtil.getWorkflowRunID(),
+    actionsUtil.getWorkflowRunAttempt(),
     checkoutPath,
     actionsUtil.getRequiredInput("matrix"),
     logger

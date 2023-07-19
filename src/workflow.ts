@@ -225,7 +225,7 @@ export async function getWorkflow(logger: Logger): Promise<Workflow> {
  * Get the absolute path of the currently executing workflow.
  */
 async function getWorkflowAbsolutePath(logger: Logger): Promise<string> {
-  const relativePath = await getWorkflowRelativePath();
+  const relativePath = await api.getWorkflowRelativePath();
   const absolutePath = path.join(
     getRequiredEnvParam("GITHUB_WORKSPACE"),
     relativePath
@@ -243,69 +243,6 @@ async function getWorkflowAbsolutePath(logger: Logger): Promise<string> {
       "This can happen if the currently running workflow checks out a branch that doesn't contain " +
       "the corresponding workflow file."
   );
-}
-
-/**
- * Get the path of the currently executing workflow relative to the repository root.
- */
-export async function getWorkflowRelativePath(): Promise<string> {
-  const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
-  const owner = repo_nwo[0];
-  const repo = repo_nwo[1];
-  const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
-
-  const apiClient = api.getApiClient();
-  const runsResponse = await apiClient.request(
-    "GET /repos/:owner/:repo/actions/runs/:run_id?exclude_pull_requests=true",
-    {
-      owner,
-      repo,
-      run_id,
-    }
-  );
-  const workflowUrl = runsResponse.data.workflow_url;
-
-  const workflowResponse = await apiClient.request(`GET ${workflowUrl}`);
-
-  return workflowResponse.data.path;
-}
-
-/**
- * Get the workflow run ID.
- */
-export function getWorkflowRunID(): number {
-  const workflowRunIdString = getRequiredEnvParam("GITHUB_RUN_ID");
-  const workflowRunID = parseInt(workflowRunIdString, 10);
-  if (Number.isNaN(workflowRunID)) {
-    throw new Error(
-      `GITHUB_RUN_ID must define a non NaN workflow run ID. Current value is ${workflowRunIdString}`
-    );
-  }
-  if (workflowRunID < 0) {
-    throw new Error(
-      `GITHUB_RUN_ID must be a non-negative integer. Current value is ${workflowRunIdString}`
-    );
-  }
-  return workflowRunID;
-}
-
-/**
- * Get the workflow run attempt number.
- */
-export function getWorkflowRunAttempt(): number {
-  const workflowRunAttemptString = getRequiredEnvParam("GITHUB_RUN_ATTEMPT");
-  const workflowRunAttempt = parseInt(workflowRunAttemptString, 10);
-  if (Number.isNaN(workflowRunAttempt)) {
-    throw new Error(
-      `GITHUB_RUN_ATTEMPT must define a non NaN workflow run attempt. Current value is ${workflowRunAttemptString}`
-    );
-  }
-  if (workflowRunAttempt <= 0) {
-    throw new Error(
-      `GITHUB_RUN_ATTEMPT must be a positive integer. Current value is ${workflowRunAttemptString}`
-    );
-  }
-  return workflowRunAttempt;
 }
 
 function getStepsCallingAction(

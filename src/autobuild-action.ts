@@ -1,14 +1,17 @@
 import * as core from "@actions/core";
 
 import {
-  createStatusReportBase,
   getActionsStatus,
   getActionVersion,
   getOptionalInput,
   getTemporaryDirectory,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion, sendStatusReport } from "./api-client";
+import {
+  createStatusReportBase,
+  getGitHubVersion,
+  sendStatusReport,
+} from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";

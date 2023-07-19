@@ -7,30 +7,20 @@ If a prop determines the type, it can be specified with `props`.
 
 For now, we only support the mapping of one prop type to an element type, rather than combinations of props.
 */
-function getElementType(context, node) {
+function getElementType(context, node, ignoreMap = false) {
   const {settings} = context
-  const rawElement = elementType(node)
-  if (!settings) return rawElement
 
-  const componentMap = settings.github && settings.github.components
-  if (!componentMap) return rawElement
-  const component = componentMap[rawElement]
-  if (!component) return rawElement
-  let element = component.default ? component.default : rawElement
+  // check if the node contains a polymorphic prop
+  const polymorphicPropName = settings?.github?.polymorphicPropName ?? 'as'
+  const rawElement = getPropValue(getProp(node.attributes, polymorphicPropName)) ?? elementType(node)
 
-  if (component.props) {
-    const props = Object.entries(component.props)
-    for (const [key, value] of props) {
-      const propMap = value
-      const propValue = getPropValue(getProp(node.attributes, key))
-      const mapValue = propMap[propValue]
+  // if a component configuration does not exists, return the raw element
+  if (ignoreMap || !settings?.github?.components?.[rawElement]) return rawElement
 
-      if (mapValue) {
-        element = mapValue
-      }
-    }
-  }
-  return element
+  const defaultComponent = settings.github.components[rawElement]
+
+  // check if the default component is also defined in the configuration
+  return defaultComponent ? defaultComponent : defaultComponent
 }
 
 module.exports = {getElementType}

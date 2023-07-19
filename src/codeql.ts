@@ -270,7 +270,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.8.5";
+const CODEQL_MINIMUM_VERSION = "2.9.4";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -286,13 +286,6 @@ const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
 const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
 export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
 const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
-
-/**
- * Versions 2.9.0+ of the CodeQL CLI run machine learning models from a temporary directory, which
- * resolves an issue on Windows where TensorFlow models are not correctly loaded due to the path of
- * some of their files being greater than MAX_PATH (260 characters).
- */
-export const CODEQL_VERSION_ML_POWERED_QUERIES_WINDOWS = "2.9.0";
 
 /**
  * Previous versions had the option already, but were missing the
@@ -833,13 +826,10 @@ export async function getCodeQLForCmd(
       } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
-      if (await features.getValue(Feature.NewAnalysisSummaryEnabled, codeql)) {
+      if (await features.getValue(Feature.NewAnalysisSummaryEnabled, this)) {
         codeqlArgs.push("--new-analysis-summary");
       } else if (
-        await util.codeQlVersionAbove(
-          codeql,
-          CODEQL_VERSION_NEW_ANALYSIS_SUMMARY
-        )
+        await util.codeQlVersionAbove(this, CODEQL_VERSION_NEW_ANALYSIS_SUMMARY)
       ) {
         codeqlArgs.push("--no-new-analysis-summary");
       }

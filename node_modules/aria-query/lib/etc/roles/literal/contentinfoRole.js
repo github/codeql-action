@@ -14,7 +14,7 @@ var contentinfoRole = {
   props: {},
   relatedConcepts: [{
     concept: {
-      constraints: ['direct descendant of document'],
+      constraints: ['scoped to the body element'],
       name: 'footer'
     },
     module: 'HTML'

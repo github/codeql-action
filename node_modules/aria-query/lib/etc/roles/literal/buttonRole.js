@@ -20,37 +20,6 @@ var buttonRole = {
   relatedConcepts: [{
     concept: {
       attributes: [{
-        constraints: ['set'],
-        name: 'aria-pressed'
-      }, {
-        name: 'type',
-        value: 'checkbox'
-      }],
-      name: 'input'
-    },
-    module: 'HTML'
-  }, {
-    concept: {
-      attributes: [{
-        name: 'aria-expanded',
-        value: 'false'
-      }],
-      name: 'summary'
-    },
-    module: 'HTML'
-  }, {
-    concept: {
-      attributes: [{
-        name: 'aria-expanded',
-        value: 'true'
-      }],
-      constraints: ['direct descendant of details element with the open attribute defined'],
-      name: 'summary'
-    },
-    module: 'HTML'
-  }, {
-    concept: {
-      attributes: [{
         name: 'type',
         value: 'button'
       }],

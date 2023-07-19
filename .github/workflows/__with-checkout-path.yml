@@ -1,6 +1,6 @@
 # Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml && python3 sync.py)
+#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
 name: PR Check - Use a custom `checkout_path`
@@ -26,12 +26,6 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20220401
-        - os: macos-latest
-          version: stable-20220401
-        - os: windows-latest
-          version: stable-20220401
-        - os: ubuntu-latest
           version: stable-20220615
         - os: macos-latest
           version: stable-20220615
@@ -49,6 +43,12 @@ jobs:
           version: stable-20221211
         - os: windows-latest
           version: stable-20221211
+        - os: ubuntu-latest
+          version: stable-20230418
+        - os: macos-latest
+          version: stable-20230418
+        - os: windows-latest
+          version: stable-20230418
         - os: ubuntu-latest
           version: cached
         - os: macos-latest

@@ -1,7 +1,11 @@
 module.exports = {
   rules: {
+    'a11y-no-visually-hidden-interactive-element': require('./rules/a11y-no-visually-hidden-interactive-element'),
     'a11y-no-generic-link-text': require('./rules/a11y-no-generic-link-text'),
+    'a11y-no-title-attribute': require('./rules/a11y-no-title-attribute'),
     'a11y-aria-label-is-well-formatted': require('./rules/a11y-aria-label-is-well-formatted'),
+    'a11y-role-supports-aria-props': require('./rules/a11y-role-supports-aria-props'),
+    'a11y-svg-has-accessible-name': require('./rules/a11y-svg-has-accessible-name'),
     'array-foreach': require('./rules/array-foreach'),
     'async-currenttarget': require('./rules/async-currenttarget'),
     'async-preventdefault': require('./rules/async-preventdefault'),
@@ -18,7 +22,6 @@ module.exports = {
     'no-then': require('./rules/no-then'),
     'no-useless-passive': require('./rules/no-useless-passive'),
     'prefer-observers': require('./rules/prefer-observers'),
-    'role-supports-aria-props': require('./rules/role-supports-aria-props'),
     'require-passive-events': require('./rules/require-passive-events'),
     'unescaped-html-literal': require('./rules/unescaped-html-literal'),
   },

@@ -8,16 +8,6 @@ export interface ErrorMatcher {
 
 // exported only for testing purposes
 export const namedMatchersForTesting: { [key: string]: ErrorMatcher } = {
-  /*
-  In due course it may be possible to remove the regex, if/when javascript also exits with code 32.
-  */
-  noSourceCodeFound: {
-    exitCode: 32,
-    outputRegex: new RegExp("No JavaScript or TypeScript code found\\."),
-    message:
-      "No code found during the build. Please see:\n" +
-      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
-  },
   fatalError: {
     outputRegex: new RegExp("A fatal error occurred"),
     message: "A fatal error occurred.",

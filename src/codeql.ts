@@ -9,7 +9,6 @@ import { getOptionalInput, isAnalyzingDefaultBranch } from "./actions-util";
 import * as api from "./api-client";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
-import { errorMatchers } from "./error-matcher";
 import {
   CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
   CodeQLDefaultVersionInfo,
@@ -20,7 +19,6 @@ import {
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
-import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
 import { wrapError } from "./util";
 
@@ -627,19 +625,15 @@ export async function getCodeQLForCmd(
         `autobuild${ext}`
       );
       // Run trace command
-      await toolrunnerErrorCatcher(
-        cmd,
-        [
-          "database",
-          "trace-command",
-          ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
-          ...getExtraOptionsFromEnv(["database", "trace-command"]),
-          databasePath,
-          "--",
-          traceCommand,
-        ],
-        errorMatchers
-      );
+      await runTool(cmd, [
+        "database",
+        "trace-command",
+        ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+        ...getExtraOptionsFromEnv(["database", "trace-command"]),
+        databasePath,
+        "--",
+        traceCommand,
+      ]);
     },
     async finalizeDatabase(
       databasePath: string,
@@ -782,7 +776,7 @@ export async function getCodeQLForCmd(
       if (querySuitePath) {
         codeqlArgs.push(querySuitePath);
       }
-      await toolrunnerErrorCatcher(cmd, codeqlArgs, errorMatchers);
+      await runTool(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
       databasePath: string,
@@ -848,17 +842,13 @@ export async function getCodeQLForCmd(
         codeqlArgs.push(...querySuitePaths);
       }
       // capture stdout, which contains analysis summaries
-      const returnState = await toolrunnerErrorCatcher(
-        cmd,
-        codeqlArgs,
-        errorMatchers
-      );
+      const returnState = await runTool(cmd, codeqlArgs);
 
       if (shouldWorkaroundInvalidNotifications) {
         util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
       }
 
-      return returnState.stdout;
+      return returnState;
     },
     async databasePrintBaseline(databasePath: string): Promise<string> {
       const codeqlArgs = [
@@ -1161,9 +1151,32 @@ async function runTool(
     ignoreReturnCode: true,
     ...(opts.stdin ? { input: Buffer.from(opts.stdin || "") } : {}),
   }).exec();
-  if (exitCode !== 0)
+  if (exitCode !== 0) {
+    error = extractFatalErrors(error) || error;
     throw new CommandInvocationError(cmd, args, exitCode, error, output);
+  }
   return output;
+}
+
+function extractFatalErrors(error: string): string | undefined {
+  const fatalErrors: string[] = [];
+  const fatalErrorRegex = /.*fatal error occurred:/gi;
+  let lastFatalErrorIndex: number | undefined;
+  let match: RegExpMatchArray | null;
+  while ((match = fatalErrorRegex.exec(error)) !== null) {
+    if (lastFatalErrorIndex !== undefined) {
+      fatalErrors.push(error.slice(lastFatalErrorIndex, match.index));
+    }
+    lastFatalErrorIndex = match.index;
+  }
+  if (lastFatalErrorIndex !== undefined) {
+    const lastError = error.slice(lastFatalErrorIndex);
+    return (
+      lastError +
+      (fatalErrors.length > 0 ? `\nContext:\n${fatalErrors.join("\n")}` : "")
+    );
+  }
+  return undefined;
 }
 
 /**

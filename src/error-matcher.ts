@@ -16,7 +16,7 @@ export const namedMatchersForTesting: { [key: string]: ErrorMatcher } = {
     outputRegex: new RegExp("No JavaScript or TypeScript code found\\."),
     message:
       "No code found during the build. Please see:\n" +
-      "https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/troubleshooting-code-scanning#no-code-found-during-the-build",
+      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
   },
   fatalError: {
     outputRegex: new RegExp("A fatal error occurred"),

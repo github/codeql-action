@@ -1157,6 +1157,43 @@ test("database finalize recognises JavaScript no code found error on CodeQL 2.11
   );
 });
 
+test("database finalize overrides no code found error on CodeQL 2.11.6", async (t) => {
+  stubToolRunnerConstructor(32);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.11.6");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    {
+      message:
+        "No code found during the build. Please see: " +
+        "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+    }
+  );
+});
+
+test("database finalize does not override no code found error on CodeQL 2.12.4", async (t) => {
+  const cliMessage =
+    "CodeQL did not detect any code written in languages supported by CodeQL. Review our troubleshooting guide at " +
+    "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.";
+  stubToolRunnerConstructor(32, cliMessage);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.12.4");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    {
+      message:
+        "Failure invoking codeql-for-testing with arguments database,finalize,--finalize-dataset,,,.\n" +
+        `Exit code 32 and error was:\n${cliMessage}`,
+    }
+  );
+});
+
 export function stubToolRunnerConstructor(
   exitCode: number = 0,
   stderr?: string

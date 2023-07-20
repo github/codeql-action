@@ -1185,11 +1185,12 @@ test("database finalize does not override no code found error on CodeQL 2.12.4",
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    async () =>
+      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
     {
       message:
-        "Failure invoking codeql-for-testing with arguments database,finalize,--finalize-dataset,,,.\n" +
-        `Exit code 32 and error was:\n${cliMessage}`,
+        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db".\n' +
+        `Exit code was 32 and error was:\n${cliMessage}`,
     }
   );
 });

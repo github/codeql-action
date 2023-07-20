@@ -49,8 +49,8 @@ export class CommandInvocationError extends Error {
   constructor(
     cmd: string,
     args: string[],
-    exitCode: number,
-    error: string,
+    public exitCode: number,
+    public error: string,
     public output: string
   ) {
     super(
@@ -306,6 +306,12 @@ export const CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG = "2.12.3";
  * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
+
+/**
+ * Versions 2.12.4+ of the CodeQL CLI provide a better error message when `database finalize`
+ * determines that no code has been found.
+ */
+export const CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE = "2.12.4";
 
 /**
  * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
@@ -649,7 +655,24 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
-      await toolrunnerErrorCatcher(cmd, args, errorMatchers);
+      try {
+        await runTool(cmd, args);
+      } catch (e) {
+        if (
+          e instanceof CommandInvocationError &&
+          !(await util.codeQlVersionAbove(
+            this,
+            CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE
+          )) &&
+          isNoCodeFoundError(e)
+        ) {
+          throw new util.UserError(
+            "No code found during the build. Please see: " +
+              "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build"
+          );
+        }
+        throw e;
+      }
     },
     async resolveLanguages() {
       const codeqlArgs = [
@@ -1291,4 +1314,18 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  */
 export function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
+}
+
+function isNoCodeFoundError(e: CommandInvocationError): boolean {
+  /**
+   * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
+   * source code was found. This means that we don't get the no code found error from
+   * `codeql database finalize`. To ensure users get a good error message, we detect this manually
+   * here, and upon detection override the error message.
+   *
+   * This can be removed once support for CodeQL 2.11.6 is removed.
+   */
+  const javascriptNoCodeFoundWarning =
+    "No JavaScript or TypeScript code found.";
+  return e.exitCode === 32 || e.error.includes(javascriptNoCodeFoundWarning);
 }

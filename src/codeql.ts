@@ -52,9 +52,9 @@ export class CommandInvocationError extends Error {
     public output: string
   ) {
     super(
-      `Failure invoking ${cmd} with arguments ${args}.\n
-      Exit code ${exitCode} and error was:\n
-      ${error}`
+      `Failure invoking ${cmd} with arguments ${args}.\n` +
+        `Exit code ${exitCode} and error was:\n` +
+        `${error}`
     );
   }
 }

@@ -54,12 +54,9 @@ export class CommandInvocationError extends Error {
     const prettyCommand = [cmd, ...args]
       .map((x) => (x.includes(" ") ? `'${x}'` : x))
       .join(" ");
-    error = error.trim();
-    const separator = error.includes("\n") ? "\n" : " ";
     super(
-      `Encountered a fatal error while running "${prettyCommand}".${separator}` +
-        `Exit code was ${exitCode} and error was:${separator}` +
-        `${error}`
+      `Encountered a fatal error while running "${prettyCommand}". ` +
+        `Exit code was ${exitCode} and error was: ${error.trim()}`
     );
   }
 }

@@ -1170,16 +1170,18 @@ function extractFatalErrors(error: string): string | undefined {
   let match: RegExpMatchArray | null;
   while ((match = fatalErrorRegex.exec(error)) !== null) {
     if (lastFatalErrorIndex !== undefined) {
-      fatalErrors.push(error.slice(lastFatalErrorIndex, match.index));
+      fatalErrors.push(error.slice(lastFatalErrorIndex, match.index).trim());
     }
     lastFatalErrorIndex = match.index;
   }
   if (lastFatalErrorIndex !== undefined) {
-    const lastError = error.slice(lastFatalErrorIndex);
-    return (
-      lastError +
-      (fatalErrors.length > 0 ? `\nContext:\n${fatalErrors.join("\n")}` : "")
-    );
+    const lastError = error.slice(lastFatalErrorIndex).trim();
+    if (fatalErrors.length === 0) {
+      // No other errors
+      return lastError;
+    }
+    const separator = fatalErrors.some((e) => e.includes("\n")) ? "\n" : " ";
+    return [lastError, "Context:", ...fatalErrors.reverse()].join(separator);
   }
   return undefined;
 }

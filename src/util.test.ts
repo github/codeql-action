@@ -25,21 +25,21 @@ const GET_MEMORY_FLAG_TESTS = [
     totalMemoryMb: 8 * 1024,
     platform: "linux",
     expectedMemoryValue: 7 * 1024,
-    expectedMemoryValueWithScaling: 7004, // Math.floor(1024 * (8*0.98 - 1))
+    expectedMemoryValueWithScaling: 7 * 1024,
   },
   {
     input: undefined,
     totalMemoryMb: 8 * 1024,
     platform: "win32",
     expectedMemoryValue: 6.5 * 1024,
-    expectedMemoryValueWithScaling: 6492, // Math.floor(1024 * (8*0.98 - 1.5))
+    expectedMemoryValueWithScaling: 6.5 * 1024,
   },
   {
     input: "",
     totalMemoryMb: 8 * 1024,
     platform: "linux",
     expectedMemoryValue: 7 * 1024,
-    expectedMemoryValueWithScaling: 7004, // Math.floor(1024 * (8*0.98 - 1))
+    expectedMemoryValueWithScaling: 7 * 1024,
   },
   {
     input: "512",
@@ -53,14 +53,14 @@ const GET_MEMORY_FLAG_TESTS = [
     totalMemoryMb: 64 * 1024,
     platform: "linux",
     expectedMemoryValue: 63 * 1024,
-    expectedMemoryValueWithScaling: 63201, // Math.floor(1024 * (64*0.98 - 1))
+    expectedMemoryValueWithScaling: 63078, // Math.floor(1024 * (64 - 1 - 0.025 * (64 - 8)))
   },
   {
     input: undefined,
     totalMemoryMb: 64 * 1024,
     platform: "win32",
     expectedMemoryValue: 62.5 * 1024,
-    expectedMemoryValueWithScaling: 62689, // Math.floor(1024 * (64*0.98 - 1.5))
+    expectedMemoryValueWithScaling: 62566, // Math.floor(1024 * (64 - 1.5 - 0.025 * (64 - 8)))
   },
 ];
 

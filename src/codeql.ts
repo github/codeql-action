@@ -1161,8 +1161,8 @@ async function runTool(
 }
 
 function extractFatalErrors(error: string): string | undefined {
-  const fatalErrors: string[] = [];
   const fatalErrorRegex = /.*fatal error occurred:/gi;
+  let fatalErrors: string[] = [];
   let lastFatalErrorIndex: number | undefined;
   let match: RegExpMatchArray | null;
   while ((match = fatalErrorRegex.exec(error)) !== null) {
@@ -1177,10 +1177,21 @@ function extractFatalErrors(error: string): string | undefined {
       // No other errors
       return lastError;
     }
-    const separator = fatalErrors.some((e) => e.includes("\n")) ? "\n" : " ";
-    return [lastError, "Context:", ...fatalErrors.reverse()].join(separator);
+    const isOneLiner = !fatalErrors.some((e) => e.includes("\n"));
+    if (isOneLiner) {
+      fatalErrors = fatalErrors.map(ensureEndsInPeriod);
+    }
+    return [
+      ensureEndsInPeriod(lastError),
+      "Context:",
+      ...fatalErrors.reverse(),
+    ].join(isOneLiner ? " " : "\n");
   }
   return undefined;
+}
+
+function ensureEndsInPeriod(text: string): string {
+  return text[text.length - 1] === "." ? text : `${text}.`;
 }
 
 /**

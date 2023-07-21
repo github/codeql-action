@@ -153,10 +153,11 @@ export async function withTmpDir<T>(
  */
 function getSystemReservedMemoryMegaBytes(
   totalMemoryMegaBytes: number,
+  platform: string,
   isScalingReservedRamEnabled: boolean
 ): number {
   // Windows needs more memory for OS processes.
-  const fixedAmount = 1024 * (process.platform === "win32" ? 1.5 : 1);
+  const fixedAmount = 1024 * (platform === "win32" ? 1.5 : 1);
 
   if (isScalingReservedRamEnabled) {
     // Reserve an additional 2% of the total memory, since the amount used by
@@ -175,8 +176,10 @@ function getSystemReservedMemoryMegaBytes(
  *
  * @returns {number} the amount of RAM to use, in megabytes
  */
-export function getMemoryFlagValue(
+export function getMemoryFlagValueForPlatform(
   userInput: string | undefined,
+  totalMemoryBytes: number,
+  platform: string,
   isScalingReservedRamEnabled: boolean
 ): number {
   let memoryToUseMegaBytes: number;
@@ -186,15 +189,34 @@ export function getMemoryFlagValue(
       throw new Error(`Invalid RAM setting "${userInput}", specified.`);
     }
   } else {
-    const totalMemoryBytes = os.totalmem();
     const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
     const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes(
       totalMemoryMegaBytes,
+      platform,
       isScalingReservedRamEnabled
     );
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
   return Math.floor(memoryToUseMegaBytes);
+}
+
+/**
+ * Get the value of the codeql `--ram` flag as configured by the `ram` input.
+ * If no value was specified, the total available memory will be used minus a
+ * threshold reserved for the OS.
+ *
+ * @returns {number} the amount of RAM to use, in megabytes
+ */
+export function getMemoryFlagValue(
+  userInput: string | undefined,
+  isScalingReservedRamEnabled: boolean
+): number {
+  return getMemoryFlagValueForPlatform(
+    userInput,
+    os.totalmem(),
+    process.platform,
+    isScalingReservedRamEnabled
+  );
 }
 
 /**

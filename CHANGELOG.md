@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Improve the handling of fatal errors from the CodeQL CLI. [#1795](https://github.com/github/codeql-action/pull/1795)
 
 ## 2.21.0 - 19 Jul 2023
 

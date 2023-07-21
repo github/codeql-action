@@ -1195,6 +1195,31 @@ test("database finalize does not override no code found error on CodeQL 2.12.4",
   );
 });
 
+test("runTool summarizes several fatal errors", async (t) => {
+  const heapError =
+    "A fatal error occurred: Evaluator heap must be at least 384.00 MiB";
+  const datasetImportError =
+    "A fatal error occurred: Dataset import for /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2";
+  const cliStderr =
+    `Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...\n` +
+    `${heapError}\n${datasetImportError}.`;
+  stubToolRunnerConstructor(32, cliStderr);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.12.4");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () =>
+      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+    {
+      message:
+        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
+        `Exit code was 32 and error was: ${datasetImportError}. Context: ${heapError}.`,
+    }
+  );
+});
+
 export function stubToolRunnerConstructor(
   exitCode: number = 0,
   stderr?: string

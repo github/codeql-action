@@ -1160,6 +1160,35 @@ async function runTool(
   return output;
 }
 
+/**
+ * Provide a better error message from the stderr of a CLI invocation that failed with a fatal
+ * error.
+ *
+ * - If the CLI invocation failed with a fatal error, this returns that fatal error, followed by
+ *   any fatal errors that occurred in plumbing commands.
+ * - If the CLI invocation did not fail with a fatal error, this returns `undefined`.
+ *
+ * ### Example
+ *
+ * ```
+ * Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...
+ * A fatal error occurred: Evaluator heap must be at least 384.00 MiB
+ * A fatal error occurred: Dataset import for
+ * /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2
+ * ```
+ *
+ * becomes
+ *
+ * ```
+ * Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset
+ * --threads=2 --ram=2048 db". Exit code was 32 and error was: A fatal error occurred: Dataset
+ * import for /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2.
+ * Context: A fatal error occurred: Evaluator heap must be at least 384.00 MiB.
+ * ```
+ *
+ * Where possible, this tries to summarize the error into a single line, as this displays better in
+ * the Actions UI.
+ */
 function extractFatalErrors(error: string): string | undefined {
   const fatalErrorRegex = /.*fatal error occurred:/gi;
   let fatalErrors: string[] = [];

@@ -9,7 +9,6 @@ import { getOptionalInput, isAnalyzingDefaultBranch } from "./actions-util";
 import * as api from "./api-client";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
-import { errorMatchers } from "./error-matcher";
 import {
   CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
   CodeQLDefaultVersionInfo,
@@ -20,7 +19,6 @@ import {
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
-import { toolrunnerErrorCatcher } from "./toolrunner-error-catcher";
 import * as util from "./util";
 import { wrapError } from "./util";
 
@@ -49,14 +47,16 @@ export class CommandInvocationError extends Error {
   constructor(
     cmd: string,
     args: string[],
-    exitCode: number,
-    error: string,
+    public exitCode: number,
+    public error: string,
     public output: string
   ) {
+    const prettyCommand = [cmd, ...args]
+      .map((x) => (x.includes(" ") ? `'${x}'` : x))
+      .join(" ");
     super(
-      `Failure invoking ${cmd} with arguments ${args}.\n
-      Exit code ${exitCode} and error was:\n
-      ${error}`
+      `Encountered a fatal error while running "${prettyCommand}". ` +
+        `Exit code was ${exitCode} and error was: ${error.trim()}`
     );
   }
 }
@@ -306,6 +306,12 @@ export const CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG = "2.12.3";
  * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
+
+/**
+ * Versions 2.12.4+ of the CodeQL CLI provide a better error message when `database finalize`
+ * determines that no code has been found.
+ */
+export const CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE = "2.12.4";
 
 /**
  * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
@@ -621,19 +627,15 @@ export async function getCodeQLForCmd(
         `autobuild${ext}`
       );
       // Run trace command
-      await toolrunnerErrorCatcher(
-        cmd,
-        [
-          "database",
-          "trace-command",
-          ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
-          ...getExtraOptionsFromEnv(["database", "trace-command"]),
-          databasePath,
-          "--",
-          traceCommand,
-        ],
-        errorMatchers
-      );
+      await runTool(cmd, [
+        "database",
+        "trace-command",
+        ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+        ...getExtraOptionsFromEnv(["database", "trace-command"]),
+        databasePath,
+        "--",
+        traceCommand,
+      ]);
     },
     async finalizeDatabase(
       databasePath: string,
@@ -649,7 +651,24 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
-      await toolrunnerErrorCatcher(cmd, args, errorMatchers);
+      try {
+        await runTool(cmd, args);
+      } catch (e) {
+        if (
+          e instanceof CommandInvocationError &&
+          !(await util.codeQlVersionAbove(
+            this,
+            CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE
+          )) &&
+          isNoCodeFoundError(e)
+        ) {
+          throw new util.UserError(
+            "No code found during the build. Please see: " +
+              "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build"
+          );
+        }
+        throw e;
+      }
     },
     async resolveLanguages() {
       const codeqlArgs = [
@@ -759,7 +778,7 @@ export async function getCodeQLForCmd(
       if (querySuitePath) {
         codeqlArgs.push(querySuitePath);
       }
-      await toolrunnerErrorCatcher(cmd, codeqlArgs, errorMatchers);
+      await runTool(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
       databasePath: string,
@@ -825,17 +844,13 @@ export async function getCodeQLForCmd(
         codeqlArgs.push(...querySuitePaths);
       }
       // capture stdout, which contains analysis summaries
-      const returnState = await toolrunnerErrorCatcher(
-        cmd,
-        codeqlArgs,
-        errorMatchers
-      );
+      const returnState = await runTool(cmd, codeqlArgs);
 
       if (shouldWorkaroundInvalidNotifications) {
         util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
       }
 
-      return returnState.stdout;
+      return returnState;
     },
     async databasePrintBaseline(databasePath: string): Promise<string> {
       const codeqlArgs = [
@@ -1138,9 +1153,74 @@ async function runTool(
     ignoreReturnCode: true,
     ...(opts.stdin ? { input: Buffer.from(opts.stdin || "") } : {}),
   }).exec();
-  if (exitCode !== 0)
+  if (exitCode !== 0) {
+    error = extractFatalErrors(error) || error;
     throw new CommandInvocationError(cmd, args, exitCode, error, output);
+  }
   return output;
+}
+
+/**
+ * Provide a better error message from the stderr of a CLI invocation that failed with a fatal
+ * error.
+ *
+ * - If the CLI invocation failed with a fatal error, this returns that fatal error, followed by
+ *   any fatal errors that occurred in plumbing commands.
+ * - If the CLI invocation did not fail with a fatal error, this returns `undefined`.
+ *
+ * ### Example
+ *
+ * ```
+ * Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...
+ * A fatal error occurred: Evaluator heap must be at least 384.00 MiB
+ * A fatal error occurred: Dataset import for
+ * /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2
+ * ```
+ *
+ * becomes
+ *
+ * ```
+ * Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset
+ * --threads=2 --ram=2048 db". Exit code was 32 and error was: A fatal error occurred: Dataset
+ * import for /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2.
+ * Context: A fatal error occurred: Evaluator heap must be at least 384.00 MiB.
+ * ```
+ *
+ * Where possible, this tries to summarize the error into a single line, as this displays better in
+ * the Actions UI.
+ */
+function extractFatalErrors(error: string): string | undefined {
+  const fatalErrorRegex = /.*fatal error occurred:/gi;
+  let fatalErrors: string[] = [];
+  let lastFatalErrorIndex: number | undefined;
+  let match: RegExpMatchArray | null;
+  while ((match = fatalErrorRegex.exec(error)) !== null) {
+    if (lastFatalErrorIndex !== undefined) {
+      fatalErrors.push(error.slice(lastFatalErrorIndex, match.index).trim());
+    }
+    lastFatalErrorIndex = match.index;
+  }
+  if (lastFatalErrorIndex !== undefined) {
+    const lastError = error.slice(lastFatalErrorIndex).trim();
+    if (fatalErrors.length === 0) {
+      // No other errors
+      return lastError;
+    }
+    const isOneLiner = !fatalErrors.some((e) => e.includes("\n"));
+    if (isOneLiner) {
+      fatalErrors = fatalErrors.map(ensureEndsInPeriod);
+    }
+    return [
+      ensureEndsInPeriod(lastError),
+      "Context:",
+      ...fatalErrors.reverse(),
+    ].join(isOneLiner ? " " : "\n");
+  }
+  return undefined;
+}
+
+function ensureEndsInPeriod(text: string): string {
+  return text[text.length - 1] === "." ? text : `${text}.`;
 }
 
 /**
@@ -1291,4 +1371,18 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  */
 export function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
+}
+
+function isNoCodeFoundError(e: CommandInvocationError): boolean {
+  /**
+   * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
+   * source code was found. This means that we don't get the no code found error from
+   * `codeql database finalize`. To ensure users get a good error message, we detect this manually
+   * here, and upon detection override the error message.
+   *
+   * This can be removed once support for CodeQL 2.11.6 is removed.
+   */
+  const javascriptNoCodeFoundWarning =
+    "No JavaScript or TypeScript code found.";
+  return e.exitCode === 32 || e.error.includes(javascriptNoCodeFoundWarning);
 }

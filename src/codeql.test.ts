@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import path from "path";
 
+import { ExecOptions } from "@actions/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import * as safeWhich from "@chrisgavin/safe-which";
@@ -1133,13 +1134,108 @@ for (const {
   });
 }
 
-export function stubToolRunnerConstructor(): sinon.SinonStub<
-  any[],
-  toolrunner.ToolRunner
-> {
+test("database finalize recognises JavaScript no code found error on CodeQL 2.11.6", async (t) => {
+  stubToolRunnerConstructor(
+    1,
+    `2020-09-07T17:39:53.9050522Z [2020-09-07 17:39:53] [build] Done extracting /opt/hostedtoolcache/CodeQL/0.0.0-20200630/x64/codeql/javascript/tools/data/externs/web/ie_vml.js (3 ms)
+    2020-09-07T17:39:53.9051849Z [2020-09-07 17:39:53] [build-err] No JavaScript or TypeScript code found.
+    2020-09-07T17:39:53.9052444Z [2020-09-07 17:39:53] [build-err] No JavaScript or TypeScript code found.
+    2020-09-07T17:39:53.9251124Z [2020-09-07 17:39:53] [ERROR] Spawned process exited abnormally (code 255; tried to run: [/opt/hostedtoolcache/CodeQL/0.0.0-20200630/x64/codeql/javascript/tools/autobuild.sh])`
+  );
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.11.6");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    {
+      message:
+        "No code found during the build. Please see: " +
+        "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+    }
+  );
+});
+
+test("database finalize overrides no code found error on CodeQL 2.11.6", async (t) => {
+  stubToolRunnerConstructor(32);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.11.6");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    {
+      message:
+        "No code found during the build. Please see: " +
+        "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+    }
+  );
+});
+
+test("database finalize does not override no code found error on CodeQL 2.12.4", async (t) => {
+  const cliMessage =
+    "CodeQL did not detect any code written in languages supported by CodeQL. Review our troubleshooting guide at " +
+    "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.";
+  stubToolRunnerConstructor(32, cliMessage);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.12.4");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () =>
+      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+    {
+      message:
+        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
+        `Exit code was 32 and error was: ${cliMessage}`,
+    }
+  );
+});
+
+test("runTool summarizes several fatal errors", async (t) => {
+  const heapError =
+    "A fatal error occurred: Evaluator heap must be at least 384.00 MiB";
+  const datasetImportError =
+    "A fatal error occurred: Dataset import for /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2";
+  const cliStderr =
+    `Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...\n` +
+    `${heapError}\n${datasetImportError}.`;
+  stubToolRunnerConstructor(32, cliStderr);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.12.4");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () =>
+      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+    {
+      message:
+        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
+        `Exit code was 32 and error was: ${datasetImportError}. Context: ${heapError}.`,
+    }
+  );
+});
+
+export function stubToolRunnerConstructor(
+  exitCode: number = 0,
+  stderr?: string
+): sinon.SinonStub<any[], toolrunner.ToolRunner> {
   const runnerObjectStub = sinon.createStubInstance(toolrunner.ToolRunner);
-  runnerObjectStub.exec.resolves(0);
   const runnerConstructorStub = sinon.stub(toolrunner, "ToolRunner");
-  runnerConstructorStub.returns(runnerObjectStub);
+  let stderrListener: ((data: Buffer) => void) | undefined = undefined;
+  runnerConstructorStub.callsFake((_cmd, _args, options: ExecOptions) => {
+    stderrListener = options.listeners?.stderr;
+    return runnerObjectStub;
+  });
+  runnerObjectStub.exec.callsFake(async () => {
+    if (stderrListener !== undefined && stderr !== undefined) {
+      stderrListener(Buffer.from(stderr));
+    }
+    return exitCode;
+  });
   return runnerConstructorStub;
 }

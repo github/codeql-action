@@ -50,7 +50,7 @@ test("checkoutExternalQueries", async (t) => {
                 stderr += data.toString();
               },
             },
-          }
+          },
         ).exec();
       } catch (e) {
         console.log(`Command failed: git ${command.join(" ")}`);
@@ -91,7 +91,7 @@ test("checkoutExternalQueries", async (t) => {
         apiURL: undefined,
       },
       tmpDir,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
     t.true(fs.existsSync(path.join(tmpDir, repoName)));
     t.true(fs.existsSync(path.join(tmpDir, repoName, commit1Sha)));
@@ -109,7 +109,7 @@ test("checkoutExternalQueries", async (t) => {
         apiURL: undefined,
       },
       tmpDir,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
     t.true(fs.existsSync(path.join(tmpDir, repoName, commit2Sha)));
     t.true(fs.existsSync(path.join(tmpDir, repoName, commit2Sha, "a")));
@@ -124,7 +124,7 @@ test("buildCheckoutURL", (t) => {
       externalRepoAuth: undefined,
       apiURL: undefined,
     }),
-    "https://github.com/foo/bar"
+    "https://github.com/foo/bar",
   );
   t.deepEqual(
     externalQueries.buildCheckoutURL("foo/bar", {
@@ -132,7 +132,7 @@ test("buildCheckoutURL", (t) => {
       externalRepoAuth: undefined,
       apiURL: undefined,
     }),
-    "https://github.example.com/foo/bar"
+    "https://github.example.com/foo/bar",
   );
 
   t.deepEqual(
@@ -141,7 +141,7 @@ test("buildCheckoutURL", (t) => {
       externalRepoAuth: "abc",
       apiURL: undefined,
     }),
-    "https://x-access-token:abc@github.com/foo/bar"
+    "https://x-access-token:abc@github.com/foo/bar",
   );
   t.deepEqual(
     externalQueries.buildCheckoutURL("foo/bar", {
@@ -149,6 +149,6 @@ test("buildCheckoutURL", (t) => {
       externalRepoAuth: "abc",
       apiURL: undefined,
     }),
-    "https://x-access-token:abc@github.example.com/foo/bar"
+    "https://x-access-token:abc@github.example.com/foo/bar",
   );
 });

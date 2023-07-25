@@ -9,23 +9,23 @@ export type TracerConfig = {
 };
 
 export async function endTracingForCluster(
-  config: configUtils.Config
+  config: configUtils.Config,
 ): Promise<void> {
   // If there are no traced languages, we don't need to do anything.
   if (!config.languages.some((l) => isTracedLanguage(l))) return;
 
   const envVariablesFile = path.resolve(
     config.dbLocation,
-    "temp/tracingEnvironment/end-tracing.json"
+    "temp/tracingEnvironment/end-tracing.json",
   );
   if (!fs.existsSync(envVariablesFile)) {
     throw new Error(
-      `Environment file for ending tracing not found: ${envVariablesFile}`
+      `Environment file for ending tracing not found: ${envVariablesFile}`,
     );
   }
   try {
     const endTracingEnvVariables: Map<string, string | null> = JSON.parse(
-      fs.readFileSync(envVariablesFile, "utf8")
+      fs.readFileSync(envVariablesFile, "utf8"),
     );
     for (const [key, value] of Object.entries(endTracingEnvVariables)) {
       if (value !== null) {
@@ -36,22 +36,22 @@ export async function endTracingForCluster(
     }
   } catch (e) {
     throw new Error(
-      `Failed to parse file containing end tracing environment variables: ${e}`
+      `Failed to parse file containing end tracing environment variables: ${e}`,
     );
   }
 }
 
 export async function getTracerConfigForCluster(
-  config: configUtils.Config
+  config: configUtils.Config,
 ): Promise<TracerConfig> {
   const tracingEnvVariables = JSON.parse(
     fs.readFileSync(
       path.resolve(
         config.dbLocation,
-        "temp/tracingEnvironment/start-tracing.json"
+        "temp/tracingEnvironment/start-tracing.json",
       ),
-      "utf8"
-    )
+      "utf8",
+    ),
   );
   return {
     env: tracingEnvVariables,
@@ -59,7 +59,7 @@ export async function getTracerConfigForCluster(
 }
 
 export async function getCombinedTracerConfig(
-  config: configUtils.Config
+  config: configUtils.Config,
 ): Promise<TracerConfig | undefined> {
   // Abort if there are no traced languages as there's nothing to do
   const tracedLanguages = config.languages.filter((l) => isTracedLanguage(l));
@@ -78,7 +78,7 @@ export async function getCombinedTracerConfig(
     mainTracerConfig.env["CODEQL_DIST"],
     "tools",
     mainTracerConfig.env["CODEQL_PLATFORM"],
-    runnerExeName
+    runnerExeName,
   );
 
   return mainTracerConfig;

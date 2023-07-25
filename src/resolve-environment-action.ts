@@ -29,7 +29,7 @@ async function run() {
   try {
     if (
       !(await sendStatusReport(
-        await createStatusReportBase(ACTION_NAME, "starting", startedAt)
+        await createStatusReportBase(ACTION_NAME, "starting", startedAt),
       ))
     ) {
       return;
@@ -41,7 +41,7 @@ async function run() {
     const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
-        "Config file could not be found at expected location. Has the 'init' action been called?"
+        "Config file could not be found at expected location. Has the 'init' action been called?",
       );
     }
 
@@ -50,7 +50,7 @@ async function run() {
       config.codeQLCmd,
       logger,
       workingDirectory,
-      language
+      language,
     );
     core.setOutput(ENVIRONMENT_OUTPUT_NAME, result);
   } catch (unwrappedError) {
@@ -61,12 +61,12 @@ async function run() {
       // we just return an empty JSON object and proceed with the workflow.
       core.setOutput(ENVIRONMENT_OUTPUT_NAME, {});
       logger.warning(
-        `Failed to resolve a build environment suitable for automatically building your code. ${error.message}`
+        `Failed to resolve a build environment suitable for automatically building your code. ${error.message}`,
       );
     } else {
       // For any other error types, something has more seriously gone wrong and we fail.
       core.setFailed(
-        `Failed to resolve a build environment suitable for automatically building your code. ${error.message}`
+        `Failed to resolve a build environment suitable for automatically building your code. ${error.message}`,
       );
 
       await sendStatusReport(
@@ -75,8 +75,8 @@ async function run() {
           getActionsStatus(error),
           startedAt,
           error.message,
-          error.stack
-        )
+          error.stack,
+        ),
       );
     }
 
@@ -84,7 +84,7 @@ async function run() {
   }
 
   await sendStatusReport(
-    await createStatusReportBase(ACTION_NAME, "success", startedAt)
+    await createStatusReportBase(ACTION_NAME, "success", startedAt),
   );
 }
 

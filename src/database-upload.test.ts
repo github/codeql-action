@@ -74,7 +74,7 @@ async function mockHttpRequests(databaseUploadStatusCode: number) {
     databaseUploadSpy.resolves(undefined);
   } else {
     databaseUploadSpy.throws(
-      new HTTPError("some error message", databaseUploadStatusCode)
+      new HTTPError("some error message", databaseUploadStatusCode),
     );
   }
 
@@ -95,14 +95,15 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
       testRepoName,
       getTestConfig(tmpDir),
       testApiDetails,
-      getRecordingLogger(loggedMessages)
+      getRecordingLogger(loggedMessages),
     );
     t.assert(
       loggedMessages.find(
         (v: LoggedMessage) =>
           v.type === "debug" &&
-          v.message === "Database upload disabled in workflow. Skipping upload."
-      ) !== undefined
+          v.message ===
+            "Database upload disabled in workflow. Skipping upload.",
+      ) !== undefined,
     );
   });
 });
@@ -124,14 +125,14 @@ test("Abort database upload if running against GHES", async (t) => {
       testRepoName,
       config,
       testApiDetails,
-      getRecordingLogger(loggedMessages)
+      getRecordingLogger(loggedMessages),
     );
     t.assert(
       loggedMessages.find(
         (v: LoggedMessage) =>
           v.type === "debug" &&
-          v.message === "Not running against github.com. Skipping upload."
-      ) !== undefined
+          v.message === "Not running against github.com. Skipping upload.",
+      ) !== undefined,
     );
   });
 });
@@ -153,14 +154,14 @@ test("Abort database upload if running against GHAE", async (t) => {
       testRepoName,
       config,
       testApiDetails,
-      getRecordingLogger(loggedMessages)
+      getRecordingLogger(loggedMessages),
     );
     t.assert(
       loggedMessages.find(
         (v: LoggedMessage) =>
           v.type === "debug" &&
-          v.message === "Not running against github.com. Skipping upload."
-      ) !== undefined
+          v.message === "Not running against github.com. Skipping upload.",
+      ) !== undefined,
     );
   });
 });
@@ -179,14 +180,14 @@ test("Abort database upload if not analyzing default branch", async (t) => {
       testRepoName,
       getTestConfig(tmpDir),
       testApiDetails,
-      getRecordingLogger(loggedMessages)
+      getRecordingLogger(loggedMessages),
     );
     t.assert(
       loggedMessages.find(
         (v: LoggedMessage) =>
           v.type === "debug" &&
-          v.message === "Not analyzing default branch. Skipping upload."
-      ) !== undefined
+          v.message === "Not analyzing default branch. Skipping upload.",
+      ) !== undefined,
     );
   });
 });
@@ -213,7 +214,7 @@ test("Don't crash if uploading a database fails", async (t) => {
       testRepoName,
       getTestConfig(tmpDir),
       testApiDetails,
-      getRecordingLogger(loggedMessages)
+      getRecordingLogger(loggedMessages),
     );
 
     t.assert(
@@ -221,8 +222,8 @@ test("Don't crash if uploading a database fails", async (t) => {
         (v) =>
           v.type === "warning" &&
           v.message ===
-            "Failed to upload database for javascript: Error: some error message"
-      ) !== undefined
+            "Failed to upload database for javascript: Error: some error message",
+      ) !== undefined,
     );
   });
 });
@@ -249,14 +250,14 @@ test("Successfully uploading a database to api.github.com", async (t) => {
       testRepoName,
       getTestConfig(tmpDir),
       testApiDetails,
-      getRecordingLogger(loggedMessages)
+      getRecordingLogger(loggedMessages),
     );
     t.assert(
       loggedMessages.find(
         (v) =>
           v.type === "debug" &&
-          v.message === "Successfully uploaded database for javascript"
-      ) !== undefined
+          v.message === "Successfully uploaded database for javascript",
+      ) !== undefined,
     );
   });
 });
@@ -283,14 +284,14 @@ test("Successfully uploading a database to uploads.github.com", async (t) => {
       testRepoName,
       getTestConfig(tmpDir),
       testApiDetails,
-      getRecordingLogger(loggedMessages)
+      getRecordingLogger(loggedMessages),
     );
     t.assert(
       loggedMessages.find(
         (v) =>
           v.type === "debug" &&
-          v.message === "Successfully uploaded database for javascript"
-      ) !== undefined
+          v.message === "Successfully uploaded database for javascript",
+      ) !== undefined,
     );
   });
 });

@@ -56,7 +56,7 @@ function createConfigFile(inputFileContents: string, tmpDir: string): string {
 type GetContentsResponse = { content?: string } | Array<{}>;
 
 function mockGetContents(
-  content: GetContentsResponse
+  content: GetContentsResponse,
 ): sinon.SinonStub<any, any> {
   // Passing an auth token is required, so we just use a dummy value
   const client = github.getOctokit("123");
@@ -126,7 +126,7 @@ test("load empty config", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      logger
+      logger,
     );
 
     t.deepEqual(
@@ -147,8 +147,8 @@ test("load empty config", async (t) => {
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        logger
-      )
+        logger,
+      ),
     );
   });
 });
@@ -198,7 +198,7 @@ test("loading config saves config", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      logger
+      logger,
     );
 
     // The saved config file should now exist
@@ -237,7 +237,7 @@ test("load input outside of workspace", async (t) => {
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -245,9 +245,9 @@ test("load input outside of workspace", async (t) => {
         err,
         new UserError(
           configUtils.getConfigFileOutsideWorkspaceErrorMessage(
-            path.join(tmpDir, "../input")
-          )
-        )
+            path.join(tmpDir, "../input"),
+          ),
+        ),
       );
     }
   });
@@ -278,7 +278,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -286,9 +286,9 @@ test("load non-local input with invalid repo syntax", async (t) => {
         err,
         new UserError(
           configUtils.getConfigFileRepoFormatInvalidMessage(
-            "octo-org/codeql-config@main"
-          )
-        )
+            "octo-org/codeql-config@main",
+          ),
+        ),
       );
     }
   });
@@ -320,7 +320,7 @@ test("load non-existent input", async (t) => {
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -328,9 +328,9 @@ test("load non-existent input", async (t) => {
         err,
         new UserError(
           configUtils.getConfigFileDoesNotExistErrorMessage(
-            path.join(tmpDir, "input")
-          )
-        )
+            path.join(tmpDir, "input"),
+          ),
+        ),
       );
     }
   });
@@ -428,7 +428,7 @@ test("load non-empty input", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Should exactly equal the object we constructed earlier
@@ -451,7 +451,7 @@ test("Default queries are used", async (t) => {
     const codeQL = setCodeQL({
       async resolveQueries(
         queries: string[],
-        extraSearchPath: string | undefined
+        extraSearchPath: string | undefined,
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return {
@@ -500,7 +500,7 @@ test("Default queries are used", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Check resolve queries was called correctly
@@ -549,7 +549,7 @@ test("Queries can be specified in config file", async (t) => {
     const codeQL = setCodeQL({
       async resolveQueries(
         queries: string[],
-        extraSearchPath: string | undefined
+        extraSearchPath: string | undefined,
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
@@ -580,7 +580,7 @@ test("Queries can be specified in config file", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Check resolveQueries was called correctly
@@ -595,13 +595,13 @@ test("Queries can be specified in config file", async (t) => {
     t.deepEqual(config.queries["javascript"].custom.length, 1);
     t.true(
       config.queries["javascript"].builtin[0].endsWith(
-        "javascript-code-scanning.qls"
-      )
+        "javascript-code-scanning.qls",
+      ),
     );
     t.true(
       config.queries["javascript"].custom[0].queries[0].endsWith(
-        `${path.sep}foo`
-      )
+        `${path.sep}foo`,
+      ),
     );
   });
 });
@@ -628,7 +628,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
     const codeQL = setCodeQL({
       async resolveQueries(
         queries: string[],
-        extraSearchPath: string | undefined
+        extraSearchPath: string | undefined,
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
@@ -659,7 +659,7 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Check resolveQueries was called correctly
@@ -674,13 +674,13 @@ test("Queries from config file can be overridden in workflow file", async (t) =>
     t.deepEqual(config.queries["javascript"].custom.length, 1);
     t.true(
       config.queries["javascript"].builtin[0].endsWith(
-        "javascript-code-scanning.qls"
-      )
+        "javascript-code-scanning.qls",
+      ),
     );
     t.true(
       config.queries["javascript"].custom[0].queries[0].endsWith(
-        `${path.sep}override`
-      )
+        `${path.sep}override`,
+      ),
     );
   });
 });
@@ -705,7 +705,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
     const codeQL = setCodeQL({
       async resolveQueries(
         queries: string[],
-        extraSearchPath: string | undefined
+        extraSearchPath: string | undefined,
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
@@ -736,7 +736,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Check resolveQueries was called correctly
@@ -745,7 +745,7 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
     t.deepEqual(resolveQueriesArgs.length, 1);
     t.deepEqual(resolveQueriesArgs[0].queries.length, 1);
     t.true(
-      resolveQueriesArgs[0].queries[0].endsWith(`${path.sep}workflow-query`)
+      resolveQueriesArgs[0].queries[0].endsWith(`${path.sep}workflow-query`),
     );
 
     // Now check that the end result contains only the workflow query, and not the default one
@@ -753,8 +753,8 @@ test("Queries in workflow file can be used in tandem with the 'disable default q
     t.deepEqual(config.queries["javascript"].custom.length, 1);
     t.true(
       config.queries["javascript"].custom[0].queries[0].endsWith(
-        `${path.sep}workflow-query`
-      )
+        `${path.sep}workflow-query`,
+      ),
     );
   });
 });
@@ -773,7 +773,7 @@ test("Multiple queries can be specified in workflow file, no config file require
     const codeQL = setCodeQL({
       async resolveQueries(
         queries: string[],
-        extraSearchPath: string | undefined
+        extraSearchPath: string | undefined,
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
@@ -804,7 +804,7 @@ test("Multiple queries can be specified in workflow file, no config file require
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Check resolveQueries was called correctly:
@@ -821,18 +821,18 @@ test("Multiple queries can be specified in workflow file, no config file require
     t.deepEqual(config.queries["javascript"].custom.length, 2);
     t.true(
       config.queries["javascript"].builtin[0].endsWith(
-        "javascript-code-scanning.qls"
-      )
+        "javascript-code-scanning.qls",
+      ),
     );
     t.true(
       config.queries["javascript"].custom[0].queries[0].endsWith(
-        `${path.sep}override1`
-      )
+        `${path.sep}override1`,
+      ),
     );
     t.true(
       config.queries["javascript"].custom[1].queries[0].endsWith(
-        `${path.sep}override2`
-      )
+        `${path.sep}override2`,
+      ),
     );
   });
 });
@@ -862,7 +862,7 @@ test("Queries in workflow file can be added to the set of queries without overri
     const codeQL = setCodeQL({
       async resolveQueries(
         queries: string[],
-        extraSearchPath: string | undefined
+        extraSearchPath: string | undefined,
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
@@ -893,7 +893,7 @@ test("Queries in workflow file can be added to the set of queries without overri
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Check resolveQueries was called correctly
@@ -913,23 +913,23 @@ test("Queries in workflow file can be added to the set of queries without overri
     t.deepEqual(config.queries["javascript"].custom.length, 3);
     t.true(
       config.queries["javascript"].builtin[0].endsWith(
-        "javascript-code-scanning.qls"
-      )
+        "javascript-code-scanning.qls",
+      ),
     );
     t.true(
       config.queries["javascript"].custom[0].queries[0].endsWith(
-        `${path.sep}additional1`
-      )
+        `${path.sep}additional1`,
+      ),
     );
     t.true(
       config.queries["javascript"].custom[1].queries[0].endsWith(
-        `${path.sep}additional2`
-      )
+        `${path.sep}additional2`,
+      ),
     );
     t.true(
       config.queries["javascript"].custom[2].queries[0].endsWith(
-        `${path.sep}foo`
-      )
+        `${path.sep}foo`,
+      ),
     );
   });
 });
@@ -956,7 +956,7 @@ test("Queries can be specified using config input", async (t) => {
     const codeQL = setCodeQL({
       async resolveQueries(
         queries: string[],
-        extraSearchPath: string | undefined
+        extraSearchPath: string | undefined,
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
@@ -988,7 +988,7 @@ test("Queries can be specified using config input", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Check resolveQueries was called correctly
@@ -1006,13 +1006,13 @@ test("Queries can be specified using config input", async (t) => {
     t.deepEqual(config.queries["javascript"].custom.length, 1);
     t.true(
       config.queries["javascript"].builtin[0].endsWith(
-        "javascript-code-scanning.qls"
-      )
+        "javascript-code-scanning.qls",
+      ),
     );
     t.true(
       config.queries["javascript"].custom[0].queries[0].endsWith(
-        `${path.sep}foo`
-      )
+        `${path.sep}foo`,
+      ),
     );
   });
 });
@@ -1048,7 +1048,7 @@ test("Using config input and file together, config input should be used.", async
     const codeQL = setCodeQL({
       async resolveQueries(
         queries: string[],
-        extraSearchPath: string | undefined
+        extraSearchPath: string | undefined,
       ) {
         resolveQueriesArgs.push({ queries, extraSearchPath });
         return queriesToResolvedQueryForm(queries);
@@ -1080,7 +1080,7 @@ test("Using config input and file together, config input should be used.", async
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     // Check resolveQueries was called correctly
@@ -1098,13 +1098,13 @@ test("Using config input and file together, config input should be used.", async
     t.deepEqual(config.queries["javascript"].custom.length, 1);
     t.true(
       config.queries["javascript"].builtin[0].endsWith(
-        "javascript-code-scanning.qls"
-      )
+        "javascript-code-scanning.qls",
+      ),
     );
     t.true(
       config.queries["javascript"].custom[0].queries[0].endsWith(
-        `${path.sep}foo`
-      )
+        `${path.sep}foo`,
+      ),
     );
   });
 });
@@ -1151,15 +1151,15 @@ test("Invalid queries in workflow file handled correctly", async (t) => {
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       t.fail("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
         new UserError(
-          configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3")
-        )
+          configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3"),
+        ),
       );
     }
   });
@@ -1226,7 +1226,7 @@ test("API client used when reading remote config", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
     t.assert(spyGetContents.called);
   });
@@ -1258,15 +1258,15 @@ test("Remote config handles the case where a directory is provided", async (t) =
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
         new UserError(
-          configUtils.getConfigFileDirectoryGivenMessage(repoReference)
-        )
+          configUtils.getConfigFileDirectoryGivenMessage(repoReference),
+        ),
       );
     }
   });
@@ -1300,15 +1300,15 @@ test("Invalid format of remote config handled correctly", async (t) => {
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
         new UserError(
-          configUtils.getConfigFileFormatInvalidMessage(repoReference)
-        )
+          configUtils.getConfigFileFormatInvalidMessage(repoReference),
+        ),
       );
     }
   });
@@ -1346,7 +1346,7 @@ test("No detected languages", async (t) => {
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -1379,15 +1379,15 @@ test("Unknown languages", async (t) => {
         gitHubVersion,
         sampleApiDetails,
         createFeatures([]),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
       t.deepEqual(
         err,
         new UserError(
-          configUtils.getUnknownLanguagesError(["rubbish", "english"])
-        )
+          configUtils.getUnknownLanguagesError(["rubbish", "english"]),
+        ),
       );
     }
   });
@@ -1439,7 +1439,7 @@ test("Config specifies packages", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
     t.deepEqual(packs as unknown, {
       [Language.javascript]: ["a/b@1.2.3"],
@@ -1501,7 +1501,7 @@ test("Config specifies packages for multiple languages", async (t) => {
       gitHubVersion,
       sampleApiDetails,
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
     t.deepEqual(packs as unknown, {
       [Language.javascript]: ["a/b@1.2.3"],
@@ -1532,7 +1532,7 @@ test("Config specifies packages for multiple languages", async (t) => {
 function doInvalidInputTest(
   testName: string,
   inputFileContents: string,
-  expectedErrorMessageGenerator: (configFile: string) => string
+  expectedErrorMessageGenerator: (configFile: string) => string,
 ) {
   test(`load invalid input - ${testName}`, async (t) => {
     return await withTmpDir(async (tmpDir) => {
@@ -1574,13 +1574,13 @@ function doInvalidInputTest(
           gitHubVersion,
           sampleApiDetails,
           createFeatures([]),
-          getRunnerLogger(true)
+          getRunnerLogger(true),
         );
         throw new Error("initConfig did not throw error");
       } catch (err) {
         t.deepEqual(
           err,
-          new UserError(expectedErrorMessageGenerator(inputFile))
+          new UserError(expectedErrorMessageGenerator(inputFile)),
         );
       }
     });
@@ -1592,31 +1592,31 @@ doInvalidInputTest(
   `
   name:
     - foo: bar`,
-  configUtils.getNameInvalid
+  configUtils.getNameInvalid,
 );
 
 doInvalidInputTest(
   "disable-default-queries invalid type",
   `disable-default-queries: 42`,
-  configUtils.getDisableDefaultQueriesInvalid
+  configUtils.getDisableDefaultQueriesInvalid,
 );
 
 doInvalidInputTest(
   "queries invalid type",
   `queries: foo`,
-  configUtils.getQueriesInvalid
+  configUtils.getQueriesInvalid,
 );
 
 doInvalidInputTest(
   "paths-ignore invalid type",
   `paths-ignore: bar`,
-  configUtils.getPathsIgnoreInvalid
+  configUtils.getPathsIgnoreInvalid,
 );
 
 doInvalidInputTest(
   "paths invalid type",
   `paths: 17`,
-  configUtils.getPathsInvalid
+  configUtils.getPathsInvalid,
 );
 
 doInvalidInputTest(
@@ -1625,12 +1625,12 @@ doInvalidInputTest(
   queries:
   - uses:
       - hello: world`,
-  configUtils.getQueriesMissingUses
+  configUtils.getQueriesMissingUses,
 );
 
 function doInvalidQueryUsesTest(
   input: string,
-  expectedErrorMessageGenerator: (configFile: string) => string
+  expectedErrorMessageGenerator: (configFile: string) => string,
 ) {
   // Invalid contents of a "queries.uses" field.
   // Should fail with the expected error message
@@ -1643,31 +1643,31 @@ function doInvalidQueryUsesTest(
   doInvalidInputTest(
     `queries uses "${input}"`,
     inputFileContents,
-    expectedErrorMessageGenerator
+    expectedErrorMessageGenerator,
   );
 }
 
 // Various "uses" fields, and the errors they should produce
 doInvalidQueryUsesTest("''", (c) =>
-  configUtils.getQueryUsesInvalid(c, undefined)
+  configUtils.getQueryUsesInvalid(c, undefined),
 );
 doInvalidQueryUsesTest("foo/bar", (c) =>
-  configUtils.getQueryUsesInvalid(c, "foo/bar")
+  configUtils.getQueryUsesInvalid(c, "foo/bar"),
 );
 doInvalidQueryUsesTest("foo/bar@v1@v2", (c) =>
-  configUtils.getQueryUsesInvalid(c, "foo/bar@v1@v2")
+  configUtils.getQueryUsesInvalid(c, "foo/bar@v1@v2"),
 );
 doInvalidQueryUsesTest("foo@master", (c) =>
-  configUtils.getQueryUsesInvalid(c, "foo@master")
+  configUtils.getQueryUsesInvalid(c, "foo@master"),
 );
 doInvalidQueryUsesTest("https://github.com/foo/bar@master", (c) =>
-  configUtils.getQueryUsesInvalid(c, "https://github.com/foo/bar@master")
+  configUtils.getQueryUsesInvalid(c, "https://github.com/foo/bar@master"),
 );
 doInvalidQueryUsesTest("./foo", (c) =>
-  configUtils.getLocalPathDoesNotExist(c, "foo")
+  configUtils.getLocalPathDoesNotExist(c, "foo"),
 );
 doInvalidQueryUsesTest("./..", (c) =>
-  configUtils.getLocalPathOutsideOfRepository(c, "..")
+  configUtils.getLocalPathOutsideOfRepository(c, ".."),
 );
 
 const validPaths = [
@@ -1693,8 +1693,8 @@ test("path validations", (t) => {
         validPath,
         propertyName,
         configFile,
-        getRunnerLogger(true)
-      )
+        getRunnerLogger(true),
+      ),
     );
   }
   for (const invalidPath of invalidPaths) {
@@ -1703,8 +1703,8 @@ test("path validations", (t) => {
         invalidPath,
         propertyName,
         configFile,
-        getRunnerLogger(true)
-      )
+        getRunnerLogger(true),
+      ),
     );
   }
 });
@@ -1720,9 +1720,9 @@ test("path sanitisation", (t) => {
       "foo/bar",
       propertyName,
       configFile,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     ),
-    "foo/bar"
+    "foo/bar",
   );
 
   // Trailing stars are stripped
@@ -1731,9 +1731,9 @@ test("path sanitisation", (t) => {
       "foo/**",
       propertyName,
       configFile,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     ),
-    "foo/"
+    "foo/",
   );
 });
 
@@ -1745,16 +1745,16 @@ const parsePacksMacro = test.macro({
     t: ExecutionContext<unknown>,
     packsByLanguage: string[] | Record<string, string[]>,
     languages: Language[],
-    expected: Partial<Record<Language, string[]>>
+    expected: Partial<Record<Language, string[]>>,
   ) =>
     t.deepEqual(
       configUtils.parsePacksFromConfig(
         packsByLanguage,
         languages,
         "/a/b",
-        mockLogger
+        mockLogger,
       ),
-      expected
+      expected,
     ),
 
   title: (providedTitle = "") => `Parse Packs: ${providedTitle}`,
@@ -1768,7 +1768,7 @@ const parsePacksErrorMacro = test.macro({
     t: ExecutionContext<unknown>,
     packsByLanguage: unknown,
     languages: Language[],
-    expected: RegExp
+    expected: RegExp,
   ) =>
     t.throws(
       () =>
@@ -1776,11 +1776,11 @@ const parsePacksErrorMacro = test.macro({
           packsByLanguage as string[] | Record<string, string[]>,
           languages,
           "/a/b",
-          {} as Logger
+          {} as Logger,
         ),
       {
         message: expected,
-      }
+      },
     ),
   title: (providedTitle = "") => `Parse Packs Error: ${providedTitle}`,
 });
@@ -1795,8 +1795,8 @@ const invalidPackNameMacro = test.macro({
       { [Language.cpp]: [name] },
       [Language.cpp],
       new RegExp(
-        `The configuration file "/a/b" is invalid: property "packs" "${name}" is not a valid pack`
-      )
+        `The configuration file "/a/b" is invalid: property "packs" "${name}" is not a valid pack`,
+      ),
     ),
   title: (_providedTitle: string | undefined, arg: string | undefined) =>
     `Invalid pack string: ${arg}`,
@@ -1813,7 +1813,7 @@ test(
   [Language.cpp],
   {
     [Language.cpp]: ["a/b", "c/d@1.2.3"],
-  }
+  },
 );
 test(
   "two packs with language",
@@ -1826,7 +1826,7 @@ test(
   {
     [Language.cpp]: ["a/b", "c/d@1.2.3"],
     [Language.java]: ["d/e", "f/g@1.2.3"],
-  }
+  },
 );
 
 test(
@@ -1839,7 +1839,7 @@ test(
   [Language.cpp, Language.csharp],
   {
     [Language.cpp]: ["a/b", "c/d@1.2.3"],
-  }
+  },
 );
 
 test(
@@ -1877,7 +1877,7 @@ test(
       "c/d@1.2.3:@",
       "c/d@1.2.3:+*)_(",
     ],
-  }
+  },
 );
 
 test(
@@ -1885,14 +1885,14 @@ test(
   parsePacksErrorMacro,
   ["a/b@1.2.3"],
   [Language.java, Language.python],
-  /The configuration file "\/a\/b" is invalid: property "packs" must split packages by language/
+  /The configuration file "\/a\/b" is invalid: property "packs" must split packages by language/,
 );
 test(
   "not an array",
   parsePacksErrorMacro,
   { [Language.cpp]: "c/d" },
   [Language.cpp],
-  /The configuration file "\/a\/b" is invalid: property "packs" must be an array of non-empty strings/
+  /The configuration file "\/a\/b" is invalid: property "packs" must be an array of non-empty strings/,
 );
 
 test(invalidPackNameMacro, "c"); // all packs require at least a scope and a name
@@ -1919,20 +1919,20 @@ const packSpecPrettyPrintingMacro = test.macro({
     t.deepEqual(
       stringified,
       packStr.trim(),
-      "pretty-printed pack spec is correct"
+      "pretty-printed pack spec is correct",
     );
 
     t.deepEqual(
       configUtils.validatePackSpecification(packStr),
       packStr.trim(),
-      "pack spec is valid"
+      "pack spec is valid",
     );
   },
   title: (
     _providedTitle: string | undefined,
     packStr: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _packObj: configUtils.Pack
+    _packObj: configUtils.Pack,
   ) => `Prettyprint pack spec: '${packStr}'`,
 });
 
@@ -1970,7 +1970,7 @@ function parseInputAndConfigMacro(
   packsFromConfig: string[] | Record<string, string[]>,
   packsFromInput: string | undefined,
   languages: Language[],
-  expected
+  expected,
 ) {
   t.deepEqual(
     configUtils.parsePacks(
@@ -1979,9 +1979,9 @@ function parseInputAndConfigMacro(
       !!packsFromInput?.trim().startsWith("+"), // coerce to boolean
       languages,
       "/a/b",
-      mockLogger
+      mockLogger,
     ),
-    expected
+    expected,
   );
 }
 parseInputAndConfigMacro.title = (providedTitle: string) =>
@@ -1995,7 +1995,7 @@ function parseInputAndConfigErrorMacro(
   packsFromInput: string | undefined,
   languages: Language[],
   packsFromInputOverride: boolean,
-  expected: RegExp
+  expected: RegExp,
 ) {
   t.throws(
     () => {
@@ -2005,12 +2005,12 @@ function parseInputAndConfigErrorMacro(
         packsFromInputOverride,
         languages,
         "/a/b",
-        mockLogger
+        mockLogger,
       );
     },
     {
       message: expected,
-    }
+    },
   );
 }
 parseInputAndConfigErrorMacro.title = (providedTitle: string) =>
@@ -2028,7 +2028,7 @@ test(
   [Language.cpp],
   {
     [Language.cpp]: ["a/b", "c/d@1.2.3"],
-  }
+  },
 );
 
 test(
@@ -2039,7 +2039,7 @@ test(
   [Language.cpp],
   {
     [Language.cpp]: ["a/b", "c/d@1.2.3"],
-  }
+  },
 );
 
 test(
@@ -2050,7 +2050,7 @@ test(
   [Language.cpp],
   {
     [Language.cpp]: ["a/b", "c/d"],
-  }
+  },
 );
 
 test(
@@ -2061,7 +2061,7 @@ test(
   [Language.cpp],
   {
     [Language.cpp]: ["e/f", "g/h@1.2.3"],
-  }
+  },
 );
 
 test(
@@ -2072,7 +2072,7 @@ test(
   [Language.cpp],
   {
     [Language.cpp]: ["e/f", "g/h@1.2.3", "a/b", "c/d"],
-  }
+  },
 );
 
 test(
@@ -2082,7 +2082,7 @@ test(
   "c/d",
   [],
   false,
-  /No languages specified/
+  /No languages specified/,
 );
 
 test(
@@ -2092,7 +2092,7 @@ test(
   "c/d",
   [Language.cpp, Language.csharp],
   false,
-  /multi-language analysis/
+  /multi-language analysis/,
 );
 
 test(
@@ -2102,7 +2102,7 @@ test(
   " + ",
   [Language.cpp],
   true,
-  /remove the '\+'/
+  /remove the '\+'/,
 );
 
 test(
@@ -2112,7 +2112,7 @@ test(
   " xxx",
   [Language.cpp],
   false,
-  /"xxx" is not a valid pack/
+  /"xxx" is not a valid pack/,
 );
 
 const mlPoweredQueriesMacro = test.macro({
@@ -2122,7 +2122,7 @@ const mlPoweredQueriesMacro = test.macro({
     isMlPoweredQueriesEnabled: boolean,
     packsInput: string | undefined,
     queriesInput: string | undefined,
-    expectedVersionString: string | undefined
+    expectedVersionString: string | undefined,
   ) => {
     return await withTmpDir(async (tmpDir) => {
       const codeQL = setCodeQL({
@@ -2162,9 +2162,9 @@ const mlPoweredQueriesMacro = test.macro({
         gitHubVersion,
         sampleApiDetails,
         createFeatures(
-          isMlPoweredQueriesEnabled ? [Feature.MlPoweredQueriesEnabled] : []
+          isMlPoweredQueriesEnabled ? [Feature.MlPoweredQueriesEnabled] : [],
         ),
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       if (expectedVersionString !== undefined) {
         t.deepEqual(packs as unknown, {
@@ -2183,7 +2183,7 @@ const mlPoweredQueriesMacro = test.macro({
     isMlPoweredQueriesEnabled: boolean,
     packsInput: string | undefined,
     queriesInput: string | undefined,
-    expectedVersionString: string | undefined
+    expectedVersionString: string | undefined,
   ) =>
     `ML-powered queries ${
       expectedVersionString !== undefined
@@ -2202,7 +2202,7 @@ test(
   false,
   undefined,
   "security-extended",
-  undefined
+  undefined,
 );
 // Test that ML-powered queries aren't run when the user hasn't specified that we should run the
 //  `security-extended`, `security-and-quality`, or `security-experimental` query suite.
@@ -2214,7 +2214,7 @@ test(
   true,
   "codeql/javascript-experimental-atm-queries@0.0.1",
   "security-and-quality",
-  "0.0.1"
+  "0.0.1",
 );
 // Test that ML-powered queries ~0.3.0 are run on all platforms running `security-extended` on
 // CodeQL CLI 2.9.4+.
@@ -2224,7 +2224,7 @@ test(
   true,
   undefined,
   "security-extended",
-  "~0.3.0"
+  "~0.3.0",
 );
 // Test that ML-powered queries ~0.3.0 are run on all platforms running `security-and-quality` on
 // CodeQL CLI 2.9.4+.
@@ -2234,7 +2234,7 @@ test(
   true,
   undefined,
   "security-and-quality",
-  "~0.3.0"
+  "~0.3.0",
 );
 // Test that ML-powered queries ~0.4.0 are run on all platforms running `security-extended` on
 // CodeQL CLI 2.11.3+.
@@ -2244,7 +2244,7 @@ test(
   true,
   undefined,
   "security-extended",
-  "~0.4.0"
+  "~0.4.0",
 );
 // Test that ML-powered queries ~0.4.0 are run on all platforms running `security-and-quality` on
 // CodeQL CLI 2.11.3+.
@@ -2254,7 +2254,7 @@ test(
   true,
   undefined,
   "security-and-quality",
-  "~0.4.0"
+  "~0.4.0",
 );
 // Test that ML-powered queries are run on all platforms running `security-experimental` on CodeQL
 // CLI 2.12.1+.
@@ -2264,7 +2264,7 @@ test(
   true,
   undefined,
   "security-experimental",
-  "~0.4.0"
+  "~0.4.0",
 );
 
 const calculateAugmentationMacro = test.macro({
@@ -2274,12 +2274,12 @@ const calculateAugmentationMacro = test.macro({
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
     languages: Language[],
-    expectedAugmentationProperties: configUtils.AugmentationProperties
+    expectedAugmentationProperties: configUtils.AugmentationProperties,
   ) => {
     const actualAugmentationProperties = configUtils.calculateAugmentation(
       rawPacksInput,
       rawQueriesInput,
-      languages
+      languages,
     );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
   },
@@ -2298,7 +2298,7 @@ test(
     packsInputCombines: false,
     packsInput: undefined,
     injectedMlQueries: false,
-  } as configUtils.AugmentationProperties
+  } as configUtils.AugmentationProperties,
 );
 
 test(
@@ -2313,7 +2313,7 @@ test(
     packsInputCombines: false,
     packsInput: undefined,
     injectedMlQueries: false,
-  } as configUtils.AugmentationProperties
+  } as configUtils.AugmentationProperties,
 );
 
 test(
@@ -2328,7 +2328,7 @@ test(
     packsInputCombines: false,
     packsInput: undefined,
     injectedMlQueries: false,
-  } as configUtils.AugmentationProperties
+  } as configUtils.AugmentationProperties,
 );
 
 test(
@@ -2343,7 +2343,7 @@ test(
     packsInputCombines: false,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
     injectedMlQueries: false,
-  } as configUtils.AugmentationProperties
+  } as configUtils.AugmentationProperties,
 );
 
 test(
@@ -2358,7 +2358,7 @@ test(
     packsInputCombines: true,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
     injectedMlQueries: false,
-  } as configUtils.AugmentationProperties
+  } as configUtils.AugmentationProperties,
 );
 
 const calculateAugmentationErrorMacro = test.macro({
@@ -2368,16 +2368,16 @@ const calculateAugmentationErrorMacro = test.macro({
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
     languages: Language[],
-    expectedError: RegExp | string
+    expectedError: RegExp | string,
   ) => {
     t.throws(
       () =>
         configUtils.calculateAugmentation(
           rawPacksInput,
           rawQueriesInput,
-          languages
+          languages,
         ),
-      { message: expectedError }
+      { message: expectedError },
     );
   },
   title: (_, title) => `Calculate Augmentation Error: ${title}`,
@@ -2389,7 +2389,7 @@ test(
   undefined,
   "   +   ",
   [Language.javascript],
-  /The workflow property "queries" is invalid/
+  /The workflow property "queries" is invalid/,
 );
 
 test(
@@ -2398,7 +2398,7 @@ test(
   "   +   ",
   undefined,
   [Language.javascript],
-  /The workflow property "packs" is invalid/
+  /The workflow property "packs" is invalid/,
 );
 
 test(
@@ -2407,7 +2407,7 @@ test(
   "   +  a/b, c/d ",
   undefined,
   [Language.javascript, Language.java],
-  /Cannot specify a 'packs' input in a multi-language analysis/
+  /Cannot specify a 'packs' input in a multi-language analysis/,
 );
 
 test(
@@ -2416,7 +2416,7 @@ test(
   "   +  a/b, c/d ",
   undefined,
   [],
-  /No languages specified/
+  /No languages specified/,
 );
 
 test(
@@ -2425,7 +2425,7 @@ test(
   " a-pack-without-a-scope ",
   undefined,
   [Language.javascript],
-  /"a-pack-without-a-scope" is not a valid pack/
+  /"a-pack-without-a-scope" is not a valid pack/,
 );
 
 test("downloadPacks-no-registries", async (t) => {
@@ -2452,7 +2452,7 @@ test("downloadPacks-no-registries", async (t) => {
       sampleApiDetails,
       undefined, // registriesAuthTokens
       tmpDir,
-      logger
+      logger,
     );
 
     // Expecting packs to be downloaded once for java and once for python
@@ -2488,7 +2488,7 @@ test("downloadPacks-with-registries", async (t) => {
 
     // append a slash to the first url
     const registries = yaml.load(
-      registriesInput
+      registriesInput,
     ) as configUtils.RegistryConfigWithCredentials[];
     const expectedRegistries = registries.map((r, i) => ({
       packages: r.packages,
@@ -2503,7 +2503,7 @@ test("downloadPacks-with-registries", async (t) => {
       t.deepEqual(process.env.GITHUB_TOKEN, sampleApiDetails.auth);
       t.deepEqual(
         process.env.CODEQL_REGISTRIES_AUTH,
-        "http://ghcr.io=not-a-token,https://containers.GHEHOSTNAME1/v2/=still-not-a-token"
+        "http://ghcr.io=not-a-token,https://containers.GHEHOSTNAME1/v2/=still-not-a-token",
       );
 
       // verify the config file contents were set correctly
@@ -2534,7 +2534,7 @@ test("downloadPacks-with-registries", async (t) => {
       sampleApiDetails,
       registriesInput,
       tmpDir,
-      logger
+      logger,
     );
 
     // Same packs are downloaded as in previous test
@@ -2587,11 +2587,11 @@ test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
           sampleApiDetails,
           registriesInput,
           tmpDir,
-          logger
+          logger,
         );
       },
       { instanceOf: Error },
-      "'registries' input is not supported on CodeQL versions less than 2.10.4."
+      "'registries' input is not supported on CodeQL versions less than 2.10.4.",
     );
   });
 });
@@ -2629,11 +2629,11 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
           sampleApiDetails,
           registriesInput,
           tmpDir,
-          logger
+          logger,
         );
       },
       { instanceOf: Error },
-      "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties."
+      "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties.",
     );
   });
 });
@@ -2661,10 +2661,10 @@ test("no generateRegistries when CLI is too old", async (t) => {
           registriesInput,
           codeQL,
           tmpDir,
-          logger
+          logger,
         ),
       undefined,
-      "'registries' input is not supported on CodeQL versions less than 2.10.4."
+      "'registries' input is not supported on CodeQL versions less than 2.10.4.",
     );
   });
 });
@@ -2681,7 +2681,7 @@ test("no generateRegistries when registries is undefined", async (t) => {
         registriesInput,
         codeQL,
         tmpDir,
-        logger
+        logger,
       );
 
     t.is(registriesAuthTokens, undefined);
@@ -2709,7 +2709,7 @@ test("generateRegistries prefers original CODEQL_REGISTRIES_AUTH", async (t) => 
         registriesInput,
         codeQL,
         tmpDir,
-        logger
+        logger,
       );
 
     t.is(registriesAuthTokens, "original");
@@ -2786,7 +2786,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
         ...acc,
         [lang]: true,
       }),
-      {}
+      {},
     );
     const codeQL = setCodeQL({
       resolveLanguages: () => Promise.resolve(languages),
@@ -2798,7 +2798,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
         codeQL,
         args.languagesInput,
         mockRepositoryNwo,
-        mockLogger
+        mockLogger,
       );
 
       t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
@@ -2810,9 +2810,9 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
             codeQL,
             args.languagesInput,
             mockRepositoryNwo,
-            mockLogger
+            mockLogger,
           ),
-        { message: args.expectedError }
+        { message: args.expectedError },
       );
     }
     t.deepEqual(mockRequest.called, args.expectedApiCall);

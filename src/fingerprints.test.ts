@@ -14,7 +14,7 @@ setupTests(test);
 async function testHash(
   t: ava.Assertions,
   input: string,
-  expectedHashes: string[]
+  expectedHashes: string[],
 ) {
   await util.withTmpDir(async (tmpDir) => {
     const tmpFile = path.resolve(tmpDir, "testfile");
@@ -78,7 +78,7 @@ test("hash", async (t: ava.Assertions) => {
       "b3edc88f2938467e:1",
       "c8e28b0b4002a3a0:1",
       "c129715d7a2bc9a3:1",
-    ]
+    ],
   );
   await testHash(t, " hello; \t\nworld!!!\r\n\n\r  \t\tGreetings\r End\r\n", [
     "e9496ae3ebfced30:1",
@@ -117,7 +117,7 @@ test("hash", async (t: ava.Assertions) => {
       "2c644846cb18d53e:1",
       "f1b89f20de0d133:1",
       "c129715d7a2bc9a3:1",
-    ]
+    ],
   );
 });
 
@@ -130,7 +130,7 @@ function testResolveUriToFile(uri: any, index: any, artifactsURIs: any[]) {
     location,
     artifacts,
     process.cwd(),
-    getRunnerLogger(true)
+    getRunnerLogger(true),
   );
 }
 
@@ -154,20 +154,20 @@ test("resolveUriToFile", (t) => {
     testResolveUriToFile(relativeFilepath, undefined, [])
       ?.split(path.sep)
       .join("/"),
-    filepath
+    filepath,
   );
   t.is(
     testResolveUriToFile(`file://${relativeFilepath}`, undefined, [])
       ?.split(path.sep)
       .join("/"),
-    filepath
+    filepath,
   );
 
   // Absolute paths outside the src root are discarded
   t.is(testResolveUriToFile("/src/foo/bar.js", undefined, []), undefined);
   t.is(
     testResolveUriToFile("file:///src/foo/bar.js", undefined, []),
-    undefined
+    undefined,
   );
 
   // Other schemes are discarded
@@ -200,14 +200,14 @@ test("addFingerprints", async (t) => {
   const input = JSON.parse(
     fs
       .readFileSync(`${__dirname}/../src/testdata/fingerprinting.input.sarif`)
-      .toString()
+      .toString(),
   ) as util.SarifFile;
   const expected = JSON.parse(
     fs
       .readFileSync(
-        `${__dirname}/../src/testdata/fingerprinting.expected.sarif`
+        `${__dirname}/../src/testdata/fingerprinting.expected.sarif`,
       )
-      .toString()
+      .toString(),
   );
 
   // The URIs in the SARIF files resolve to files in the testdata directory
@@ -217,9 +217,9 @@ test("addFingerprints", async (t) => {
     await fingerprints.addFingerprints(
       input,
       sourceRoot,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     ),
-    expected
+    expected,
   );
 });
 
@@ -228,14 +228,14 @@ test("missingRegions", async (t) => {
   const input = JSON.parse(
     fs
       .readFileSync(`${__dirname}/../src/testdata/fingerprinting2.input.sarif`)
-      .toString()
+      .toString(),
   ) as util.SarifFile;
   const expected = JSON.parse(
     fs
       .readFileSync(
-        `${__dirname}/../src/testdata/fingerprinting2.expected.sarif`
+        `${__dirname}/../src/testdata/fingerprinting2.expected.sarif`,
       )
-      .toString()
+      .toString(),
   );
 
   // The URIs in the SARIF files resolve to files in the testdata directory
@@ -245,8 +245,8 @@ test("missingRegions", async (t) => {
     await fingerprints.addFingerprints(
       input,
       sourceRoot,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     ),
-    expected
+    expected,
   );
 });

@@ -13,7 +13,7 @@ setupTests(test);
 test("getToolNames", (t) => {
   const input = fs.readFileSync(
     `${__dirname}/../src/testdata/tool-names.sarif`,
-    "utf8"
+    "utf8",
   );
   const toolNames = util.getToolNames(JSON.parse(input) as util.SarifFile);
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
@@ -82,14 +82,14 @@ for (const {
           input,
           totalMemoryMb * 1024 * 1024,
           platform,
-          withScaling
+          withScaling,
         );
         t.deepEqual(
           flag,
-          withScaling ? expectedMemoryValueWithScaling : expectedMemoryValue
+          withScaling ? expectedMemoryValueWithScaling : expectedMemoryValue,
         );
       }
-    }
+    },
   );
 }
 
@@ -168,48 +168,48 @@ test("parseGitHubUrl", (t) => {
   t.deepEqual(util.parseGitHubUrl("https://github.com"), "https://github.com");
   t.deepEqual(
     util.parseGitHubUrl("https://api.github.com"),
-    "https://github.com"
+    "https://github.com",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.com/foo/bar"),
-    "https://github.com"
+    "https://github.com",
   );
 
   t.deepEqual(
     util.parseGitHubUrl("github.example.com"),
-    "https://github.example.com/"
+    "https://github.example.com/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com"),
-    "https://github.example.com/"
+    "https://github.example.com/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://api.github.example.com"),
-    "https://github.example.com/"
+    "https://github.example.com/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com/api/v3"),
-    "https://github.example.com/"
+    "https://github.example.com/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com:1234"),
-    "https://github.example.com:1234/"
+    "https://github.example.com:1234/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://api.github.example.com:1234"),
-    "https://github.example.com:1234/"
+    "https://github.example.com:1234/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com:1234/api/v3"),
-    "https://github.example.com:1234/"
+    "https://github.example.com:1234/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com/base/path"),
-    "https://github.example.com/base/path/"
+    "https://github.example.com/base/path/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com/base/path/api/v3"),
-    "https://github.example.com/base/path/"
+    "https://github.example.com/base/path/",
   );
 
   t.throws(() => util.parseGitHubUrl(""), {
@@ -231,11 +231,11 @@ test("allowed API versions", async (t) => {
   t.is(util.apiVersionInRange("2.0.1", "1.33", "2.0"), undefined);
   t.is(
     util.apiVersionInRange("1.32.0", "1.33", "2.0"),
-    util.DisallowedAPIVersionReason.ACTION_TOO_NEW
+    util.DisallowedAPIVersionReason.ACTION_TOO_NEW,
   );
   t.is(
     util.apiVersionInRange("2.1.0", "1.33", "2.0"),
-    util.DisallowedAPIVersionReason.ACTION_TOO_OLD
+    util.DisallowedAPIVersionReason.ACTION_TOO_OLD,
   );
 });
 
@@ -328,7 +328,7 @@ test("withTimeout doesn't call callback if promise resolves", async (t) => {
 });
 
 function createMockSarifWithNotification(
-  locations: util.SarifLocation[]
+  locations: util.SarifLocation[],
 ): util.SarifFile {
   return {
     runs: [
@@ -364,7 +364,7 @@ test("fixInvalidNotifications leaves notifications with unique locations alone",
   const messages: LoggedMessage[] = [];
   const result = util.fixInvalidNotifications(
     createMockSarifWithNotification([stubLocation]),
-    getRecordingLogger(messages)
+    getRecordingLogger(messages),
   );
   t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
   t.is(messages.length, 1);
@@ -378,7 +378,7 @@ test("fixInvalidNotifications removes duplicate locations", (t) => {
   const messages: LoggedMessage[] = [];
   const result = util.fixInvalidNotifications(
     createMockSarifWithNotification([stubLocation, stubLocation]),
-    getRecordingLogger(messages)
+    getRecordingLogger(messages),
   );
   t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
   t.is(messages.length, 1);

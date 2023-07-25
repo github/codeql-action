@@ -32,7 +32,7 @@ export interface CodeQLDefaultVersionInfo {
 export interface FeatureEnablement {
   /** Gets the default version of the CodeQL tools. */
   getDefaultCliVersion(
-    variant: util.GitHubVariant
+    variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo>;
   getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
 }
@@ -132,18 +132,18 @@ export class Features implements FeatureEnablement {
     gitHubVersion: util.GitHubVersion,
     repositoryNwo: RepositoryNwo,
     tempDir: string,
-    private readonly logger: Logger
+    private readonly logger: Logger,
   ) {
     this.gitHubFeatureFlags = new GitHubFeatureFlags(
       gitHubVersion,
       repositoryNwo,
       path.join(tempDir, FEATURE_FLAGS_FILE_NAME),
-      logger
+      logger,
     );
   }
 
   async getDefaultCliVersion(
-    variant: util.GitHubVariant
+    variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
     return await this.gitHubFeatureFlags.getDefaultCliVersion(variant);
   }
@@ -163,7 +163,7 @@ export class Features implements FeatureEnablement {
   async getValue(feature: Feature, codeql?: CodeQL): Promise<boolean> {
     if (!codeql && featureConfig[feature].minimumVersion) {
       throw new Error(
-        `Internal error: A minimum version is specified for feature ${feature}, but no instance of CodeQL was provided.`
+        `Internal error: A minimum version is specified for feature ${feature}, but no instance of CodeQL was provided.`,
       );
     }
 
@@ -174,7 +174,7 @@ export class Features implements FeatureEnablement {
     // Do not use this feature if user explicitly disables it via an environment variable.
     if (envVar === "false") {
       this.logger.debug(
-        `Feature ${feature} is disabled via the environment variable ${featureConfig[feature].envVar}.`
+        `Feature ${feature} is disabled via the environment variable ${featureConfig[feature].envVar}.`,
       );
       return false;
     }
@@ -185,13 +185,13 @@ export class Features implements FeatureEnablement {
       if (!(await util.codeQlVersionAbove(codeql, minimumVersion))) {
         this.logger.debug(
           `Feature ${feature} is disabled because the CodeQL CLI version is older than the minimum ` +
-            `version ${minimumVersion}.`
+            `version ${minimumVersion}.`,
         );
         return false;
       } else {
         this.logger.debug(
           `CodeQL CLI version ${await codeql.getVersion()} is newer than the minimum ` +
-            `version ${minimumVersion} for feature ${feature}.`
+            `version ${minimumVersion} for feature ${feature}.`,
         );
       }
     }
@@ -199,7 +199,7 @@ export class Features implements FeatureEnablement {
     // Use this feature if user explicitly enables it via an environment variable.
     if (envVar === "true") {
       this.logger.debug(
-        `Feature ${feature} is enabled via the environment variable ${featureConfig[feature].envVar}.`
+        `Feature ${feature} is enabled via the environment variable ${featureConfig[feature].envVar}.`,
       );
       return true;
     }
@@ -210,7 +210,7 @@ export class Features implements FeatureEnablement {
       this.logger.debug(
         `Feature ${feature} is ${
           apiValue ? "enabled" : "disabled"
-        } via the GitHub API.`
+        } via the GitHub API.`,
       );
       return apiValue;
     }
@@ -219,7 +219,7 @@ export class Features implements FeatureEnablement {
     this.logger.debug(
       `Feature ${feature} is ${
         defaultValue ? "enabled" : "disabled"
-      } due to its default value.`
+      } due to its default value.`,
     );
     return defaultValue;
   }
@@ -236,7 +236,7 @@ class GitHubFeatureFlags {
     private readonly gitHubVersion: util.GitHubVersion,
     private readonly repositoryNwo: RepositoryNwo,
     private readonly featureFlagsFile: string,
-    private readonly logger: Logger
+    private readonly logger: Logger,
   ) {
     this.hasAccessedRemoteFeatureFlags = false; // Not accessed by default.
   }
@@ -251,13 +251,13 @@ class GitHubFeatureFlags {
     const version = f
       .substring(
         DEFAULT_VERSION_FEATURE_FLAG_PREFIX.length,
-        f.length - DEFAULT_VERSION_FEATURE_FLAG_SUFFIX.length
+        f.length - DEFAULT_VERSION_FEATURE_FLAG_SUFFIX.length,
       )
       .replace(/_/g, ".");
 
     if (!semver.valid(version)) {
       this.logger.warning(
-        `Ignoring feature flag ${f} as it does not specify a valid CodeQL version.`
+        `Ignoring feature flag ${f} as it does not specify a valid CodeQL version.`,
       );
       return undefined;
     }
@@ -265,7 +265,7 @@ class GitHubFeatureFlags {
   }
 
   async getDefaultCliVersion(
-    variant: util.GitHubVariant
+    variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
     if (variant === util.GitHubVariant.DOTCOM) {
       return await this.getDefaultDotcomCliVersion();
@@ -281,13 +281,13 @@ class GitHubFeatureFlags {
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
       .map(([f, isEnabled]) =>
-        isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined
+        isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined,
       )
       .filter(
         (f) =>
           f !== undefined &&
           // Only consider versions that have semantically versioned bundles.
-          semver.gte(f, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)
+          semver.gte(f, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED),
       )
       .map((f) => f as string);
 
@@ -304,7 +304,7 @@ class GitHubFeatureFlags {
       // version that would have been specified by the feature flags before they were misconfigured.
       this.logger.warning(
         "Feature flags do not specify a default CLI version. Falling back to the CLI version " +
-          `shipped with the Action. This is ${defaults.cliVersion}.`
+          `shipped with the Action. This is ${defaults.cliVersion}.`,
       );
       const result: CodeQLDefaultVersionInfo = {
         cliVersion: defaults.cliVersion,
@@ -319,10 +319,10 @@ class GitHubFeatureFlags {
     const maxCliVersion = enabledFeatureFlagCliVersions.reduce(
       (maxVersion, currentVersion) =>
         currentVersion > maxVersion ? currentVersion : maxVersion,
-      enabledFeatureFlagCliVersions[0]
+      enabledFeatureFlagCliVersions[0],
     );
     this.logger.debug(
-      `Derived default CLI version of ${maxCliVersion} from feature flags.`
+      `Derived default CLI version of ${maxCliVersion} from feature flags.`,
     );
     return {
       cliVersion: maxCliVersion,
@@ -379,27 +379,27 @@ class GitHubFeatureFlags {
     try {
       if (fs.existsSync(this.featureFlagsFile)) {
         this.logger.debug(
-          `Loading feature flags from ${this.featureFlagsFile}`
+          `Loading feature flags from ${this.featureFlagsFile}`,
         );
         return JSON.parse(fs.readFileSync(this.featureFlagsFile, "utf8"));
       }
     } catch (e) {
       this.logger.warning(
-        `Error reading cached feature flags file ${this.featureFlagsFile}: ${e}. Requesting from GitHub instead.`
+        `Error reading cached feature flags file ${this.featureFlagsFile}: ${e}. Requesting from GitHub instead.`,
       );
     }
     return undefined;
   }
 
   private async writeLocalFlags(
-    flags: GitHubFeatureFlagsApiResponse
+    flags: GitHubFeatureFlagsApiResponse,
   ): Promise<void> {
     try {
       this.logger.debug(`Writing feature flags to ${this.featureFlagsFile}`);
       fs.writeFileSync(this.featureFlagsFile, JSON.stringify(flags));
     } catch (e) {
       this.logger.warning(
-        `Error writing cached feature flags file ${this.featureFlagsFile}: ${e}.`
+        `Error writing cached feature flags file ${this.featureFlagsFile}: ${e}.`,
       );
     }
   }
@@ -408,7 +408,7 @@ class GitHubFeatureFlags {
     // Do nothing when not running against github.com
     if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
       this.logger.debug(
-        "Not running against github.com. Disabling all toggleable features."
+        "Not running against github.com. Disabling all toggleable features.",
       );
       this.hasAccessedRemoteFeatureFlags = false;
       return {};
@@ -419,12 +419,12 @@ class GitHubFeatureFlags {
         {
           owner: this.repositoryNwo.owner,
           repo: this.repositoryNwo.repo,
-        }
+        },
       );
       const remoteFlags = response.data;
       this.logger.debug(
         "Loaded the following default values for the feature flags from the Code Scanning API: " +
-          `${JSON.stringify(remoteFlags)}`
+          `${JSON.stringify(remoteFlags)}`,
       );
       this.hasAccessedRemoteFeatureFlags = true;
       return remoteFlags;
@@ -434,7 +434,7 @@ class GitHubFeatureFlags {
           "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
             "As a result, it will not be opted into any experimental features. " +
             "This could be because the Action is running on a pull request from a fork. If not, " +
-            `please ensure the Action has the 'security-events: write' permission. Details: ${e.message}`
+            `please ensure the Action has the 'security-events: write' permission. Details: ${e.message}`,
         );
         this.hasAccessedRemoteFeatureFlags = false;
         return {};
@@ -444,7 +444,7 @@ class GitHubFeatureFlags {
         // therefore lead to alert churn. As a result, we crash if we cannot determine the value of
         // the feature.
         throw new Error(
-          `Encountered an error while trying to determine feature enablement: ${e}`
+          `Encountered an error while trying to determine feature enablement: ${e}`,
         );
       }
     }
@@ -457,7 +457,7 @@ class GitHubFeatureFlags {
  */
 export async function useCodeScanningConfigInCli(
   codeql: CodeQL,
-  features: FeatureEnablement
+  features: FeatureEnablement,
 ): Promise<boolean> {
   return await features.getValue(Feature.CliConfigFileEnabled, codeql);
 }
@@ -465,15 +465,15 @@ export async function useCodeScanningConfigInCli(
 export async function logCodeScanningConfigInCli(
   codeql: CodeQL,
   features: FeatureEnablement,
-  logger: Logger
+  logger: Logger,
 ) {
   if (await useCodeScanningConfigInCli(codeql, features)) {
     logger.info(
-      "Code Scanning configuration file being processed in the codeql CLI."
+      "Code Scanning configuration file being processed in the codeql CLI.",
     );
   } else {
     logger.info(
-      "Code Scanning configuration file being processed in the codeql-action."
+      "Code Scanning configuration file being processed in the codeql-action.",
     );
   }
 }

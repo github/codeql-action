@@ -26,7 +26,7 @@ export function sanitizeArifactName(name: string): string {
 export async function uploadDebugArtifacts(
   toUpload: string[],
   rootDir: string,
-  artifactName: string
+  artifactName: string,
 ) {
   if (toUpload.length === 0) {
     return;
@@ -36,25 +36,25 @@ export async function uploadDebugArtifacts(
   if (matrix) {
     try {
       for (const [, matrixVal] of Object.entries(
-        JSON.parse(matrix) as any[][]
+        JSON.parse(matrix) as any[][],
       ).sort())
         suffix += `-${matrixVal}`;
     } catch (e) {
       core.info(
-        "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input."
+        "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input.",
       );
     }
   }
   await artifact.create().uploadArtifact(
     sanitizeArifactName(`${artifactName}${suffix}`),
     toUpload.map((file) => path.normalize(file)),
-    path.normalize(rootDir)
+    path.normalize(rootDir),
   );
 }
 
 export async function uploadSarifDebugArtifact(
   config: Config,
-  outputDir: string
+  outputDir: string,
 ) {
   if (!doesDirectoryExist(outputDir)) {
     return;
@@ -83,7 +83,7 @@ export async function uploadLogsDebugArtifact(config: Config) {
   // Multilanguage tracing: there are additional logs in the root of the cluster
   const multiLanguageTracingLogsDirectory = path.resolve(
     config.dbLocation,
-    "log"
+    "log",
   );
   if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
     toUpload = toUpload.concat(listFolder(multiLanguageTracingLogsDirectory));
@@ -92,7 +92,7 @@ export async function uploadLogsDebugArtifact(config: Config) {
   await uploadDebugArtifacts(
     toUpload,
     config.dbLocation,
-    config.debugArtifactName
+    config.debugArtifactName,
   );
 }
 
@@ -103,15 +103,15 @@ export async function uploadLogsDebugArtifact(config: Config) {
  */
 async function createPartialDatabaseBundle(
   config: Config,
-  language: Language
+  language: Language,
 ): Promise<string> {
   const databasePath = getCodeQLDatabasePath(config, language);
   const databaseBundlePath = path.resolve(
     config.dbLocation,
-    `${config.debugDatabaseName}-${language}-partial.zip`
+    `${config.debugDatabaseName}-${language}-partial.zip`,
   );
   core.info(
-    `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle at ${databaseBundlePath}...`
+    `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle at ${databaseBundlePath}...`,
   );
   // See `bundleDb` for explanation behind deleting existing db bundle.
   if (fs.existsSync(databaseBundlePath)) {
@@ -128,21 +128,21 @@ async function createPartialDatabaseBundle(
  */
 async function createDatabaseBundleCli(
   config: Config,
-  language: Language
+  language: Language,
 ): Promise<string> {
   // Otherwise run `codeql database bundle` command.
   const databaseBundlePath = await bundleDb(
     config,
     language,
     await getCodeQL(config.codeQLCmd),
-    `${config.debugDatabaseName}-${language}`
+    `${config.debugDatabaseName}-${language}`,
   );
   return databaseBundlePath;
 }
 
 export async function uploadDatabaseBundleDebugArtifact(
   config: Config,
-  logger: Logger
+  logger: Logger,
 ) {
   for (const language of config.languages) {
     try {
@@ -150,7 +150,7 @@ export async function uploadDatabaseBundleDebugArtifact(
       if (!dbIsFinalized(config, language, logger)) {
         databaseBundlePath = await createPartialDatabaseBundle(
           config,
-          language
+          language,
         );
       } else {
         databaseBundlePath = await createDatabaseBundleCli(config, language);
@@ -158,11 +158,11 @@ export async function uploadDatabaseBundleDebugArtifact(
       await uploadDebugArtifacts(
         [databaseBundlePath],
         config.dbLocation,
-        config.debugArtifactName
+        config.debugArtifactName,
       );
     } catch (error) {
       core.info(
-        `Failed to upload database debug bundle for ${config.debugDatabaseName}-${language}: ${error}`
+        `Failed to upload database debug bundle for ${config.debugDatabaseName}-${language}: ${error}`,
       );
     }
   }

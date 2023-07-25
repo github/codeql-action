@@ -13,7 +13,7 @@ export async function uploadDatabases(
   repositoryNwo: RepositoryNwo,
   config: Config,
   apiDetails: GitHubApiDetails,
-  logger: Logger
+  logger: Logger,
 ): Promise<void> {
   if (actionsUtil.getRequiredInput("upload-database") !== "true") {
     logger.debug("Database upload disabled in workflow. Skipping upload.");
@@ -58,7 +58,7 @@ export async function uploadDatabases(
               "Content-Type": "application/zip",
               "Content-Length": bundledDbSize,
             },
-          }
+          },
         );
         logger.debug(`Successfully uploaded database for ${language}`);
       } finally {

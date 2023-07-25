@@ -54,7 +54,7 @@ export interface GitHubApiExternalRepoDetails {
 
 function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
-  { allowExternal = false } = {}
+  { allowExternal = false } = {},
 ) {
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
@@ -64,7 +64,7 @@ function createApiClientWithDetails(
       baseUrl: apiDetails.apiURL,
       userAgent: `CodeQL-Action/${getActionVersion()}`,
       log: consoleLogLevel({ level: "debug" }),
-    })
+    }),
   );
 }
 
@@ -81,7 +81,7 @@ export function getApiClient() {
 }
 
 export function getApiClientWithExternalAuth(
-  apiDetails: GitHubApiCombinedDetails
+  apiDetails: GitHubApiCombinedDetails,
 ) {
   return createApiClientWithDetails(apiDetails, { allowExternal: true });
 }
@@ -90,7 +90,7 @@ let cachedGitHubVersion: GitHubVersion | undefined = undefined;
 
 export async function getGitHubVersionFromApi(
   apiClient: any,
-  apiDetails: GitHubApiDetails
+  apiDetails: GitHubApiDetails,
 ): Promise<GitHubVersion> {
   // We can avoid making an API request in the standard dotcom case
   if (parseGitHubUrl(apiDetails.url) === GITHUB_DOTCOM_URL) {
@@ -130,7 +130,7 @@ export async function getGitHubVersion(): Promise<GitHubVersion> {
   if (cachedGitHubVersion === undefined) {
     cachedGitHubVersion = await getGitHubVersionFromApi(
       getApiClient(),
-      getApiDetails()
+      getApiDetails(),
     );
   }
   return cachedGitHubVersion;
@@ -150,7 +150,7 @@ export async function createStatusReportBase(
   status: ActionStatus,
   actionStartedAt: Date,
   cause?: string,
-  exception?: string
+  exception?: string,
 ): Promise<StatusReportBase> {
   const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
   const ref = await getRef();
@@ -248,7 +248,7 @@ const INCOMPATIBLE_MSG =
  * Returns whether sending the status report was successful of not.
  */
 export async function sendStatusReport<S extends StatusReportBase>(
-  statusReport: S
+  statusReport: S,
 ): Promise<boolean> {
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
@@ -269,7 +269,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
         owner,
         repo,
         data: statusReportJSON,
-      }
+      },
     );
 
     return true;
@@ -286,7 +286,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
               'Workflows triggered by Dependabot on the "push" event run with read-only access. ' +
                 "Uploading Code Scanning results requires write access. " +
                 'To use Code Scanning with Dependabot, please ensure you are using the "pull_request" event for this workflow and avoid triggering on the "push" event for Dependabot branches. ' +
-                "See https://docs.github.com/en/code-security/secure-coding/configuring-code-scanning#scanning-on-push for more information on how to configure these events."
+                "See https://docs.github.com/en/code-security/secure-coding/configuring-code-scanning#scanning-on-push for more information on how to configure these events.",
             );
           } else {
             core.setFailed(e.message || GENERIC_403_MSG);
@@ -311,7 +311,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
     // something else has gone wrong and the request/response will be logged by octokit
     // it's possible this is a transient error and we should continue scanning
     core.error(
-      "An unexpected error occurred when sending code scanning status report."
+      "An unexpected error occurred when sending code scanning status report.",
     );
     return true;
   }
@@ -333,7 +333,7 @@ export async function getWorkflowRelativePath(): Promise<string> {
       owner,
       repo,
       run_id,
-    }
+    },
   );
   const workflowUrl = runsResponse.data.workflow_url;
 
@@ -374,7 +374,7 @@ export async function getAutomationID(): Promise<string> {
 
 export function computeAutomationID(
   analysis_key: string,
-  environment: string | undefined
+  environment: string | undefined,
 ): string {
   let automationID = `${analysis_key}/`;
 

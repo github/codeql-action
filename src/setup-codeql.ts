@@ -48,7 +48,7 @@ export function getCodeQLActionRepository(logger: Logger): string {
     // e.g. our integration tests which use the Action code from the current checkout.
     // In these cases, the GITHUB_ACTION_REPOSITORY environment variable is not set.
     logger.info(
-      "The CodeQL Action is checked out locally. Using the default CodeQL Action repository."
+      "The CodeQL Action is checked out locally. Using the default CodeQL Action repository.",
     );
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   }
@@ -58,7 +58,7 @@ export function getCodeQLActionRepository(logger: Logger): string {
 
 function tryGetCodeQLCliVersionForRelease(
   release,
-  logger: Logger
+  logger: Logger,
 ): string | undefined {
   const cliVersionsFromMarkerFiles = release.assets
     .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
@@ -66,12 +66,12 @@ function tryGetCodeQLCliVersionForRelease(
     .map((v) => v as string);
   if (cliVersionsFromMarkerFiles.length > 1) {
     logger.warning(
-      `Ignoring release ${release.tag_name} with multiple CLI version marker files.`
+      `Ignoring release ${release.tag_name} with multiple CLI version marker files.`,
     );
     return undefined;
   } else if (cliVersionsFromMarkerFiles.length === 0) {
     logger.debug(
-      `Failed to find the CodeQL CLI version for release ${release.tag_name}.`
+      `Failed to find the CodeQL CLI version for release ${release.tag_name}.`,
     );
     return undefined;
   }
@@ -80,11 +80,11 @@ function tryGetCodeQLCliVersionForRelease(
 
 export async function tryFindCliVersionDotcomOnly(
   tagName: string,
-  logger: Logger
+  logger: Logger,
 ): Promise<string | undefined> {
   try {
     logger.debug(
-      `Fetching the GitHub Release for the CodeQL bundle tagged ${tagName}.`
+      `Fetching the GitHub Release for the CodeQL bundle tagged ${tagName}.`,
     );
     const apiClient = api.getApiClient();
     const codeQLActionRepository = getCodeQLActionRepository(logger);
@@ -98,7 +98,7 @@ export async function tryFindCliVersionDotcomOnly(
     logger.debug(
       `Failed to find the CLI version for the CodeQL bundle tagged ${tagName}. ${
         wrapError(e).message
-      }`
+      }`,
     );
     return undefined;
   }
@@ -108,7 +108,7 @@ async function getCodeQLBundleDownloadURL(
   tagName: string,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
-  logger: Logger
+  logger: Logger,
 ): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository(logger);
   const potentialDownloadSources = [
@@ -124,7 +124,7 @@ async function getCodeQLBundleDownloadURL(
   const uniqueDownloadSources = potentialDownloadSources.filter(
     (source, index, self) => {
       return !self.slice(0, index).some((other) => deepEqual(source, other));
-    }
+    },
   );
   const codeQLBundleName = getCodeQLBundleName();
   if (variant === util.GitHubVariant.GHAE) {
@@ -140,23 +140,23 @@ async function getCodeQLBundleDownloadURL(
           .getApiClient()
           .request(
             "GET /enterprise/code-scanning/codeql-bundle/download/{asset_id}",
-            { asset_id: assetID }
+            { asset_id: assetID },
           );
         const downloadURL = download.data.url;
         logger.info(
-          `Found CodeQL bundle at GitHub AE endpoint with URL ${downloadURL}.`
+          `Found CodeQL bundle at GitHub AE endpoint with URL ${downloadURL}.`,
         );
         return downloadURL;
       } else {
         logger.info(
           `Attempted to fetch bundle from GitHub AE endpoint but the bundle ${codeQLBundleName} was not found in the assets ${JSON.stringify(
-            release.data.assets
-          )}.`
+            release.data.assets,
+          )}.`,
         );
       }
     } catch (e) {
       logger.info(
-        `Attempted to fetch bundle from GitHub AE endpoint but got error ${e}.`
+        `Attempted to fetch bundle from GitHub AE endpoint but got error ${e}.`,
       );
     }
   }
@@ -179,14 +179,14 @@ async function getCodeQLBundleDownloadURL(
       for (const asset of release.data.assets) {
         if (asset.name === codeQLBundleName) {
           logger.info(
-            `Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`
+            `Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`,
           );
           return asset.url;
         }
       }
     } catch (e) {
       logger.info(
-        `Looked for CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} but got error ${e}.`
+        `Looked for CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} but got error ${e}.`,
       );
     }
   }
@@ -195,7 +195,7 @@ async function getCodeQLBundleDownloadURL(
 
 function tryGetBundleVersionFromTagName(
   tagName: string,
-  logger: Logger
+  logger: Logger,
 ): string | undefined {
   const match = tagName.match(/^codeql-bundle-(.*)$/);
   if (match === null || match.length < 2) {
@@ -216,7 +216,7 @@ function tryGetTagNameFromUrl(url: string, logger: Logger): string | undefined {
 
 export function tryGetBundleVersionFromUrl(
   url: string,
-  logger: Logger
+  logger: Logger,
 ): string | undefined {
   const tagName = tryGetTagNameFromUrl(url, logger);
   if (tagName === undefined) {
@@ -228,7 +228,7 @@ export function tryGetBundleVersionFromUrl(
 export function convertToSemVer(version: string, logger: Logger): string {
   if (!semver.valid(version)) {
     logger.debug(
-      `Bundle version ${version} is not in SemVer format. Will treat it as pre-release 0.0.0-${version}.`
+      `Bundle version ${version} is not in SemVer format. Will treat it as pre-release 0.0.0-${version}.`,
     );
     version = `0.0.0-${version}`;
   }
@@ -270,7 +270,7 @@ type CodeQLToolsSource =
  */
 async function findOverridingToolsInCache(
   humanReadableVersion: string,
-  logger: Logger
+  logger: Logger,
 ): Promise<CodeQLToolsSource | undefined> {
   const candidates = toolcache
     .findAllVersions("CodeQL")
@@ -284,7 +284,7 @@ async function findOverridingToolsInCache(
   if (candidates.length === 1) {
     const candidate = candidates[0];
     logger.debug(
-      `CodeQL tools version ${candidate.version} in toolcache overriding version ${humanReadableVersion}.`
+      `CodeQL tools version ${candidate.version} in toolcache overriding version ${humanReadableVersion}.`,
     );
     return {
       codeqlFolder: candidate.folder,
@@ -293,12 +293,12 @@ async function findOverridingToolsInCache(
     };
   } else if (candidates.length === 0) {
     logger.debug(
-      "Did not find any candidate pinned versions of the CodeQL tools in the toolcache."
+      "Did not find any candidate pinned versions of the CodeQL tools in the toolcache.",
     );
   } else {
     logger.debug(
       "Could not use CodeQL tools from the toolcache since more than one candidate pinned " +
-        "version was found in the toolcache."
+        "version was found in the toolcache.",
     );
   }
   return undefined;
@@ -309,7 +309,7 @@ export async function getCodeQLSource(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
-  logger: Logger
+  logger: Logger,
 ): Promise<CodeQLToolsSource> {
   if (toolsInput && toolsInput !== "latest" && !toolsInput.startsWith("http")) {
     return {
@@ -330,7 +330,7 @@ export async function getCodeQLSource(
   if (forceShippedTools) {
     logger.info(
       "Overriding the version of the CodeQL tools by the version shipped with the Action since " +
-        `"tools: latest" was requested.`
+        `"tools: latest" was requested.`,
     );
   }
 
@@ -379,7 +379,7 @@ export async function getCodeQLSource(
     "Attempting to obtain CodeQL tools. " +
       `CLI version: ${cliVersion ?? "unknown"}, ` +
       `bundle tag name: ${tagName ?? "unknown"}, ` +
-      `URL: ${url ?? "unspecified"}.`
+      `URL: ${url ?? "unspecified"}.`,
   );
 
   let codeqlFolder: string | undefined;
@@ -392,34 +392,34 @@ export async function getCodeQLSource(
     if (!codeqlFolder) {
       logger.debug(
         "Didn't find a version of the CodeQL tools in the toolcache with a version number " +
-          `exactly matching ${cliVersion}.`
+          `exactly matching ${cliVersion}.`,
       );
       const allVersions = toolcache.findAllVersions("CodeQL");
       logger.debug(
         `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
-          allVersions
-        )}.`
+          allVersions,
+        )}.`,
       );
       // If there is exactly one version of the CodeQL tools in the toolcache, and that version is
       // the form `x.y.z-<tagName>`, then use it.
       const candidateVersions = allVersions.filter((version) =>
-        version.startsWith(`${cliVersion}-`)
+        version.startsWith(`${cliVersion}-`),
       );
       if (candidateVersions.length === 1) {
         logger.debug(
           `Exactly one version of the CodeQL tools starting with ${cliVersion} found in the ` +
-            "toolcache, using that."
+            "toolcache, using that.",
         );
         codeqlFolder = toolcache.find("CodeQL", candidateVersions[0]);
       } else if (candidateVersions.length === 0) {
         logger.debug(
           `Didn't find any versions of the CodeQL tools starting with ${cliVersion} ` +
-            `in the toolcache. Trying next fallback method.`
+            `in the toolcache. Trying next fallback method.`,
         );
       } else {
         logger.warning(
           `Found ${candidateVersions.length} versions of the CodeQL tools starting with ` +
-            `${cliVersion} in the toolcache, but at most one was expected.`
+            `${cliVersion} in the toolcache, but at most one was expected.`,
         );
         logger.debug("Trying next fallback method.");
       }
@@ -431,25 +431,25 @@ export async function getCodeQLSource(
     const fallbackVersion = await tryGetFallbackToolcacheVersion(
       cliVersion,
       tagName,
-      logger
+      logger,
     );
     if (fallbackVersion) {
       codeqlFolder = toolcache.find("CodeQL", fallbackVersion);
     } else {
       logger.debug(
         "Could not determine a fallback toolcache version number for CodeQL tools version " +
-          `${humanReadableVersion}.`
+          `${humanReadableVersion}.`,
       );
     }
   }
 
   if (codeqlFolder) {
     logger.info(
-      `Found CodeQL tools version ${humanReadableVersion} in the toolcache.`
+      `Found CodeQL tools version ${humanReadableVersion} in the toolcache.`,
     );
   } else {
     logger.info(
-      `Did not find CodeQL tools version ${humanReadableVersion} in the toolcache.`
+      `Did not find CodeQL tools version ${humanReadableVersion} in the toolcache.`,
     );
   }
 
@@ -471,7 +471,7 @@ export async function getCodeQLSource(
   ) {
     const result = await findOverridingToolsInCache(
       humanReadableVersion,
-      logger
+      logger,
     );
     if (result !== undefined) {
       return result;
@@ -483,7 +483,7 @@ export async function getCodeQLSource(
       tagName!,
       apiDetails,
       variant,
-      logger
+      logger,
     );
   }
 
@@ -503,7 +503,7 @@ export async function getCodeQLSource(
 export async function tryGetFallbackToolcacheVersion(
   cliVersion: string | undefined,
   tagName: string,
-  logger: Logger
+  logger: Logger,
 ): Promise<string | undefined> {
   const bundleVersion = tryGetBundleVersionFromTagName(tagName, logger);
   if (!bundleVersion) {
@@ -512,7 +512,7 @@ export async function tryGetFallbackToolcacheVersion(
   const fallbackVersion = convertToSemVer(bundleVersion, logger);
   logger.debug(
     `Computed a fallback toolcache version number of ${fallbackVersion} for CodeQL version ` +
-      `${cliVersion ?? tagName}.`
+      `${cliVersion ?? tagName}.`,
   );
   return fallbackVersion;
 }
@@ -524,7 +524,7 @@ export async function downloadCodeQL(
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
   tempDir: string,
-  logger: Logger
+  logger: Logger,
 ): Promise<{
   toolsVersion: string;
   codeqlFolder: string;
@@ -549,13 +549,13 @@ export async function downloadCodeQL(
     logger.debug("Downloading CodeQL tools without an authorization token.");
   }
   logger.info(
-    `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`
+    `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`,
   );
 
   const dest = path.join(tempDir, uuidV4());
   const finalHeaders = Object.assign(
     { "User-Agent": "CodeQL Action" },
-    headers
+    headers,
   );
 
   const toolsDownloadStart = performance.now();
@@ -563,10 +563,10 @@ export async function downloadCodeQL(
     codeqlURL,
     dest,
     authorization,
-    finalHeaders
+    finalHeaders,
   );
   const toolsDownloadDurationMs = Math.round(
-    performance.now() - toolsDownloadStart
+    performance.now() - toolsDownloadStart,
   );
 
   logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
@@ -579,7 +579,7 @@ export async function downloadCodeQL(
   if (bundleVersion === undefined) {
     logger.debug(
       "Could not cache CodeQL tools because we could not determine the bundle version from the " +
-        `URL ${codeqlURL}.`
+        `URL ${codeqlURL}.`,
     );
     return {
       toolsVersion: maybeCliVersion ?? "unknown",
@@ -596,7 +596,7 @@ export async function downloadCodeQL(
   ) {
     maybeCliVersion = await tryFindCliVersionDotcomOnly(
       `codeql-bundle-${bundleVersion}`,
-      logger
+      logger,
     );
   }
 
@@ -617,7 +617,7 @@ export async function downloadCodeQL(
     codeqlFolder: await toolcache.cacheDir(
       codeqlExtracted,
       "CodeQL",
-      toolcacheVersion
+      toolcacheVersion,
     ),
     toolsDownloadDurationMs,
   };
@@ -627,7 +627,7 @@ export function getCodeQLURLVersion(url: string): string {
   const match = url.match(/\/codeql-bundle-(.*)\//);
   if (match === null || match.length < 2) {
     throw new Error(
-      `Malformed tools url: ${url}. Version could not be inferred`
+      `Malformed tools url: ${url}. Version could not be inferred`,
     );
   }
   return match[1];
@@ -652,7 +652,7 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  logger: Logger
+  logger: Logger,
 ): Promise<{
   codeqlFolder: string;
   toolsDownloadDurationMs?: number;
@@ -664,7 +664,7 @@ export async function setupCodeQLBundle(
     defaultCliVersion,
     apiDetails,
     variant,
-    logger
+    logger,
   );
 
   let codeqlFolder: string;
@@ -689,7 +689,7 @@ export async function setupCodeQLBundle(
         apiDetails,
         variant,
         tempDir,
-        logger
+        logger,
       );
       toolsVersion = result.toolsVersion;
       codeqlFolder = result.codeqlFolder;

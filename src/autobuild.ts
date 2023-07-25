@@ -5,19 +5,19 @@ import { Logger } from "./logging";
 
 export async function determineAutobuildLanguages(
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
 ): Promise<Language[] | undefined> {
   // Attempt to find a language to autobuild
   // We want pick the dominant language in the repo from the ones we're able to build
   // The languages are sorted in order specified by user or by lines of code if we got
   // them from the GitHub API, so try to build the first language on the list.
   const autobuildLanguages = config.languages.filter((l) =>
-    isTracedLanguage(l)
+    isTracedLanguage(l),
   );
 
   if (!autobuildLanguages) {
     logger.info(
-      "None of the languages in this project require extra build steps"
+      "None of the languages in this project require extra build steps",
     );
     return undefined;
   }
@@ -50,7 +50,7 @@ export async function determineAutobuildLanguages(
    * version of the CodeQL Action.
    */
   const autobuildLanguagesWithoutGo = autobuildLanguages.filter(
-    (l) => l !== Language.go
+    (l) => l !== Language.go,
   );
 
   const languages: Language[] = [];
@@ -77,14 +77,14 @@ export async function determineAutobuildLanguages(
   if (autobuildLanguagesWithoutGo.length > 1) {
     logger.warning(
       `We will only automatically build ${languages.join(
-        " and "
+        " and ",
       )} code. If you wish to scan ${autobuildLanguagesWithoutGo
         .slice(1)
         .join(
-          " and "
+          " and ",
         )}, you must replace the autobuild step of your workflow with custom build steps. ` +
         "For more information, see " +
-        "https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-the-codeql-workflow-for-compiled-languages#adding-build-steps-for-a-compiled-language"
+        "https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-the-codeql-workflow-for-compiled-languages#adding-build-steps-for-a-compiled-language",
     );
   }
 
@@ -94,7 +94,7 @@ export async function determineAutobuildLanguages(
 export async function runAutobuild(
   language: Language,
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
   const codeQL = await getCodeQL(config.codeQLCmd);

@@ -132,7 +132,7 @@ test("getRef() throws an error if only `ref` is provided as an input", async (t)
         instanceOf: Error,
         message:
           "Both 'ref' and 'sha' are required if one of them is provided.",
-      }
+      },
     );
     getAdditionalInputStub.restore();
   });
@@ -153,7 +153,7 @@ test("getRef() throws an error if only `sha` is provided as an input", async (t)
         instanceOf: Error,
         message:
           "Both 'ref' and 'sha' are required if one of them is provided.",
-      }
+      },
     );
     getAdditionalInputStub.restore();
   });
@@ -162,51 +162,51 @@ test("getRef() throws an error if only `sha` is provided as an input", async (t)
 test("computeAutomationID()", async (t) => {
   let actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
-    '{"language": "javascript", "os": "linux"}'
+    '{"language": "javascript", "os": "linux"}',
   );
   t.deepEqual(
     actualAutomationID,
-    ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"
+    ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/",
   );
 
   // check the environment sorting
   actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
-    '{"os": "linux", "language": "javascript"}'
+    '{"os": "linux", "language": "javascript"}',
   );
   t.deepEqual(
     actualAutomationID,
-    ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/"
+    ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/",
   );
 
   // check that an empty environment produces the right results
   actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
-    "{}"
+    "{}",
   );
   t.deepEqual(
     actualAutomationID,
-    ".github/workflows/codeql-analysis.yml:analyze/"
+    ".github/workflows/codeql-analysis.yml:analyze/",
   );
 
   // check non string environment values
   actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
-    '{"number": 1, "object": {"language": "javascript"}}'
+    '{"number": 1, "object": {"language": "javascript"}}',
   );
   t.deepEqual(
     actualAutomationID,
-    ".github/workflows/codeql-analysis.yml:analyze/number:/object:/"
+    ".github/workflows/codeql-analysis.yml:analyze/number:/object:/",
   );
 
   // check undefined environment
   actualAutomationID = computeAutomationID(
     ".github/workflows/codeql-analysis.yml:analyze",
-    undefined
+    undefined,
   );
   t.deepEqual(
     actualAutomationID,
-    ".github/workflows/codeql-analysis.yml:analyze/"
+    ".github/workflows/codeql-analysis.yml:analyze/",
   );
 });
 
@@ -230,7 +230,7 @@ test("isAnalyzingDefaultBranch()", async (t) => {
         repository: {
           default_branch: "main",
         },
-      })
+      }),
     );
     process.env["GITHUB_EVENT_PATH"] = envFile;
 
@@ -248,7 +248,7 @@ test("isAnalyzingDefaultBranch()", async (t) => {
       envFile,
       JSON.stringify({
         schedule: "0 0 * * *",
-      })
+      }),
     );
     process.env["GITHUB_EVENT_NAME"] = "schedule";
     process.env["GITHUB_REF"] = "refs/heads/main";
@@ -288,14 +288,14 @@ test("createStatusReportBase", async (t) => {
       "failure",
       new Date("May 19, 2023 05:19:00"),
       "failure cause",
-      "exception stack trace"
+      "exception stack trace",
     );
 
     t.assert(typeof statusReport.job_run_uuid === "string");
     t.assert(statusReport.workflow_run_id === 100);
     t.assert(statusReport.workflow_run_attempt === 2);
     t.assert(
-      statusReport.workflow_name === (process.env["GITHUB_WORKFLOW"] || "")
+      statusReport.workflow_name === (process.env["GITHUB_WORKFLOW"] || ""),
     );
     t.assert(statusReport.job_name === (process.env["GITHUB_JOB"] || ""));
     t.assert(statusReport.analysis_key === "analysis-key");
@@ -304,11 +304,11 @@ test("createStatusReportBase", async (t) => {
     t.assert(statusReport.action_name === "init");
     t.assert(statusReport.action_oid === "unknown");
     t.assert(
-      statusReport.started_at === process.env[EnvVar.WORKFLOW_STARTED_AT]
+      statusReport.started_at === process.env[EnvVar.WORKFLOW_STARTED_AT],
     );
     t.assert(
       statusReport.action_started_at ===
-        new Date("May 19, 2023 05:19:00").toISOString()
+        new Date("May 19, 2023 05:19:00").toISOString(),
     );
     t.assert(statusReport.status === "failure");
     t.assert(statusReport.cause === "failure cause");

@@ -109,7 +109,7 @@ export function getExtraOptionsEnvParam(): object {
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     throw new Error(
-      `${varName} environment variable is set, but does not contain valid JSON: ${error.message}`
+      `${varName} environment variable is set, but does not contain valid JSON: ${error.message}`,
     );
   }
 }
@@ -136,7 +136,7 @@ export function getToolNames(sarif: SarifFile): string[] {
 // Creates a random temporary directory, runs the given body, and then deletes the directory.
 // Mostly intended for use within tests.
 export async function withTmpDir<T>(
-  body: (tmpDir: string) => Promise<T>
+  body: (tmpDir: string) => Promise<T>,
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
   const result = await body(tmpDir);
@@ -154,7 +154,7 @@ export async function withTmpDir<T>(
 function getSystemReservedMemoryMegaBytes(
   totalMemoryMegaBytes: number,
   platform: string,
-  isScalingReservedRamEnabled: boolean
+  isScalingReservedRamEnabled: boolean,
 ): number {
   // Windows needs more memory for OS processes.
   const fixedAmount = 1024 * (platform === "win32" ? 1.5 : 1);
@@ -180,7 +180,7 @@ export function getMemoryFlagValueForPlatform(
   userInput: string | undefined,
   totalMemoryBytes: number,
   platform: string,
-  isScalingReservedRamEnabled: boolean
+  isScalingReservedRamEnabled: boolean,
 ): number {
   let memoryToUseMegaBytes: number;
   if (userInput) {
@@ -193,7 +193,7 @@ export function getMemoryFlagValueForPlatform(
     const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes(
       totalMemoryMegaBytes,
       platform,
-      isScalingReservedRamEnabled
+      isScalingReservedRamEnabled,
     );
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
@@ -209,13 +209,13 @@ export function getMemoryFlagValueForPlatform(
  */
 export function getMemoryFlagValue(
   userInput: string | undefined,
-  isScalingReservedRamEnabled: boolean
+  isScalingReservedRamEnabled: boolean,
 ): number {
   return getMemoryFlagValueForPlatform(
     userInput,
     os.totalmem(),
     process.platform,
-    isScalingReservedRamEnabled
+    isScalingReservedRamEnabled,
   );
 }
 
@@ -228,7 +228,7 @@ export function getMemoryFlagValue(
  */
 export function getMemoryFlag(
   userInput: string | undefined,
-  isScalingReservedRamEnabled: boolean
+  isScalingReservedRamEnabled: boolean,
 ): string {
   const megabytes = getMemoryFlagValue(userInput, isScalingReservedRamEnabled);
   return `--ram=${megabytes}`;
@@ -240,7 +240,7 @@ export function getMemoryFlag(
  * @returns string
  */
 export function getAddSnippetsFlag(
-  userInput: string | boolean | undefined
+  userInput: string | boolean | undefined,
 ): string {
   if (typeof userInput === "string") {
     // have to process specifically because any non-empty string is truthy
@@ -259,7 +259,7 @@ export function getAddSnippetsFlag(
  */
 export function getThreadsFlagValue(
   userInput: string | undefined,
-  logger: Logger
+  logger: Logger,
 ): number {
   let numThreads: number;
   const maxThreads = os.cpus().length;
@@ -270,14 +270,14 @@ export function getThreadsFlagValue(
     }
     if (numThreads > maxThreads) {
       logger.info(
-        `Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`
+        `Clamping desired number of threads (${numThreads}) to max available (${maxThreads}).`,
       );
       numThreads = maxThreads;
     }
     const minThreads = -maxThreads;
     if (numThreads < minThreads) {
       logger.info(
-        `Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`
+        `Clamping desired number of free threads (${numThreads}) to max available (${minThreads}).`,
       );
       numThreads = minThreads;
     }
@@ -298,7 +298,7 @@ export function getThreadsFlagValue(
  */
 export function getThreadsFlag(
   userInput: string | undefined,
-  logger: Logger
+  logger: Logger,
 ): string {
   return `--threads=${getThreadsFlagValue(userInput, logger)}`;
 }
@@ -372,7 +372,7 @@ export type GitHubVersion =
 
 export function checkGitHubVersionInRange(
   version: GitHubVersion,
-  logger: Logger
+  logger: Logger,
 ) {
   if (hasBeenWarnedAboutVersion || version.type !== GitHubVariant.GHES) {
     return;
@@ -381,21 +381,21 @@ export function checkGitHubVersionInRange(
   const disallowedAPIVersionReason = apiVersionInRange(
     version.version,
     apiCompatibility.minimumVersion,
-    apiCompatibility.maximumVersion
+    apiCompatibility.maximumVersion,
   );
 
   if (
     disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_OLD
   ) {
     logger.warning(
-      `The CodeQL Action version you are using is too old to be compatible with GitHub Enterprise ${version.version}. If you experience issues, please upgrade to a more recent version of the CodeQL Action.`
+      `The CodeQL Action version you are using is too old to be compatible with GitHub Enterprise ${version.version}. If you experience issues, please upgrade to a more recent version of the CodeQL Action.`,
     );
   }
   if (
     disallowedAPIVersionReason === DisallowedAPIVersionReason.ACTION_TOO_NEW
   ) {
     logger.warning(
-      `GitHub Enterprise ${version.version} is too old to be compatible with this version of the CodeQL Action. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL Action.`
+      `GitHub Enterprise ${version.version} is too old to be compatible with this version of the CodeQL Action. If you experience issues, please upgrade to a more recent version of GitHub Enterprise or use an older version of the CodeQL Action.`,
     );
   }
   hasBeenWarnedAboutVersion = true;
@@ -410,7 +410,7 @@ export enum DisallowedAPIVersionReason {
 export function apiVersionInRange(
   version: string,
   minimumVersion: string,
-  maximumVersion: string
+  maximumVersion: string,
 ): DisallowedAPIVersionReason | undefined {
   if (!semver.satisfies(version, `>=${minimumVersion}`)) {
     return DisallowedAPIVersionReason.ACTION_TOO_NEW;
@@ -499,7 +499,7 @@ export function getCachedCodeQlVersion(): undefined | string {
 
 export async function codeQlVersionAbove(
   codeql: CodeQL,
-  requiredVersion: string
+  requiredVersion: string,
 ): Promise<boolean> {
   return semver.gte(await codeql.getVersion(), requiredVersion);
 }
@@ -509,7 +509,7 @@ export async function bundleDb(
   config: Config,
   language: Language,
   codeql: CodeQL,
-  dbName: string
+  dbName: string,
 ) {
   const databasePath = getCodeQLDatabasePath(config, language);
   const databaseBundlePath = path.resolve(config.dbLocation, `${dbName}.zip`);
@@ -532,7 +532,7 @@ export async function bundleDb(
  */
 export async function delay(
   milliseconds: number,
-  { allowProcessExit }: { allowProcessExit: boolean }
+  { allowProcessExit }: { allowProcessExit: boolean },
 ) {
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, milliseconds);
@@ -552,7 +552,7 @@ export function isGoodVersion(versionSpec: string) {
  * Checks whether the CodeQL CLI supports the `--expect-discarded-cache` command-line flag.
  */
 export async function supportExpectDiscardedCache(
-  codeQL: CodeQL
+  codeQL: CodeQL,
 ): Promise<boolean> {
   return codeQlVersionAbove(codeQL, "2.12.1");
 }
@@ -607,7 +607,7 @@ export function listFolder(dir: string): string[] {
  */
 export async function tryGetFolderBytes(
   cacheDir: string,
-  logger: Logger
+  logger: Logger,
 ): Promise<number | undefined> {
   try {
     return await promisify<string, number>(getFolderSize)(cacheDir);
@@ -642,7 +642,7 @@ let hadTimeout = false;
 export async function withTimeout<T>(
   timeoutMs: number,
   promise: Promise<T>,
-  onTimeout: () => void
+  onTimeout: () => void,
 ): Promise<T | undefined> {
   let finished = false;
   const mainTask = async () => {
@@ -674,7 +674,7 @@ export async function withTimeout<T>(
 export async function checkForTimeout() {
   if (hadTimeout === true) {
     core.info(
-      "A timeout occurred, force exiting the process after 30 seconds to prevent hanging."
+      "A timeout occurred, force exiting the process after 30 seconds to prevent hanging.",
     );
     await delay(30_000, { allowProcessExit: true });
     process.exit();
@@ -703,7 +703,7 @@ export function isHostedRunner() {
 }
 
 export function parseMatrixInput(
-  matrixInput: string | undefined
+  matrixInput: string | undefined,
 ): { [key: string]: string } | undefined {
   if (matrixInput === undefined || matrixInput === "null") {
     return undefined;
@@ -725,7 +725,7 @@ function removeDuplicateLocations(locations: SarifLocation[]): SarifLocation[] {
 
 export function fixInvalidNotifications(
   sarif: SarifFile,
-  logger: Logger
+  logger: Logger,
 ): SarifFile {
   if (!Array.isArray(sarif.runs)) {
     return sarif;
@@ -759,7 +759,7 @@ export function fixInvalidNotifications(
                   return notification;
                 }
                 const newLocations = removeDuplicateLocations(
-                  notification.locations
+                  notification.locations,
                 );
                 numDuplicateLocationsRemoved +=
                   notification.locations.length - newLocations.length;
@@ -777,7 +777,7 @@ export function fixInvalidNotifications(
   if (numDuplicateLocationsRemoved > 0) {
     logger.info(
       `Removed ${numDuplicateLocationsRemoved} duplicate locations from SARIF notification ` +
-        "objects."
+        "objects.",
     );
   } else {
     logger.debug("No duplicate locations found in SARIF notification objects.");
@@ -798,12 +798,12 @@ export function fixInvalidNotifications(
 export function fixInvalidNotificationsInFile(
   inputPath: string,
   outputPath: string,
-  logger: Logger
+  logger: Logger,
 ): void {
   if (process.env[EnvVar.DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
     logger.info(
       "SARIF notification object duplicate location fix disabled by the " +
-        `${EnvVar.DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`
+        `${EnvVar.DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`,
     );
     fs.renameSync(inputPath, outputPath);
   } else {
@@ -825,7 +825,7 @@ export const ML_POWERED_JS_QUERIES_PACK_NAME =
  * queries beta.
  */
 export async function getMlPoweredJsQueriesPack(
-  codeQL: CodeQL
+  codeQL: CodeQL,
 ): Promise<string> {
   let version;
   if (await codeQlVersionAbove(codeQL, "2.11.3")) {

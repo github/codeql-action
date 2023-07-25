@@ -70,7 +70,7 @@ function patternToRegExp(value) {
         }
         return arr;
       }, [])
-      .join("")}$`
+      .join("")}$`,
   );
 }
 
@@ -88,10 +88,13 @@ export interface CodedError {
 function toCodedErrors(errors: {
   [code: string]: string;
 }): Record<string, CodedError> {
-  return Object.entries(errors).reduce((acc, [code, message]) => {
-    acc[code] = { message, code };
-    return acc;
-  }, {} as Record<string, CodedError>);
+  return Object.entries(errors).reduce(
+    (acc, [code, message]) => {
+      acc[code] = { message, code };
+      return acc;
+    },
+    {} as Record<string, CodedError>,
+  );
 }
 
 // code to send back via status report
@@ -144,7 +147,7 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
     const hasPush = Object.prototype.hasOwnProperty.call(doc.on, "push");
     const hasPullRequest = Object.prototype.hasOwnProperty.call(
       doc.on,
-      "pull_request"
+      "pull_request",
     );
 
     if (!hasPush && hasPullRequest) {
@@ -160,7 +163,7 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
 }
 
 export async function validateWorkflow(
-  logger: Logger
+  logger: Logger,
 ): Promise<undefined | string> {
   let workflow: Workflow;
   try {
@@ -210,10 +213,10 @@ export async function getWorkflow(logger: Logger): Promise<Workflow> {
   const maybeWorkflow = process.env["CODE_SCANNING_WORKFLOW_FILE"];
   if (maybeWorkflow) {
     logger.debug(
-      "Using the workflow specified by the CODE_SCANNING_WORKFLOW_FILE environment variable."
+      "Using the workflow specified by the CODE_SCANNING_WORKFLOW_FILE environment variable.",
     );
     return yaml.load(
-      zlib.gunzipSync(Buffer.from(maybeWorkflow, "base64")).toString()
+      zlib.gunzipSync(Buffer.from(maybeWorkflow, "base64")).toString(),
     ) as Workflow;
   }
 
@@ -228,12 +231,12 @@ async function getWorkflowAbsolutePath(logger: Logger): Promise<string> {
   const relativePath = await api.getWorkflowRelativePath();
   const absolutePath = path.join(
     getRequiredEnvParam("GITHUB_WORKSPACE"),
-    relativePath
+    relativePath,
   );
 
   if (fs.existsSync(absolutePath)) {
     logger.debug(
-      `Derived the following absolute path for the currently executing workflow: ${absolutePath}.`
+      `Derived the following absolute path for the currently executing workflow: ${absolutePath}.`,
     );
     return absolutePath;
   }
@@ -241,23 +244,23 @@ async function getWorkflowAbsolutePath(logger: Logger): Promise<string> {
   throw new Error(
     `Expected to find a code scanning workflow file at ${absolutePath}, but no such file existed. ` +
       "This can happen if the currently running workflow checks out a branch that doesn't contain " +
-      "the corresponding workflow file."
+      "the corresponding workflow file.",
   );
 }
 
 function getStepsCallingAction(
   job: WorkflowJob,
-  actionName: string
+  actionName: string,
 ): WorkflowJobStep[] {
   if (job.uses) {
     throw new Error(
-      `Could not get steps calling ${actionName} since the job calls a reusable workflow.`
+      `Could not get steps calling ${actionName} since the job calls a reusable workflow.`,
     );
   }
   const steps = job.steps;
   if (!Array.isArray(steps)) {
     throw new Error(
-      `Could not get steps calling ${actionName} since job.steps was not an array.`
+      `Could not get steps calling ${actionName} since job.steps was not an array.`,
     );
   }
   return steps.filter((step) => step.uses?.includes(actionName));
@@ -278,7 +281,7 @@ function getInputOrThrow(
   jobName: string,
   actionName: string,
   inputName: string,
-  matrixVars: { [key: string]: string } | undefined
+  matrixVars: { [key: string]: string } | undefined,
 ) {
   const preamble = `Could not get ${inputName} input to ${actionName} since`;
   if (!workflow.jobs) {
@@ -290,16 +293,16 @@ function getInputOrThrow(
 
   const stepsCallingAction = getStepsCallingAction(
     workflow.jobs[jobName],
-    actionName
+    actionName,
   );
 
   if (stepsCallingAction.length === 0) {
     throw new Error(
-      `${preamble} the ${jobName} job does not call ${actionName}.`
+      `${preamble} the ${jobName} job does not call ${actionName}.`,
     );
   } else if (stepsCallingAction.length > 1) {
     throw new Error(
-      `${preamble} the ${jobName} job calls ${actionName} multiple times.`
+      `${preamble} the ${jobName} job calls ${actionName} multiple times.`,
     );
   }
 
@@ -315,7 +318,7 @@ function getInputOrThrow(
   }
   if (input !== undefined && input.includes("${{")) {
     throw new Error(
-      `Could not get ${inputName} input to ${actionName} since it contained an unrecognized dynamic value.`
+      `Could not get ${inputName} input to ${actionName} since it contained an unrecognized dynamic value.`,
     );
   }
   return input;
@@ -349,14 +352,14 @@ function getAnalyzeActionName() {
 export function getCategoryInputOrThrow(
   workflow: Workflow,
   jobName: string,
-  matrixVars: { [key: string]: string } | undefined
+  matrixVars: { [key: string]: string } | undefined,
 ): string | undefined {
   return getInputOrThrow(
     workflow,
     jobName,
     getAnalyzeActionName(),
     "category",
-    matrixVars
+    matrixVars,
   );
 }
 
@@ -372,14 +375,14 @@ export function getCategoryInputOrThrow(
 export function getUploadInputOrThrow(
   workflow: Workflow,
   jobName: string,
-  matrixVars: { [key: string]: string } | undefined
+  matrixVars: { [key: string]: string } | undefined,
 ): string | undefined {
   return getInputOrThrow(
     workflow,
     jobName,
     getAnalyzeActionName(),
     "upload",
-    matrixVars
+    matrixVars,
   );
 }
 
@@ -395,7 +398,7 @@ export function getUploadInputOrThrow(
 export function getCheckoutPathInputOrThrow(
   workflow: Workflow,
   jobName: string,
-  matrixVars: { [key: string]: string } | undefined
+  matrixVars: { [key: string]: string } | undefined,
 ): string {
   return (
     getInputOrThrow(
@@ -403,7 +406,7 @@ export function getCheckoutPathInputOrThrow(
       jobName,
       getAnalyzeActionName(),
       "checkout_path",
-      matrixVars
+      matrixVars,
     ) || getRequiredEnvParam("GITHUB_WORKSPACE") // if unspecified, checkout_path defaults to ${{ github.workspace }}
   );
 }

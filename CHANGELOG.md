@@ -4,6 +4,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 2.21.1 - 26 Jul 2023
+
 - Improve the handling of fatal errors from the CodeQL CLI. [#1795](https://github.com/github/codeql-action/pull/1795)
 - Add the `sarif-output` output to the analyze action that contains the path to the directory of the generated SARIF. [#1799](https://github.com/github/codeql-action/pull/1799)
 

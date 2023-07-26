@@ -79,6 +79,8 @@ inputs:
 outputs:
   db-locations:
     description: A map from language to absolute path for each database created by CodeQL.
+  sarif-output:
+    description: Absolute, local path to the directory containing the generated SARIF file.
   sarif-id:
     description: The ID of the uploaded SARIF file.
 runs:

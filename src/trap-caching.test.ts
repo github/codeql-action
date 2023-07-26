@@ -6,7 +6,11 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import { setCodeQL } from "./codeql";
+import {
+  setCodeQL,
+  getTrapCachingExtractorConfigArgs,
+  getTrapCachingExtractorConfigArgsForLang,
+} from "./codeql";
 import * as configUtils from "./config-utils";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
@@ -14,8 +18,6 @@ import { getRecordingLogger, setupTests } from "./testing-utils";
 import {
   downloadTrapCaches,
   getLanguagesSupportingCaching,
-  getTrapCachingExtractorConfigArgs,
-  getTrapCachingExtractorConfigArgsForLang,
   uploadTrapCaches,
 } from "./trap-caching";
 import * as util from "./util";
@@ -124,7 +126,7 @@ test("check flags for JS, analyzing default branch", async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
     const result = await getTrapCachingExtractorConfigArgsForLang(
       config,
-      Language.javascript
+      Language.javascript,
     );
     t.deepEqual(result, [
       `-O=javascript.trap.cache.dir=${path.resolve(tmpDir, "jsCache")}`,
@@ -156,7 +158,7 @@ test("get languages that support TRAP caching", async (t) => {
   const languagesSupportingCaching = await getLanguagesSupportingCaching(
     stubCodeql,
     [Language.javascript, Language.cpp],
-    logger
+    logger,
   );
   t.deepEqual(languagesSupportingCaching, [Language.javascript]);
 });
@@ -175,8 +177,8 @@ test("upload cache key contains right fields", async (t) => {
       sinon
         .match("somesha")
         .and(sinon.match("2.10.3"))
-        .and(sinon.match("javascript"))
-    )
+        .and(sinon.match("javascript")),
+    ),
   );
 });
 
@@ -198,12 +200,12 @@ test("download cache looks for the right key and creates dir", async (t) => {
             sha: "somesha",
           },
         },
-      })
+      }),
     );
     await downloadTrapCaches(
       stubCodeql,
       [Language.javascript, Language.cpp],
-      logger
+      logger,
     );
     t.assert(
       stubRestore.calledOnceWith(
@@ -213,8 +215,8 @@ test("download cache looks for the right key and creates dir", async (t) => {
         sinon
           .match("somesha")
           .and(sinon.match("2.10.3"))
-          .and(sinon.match("javascript"))
-      )
+          .and(sinon.match("javascript")),
+      ),
     );
     t.assert(fs.existsSync(path.resolve(tmpDir, "trapCaches", "javascript")));
   });

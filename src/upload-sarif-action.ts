@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionVersion } from "./actions-util";
+import { createStatusReportBase, sendStatusReport } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as upload_lib from "./upload-lib";
@@ -18,30 +19,26 @@ interface UploadSarifStatusReport
 
 async function sendSuccessStatusReport(
   startedAt: Date,
-  uploadStats: upload_lib.UploadStatusReport
+  uploadStats: upload_lib.UploadStatusReport,
 ) {
-  const statusReportBase = await actionsUtil.createStatusReportBase(
+  const statusReportBase = await createStatusReportBase(
     "upload-sarif",
     "success",
-    startedAt
+    startedAt,
   );
   const statusReport: UploadSarifStatusReport = {
     ...statusReportBase,
     ...uploadStats,
   };
-  await actionsUtil.sendStatusReport(statusReport);
+  await sendStatusReport(statusReport);
 }
 
 async function run() {
   const startedAt = new Date();
   initializeEnvironment(getActionVersion());
   if (
-    !(await actionsUtil.sendStatusReport(
-      await actionsUtil.createStatusReportBase(
-        "upload-sarif",
-        "starting",
-        startedAt
-      )
+    !(await sendStatusReport(
+      await createStatusReportBase("upload-sarif", "starting", startedAt),
     ))
   ) {
     return;
@@ -52,7 +49,7 @@ async function run() {
       actionsUtil.getRequiredInput("sarif_file"),
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getOptionalInput("category"),
-      getActionsLogger()
+      getActionsLogger(),
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
 
@@ -63,7 +60,7 @@ async function run() {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,
-        getActionsLogger()
+        getActionsLogger(),
       );
     }
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport);
@@ -72,14 +69,14 @@ async function run() {
     const message = error.message;
     core.setFailed(message);
     console.log(error);
-    await actionsUtil.sendStatusReport(
-      await actionsUtil.createStatusReportBase(
+    await sendStatusReport(
+      await createStatusReportBase(
         "upload-sarif",
         actionsUtil.getActionsStatus(error),
         startedAt,
         message,
-        error.stack
-      )
+        error.stack,
+      ),
     );
     return;
   }
@@ -90,7 +87,7 @@ async function runWrapper() {
     await run();
   } catch (error) {
     core.setFailed(
-      `codeql/upload-sarif action failed: ${wrapError(error).message}`
+      `codeql/upload-sarif action failed: ${wrapError(error).message}`,
     );
   }
 }

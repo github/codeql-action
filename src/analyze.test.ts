@@ -50,14 +50,14 @@ test("status report fields and search path setting", async (t) => {
         packDownload: async () => ({ packs: [] }),
         databaseRunQueries: async (
           _db: string,
-          searchPath: string | undefined
+          searchPath: string | undefined,
         ) => {
           searchPathsUsed.push(searchPath);
         },
         databaseInterpretResults: async (
           _db: string,
           _queriesRun: string[],
-          sarifFile: string
+          sarifFile: string,
         ) => {
           fs.writeFileSync(
             sarifFile,
@@ -94,7 +94,7 @@ test("status report fields and search path setting", async (t) => {
                 },
                 {},
               ],
-            })
+            }),
           );
           return "";
         },
@@ -142,7 +142,7 @@ test("status report fields and search path setting", async (t) => {
         undefined,
         config,
         getRunnerLogger(true),
-        createFeatures([Feature.QaTelemetryEnabled])
+        createFeatures([Feature.QaTelemetryEnabled]),
       );
       const hasPacks = language in packs;
       const statusReportKeys = Object.keys(builtinStatusReport).sort();
@@ -150,26 +150,26 @@ test("status report fields and search path setting", async (t) => {
         t.deepEqual(statusReportKeys.length, 4, statusReportKeys.toString());
         t.deepEqual(
           statusReportKeys[0],
-          `analyze_builtin_queries_${language}_duration_ms`
+          `analyze_builtin_queries_${language}_duration_ms`,
         );
         t.deepEqual(
           statusReportKeys[1],
-          `analyze_custom_queries_${language}_duration_ms`
+          `analyze_custom_queries_${language}_duration_ms`,
         );
         t.deepEqual(statusReportKeys[2], "event_reports");
         t.deepEqual(
           statusReportKeys[3],
-          `interpret_results_${language}_duration_ms`
+          `interpret_results_${language}_duration_ms`,
         );
       } else {
         t.deepEqual(
           statusReportKeys[0],
-          `analyze_builtin_queries_${language}_duration_ms`
+          `analyze_builtin_queries_${language}_duration_ms`,
         );
         t.deepEqual(statusReportKeys[1], "event_reports");
         t.deepEqual(
           statusReportKeys[2],
-          `interpret_results_${language}_duration_ms`
+          `interpret_results_${language}_duration_ms`,
         );
       }
       if (builtinStatusReport.event_reports) {
@@ -201,11 +201,11 @@ test("status report fields and search path setting", async (t) => {
         undefined,
         config,
         getRunnerLogger(true),
-        createFeatures([Feature.QaTelemetryEnabled])
+        createFeatures([Feature.QaTelemetryEnabled]),
       );
       t.deepEqual(Object.keys(customStatusReport).length, 3);
       t.true(
-        `analyze_custom_queries_${language}_duration_ms` in customStatusReport
+        `analyze_custom_queries_${language}_duration_ms` in customStatusReport,
       );
       const expectedSearchPathsUsed = hasPacks
         ? [undefined, undefined, "/1", "/2", undefined]
@@ -245,12 +245,12 @@ test("status report fields and search path setting", async (t) => {
     function readContents(name: string) {
       const x = fs.readFileSync(
         path.join(tmpDir, "codeql_databases", name),
-        "utf8"
+        "utf8",
       );
       console.log(x);
 
       return yaml.load(
-        fs.readFileSync(path.join(tmpDir, "codeql_databases", name), "utf8")
+        fs.readFileSync(path.join(tmpDir, "codeql_databases", name), "utf8"),
       );
     }
   }
@@ -294,7 +294,7 @@ function createBaseConfig(tmpDir: string): Config {
 
 function createQueryConfig(
   builtin: string[],
-  custom: string[]
+  custom: string[],
 ): { builtin: string[]; custom: QueriesWithSearchPath[] } {
   return {
     builtin,
@@ -304,7 +304,7 @@ function createQueryConfig(
 
 async function runQueriesWithConfig(
   config: Config,
-  features: Feature[]
+  features: Feature[],
 ): Promise<QueriesStatusReport> {
   for (const language of config.languages) {
     fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
@@ -319,7 +319,7 @@ async function runQueriesWithConfig(
     undefined,
     config,
     getRunnerLogger(true),
-    createFeatures(features)
+    createFeatures(features),
   );
 }
 
@@ -338,7 +338,7 @@ test("optimizeForLastQueryRun for one language", async (t) => {
     await runQueriesWithConfig(config, []);
     t.deepEqual(
       getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [true]
+      [true],
     );
   });
 });
@@ -355,7 +355,7 @@ test("optimizeForLastQueryRun for two languages", async (t) => {
     await runQueriesWithConfig(config, []);
     t.deepEqual(
       getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [true, true]
+      [true, true],
     );
   });
 });
@@ -372,7 +372,7 @@ test("optimizeForLastQueryRun for two languages, with custom queries", async (t)
     await runQueriesWithConfig(config, []);
     t.deepEqual(
       getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [false, false, true, false, true]
+      [false, false, true, false, true],
     );
   });
 });
@@ -390,7 +390,7 @@ test("optimizeForLastQueryRun for two languages, with custom queries and packs",
     await runQueriesWithConfig(config, []);
     t.deepEqual(
       getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [false, false, false, true, false, false, true]
+      [false, false, false, true, false, false, true],
     );
   });
 });
@@ -405,7 +405,7 @@ test("optimizeForLastQueryRun for one language, CliConfigFileEnabled", async (t)
     await runQueriesWithConfig(config, [Feature.CliConfigFileEnabled]);
     t.deepEqual(
       getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [true]
+      [true],
     );
   });
 });
@@ -420,7 +420,7 @@ test("optimizeForLastQueryRun for two languages, CliConfigFileEnabled", async (t
     await runQueriesWithConfig(config, [Feature.CliConfigFileEnabled]);
     t.deepEqual(
       getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [true, true]
+      [true, true],
     );
   });
 });
@@ -466,14 +466,14 @@ test("validateQueryFilters", (t) => {
         },
       ]);
     },
-    { message: /Query filter must have exactly one key/ }
+    { message: /Query filter must have exactly one key/ },
   );
 
   t.throws(
     () => {
       return validateQueryFilters([{ xxx: "foo" } as any]);
     },
-    { message: /Only "include" or "exclude" filters are allowed/ }
+    { message: /Only "include" or "exclude" filters are allowed/ },
   );
 
   t.throws(
@@ -484,7 +484,7 @@ test("validateQueryFilters", (t) => {
     {
       message:
         /Query filters must be an array of "include" or "exclude" entries/,
-    }
+    },
   );
 });
 
@@ -581,7 +581,7 @@ test("createQuerySuiteContents", (t) => {
       {
         include: { "problem.severity": "recommendation" },
       },
-    ]
+    ],
   );
   const expected = `- query: query1.ql
 - query: query2.ql

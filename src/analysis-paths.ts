@@ -27,7 +27,7 @@ function buildIncludeExcludeEnvVar(paths: string[]): string {
 
 export function printPathFiltersWarning(
   config: configUtils.Config,
-  logger: Logger
+  logger: Logger,
 ) {
   // Index include/exclude/filters only work in javascript/python/ruby.
   // If any other languages are detected/configured then show a warning.
@@ -36,7 +36,7 @@ export function printPathFiltersWarning(
     !config.languages.every(isInterpretedLanguage)
   ) {
     logger.warning(
-      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby'
+      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby',
     );
   }
 }

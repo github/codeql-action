@@ -1,15 +1,17 @@
 import * as core from "@actions/core";
 
 import {
-  createStatusReportBase,
   getActionsStatus,
   getActionVersion,
   getOptionalInput,
   getTemporaryDirectory,
-  sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import {
+  createStatusReportBase,
+  getGitHubVersion,
+  sendStatusReport,
+} from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
@@ -32,7 +34,7 @@ async function sendCompletedStatusReport(
   startedAt: Date,
   allLanguages: string[],
   failingLanguage?: string,
-  cause?: Error
+  cause?: Error,
 ) {
   initializeEnvironment(getActionVersion());
 
@@ -42,7 +44,7 @@ async function sendCompletedStatusReport(
     status,
     startedAt,
     cause?.message,
-    cause?.stack
+    cause?.stack,
   );
   const statusReport: AutobuildStatusReport = {
     ...statusReportBase,
@@ -60,7 +62,7 @@ async function run() {
   try {
     if (
       !(await sendStatusReport(
-        await createStatusReportBase("autobuild", "starting", startedAt)
+        await createStatusReportBase("autobuild", "starting", startedAt),
       ))
     ) {
       return;
@@ -72,7 +74,7 @@ async function run() {
     const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
-        "Config file could not be found at expected location. Has the 'init' action been called?"
+        "Config file could not be found at expected location. Has the 'init' action been called?",
       );
     }
 
@@ -81,7 +83,7 @@ async function run() {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {
         logger.info(
-          `Changing autobuilder working directory to ${workingDirectory}`
+          `Changing autobuilder working directory to ${workingDirectory}`,
         );
         process.chdir(workingDirectory);
       }
@@ -96,13 +98,13 @@ async function run() {
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(
-      `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps. ${error.message}`
+      `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps. ${error.message}`,
     );
     await sendCompletedStatusReport(
       startedAt,
       languages ?? [],
       currentLanguage,
-      error
+      error,
     );
     return;
   }

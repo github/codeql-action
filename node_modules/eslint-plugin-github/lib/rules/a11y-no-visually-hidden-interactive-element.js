@@ -1,4 +1,4 @@
-const {getProp, getPropValue} = require('jsx-ast-utils')
+const {getProp, getLiteralPropValue} = require('jsx-ast-utils')
 const {getElementType} = require('../utils/get-element-type')
 const {generateObjSchema} = require('eslint-plugin-jsx-a11y/lib/util/schemas')
 
@@ -32,9 +32,12 @@ const checkIfInteractiveElement = (context, node) => {
 const checkIfVisuallyHiddenAndInteractive = (context, options, node, isParentVisuallyHidden) => {
   const {className, componentName} = options
   if (node.type === 'JSXElement') {
-    const classes = getPropValue(getProp(node.openingElement.attributes, 'className'))
+    const classes = getLiteralPropValue(getProp(node.openingElement.attributes, 'className'))
     const isVisuallyHiddenElement = node.openingElement.name.name === componentName
-    const hasSROnlyClass = typeof classes !== 'undefined' && classes.includes(className)
+    let hasSROnlyClass = false
+    if (classes != null) {
+      hasSROnlyClass = classes.includes(className)
+    }
     let isHidden = false
     if (hasSROnlyClass || isVisuallyHiddenElement || !!isParentVisuallyHidden) {
       if (checkIfInteractiveElement(context, node)) {

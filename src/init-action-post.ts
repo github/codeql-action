@@ -7,14 +7,16 @@
 import * as core from "@actions/core";
 
 import {
-  createStatusReportBase,
   getActionsStatus,
   getTemporaryDirectory,
   printDebugLogs,
-  sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import {
+  createStatusReportBase,
+  getGitHubVersion,
+  sendStatusReport,
+} from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
 import { Features } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -41,13 +43,13 @@ async function runWrapper() {
     checkGitHubVersionInRange(gitHubVersion, logger);
 
     const repositoryNwo = parseRepositoryNwo(
-      getRequiredEnvParam("GITHUB_REPOSITORY")
+      getRequiredEnvParam("GITHUB_REPOSITORY"),
     );
     const features = new Features(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),
-      logger
+      logger,
     );
 
     uploadFailedSarifResult = await initActionPostHelper.run(
@@ -56,7 +58,7 @@ async function runWrapper() {
       printDebugLogs,
       repositoryNwo,
       features,
-      logger
+      logger,
     );
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
@@ -68,15 +70,15 @@ async function runWrapper() {
         getActionsStatus(error),
         startedAt,
         error.message,
-        error.stack
-      )
+        error.stack,
+      ),
     );
     return;
   }
   const statusReportBase = await createStatusReportBase(
     "init-post",
     "success",
-    startedAt
+    startedAt,
   );
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,

@@ -29,9 +29,9 @@ test.beforeEach(() => {
 test("parse codeql bundle url version", (t) => {
   t.deepEqual(
     setupCodeql.getCodeQLURLVersion(
-      "https://github.com/.../codeql-bundle-20200601/..."
+      "https://github.com/.../codeql-bundle-20200601/...",
     ),
-    "20200601"
+    "20200601",
   );
 });
 
@@ -49,7 +49,7 @@ test("convert to semver", (t) => {
     try {
       const parsedVersion = setupCodeql.convertToSemVer(
         version,
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
@@ -86,7 +86,7 @@ test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) =>
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     t.is(source.sourceType, "download");

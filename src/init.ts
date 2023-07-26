@@ -8,18 +8,16 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  FeatureEnablement,
+  useCodeScanningConfigInCli,
+} from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { ToolsSource } from "./setup-codeql";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
-
-export enum ToolsSource {
-  Unknown = "UNKNOWN",
-  Local = "LOCAL",
-  Toolcache = "TOOLCACHE",
-  Download = "DOWNLOAD",
-}
 
 export async function initCodeQL(
   toolsInput: string | undefined,
@@ -27,7 +25,7 @@ export async function initCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  logger: Logger
+  logger: Logger,
 ): Promise<{
   codeql: CodeQL;
   toolsDownloadDurationMs?: number;
@@ -43,7 +41,7 @@ export async function initCodeQL(
       variant,
       defaultCliVersion,
       logger,
-      true
+      true,
     );
   await codeql.printVersion();
   logger.endGroup();
@@ -69,7 +67,7 @@ export async function initConfig(
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
   features: FeatureEnablement,
-  logger: Logger
+  logger: Logger,
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
   const config = await configUtils.initConfig(
@@ -91,7 +89,7 @@ export async function initConfig(
     gitHubVersion,
     apiDetails,
     features,
-    logger
+    logger,
   );
   analysisPaths.printPathFiltersWarning(config, logger);
   logger.endGroup();
@@ -106,7 +104,7 @@ export async function runInit(
   registriesInput: string | undefined,
   features: FeatureEnablement,
   apiDetails: GitHubApiCombinedDetails,
-  logger: Logger
+  logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
   try {
@@ -116,13 +114,13 @@ export async function runInit(
     // before the `pack download` command was invoked. It is not required for the init command.
     let registriesAuthTokens: string | undefined;
     let qlconfigFile: string | undefined;
-    if (await util.useCodeScanningConfigInCli(codeql, features)) {
+    if (await useCodeScanningConfigInCli(codeql, features)) {
       ({ registriesAuthTokens, qlconfigFile } =
         await configUtils.generateRegistries(
           registriesInput,
           codeql,
           config.tempDir,
-          logger
+          logger,
         ));
     }
     await configUtils.wrapEnvironment(
@@ -139,8 +137,8 @@ export async function runInit(
           processName,
           features,
           qlconfigFile,
-          logger
-        )
+          logger,
+        ),
     );
   } catch (e) {
     throw processError(e);
@@ -168,7 +166,7 @@ function processError(e: any): Error {
     e.message?.includes("exists and is not an empty directory.")
   ) {
     return new util.UserError(
-      `Is the "init" action called twice in the same job? ${e.message}`
+      `Is the "init" action called twice in the same job? ${e.message}`,
     );
   }
 
@@ -196,7 +194,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
       ]).exec();
     } else {
       await new toolrunner.ToolRunner(
-        path.join(scriptsFolder, "install_tools.sh")
+        path.join(scriptsFolder, "install_tools.sh"),
       ).exec();
     }
     const script = "auto_install_packages.py";
@@ -220,7 +218,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
       `An error occurred while trying to automatically install Python dependencies: ${e}\n` +
         "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
         "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
-        "dependency installation and avoid this warning."
+        "dependency installation and avoid this warning.",
     );
     return;
   }

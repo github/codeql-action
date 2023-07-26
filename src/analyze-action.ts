@@ -15,12 +15,13 @@ import {
   runQueries,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
+import * as api from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
-import { Config, getConfig } from "./config-utils";
+import { Config, getConfig, getMlPoweredJsQueriesStatus } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
+import { Feature, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -54,25 +55,24 @@ export async function sendStatusReport(
   trapCacheUploadTime: number | undefined,
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
-  logger: Logger
+  logger: Logger,
 ) {
   const status = actionsUtil.getActionsStatus(
     error,
-    stats?.analyze_failure_language
+    stats?.analyze_failure_language,
   );
-  const statusReportBase = await actionsUtil.createStatusReportBase(
+  const statusReportBase = await api.createStatusReportBase(
     "finish",
     status,
     startedAt,
     error?.message,
-    error?.stack
+    error?.stack,
   );
   const statusReport: FinishStatusReport = {
     ...statusReportBase,
     ...(config
       ? {
-          ml_powered_javascript_queries:
-            util.getMlPoweredJsQueriesStatus(config),
+          ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
         }
       : {}),
     ...(stats || {}),
@@ -83,12 +83,12 @@ export async function sendStatusReport(
       ...statusReport,
       trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
       trap_cache_upload_size_bytes: Math.round(
-        await getTotalCacheSize(config.trapCaches, logger)
+        await getTotalCacheSize(config.trapCaches, logger),
       ),
     };
-    await actionsUtil.sendStatusReport(trapCacheUploadStatusReport);
+    await api.sendStatusReport(trapCacheUploadStatusReport);
   } else {
-    await actionsUtil.sendStatusReport(statusReport);
+    await api.sendStatusReport(statusReport);
   }
 }
 
@@ -119,7 +119,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
           ".trap.tar.gz",
           ".trap.tar.br",
           ".trap.tar",
-        ].some((ext) => fileName.endsWith(ext))
+        ].some((ext) => fileName.endsWith(ext)),
       )
   );
 }
@@ -147,20 +147,20 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   }
   if (dbIsFinalized(config, Language.go, logger)) {
     logger.debug(
-      "Won't run Go autobuild since there is already a finalized database for Go."
+      "Won't run Go autobuild since there is already a finalized database for Go.",
     );
     return;
   }
   // This captures whether a user has added manual build steps for Go
   if (doesGoExtractionOutputExist(config)) {
     logger.debug(
-      "Won't run Go autobuild since at least one file of Go code has already been extracted."
+      "Won't run Go autobuild since at least one file of Go code has already been extracted.",
     );
     // If the user has run the manual build step, and has set the `CODEQL_EXTRACTOR_GO_BUILD_TRACING`
     // variable, we suggest they remove it from their workflow.
     if ("CODEQL_EXTRACTOR_GO_BUILD_TRACING" in process.env) {
       logger.warning(
-        `The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable has no effect on workflows with manual build steps, so we recommend that you remove it from your workflow.`
+        `The CODEQL_EXTRACTOR_GO_BUILD_TRACING environment variable has no effect on workflows with manual build steps, so we recommend that you remove it from your workflow.`,
       );
     }
     return;
@@ -181,12 +181,8 @@ async function run() {
   const logger = getActionsLogger();
   try {
     if (
-      !(await actionsUtil.sendStatusReport(
-        await actionsUtil.createStatusReportBase(
-          "finish",
-          "starting",
-          startedAt
-        )
+      !(await api.sendStatusReport(
+        await api.createStatusReportBase("finish", "starting", startedAt),
       ))
     ) {
       return;
@@ -194,13 +190,13 @@ async function run() {
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
-        "Config file could not be found at expected location. Has the 'init' action been called?"
+        "Config file could not be found at expected location. Has the 'init' action been called?",
       );
     }
 
     if (hasBadExpectErrorInput()) {
       throw new Error(
-        "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork."
+        "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork.",
       );
     }
 
@@ -208,11 +204,11 @@ async function run() {
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
-      logger
+      logger,
     );
 
     const repositoryNwo = parseRepositoryNwo(
-      util.getRequiredEnvParam("GITHUB_REPOSITORY")
+      util.getRequiredEnvParam("GITHUB_REPOSITORY"),
     );
 
     const gitHubVersion = await getGitHubVersion();
@@ -221,12 +217,12 @@ async function run() {
       gitHubVersion,
       repositoryNwo,
       actionsUtil.getTemporaryDirectory(),
-      logger
+      logger,
     );
 
-    const memory = await util.getMemoryFlag(
+    const memory = util.getMemoryFlag(
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
-      features
+      await features.getValue(Feature.ScalingReservedRamEnabled),
     );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);
@@ -237,7 +233,7 @@ async function run() {
       memory,
       config,
       logger,
-      features
+      features,
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
@@ -249,7 +245,7 @@ async function run() {
         actionsUtil.getOptionalInput("category"),
         config,
         logger,
-        features
+        features,
       );
     }
 
@@ -257,7 +253,7 @@ async function run() {
       await runCleanup(
         config,
         actionsUtil.getOptionalInput("cleanup-level") || "brutal",
-        logger
+        logger,
       );
     }
 
@@ -266,13 +262,14 @@ async function run() {
       dbLocations[language] = util.getCodeQLDatabasePath(config, language);
     }
     core.setOutput("db-locations", dbLocations);
+    core.setOutput("sarif-output", path.resolve(outputDir));
     const uploadInput = actionsUtil.getOptionalInput("upload");
     if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
       uploadResult = await uploadLib.uploadFromActions(
         outputDir,
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
-        logger
+        logger,
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {
@@ -298,13 +295,13 @@ async function run() {
       await uploadLib.waitForProcessing(
         parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,
-        getActionsLogger()
+        getActionsLogger(),
       );
     }
     // If we did not throw an error yet here, but we expect one, throw it.
     if (actionsUtil.getOptionalInput("expect-error") === "true") {
       core.setFailed(
-        `expect-error input was set to true but no error was thrown.`
+        `expect-error input was set to true but no error was thrown.`,
       );
     }
     core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
@@ -327,7 +324,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
-        logger
+        logger,
       );
     } else {
       await sendStatusReport(
@@ -338,7 +335,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
-        logger
+        logger,
       );
     }
 
@@ -357,7 +354,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      logger
+      logger,
     );
   } else if (runStats) {
     await sendStatusReport(
@@ -368,7 +365,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      logger
+      logger,
     );
   } else {
     await sendStatusReport(
@@ -379,7 +376,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      logger
+      logger,
     );
   }
 }

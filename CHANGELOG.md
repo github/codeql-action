@@ -2,6 +2,11 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.21.1 - 26 Jul 2023
+
+- Improve the handling of fatal errors from the CodeQL CLI. [#1795](https://github.com/github/codeql-action/pull/1795)
+- Add the `sarif-output` output to the analyze action that contains the path to the directory of the generated SARIF. [#1799](https://github.com/github/codeql-action/pull/1799)
+
 ## 2.21.0 - 19 Jul 2023
 
 - CodeQL Action now requires CodeQL CLI 2.9.4 or later. For more information, see the corresponding changelog entry for CodeQL Action version 2.20.4. [#1724](https://github.com/github/codeql-action/pull/1724)

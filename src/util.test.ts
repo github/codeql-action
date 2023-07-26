@@ -2,20 +2,10 @@ import * as fs from "fs";
 import * as os from "os";
 import path from "path";
 
-import * as github from "@actions/github";
 import test from "ava";
-import * as sinon from "sinon";
 
-import * as api from "./api-client";
-import { Config } from "./config-utils";
-import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
-import {
-  createFeatures,
-  getRecordingLogger,
-  LoggedMessage,
-  setupTests,
-} from "./testing-utils";
+import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -23,43 +13,89 @@ setupTests(test);
 test("getToolNames", (t) => {
   const input = fs.readFileSync(
     `${__dirname}/../src/testdata/tool-names.sarif`,
-    "utf8"
+    "utf8",
   );
   const toolNames = util.getToolNames(JSON.parse(input) as util.SarifFile);
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
 });
 
-test("getMemoryFlag() should return the correct --ram flag", async (t) => {
-  const totalMem = os.totalmem() / (1024 * 1024);
-  const fixedAmount = process.platform === "win32" ? 1536 : 1024;
-  const scaledAmount = 0.02 * totalMem;
-  const expectedMemoryValue = Math.floor(totalMem - fixedAmount);
-  const expectedMemoryValueWithScaling = Math.floor(
-    totalMem - fixedAmount - scaledAmount
+const GET_MEMORY_FLAG_TESTS = [
+  {
+    input: undefined,
+    totalMemoryMb: 8 * 1024,
+    platform: "linux",
+    expectedMemoryValue: 7 * 1024,
+    expectedMemoryValueWithScaling: 7 * 1024,
+  },
+  {
+    input: undefined,
+    totalMemoryMb: 8 * 1024,
+    platform: "win32",
+    expectedMemoryValue: 6.5 * 1024,
+    expectedMemoryValueWithScaling: 6.5 * 1024,
+  },
+  {
+    input: "",
+    totalMemoryMb: 8 * 1024,
+    platform: "linux",
+    expectedMemoryValue: 7 * 1024,
+    expectedMemoryValueWithScaling: 7 * 1024,
+  },
+  {
+    input: "512",
+    totalMemoryMb: 8 * 1024,
+    platform: "linux",
+    expectedMemoryValue: 512,
+    expectedMemoryValueWithScaling: 512,
+  },
+  {
+    input: undefined,
+    totalMemoryMb: 64 * 1024,
+    platform: "linux",
+    expectedMemoryValue: 63 * 1024,
+    expectedMemoryValueWithScaling: 63078, // Math.floor(1024 * (64 - 1 - 0.025 * (64 - 8)))
+  },
+  {
+    input: undefined,
+    totalMemoryMb: 64 * 1024,
+    platform: "win32",
+    expectedMemoryValue: 62.5 * 1024,
+    expectedMemoryValueWithScaling: 62566, // Math.floor(1024 * (64 - 1.5 - 0.025 * (64 - 8)))
+  },
+];
+
+for (const {
+  input,
+  totalMemoryMb,
+  platform,
+  expectedMemoryValue,
+  expectedMemoryValueWithScaling,
+} of GET_MEMORY_FLAG_TESTS) {
+  test(
+    `Memory flag value is ${expectedMemoryValue} without scaling and ${expectedMemoryValueWithScaling} with scaling ` +
+      `for ${
+        input ?? "no user input"
+      } on ${platform} with ${totalMemoryMb} MB total system RAM`,
+    async (t) => {
+      for (const withScaling of [true, false]) {
+        const flag = util.getMemoryFlagValueForPlatform(
+          input,
+          totalMemoryMb * 1024 * 1024,
+          platform,
+          withScaling,
+        );
+        t.deepEqual(
+          flag,
+          withScaling ? expectedMemoryValueWithScaling : expectedMemoryValue,
+        );
+      }
+    },
   );
-
-  const tests: Array<[string | undefined, boolean, string]> = [
-    [undefined, false, `--ram=${expectedMemoryValue}`],
-    ["", false, `--ram=${expectedMemoryValue}`],
-    ["512", false, "--ram=512"],
-    [undefined, true, `--ram=${expectedMemoryValueWithScaling}`],
-    ["", true, `--ram=${expectedMemoryValueWithScaling}`],
-  ];
-
-  for (const [input, withScaling, expectedFlag] of tests) {
-    const features = createFeatures(
-      withScaling ? [Feature.ScalingReservedRamEnabled] : []
-    );
-    const flag = await util.getMemoryFlag(input, features);
-    t.deepEqual(flag, expectedFlag);
-  }
-});
+}
 
 test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   for (const input of ["-1", "hello!"]) {
-    await t.throwsAsync(
-      async () => await util.getMemoryFlag(input, createFeatures([]))
-    );
+    t.throws(() => util.getMemoryFlag(input, false));
   }
 });
 
@@ -132,48 +168,48 @@ test("parseGitHubUrl", (t) => {
   t.deepEqual(util.parseGitHubUrl("https://github.com"), "https://github.com");
   t.deepEqual(
     util.parseGitHubUrl("https://api.github.com"),
-    "https://github.com"
+    "https://github.com",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.com/foo/bar"),
-    "https://github.com"
+    "https://github.com",
   );
 
   t.deepEqual(
     util.parseGitHubUrl("github.example.com"),
-    "https://github.example.com/"
+    "https://github.example.com/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com"),
-    "https://github.example.com/"
+    "https://github.example.com/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://api.github.example.com"),
-    "https://github.example.com/"
+    "https://github.example.com/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com/api/v3"),
-    "https://github.example.com/"
+    "https://github.example.com/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com:1234"),
-    "https://github.example.com:1234/"
+    "https://github.example.com:1234/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://api.github.example.com:1234"),
-    "https://github.example.com:1234/"
+    "https://github.example.com:1234/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com:1234/api/v3"),
-    "https://github.example.com:1234/"
+    "https://github.example.com:1234/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com/base/path"),
-    "https://github.example.com/base/path/"
+    "https://github.example.com/base/path/",
   );
   t.deepEqual(
     util.parseGitHubUrl("https://github.example.com/base/path/api/v3"),
-    "https://github.example.com/base/path/"
+    "https://github.example.com/base/path/",
   );
 
   t.throws(() => util.parseGitHubUrl(""), {
@@ -195,141 +231,13 @@ test("allowed API versions", async (t) => {
   t.is(util.apiVersionInRange("2.0.1", "1.33", "2.0"), undefined);
   t.is(
     util.apiVersionInRange("1.32.0", "1.33", "2.0"),
-    util.DisallowedAPIVersionReason.ACTION_TOO_NEW
+    util.DisallowedAPIVersionReason.ACTION_TOO_NEW,
   );
   t.is(
     util.apiVersionInRange("2.1.0", "1.33", "2.0"),
-    util.DisallowedAPIVersionReason.ACTION_TOO_OLD
+    util.DisallowedAPIVersionReason.ACTION_TOO_OLD,
   );
 });
-
-function mockGetMetaVersionHeader(
-  versionHeader: string | undefined
-): sinon.SinonStub<any, any> {
-  // Passing an auth token is required, so we just use a dummy value
-  const client = github.getOctokit("123");
-  const response = {
-    headers: {
-      "x-github-enterprise-version": versionHeader,
-    },
-  };
-  const spyGetContents = sinon
-    .stub(client.rest.meta, "get")
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    .resolves(response as any);
-  sinon.stub(api, "getApiClient").value(() => client);
-  return spyGetContents;
-}
-
-test("getGitHubVersion", async (t) => {
-  const v = await util.getGitHubVersion({
-    auth: "",
-    url: "https://github.com",
-    apiURL: undefined,
-  });
-  t.deepEqual(util.GitHubVariant.DOTCOM, v.type);
-
-  mockGetMetaVersionHeader("2.0");
-  const v2 = await util.getGitHubVersion({
-    auth: "",
-    url: "https://ghe.example.com",
-    apiURL: undefined,
-  });
-  t.deepEqual(
-    { type: util.GitHubVariant.GHES, version: "2.0" } as util.GitHubVersion,
-    v2
-  );
-
-  mockGetMetaVersionHeader("GitHub AE");
-  const ghae = await util.getGitHubVersion({
-    auth: "",
-    url: "https://example.githubenterprise.com",
-    apiURL: undefined,
-  });
-  t.deepEqual({ type: util.GitHubVariant.GHAE }, ghae);
-
-  mockGetMetaVersionHeader(undefined);
-  const v3 = await util.getGitHubVersion({
-    auth: "",
-    url: "https://ghe.example.com",
-    apiURL: undefined,
-  });
-  t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
-
-  mockGetMetaVersionHeader("ghe.com");
-  const gheDotcom = await util.getGitHubVersion({
-    auth: "",
-    url: "https://foo.ghe.com",
-    apiURL: undefined,
-  });
-  t.deepEqual({ type: util.GitHubVariant.GHE_DOTCOM }, gheDotcom);
-});
-
-const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
-  // If no packs are loaded, status is false.
-  [[], "false"],
-  // If another pack is loaded but not the ML-powered query pack, status is false.
-  [["some-other/pack"], "false"],
-  // If the ML-powered query pack is loaded with a specific version, status is that version.
-  [[`${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
-  // If the ML-powered query pack is loaded with a specific version and another pack is loaded, the
-  // status is the version of the ML-powered query pack.
-  [
-    ["some-other/pack", `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`],
-    "~0.1.0",
-  ],
-  // If the ML-powered query pack is loaded without a version, the status is "latest".
-  [[util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
-  // If the ML-powered query pack is loaded with two different versions, the status is "other".
-  [
-    [
-      `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.1`,
-      `${util.ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.2`,
-    ],
-    "other",
-  ],
-  // If the ML-powered query pack is loaded with no specific version, and another pack is loaded,
-  // the status is "latest".
-  [["some-other/pack", util.ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
-];
-
-for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
-  const packDescriptions = `[${packs
-    .map((pack) => JSON.stringify(pack))
-    .join(", ")}]`;
-  test(`ML-powered JS queries status report is "${expectedStatus}" for packs = ${packDescriptions}`, (t) => {
-    return util.withTmpDir(async (tmpDir) => {
-      const config: Config = {
-        languages: [],
-        queries: {},
-        paths: [],
-        pathsIgnore: [],
-        originalUserInput: {},
-        tempDir: tmpDir,
-        codeQLCmd: "",
-        gitHubVersion: {
-          type: util.GitHubVariant.DOTCOM,
-        } as util.GitHubVersion,
-        dbLocation: "",
-        packs: {
-          javascript: packs,
-        },
-        debugMode: false,
-        debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-        debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-        augmentationProperties: {
-          injectedMlQueries: false,
-          packsInputCombines: false,
-          queriesInputCombines: false,
-        },
-        trapCaches: {},
-        trapCacheDownloadTime: 0,
-      };
-
-      t.is(util.getMlPoweredJsQueriesStatus(config), expectedStatus);
-    });
-  });
-}
 
 test("doesDirectoryExist", async (t) => {
   // Returns false if no file/dir of this name exists
@@ -420,7 +328,7 @@ test("withTimeout doesn't call callback if promise resolves", async (t) => {
 });
 
 function createMockSarifWithNotification(
-  locations: util.SarifLocation[]
+  locations: util.SarifLocation[],
 ): util.SarifFile {
   return {
     runs: [
@@ -456,7 +364,7 @@ test("fixInvalidNotifications leaves notifications with unique locations alone",
   const messages: LoggedMessage[] = [];
   const result = util.fixInvalidNotifications(
     createMockSarifWithNotification([stubLocation]),
-    getRecordingLogger(messages)
+    getRecordingLogger(messages),
   );
   t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
   t.is(messages.length, 1);
@@ -470,7 +378,7 @@ test("fixInvalidNotifications removes duplicate locations", (t) => {
   const messages: LoggedMessage[] = [];
   const result = util.fixInvalidNotifications(
     createMockSarifWithNotification([stubLocation, stubLocation]),
-    getRecordingLogger(messages)
+    getRecordingLogger(messages),
   );
   t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
   t.is(messages.length, 1);

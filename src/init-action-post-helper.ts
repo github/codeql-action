@@ -31,7 +31,7 @@ export interface UploadFailedSarifResult extends uploadLib.UploadStatusReport {
 }
 
 function createFailedUploadFailedSarifResult(
-  error: unknown
+  error: unknown,
 ): UploadFailedSarifResult {
   const wrappedError = wrapError(error);
   return {
@@ -48,7 +48,7 @@ async function maybeUploadFailedSarif(
   config: Config,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
-  logger: Logger
+  logger: Logger,
 ): Promise<UploadFailedSarifResult> {
   if (!config.codeQLCmd) {
     return { upload_failed_run_skipped_because: "CodeQL command not found" };
@@ -63,7 +63,7 @@ async function maybeUploadFailedSarif(
   const shouldUpload = getUploadInputOrThrow(workflow, jobName, matrix);
   if (
     !["always", "failure-only"].includes(
-      actionsUtil.getUploadValue(shouldUpload)
+      actionsUtil.getUploadValue(shouldUpload),
     ) ||
     isInTestMode()
   ) {
@@ -88,7 +88,7 @@ async function maybeUploadFailedSarif(
       sarifFile,
       category,
       config.tempDir,
-      logger
+      logger,
     );
   }
 
@@ -97,13 +97,13 @@ async function maybeUploadFailedSarif(
     sarifFile,
     checkoutPath,
     category,
-    logger
+    logger,
   );
   await uploadLib.waitForProcessing(
     repositoryNwo,
     uploadResult.sarifID,
     logger,
-    { isUnsuccessfulExecution: true }
+    { isUnsuccessfulExecution: true },
   );
   return uploadResult?.statusReport ?? {};
 }
@@ -112,7 +112,7 @@ export async function tryUploadSarifIfRunFailed(
   config: Config,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
-  logger: Logger
+  logger: Logger,
 ): Promise<UploadFailedSarifResult> {
   if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
     try {
@@ -120,11 +120,11 @@ export async function tryUploadSarifIfRunFailed(
         config,
         repositoryNwo,
         features,
-        logger
+        logger,
       );
     } catch (e) {
       logger.debug(
-        `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`
+        `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`,
       );
       return createFailedUploadFailedSarifResult(e);
     }
@@ -142,12 +142,12 @@ export async function run(
   printDebugLogs: Function,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
-  logger: Logger
+  logger: Logger,
 ) {
   const config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
   if (config === undefined) {
     logger.warning(
-      "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any."
+      "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
     );
     return;
   }
@@ -156,13 +156,13 @@ export async function run(
     config,
     repositoryNwo,
     features,
-    logger
+    logger,
   );
 
   if (uploadFailedSarifResult.upload_failed_run_skipped_because) {
     logger.debug(
       "Won't upload a failed SARIF file for this CodeQL code scanning run because: " +
-        `${uploadFailedSarifResult.upload_failed_run_skipped_because}.`
+        `${uploadFailedSarifResult.upload_failed_run_skipped_because}.`,
     );
   }
   // Throw an error if in integration tests, we expected to upload a SARIF file for a failed run
@@ -174,14 +174,14 @@ export async function run(
     const error = JSON.stringify(uploadFailedSarifResult);
     throw new Error(
       "Expected to upload a failed SARIF file for this CodeQL code scanning run, " +
-        `but the result was instead ${error}.`
+        `but the result was instead ${error}.`,
     );
   }
 
   // Upload appropriate Actions artifacts for debugging
   if (config.debugMode) {
     core.info(
-      "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts..."
+      "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
     await uploadDatabaseBundleDebugArtifact(config, logger);
     await uploadLogsDebugArtifact(config);

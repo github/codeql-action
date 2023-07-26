@@ -4,30 +4,28 @@ import * as core from "@actions/core";
 import { v4 as uuidV4 } from "uuid";
 
 import {
-  createStatusReportBase,
   getActionsStatus,
   getActionVersion,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  sendStatusReport,
   StatusReportBase,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import {
+  createStatusReportBase,
+  getGitHubVersion,
+  sendStatusReport,
+} from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { getMlPoweredJsQueriesStatus } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
-import {
-  initCodeQL,
-  initConfig,
-  installPythonDeps,
-  runInit,
-  ToolsSource,
-} from "./init";
+import { initCodeQL, initConfig, installPythonDeps, runInit } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { ToolsSource } from "./setup-codeql";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkForTimeout,
@@ -35,7 +33,6 @@ import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMemoryFlagValue,
-  getMlPoweredJsQueriesStatus,
   getRequiredEnvParam,
   getThreadsFlagValue,
   initializeEnvironment,
@@ -99,14 +96,14 @@ async function sendCompletedStatusReport(
   toolsSource: ToolsSource,
   toolsVersion: string,
   logger: Logger,
-  error?: Error
+  error?: Error,
 ) {
   const statusReportBase = await createStatusReportBase(
     "init",
     getActionsStatus(error),
     startedAt,
     error?.message,
-    error?.stack
+    error?.stack,
   );
 
   const workflowLanguages = getOptionalInput("languages");
@@ -133,7 +130,7 @@ async function sendCompletedStatusReport(
     const languages = config.languages.join(",");
     const paths = (config.originalUserInput.paths || []).join(",");
     const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
-      ","
+      ",",
     );
     const disableDefaultQueries = config.originalUserInput[
       "disable-default-queries"
@@ -145,7 +142,7 @@ async function sendCompletedStatusReport(
     let queriesInput = getOptionalInput("queries")?.trim();
     if (queriesInput === undefined || queriesInput.startsWith("+")) {
       queries.push(
-        ...(config.originalUserInput.queries || []).map((q) => q.uses)
+        ...(config.originalUserInput.queries || []).map((q) => q.uses),
       );
     }
     if (queriesInput !== undefined) {
@@ -166,7 +163,7 @@ async function sendCompletedStatusReport(
       queries: queries.join(","),
       trap_cache_languages: Object.keys(config.trapCaches).join(","),
       trap_cache_download_size_bytes: Math.round(
-        await getTotalCacheSize(config.trapCaches, logger)
+        await getTotalCacheSize(config.trapCaches, logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
     };
@@ -202,7 +199,7 @@ async function run() {
   checkGitHubVersionInRange(gitHubVersion, logger);
 
   const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY")
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
   );
 
   const registriesInput = getOptionalInput("registries");
@@ -211,7 +208,7 @@ async function run() {
     gitHubVersion,
     repositoryNwo,
     getTemporaryDirectory(),
-    logger
+    logger,
   );
 
   core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
@@ -225,15 +222,15 @@ async function run() {
           "init",
           "starting",
           startedAt,
-          workflowErrors
-        )
+          workflowErrors,
+        ),
       ))
     ) {
       return;
     }
 
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type
+      gitHubVersion.type,
     );
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
     const initCodeQLResult = await initCodeQL(
@@ -242,7 +239,7 @@ async function run() {
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
-      logger
+      logger,
     );
     codeql = initCodeQLResult.codeql;
     toolsDownloadDurationMs = initCodeQLResult.toolsDownloadDurationMs;
@@ -272,7 +269,7 @@ async function run() {
       gitHubVersion,
       apiDetails,
       features,
-      logger
+      logger,
     );
 
     if (
@@ -282,7 +279,7 @@ async function run() {
       if (
         await features.getValue(
           Feature.DisablePythonDependencyInstallationEnabled,
-          codeql
+          codeql,
         )
       ) {
         logger.info("Skipping python dependency installation");
@@ -292,7 +289,7 @@ async function run() {
         } catch (unwrappedError) {
           const error = wrapError(unwrappedError);
           logger.warning(
-            `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`
+            `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`,
           );
         }
       }
@@ -306,8 +303,8 @@ async function run() {
         error instanceof UserError ? "user-error" : "aborted",
         startedAt,
         error.message,
-        error.stack
-      )
+        error.stack,
+      ),
     );
     return;
   }
@@ -318,7 +315,7 @@ async function run() {
     if (goFlags) {
       core.exportVariable("GOFLAGS", goFlags);
       core.warning(
-        "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action."
+        "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.",
       );
     }
 
@@ -330,11 +327,14 @@ async function run() {
     core.exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
-        (await getMemoryFlagValue(getOptionalInput("ram"), features)).toString()
+        getMemoryFlagValue(
+          getOptionalInput("ram"),
+          await features.getValue(Feature.ScalingReservedRamEnabled),
+        ).toString(),
     );
     core.exportVariable(
       "CODEQL_THREADS",
-      getThreadsFlagValue(getOptionalInput("threads"), logger).toString()
+      getThreadsFlagValue(getOptionalInput("threads"), logger).toString(),
     );
 
     // Disable Kotlin extractor if feature flag set
@@ -346,18 +346,18 @@ async function run() {
     if (
       await features.getValue(
         Feature.DisablePythonDependencyInstallationEnabled,
-        codeql
+        codeql,
       )
     ) {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
-        "true"
+        "true",
       );
     }
 
     const sourceRoot = path.resolve(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
-      getOptionalInput("source-root") || ""
+      getOptionalInput("source-root") || "",
     );
 
     const tracerConfig = await runInit(
@@ -368,7 +368,7 @@ async function run() {
       registriesInput,
       features,
       apiDetails,
-      logger
+      logger,
     );
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
@@ -388,7 +388,7 @@ async function run() {
       toolsSource,
       toolsVersion,
       logger,
-      error
+      error,
     );
     return;
   }
@@ -399,7 +399,7 @@ async function run() {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
-    logger
+    logger,
   );
 }
 

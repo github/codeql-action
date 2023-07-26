@@ -14,7 +14,7 @@ async function runWrapper() {
     await analyzeActionPostHelper.run(debugArtifacts.uploadSarifDebugArtifact);
   } catch (error) {
     core.setFailed(
-      `analyze post-action step failed: ${wrapError(error).message}`
+      `analyze post-action step failed: ${wrapError(error).message}`,
     );
   }
 }

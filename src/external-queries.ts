@@ -15,7 +15,7 @@ export async function checkoutExternalRepository(
   ref: string,
   apiDetails: GitHubApiExternalRepoDetails,
   tempDir: string,
-  logger: Logger
+  logger: Logger,
 ): Promise<string> {
   logger.info(`Checking out ${repository}`);
 
@@ -24,7 +24,7 @@ export async function checkoutExternalRepository(
   if (!checkoutLocation.startsWith(tempDir)) {
     // this still permits locations that mess with sibling repositories in `tempDir`, but that is acceptable
     throw new Error(
-      `'${repository}@${ref}' is not a valid repository and reference.`
+      `'${repository}@${ref}' is not a valid repository and reference.`,
     );
   }
 
@@ -48,7 +48,7 @@ export async function checkoutExternalRepository(
 
 export function buildCheckoutURL(
   repository: string,
-  apiDetails: GitHubApiExternalRepoDetails
+  apiDetails: GitHubApiExternalRepoDetails,
 ): string {
   const repoCloneURL = new URL(apiDetails.url);
   if (apiDetails.externalRepoAuth !== undefined) {

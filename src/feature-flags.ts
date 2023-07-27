@@ -60,7 +60,7 @@ export const featureConfig: Record<
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
   [Feature.CodeqlJavaLombokEnabled]: {
-    envVar: "CODEQL_JAVA_LOMBOK_ENABLED",
+    envVar: "CODEQL_JAVA_LOMBOK",
     minimumVersion: "2.14.0",
     defaultValue: false,
   },

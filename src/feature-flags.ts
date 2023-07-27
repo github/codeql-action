@@ -44,6 +44,7 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
+  CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
@@ -58,6 +59,11 @@ export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
+  [Feature.CodeqlJavaLombokEnabled]: {
+    envVar: "CODEQL_JAVA_LOMBOK_ENABLED",
+    minimumVersion: "2.14.0",
+    defaultValue: false,
+  },
   [Feature.DisableKotlinAnalysisEnabled]: {
     envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
     minimumVersion: undefined,

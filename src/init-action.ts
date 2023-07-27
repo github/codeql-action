@@ -342,7 +342,7 @@ async function run() {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 
-    if (await features.getValue(Feature.CodeqlJavaLombokEnabled)) {
+    if (await features.getValue(Feature.CodeqlJavaLombokEnabled, codeql)) {
       logger.info("Enabling CodeQL Java Lombok support");
       core.exportVariable(
         "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS",

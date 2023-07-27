@@ -68,7 +68,7 @@ test("nonEmptyPaths", async (t) => {
     t.is(process.env["LGTM_INDEX_EXCLUDE"], "path4\npath5");
     t.is(
       process.env["LGTM_INDEX_FILTERS"],
-      "include:path1\ninclude:path2\ninclude:**/path3\nexclude:path4\nexclude:path5\nexclude:path6/**"
+      "include:path1\ninclude:path2\ninclude:**/path3\nexclude:path4\nexclude:path5\nexclude:path6/**",
     );
   });
 });

@@ -1,0 +1,3 @@
+# .git-blame-ignore-revs
+# Added trailing commas to adhere to new eslint rules
+b16296be30e150034524d6dd0b0418fc6b184267

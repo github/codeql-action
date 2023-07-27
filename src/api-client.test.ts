@@ -36,12 +36,12 @@ test("getApiClient", async (t) => {
       baseUrl: "http://api.github.localhost",
       log: sinon.match.any,
       userAgent: `CodeQL-Action/${actionsUtil.getActionVersion()}`,
-    })
+    }),
   );
 });
 
 function mockGetMetaVersionHeader(
-  versionHeader: string | undefined
+  versionHeader: string | undefined,
 ): sinon.SinonStub<any, any> {
   // Passing an auth token is required, so we just use a dummy value
   const client = github.getOctokit("123");
@@ -67,7 +67,7 @@ test("getGitHubVersion for Dotcom", async (t) => {
   sinon.stub(api, "getApiDetails").returns(apiDetails);
   const v = await api.getGitHubVersionFromApi(
     github.getOctokit("123"),
-    apiDetails
+    apiDetails,
   );
   t.deepEqual(util.GitHubVariant.DOTCOM, v.type);
 });
@@ -81,7 +81,7 @@ test("getGitHubVersion for GHES", async (t) => {
   });
   t.deepEqual(
     { type: util.GitHubVariant.GHES, version: "2.0" } as util.GitHubVersion,
-    v2
+    v2,
   );
 });
 

@@ -15,7 +15,7 @@ import {
 
 function errorCodes(
   actual: CodedError[],
-  expected: CodedError[]
+  expected: CodedError[],
 ): [string[], string[]] {
   return [actual.map(({ code }) => code), expected.map(({ code }) => code)];
 }
@@ -78,7 +78,7 @@ test("getWorkflowErrors() when on.push is correct with empty objects", (t) => {
   on:
     push:
     pull_request:
-  `) as Workflow
+  `) as Workflow,
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -104,8 +104,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
           pull_request: 1,
         },
       } as Workflow),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -113,8 +113,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
       getWorkflowErrors({
         on: 1,
       } as Workflow),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -124,8 +124,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: 1,
       } as any),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -135,8 +135,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: [1],
       } as any),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -145,8 +145,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { 1: 1 },
       } as Workflow),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -155,8 +155,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: 1 },
       } as Workflow),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -165,8 +165,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: [1] },
       } as Workflow),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -176,8 +176,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: { steps: 1 } },
       } as any),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -187,8 +187,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: { steps: [{ notrun: "git checkout HEAD^2" }] } },
       } as any),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -197,8 +197,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
         on: 1,
         jobs: { test: [undefined] },
       } as Workflow),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(...errorCodes(getWorkflowErrors(1 as Workflow), []));
@@ -216,8 +216,8 @@ test("getWorkflowErrors() for a range of malformed workflows", (t) => {
           },
         },
       } as any),
-      []
-    )
+      [],
+    ),
   );
 });
 
@@ -293,7 +293,7 @@ test("patternIsSuperset()", (t) => {
   t.false(patternIsSuperset("a/main-**/c", "a/**/c"));
   t.true(patternIsSuperset("/robin/*/release/*", "/robin/moose/release/goose"));
   t.false(
-    patternIsSuperset("/robin/moose/release/goose", "/robin/*/release/*")
+    patternIsSuperset("/robin/moose/release/goose", "/robin/*/release/*"),
   );
 });
 
@@ -306,7 +306,7 @@ test("getWorkflowErrors() when branches contain dots", (t) => {
       pull_request:
         # The branches below must be a subset of the branches above
         branches: [4.1, master]
-  `) as Workflow
+  `) as Workflow,
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -322,7 +322,7 @@ test("getWorkflowErrors() when on.push has a trailing comma", (t) => {
     pull_request:
       # The branches below must be a subset of the branches above
       branches: [master]
-  `) as Workflow
+  `) as Workflow,
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -351,7 +351,7 @@ test("getWorkflowErrors() should only report the current job's CheckoutWrongHead
   
     test3:
       steps: []
-  `) as Workflow
+  `) as Workflow,
   );
 
   t.deepEqual(...errorCodes(errors, [WorkflowErrors.CheckoutWrongHead]));
@@ -380,7 +380,7 @@ test("getWorkflowErrors() should not report a different job's CheckoutWrongHead"
   
     test3:
       steps: []
-  `) as Workflow
+  `) as Workflow,
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -390,7 +390,7 @@ test("getWorkflowErrors() when on is missing", (t) => {
   const errors = getWorkflowErrors(
     yaml.load(`
   name: "CodeQL"
-  `) as Workflow
+  `) as Workflow,
   );
 
   t.deepEqual(...errorCodes(errors, []));
@@ -403,10 +403,10 @@ test("getWorkflowErrors() with a different on setup", (t) => {
         yaml.load(`
   name: "CodeQL"
   on: "workflow_dispatch"
-  `) as Workflow
+  `) as Workflow,
       ),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -415,10 +415,10 @@ test("getWorkflowErrors() with a different on setup", (t) => {
         yaml.load(`
   name: "CodeQL"
   on: [workflow_dispatch]
-  `) as Workflow
+  `) as Workflow,
       ),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -428,10 +428,10 @@ test("getWorkflowErrors() with a different on setup", (t) => {
   name: "CodeQL"
   on:
     workflow_dispatch: {}
-  `) as Workflow
+  `) as Workflow,
       ),
-      []
-    )
+      [],
+    ),
   );
 });
 
@@ -444,10 +444,10 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
   on:
     push:
       branches: [master]
-  `) as Workflow
+  `) as Workflow,
       ),
-      []
-    )
+      [],
+    ),
   );
 
   t.deepEqual(
@@ -456,10 +456,10 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
         yaml.load(`
   name: "CodeQL"
   on: ["push"]
-  `) as Workflow
+  `) as Workflow,
       ),
-      []
-    )
+      [],
+    ),
   );
 });
 
@@ -479,9 +479,9 @@ test("getCategoryInputOrThrow returns category for simple workflow with category
                   category: some-category
       `) as Workflow,
       "analysis",
-      {}
+      {},
     ),
-    "some-category"
+    "some-category",
   );
 });
 
@@ -499,9 +499,9 @@ test("getCategoryInputOrThrow returns undefined for simple workflow without cate
               - uses: github/codeql-action/analyze@v2
       `) as Workflow,
       "analysis",
-      {}
+      {},
     ),
-    undefined
+    undefined,
   );
 });
 
@@ -531,9 +531,9 @@ test("getCategoryInputOrThrow returns category for workflow with multiple jobs",
                   category: bar-category
       `) as Workflow,
       "bar",
-      {}
+      {},
     ),
-    "bar-category"
+    "bar-category",
   );
 });
 
@@ -558,9 +558,9 @@ test("getCategoryInputOrThrow finds category for workflow with language matrix",
                   category: "/language:\${{ matrix.language }}"
       `) as Workflow,
       "analysis",
-      { language: "javascript" }
+      { language: "javascript" },
     ),
-    "/language:javascript"
+    "/language:javascript",
   );
 });
 
@@ -580,13 +580,13 @@ test("getCategoryInputOrThrow throws error for workflow with dynamic category", 
                     category: "\${{ github.workflow }}"
         `) as Workflow,
         "analysis",
-        {}
+        {},
       ),
     {
       message:
         "Could not get category input to github/codeql-action/analyze since it contained " +
         "an unrecognized dynamic value.",
-    }
+    },
   );
 });
 
@@ -610,12 +610,12 @@ test("getCategoryInputOrThrow throws error for workflow with multiple calls to a
                     category: another-category
         `) as Workflow,
         "analysis",
-        {}
+        {},
       ),
     {
       message:
         "Could not get category input to github/codeql-action/analyze since the analysis job " +
         "calls github/codeql-action/analyze multiple times.",
-    }
+    },
   );
 });

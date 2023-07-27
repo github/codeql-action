@@ -50,7 +50,7 @@ module.exports = {
   create(context) {
     return {
       JSXElement: node => {
-        const elementType = getElementType(context, node.openingElement)
+        const elementType = getElementType(context, node.openingElement, true)
         if (elementType !== `iframe` && ifSemanticElement(context, node)) {
           const titleProp = getPropValue(getProp(node.openingElement.attributes, `title`))
           if (titleProp) {

@@ -25,7 +25,7 @@ export async function initCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  logger: Logger
+  logger: Logger,
 ): Promise<{
   codeql: CodeQL;
   toolsDownloadDurationMs?: number;
@@ -41,7 +41,7 @@ export async function initCodeQL(
       variant,
       defaultCliVersion,
       logger,
-      true
+      true,
     );
   await codeql.printVersion();
   logger.endGroup();
@@ -67,7 +67,7 @@ export async function initConfig(
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
   features: FeatureEnablement,
-  logger: Logger
+  logger: Logger,
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
   const config = await configUtils.initConfig(
@@ -89,7 +89,7 @@ export async function initConfig(
     gitHubVersion,
     apiDetails,
     features,
-    logger
+    logger,
   );
   analysisPaths.printPathFiltersWarning(config, logger);
   logger.endGroup();
@@ -104,7 +104,7 @@ export async function runInit(
   registriesInput: string | undefined,
   features: FeatureEnablement,
   apiDetails: GitHubApiCombinedDetails,
-  logger: Logger
+  logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
   try {
@@ -120,7 +120,7 @@ export async function runInit(
           registriesInput,
           codeql,
           config.tempDir,
-          logger
+          logger,
         ));
     }
     await configUtils.wrapEnvironment(
@@ -137,8 +137,8 @@ export async function runInit(
           processName,
           features,
           qlconfigFile,
-          logger
-        )
+          logger,
+        ),
     );
   } catch (e) {
     throw processError(e);
@@ -166,7 +166,7 @@ function processError(e: any): Error {
     e.message?.includes("exists and is not an empty directory.")
   ) {
     return new util.UserError(
-      `Is the "init" action called twice in the same job? ${e.message}`
+      `Is the "init" action called twice in the same job? ${e.message}`,
     );
   }
 
@@ -194,7 +194,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
       ]).exec();
     } else {
       await new toolrunner.ToolRunner(
-        path.join(scriptsFolder, "install_tools.sh")
+        path.join(scriptsFolder, "install_tools.sh"),
       ).exec();
     }
     const script = "auto_install_packages.py";
@@ -218,7 +218,7 @@ export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
       `An error occurred while trying to automatically install Python dependencies: ${e}\n` +
         "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
         "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
-        "dependency installation and avoid this warning."
+        "dependency installation and avoid this warning.",
     );
     return;
   }

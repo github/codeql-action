@@ -43,7 +43,7 @@ function wrapOutput(context: TestContext) {
   return (
     chunk: Uint8Array | string,
     encoding?: string,
-    cb?: (err?: Error) => void
+    cb?: (err?: Error) => void,
   ): boolean => {
     // Work out which method overload we are in
     if (cb === undefined && typeof encoding === "function") {
@@ -88,7 +88,7 @@ export function setupTests(test: TestFn<any>) {
     // environment variable on Windows isn't preserved, i.e. `process.env.PATH`
     // is not the same as `process.env.Path`.
     const pathKeys = Object.keys(process.env).filter(
-      (k) => k.toLowerCase() === "path"
+      (k) => k.toLowerCase() === "path",
     );
     if (pathKeys.length > 0) {
       process.env.PATH = process.env[pathKeys[0]];
@@ -161,7 +161,7 @@ export function getRecordingLogger(messages: LoggedMessage[]): Logger {
 /** Mock the HTTP request to the feature flags enablement API endpoint. */
 export function mockFeatureFlagApiEndpoint(
   responseStatusCode: number,
-  response: { [flagName: string]: boolean }
+  response: { [flagName: string]: boolean },
 ) {
   // Passing an auth token is required, so we just use a dummy value
   const client = github.getOctokit("123");
@@ -169,7 +169,7 @@ export function mockFeatureFlagApiEndpoint(
   const requestSpy = sinon.stub(client, "request");
 
   const optInSpy = requestSpy.withArgs(
-    "GET /repos/:owner/:repo/code-scanning/codeql-action/features"
+    "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
   );
   if (responseStatusCode < 300) {
     optInSpy.resolves({
@@ -271,8 +271,8 @@ export function mockBundleDownloadApi({
       200,
       path.join(
         __dirname,
-        `/../src/testdata/codeql-bundle${isPinned ? "-pinned" : ""}.tar.gz`
-      )
+        `/../src/testdata/codeql-bundle${isPinned ? "-pinned" : ""}.tar.gz`,
+      ),
     );
 
   return `${baseUrl}${relativeUrl}`;

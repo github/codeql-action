@@ -61,12 +61,12 @@ test("getCombinedTracerConfig - with start-tracing.json environment file", async
     const tracingEnvironmentDir = path.join(
       config.dbLocation,
       "temp",
-      "tracingEnvironment"
+      "tracingEnvironment",
     );
     fs.mkdirSync(tracingEnvironmentDir, { recursive: true });
     const startTracingJson = path.join(
       tracingEnvironmentDir,
-      "start-tracing.json"
+      "start-tracing.json",
     );
     fs.writeFileSync(startTracingJson, JSON.stringify(startTracingEnv));
 
@@ -78,17 +78,17 @@ test("getCombinedTracerConfig - with start-tracing.json environment file", async
     if (process.platform === "win32") {
       expectedEnv["CODEQL_RUNNER"] = path.join(
         bundlePath,
-        "tools/win64/runner.exe"
+        "tools/win64/runner.exe",
       );
     } else if (process.platform === "darwin") {
       expectedEnv["CODEQL_RUNNER"] = path.join(
         bundlePath,
-        "tools/osx64/runner"
+        "tools/osx64/runner",
       );
     } else {
       expectedEnv["CODEQL_RUNNER"] = path.join(
         bundlePath,
-        "tools/linux64/runner"
+        "tools/linux64/runner",
       );
     }
 

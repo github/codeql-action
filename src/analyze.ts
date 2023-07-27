@@ -91,7 +91,7 @@ export interface QueriesStatusReport {
 async function setupPythonExtractor(
   logger: Logger,
   features: FeatureEnablement,
-  codeql: CodeQL
+  codeql: CodeQL,
 ) {
   const codeqlPython = process.env["CODEQL_PYTHON"];
   if (codeqlPython === undefined || codeqlPython.length === 0) {
@@ -102,12 +102,12 @@ async function setupPythonExtractor(
   if (
     await features.getValue(
       Feature.DisablePythonDependencyInstallationEnabled,
-      codeql
+      codeql,
     )
   ) {
     logger.warning(
       "We recommend that you remove the CODEQL_PYTHON environment variable from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
-        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'."
+        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'.",
     );
     return;
   }
@@ -126,7 +126,7 @@ async function setupPythonExtractor(
   await new toolrunner.ToolRunner(
     codeqlPython,
     [path.join(scriptsFolder, "find_site_packages.py")],
-    options
+    options,
   ).exec();
   logger.info(`Setting LGTM_INDEX_IMPORT_PATH=${output}`);
   process.env["LGTM_INDEX_IMPORT_PATH"] = output;
@@ -135,7 +135,7 @@ async function setupPythonExtractor(
   await new toolrunner.ToolRunner(
     codeqlPython,
     ["-c", "import sys; print(sys.version_info[0])"],
-    options
+    options,
   ).exec();
   logger.info(`Setting LGTM_PYTHON_SETUP_VERSION=${output}`);
   process.env["LGTM_PYTHON_SETUP_VERSION"] = output;
@@ -145,7 +145,7 @@ export async function createdDBForScannedLanguages(
   codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
-  features: FeatureEnablement
+  features: FeatureEnablement,
 ) {
   // Insert the LGTM_INDEX_X env vars at this point so they are set when
   // we extract any scanned languages.
@@ -171,17 +171,17 @@ export async function createdDBForScannedLanguages(
 export function dbIsFinalized(
   config: configUtils.Config,
   language: Language,
-  logger: Logger
+  logger: Logger,
 ) {
   const dbPath = util.getCodeQLDatabasePath(config, language);
   try {
     const dbInfo = yaml.load(
-      fs.readFileSync(path.resolve(dbPath, "codeql-database.yml"), "utf8")
+      fs.readFileSync(path.resolve(dbPath, "codeql-database.yml"), "utf8"),
     ) as { inProgress?: boolean };
     return !("inProgress" in dbInfo);
   } catch (e) {
     logger.warning(
-      `Could not check whether database for ${language} was finalized. Assuming it is not.`
+      `Could not check whether database for ${language} was finalized. Assuming it is not.`,
     );
     return false;
   }
@@ -192,7 +192,7 @@ async function finalizeDatabaseCreation(
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
-  features: FeatureEnablement
+  features: FeatureEnablement,
 ): Promise<DatabaseCreationTimings> {
   const codeql = await getCodeQL(config.codeQLCmd);
 
@@ -204,14 +204,14 @@ async function finalizeDatabaseCreation(
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
       logger.info(
-        `There is already a finalized database for ${language} at the location where the CodeQL Action places databases, so we did not create one.`
+        `There is already a finalized database for ${language} at the location where the CodeQL Action places databases, so we did not create one.`,
       );
     } else {
       logger.startGroup(`Finalizing ${language}`);
       await codeql.finalizeDatabase(
         util.getCodeQLDatabasePath(config, language),
         threadsFlag,
-        memoryFlag
+        memoryFlag,
       );
       logger.endGroup();
     }
@@ -233,7 +233,7 @@ export async function runQueries(
   automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger,
-  features: FeatureEnablement
+  features: FeatureEnablement,
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
@@ -245,7 +245,7 @@ export async function runQueries(
   for (const language of config.languages) {
     const queries = config.queries[language];
     const queryFilters = validateQueryFilters(
-      config.originalUserInput["query-filters"]
+      config.originalUserInput["query-filters"],
     );
     const packsWithVersion = config.packs[language] || [];
 
@@ -273,7 +273,7 @@ export async function runQueries(
           language,
           undefined,
           sarifFile,
-          config.debugMode
+          config.debugMode,
         );
         endTimeInterpretResults = new Date();
         statusReport[`interpret_results_${language}_duration_ms`] =
@@ -294,7 +294,7 @@ export async function runQueries(
           !hasPackWithCustomQueries
         ) {
           throw new Error(
-            `Unable to analyze ${language} as no queries were selected for this language`
+            `Unable to analyze ${language} as no queries were selected for this language`,
           );
         }
 
@@ -315,8 +315,8 @@ export async function runQueries(
               "builtin",
               createQuerySuiteContents(queries.builtin, queryFilters),
               undefined,
-              customQueryIndices.length === 0 && packsWithVersion.length === 0
-            )) as string
+              customQueryIndices.length === 0 && packsWithVersion.length === 0,
+            )) as string,
           );
           statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
             new Date().getTime() - startTimeBuiltIn;
@@ -331,8 +331,8 @@ export async function runQueries(
               createQuerySuiteContents(queries.custom[i].queries, queryFilters),
               queries.custom[i].searchPath,
               i === customQueryIndices[customQueryIndices.length - 1] &&
-                packsWithVersion.length === 0
-            )) as string
+                packsWithVersion.length === 0,
+            )) as string,
           );
           ranCustom = true;
         }
@@ -343,8 +343,8 @@ export async function runQueries(
               "packs",
               packsWithVersion,
               queryFilters,
-              true
-            )
+              true,
+            ),
           );
           ranCustom = true;
         }
@@ -359,7 +359,7 @@ export async function runQueries(
           language,
           querySuitePaths,
           sarifFile,
-          config.debugMode
+          config.debugMode,
         );
         endTimeInterpretResults = new Date();
         statusReport[`interpret_results_${language}_duration_ms`] =
@@ -397,7 +397,7 @@ export async function runQueries(
       statusReport.analyze_failure_language = language;
       throw new CodeQLAnalysisError(
         statusReport,
-        `Error running analysis for ${language}: ${e}`
+        `Error running analysis for ${language}: ${e}`,
       );
     }
   }
@@ -408,7 +408,7 @@ export async function runQueries(
     language: Language,
     queries: string[] | undefined,
     sarifFile: string,
-    enableDebugLogging: boolean
+    enableDebugLogging: boolean,
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     return await codeql.databaseInterpretResults(
@@ -421,18 +421,18 @@ export async function runQueries(
       automationDetailsId,
       config,
       features,
-      logger
+      logger,
     );
   }
 
   /** Get an object with all queries and their counts parsed from a SARIF file path. */
   function getPerQueryAlertCounts(
     sarifPath: string,
-    log: Logger
+    log: Logger,
   ): Record<string, number> {
     validateSarifFileSchema(sarifPath, log);
     const sarifObject = JSON.parse(
-      fs.readFileSync(sarifPath, "utf8")
+      fs.readFileSync(sarifPath, "utf8"),
     ) as util.SarifFile;
     // We do not need to compute fingerprints because we are not sending data based off of locations.
 
@@ -463,7 +463,7 @@ export async function runQueries(
     type: string,
     querySuiteContents: string | undefined,
     searchPath: string | undefined,
-    optimizeForLastQueryRun: boolean
+    optimizeForLastQueryRun: boolean,
   ): Promise<string | undefined> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     // Pass the queries to codeql using a file instead of using the command
@@ -474,7 +474,7 @@ export async function runQueries(
     if (querySuiteContents && querySuitePath) {
       fs.writeFileSync(querySuitePath, querySuiteContents);
       logger.debug(
-        `Query suite file for ${language}-${type}...\n${querySuiteContents}`
+        `Query suite file for ${language}-${type}...\n${querySuiteContents}`,
       );
     }
     await codeql.databaseRunQueries(
@@ -482,7 +482,7 @@ export async function runQueries(
       searchPath,
       querySuitePath,
       queryFlags,
-      optimizeForLastQueryRun
+      optimizeForLastQueryRun,
     );
 
     logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
@@ -493,7 +493,7 @@ export async function runQueries(
     type: string,
     packs: string[],
     queryFilters: configUtils.QueryFilter[],
-    optimizeForLastQueryRun: boolean
+    optimizeForLastQueryRun: boolean,
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
 
@@ -516,7 +516,7 @@ export async function runQueries(
       undefined,
       querySuitePath,
       queryFlags,
-      optimizeForLastQueryRun
+      optimizeForLastQueryRun,
     );
 
     return querySuitePath;
@@ -524,7 +524,7 @@ export async function runQueries(
 }
 
 export function convertPackToQuerySuiteEntry(
-  packStr: string
+  packStr: string,
 ): configUtils.QuerySuitePackEntry {
   const pack = configUtils.parsePacksSpecification(packStr);
   return {
@@ -542,10 +542,10 @@ export function convertPackToQuerySuiteEntry(
 
 export function createQuerySuiteContents(
   queries: string[],
-  queryFilters: configUtils.QueryFilter[]
+  queryFilters: configUtils.QueryFilter[],
 ) {
   return yaml.dump(
-    queries.map((q: string) => ({ query: q })).concat(queryFilters as any[])
+    queries.map((q: string) => ({ query: q })).concat(queryFilters as any[]),
   );
 }
 
@@ -555,7 +555,7 @@ export async function runFinalize(
   memoryFlag: string,
   config: configUtils.Config,
   logger: Logger,
-  features: FeatureEnablement
+  features: FeatureEnablement,
 ): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });
@@ -571,7 +571,7 @@ export async function runFinalize(
     threadsFlag,
     memoryFlag,
     logger,
-    features
+    features,
   );
 
   // WARNING: This does not _really_ end tracing, as the tracer will restore its
@@ -587,7 +587,7 @@ export async function runFinalize(
 export async function runCleanup(
   config: configUtils.Config,
   cleanupLevel: string,
-  logger: Logger
+  logger: Logger,
 ): Promise<void> {
   logger.startGroup("Cleaning up databases");
   for (const language of config.languages) {
@@ -606,7 +606,7 @@ export function validateQueryFilters(queryFilters?: configUtils.QueryFilter[]) {
 
   if (!Array.isArray(queryFilters)) {
     throw new Error(
-      `Query filters must be an array of "include" or "exclude" entries. Found ${typeof queryFilters}`
+      `Query filters must be an array of "include" or "exclude" entries. Found ${typeof queryFilters}`,
     );
   }
 
@@ -615,14 +615,14 @@ export function validateQueryFilters(queryFilters?: configUtils.QueryFilter[]) {
     const keys = Object.keys(qf);
     if (keys.length !== 1) {
       errors.push(
-        `Query filter must have exactly one key: ${JSON.stringify(qf)}`
+        `Query filter must have exactly one key: ${JSON.stringify(qf)}`,
       );
     }
     if (!["exclude", "include"].includes(keys[0])) {
       errors.push(
         `Only "include" or "exclude" filters are allowed:\n${JSON.stringify(
-          qf
-        )}`
+          qf,
+        )}`,
       );
     }
   }

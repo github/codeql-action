@@ -50,7 +50,7 @@ export function getTemporaryDirectory(): string {
  */
 export const getCommitOid = async function (
   checkoutPath: string,
-  ref = "HEAD"
+  ref = "HEAD",
 ): Promise<string> {
   // Try to use git to get the current commit SHA. If that fails then
   // log but otherwise silently fall back to using the SHA from the environment.
@@ -75,12 +75,12 @@ export const getCommitOid = async function (
           },
         },
         cwd: checkoutPath,
-      }
+      },
     ).exec();
     return commitOid.trim();
   } catch (e) {
     core.info(
-      "Could not determine current commit SHA using git. Continuing with data from user input or environment."
+      "Could not determine current commit SHA using git. Continuing with data from user input or environment.",
     );
     core.debug(`Reason: ${(e as Error).message}`);
     core.debug((e as Error).stack || "NO STACK");
@@ -129,7 +129,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
           },
         },
         cwd: checkoutPath,
-      }
+      },
     ).exec();
 
     // Let's confirm our assumptions: We had a merge commit and the parsed parent data looks correct
@@ -143,7 +143,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
     return undefined;
   } catch (e) {
     core.info(
-      `Failed to call git to determine merge base. Continuing with data from environment: ${e}`
+      `Failed to call git to determine merge base. Continuing with data from environment: ${e}`,
     );
     core.info((e as Error).stack || "NO STACK");
     return undefined;
@@ -168,7 +168,7 @@ export async function getRef(): Promise<string> {
   // If one of 'ref' or 'sha' are provided, both are required
   if ((hasRefInput || hasShaInput) && !(hasRefInput && hasShaInput)) {
     throw new Error(
-      "Both 'ref' and 'sha' are required if one of them is provided."
+      "Both 'ref' and 'sha' are required if one of them is provided.",
     );
   }
 
@@ -201,13 +201,13 @@ export async function getRef(): Promise<string> {
     sha !== head &&
     (await getCommitOid(
       checkoutPath,
-      ref.replace(/^refs\/pull\//, "refs/remotes/pull/")
+      ref.replace(/^refs\/pull\//, "refs/remotes/pull/"),
     )) !== head;
 
   if (hasChangedRef) {
     const newRef = ref.replace(pull_ref_regex, "refs/pull/$1/head");
     core.debug(
-      `No longer on merge commit, rewriting ref from ${ref} to ${newRef}.`
+      `No longer on merge commit, rewriting ref from ${ref} to ${newRef}.`,
     );
     return newRef;
   } else {
@@ -346,7 +346,7 @@ export interface DatabaseCreationTimings {
 
 export function getActionsStatus(
   error?: unknown,
-  otherFailureCause?: string
+  otherFailureCause?: string,
 ): ActionStatus {
   if (error || otherFailureCause) {
     return error instanceof UserError ? "user-error" : "failure";
@@ -397,7 +397,7 @@ function getWorkflowEvent(): any {
     return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));
   } catch (e) {
     throw new Error(
-      `Unable to read workflow event JSON from ${eventJsonFile}: ${e}`
+      `Unable to read workflow event JSON from ${eventJsonFile}: ${e}`,
     );
   }
 }
@@ -450,7 +450,7 @@ export async function printDebugLogs(config: Config) {
         if (entry.isFile()) {
           const absolutePath = path.resolve(dir, entry.name);
           core.startGroup(
-            `CodeQL Debug Logs - ${language} - ${entry.name} from file at path ${absolutePath}`
+            `CodeQL Debug Logs - ${language} - ${entry.name} from file at path ${absolutePath}`,
           );
           process.stdout.write(fs.readFileSync(absolutePath));
           core.endGroup();
@@ -482,7 +482,7 @@ export function getUploadValue(input: string | undefined): UploadKind {
       return "never";
     default:
       core.warning(
-        `Unrecognized 'upload' input to 'analyze' Action: ${input}. Defaulting to 'always'.`
+        `Unrecognized 'upload' input to 'analyze' Action: ${input}. Defaulting to 'always'.`,
       );
       return "always";
   }
@@ -496,12 +496,12 @@ export function getWorkflowRunID(): number {
   const workflowRunID = parseInt(workflowRunIdString, 10);
   if (Number.isNaN(workflowRunID)) {
     throw new Error(
-      `GITHUB_RUN_ID must define a non NaN workflow run ID. Current value is ${workflowRunIdString}`
+      `GITHUB_RUN_ID must define a non NaN workflow run ID. Current value is ${workflowRunIdString}`,
     );
   }
   if (workflowRunID < 0) {
     throw new Error(
-      `GITHUB_RUN_ID must be a non-negative integer. Current value is ${workflowRunIdString}`
+      `GITHUB_RUN_ID must be a non-negative integer. Current value is ${workflowRunIdString}`,
     );
   }
   return workflowRunID;
@@ -515,12 +515,12 @@ export function getWorkflowRunAttempt(): number {
   const workflowRunAttempt = parseInt(workflowRunAttemptString, 10);
   if (Number.isNaN(workflowRunAttempt)) {
     throw new Error(
-      `GITHUB_RUN_ATTEMPT must define a non NaN workflow run attempt. Current value is ${workflowRunAttemptString}`
+      `GITHUB_RUN_ATTEMPT must define a non NaN workflow run attempt. Current value is ${workflowRunAttemptString}`,
     );
   }
   if (workflowRunAttempt <= 0) {
     throw new Error(
-      `GITHUB_RUN_ATTEMPT must be a positive integer. Current value is ${workflowRunAttemptString}`
+      `GITHUB_RUN_ATTEMPT must be a positive integer. Current value is ${workflowRunAttemptString}`,
     );
   }
   return workflowRunAttempt;

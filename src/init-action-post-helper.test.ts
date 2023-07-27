@@ -40,7 +40,7 @@ test("post: init action with debug mode off", async (t) => {
       printDebugLogsSpy,
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     t.assert(uploadDatabaseBundleSpy.notCalled);
@@ -74,7 +74,7 @@ test("post: init action with debug mode on", async (t) => {
       printDebugLogsSpy,
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     t.assert(uploadDatabaseBundleSpy.called);
@@ -220,7 +220,7 @@ for (const { uploadInput, shouldUpload } of UPLOAD_INPUT_TEST_CASES) {
     if (!shouldUpload) {
       t.is(
         result.upload_failed_run_skipped_because,
-        "SARIF upload is disabled"
+        "SARIF upload is disabled",
       );
     }
   });
@@ -280,7 +280,7 @@ test("uploading failed SARIF run fails when workflow uses a complex upload input
   t.is(
     result.upload_failed_run_error,
     "Could not get upload input to github/codeql-action/analyze since it contained an " +
-      "unrecognized dynamic value."
+      "unrecognized dynamic value.",
   );
 });
 
@@ -297,13 +297,13 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
   t.is(
     result.upload_failed_run_error,
     "Could not get upload input to github/codeql-action/analyze since the analyze job does not " +
-      "call github/codeql-action/analyze."
+      "call github/codeql-action/analyze.",
   );
   t.truthy(result.upload_failed_run_stack_trace);
 });
 
 function createTestWorkflow(
-  steps: workflow.WorkflowJobStep[]
+  steps: workflow.WorkflowJobStep[],
 ): workflow.Workflow {
   return {
     name: "CodeQL",
@@ -340,7 +340,7 @@ async function testFailedSarifUpload(
     expectUpload?: boolean;
     exportDiagnosticsEnabled?: boolean;
     matrix?: { [key: string]: string };
-  } = {}
+  } = {},
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
   const config = {
     codeQLCmd: "codeql",
@@ -364,7 +364,7 @@ async function testFailedSarifUpload(
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
   const databaseExportDiagnosticsStub = sinon.stub(
     codeqlObject,
-    "databaseExportDiagnostics"
+    "databaseExportDiagnostics",
   );
   const diagnosticsExportStub = sinon.stub(codeqlObject, "diagnosticsExport");
 
@@ -386,7 +386,7 @@ async function testFailedSarifUpload(
     config,
     parseRepositoryNwo("github/codeql-action"),
     createFeatures(features),
-    getRunnerLogger(true)
+    getRunnerLogger(true),
   );
   if (expectUpload) {
     t.deepEqual(result, {
@@ -400,18 +400,18 @@ async function testFailedSarifUpload(
           sinon.match.string,
           category,
           sinon.match.any,
-          sinon.match.any
+          sinon.match.any,
         ),
-        `Actual args were: ${databaseExportDiagnosticsStub.args}`
+        `Actual args were: ${databaseExportDiagnosticsStub.args}`,
       );
     } else {
       t.true(
         diagnosticsExportStub.calledOnceWith(
           sinon.match.string,
           category,
-          config
+          config,
         ),
-        `Actual args were: ${diagnosticsExportStub.args}`
+        `Actual args were: ${diagnosticsExportStub.args}`,
       );
     }
     t.true(
@@ -419,14 +419,14 @@ async function testFailedSarifUpload(
         sinon.match.string,
         sinon.match.string,
         category,
-        sinon.match.any
+        sinon.match.any,
       ),
-      `Actual args were: ${uploadFromActions.args}`
+      `Actual args were: ${uploadFromActions.args}`,
     );
     t.true(
       waitForProcessing.calledOnceWith(sinon.match.any, "42", sinon.match.any, {
         isUnsuccessfulExecution: true,
-      })
+      }),
     );
   } else {
     t.true(diagnosticsExportStub.notCalled);

@@ -7,7 +7,7 @@ export async function runResolveBuildEnvironment(
   cmd: string,
   logger: Logger,
   workingDir: string | undefined,
-  language: Language
+  language: Language,
 ) {
   logger.startGroup(`Attempting to resolve build environment for ${language}`);
 
@@ -21,7 +21,7 @@ export async function runResolveBuildEnvironment(
   ) {
     logger.warning(
       "Unsupported CodeQL CLI version for `resolve build-environment` command, " +
-        "returning an empty configuration."
+        "returning an empty configuration.",
     );
   } else {
     if (workingDir !== undefined) {

@@ -43,13 +43,13 @@ async function runWrapper() {
     checkGitHubVersionInRange(gitHubVersion, logger);
 
     const repositoryNwo = parseRepositoryNwo(
-      getRequiredEnvParam("GITHUB_REPOSITORY")
+      getRequiredEnvParam("GITHUB_REPOSITORY"),
     );
     const features = new Features(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),
-      logger
+      logger,
     );
 
     uploadFailedSarifResult = await initActionPostHelper.run(
@@ -58,7 +58,7 @@ async function runWrapper() {
       printDebugLogs,
       repositoryNwo,
       features,
-      logger
+      logger,
     );
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
@@ -70,15 +70,15 @@ async function runWrapper() {
         getActionsStatus(error),
         startedAt,
         error.message,
-        error.stack
-      )
+        error.stack,
+      ),
     );
     return;
   }
   const statusReportBase = await createStatusReportBase(
     "init-post",
     "success",
-    startedAt
+    startedAt,
   );
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,

@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import path from "path";
 
+import { ExecOptions } from "@actions/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import * as safeWhich from "@chrisgavin/safe-which";
@@ -92,7 +93,7 @@ async function installIntoToolcache({
       ? { cliVersion, tagName }
       : SAMPLE_DEFAULT_CLI_VERSION,
     getRunnerLogger(true),
-    false
+    false,
   );
 }
 
@@ -151,7 +152,7 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
-        false
+        false,
       );
 
       t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
@@ -184,7 +185,7 @@ test("downloads an explicitly requested bundle even if a different version is ca
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
-      false
+      false,
     );
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
     t.deepEqual(result.toolsVersion, "0.0.0-20200610");
@@ -234,7 +235,7 @@ for (const {
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
-        false
+        false,
       );
       t.assert(releaseApiMock.isDone(), "Releases API should have been called");
       t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
@@ -271,13 +272,13 @@ for (const toolcacheVersion of [
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           getRunnerLogger(true),
-          false
+          false,
         );
         t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
         t.is(result.toolsSource, ToolsSource.Toolcache);
         t.is(result.toolsDownloadDurationMs, undefined);
       });
-    }
+    },
   );
 }
 
@@ -302,7 +303,7 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
           tagName: defaults.bundleVersion,
         },
         getRunnerLogger(true),
-        false
+        false,
       );
       t.deepEqual(result.toolsVersion, "0.0.0-20200601");
       t.is(result.toolsSource, ToolsSource.Toolcache);
@@ -336,7 +337,7 @@ for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
           tagName: defaults.bundleVersion,
         },
         getRunnerLogger(true),
-        false
+        false,
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
       t.is(result.toolsSource, ToolsSource.Download);
@@ -368,7 +369,7 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
-      false
+      false,
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
     t.is(result.toolsSource, ToolsSource.Download);
@@ -403,7 +404,7 @@ for (const isBundleVersionInUrl of [true, false]) {
 
       nock("https://example.githubenterprise.com")
         .get(
-          `/api/v3/enterprise/code-scanning/codeql-bundle/find/${defaults.bundleVersion}`
+          `/api/v3/enterprise/code-scanning/codeql-bundle/find/${defaults.bundleVersion}`,
         )
         .reply(200, {
           assets: { [codeQLBundleName]: bundleAssetID },
@@ -411,7 +412,7 @@ for (const isBundleVersionInUrl of [true, false]) {
 
       nock("https://example.githubenterprise.com")
         .get(
-          `/api/v3/enterprise/code-scanning/codeql-bundle/download/${bundleAssetID}`
+          `/api/v3/enterprise/code-scanning/codeql-bundle/download/${bundleAssetID}`,
         )
         .reply(200, {
           url: eventualDownloadUrl,
@@ -421,12 +422,12 @@ for (const isBundleVersionInUrl of [true, false]) {
         .get(
           eventualDownloadUrl.replace(
             "https://example.githubenterprise.com",
-            ""
-          )
+            "",
+          ),
         )
         .replyWithFile(
           200,
-          path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`)
+          path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`),
         );
 
       mockApiDetails(sampleGHAEApiDetails);
@@ -443,7 +444,7 @@ for (const isBundleVersionInUrl of [true, false]) {
           tagName: defaults.bundleVersion,
         },
         getRunnerLogger(true),
-        false
+        false,
       );
 
       t.is(result.toolsSource, ToolsSource.Download);
@@ -478,7 +479,7 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
-      false
+      false,
     );
 
     t.is(result.toolsVersion, "0.0.0-20230203");
@@ -500,7 +501,7 @@ test("getExtraOptions works for explicit paths", (t) => {
 
   t.deepEqual(
     codeql.getExtraOptions({ foo: { bar: [42] } }, ["foo", "bar"], []),
-    ["42"]
+    ["42"],
   );
 });
 
@@ -529,8 +530,8 @@ test("getExtraOptions throws for bad content", (t) => {
     codeql.getExtraOptions(
       { "*": [42], foo: { "*": 87, bar: [99] } },
       ["foo", "bar"],
-      []
-    )
+      [],
+    ),
   );
 });
 
@@ -558,13 +559,13 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
       undefined,
       createFeatures([]),
       "/path/to/qlconfig.yml",
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     const args = runnerConstructorStub.firstCall.args[1];
     // should NOT have used an config file
     const configArg = args.find((arg: string) =>
-      arg.startsWith("--codescanning-config=")
+      arg.startsWith("--codescanning-config="),
     );
     t.falsy(configArg, "Should NOT have injected a codescanning config");
   });
@@ -576,7 +577,7 @@ const injectedConfigMacro = test.macro({
     t: ExecutionContext<unknown>,
     augmentationProperties: AugmentationProperties,
     configOverride: Partial<Config>,
-    expectedConfig: any
+    expectedConfig: any,
   ) => {
     await util.withTmpDir(async (tempDir) => {
       const runnerConstructorStub = stubToolRunnerConstructor();
@@ -598,13 +599,13 @@ const injectedConfigMacro = test.macro({
         undefined,
         createFeatures([Feature.CliConfigFileEnabled]),
         undefined,
-        getRunnerLogger(true)
+        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as string[];
       // should have used an config file
       const configArg = args.find((arg: string) =>
-        arg.startsWith("--codescanning-config=")
+        arg.startsWith("--codescanning-config="),
       );
       t.truthy(configArg, "Should have injected a codescanning config");
       const configFile = configArg!.split("=")[1];
@@ -628,7 +629,7 @@ test(
     packsInputCombines: false,
   },
   {},
-  {}
+  {},
 );
 
 test(
@@ -642,7 +643,7 @@ test(
   {},
   {
     packs: ["codeql/javascript-experimental-atm-queries@~0.4.0"],
-  }
+  },
 );
 
 test(
@@ -665,7 +666,7 @@ test(
         "codeql/javascript-experimental-atm-queries@~0.4.0",
       ],
     },
-  }
+  },
 );
 
 test(
@@ -686,7 +687,7 @@ test(
       cpp: ["codeql/something-else"],
       javascript: ["codeql/javascript-experimental-atm-queries@~0.4.0"],
     },
-  }
+  },
 );
 
 test(
@@ -701,7 +702,7 @@ test(
   {},
   {
     packs: ["xxx", "yyy"],
-  }
+  },
 );
 
 test(
@@ -724,7 +725,7 @@ test(
     packs: {
       cpp: ["codeql/something-else", "xxx", "yyy"],
     },
-  }
+  },
 );
 
 test(
@@ -745,7 +746,7 @@ test(
   },
   {
     packs: ["xxx", "yyy"],
-  }
+  },
 );
 
 test(
@@ -766,7 +767,7 @@ test(
   },
   {
     packs: ["xxx", "yyy", "codeql/javascript-experimental-atm-queries@~0.4.0"],
-  }
+  },
 );
 
 // similar, but with queries
@@ -789,7 +790,7 @@ test(
         uses: "yyy",
       },
     ],
-  }
+  },
 );
 
 test(
@@ -815,7 +816,7 @@ test(
         uses: "yyy",
       },
     ],
-  }
+  },
 );
 
 test(
@@ -844,7 +845,7 @@ test(
         uses: "yyy",
       },
     ],
-  }
+  },
 );
 
 test(
@@ -866,7 +867,7 @@ test(
         uses: "yyy",
       },
     ],
-  }
+  },
 );
 
 test(
@@ -885,7 +886,7 @@ test(
       queries: [],
     },
   },
-  {}
+  {},
 );
 
 test("does not pass a code scanning config or qlconfig file to the CLI when CLI config passing is disabled", async (t: ExecutionContext<unknown>) => {
@@ -901,19 +902,19 @@ test("does not pass a code scanning config or qlconfig file to the CLI when CLI 
       undefined,
       createFeatures([]),
       "/path/to/qlconfig.yml",
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     const args = runnerConstructorStub.firstCall.args[1];
     // should not have used a config file
     const hasConfigArg = args.some((arg: string) =>
-      arg.startsWith("--codescanning-config=")
+      arg.startsWith("--codescanning-config="),
     );
     t.false(hasConfigArg, "Should NOT have injected a codescanning config");
 
     // should not have passed a qlconfig file
     const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig-file=")
+      arg.startsWith("--qlconfig-file="),
     );
     t.false(hasQlconfigArg, "Should NOT have passed a qlconfig file");
   });
@@ -933,19 +934,19 @@ test("passes a code scanning config AND qlconfig to the CLI when CLI config pass
       undefined,
       createFeatures([Feature.CliConfigFileEnabled]),
       "/path/to/qlconfig.yml",
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     const args = runnerConstructorStub.firstCall.args[1];
     // should have used a config file
     const hasCodeScanningConfigArg = args.some((arg: string) =>
-      arg.startsWith("--codescanning-config=")
+      arg.startsWith("--codescanning-config="),
     );
     t.true(hasCodeScanningConfigArg, "Should have injected a qlconfig");
 
     // should have passed a qlconfig file
     const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig-file=")
+      arg.startsWith("--qlconfig-file="),
     );
     t.truthy(hasQlconfigArg, "Should have injected a codescanning config");
   });
@@ -963,22 +964,22 @@ test("passes a code scanning config BUT NOT a qlconfig to the CLI when CLI confi
       undefined,
       createFeatures([Feature.CliConfigFileEnabled]),
       "/path/to/qlconfig.yml",
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     const args = runnerConstructorStub.firstCall.args[1] as any[];
     // should have used a config file
     const hasCodeScanningConfigArg = args.some((arg: string) =>
-      arg.startsWith("--codescanning-config=")
+      arg.startsWith("--codescanning-config="),
     );
     t.true(
       hasCodeScanningConfigArg,
-      "Should have injected a codescanning config"
+      "Should have injected a codescanning config",
     );
 
     // should not have passed a qlconfig file
     const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig-file=")
+      arg.startsWith("--qlconfig-file="),
     );
     t.false(hasQlconfigArg, "should NOT have injected a qlconfig");
   });
@@ -998,12 +999,12 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
       undefined,
       createFeatures([Feature.CliConfigFileEnabled]),
       undefined, // undefined qlconfigFile
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
 
     const args = runnerConstructorStub.firstCall.args[1] as any[];
     const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig-file=")
+      arg.startsWith("--qlconfig-file="),
     );
     t.false(hasQlconfigArg, "should NOT have injected a qlconfig");
   });
@@ -1025,13 +1026,13 @@ test("databaseInterpretResults() sets --sarif-add-baseline-file-info for 2.11.3"
     "",
     stubConfig,
     createFeatures([]),
-    getRunnerLogger(true)
+    getRunnerLogger(true),
   );
   t.true(
     runnerConstructorStub.firstCall.args[1].includes(
-      "--sarif-add-baseline-file-info"
+      "--sarif-add-baseline-file-info",
     ),
-    "--sarif-add-baseline-file-info should be present, but it is absent"
+    "--sarif-add-baseline-file-info should be present, but it is absent",
   );
 });
 
@@ -1051,13 +1052,13 @@ test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for
     "",
     stubConfig,
     createFeatures([]),
-    getRunnerLogger(true)
+    getRunnerLogger(true),
   );
   t.false(
     runnerConstructorStub.firstCall.args[1].includes(
-      "--sarif-add-baseline-file-info"
+      "--sarif-add-baseline-file-info",
     ),
-    "--sarif-add-baseline-file-info must be absent, but it is present"
+    "--sarif-add-baseline-file-info must be absent, but it is present",
   );
 });
 
@@ -1112,34 +1113,129 @@ for (const {
       "",
       stubConfig,
       createFeatures(featureEnabled ? [Feature.NewAnalysisSummaryEnabled] : []),
-      getRunnerLogger(true)
+      getRunnerLogger(true),
     );
     t.is(
       runnerConstructorStub.firstCall.args[1].includes(
-        "--new-analysis-summary"
+        "--new-analysis-summary",
       ),
       flagPassed,
-      `--new-analysis-summary should${flagPassed ? "" : "n't"} be passed`
+      `--new-analysis-summary should${flagPassed ? "" : "n't"} be passed`,
     );
     t.is(
       runnerConstructorStub.firstCall.args[1].includes(
-        "--no-new-analysis-summary"
+        "--no-new-analysis-summary",
       ),
       negativeFlagPassed,
       `--no-new-analysis-summary should${
         negativeFlagPassed ? "" : "n't"
-      } be passed`
+      } be passed`,
     );
   });
 }
 
-export function stubToolRunnerConstructor(): sinon.SinonStub<
-  any[],
-  toolrunner.ToolRunner
-> {
+test("database finalize recognises JavaScript no code found error on CodeQL 2.11.6", async (t) => {
+  stubToolRunnerConstructor(
+    1,
+    `2020-09-07T17:39:53.9050522Z [2020-09-07 17:39:53] [build] Done extracting /opt/hostedtoolcache/CodeQL/0.0.0-20200630/x64/codeql/javascript/tools/data/externs/web/ie_vml.js (3 ms)
+    2020-09-07T17:39:53.9051849Z [2020-09-07 17:39:53] [build-err] No JavaScript or TypeScript code found.
+    2020-09-07T17:39:53.9052444Z [2020-09-07 17:39:53] [build-err] No JavaScript or TypeScript code found.
+    2020-09-07T17:39:53.9251124Z [2020-09-07 17:39:53] [ERROR] Spawned process exited abnormally (code 255; tried to run: [/opt/hostedtoolcache/CodeQL/0.0.0-20200630/x64/codeql/javascript/tools/autobuild.sh])`,
+  );
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.11.6");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    {
+      message:
+        "No code found during the build. Please see: " +
+        "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+    },
+  );
+});
+
+test("database finalize overrides no code found error on CodeQL 2.11.6", async (t) => {
+  stubToolRunnerConstructor(32);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.11.6");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    {
+      message:
+        "No code found during the build. Please see: " +
+        "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+    },
+  );
+});
+
+test("database finalize does not override no code found error on CodeQL 2.12.4", async (t) => {
+  const cliMessage =
+    "CodeQL did not detect any code written in languages supported by CodeQL. Review our troubleshooting guide at " +
+    "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.";
+  stubToolRunnerConstructor(32, cliMessage);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.12.4");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () =>
+      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+    {
+      message:
+        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
+        `Exit code was 32 and error was: ${cliMessage}`,
+    },
+  );
+});
+
+test("runTool summarizes several fatal errors", async (t) => {
+  const heapError =
+    "A fatal error occurred: Evaluator heap must be at least 384.00 MiB";
+  const datasetImportError =
+    "A fatal error occurred: Dataset import for /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2";
+  const cliStderr =
+    `Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...\n` +
+    `${heapError}\n${datasetImportError}.`;
+  stubToolRunnerConstructor(32, cliStderr);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves("2.12.4");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () =>
+      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+    {
+      message:
+        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
+        `Exit code was 32 and error was: ${datasetImportError}. Context: ${heapError}.`,
+    },
+  );
+});
+
+export function stubToolRunnerConstructor(
+  exitCode: number = 0,
+  stderr?: string,
+): sinon.SinonStub<any[], toolrunner.ToolRunner> {
   const runnerObjectStub = sinon.createStubInstance(toolrunner.ToolRunner);
-  runnerObjectStub.exec.resolves(0);
   const runnerConstructorStub = sinon.stub(toolrunner, "ToolRunner");
-  runnerConstructorStub.returns(runnerObjectStub);
+  let stderrListener: ((data: Buffer) => void) | undefined = undefined;
+  runnerConstructorStub.callsFake((_cmd, _args, options: ExecOptions) => {
+    stderrListener = options.listeners?.stderr;
+    return runnerObjectStub;
+  });
+  runnerObjectStub.exec.callsFake(async () => {
+    if (stderrListener !== undefined && stderr !== undefined) {
+      stderrListener(Buffer.from(stderr));
+    }
+    return exitCode;
+  });
   return runnerConstructorStub;
 }

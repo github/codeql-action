@@ -342,6 +342,14 @@ async function run() {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 
+    if (await features.getValue(Feature.CodeqlJavaLombokEnabled)) {
+      logger.info("Enabling CodeQL Java Lombok support");
+      core.exportVariable("CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS", "true");
+    } else {
+      logger.info("Disabling CodeQL Java Lombok support");
+      core.exportVariable("CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS", "false");
+    }
+
     // Disable Python dependency extraction if feature flag set
     if (
       await features.getValue(

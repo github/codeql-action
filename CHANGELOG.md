@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.14.1. [#1797](https://github.com/github/codeql-action/pull/1797)
+- Avoid duplicating the analysis summary within the logs. [#1811](https://github.com/github/codeql-action/pull/1811)
 
 ## 2.21.1 - 26 Jul 2023
 

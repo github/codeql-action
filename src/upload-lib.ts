@@ -473,7 +473,7 @@ export async function waitForProcessing(
         break;
       } else if (status === "failed") {
         const message = `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`;
-        throw areProcessingErrorsUserError(response.data.errors as string[])
+        throw shouldConsiderAsUserError(response.data.errors as string[])
           ? new UserError(message)
           : new Error(message);
       } else {
@@ -489,7 +489,10 @@ export async function waitForProcessing(
   }
 }
 
-function areProcessingErrorsUserError(processingErrors: string[]): boolean {
+/**
+ * Returns whether the provided processing errors should be considered a user error.
+ */
+function shouldConsiderAsUserError(processingErrors: string[]): boolean {
   return (
     processingErrors.length === 1 &&
     processingErrors[0] ===

@@ -2,6 +2,11 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.21.2 - 28 Jul 2023
+
+- Update default CodeQL bundle version to 2.14.1. [#1797](https://github.com/github/codeql-action/pull/1797)
+- Avoid duplicating the analysis summary within the logs. [#1811](https://github.com/github/codeql-action/pull/1811)
+
 ## 2.21.1 - 26 Jul 2023
 
 - Improve the handling of fatal errors from the CodeQL CLI. [#1795](https://github.com/github/codeql-action/pull/1795)

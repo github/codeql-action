@@ -15,7 +15,7 @@ import * as fingerprints from "./fingerprints";
 import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as util from "./util";
-import { SarifFile, SarifResult, SarifRun, wrapError } from "./util";
+import { SarifFile, SarifResult, SarifRun, UserError, wrapError } from "./util";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
@@ -472,9 +472,10 @@ export async function waitForProcessing(
       } else if (status === "complete") {
         break;
       } else if (status === "failed") {
-        throw new Error(
-          `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`,
-        );
+        const message = `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`;
+        throw areProcessingErrorsUserError(response.data.errors as string[])
+          ? new UserError(message)
+          : new Error(message);
       } else {
         util.assertNever(status);
       }
@@ -486,6 +487,14 @@ export async function waitForProcessing(
   } finally {
     logger.endGroup();
   }
+}
+
+function areProcessingErrorsUserError(processingErrors: string[]): boolean {
+  return (
+    processingErrors.length === 1 &&
+    processingErrors[0] ===
+      "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled"
+  );
 }
 
 /**

@@ -388,7 +388,11 @@ export async function runQueries(
         statusReport["event_reports"].push(perQueryAlertCountEventReport);
       }
 
-      await runPrintLinesOfCode(language);
+      if (
+        !(await features.getValue(Feature.NewAnalysisSummaryEnabled, codeql))
+      ) {
+        await runPrintLinesOfCode(language);
+      }
     } catch (e) {
       logger.info(String(e));
       if (e instanceof Error) {

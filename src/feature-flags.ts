@@ -46,6 +46,7 @@ export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
+  EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   NewAnalysisSummaryEnabled = "new_analysis_summary_enabled",
@@ -67,6 +68,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.6",
     defaultValue: true,
+  },
+  [Feature.EvaluatorIntraLayerParallelismEnabled]: {
+    envVar: "CODEQL_EVALUATOR_INTRA_LAYER_PARALLELISM",
+    minimumVersion: "2.14.0",
+    defaultValue: false,
   },
   [Feature.ExportDiagnosticsEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",

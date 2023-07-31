@@ -487,6 +487,7 @@ export async function runQueries(
       querySuitePath,
       queryFlags,
       optimizeForLastQueryRun,
+      features,
     );
 
     logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
@@ -521,6 +522,7 @@ export async function runQueries(
       querySuitePath,
       queryFlags,
       optimizeForLastQueryRun,
+      features,
     );
 
     return querySuitePath;

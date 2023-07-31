@@ -160,6 +160,7 @@ export interface CodeQL {
     querySuitePath: string | undefined,
     flags: string[],
     optimizeForLastQueryRun: boolean,
+    features: FeatureEnablement,
   ): Promise<void>;
   /**
    * Run 'codeql database interpret-results'.
@@ -756,6 +757,7 @@ export async function getCodeQLForCmd(
       querySuitePath: string | undefined,
       flags: string[],
       optimizeForLastQueryRun: boolean,
+      features: FeatureEnablement,
     ): Promise<void> {
       const codeqlArgs = [
         "database",
@@ -777,6 +779,14 @@ export async function getCodeQLForCmd(
       }
       if (querySuitePath) {
         codeqlArgs.push(querySuitePath);
+      }
+      if (
+        await features.getValue(
+          Feature.EvaluatorIntraLayerParallelismEnabled,
+          this,
+        )
+      ) {
+        codeqlArgs.push("--intra-layer-parallelism");
       }
       await runTool(cmd, codeqlArgs);
     },

@@ -135,7 +135,7 @@ var $AsyncFromSyncIteratorPrototype = GetIntrinsic('%AsyncFromSyncIteratorProtot
 	}
 };
 
-// https://ecma-international.org/ecma-262/9.0/#sec-createasyncfromsynciterator
+// https://262.ecma-international.org/9.0/#sec-createasyncfromsynciterator
 
 module.exports = function CreateAsyncFromSyncIterator(syncIteratorRecord) {
 	assertRecord(Type, 'Iterator Record', 'syncIteratorRecord', syncIteratorRecord);

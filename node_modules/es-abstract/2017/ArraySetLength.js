@@ -19,7 +19,7 @@ var ToString = require('./ToString');
 var ToUint32 = require('./ToUint32');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-arraysetlength
+// https://262.ecma-international.org/6.0/#sec-arraysetlength
 
 // eslint-disable-next-line max-statements, max-lines-per-function
 module.exports = function ArraySetLength(A, Desc) {

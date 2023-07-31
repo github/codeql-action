@@ -11,7 +11,7 @@ var Get = require('./Get');
 var IsCallable = require('./IsCallable');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-regexpexec
+// https://262.ecma-international.org/6.0/#sec-regexpexec
 
 module.exports = function RegExpExec(R, S) {
 	if (Type(R) !== 'Object') {

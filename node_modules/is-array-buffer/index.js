@@ -35,7 +35,7 @@ module.exports = $byteLength || $abSlice
 			try {
 				return (new $Float32Array(obj)).buffer === obj && !isTypedArray(obj);
 			} catch (e) {
-				return false;
+				return typeof obj === 'object' && e.name === 'RangeError';
 			}
 		}
 		: function isArrayBuffer(obj) { // eslint-disable-line no-unused-vars

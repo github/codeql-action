@@ -8,7 +8,7 @@ var ToIntegerOrInfinity = require('./ToIntegerOrInfinity');
 var ToLength = require('./ToLength');
 var SameValue = require('./SameValue');
 
-// https://www.ecma-international.org/ecma-262/8.0/#sec-toindex
+// https://262.ecma-international.org/8.0/#sec-toindex
 
 module.exports = function ToIndex(value) {
 	if (typeof value === 'undefined') {

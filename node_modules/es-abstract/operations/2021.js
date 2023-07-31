@@ -1270,6 +1270,9 @@ module.exports = {
 	WeekDay: {
 		url: 'https://262.ecma-international.org/12.0/#sec-week-day'
 	},
+	WordCharacters: {
+		url: 'https://262.ecma-international.org/12.0/#sec-runtime-semantics-wordcharacters-abstract-operation'
+	},
 	YearFromTime: {
 		url: 'https://262.ecma-international.org/12.0/#eqn-YearFromTime'
 	},

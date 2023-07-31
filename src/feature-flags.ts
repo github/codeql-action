@@ -23,6 +23,11 @@ export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
  */
 export const CODEQL_VERSION_NEW_ANALYSIS_SUMMARY = "2.14.0";
 
+/**
+ * Versions 2.14.0+ of the CodeQL CLI support intra-layer parallelism (aka fine-grained parallelism) options.
+ */
+export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.0";
+
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
   tagName: string;
@@ -71,7 +76,7 @@ export const featureConfig: Record<
   },
   [Feature.EvaluatorIntraLayerParallelismEnabled]: {
     envVar: "CODEQL_EVALUATOR_INTRA_LAYER_PARALLELISM",
-    minimumVersion: "2.14.0",
+    minimumVersion: CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
     defaultValue: false,
   },
   [Feature.ExportDiagnosticsEnabled]: {

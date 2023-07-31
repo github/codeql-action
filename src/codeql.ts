@@ -10,6 +10,7 @@ import * as api from "./api-client";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
+  CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
   CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
   CodeQLDefaultVersionInfo,
   Feature,
@@ -787,6 +788,13 @@ export async function getCodeQLForCmd(
         )
       ) {
         codeqlArgs.push("--intra-layer-parallelism");
+      } else if (
+        await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
+        )
+      ) {
+        codeqlArgs.push("--no-intra-layer-parallelism");
       }
       await runTool(cmd, codeqlArgs);
     },

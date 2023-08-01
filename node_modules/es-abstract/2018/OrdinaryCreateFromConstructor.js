@@ -7,7 +7,7 @@ var GetPrototypeFromConstructor = require('./GetPrototypeFromConstructor');
 var IsArray = require('./IsArray');
 var ObjectCreate = require('./ObjectCreate');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-ordinarycreatefromconstructor
+// https://262.ecma-international.org/6.0/#sec-ordinarycreatefromconstructor
 
 module.exports = function OrdinaryCreateFromConstructor(constructor, intrinsicDefaultProto) {
 	GetIntrinsic(intrinsicDefaultProto); // throws if not a valid intrinsic

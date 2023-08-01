@@ -16,7 +16,6 @@ var ToString = require('./ToString');
 
 // https://262.ecma-international.org/11.0/#sec-flattenintoarray
 
-// eslint-disable-next-line max-params
 module.exports = function FlattenIntoArray(target, source, sourceLen, start, depth) {
 	var mapperFunction;
 	if (arguments.length > 5) {

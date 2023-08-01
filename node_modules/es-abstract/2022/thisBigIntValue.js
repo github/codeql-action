@@ -3,7 +3,7 @@
 var GetIntrinsic = require('get-intrinsic');
 var callBound = require('call-bind/callBound');
 
-var $TypeError = GetIntrinsic('%TypeError%');
+var $SyntaxError = GetIntrinsic('%SyntaxError%');
 var $bigIntValueOf = callBound('BigInt.prototype.valueOf', true);
 
 var Type = require('./Type');
@@ -16,7 +16,7 @@ module.exports = function thisBigIntValue(value) {
 		return value;
 	}
 	if (!$bigIntValueOf) {
-		throw new $TypeError('BigInt is not supported');
+		throw new $SyntaxError('BigInt is not supported');
 	}
 	return $bigIntValueOf(value);
 };

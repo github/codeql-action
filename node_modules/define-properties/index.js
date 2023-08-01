@@ -16,8 +16,14 @@ var hasPropertyDescriptors = require('has-property-descriptors')();
 var supportsDescriptors = origDefineProperty && hasPropertyDescriptors;
 
 var defineProperty = function (object, name, value, predicate) {
-	if (name in object && (!isFunction(predicate) || !predicate())) {
-		return;
+	if (name in object) {
+		if (predicate === true) {
+			if (object[name] === value) {
+				return;
+			}
+		} else if (!isFunction(predicate) || !predicate()) {
+			return;
+		}
 	}
 	if (supportsDescriptors) {
 		origDefineProperty(object, name, {

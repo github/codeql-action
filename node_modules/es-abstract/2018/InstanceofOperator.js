@@ -13,7 +13,7 @@ var OrdinaryHasInstance = require('./OrdinaryHasInstance');
 var ToBoolean = require('./ToBoolean');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-instanceofoperator
+// https://262.ecma-international.org/6.0/#sec-instanceofoperator
 
 module.exports = function InstanceofOperator(O, C) {
 	if (Type(O) !== 'Object') {

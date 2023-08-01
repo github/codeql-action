@@ -5,8 +5,8 @@ var callBound = require('call-bind/callBound');
 
 var $fromCharCode = GetIntrinsic('%String.fromCharCode%');
 var $TypeError = GetIntrinsic('%TypeError%');
-var $charCodeAt = callBound('%String.prototype.charCodeAt%');
-var $push = callBound('%Array.prototype.push%');
+var $charCodeAt = callBound('String.prototype.charCodeAt');
+var $push = callBound('Array.prototype.push');
 
 module.exports = function CharacterRange(A, B) {
 	if (A.length !== 1 || B.length !== 1) {

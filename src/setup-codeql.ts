@@ -560,7 +560,7 @@ export async function downloadCodeQL(
   );
 
   const toolsDownloadStart = performance.now();
-  const codeqlPath = await toolcache.downloadTool(
+  const archivedBundlePath = await toolcache.downloadTool(
     codeqlURL,
     dest,
     authorization,
@@ -571,20 +571,20 @@ export async function downloadCodeQL(
   );
 
   logger.debug(
-    `Finished downloading CodeQL bundle to ${codeqlPath} (${toolsDownloadDurationMs} ms).`,
+    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${toolsDownloadDurationMs} ms).`,
   );
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
-  const codeqlExtracted = await toolcache.extractTar(codeqlPath);
+  const extractedBundlePath = await toolcache.extractTar(archivedBundlePath);
   const extractionMs = Math.round(performance.now() - extractionStart);
   logger.debug(
-    `Finished extracting CodeQL bundle to ${codeqlExtracted} (${extractionMs} ms).`,
+    `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionMs} ms).`,
   );
 
   logger.debug("Cleaning up CodeQL bundle archive.");
   try {
-    await del(codeqlPath, { force: true });
+    await del(archivedBundlePath, { force: true });
     logger.debug("Deleted CodeQL bundle archive.");
   } catch (e) {
     logger.warning("Failed to delete CodeQL bundle archive.");
@@ -600,7 +600,7 @@ export async function downloadCodeQL(
     );
     return {
       toolsVersion: maybeCliVersion ?? "unknown",
-      codeqlFolder: codeqlExtracted,
+      codeqlFolder: extractedBundlePath,
       toolsDownloadDurationMs,
     };
   }
@@ -631,17 +631,17 @@ export async function downloadCodeQL(
     : convertToSemVer(bundleVersion, logger);
 
   logger.debug("Caching CodeQL bundle.");
-  const codeqlFolder = await toolcache.cacheDir(
-    codeqlExtracted,
+  const toolcachedBundlePath = await toolcache.cacheDir(
+    extractedBundlePath,
     "CodeQL",
     toolcacheVersion,
   );
 
-  // Safety check to make sure that we don't delete the bundle we're about to use.
-  if (codeqlFolder !== codeqlExtracted) {
+  // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
+  if (toolcachedBundlePath !== extractedBundlePath) {
     logger.debug("Cleaning up downloaded CodeQL bundle.");
     try {
-      await del(codeqlPath, { force: true });
+      await del(archivedBundlePath, { force: true });
       logger.debug("Deleted CodeQL bundle from temporary directory.");
     } catch (e) {
       logger.warning(
@@ -652,7 +652,7 @@ export async function downloadCodeQL(
 
   return {
     toolsVersion: maybeCliVersion ?? toolcacheVersion,
-    codeqlFolder,
+    codeqlFolder: toolcachedBundlePath,
     toolsDownloadDurationMs,
   };
 }

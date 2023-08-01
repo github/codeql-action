@@ -574,10 +574,15 @@ export async function downloadCodeQL(
     `Finished downloading CodeQL bundle to ${codeqlPath} (${toolsDownloadDurationMs} ms).`,
   );
 
+  logger.debug("Extracting CodeQL bundle.");
+  const extractionStart = performance.now();
   const codeqlExtracted = await toolcache.extractTar(codeqlPath);
+  const extractionMs = Math.round(performance.now() - extractionStart);
+  logger.debug(
+    `Finished extracting CodeQL bundle to ${codeqlExtracted} (${extractionMs} ms).`,
+  );
 
-  logger.debug(`Finished extracting CodeQL bundle to ${codeqlExtracted}.`);
-
+  logger.debug("Cleaning up CodeQL bundle archive.");
   try {
     await del(codeqlPath, { force: true });
     logger.debug("Deleted CodeQL bundle archive.");
@@ -624,13 +629,30 @@ export async function downloadCodeQL(
   const toolcacheVersion = maybeCliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)
     ? `${maybeCliVersion}-${bundleVersion}`
     : convertToSemVer(bundleVersion, logger);
+
+  logger.debug("Caching CodeQL bundle.");
+  const codeqlFolder = await toolcache.cacheDir(
+    codeqlExtracted,
+    "CodeQL",
+    toolcacheVersion,
+  );
+
+  // Safety check to make sure that we don't delete the bundle we're about to use.
+  if (codeqlFolder !== codeqlExtracted) {
+    logger.debug("Cleaning up downloaded CodeQL bundle.");
+    try {
+      await del(codeqlPath, { force: true });
+      logger.debug("Deleted CodeQL bundle from temporary directory.");
+    } catch (e) {
+      logger.warning(
+        "Failed to delete CodeQL bundle from temporary directory.",
+      );
+    }
+  }
+
   return {
     toolsVersion: maybeCliVersion ?? toolcacheVersion,
-    codeqlFolder: await toolcache.cacheDir(
-      codeqlExtracted,
-      "CodeQL",
-      toolcacheVersion,
-    ),
+    codeqlFolder,
     toolsDownloadDurationMs,
   };
 }

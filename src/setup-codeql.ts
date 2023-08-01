@@ -581,14 +581,7 @@ export async function downloadCodeQL(
   logger.debug(
     `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionMs} ms).`,
   );
-
-  logger.debug("Cleaning up CodeQL bundle archive.");
-  try {
-    await del(archivedBundlePath, { force: true });
-    logger.debug("Deleted CodeQL bundle archive.");
-  } catch (e) {
-    logger.warning("Failed to delete CodeQL bundle archive.");
-  }
+  await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
 
   const bundleVersion =
     maybeBundleVersion ?? tryGetBundleVersionFromUrl(codeqlURL, logger);
@@ -639,15 +632,11 @@ export async function downloadCodeQL(
 
   // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
   if (toolcachedBundlePath !== extractedBundlePath) {
-    logger.debug("Cleaning up downloaded CodeQL bundle.");
-    try {
-      await del(archivedBundlePath, { force: true });
-      logger.debug("Deleted CodeQL bundle from temporary directory.");
-    } catch (e) {
-      logger.warning(
-        "Failed to delete CodeQL bundle from temporary directory.",
-      );
-    }
+    await cleanUpGlob(
+      extractedBundlePath,
+      "CodeQL bundle from temporary directory",
+      logger,
+    );
   }
 
   return {
@@ -735,4 +724,22 @@ export async function setupCodeQLBundle(
       util.assertNever(source);
   }
   return { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion };
+}
+
+async function cleanUpGlob(glob: string, name: string, logger: Logger) {
+  logger.debug(`Cleaning up ${name}.`);
+  try {
+    const deletedPaths = await del(glob, { force: true });
+    if (deletedPaths.length === 0) {
+      logger.warning(
+        `Failed to clean up ${name}: no files found matching ${glob}.`,
+      );
+    } else if (deletedPaths.length === 1) {
+      logger.debug(`Cleaned up ${name}.`);
+    } else {
+      logger.debug(`Cleaned up ${name} (${deletedPaths.length} files).`);
+    }
+  } catch (e) {
+    logger.warning(`Failed to clean up ${name}: ${e}.`);
+  }
 }

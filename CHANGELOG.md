@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - We are rolling out a feature in August 2023 that will improve multi-threaded performance on larger runners. [#1817](https://github.com/github/codeql-action/pull/1817)
+- Reduce disk space usage when downloading the CodeQL bundle. [#1820](https://github.com/github/codeql-action/pull/1820)
 
 ## 2.21.2 - 28 Jul 2023
 

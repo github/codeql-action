@@ -8,7 +8,7 @@ var IsArray = require('./IsArray');
 
 var isByteValue = require('../helpers/isByteValue');
 
-// https://ecma-international.org/ecma-262/12.0/#sec-bytelistequal
+// https://262.ecma-international.org/12.0/#sec-bytelistequal
 
 module.exports = function ByteListEqual(xBytes, yBytes) {
 	if (!IsArray(xBytes) || !IsArray(yBytes)) {

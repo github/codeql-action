@@ -21,8 +21,10 @@ test('isArrayBuffer', function (t) {
 
 	t.test('actual ArrayBuffer instances', { skip: typeof ArrayBuffer === 'undefined' }, function (st) {
 		var ab = new ArrayBuffer();
-
 		st.equal(isArrayBuffer(ab), true, inspect(ab) + ' is an ArrayBuffer');
+
+		var ab42 = new ArrayBuffer(42);
+		st.equal(isArrayBuffer(ab42), true, inspect(ab42) + ' is an ArrayBuffer');
 
 		st.end();
 	});

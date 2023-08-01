@@ -11,7 +11,7 @@ var $push = callBound('Array.prototype.push');
 var CodePointAt = require('./CodePointAt');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/12.0/#sec-stringtocodepoints
+// https://262.ecma-international.org/12.0/#sec-stringtocodepoints
 
 module.exports = function StringToCodePoints(string) {
 	if (Type(string) !== 'String') {

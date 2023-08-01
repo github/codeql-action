@@ -8,7 +8,7 @@ var Type = require('./Type');
 
 var assertRecord = require('../helpers/assertRecord');
 
-// https://ecma-international.org/ecma-262/13.0/#sec-getmatchindexpair
+// https://262.ecma-international.org/13.0/#sec-getmatchindexpair
 
 module.exports = function GetMatchIndexPair(S, match) {
 	if (Type(S) !== 'String') {

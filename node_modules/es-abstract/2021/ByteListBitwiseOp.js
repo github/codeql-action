@@ -11,7 +11,7 @@ var IsArray = require('./IsArray');
 
 var isByteValue = require('../helpers/isByteValue');
 
-// https://ecma-international.org/ecma-262/12.0/#sec-bytelistbitwiseop
+// https://262.ecma-international.org/12.0/#sec-bytelistbitwiseop
 
 module.exports = function ByteListBitwiseOp(op, xBytes, yBytes) {
 	if (op !== '&' && op !== '^' && op !== '|') {

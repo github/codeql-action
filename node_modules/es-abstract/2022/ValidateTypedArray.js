@@ -5,7 +5,7 @@ var GetIntrinsic = require('get-intrinsic');
 var $TypeError = GetIntrinsic('%TypeError%');
 
 var callBound = require('call-bind/callBound');
-var $taSome = callBound('%TypedArray.prototype.some%', true);
+var $taSome = callBound('TypedArray.prototype.some', true);
 
 var Type = require('./Type');
 

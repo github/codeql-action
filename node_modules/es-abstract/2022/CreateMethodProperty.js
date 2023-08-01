@@ -12,7 +12,7 @@ var IsPropertyKey = require('./IsPropertyKey');
 var SameValue = require('./SameValue');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-createmethodproperty
+// https://262.ecma-international.org/6.0/#sec-createmethodproperty
 
 module.exports = function CreateMethodProperty(O, P, V) {
 	if (Type(O) !== 'Object') {

@@ -4,6 +4,7 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
+import del from "del";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -569,9 +570,20 @@ export async function downloadCodeQL(
     performance.now() - toolsDownloadStart,
   );
 
-  logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
+  logger.debug(
+    `Finished downloading CodeQL bundle to ${codeqlPath} (${toolsDownloadDurationMs} ms).`,
+  );
 
   const codeqlExtracted = await toolcache.extractTar(codeqlPath);
+
+  logger.debug(`Finished extracting CodeQL bundle to ${codeqlExtracted}.`);
+
+  try {
+    await del(codeqlPath, { force: true });
+    logger.debug("Deleted CodeQL bundle archive.");
+  } catch (e) {
+    logger.warning("Failed to delete CodeQL bundle archive.");
+  }
 
   const bundleVersion =
     maybeBundleVersion ?? tryGetBundleVersionFromUrl(codeqlURL, logger);

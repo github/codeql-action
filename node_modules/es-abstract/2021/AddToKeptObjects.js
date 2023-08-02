@@ -11,7 +11,7 @@ var Type = require('./Type');
 
 var $push = callBound('Array.prototype.push');
 
-// https://ecma-international.org/ecma-262/12.0/#sec-addtokeptobjects
+// https://262.ecma-international.org/12.0/#sec-addtokeptobjects
 
 module.exports = function AddToKeptObjects(object) {
 	if (Type(object) !== 'Object') {

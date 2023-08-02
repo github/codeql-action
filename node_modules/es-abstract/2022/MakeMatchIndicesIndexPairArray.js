@@ -25,7 +25,7 @@ var isMatchRecordOrUndefined = function isMatchRecordOrUndefined(m) {
 
 var MAX_ARRAY_LENGTH = Math.pow(2, 32) - 1;
 
-// https://ecma-international.org/ecma-262/13.0/#sec-getmatchindexpair
+// https://262.ecma-international.org/13.0/#sec-getmatchindexpair
 
 module.exports = function MakeMatchIndicesIndexPairArray(S, indices, groupNames, hasGroups) {
 	if (Type(S) !== 'String') {

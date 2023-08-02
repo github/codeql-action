@@ -35,9 +35,9 @@ var BigIntSignedRightShift = require('./BigInt/signedRightShift');
 var BigIntSubtract = require('./BigInt/subtract');
 var BigIntUnsignedRightShift = require('./BigInt/unsignedRightShift');
 
-// https://ecma-international.org/ecma-262/12.0/#sec-applystringornumericbinaryoperator
+// https://262.ecma-international.org/12.0/#sec-applystringornumericbinaryoperator
 
-// https://ecma-international.org/ecma-262/12.0/#step-applystringornumericbinaryoperator-operations-table
+// https://262.ecma-international.org/12.0/#step-applystringornumericbinaryoperator-operations-table
 var table = {
 	'**': [NumberExponentiate, BigIntExponentiate],
 	'*': [NumberMultiply, BigIntMultiply],

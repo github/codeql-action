@@ -58,7 +58,7 @@ jobs:
     - id: init
       uses: ./../action/init
       with:
-        tools: ./codeql-bundle.tar.gz
+        tools: ./codeql-bundle-linux64.tar.gz
     - uses: ./../action/.github/actions/setup-swift
       with:
         codeql-path: ${{ steps.init.outputs.codeql-path }}

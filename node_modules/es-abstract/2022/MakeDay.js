@@ -14,7 +14,7 @@ var MonthFromTime = require('./MonthFromTime');
 var ToIntegerOrInfinity = require('./ToIntegerOrInfinity');
 var YearFromTime = require('./YearFromTime');
 
-// https://ecma-international.org/ecma-262/5.1/#sec-15.9.1.12
+// https://262.ecma-international.org/5.1/#sec-15.9.1.12
 
 module.exports = function MakeDay(year, month, date) {
 	if (!$isFinite(year) || !$isFinite(month) || !$isFinite(date)) {

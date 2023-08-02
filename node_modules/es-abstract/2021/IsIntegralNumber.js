@@ -1,18 +1,9 @@
 'use strict';
 
-var abs = require('./abs');
-var floor = require('./floor');
-var Type = require('./Type');
+var isInteger = require('../helpers/isInteger');
 
-var $isNaN = require('../helpers/isNaN');
-var $isFinite = require('../helpers/isFinite');
-
-// https://tc39.es/ecma262/#sec-isintegralnumber
+// https://262.ecma-international.org/12.0/#sec-isinteger
 
 module.exports = function IsIntegralNumber(argument) {
-	if (Type(argument) !== 'Number' || $isNaN(argument) || !$isFinite(argument)) {
-		return false;
-	}
-	var absValue = abs(argument);
-	return floor(absValue) === absValue;
+	return isInteger(argument);
 };

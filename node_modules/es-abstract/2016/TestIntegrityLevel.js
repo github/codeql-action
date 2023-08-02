@@ -13,7 +13,7 @@ var IsExtensible = require('./IsExtensible');
 var ToPropertyDescriptor = require('./ToPropertyDescriptor');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-testintegritylevel
+// https://262.ecma-international.org/6.0/#sec-testintegritylevel
 
 module.exports = function TestIntegrityLevel(O, level) {
 	if (Type(O) !== 'Object') {

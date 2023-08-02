@@ -2,6 +2,7 @@
 
 var GetIntrinsic = require('get-intrinsic');
 
+var $SyntaxError = GetIntrinsic('%SyntaxError%');
 var $TypeError = GetIntrinsic('%TypeError%');
 
 var whichTypedArray = require('which-typed-array');
@@ -30,7 +31,7 @@ module.exports = function TypedArrayElementType(O) {
 	}
 	var result = table71['$' + type];
 	if (typeof result !== 'string') {
-		throw new $TypeError('Assertion failed: Unknown TypedArray type `' + type + '`');
+		throw new $SyntaxError('Assertion failed: Unknown TypedArray type `' + type + '`');
 	}
 
 	return result;

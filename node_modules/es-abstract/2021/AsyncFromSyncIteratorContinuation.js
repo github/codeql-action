@@ -16,7 +16,7 @@ var Type = require('./Type');
 
 var $then = callBound('Promise.prototype.then', true);
 
-// https://ecma-international.org/ecma-262/10.0/#sec-asyncfromsynciteratorcontinuation
+// https://262.ecma-international.org/10.0/#sec-asyncfromsynciteratorcontinuation
 
 module.exports = function AsyncFromSyncIteratorContinuation(result) {
 	if (Type(result) !== 'Object') {

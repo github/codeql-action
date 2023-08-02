@@ -16,7 +16,8 @@ var GetMethod = require('./GetMethod');
 var IsArray = require('./IsArray');
 var Type = require('./Type');
 
-// https://262.ecma-international.org/9.0/#sec-getiterator
+// https://262.ecma-international.org/11.0/#sec-getiterator
+
 module.exports = function GetIterator(obj, hint, method) {
 	var actualHint = hint;
 	if (arguments.length < 2) {

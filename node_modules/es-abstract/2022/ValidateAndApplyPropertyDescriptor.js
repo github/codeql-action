@@ -20,7 +20,7 @@ var Type = require('./Type');
 
 // see https://github.com/tc39/ecma262/pull/2468 for ES2022 changes
 
-// eslint-disable-next-line max-lines-per-function, max-statements, max-params
+// eslint-disable-next-line max-lines-per-function, max-statements
 module.exports = function ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current) {
 	var oType = Type(O);
 	if (oType !== 'Undefined' && oType !== 'Object') {

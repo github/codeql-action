@@ -12,7 +12,7 @@ var keys = require('object-keys');
 
 var esType = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-getownpropertykeys
+// https://262.ecma-international.org/6.0/#sec-getownpropertykeys
 
 module.exports = function GetOwnPropertyKeys(O, Type) {
 	if (esType(O) !== 'Object') {

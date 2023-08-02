@@ -32,11 +32,11 @@ jobs:
         - os: windows-latest
           version: latest
         - os: ubuntu-latest
-          version: cached
+          version: default
         - os: macos-latest
-          version: cached
+          version: default
         - os: windows-latest
-          version: cached
+          version: default
         - os: ubuntu-latest
           version: nightly-latest
         - os: macos-latest

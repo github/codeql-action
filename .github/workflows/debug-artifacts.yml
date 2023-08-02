@@ -29,7 +29,7 @@ jobs:
         - stable-20220908
         - stable-20221211
         - stable-20230418
-        - cached
+        - default
         - latest
         - nightly-latest
     name: Upload debug artifacts
@@ -74,7 +74,7 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20220615 stable-20220908 stable-20221211 stable-20230418 cached latest nightly-latest"
+          VERSIONS="stable-20220615 stable-20220908 stable-20221211 stable-20230418 default latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             for os in ubuntu-latest macos-latest; do

@@ -10,7 +10,7 @@ var $SymbolToString = callBound('Symbol.prototype.toString', true);
 
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-symboldescriptivestring
+// https://262.ecma-international.org/6.0/#sec-symboldescriptivestring
 
 module.exports = function SymbolDescriptiveString(sym) {
 	if (Type(sym) !== 'Symbol') {

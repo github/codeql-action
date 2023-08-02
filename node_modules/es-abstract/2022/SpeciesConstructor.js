@@ -8,7 +8,7 @@ var $TypeError = GetIntrinsic('%TypeError%');
 var IsConstructor = require('./IsConstructor');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-speciesconstructor
+// https://262.ecma-international.org/6.0/#sec-speciesconstructor
 
 module.exports = function SpeciesConstructor(O, defaultConstructor) {
 	if (Type(O) !== 'Object') {

@@ -8,7 +8,7 @@ var CreateDataProperty = require('./CreateDataProperty');
 var IsPropertyKey = require('./IsPropertyKey');
 var Type = require('./Type');
 
-// // https://ecma-international.org/ecma-262/6.0/#sec-createdatapropertyorthrow
+// // https://262.ecma-international.org/6.0/#sec-createdatapropertyorthrow
 
 module.exports = function CreateDataPropertyOrThrow(O, P, V) {
 	if (Type(O) !== 'Object') {

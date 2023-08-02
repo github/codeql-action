@@ -9,7 +9,7 @@ var ToNumber = require('./ToNumber');
 var ToString = require('./ToString');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-canonicalnumericindexstring
+// https://262.ecma-international.org/6.0/#sec-canonicalnumericindexstring
 
 module.exports = function CanonicalNumericIndexString(argument) {
 	if (Type(argument) !== 'String') {

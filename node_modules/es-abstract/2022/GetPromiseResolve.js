@@ -8,7 +8,7 @@ var Get = require('./Get');
 var IsCallable = require('./IsCallable');
 var IsConstructor = require('./IsConstructor');
 
-// https://ecma-international.org/ecma-262/12.0/#sec-getpromiseresolve
+// https://262.ecma-international.org/12.0/#sec-getpromiseresolve
 
 module.exports = function GetPromiseResolve(promiseConstructor) {
 	if (!IsConstructor(promiseConstructor)) {

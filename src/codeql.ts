@@ -10,6 +10,7 @@ import * as api from "./api-client";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
+  CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
   CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
   CodeQLDefaultVersionInfo,
   Feature,
@@ -160,6 +161,7 @@ export interface CodeQL {
     querySuitePath: string | undefined,
     flags: string[],
     optimizeForLastQueryRun: boolean,
+    features: FeatureEnablement,
   ): Promise<void>;
   /**
    * Run 'codeql database interpret-results'.
@@ -756,6 +758,7 @@ export async function getCodeQLForCmd(
       querySuitePath: string | undefined,
       flags: string[],
       optimizeForLastQueryRun: boolean,
+      features: FeatureEnablement,
     ): Promise<void> {
       const codeqlArgs = [
         "database",
@@ -777,6 +780,21 @@ export async function getCodeQLForCmd(
       }
       if (querySuitePath) {
         codeqlArgs.push(querySuitePath);
+      }
+      if (
+        await features.getValue(
+          Feature.EvaluatorIntraLayerParallelismEnabled,
+          this,
+        )
+      ) {
+        codeqlArgs.push("--intra-layer-parallelism");
+      } else if (
+        await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
+        )
+      ) {
+        codeqlArgs.push("--no-intra-layer-parallelism");
       }
       await runTool(cmd, codeqlArgs);
     },
@@ -843,14 +861,17 @@ export async function getCodeQLForCmd(
       if (querySuitePaths) {
         codeqlArgs.push(...querySuitePaths);
       }
-      // capture stdout, which contains analysis summaries
-      const returnState = await runTool(cmd, codeqlArgs);
+      // Capture the stdout, which contains the analysis summary. Don't stream it to the Actions
+      // logs to avoid printing it twice.
+      const analysisSummary = await runTool(cmd, codeqlArgs, {
+        noStreamStdout: true,
+      });
 
       if (shouldWorkaroundInvalidNotifications) {
         util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
       }
 
-      return returnState;
+      return analysisSummary;
     },
     async databasePrintBaseline(databasePath: string): Promise<string> {
       const codeqlArgs = [
@@ -1131,14 +1152,18 @@ const maxErrorSize = 20_000;
 async function runTool(
   cmd: string,
   args: string[] = [],
-  opts: { stdin?: string } = {},
+  opts: { stdin?: string; noStreamStdout?: boolean } = {},
 ) {
   let output = "";
   let error = "";
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
+    ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
         output += data.toString("utf8");
+        if (!opts.noStreamStdout) {
+          process.stdout.write(data);
+        }
       },
       stderr: (data: Buffer) => {
         let readStartIndex = 0;
@@ -1148,9 +1173,11 @@ async function runTool(
           readStartIndex = data.length - maxErrorSize + 1;
         }
         error += data.toString("utf8", readStartIndex);
+        // Mimic the standard behavior of the toolrunner by writing stderr to stdout
+        process.stdout.write(data);
       },
     },
-    ignoreReturnCode: true,
+    silent: true,
     ...(opts.stdin ? { input: Buffer.from(opts.stdin || "") } : {}),
   }).exec();
   if (exitCode !== 0) {

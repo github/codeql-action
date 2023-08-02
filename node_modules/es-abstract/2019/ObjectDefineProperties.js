@@ -3,7 +3,6 @@
 var callBound = require('call-bind/callBound');
 
 var DefinePropertyOrThrow = require('./DefinePropertyOrThrow');
-var FromPropertyDescriptor = require('./FromPropertyDescriptor');
 var Get = require('./Get');
 var ToObject = require('./ToObject');
 var ToPropertyDescriptor = require('./ToPropertyDescriptor');
@@ -32,7 +31,6 @@ module.exports = function ObjectDefineProperties(O, Properties) {
 	forEach(descriptors, function (pair) { // step 5
 		var P = pair[0]; // step 5.a
 		var desc = pair[1]; // step 5.b
-		desc = FromPropertyDescriptor(desc); // TODO: remove this once DefinePropertyOrThrow is fixed
 		DefinePropertyOrThrow(O, P, desc); // step 5.c
 	});
 

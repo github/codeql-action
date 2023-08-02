@@ -10,7 +10,7 @@ var IsArray = require('./IsArray');
 var forEach = require('../helpers/forEach');
 var isCodePoint = require('../helpers/isCodePoint');
 
-// https://ecma-international.org/ecma-262/12.0/#sec-codepointstostring
+// https://262.ecma-international.org/12.0/#sec-codepointstostring
 
 module.exports = function CodePointsToString(text) {
 	if (!IsArray(text)) {

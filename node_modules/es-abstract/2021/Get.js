@@ -9,7 +9,7 @@ var inspect = require('object-inspect');
 var IsPropertyKey = require('./IsPropertyKey');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-get-o-p
+// https://262.ecma-international.org/6.0/#sec-get-o-p
 
 module.exports = function Get(O, P) {
 	// 7.3.1.1

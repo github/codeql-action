@@ -15,7 +15,7 @@ var SLOT = require('internal-slot');
 
 var hasProto = require('has-proto')();
 
-// https://ecma-international.org/ecma-262/6.0/#sec-objectcreate
+// https://262.ecma-international.org/6.0/#sec-objectcreate
 
 module.exports = function ObjectCreate(proto, internalSlotsList) {
 	if (proto !== null && Type(proto) !== 'Object') {

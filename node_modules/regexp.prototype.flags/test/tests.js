@@ -4,7 +4,7 @@ var has = require('has');
 var inspect = require('object-inspect');
 var supportsDescriptors = require('define-properties').supportsDescriptors;
 
-var forEach = require('foreach');
+var forEach = require('for-each');
 var availableFlags = require('available-regexp-flags');
 var regexProperties = require('available-regexp-flags/properties');
 
@@ -48,10 +48,10 @@ module.exports = function runTests(flags, t) {
 			st.equal(flags(getRegexLiteral('/a/sgmi')), 'gims', 'flags(/a/sgmi) !== "gims"');
 		}
 
-		var randomFlags = availableFlags.slice().sort(function () { return Math.random() > 0.5 ? 1 : -1; }).join('');
+		var randomFlags = availableFlags.slice().sort(function () { return Math.random() > 0.5 ? 1 : -1; }).join('').replace('v', '');
 		st.equal(
 			flags(getRegexLiteral('/a/' + randomFlags)),
-			sortedFlags,
+			sortedFlags.replace('v', ''),
 			'random: flags(/a/' + randomFlags + ') === ' + inspect(sortedFlags)
 		);
 
@@ -76,9 +76,11 @@ module.exports = function runTests(flags, t) {
 
 		var obj = {};
 		forEach(availableFlags, function (flag) {
-			obj[regexProperties[flag]] = true;
+			if (flag !== 'v') {
+				obj[regexProperties[flag]] = true;
+			}
 		});
-		st.equal(flags(obj), sortedFlags, 'an object with every available flag: ' + sortedFlags);
+		st.equal(flags(obj), sortedFlags.replace('v', ''), 'an object with every available flag: ' + sortedFlags);
 
 		st.end();
 	});

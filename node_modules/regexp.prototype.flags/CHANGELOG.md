@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.5.0](https://github.com/es-shims/RegExp.prototype.flags/compare/v1.4.3...v1.5.0) - 2023-04-18
+
+### Commits
+
+- [meta] use `npmignore` to autogenerate an npmignore file [`f7438ad`](https://github.com/es-shims/RegExp.prototype.flags/commit/f7438ad3728128b99daaeb1d3133a40d906d3621)
+- [New] add `unicodeSets`/`v` flag [`f922170`](https://github.com/es-shims/RegExp.prototype.flags/commit/f92217039c9c86a61421ce69594e93a546721397)
+- [Dev Deps] update `@es-shims/api`, `@ljharb/eslint-config`, `aud`, `available-regexp-flags`, `object-inspect`, `tape` [`1203078`](https://github.com/es-shims/RegExp.prototype.flags/commit/12030785e6beb1f06c406a4731714012d93867e2)
+- [actions] update rebase action to use reusable workflow [`c562ea2`](https://github.com/es-shims/RegExp.prototype.flags/commit/c562ea20c27442ff30ce65091a313b5e49ae8515)
+- [Dev Deps] update `aud`, `object-inspect`, `tape` [`f3ae811`](https://github.com/es-shims/RegExp.prototype.flags/commit/f3ae81109dd08b200dce8bd52c183bc44662c3b4)
+- [Deps] update `define-properties`, `functions-have-names` [`2d0476e`](https://github.com/es-shims/RegExp.prototype.flags/commit/2d0476e5eba1e4a9b786f169f3be96c2f5a192b2)
+- [Tests] use `for-each` instead of `foreach` [`d9f30da`](https://github.com/es-shims/RegExp.prototype.flags/commit/d9f30dab65ff0185a8688c6e62dc1fe650879cc0)
+- [Deps] update `define-properties` [`81c1c20`](https://github.com/es-shims/RegExp.prototype.flags/commit/81c1c2012070c1f4480a9ab55bc0cff206152603)
+
 ## [v1.4.3](https://github.com/es-shims/RegExp.prototype.flags/compare/v1.4.2...v1.4.3) - 2022-04-14
 
 ### Commits

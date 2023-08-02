@@ -28,7 +28,7 @@ jobs:
         - os: ubuntu-latest
           version: latest
         - os: ubuntu-latest
-          version: cached
+          version: default
         - os: ubuntu-latest
           version: nightly-latest
     name: Submit SARIF after failure

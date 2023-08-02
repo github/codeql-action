@@ -1,6 +1,6 @@
 name: "Packaging: Config file"
 description: "Checks that specifying packages using only a config file works"
-versions: ["latest", "cached", "nightly-latest"] # This feature is not compatible with old CLIs
+versions: ["latest", "default", "nightly-latest"] # This feature is not compatible with old CLIs
 steps:
   - uses: ./../action/init
     with:

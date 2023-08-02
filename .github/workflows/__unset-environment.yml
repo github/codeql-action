@@ -34,7 +34,7 @@ jobs:
         - os: ubuntu-latest
           version: stable-20230418
         - os: ubuntu-latest
-          version: cached
+          version: default
         - os: ubuntu-latest
           version: latest
         - os: ubuntu-latest

@@ -1,6 +1,6 @@
 name: "Packaging: Action input"
 description: "Checks that specifying packages using the input to the Action works"
-versions: ["latest", "cached", "nightly-latest"] # This feature is not compatible with old CLIs
+versions: ["latest", "default", "nightly-latest"] # This feature is not compatible with old CLIs
 steps:
   - uses: ./../action/init
     with:

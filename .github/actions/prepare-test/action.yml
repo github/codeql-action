@@ -4,8 +4,8 @@ inputs:
   version:
     description: "The version of the CodeQL CLI to use. Can be 'latest', 'default', 'nightly-latest', 'nightly-YYYY-MM-DD', or 'stable-YYYY-MM-DD'."
     required: true
-  require-codeql-bundle-all:
-    description: "If true, we output a tools URL with codeql-bundle-all.tar.gz file rather than platform-specific URL"
+  use-all-platform-bundle:
+    description: "If true, we output a tools URL with codeql-bundle.tar.gz file rather than platform-specific URL"
     default: 'false'
     required: false
 outputs:

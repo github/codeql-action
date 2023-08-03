@@ -57,6 +57,7 @@ jobs:
       uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
+        use-all-platform-bundle: 'false'
     - name: Set environment variable for Swift enablement
       if: >-
         runner.os != 'Windows' && (

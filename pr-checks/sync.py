@@ -63,6 +63,10 @@ for file in os.listdir('checks'):
                 'version': version
             })
 
+        useAllPlatformBundle = "false" # Default to false
+        if checkSpecification.get('useAllPlatformBundle'):
+            useAllPlatformBundle = checkSpecification['useAllPlatformBundle']
+
     steps = [
         {
             'name': 'Check out repository',
@@ -73,7 +77,8 @@ for file in os.listdir('checks'):
             'id': 'prepare-test',
             'uses': './.github/actions/prepare-test',
             'with': {
-                'version': '${{ matrix.version }}'
+                'version': '${{ matrix.version }}',
+                'use-all-platform-bundle': useAllPlatformBundle
             }
         },
         # We don't support Swift on Windows or prior versions of the CLI.

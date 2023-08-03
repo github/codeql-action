@@ -35,8 +35,19 @@ runs:
           fi 
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
-
+    - name: Log disk info on Linux prior to setup-swift
+      shell: bash
+      run: |-
+          if ! hash sudo &> /dev/null; then apt-get update -q=2 && apt-get install sudo -y -q=2; fi;
+          sudo df -h
+      if: runner.os == 'Linux'
     - uses: swift-actions/setup-swift@65540b95f51493d65f5e59e97dcef9629ddf11bf # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
       if: runner.os != 'Windows' && steps.get_swift_version.outputs.version != 'null'
       with:
         swift-version: "${{ steps.get_swift_version.outputs.version }}"
+    - name: Log disk info on Linux after setup-swift
+      shell: bash
+      run: |-
+          if ! hash sudo &> /dev/null; then apt-get update -q=2 && apt-get install sudo -y -q=2; fi;
+          sudo df -h
+      if: runner.os == 'Linux'

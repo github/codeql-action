@@ -1,4 +1,4 @@
-name: "All -platform bundle"
+name: "All-platform bundle"
 description: "Tests using an all-platform CodeQL Bundle"
 versions: ["nightly-latest"]
 operatingSystems: ["ubuntu"]

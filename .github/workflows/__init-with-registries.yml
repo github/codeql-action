@@ -26,11 +26,11 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: cached
+          version: default
         - os: macos-latest
-          version: cached
+          version: default
         - os: windows-latest
-          version: cached
+          version: default
         - os: ubuntu-latest
           version: latest
         - os: macos-latest

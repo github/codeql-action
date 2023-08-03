@@ -26,7 +26,7 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: cached
+          version: default
     name: RuboCop multi-language
     permissions:
       contents: read

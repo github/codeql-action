@@ -6,7 +6,7 @@ name: "Packaging: Download using registries"
 description: "Checks that specifying a registries block and associated auth works as expected"
 versions: [
     # This feature is not compatible with older CLIs
-    "cached",
+    "default",
     "latest",
     "nightly-latest",
 ]

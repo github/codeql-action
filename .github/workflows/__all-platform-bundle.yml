@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: 'PR Check - Go: tracing with legacy workflow'
+name: PR Check - All-platform bundle
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,39 +21,13 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-tracing-legacy-workflow:
+  all-platform-bundle:
     strategy:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20220615
-        - os: macos-latest
-          version: stable-20220615
-        - os: ubuntu-latest
-          version: stable-20220908
-        - os: macos-latest
-          version: stable-20220908
-        - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: stable-20230418
-        - os: macos-latest
-          version: stable-20230418
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: ubuntu-latest
           version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
-    name: 'Go: tracing with legacy workflow'
+    name: All-platform bundle
     permissions:
       contents: read
       security-events: write
@@ -67,7 +41,7 @@ jobs:
       uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
+        use-all-platform-bundle: 'true'
     - name: Set environment variable for Swift enablement
       if: >-
         runner.os != 'Windows' && (
@@ -76,20 +50,18 @@ jobs:
         )
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
+    - id: init
+      uses: ./../action/init
       with:
-        languages: go
         tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/.github/actions/setup-swift
+      with:
+        codeql-path: ${{ steps.init.outputs.codeql-path }}
+    - name: Build code
+      shell: bash
+      run: ./build.sh
     - uses: ./../action/analyze
       with:
         upload-database: false
-    - shell: bash
-      run: |
-        cd "$RUNNER_TEMP/codeql_databases"
-        if [[ ! -d go ]]; then
-          echo "Did not find a Go database"
-          exit 1
-        fi
     env:
-      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       CODEQL_ACTION_TEST_MODE: true

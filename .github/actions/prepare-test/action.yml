@@ -28,7 +28,7 @@ runs:
       run: |
         set -e # Fail this Action if `gh release list` fails.
 
-        if [[ ${{ inputs.require-codeql-bundle-all }} == "true" ]]; then
+        if [[ ${{ inputs.use-all-platform-bundle }} == "true" ]]; then
           artifact_name="codeql-bundle.tar.gz"
         elif [[ "$RUNNER_OS" == "Linux" ]]; then
           artifact_name="codeql-bundle-linux64.tar.gz"

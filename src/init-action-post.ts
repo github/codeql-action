@@ -20,6 +20,7 @@ import {
   getActionsStatus,
 } from "./status-report";
 import {
+  checkDiskUsage,
   checkGitHubVersionInRange,
   getRequiredEnvParam,
   wrapError,
@@ -66,6 +67,7 @@ async function runWrapper() {
         "init-post",
         getActionsStatus(error),
         startedAt,
+        await checkDiskUsage(),
         error.message,
         error.stack,
       ),
@@ -76,6 +78,7 @@ async function runWrapper() {
     "init-post",
     "success",
     startedAt,
+    await checkDiskUsage(),
   );
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,

@@ -28,33 +28,31 @@ test("createStatusReportBase", async (t) => {
       "init",
       "failure",
       new Date("May 19, 2023 05:19:00"),
+      { numAvailableBytes: 100, numTotalBytes: 500 },
       "failure cause",
       "exception stack trace",
     );
 
-    t.assert(typeof statusReport.job_run_uuid === "string");
-    t.assert(statusReport.workflow_run_id === 100);
-    t.assert(statusReport.workflow_run_attempt === 2);
-    t.assert(
-      statusReport.workflow_name === (process.env["GITHUB_WORKFLOW"] || ""),
+    t.is(statusReport.action_name, "init");
+    t.is(statusReport.action_oid, "unknown");
+    t.is(typeof statusReport.action_version, "string");
+    t.is(
+      statusReport.action_started_at,
+      new Date("May 19, 2023 05:19:00").toISOString(),
     );
-    t.assert(statusReport.job_name === (process.env["GITHUB_JOB"] || ""));
-    t.assert(statusReport.analysis_key === "analysis-key");
-    t.assert(statusReport.commit_oid === process.env["GITHUB_SHA"]);
-    t.assert(statusReport.ref === process.env["GITHUB_REF"]);
-    t.assert(statusReport.action_name === "init");
-    t.assert(statusReport.action_oid === "unknown");
-    t.assert(
-      statusReport.started_at === process.env[EnvVar.WORKFLOW_STARTED_AT],
-    );
-    t.assert(
-      statusReport.action_started_at ===
-        new Date("May 19, 2023 05:19:00").toISOString(),
-    );
-    t.assert(statusReport.status === "failure");
-    t.assert(statusReport.cause === "failure cause");
-    t.assert(statusReport.exception === "exception stack trace");
-    t.assert(statusReport.runner_os === process.env["RUNNER_OS"]);
-    t.assert(typeof statusReport.action_version === "string");
+    t.is(statusReport.analysis_key, "analysis-key");
+    t.is(statusReport.cause, "failure cause");
+    t.is(statusReport.commit_oid, process.env["GITHUB_SHA"]);
+    t.is(statusReport.exception, "exception stack trace");
+    t.is(statusReport.job_name, process.env["GITHUB_JOB"] || "");
+    t.is(typeof statusReport.job_run_uuid, "string");
+    t.is(statusReport.ref, process.env["GITHUB_REF"]);
+    t.is(statusReport.runner_available_disk_space_bytes, 100);
+    t.is(statusReport.runner_os, process.env["RUNNER_OS"]);
+    t.is(statusReport.started_at, process.env[EnvVar.WORKFLOW_STARTED_AT]!);
+    t.is(statusReport.status, "failure");
+    t.is(statusReport.workflow_name, process.env["GITHUB_WORKFLOW"] || "");
+    t.is(statusReport.workflow_run_attempt, 2);
+    t.is(statusReport.workflow_run_id, 100);
   });
 });

@@ -10,7 +10,7 @@ import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
-import { getActionsLogger } from "./logging";
+import { Logger, getActionsLogger } from "./logging";
 import {
   StatusReportBase,
   getActionsStatus,
@@ -18,6 +18,7 @@ import {
   sendStatusReport,
 } from "./status-report";
 import {
+  checkDiskUsage,
   checkGitHubVersionInRange,
   initializeEnvironment,
   wrapError,
@@ -31,6 +32,7 @@ interface AutobuildStatusReport extends StatusReportBase {
 }
 
 async function sendCompletedStatusReport(
+  logger: Logger,
   startedAt: Date,
   allLanguages: string[],
   failingLanguage?: string,
@@ -43,6 +45,7 @@ async function sendCompletedStatusReport(
     "autobuild",
     status,
     startedAt,
+    await checkDiskUsage(logger),
     cause?.message,
     cause?.stack,
   );
@@ -62,7 +65,12 @@ async function run() {
   try {
     if (
       !(await sendStatusReport(
-        await createStatusReportBase("autobuild", "starting", startedAt),
+        await createStatusReportBase(
+          "autobuild",
+          "starting",
+          startedAt,
+          await checkDiskUsage(logger),
+        ),
       ))
     ) {
       return;
@@ -101,6 +109,7 @@ async function run() {
       `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps. ${error.message}`,
     );
     await sendCompletedStatusReport(
+      logger,
       startedAt,
       languages ?? [],
       currentLanguage,
@@ -109,7 +118,7 @@ async function run() {
     return;
   }
 
-  await sendCompletedStatusReport(startedAt, languages ?? []);
+  await sendCompletedStatusReport(logger, startedAt, languages ?? []);
 }
 
 async function runWrapper() {

@@ -316,6 +316,11 @@ export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 export const CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE = "2.12.4";
 
 /**
+ * Versions 2.13.1+ of the CodeQL CLI fix a bug where diagnostics export could produce invalid SARIF.
+ */
+export const CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED = "2.13.1";
+
+/**
  * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
  */
 export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
@@ -814,8 +819,9 @@ export async function getCodeQLForCmd(
         Feature.ExportDiagnosticsEnabled,
         this,
       );
-      // Update this to take into account the CodeQL version when we have a version with the fix.
-      const shouldWorkaroundInvalidNotifications = shouldExportDiagnostics;
+      const shouldWorkaroundInvalidNotifications =
+        shouldExportDiagnostics &&
+        !(await isDiagnosticsExportInvalidSarifFixed(this));
       const codeqlOutputFile = shouldWorkaroundInvalidNotifications
         ? path.join(config.tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;
@@ -970,8 +976,8 @@ export async function getCodeQLForCmd(
       tempDir: string,
       logger: Logger,
     ): Promise<void> {
-      // Update this to take into account the CodeQL version when we have a version with the fix.
-      const shouldWorkaroundInvalidNotifications = true;
+      const shouldWorkaroundInvalidNotifications =
+        !(await isDiagnosticsExportInvalidSarifFixed(this));
       const codeqlOutputFile = shouldWorkaroundInvalidNotifications
         ? path.join(tempDir, "codeql-intermediate-results.sarif")
         : sarifFile;
@@ -1412,4 +1418,13 @@ function isNoCodeFoundError(e: CommandInvocationError): boolean {
   const javascriptNoCodeFoundWarning =
     "No JavaScript or TypeScript code found.";
   return e.exitCode === 32 || e.error.includes(javascriptNoCodeFoundWarning);
+}
+
+async function isDiagnosticsExportInvalidSarifFixed(
+  codeql: CodeQL,
+): Promise<boolean> {
+  return await util.codeQlVersionAbove(
+    codeql,
+    CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED,
+  );
 }

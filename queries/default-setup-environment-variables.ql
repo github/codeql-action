@@ -43,6 +43,7 @@ predicate envVarRead(DataFlow::Node node, string envVar) {
 from DataFlow::Node read, string envVar
 where
   envVarRead(read, envVar) and
+  not read.getFile().getBaseName().matches("%.test.ts") and
   not isSafeForDefaultSetup(envVar)
 select read,
   "The environment variable " + envVar +

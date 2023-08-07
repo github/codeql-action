@@ -1,22 +1,22 @@
 import * as core from "@actions/core";
 
 import {
-  getActionsStatus,
   getActionVersion,
   getOptionalInput,
   getTemporaryDirectory,
-  StatusReportBase,
 } from "./actions-util";
-import {
-  createStatusReportBase,
-  getGitHubVersion,
-  sendStatusReport,
-} from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
+import {
+  StatusReportBase,
+  getActionsStatus,
+  createStatusReportBase,
+  sendStatusReport,
+} from "./status-report";
 import {
   checkGitHubVersionInRange,
   initializeEnvironment,

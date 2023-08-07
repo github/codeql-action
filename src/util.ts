@@ -14,6 +14,7 @@ import type { Config, Pack } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import { getDiskInfo } from "node-disk-info";
 
 /**
  * Specifies bundle versions that are known to be broken
@@ -843,4 +844,8 @@ export function prettyPrintPack(pack: Pack) {
   return `${pack.name}${pack.version ? `@${pack.version}` : ""}${
     pack.path ? `:${pack.path}` : ""
   }`;
+}
+
+export async function checkDiskUsage() {
+  const diskUsage = awgetDiskInfo
 }

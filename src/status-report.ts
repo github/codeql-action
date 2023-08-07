@@ -23,20 +23,45 @@ import {
 } from "./util";
 
 export type ActionName =
-  | "init"
   | "autobuild"
   | "finish"
-  | "upload-sarif"
+  | "init"
   | "init-post"
-  | "resolve-environment";
+  | "resolve-environment"
+  | "upload-sarif";
+
 export type ActionStatus =
-  | "starting"
   | "aborted"
-  | "success"
   | "failure"
+  | "starting"
+  | "success"
   | "user-error";
 
 export interface StatusReportBase {
+  /** Name of the action being executed. */
+  action_name: ActionName;
+  /** Version of the action being executed, as a commit oid. */
+  action_oid: string;
+  /** Version of the action being executed, as a ref. */
+  action_ref?: string;
+  /** Time this action started. */
+  action_started_at: string;
+  /** Action version (x.y.z from package.json). */
+  action_version: string;
+  /** Analysis key, normally composed from the workflow path and job name. */
+  analysis_key: string;
+  /** Cause of the failure (or undefined if status is not failure). */
+  cause?: string;
+  /** CodeQL CLI version (x.y.z from the CLI). */
+  codeql_version?: string;
+  /** Commit oid that the workflow was triggered on. */
+  commit_oid: string;
+  /** Time this action completed, or undefined if not yet completed. */
+  completed_at?: string;
+  /** Stack trace of the failure (or undefined if status is not failure). */
+  exception?: string;
+  /** Job name from the workflow. */
+  job_name: string;
   /**
    * UUID representing the job run that this status report belongs to. We
    * generate our own UUID here because Actions currently does not expose a
@@ -49,34 +74,32 @@ export interface StatusReportBase {
    * telemetry tables.
    */
   job_run_uuid: string;
-  /** ID of the workflow run containing the action run. */
-  workflow_run_id: number;
-  /** Attempt number of the run containing the action run. */
-  workflow_run_attempt: number;
-  /** Workflow name. Converted to analysis_name further down the pipeline.. */
-  workflow_name: string;
-  /** Job name from the workflow. */
-  job_name: string;
-  /** Analysis key, normally composed from the workflow path and job name. */
-  analysis_key: string;
   /** Value of the matrix for this instantiation of the job. */
   matrix_vars?: string;
-  /** Commit oid that the workflow was triggered on. */
-  commit_oid: string;
+  /**
+   * Information about the enablement of the ML-powered JS query pack.
+   *
+   * @see {@link util.getMlPoweredJsQueriesStatus}
+   */
+  ml_powered_javascript_queries?: string;
   /** Ref that the workflow was triggered on. */
   ref: string;
-  /** Name of the action being executed. */
-  action_name: ActionName;
-  /** Version of the action being executed, as a ref. */
-  action_ref?: string;
-  /** Version of the action being executed, as a commit oid. */
-  action_oid: string;
+  /** Action runner hardware architecture (context runner.arch). */
+  runner_arch?: string;
+  /** Available disk space on the runner, in bytes. */
+  runner_available_disk_space_bytes: number;
+  /**
+   * Version of the runner image, for workflows running on GitHub-hosted runners. Absent otherwise.
+   */
+  runner_image_version?: string;
+  /** Action runner operating system (context runner.os). */
+  runner_os: string;
+  /** Action runner operating system release (x.y.z from os.release()). */
+  runner_os_release?: string;
+  /** Total disk space on the runner, in bytes. */
+  runner_total_disk_space_bytes: number;
   /** Time the first action started. Normally the init action. */
   started_at: string;
-  /** Time this action started. */
-  action_started_at: string;
-  /** Time this action completed, or undefined if not yet completed. */
-  completed_at?: string;
   /** State this action is currently in. */
   status: ActionStatus;
   /**
@@ -85,26 +108,12 @@ export interface StatusReportBase {
    *  `["", "qa-rc", "qa-rc-1", "qa-rc-2", "qa-experiment-1", "qa-experiment-2", "qa-experiment-3"]`.
    */
   testing_environment: string;
-  /**
-   * Information about the enablement of the ML-powered JS query pack.
-   *
-   * @see {@link util.getMlPoweredJsQueriesStatus}
-   */
-  ml_powered_javascript_queries?: string;
-  /** Cause of the failure (or undefined if status is not failure). */
-  cause?: string;
-  /** Stack trace of the failure (or undefined if status is not failure). */
-  exception?: string;
-  /** Action runner operating system (context runner.os). */
-  runner_os: string;
-  /** Action runner hardware architecture (context runner.arch). */
-  runner_arch?: string;
-  /** Action runner operating system release (x.y.z from os.release()). */
-  runner_os_release?: string;
-  /** Action version (x.y.z from package.json). */
-  action_version: string;
-  /** CodeQL CLI version (x.y.z from the CLI). */
-  codeql_version?: string;
+  /** Workflow name. Converted to analysis_name further down the pipeline.. */
+  workflow_name: string;
+  /** Attempt number of the run containing the action run. */
+  workflow_run_attempt: number;
+  /** ID of the workflow run containing the action run. */
+  workflow_run_id: number;
 }
 
 export interface DatabaseCreationTimings {
@@ -125,12 +134,10 @@ export function getActionsStatus(
 
 // Any status report may include an array of EventReports associated with it.
 export interface EventReport {
-  /** An enumerable description of the event. */
-  event: string;
-  /** Time this event started. */
-  started_at: string;
   /** Time this event ended. */
   completed_at: string;
+  /** An enumerable description of the event. */
+  event: string;
   /** eg: `success`, `failure`, `timeout`, etc. */
   exit_status?: string;
   /** If the event is language-specific. */
@@ -140,6 +147,8 @@ export interface EventReport {
    * Use Object.assign() to append additional fields to the object.
    */
   properties?: object;
+  /** Time this event started. */
+  started_at: string;
 }
 
 /**

@@ -52,7 +52,7 @@ interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
   trap_cache_upload_duration_ms: number;
 }
 
-export async function sendStatusReport(
+async function sendStatusReport(
   startedAt: Date,
   config: Config | undefined,
   stats: AnalysisStatusReport | undefined,
@@ -67,6 +67,7 @@ export async function sendStatusReport(
     "finish",
     status,
     startedAt,
+    await util.checkDiskUsage(),
     error?.message,
     error?.stack,
   );
@@ -184,7 +185,12 @@ async function run() {
   try {
     if (
       !(await statusReport.sendStatusReport(
-        await createStatusReportBase("finish", "starting", startedAt),
+        await createStatusReportBase(
+          "finish",
+          "starting",
+          startedAt,
+          await util.checkDiskUsage(logger),
+        ),
       ))
     ) {
       return;

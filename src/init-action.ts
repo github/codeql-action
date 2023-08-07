@@ -28,6 +28,7 @@ import {
 } from "./status-report";
 import { getTotalCacheSize } from "./trap-caching";
 import {
+  checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
   DEFAULT_DEBUG_ARTIFACT_NAME,
@@ -102,6 +103,7 @@ async function sendCompletedStatusReport(
     "init",
     getActionsStatus(error),
     startedAt,
+    await checkDiskUsage(logger),
     error?.message,
     error?.stack,
   );
@@ -222,6 +224,7 @@ async function run() {
           "init",
           "starting",
           startedAt,
+          await checkDiskUsage(logger),
           workflowErrors,
         ),
       ))
@@ -302,6 +305,7 @@ async function run() {
         "init",
         error instanceof UserError ? "user-error" : "aborted",
         startedAt,
+        await checkDiskUsage(),
         error.message,
         error.stack,
       ),

@@ -20,6 +20,7 @@ import {
   getCachedCodeQlVersion,
   isInTestMode,
   GITHUB_DOTCOM_URL,
+  DiskUsage,
 } from "./util";
 
 export type ActionName =
@@ -88,10 +89,6 @@ export interface StatusReportBase {
   runner_arch?: string;
   /** Available disk space on the runner, in bytes. */
   runner_available_disk_space_bytes: number;
-  /**
-   * Version of the runner image, for workflows running on GitHub-hosted runners. Absent otherwise.
-   */
-  runner_image_version?: string;
   /** Action runner operating system (context runner.os). */
   runner_os: string;
   /** Action runner operating system release (x.y.z from os.release()). */
@@ -164,6 +161,7 @@ export async function createStatusReportBase(
   actionName: ActionName,
   status: ActionStatus,
   actionStartedAt: Date,
+  diskInfo: DiskUsage,
   cause?: string,
   exception?: string,
 ): Promise<StatusReportBase> {
@@ -191,23 +189,25 @@ export async function createStatusReportBase(
   }
 
   const statusReport: StatusReportBase = {
-    job_run_uuid: jobRunUUID,
-    workflow_run_id: workflowRunID,
-    workflow_run_attempt: workflowRunAttempt,
-    workflow_name: workflowName,
-    job_name: jobName,
+    action_name: actionName,
+    action_oid: "unknown", // TODO decide if it's possible to fill this in
+    action_ref: actionRef,
+    action_started_at: actionStartedAt.toISOString(),
+    action_version: getActionVersion(),
     analysis_key,
     commit_oid: commitOid,
+    job_name: jobName,
+    job_run_uuid: jobRunUUID,
     ref,
-    action_name: actionName,
-    action_ref: actionRef,
-    action_oid: "unknown", // TODO decide if it's possible to fill this in
+    runner_available_disk_space_bytes: diskInfo.numAvailableBytes,
+    runner_os: runnerOs,
+    runner_total_disk_space_bytes: diskInfo.numTotalBytes,
     started_at: workflowStartedAt,
-    action_started_at: actionStartedAt.toISOString(),
     status,
     testing_environment: testingEnvironment,
-    runner_os: runnerOs,
-    action_version: getActionVersion(),
+    workflow_name: workflowName,
+    workflow_run_attempt: workflowRunAttempt,
+    workflow_run_id: workflowRunID,
   };
 
   // Add optional parameters

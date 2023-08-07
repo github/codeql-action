@@ -2,9 +2,14 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionVersion } from "./actions-util";
-import { createStatusReportBase, sendStatusReport } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import {
+  createStatusReportBase,
+  sendStatusReport,
+  StatusReportBase,
+  getActionsStatus,
+} from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
   getRequiredEnvParam,
@@ -14,7 +19,7 @@ import {
 } from "./util";
 
 interface UploadSarifStatusReport
-  extends actionsUtil.StatusReportBase,
+  extends StatusReportBase,
     upload_lib.UploadStatusReport {}
 
 async function sendSuccessStatusReport(
@@ -72,7 +77,7 @@ async function run() {
     await sendStatusReport(
       await createStatusReportBase(
         "upload-sarif",
-        actionsUtil.getActionsStatus(error),
+        getActionsStatus(error),
         startedAt,
         message,
         error.stack,

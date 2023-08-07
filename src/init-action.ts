@@ -4,18 +4,12 @@ import * as core from "@actions/core";
 import { v4 as uuidV4 } from "uuid";
 
 import {
-  getActionsStatus,
   getActionVersion,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  StatusReportBase,
 } from "./actions-util";
-import {
-  createStatusReportBase,
-  getGitHubVersion,
-  sendStatusReport,
-} from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { getMlPoweredJsQueriesStatus } from "./config-utils";
@@ -26,6 +20,12 @@ import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
+import {
+  StatusReportBase,
+  createStatusReportBase,
+  getActionsStatus,
+  sendStatusReport,
+} from "./status-report";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkForTimeout,

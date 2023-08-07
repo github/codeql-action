@@ -1,21 +1,21 @@
 import * as core from "@actions/core";
 
 import {
-  getActionsStatus,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
 } from "./actions-util";
-import {
-  createStatusReportBase,
-  getGitHubVersion,
-  sendStatusReport,
-} from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { CommandInvocationError } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language, resolveAlias } from "./languages";
 import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
+import {
+  sendStatusReport,
+  createStatusReportBase,
+  getActionsStatus,
+} from "./status-report";
 import { checkForTimeout, checkGitHubVersionInRange, wrapError } from "./util";
 
 const ACTION_NAME = "resolve-environment";

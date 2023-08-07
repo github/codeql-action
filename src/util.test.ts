@@ -53,14 +53,14 @@ const GET_MEMORY_FLAG_TESTS = [
     totalMemoryMb: 64 * 1024,
     platform: "linux",
     expectedMemoryValue: 63 * 1024,
-    expectedMemoryValueWithScaling: 63078, // Math.floor(1024 * (64 - 1 - 0.025 * (64 - 8)))
+    expectedMemoryValueWithScaling: 61644, // Math.floor(1024 * (64 - 1 - 0.05 * (64 - 8)))
   },
   {
     input: undefined,
     totalMemoryMb: 64 * 1024,
     platform: "win32",
     expectedMemoryValue: 62.5 * 1024,
-    expectedMemoryValueWithScaling: 62566, // Math.floor(1024 * (64 - 1.5 - 0.025 * (64 - 8)))
+    expectedMemoryValueWithScaling: 61132, // Math.floor(1024 * (64 - 1.5 - 0.05 * (64 - 8)))
   },
 ];
 

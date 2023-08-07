@@ -19,6 +19,7 @@ test("createStatusReportBase", async (t) => {
     process.env["GITHUB_RUN_ATTEMPT"] = "2";
     process.env["GITHUB_RUN_ID"] = "100";
     process.env["GITHUB_SHA"] = "a".repeat(40);
+    process.env["ImageVersion"] = "2023.05.19.1";
     process.env["RUNNER_OS"] = "macOS";
 
     const getRequiredInput = sinon.stub(actionsUtil, "getRequiredInput");
@@ -48,6 +49,7 @@ test("createStatusReportBase", async (t) => {
     t.is(typeof statusReport.job_run_uuid, "string");
     t.is(statusReport.ref, process.env["GITHUB_REF"]);
     t.is(statusReport.runner_available_disk_space_bytes, 100);
+    t.is(statusReport.runner_image_version, process.env["ImageVersion"]);
     t.is(statusReport.runner_os, process.env["RUNNER_OS"]);
     t.is(statusReport.started_at, process.env[EnvVar.WORKFLOW_STARTED_AT]!);
     t.is(statusReport.status, "failure");

@@ -89,6 +89,10 @@ export interface StatusReportBase {
   runner_arch?: string;
   /** Available disk space on the runner, in bytes. */
   runner_available_disk_space_bytes: number;
+  /**
+   * Version of the runner image, for workflows running on GitHub-hosted runners. Absent otherwise.
+   */
+  runner_image_version?: string;
   /** Action runner operating system (context runner.os). */
   runner_os: string;
   /** Action runner operating system release (x.y.z from os.release()). */
@@ -239,6 +243,10 @@ export async function createStatusReportBase(
   }
   if (codeQlCliVersion !== undefined) {
     statusReport.codeql_version = codeQlCliVersion;
+  }
+  const imageVersion = process.env["ImageVersion"];
+  if (imageVersion) {
+    statusReport.runner_image_version = imageVersion;
   }
 
   return statusReport;

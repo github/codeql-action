@@ -16,7 +16,7 @@ var SLOT = {
 		}
 		channel.assert(O);
 		if (!SLOT.has(O, slot)) {
-			throw new $TypeError('`slot` is not present on `O`');
+			throw new $TypeError('`' + slot + '` is not present on `O`');
 		}
 	},
 	get: function (O, slot) {

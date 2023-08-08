@@ -2,6 +2,12 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.21.3 - 08 Aug 2023
+
+- We are rolling out a feature in August 2023 that will improve multi-threaded performance on larger runners. [#1817](https://github.com/github/codeql-action/pull/1817)
+- We are rolling out a feature in August 2023 that adds beta support for [Project Lombok](https://projectlombok.org/) when analyzing Java. [#1809](https://github.com/github/codeql-action/pull/1809)
+- Reduce disk space usage when downloading the CodeQL bundle. [#1820](https://github.com/github/codeql-action/pull/1820)
+
 ## 2.21.2 - 28 Jul 2023
 
 - Update default CodeQL bundle version to 2.14.1. [#1797](https://github.com/github/codeql-action/pull/1797)

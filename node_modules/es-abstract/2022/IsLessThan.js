@@ -86,5 +86,5 @@ module.exports = function IsLessThan(x, y, LeftFirst) {
 		return false;
 	}
 
-	return nx < ny; // by now, these are both nonzero, finite, and not equal
+	return nx < ny; // by now, these are both finite, and the same type
 };

@@ -18,7 +18,7 @@ var noThrowOnStrictViolation = (function () {
 	}
 }());
 
-// https://ecma-international.org/ecma-262/6.0/#sec-set-o-p-v-throw
+// https://262.ecma-international.org/6.0/#sec-set-o-p-v-throw
 
 module.exports = function Set(O, P, V, Throw) {
 	if (Type(O) !== 'Object') {

@@ -4,6 +4,7 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
+import del from "del";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -559,7 +560,7 @@ export async function downloadCodeQL(
   );
 
   const toolsDownloadStart = performance.now();
-  const codeqlPath = await toolcache.downloadTool(
+  const archivedBundlePath = await toolcache.downloadTool(
     codeqlURL,
     dest,
     authorization,
@@ -569,9 +570,18 @@ export async function downloadCodeQL(
     performance.now() - toolsDownloadStart,
   );
 
-  logger.debug(`CodeQL bundle download to ${codeqlPath} complete.`);
+  logger.debug(
+    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${toolsDownloadDurationMs} ms).`,
+  );
 
-  const codeqlExtracted = await toolcache.extractTar(codeqlPath);
+  logger.debug("Extracting CodeQL bundle.");
+  const extractionStart = performance.now();
+  const extractedBundlePath = await toolcache.extractTar(archivedBundlePath);
+  const extractionMs = Math.round(performance.now() - extractionStart);
+  logger.debug(
+    `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionMs} ms).`,
+  );
+  await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
 
   const bundleVersion =
     maybeBundleVersion ?? tryGetBundleVersionFromUrl(codeqlURL, logger);
@@ -583,7 +593,7 @@ export async function downloadCodeQL(
     );
     return {
       toolsVersion: maybeCliVersion ?? "unknown",
-      codeqlFolder: codeqlExtracted,
+      codeqlFolder: extractedBundlePath,
       toolsDownloadDurationMs,
     };
   }
@@ -612,13 +622,26 @@ export async function downloadCodeQL(
   const toolcacheVersion = maybeCliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)
     ? `${maybeCliVersion}-${bundleVersion}`
     : convertToSemVer(bundleVersion, logger);
+
+  logger.debug("Caching CodeQL bundle.");
+  const toolcachedBundlePath = await toolcache.cacheDir(
+    extractedBundlePath,
+    "CodeQL",
+    toolcacheVersion,
+  );
+
+  // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
+  if (toolcachedBundlePath !== extractedBundlePath) {
+    await cleanUpGlob(
+      extractedBundlePath,
+      "CodeQL bundle from temporary directory",
+      logger,
+    );
+  }
+
   return {
     toolsVersion: maybeCliVersion ?? toolcacheVersion,
-    codeqlFolder: await toolcache.cacheDir(
-      codeqlExtracted,
-      "CodeQL",
-      toolcacheVersion,
-    ),
+    codeqlFolder: toolcachedBundlePath,
     toolsDownloadDurationMs,
   };
 }
@@ -701,4 +724,22 @@ export async function setupCodeQLBundle(
       util.assertNever(source);
   }
   return { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion };
+}
+
+async function cleanUpGlob(glob: string, name: string, logger: Logger) {
+  logger.debug(`Cleaning up ${name}.`);
+  try {
+    const deletedPaths = await del(glob, { force: true });
+    if (deletedPaths.length === 0) {
+      logger.warning(
+        `Failed to clean up ${name}: no files found matching ${glob}.`,
+      );
+    } else if (deletedPaths.length === 1) {
+      logger.debug(`Cleaned up ${name}.`);
+    } else {
+      logger.debug(`Cleaned up ${name} (${deletedPaths.length} files).`);
+    }
+  } catch (e) {
+    logger.warning(`Failed to clean up ${name}: ${e}.`);
+  }
 }

@@ -10,7 +10,7 @@ var isWeakRef = require('is-weakref');
 
 var AddToKeptObjects = require('./AddToKeptObjects');
 
-// https://ecma-international.org/ecma-262/12.0/#sec-weakrefderef
+// https://262.ecma-international.org/12.0/#sec-weakrefderef
 
 module.exports = function WeakRefDeref(weakRef) {
 	if (!isWeakRef(weakRef)) {

@@ -15,7 +15,7 @@ var IsAccessorDescriptor = require('./IsAccessorDescriptor');
 var ToPropertyDescriptor = require('./ToPropertyDescriptor');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-setintegritylevel
+// https://262.ecma-international.org/6.0/#sec-setintegritylevel
 
 module.exports = function SetIntegrityLevel(O, level) {
 	if (Type(O) !== 'Object') {

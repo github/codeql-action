@@ -5,7 +5,7 @@ var GetIntrinsic = require('get-intrinsic');
 var $String = GetIntrinsic('%String%');
 var $TypeError = GetIntrinsic('%TypeError%');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-tostring
+// https://262.ecma-international.org/6.0/#sec-tostring
 
 module.exports = function ToString(argument) {
 	if (typeof argument === 'symbol') {

@@ -12,7 +12,7 @@ var RequireObjectCoercible = require('./RequireObjectCoercible');
 var ToString = require('./ToString');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-createhtml
+// https://262.ecma-international.org/6.0/#sec-createhtml
 
 module.exports = function CreateHTML(string, tag, attribute, value) {
 	if (Type(tag) !== 'String' || Type(attribute) !== 'String') {

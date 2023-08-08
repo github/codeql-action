@@ -9,7 +9,7 @@ var isPrimitive = require('../helpers/isPrimitive');
 var ToPrimitive = require('./ToPrimitive');
 var StringToNumber = require('./StringToNumber');
 
-// https://ecma-international.org/ecma-262/13.0/#sec-tonumber
+// https://262.ecma-international.org/13.0/#sec-tonumber
 
 module.exports = function ToNumber(argument) {
 	var value = isPrimitive(argument) ? argument : ToPrimitive(argument, $Number);

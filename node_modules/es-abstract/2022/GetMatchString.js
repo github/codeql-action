@@ -9,7 +9,7 @@ var Type = require('./Type');
 
 var assertRecord = require('../helpers/assertRecord');
 
-// https://ecma-international.org/ecma-262/13.0/#sec-getmatchstring
+// https://262.ecma-international.org/13.0/#sec-getmatchstring
 
 module.exports = function GetMatchString(S, match) {
 	if (Type(S) !== 'String') {

@@ -8,7 +8,7 @@ var IsDataDescriptor = require('./IsDataDescriptor');
 var IsGenericDescriptor = require('./IsGenericDescriptor');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-completepropertydescriptor
+// https://262.ecma-international.org/6.0/#sec-completepropertydescriptor
 
 module.exports = function CompletePropertyDescriptor(Desc) {
 	/* eslint no-param-reassign: 0 */

@@ -1,0 +1,56 @@
+name: 'PR Check - CodeQL Bundle All'
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
+  # workaround for our PR checks.
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+on:
+  push:
+    branches:
+    - main
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  test-codeql-bundle-all:
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          version: nightly-latest
+    name: 'CodeQL Bundle All'
+    permissions:
+      contents: read
+      security-events: write
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/actions/prepare-test
+      with:
+        version: ${{ matrix.version }}
+        use-all-platform-bundle: true
+    - id: init
+      uses: ./../action/init
+      with:
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/.github/actions/setup-swift
+      with:
+        codeql-path: ${{ steps.init.outputs.codeql-path }}
+    - name: Build code
+      shell: bash
+      run: ./build.sh
+    - uses: ./../action/analyze
+      with:
+        upload-database: false
+    env:
+      CODEQL_ACTION_TEST_MODE: true

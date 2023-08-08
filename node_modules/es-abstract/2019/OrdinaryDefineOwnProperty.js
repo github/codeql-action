@@ -17,7 +17,7 @@ var SameValue = require('./SameValue');
 var Type = require('./Type');
 var ValidateAndApplyPropertyDescriptor = require('./ValidateAndApplyPropertyDescriptor');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-ordinarydefineownproperty
+// https://262.ecma-international.org/6.0/#sec-ordinarydefineownproperty
 
 module.exports = function OrdinaryDefineOwnProperty(O, P, Desc) {
 	if (Type(O) !== 'Object') {

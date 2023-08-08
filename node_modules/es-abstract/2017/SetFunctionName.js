@@ -12,7 +12,7 @@ var DefinePropertyOrThrow = require('./DefinePropertyOrThrow');
 var IsExtensible = require('./IsExtensible');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-setfunctionname
+// https://262.ecma-international.org/6.0/#sec-setfunctionname
 
 module.exports = function SetFunctionName(F, name) {
 	if (typeof F !== 'function') {

@@ -10,7 +10,7 @@ var ToPrimitive = require('./ToPrimitive');
 var ToNumber = require('./ToNumber');
 var Type = require('./Type');
 
-// https://262.ecma-international.org/6.0/#sec-tonumber
+// https://262.ecma-international.org/11.0/#sec-tonumeric
 
 module.exports = function ToNumeric(argument) {
 	var primValue = isPrimitive(argument) ? argument : ToPrimitive(argument, $Number);

@@ -34,7 +34,7 @@ jobs:
         - os: ubuntu-latest
           version: stable-20230418
         - os: ubuntu-latest
-          version: cached
+          version: default
         - os: ubuntu-latest
           version: latest
         - os: ubuntu-latest
@@ -53,6 +53,7 @@ jobs:
       uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
+        use-all-platform-bundle: 'false'
     - name: Set environment variable for Swift enablement
       if: >-
         runner.os != 'Windows' && (

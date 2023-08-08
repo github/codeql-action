@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.0.2](https://github.com/fengyuanchen/is-array-buffer/compare/v3.0.1...v3.0.2) - 2023-03-01
+
+### Commits
+
+- [Fix] `node` 0.8: an object arg to a TA only throws a RangeError when it is an ArrayBuffer of an incompatible byte length [`d5108f6`](https://github.com/fengyuanchen/is-array-buffer/commit/d5108f6d06245e616b6c563995f214a38732243c)
+- [Dev Deps] update `object-inspect`, `tape` [`400f456`](https://github.com/fengyuanchen/is-array-buffer/commit/400f4563ccbe27c7fbb485665352c76210bba9cb)
+- [Deps] update `get-intrinsic` [`133732e`](https://github.com/fengyuanchen/is-array-buffer/commit/133732ec88f8dded1c705b758badc2240077a6d8)
+
 ## [v3.0.1](https://github.com/fengyuanchen/is-array-buffer/compare/v3.0.0...v3.0.1) - 2023-01-05
 
 ### Commits

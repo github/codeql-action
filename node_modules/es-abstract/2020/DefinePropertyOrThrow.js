@@ -15,7 +15,7 @@ var SameValue = require('./SameValue');
 var ToPropertyDescriptor = require('./ToPropertyDescriptor');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-definepropertyorthrow
+// https://262.ecma-international.org/6.0/#sec-definepropertyorthrow
 
 module.exports = function DefinePropertyOrThrow(O, P, desc) {
 	if (Type(O) !== 'Object') {

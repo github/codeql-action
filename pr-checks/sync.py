@@ -13,9 +13,11 @@ defaultTestVersions = [
     "stable-20221211",
     # The last CodeQL release in the 2.12 series: 2.12.7.
     "stable-20230418",
-    # The version of CodeQL currently in the toolcache. Typically either the latest release or the one before.
-    "cached",
-    # The latest release of CodeQL.
+    # The default version of CodeQL for Dotcom, as determined by feature flags.
+    "default",
+    # The version of CodeQL shipped with the Action in `defaults.json`. During the release process
+    # for a new CodeQL release, there will be a period of time during which this will be newer than
+    # the default version on Dotcom.
     "latest",
     # A nightly build directly from the our private repo, built in the last 24 hours.
     "nightly-latest"
@@ -61,6 +63,10 @@ for file in os.listdir('checks'):
                 'version': version
             })
 
+        useAllPlatformBundle = "false" # Default to false
+        if checkSpecification.get('useAllPlatformBundle'):
+            useAllPlatformBundle = checkSpecification['useAllPlatformBundle']
+
     steps = [
         {
             'name': 'Check out repository',
@@ -71,7 +77,8 @@ for file in os.listdir('checks'):
             'id': 'prepare-test',
             'uses': './.github/actions/prepare-test',
             'with': {
-                'version': '${{ matrix.version }}'
+                'version': '${{ matrix.version }}',
+                'use-all-platform-bundle': useAllPlatformBundle
             }
         },
         # We don't support Swift on Windows or prior versions of the CLI.

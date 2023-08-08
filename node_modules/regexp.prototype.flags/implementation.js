@@ -28,6 +28,9 @@ module.exports = function flags() {
 	if (this.unicode) {
 		result += 'u';
 	}
+	if (this.unicodeSets) {
+		result += 'v';
+	}
 	if (this.sticky) {
 		result += 'y';
 	}

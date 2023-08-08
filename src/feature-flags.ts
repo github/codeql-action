@@ -23,6 +23,11 @@ export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
  */
 export const CODEQL_VERSION_NEW_ANALYSIS_SUMMARY = "2.14.0";
 
+/**
+ * Versions 2.14.0+ of the CodeQL CLI support intra-layer parallelism (aka fine-grained parallelism) options.
+ */
+export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.0";
+
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
   tagName: string;
@@ -44,8 +49,10 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   CliConfigFileEnabled = "cli_config_file_enabled",
+  CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
+  EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   NewAnalysisSummaryEnabled = "new_analysis_summary_enabled",
@@ -58,6 +65,11 @@ export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
+  [Feature.CodeqlJavaLombokEnabled]: {
+    envVar: "CODEQL_JAVA_LOMBOK",
+    minimumVersion: "2.14.0",
+    defaultValue: false,
+  },
   [Feature.DisableKotlinAnalysisEnabled]: {
     envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
     minimumVersion: undefined,
@@ -67,6 +79,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
     minimumVersion: "2.11.6",
     defaultValue: true,
+  },
+  [Feature.EvaluatorIntraLayerParallelismEnabled]: {
+    envVar: "CODEQL_EVALUATOR_INTRA_LAYER_PARALLELISM",
+    minimumVersion: CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
+    defaultValue: false,
   },
   [Feature.ExportDiagnosticsEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",

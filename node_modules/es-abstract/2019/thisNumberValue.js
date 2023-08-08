@@ -6,7 +6,7 @@ var Type = require('./Type');
 
 var $NumberValueOf = callBound('Number.prototype.valueOf');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-properties-of-the-number-prototype-object
+// https://262.ecma-international.org/6.0/#sec-properties-of-the-number-prototype-object
 
 module.exports = function thisNumberValue(value) {
 	if (Type(value) === 'Number') {

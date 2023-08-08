@@ -7,7 +7,7 @@ var $TypeError = GetIntrinsic('%TypeError%');
 var IsPropertyKey = require('./IsPropertyKey');
 var Type = require('./Type');
 
-// https://ecma-international.org/ecma-262/6.0/#sec-ordinaryhasproperty
+// https://262.ecma-international.org/6.0/#sec-ordinaryhasproperty
 
 module.exports = function OrdinaryHasProperty(O, P) {
 	if (Type(O) !== 'Object') {

@@ -7,7 +7,7 @@ var isString = require('is-string');
 
 var $iterator = GetIntrinsic('%Symbol.iterator%', true);
 var $stringSlice = callBound('String.prototype.slice');
-var $String = GetIntrinsic('%String%', true);
+var $String = GetIntrinsic('%String%');
 
 module.exports = function getIteratorMethod(ES, iterable) {
 	var usingIterator;

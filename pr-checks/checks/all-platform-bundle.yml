@@ -1,0 +1,19 @@
+name: "All-platform bundle"
+description: "Tests using an all-platform CodeQL Bundle"
+versions: ["nightly-latest"]
+operatingSystems: ["ubuntu"]
+useAllPlatformBundle: "true"
+steps:
+  - id: init
+    uses: ./../action/init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/.github/actions/setup-swift
+    with:
+      codeql-path: ${{ steps.init.outputs.codeql-path }}
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze
+    with:
+      upload-database: false

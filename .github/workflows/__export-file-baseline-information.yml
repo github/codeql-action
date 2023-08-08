@@ -45,6 +45,7 @@ jobs:
       uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
+        use-all-platform-bundle: 'false'
     - name: Set environment variable for Swift enablement
       if: >-
         runner.os != 'Windows' && (
@@ -62,7 +63,7 @@ jobs:
         CODEQL_FILE_BASELINE_INFORMATION: true
     - uses: ./../action/.github/actions/setup-swift
       with:
-        codeql-path: ${{steps.init.outputs.codeql-path}}
+        codeql-path: ${{ steps.init.outputs.codeql-path }}
     - name: Build code
       shell: bash
       run: ./build.sh

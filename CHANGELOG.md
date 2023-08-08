@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.21.3 - 08 Aug 2023
 
 - We are rolling out a feature in August 2023 that will improve multi-threaded performance on larger runners. [#1817](https://github.com/github/codeql-action/pull/1817)

@@ -2,11 +2,17 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionVersion } from "./actions-util";
-import { createStatusReportBase, sendStatusReport } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import {
+  createStatusReportBase,
+  sendStatusReport,
+  StatusReportBase,
+  getActionsStatus,
+} from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
+  checkDiskUsage,
   getRequiredEnvParam,
   initializeEnvironment,
   isInTestMode,
@@ -14,7 +20,7 @@ import {
 } from "./util";
 
 interface UploadSarifStatusReport
-  extends actionsUtil.StatusReportBase,
+  extends StatusReportBase,
     upload_lib.UploadStatusReport {}
 
 async function sendSuccessStatusReport(
@@ -25,6 +31,7 @@ async function sendSuccessStatusReport(
     "upload-sarif",
     "success",
     startedAt,
+    await checkDiskUsage(),
   );
   const statusReport: UploadSarifStatusReport = {
     ...statusReportBase,
@@ -35,10 +42,16 @@ async function sendSuccessStatusReport(
 
 async function run() {
   const startedAt = new Date();
+  const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
   if (
     !(await sendStatusReport(
-      await createStatusReportBase("upload-sarif", "starting", startedAt),
+      await createStatusReportBase(
+        "upload-sarif",
+        "starting",
+        startedAt,
+        await checkDiskUsage(),
+      ),
     ))
   ) {
     return;
@@ -49,7 +62,7 @@ async function run() {
       actionsUtil.getRequiredInput("sarif_file"),
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getOptionalInput("category"),
-      getActionsLogger(),
+      logger,
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
 
@@ -60,7 +73,7 @@ async function run() {
       await upload_lib.waitForProcessing(
         parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
         uploadResult.sarifID,
-        getActionsLogger(),
+        logger,
       );
     }
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport);
@@ -72,8 +85,9 @@ async function run() {
     await sendStatusReport(
       await createStatusReportBase(
         "upload-sarif",
-        actionsUtil.getActionsStatus(error),
+        getActionsStatus(error),
         startedAt,
+        await checkDiskUsage(),
         message,
         error.stack,
       ),

@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Log a warning if the amount of available disk space runs low during a code scanning run. [#1825](https://github.com/github/codeql-action/pull/1825)
 
 ## 2.21.3 - 08 Aug 2023
 

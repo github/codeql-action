@@ -1,22 +1,27 @@
 import * as core from "@actions/core";
 
 import {
-  getActionsStatus,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
 } from "./actions-util";
-import {
-  createStatusReportBase,
-  getGitHubVersion,
-  sendStatusReport,
-} from "./api-client";
+import { getGitHubVersion } from "./api-client";
 import { CommandInvocationError } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language, resolveAlias } from "./languages";
 import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
-import { checkForTimeout, checkGitHubVersionInRange, wrapError } from "./util";
+import {
+  sendStatusReport,
+  createStatusReportBase,
+  getActionsStatus,
+} from "./status-report";
+import {
+  checkDiskUsage,
+  checkForTimeout,
+  checkGitHubVersionInRange,
+  wrapError,
+} from "./util";
 
 const ACTION_NAME = "resolve-environment";
 const ENVIRONMENT_OUTPUT_NAME = "environment";
@@ -29,7 +34,12 @@ async function run() {
   try {
     if (
       !(await sendStatusReport(
-        await createStatusReportBase(ACTION_NAME, "starting", startedAt),
+        await createStatusReportBase(
+          ACTION_NAME,
+          "starting",
+          startedAt,
+          await checkDiskUsage(logger),
+        ),
       ))
     ) {
       return;
@@ -74,6 +84,7 @@ async function run() {
           ACTION_NAME,
           getActionsStatus(error),
           startedAt,
+          await checkDiskUsage(),
           error.message,
           error.stack,
         ),
@@ -84,7 +95,12 @@ async function run() {
   }
 
   await sendStatusReport(
-    await createStatusReportBase(ACTION_NAME, "success", startedAt),
+    await createStatusReportBase(
+      ACTION_NAME,
+      "success",
+      startedAt,
+      await checkDiskUsage(),
+    ),
   );
 }
 

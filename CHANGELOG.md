@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - Log a warning if the amount of available disk space runs low during a code scanning run. [#1825](https://github.com/github/codeql-action/pull/1825)
+- When downloading CodeQL bundle version 2.13.4 and later, cache these bundles in the Actions tool cache using a simpler version number. [#1832](https://github.com/github/codeql-action/pull/1832)
 
 ## 2.21.3 - 08 Aug 2023
 

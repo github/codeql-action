@@ -1162,6 +1162,7 @@ async function runTool(
 ) {
   let output = "";
   let error = "";
+  process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
     ignoreReturnCode: true,
     listeners: {

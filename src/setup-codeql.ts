@@ -15,7 +15,10 @@ import * as api from "./api-client";
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
 // these dependents.
 import * as defaults from "./defaults.json";
-import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import {
+  CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED,
+  CodeQLDefaultVersionInfo,
+} from "./feature-flags";
 import { Logger } from "./logging";
 import * as util from "./util";
 import { isGoodVersion, wrapError } from "./util";
@@ -610,20 +613,12 @@ export async function downloadCodeQL(
     );
   }
 
-  // Include both the CLI version and the bundle version in the toolcache version number. That way
-  // if the user requests the same URL again, we can get it from the cache without having to call
-  // any of the Releases API.
-  //
-  // Special case: If the CLI version is a pre-release or contains build metadata, then cache the
-  // bundle as `0.0.0-<bundleVersion>` to avoid the bundle being interpreted as containing a stable
-  // CLI release. In principle, it should be enough to just check that the CLI version isn't a
-  // pre-release, but the version numbers of CodeQL nightlies have the format `x.y.z+<timestamp>`,
-  // and we don't want these nightlies to override stable CLI versions in the toolcache.
-  const toolcacheVersion = maybeCliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)
-    ? `${maybeCliVersion}-${bundleVersion}`
-    : convertToSemVer(bundleVersion, logger);
-
   logger.debug("Caching CodeQL bundle.");
+  const toolcacheVersion = getCanonicalToolcacheVersion(
+    maybeCliVersion,
+    bundleVersion,
+    logger,
+  );
   const toolcachedBundlePath = await toolcache.cacheDir(
     extractedBundlePath,
     "CodeQL",
@@ -654,6 +649,38 @@ export function getCodeQLURLVersion(url: string): string {
     );
   }
   return match[1];
+}
+
+/**
+ * Returns the toolcache version number to use to store the bundle with the associated CLI version
+ * and bundle version.
+ *
+ * This is the canonical version number, since toolcaches populated by different versions of the
+ * CodeQL Action or different runner image creation scripts may store the bundle using a different
+ * version number. Functions like `getCodeQLSource` that fetch the bundle from rather than save the
+ * bundle to the toolcache should handle these different version numbers.
+ */
+function getCanonicalToolcacheVersion(
+  cliVersion: string | undefined,
+  bundleVersion: string,
+  logger: Logger,
+) {
+  // If the CLI version is a pre-release or contains build metadata, then cache the
+  // bundle as `0.0.0-<bundleVersion>` to avoid the bundle being interpreted as containing a stable
+  // CLI release. In principle, it should be enough to just check that the CLI version isn't a
+  // pre-release, but the version numbers of CodeQL nightlies have the format `x.y.z+<timestamp>`,
+  // and we don't want these nightlies to override stable CLI versions in the toolcache.
+  if (!cliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)) {
+    return convertToSemVer(bundleVersion, logger);
+  }
+  // If the bundle is semantically versioned, it can be looked up based on just the CLI version
+  // number, so version it in the toolcache using just the CLI version number.
+  if (semver.gte(cliVersion, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)) {
+    return cliVersion;
+  }
+  // Include both the CLI version and the bundle version in the toolcache version number. That way
+  // we can find the bundle in the toolcache based on either the CLI version or the bundle version.
+  return `${cliVersion}-${bundleVersion}`;
 }
 
 /**

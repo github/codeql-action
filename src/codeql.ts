@@ -16,7 +16,6 @@ import {
   Feature,
   FeatureEnablement,
   useCodeScanningConfigInCli,
-  CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
 } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -580,13 +579,6 @@ export async function getCodeQLForCmd(
         await features.getValue(Feature.LanguageBaselineConfigEnabled, this)
       ) {
         extraArgs.push("--calculate-language-specific-baseline");
-      } else if (
-        await util.codeQlVersionAbove(
-          this,
-          CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
-        )
-      ) {
-        extraArgs.push("--no-calculate-language-specific-baseline");
       }
 
       await runTool(

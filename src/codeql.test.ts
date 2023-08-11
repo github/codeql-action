@@ -165,6 +165,31 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
   });
 });
 
+test("caches semantically versioned bundles using their semantic version number", async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    const url = mockBundleDownloadApi({
+      tagName: `codeql-bundle-v2.14.0`,
+      isPinned: false,
+    });
+    const result = await codeql.setupCodeQL(
+      url,
+      SAMPLE_DOTCOM_API_DETAILS,
+      tmpDir,
+      util.GitHubVariant.DOTCOM,
+      SAMPLE_DEFAULT_CLI_VERSION,
+      getRunnerLogger(true),
+      false,
+    );
+
+    t.is(toolcache.findAllVersions("CodeQL").length, 1);
+    t.assert(toolcache.find("CodeQL", `2.14.0`));
+    t.is(result.toolsVersion, `2.14.0`);
+    t.is(result.toolsSource, ToolsSource.Download);
+    t.assert(Number.isInteger(result.toolsDownloadDurationMs));
+  });
+});
+
 test("downloads an explicitly requested bundle even if a different version is cached", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);

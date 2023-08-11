@@ -4,6 +4,7 @@ import * as path from "path";
 import { promisify } from "util";
 
 import * as core from "@actions/core";
+import checkDiskSpace from "check-disk-space";
 import del from "del";
 import getFolderSize from "get-folder-size";
 import * as semver from "semver";
@@ -843,4 +844,31 @@ export function prettyPrintPack(pack: Pack) {
   return `${pack.name}${pack.version ? `@${pack.version}` : ""}${
     pack.path ? `:${pack.path}` : ""
   }`;
+}
+
+export interface DiskUsage {
+  numAvailableBytes: number;
+  numTotalBytes: number;
+}
+
+export async function checkDiskUsage(logger?: Logger): Promise<DiskUsage> {
+  const diskUsage = await checkDiskSpace(
+    getRequiredEnvParam("GITHUB_WORKSPACE"),
+  );
+  const gbInBytes = 1024 * 1024 * 1024;
+  if (logger && diskUsage.free < 2 * gbInBytes) {
+    const message =
+      "The Actions runner is running low on disk space " +
+      `(${(diskUsage.free / gbInBytes).toPrecision(4)} GB available).`;
+    if (process.env[EnvVar.HAS_WARNED_ABOUT_DISK_SPACE] !== "true") {
+      logger.warning(message);
+    } else {
+      logger.debug(message);
+    }
+    core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
+  }
+  return {
+    numAvailableBytes: diskUsage.free,
+    numTotalBytes: diskUsage.size,
+  };
 }

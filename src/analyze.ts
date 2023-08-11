@@ -389,7 +389,7 @@ export async function runQueries(
       }
 
       if (
-        !(await features.getValue(Feature.NewAnalysisSummaryEnabled, codeql))
+        !(await features.getValue(Feature.AnalysisSummaryV2Enabled, codeql))
       ) {
         await runPrintLinesOfCode(language);
       }

@@ -5,7 +5,6 @@ import { performance } from "perf_hooks";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { DatabaseCreationTimings } from "./actions-util";
 import {
   CodeQLAnalysisError,
   dbIsFinalized,
@@ -15,7 +14,6 @@ import {
   runQueries,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
-import * as api from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig, getMlPoweredJsQueriesStatus } from "./config-utils";
@@ -25,6 +23,13 @@ import { Feature, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import * as statusReport from "./status-report";
+import {
+  createStatusReportBase,
+  DatabaseCreationTimings,
+  getActionsStatus,
+  StatusReportBase,
+} from "./status-report";
 import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
@@ -36,8 +41,8 @@ interface AnalysisStatusReport
     QueriesStatusReport {}
 
 interface FinishStatusReport
-  extends actionsUtil.StatusReportBase,
-    actionsUtil.DatabaseCreationTimings,
+  extends StatusReportBase,
+    DatabaseCreationTimings,
     AnalysisStatusReport {}
 
 interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
@@ -47,7 +52,7 @@ interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
   trap_cache_upload_duration_ms: number;
 }
 
-export async function sendStatusReport(
+async function sendStatusReport(
   startedAt: Date,
   config: Config | undefined,
   stats: AnalysisStatusReport | undefined,
@@ -57,18 +62,16 @@ export async function sendStatusReport(
   didUploadTrapCaches: boolean,
   logger: Logger,
 ) {
-  const status = actionsUtil.getActionsStatus(
-    error,
-    stats?.analyze_failure_language,
-  );
-  const statusReportBase = await api.createStatusReportBase(
+  const status = getActionsStatus(error, stats?.analyze_failure_language);
+  const statusReportBase = await createStatusReportBase(
     "finish",
     status,
     startedAt,
+    await util.checkDiskUsage(),
     error?.message,
     error?.stack,
   );
-  const statusReport: FinishStatusReport = {
+  const report: FinishStatusReport = {
     ...statusReportBase,
     ...(config
       ? {
@@ -80,15 +83,15 @@ export async function sendStatusReport(
   };
   if (config && didUploadTrapCaches) {
     const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
-      ...statusReport,
+      ...report,
       trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
       trap_cache_upload_size_bytes: Math.round(
         await getTotalCacheSize(config.trapCaches, logger),
       ),
     };
-    await api.sendStatusReport(trapCacheUploadStatusReport);
+    await statusReport.sendStatusReport(trapCacheUploadStatusReport);
   } else {
-    await api.sendStatusReport(statusReport);
+    await statusReport.sendStatusReport(report);
   }
 }
 
@@ -181,8 +184,13 @@ async function run() {
   const logger = getActionsLogger();
   try {
     if (
-      !(await api.sendStatusReport(
-        await api.createStatusReportBase("finish", "starting", startedAt),
+      !(await statusReport.sendStatusReport(
+        await createStatusReportBase(
+          "finish",
+          "starting",
+          startedAt,
+          await util.checkDiskUsage(logger),
+        ),
       ))
     ) {
       return;

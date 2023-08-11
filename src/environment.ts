@@ -1,40 +1,36 @@
 export enum EnvVar {
-  /** Set to true when the `analyze` Action completes successfully. */
+  /** Whether the `analyze` Action completes successfully. */
   ANALYZE_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY",
 
-  /** Set to "true" when the CodeQL Action has invoked the Go autobuilder. */
+  /** Whether the CodeQL Action has invoked the Go autobuilder. */
   DID_AUTOBUILD_GOLANG = "CODEQL_ACTION_DID_AUTOBUILD_GOLANG",
 
   /**
-   * Used to disable the SARIF post-processing in the Action that removes duplicate locations from
+   * Whether to disable the SARIF post-processing in the Action that removes duplicate locations from
    * notifications in the `run[].invocations[].toolExecutionNotifications` SARIF property.
    */
   DISABLE_DUPLICATE_LOCATION_FIX = "CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX",
 
   /**
-   * If set to the "true" string, then the CodeQL Action is using its
-   * own deprecated and non-standard way of scanning for multiple
-   * languages.
+   * Whether the CodeQL Action is using its own deprecated and non-standard way of scanning for
+   * multiple languages.
    */
   FEATURE_MULTI_LANGUAGE = "CODEQL_ACTION_FEATURE_MULTI_LANGUAGE",
 
-  /**
-   * If set to the "true" string, then the CodeQL Action is using its
-   * own sandwiched workflow mechanism.
-   */
+  /** Whether the CodeQL Action is using its own sandwiched workflow mechanism. */
   FEATURE_SANDWICH = "CODEQL_ACTION_FEATURE_SANDWICH",
 
   /**
-   * If set to a truthy value, then the CodeQL Action might combine SARIF
-   * output from several `interpret-results` runs for the same language.
+   * Whether the CodeQL Action might combine SARIF output from several `interpret-results` runs for
+   * the same language.
    */
   FEATURE_SARIF_COMBINE = "CODEQL_ACTION_FEATURE_SARIF_COMBINE",
 
-  /**
-   * If set to the "true" string, then the CodeQL Action will upload SARIF,
-   * not the CLI.
-   */
+  /** Whether the CodeQL Action will upload SARIF, not the CLI. */
   FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
+
+  /** Whether the CodeQL Action has already warned the user about low disk space. */
+  HAS_WARNED_ABOUT_DISK_SPACE = "CODEQL_ACTION_HAS_WARNED_ABOUT_DISK_SPACE",
 
   /** UUID representing the current job run. */
   JOB_RUN_UUID = "JOB_RUN_UUID",
@@ -44,7 +40,7 @@ export enum EnvVar {
   /** Whether to suppress the warning if the current CLI will soon be unsupported. */
   SUPPRESS_DEPRECATED_SOON_WARNING = "CODEQL_ACTION_SUPPRESS_DEPRECATED_SOON_WARNING",
 
-  /** Used to disable uploading SARIF results or status reports to the GitHub API */
+  /** Whether to disable uploading SARIF results or status reports to the GitHub API */
   TEST_MODE = "CODEQL_ACTION_TEST_MODE",
 
   TESTING_ENVIRONMENT = "CODEQL_ACTION_TESTING_ENVIRONMENT",

@@ -574,6 +574,13 @@ export async function getCodeQLForCmd(
       ) {
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
+
+      if (
+        await features.getValue(Feature.LanguageBaselineConfigEnabled, this)
+      ) {
+        extraArgs.push("--calculate-language-specific-baseline");
+      }
+
       await runTool(
         cmd,
         [

@@ -2,6 +2,14 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.21.4 - 14 Aug 2023
+
+- Update default CodeQL bundle version to 2.14.2. [#1831](https://github.com/github/codeql-action/pull/1831)
+- Log a warning if the amount of available disk space runs low during a code scanning run. [#1825](https://github.com/github/codeql-action/pull/1825)
+- When downloading CodeQL bundle version 2.13.4 and later, cache these bundles in the Actions tool cache using a simpler version number. [#1832](https://github.com/github/codeql-action/pull/1832)
+- Fix an issue that first appeared in CodeQL Action v2.21.2 that prevented CodeQL invocations from being logged. [#1833](https://github.com/github/codeql-action/pull/1833)
+- We are rolling out a feature in August 2023 that will improve the quality of file coverage information. [#1835](https://github.com/github/codeql-action/pull/1835)
+
 ## 2.21.3 - 08 Aug 2023
 
 - We are rolling out a feature in August 2023 that will improve multi-threaded performance on larger runners. [#1817](https://github.com/github/codeql-action/pull/1817)

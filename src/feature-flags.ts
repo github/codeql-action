@@ -21,12 +21,17 @@ export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
 /**
  * Versions 2.14.0+ of the CodeQL CLI support new analysis summaries.
  */
-export const CODEQL_VERSION_NEW_ANALYSIS_SUMMARY = "2.14.0";
+export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.14.0";
 
 /**
  * Versions 2.14.0+ of the CodeQL CLI support intra-layer parallelism (aka fine-grained parallelism) options.
  */
 export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.0";
+
+/**
+ * Versions 2.14.2+ of the CodeQL CLI support language-specific baseline configuration.
+ */
+export const CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG = "2.14.2";
 
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
@@ -48,14 +53,15 @@ export interface FeatureEnablement {
  * Each value of this enum should end with `_enabled`.
  */
 export enum Feature {
+  AnalysisSummaryV2Enabled = "analysis_summary_v2_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
   CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  LanguageBaselineConfigEnabled = "language_baseline_config_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
-  NewAnalysisSummaryEnabled = "new_analysis_summary_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ScalingReservedRamEnabled = "scaling_reserved_ram_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
@@ -65,6 +71,11 @@ export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
+  [Feature.AnalysisSummaryV2Enabled]: {
+    envVar: "CODEQL_ACTION_ANALYSIS_SUMMARY_V2",
+    minimumVersion: CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
+    defaultValue: false,
+  },
   [Feature.CodeqlJavaLombokEnabled]: {
     envVar: "CODEQL_JAVA_LOMBOK",
     minimumVersion: "2.14.0",
@@ -90,14 +101,14 @@ export const featureConfig: Record<
     minimumVersion: "2.12.4",
     defaultValue: true,
   },
+  [Feature.LanguageBaselineConfigEnabled]: {
+    envVar: "CODEQL_ACTION_LANGUAGE_BASELINE_CONFIG",
+    minimumVersion: CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
+    defaultValue: false,
+  },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",
     minimumVersion: undefined,
-    defaultValue: false,
-  },
-  [Feature.NewAnalysisSummaryEnabled]: {
-    envVar: "CODEQL_ACTION_NEW_ANALYSIS_SUMMARY",
-    minimumVersion: CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
     defaultValue: false,
   },
   [Feature.QaTelemetryEnabled]: {

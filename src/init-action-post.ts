@@ -6,23 +6,21 @@
 
 import * as core from "@actions/core";
 
-import {
-  getActionsStatus,
-  getTemporaryDirectory,
-  printDebugLogs,
-  StatusReportBase,
-} from "./actions-util";
-import {
-  createStatusReportBase,
-  getGitHubVersion,
-  sendStatusReport,
-} from "./api-client";
+import { getTemporaryDirectory, printDebugLogs } from "./actions-util";
+import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
 import { Features } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
+  StatusReportBase,
+  sendStatusReport,
+  createStatusReportBase,
+  getActionsStatus,
+} from "./status-report";
+import {
+  checkDiskUsage,
   checkGitHubVersionInRange,
   getRequiredEnvParam,
   wrapError,
@@ -69,6 +67,7 @@ async function runWrapper() {
         "init-post",
         getActionsStatus(error),
         startedAt,
+        await checkDiskUsage(),
         error.message,
         error.stack,
       ),
@@ -79,6 +78,7 @@ async function runWrapper() {
     "init-post",
     "success",
     startedAt,
+    await checkDiskUsage(),
   );
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,

@@ -4,6 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## 2.21.4 - 14 Aug 2023
 
+- Update default CodeQL bundle version to 2.14.2. [#1831](https://github.com/github/codeql-action/pull/1831)
 - Log a warning if the amount of available disk space runs low during a code scanning run. [#1825](https://github.com/github/codeql-action/pull/1825)
 - When downloading CodeQL bundle version 2.13.4 and later, cache these bundles in the Actions tool cache using a simpler version number. [#1832](https://github.com/github/codeql-action/pull/1832)
 - Fix an issue that first appeared in CodeQL Action v2.21.2 that prevented CodeQL invocations from being logged. [#1833](https://github.com/github/codeql-action/pull/1833)
@@ -14,7 +15,6 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - We are rolling out a feature in August 2023 that will improve multi-threaded performance on larger runners. [#1817](https://github.com/github/codeql-action/pull/1817)
 - We are rolling out a feature in August 2023 that adds beta support for [Project Lombok](https://projectlombok.org/) when analyzing Java. [#1809](https://github.com/github/codeql-action/pull/1809)
 - Reduce disk space usage when downloading the CodeQL bundle. [#1820](https://github.com/github/codeql-action/pull/1820)
-- Update default CodeQL bundle version to 2.14.2. [#1831](https://github.com/github/codeql-action/pull/1831)
 
 ## 2.21.2 - 28 Jul 2023
 

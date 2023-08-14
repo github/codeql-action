@@ -1137,7 +1137,7 @@ for (const {
       "-v",
       "",
       stubConfig,
-      createFeatures(featureEnabled ? [Feature.NewAnalysisSummaryEnabled] : []),
+      createFeatures(featureEnabled ? [Feature.AnalysisSummaryV2Enabled] : []),
       getRunnerLogger(true),
     );
     t.is(

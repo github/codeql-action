@@ -76,9 +76,6 @@
     "typescript": "^5.1.6"
   },
   "overrides": {
-    "@actions/cache": {
-      "semver": ">=6.3.1"
-    },
     "@actions/tool-cache": {
       "semver": ">=6.3.1"
     },
@@ -87,7 +84,6 @@
     },
     "eslint-plugin-jsx-a11y": {
       "semver": ">=6.3.1"
-    },
-    "xml2js": ">=0.5.0"
+    }
   }
 }

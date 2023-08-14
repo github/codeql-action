@@ -195,6 +195,20 @@ export class Features implements FeatureEnablement {
       );
     }
 
+    if (feature === Feature.AnalysisSummaryV2Enabled) {
+      return util.codeQlVersionAbove(
+        codeql!,
+        CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
+      );
+    }
+
+    if (feature === Feature.LanguageBaselineConfigEnabled) {
+      return util.codeQlVersionAbove(
+        codeql!,
+        CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
+      );
+    }
+
     const envVar = (
       process.env[featureConfig[feature].envVar] || ""
     ).toLocaleLowerCase();

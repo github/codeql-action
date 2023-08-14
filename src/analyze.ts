@@ -6,7 +6,6 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import del from "del";
 import * as yaml from "js-yaml";
 
-import { DatabaseCreationTimings, EventReport } from "./actions-util";
 import * as analysisPaths from "./analysis-paths";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
@@ -18,6 +17,7 @@ import {
 } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
+import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
 import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
@@ -389,7 +389,7 @@ export async function runQueries(
       }
 
       if (
-        !(await features.getValue(Feature.NewAnalysisSummaryEnabled, codeql))
+        !(await features.getValue(Feature.AnalysisSummaryV2Enabled, codeql))
       ) {
         await runPrintLinesOfCode(language);
       }

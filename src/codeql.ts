@@ -11,7 +11,7 @@ import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
   CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
-  CODEQL_VERSION_NEW_ANALYSIS_SUMMARY,
+  CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
@@ -574,6 +574,13 @@ export async function getCodeQLForCmd(
       ) {
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
+
+      if (
+        await features.getValue(Feature.LanguageBaselineConfigEnabled, this)
+      ) {
+        extraArgs.push("--calculate-language-specific-baseline");
+      }
+
       await runTool(
         cmd,
         [
@@ -856,10 +863,10 @@ export async function getCodeQLForCmd(
       } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
-      if (await features.getValue(Feature.NewAnalysisSummaryEnabled, this)) {
+      if (await features.getValue(Feature.AnalysisSummaryV2Enabled, this)) {
         codeqlArgs.push("--new-analysis-summary");
       } else if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_NEW_ANALYSIS_SUMMARY)
+        await util.codeQlVersionAbove(this, CODEQL_VERSION_ANALYSIS_SUMMARY_V2)
       ) {
         codeqlArgs.push("--no-new-analysis-summary");
       }
@@ -1162,6 +1169,7 @@ async function runTool(
 ) {
   let output = "";
   let error = "";
+  process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
     ignoreReturnCode: true,
     listeners: {

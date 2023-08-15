@@ -214,7 +214,7 @@ export function getMemoryFlagValue(
 ): number {
   return getMemoryFlagValueForPlatform(
     userInput,
-    os.totalmem(),
+    os.freemem(),
     process.platform,
     isScalingReservedRamEnabled,
   );

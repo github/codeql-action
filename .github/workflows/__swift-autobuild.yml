@@ -1,0 +1,69 @@
+name: PR Check - Swift analysis using autobuild
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+on:
+  push:
+    branches:
+    - adityasharad/swift/autobuild-test
+  workflow_dispatch: {}
+jobs:
+  swift-autobuild:
+    strategy:
+      matrix:
+        slice: [1,2,3,4]
+        version: [nightly-latest]
+    name: Swift analysis using autobuild
+    runs-on: macos-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/prepare-test
+      with:
+        version: ${{ matrix.version }}
+    - uses: ./../action/init
+      id: init
+      with:
+        debug: true
+        languages: swift
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/.github/setup-swift
+      with:
+        codeql-path: ${{steps.init.outputs.codeql-path}}
+    - name: Check working directory
+      shell: bash
+      run: pwd
+    - uses: ./../action/autobuild
+      timeout-minutes: 10
+    - name: Clean build
+      shell: bash
+      run: |
+        swift package clean
+    - uses: ./../action/autobuild
+      timeout-minutes: 10
+    - uses: ./../action/analyze
+      id: analysis
+      with:
+        upload-database: false
+        skip-queries: true
+    - name: Check database
+      shell: bash
+      run: |
+        SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+        if [[ ! -d "$SWIFT_DB" ]]; then
+          echo "Did not create a database for Swift."
+        fi
+    - name: Upload artifact
+      if: ${{ failure() || cancelled() }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: swift-autobuild-dbs-${{ matrix.slice }}
+        # relocator working directory is under codeql_databases, not the language-specific DB
+        path: ${{ runner.temp }}/codeql_databases
+        retention-days: 7
+    env:
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
+      CODEQL_ACTION_TEST_MODE: true

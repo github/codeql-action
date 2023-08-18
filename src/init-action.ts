@@ -347,18 +347,19 @@ async function run() {
     }
 
     if (config.languages.includes(Language.java)) {
-      if (await features.getValue(Feature.CodeqlJavaLombokEnabled, codeql)) {
-        logger.info("Enabling CodeQL Java Lombok support");
-        core.exportVariable(
-          "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS",
-          "true",
+      const envVar = "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS";
+      if (process.env[envVar]) {
+        logger.info(
+          `Environment variable ${envVar} already set. Not en/disabling CodeQL Java Lombok support`,
         );
+      } else if (
+        await features.getValue(Feature.CodeqlJavaLombokEnabled, codeql)
+      ) {
+        logger.info("Enabling CodeQL Java Lombok support");
+        core.exportVariable(envVar, "true");
       } else {
         logger.info("Disabling CodeQL Java Lombok support");
-        core.exportVariable(
-          "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS",
-          "false",
-        );
+        core.exportVariable(envVar, "false");
       }
     }
 

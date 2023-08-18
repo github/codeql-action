@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The beta [Project Lombok](https://projectlombok.org/) support for Java will no longer override manually-configured Lombok support
 
 ## 2.21.4 - 14 Aug 2023
 

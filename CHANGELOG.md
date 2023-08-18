@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- The beta [Project Lombok](https://projectlombok.org/) support for Java will no longer override manually-configured Lombok support
+- Fixed a bug in CodeQL Action 2.21.3 onwards that affected beta support for [Project Lombok](https://projectlombok.org/) when analyzing Java. The environment variable `CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS` will now be respected if it was manually configured in the workflow. [#1844](https://github.com/github/codeql-action/pull/1844)
 
 ## 2.21.4 - 14 Aug 2023
 

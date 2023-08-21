@@ -31,7 +31,7 @@ runs:
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
 
-    - uses: swift-actions/setup-swift@65540b95f51493d65f5e59e97dcef9629ddf11bf # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
+    - uses: swift-actions/setup-swift@cdcbe8e35d3801acd82d7109285e6ab22c9212c2 # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
       if: runner.os == 'Linux' && steps.get_swift_version.outputs.version != 'null'
       with:
         swift-version: "${{ steps.get_swift_version.outputs.version }}"

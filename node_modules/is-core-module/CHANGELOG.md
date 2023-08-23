@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.13.0](https://github.com/inspect-js/is-core-module/compare/v2.12.1...v2.13.0) - 2023-08-05
+
+### Commits
+
+- [Dev Deps] update `@ljharb/eslint-config`, `aud`, `semver`, `tape` [`c75b263`](https://github.com/inspect-js/is-core-module/commit/c75b263d047cb53430c3970107e5eb64d6cd6c0c)
+- [New] `node:test/reporters` and `wasi`/`node:wasi` are in v18.17 [`d76cbf8`](https://github.com/inspect-js/is-core-module/commit/d76cbf8e9b208acfd98913fed5a5f45cb15fe5dc)
+
 ## [v2.12.1](https://github.com/inspect-js/is-core-module/compare/v2.12.0...v2.12.1) - 2023-05-16
 
 ### Commits

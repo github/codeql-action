@@ -31,6 +31,7 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
+  codeQlVersionAbove,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMemoryFlagValue,
@@ -344,6 +345,11 @@ async function run() {
     // Disable Kotlin extractor if feature flag set
     if (await features.getValue(Feature.DisableKotlinAnalysisEnabled)) {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
+    }
+
+    const kotlinLimitVar = "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
+    if (await codeQlVersionAbove(codeql, "2.13.4")) {
+      core.exportVariable(kotlinLimitVar, "1.9.20");
     }
 
     if (config.languages.includes(Language.java)) {

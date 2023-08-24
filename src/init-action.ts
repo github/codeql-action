@@ -347,7 +347,8 @@ async function run() {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 
-    const kotlinLimitVar = "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
+    const kotlinLimitVar =
+      "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
     if (await codeQlVersionAbove(codeql, "2.13.4")) {
       core.exportVariable(kotlinLimitVar, "1.9.20");
     }

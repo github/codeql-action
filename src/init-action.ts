@@ -349,7 +349,10 @@ async function run() {
 
     const kotlinLimitVar =
       "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
-    if (await codeQlVersionAbove(codeql, "2.13.4")) {
+    if (
+      (await codeQlVersionAbove(codeql, "2.13.4")) &&
+      !(await codeQlVersionAbove(codeql, "2.14.4"))
+    ) {
       core.exportVariable(kotlinLimitVar, "1.9.20");
     }
 

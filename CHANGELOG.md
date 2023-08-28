@@ -2,6 +2,12 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.21.5 - 28 Aug 2023
+
+- Update default CodeQL bundle version to 2.14.3. [#1845](https://github.com/github/codeql-action/pull/1845)
+- Fixed a bug in CodeQL Action 2.21.3 onwards that affected beta support for [Project Lombok](https://projectlombok.org/) when analyzing Java. The environment variable `CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS` will now be respected if it was manually configured in the workflow. [#1844](https://github.com/github/codeql-action/pull/1844)
+- Enable support for Kotlin 1.9.20 when running with CodeQL CLI v2.13.4 through v2.14.3. [#1853](https://github.com/github/codeql-action/pull/1853)
+
 ## 2.21.4 - 14 Aug 2023
 
 - Update default CodeQL bundle version to 2.14.2. [#1831](https://github.com/github/codeql-action/pull/1831)

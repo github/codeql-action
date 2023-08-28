@@ -31,6 +31,7 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
+  codeQlVersionAbove,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMemoryFlagValue,
@@ -346,19 +347,29 @@ async function run() {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 
+    const kotlinLimitVar =
+      "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
+    if (
+      (await codeQlVersionAbove(codeql, "2.13.4")) &&
+      !(await codeQlVersionAbove(codeql, "2.14.4"))
+    ) {
+      core.exportVariable(kotlinLimitVar, "1.9.20");
+    }
+
     if (config.languages.includes(Language.java)) {
-      if (await features.getValue(Feature.CodeqlJavaLombokEnabled, codeql)) {
-        logger.info("Enabling CodeQL Java Lombok support");
-        core.exportVariable(
-          "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS",
-          "true",
+      const envVar = "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS";
+      if (process.env[envVar]) {
+        logger.info(
+          `Environment variable ${envVar} already set. Not en/disabling CodeQL Java Lombok support`,
         );
+      } else if (
+        await features.getValue(Feature.CodeqlJavaLombokEnabled, codeql)
+      ) {
+        logger.info("Enabling CodeQL Java Lombok support");
+        core.exportVariable(envVar, "true");
       } else {
         logger.info("Disabling CodeQL Java Lombok support");
-        core.exportVariable(
-          "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS",
-          "false",
-        );
+        core.exportVariable(envVar, "false");
       }
     }
 

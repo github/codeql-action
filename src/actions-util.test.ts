@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as toolRunner from "@actions/exec/lib/toolrunner";
 import test from "ava";
 import * as sinon from "sinon";
 

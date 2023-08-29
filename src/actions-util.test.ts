@@ -270,15 +270,15 @@ test("isAnalyzingDefaultBranch()", async (t) => {
 });
 
 test("determineMergeBaseCommitOid non-pullrequest", async (t) => {
-  const stub = sinon.stub(core, "info");
+  const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "hucairz";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
   const result = await actionsUtil.determineMergeBaseCommitOid(__dirname);
   t.deepEqual(result, undefined);
-  t.deepEqual(0, stub.callCount);
+  t.deepEqual(0, infoStub.callCount);
 
-  stub.restore();
+  infoStub.restore();
 });
 
 test("determineMergeBaseCommitOid no error", async (t) => {

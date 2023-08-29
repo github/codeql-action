@@ -91,8 +91,7 @@ export const getCommitOid = async function (
       );
     } else {
       core.info(
-        `Could not determine current commit SHA using git. Continuing with data from user input or environment. ` +
-          `Failed to call git to determine merge base. Continuing with data from environment: ${stderr}`,
+        `Could not determine current commit SHA using git. Continuing with data from user input or environment. ${stderr}`,
       );
     }
 

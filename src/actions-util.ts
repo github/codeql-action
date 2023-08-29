@@ -63,6 +63,7 @@ export const getCommitOid = async function (
   // the merge commit, which must mean that git is available.
   // Even if this does go wrong, it's not a huge problem for the alerts to
   // reported on the merge commit.
+  let stderr = "";
   try {
     let commitOid = "";
     await new toolrunner.ToolRunner(
@@ -75,7 +76,7 @@ export const getCommitOid = async function (
             commitOid += data.toString();
           },
           stderr: (data) => {
-            process.stderr.write(data);
+            stderr += data.toString();
           },
         },
         cwd: checkoutPath,
@@ -83,11 +84,17 @@ export const getCommitOid = async function (
     ).exec();
     return commitOid.trim();
   } catch (e) {
-    core.info(
-      "Could not determine current commit SHA using git. Continuing with data from user input or environment.",
-    );
-    core.debug(`Reason: ${(e as Error).message}`);
-    core.debug((e as Error).stack || "NO STACK");
+    if (stderr.includes("not a git repository")) {
+      core.info(
+        "Could not determine current commit SHA using git. Continuing with data from user input or environment. " +
+          "The checkout path provided to the action does not appear to be a git repository.",
+      );
+    } else {
+      core.info(
+        `Could not determine current commit SHA using git. Continuing with data from user input or environment. ${stderr}`,
+      );
+    }
+
     return getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
   }
 };
@@ -96,15 +103,17 @@ export const getCommitOid = async function (
  * If the action was triggered by a pull request, determine the commit sha of the merge base.
  * Returns undefined if run by other triggers or the merge base cannot be determined.
  */
-export const determineMergeBaseCommitOid = async function (): Promise<
-  string | undefined
-> {
+export const determineMergeBaseCommitOid = async function (
+  checkoutPathOverride?: string,
+): Promise<string | undefined> {
   if (getWorkflowEventName() !== "pull_request") {
     return undefined;
   }
 
   const mergeSha = getRequiredEnvParam("GITHUB_SHA");
-  const checkoutPath = getOptionalInput("checkout_path");
+  const checkoutPath =
+    checkoutPathOverride ?? getOptionalInput("checkout_path");
+  let stderr = "";
 
   try {
     let commitOid = "";
@@ -129,7 +138,7 @@ export const determineMergeBaseCommitOid = async function (): Promise<
             }
           },
           stderr: (data) => {
-            process.stderr.write(data);
+            stderr += data.toString();
           },
         },
         cwd: checkoutPath,
@@ -146,10 +155,17 @@ export const determineMergeBaseCommitOid = async function (): Promise<
     }
     return undefined;
   } catch (e) {
-    core.info(
-      `Failed to call git to determine merge base. Continuing with data from environment: ${e}`,
-    );
-    core.info((e as Error).stack || "NO STACK");
+    if (stderr.includes("not a git repository")) {
+      core.info(
+        "The checkout path provided to the action does not appear to be a git repository. " +
+          "Will calculate the merge base on the server.",
+      );
+    } else {
+      core.info(
+        `Failed to call git to determine merge base. Will calculate the merge base on ` +
+          `the server. Reason: ${stderr}`,
+      );
+    }
     return undefined;
   }
 };

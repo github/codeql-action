@@ -282,23 +282,23 @@ test("determineMergeBaseCommitOid non-pullrequest", async (t) => {
 });
 
 test("determineMergeBaseCommitOid no error", async (t) => {
-  const stub = sinon.stub(core, "info");
+  const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
   await actionsUtil.determineMergeBaseCommitOid(path.join(__dirname, "../.."));
-  t.deepEqual(1, stub.callCount);
+  t.deepEqual(1, infoStub.callCount);
   t.assert(
-    stub.firstCall.args[0].startsWith(
+    infoStub.firstCall.args[0].startsWith(
       "The checkout path provided to the action does not appear to be a git repository.",
     ),
   );
 
-  stub.restore();
+  infoStub.restore();
 });
 
 test("determineMergeBaseCommitOid other error", async (t) => {
-  const stub = sinon.stub(core, "info");
+  const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
@@ -306,12 +306,12 @@ test("determineMergeBaseCommitOid other error", async (t) => {
     path.join(__dirname, "../../i-dont-exist"),
   );
   t.deepEqual(result, undefined);
-  t.deepEqual(1, stub.callCount);
+  t.deepEqual(1, infoStub.callCount);
   t.assert(
-    stub.firstCall.args[0].startsWith(
+    infoStub.firstCall.args[0].startsWith(
       "Failed to call git to determine merge base.",
     ),
   );
 
-  stub.restore();
+  infoStub.restore();
 });

@@ -79,7 +79,7 @@ export const featureConfig: Record<
   [Feature.CodeqlJavaLombokEnabled]: {
     envVar: "CODEQL_JAVA_LOMBOK",
     minimumVersion: "2.14.0",
-    defaultValue: false,
+    defaultValue: true,
   },
   [Feature.DisableKotlinAnalysisEnabled]: {
     envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",

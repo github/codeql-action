@@ -168,6 +168,9 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
     }
     return;
   }
+  logger.debug(
+    "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
+  );
   await runAutobuild(Language.go, config, logger);
 }
 

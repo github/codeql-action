@@ -8,7 +8,6 @@ const defaultcomponentName = 'VisuallyHidden'
 const schema = generateObjSchema({
   className: {type: 'string'},
   componentName: {type: 'string'},
-  htmlPropName: {type: 'string'},
 })
 
 /** Note: we are not including input elements at this time

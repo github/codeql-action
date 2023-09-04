@@ -33,7 +33,7 @@ jobs:
       - name: Dump GitHub event
         run: cat "${GITHUB_EVENT_PATH}"
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test

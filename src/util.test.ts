@@ -4,6 +4,7 @@ import path from "path";
 
 import test from "ava";
 
+import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
 import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
 import * as util from "./util";
@@ -62,6 +63,14 @@ const GET_MEMORY_FLAG_TESTS = [
     expectedMemoryValue: 62.5 * 1024,
     expectedMemoryValueWithScaling: 61132, // Math.floor(1024 * (64 - 1.5 - 0.05 * (64 - 8)))
   },
+  {
+    input: undefined,
+    totalMemoryMb: 64 * 1024,
+    platform: "linux",
+    expectedMemoryValue: 63 * 1024,
+    expectedMemoryValueWithScaling: 58777, // Math.floor(1024 * (64 - 1 - 0.1 * (64 - 8)))
+    reservedPercentageValue: "10",
+  },
 ];
 
 for (const {
@@ -70,13 +79,20 @@ for (const {
   platform,
   expectedMemoryValue,
   expectedMemoryValueWithScaling,
+  reservedPercentageValue,
 } of GET_MEMORY_FLAG_TESTS) {
   test(
     `Memory flag value is ${expectedMemoryValue} without scaling and ${expectedMemoryValueWithScaling} with scaling ` +
       `for ${
         input ?? "no user input"
-      } on ${platform} with ${totalMemoryMb} MB total system RAM`,
+      } on ${platform} with ${totalMemoryMb} MB total system RAM${
+        reservedPercentageValue
+          ? ` and reserved percentage env var set to ${reservedPercentageValue}`
+          : ""
+      }`,
     async (t) => {
+      process.env[EnvVar.SCALING_RESERVED_RAM_PERCENTAGE] =
+        reservedPercentageValue || undefined;
       for (const withScaling of [true, false]) {
         const flag = util.getMemoryFlagValueForPlatform(
           input,

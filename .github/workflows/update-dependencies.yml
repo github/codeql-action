@@ -11,7 +11,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'Update dependencies') && (github.event.pull_request.head.repo.full_name == 'github/codeql-action')
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Remove PR label
       env:

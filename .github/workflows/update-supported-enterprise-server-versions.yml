@@ -18,9 +18,9 @@ jobs:
         with:
           python-version: "3.7"
       - name: Checkout CodeQL Action
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout Enterprise Releases
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: github/enterprise-releases
           ssh-key: ${{ secrets.ENTERPRISE_RELEASES_SSH_KEY }}

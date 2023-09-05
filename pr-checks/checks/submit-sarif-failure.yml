@@ -15,7 +15,7 @@ env:
   CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
 
 steps:
-  - uses: actions/checkout@v3
+  - uses: actions/checkout@v4
   - uses: ./init
     with:
       languages: javascript

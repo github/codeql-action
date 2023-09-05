@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Enable improved file coverage information for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#1867](https://github.com/github/codeql-action/pull/1867)
 
 ## 2.21.5 - 28 Aug 2023
 

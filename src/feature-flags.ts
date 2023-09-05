@@ -63,7 +63,6 @@ export enum Feature {
   LanguageBaselineConfigEnabled = "language_baseline_config_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  ScalingReservedRamEnabled = "scaling_reserved_ram_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -115,11 +114,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     minimumVersion: undefined,
     defaultValue: false,
-  },
-  [Feature.ScalingReservedRamEnabled]: {
-    envVar: "CODEQL_ACTION_SCALING_RESERVED_RAM",
-    minimumVersion: undefined,
-    defaultValue: true,
   },
   [Feature.UploadFailedSarifEnabled]: {
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",

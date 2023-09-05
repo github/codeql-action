@@ -160,21 +160,15 @@ export async function withTmpDir<T>(
 function getSystemReservedMemoryMegaBytes(
   totalMemoryMegaBytes: number,
   platform: string,
-  isScalingReservedRamEnabled: boolean,
 ): number {
   // Windows needs more memory for OS processes.
   const fixedAmount = 1024 * (platform === "win32" ? 1.5 : 1);
 
-  if (isScalingReservedRamEnabled) {
-    // Reserve an additional percentage of the amount of memory above 8 GB, since the amount used by
-    // the kernel for page tables scales with the size of physical memory.
-    const scaledAmount =
-      getReservedRamScaleFactor() *
-      Math.max(totalMemoryMegaBytes - 8 * 1024, 0);
-    return fixedAmount + scaledAmount;
-  } else {
-    return fixedAmount;
-  }
+  // Reserve an additional percentage of the amount of memory above 8 GB, since the amount used by
+  // the kernel for page tables scales with the size of physical memory.
+  const scaledAmount =
+    getReservedRamScaleFactor() * Math.max(totalMemoryMegaBytes - 8 * 1024, 0);
+  return fixedAmount + scaledAmount;
 }
 
 function getReservedRamScaleFactor(): number {
@@ -199,7 +193,6 @@ export function getMemoryFlagValueForPlatform(
   userInput: string | undefined,
   totalMemoryBytes: number,
   platform: string,
-  isScalingReservedRamEnabled: boolean,
 ): number {
   let memoryToUseMegaBytes: number;
   if (userInput) {
@@ -212,7 +205,6 @@ export function getMemoryFlagValueForPlatform(
     const reservedMemoryMegaBytes = getSystemReservedMemoryMegaBytes(
       totalMemoryMegaBytes,
       platform,
-      isScalingReservedRamEnabled,
     );
     memoryToUseMegaBytes = totalMemoryMegaBytes - reservedMemoryMegaBytes;
   }
@@ -226,15 +218,11 @@ export function getMemoryFlagValueForPlatform(
  *
  * @returns {number} the amount of RAM to use, in megabytes
  */
-export function getMemoryFlagValue(
-  userInput: string | undefined,
-  isScalingReservedRamEnabled: boolean,
-): number {
+export function getMemoryFlagValue(userInput: string | undefined): number {
   return getMemoryFlagValueForPlatform(
     userInput,
     os.totalmem(),
     process.platform,
-    isScalingReservedRamEnabled,
   );
 }
 
@@ -245,11 +233,8 @@ export function getMemoryFlagValue(
  *
  * @returns string
  */
-export function getMemoryFlag(
-  userInput: string | undefined,
-  isScalingReservedRamEnabled: boolean,
-): string {
-  const megabytes = getMemoryFlagValue(userInput, isScalingReservedRamEnabled);
+export function getMemoryFlag(userInput: string | undefined): string {
+  const megabytes = getMemoryFlagValue(userInput);
   return `--ram=${megabytes}`;
 }
 

@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Improve the calculation of default amount of RAM used for query execution on GitHub Enterprise Server. This now reduces in proportion to the runner's total memory to better account for system memory usage, helping to avoid out-of-memory failures on larger runners. This feature is already available to GitHub.com users. [#1867](https://github.com/github/codeql-action/pull/1867)
 
 ## 2.21.5 - 28 Aug 2023
 

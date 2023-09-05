@@ -119,7 +119,7 @@ export const featureConfig: Record<
   [Feature.ScalingReservedRamEnabled]: {
     envVar: "CODEQL_ACTION_SCALING_RESERVED_RAM",
     minimumVersion: undefined,
-    defaultValue: false,
+    defaultValue: true,
   },
   [Feature.UploadFailedSarifEnabled]: {
     envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",

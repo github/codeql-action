@@ -28,11 +28,6 @@ export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.14.0";
  */
 export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.0";
 
-/**
- * Versions 2.14.2+ of the CodeQL CLI support language-specific baseline configuration.
- */
-export const CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG = "2.14.2";
-
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
   tagName: string;
@@ -60,7 +55,6 @@ export enum Feature {
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
-  LanguageBaselineConfigEnabled = "language_baseline_config_enabled",
   MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ScalingReservedRamEnabled = "scaling_reserved_ram_enabled",
@@ -100,11 +94,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     minimumVersion: "2.12.4",
     defaultValue: true,
-  },
-  [Feature.LanguageBaselineConfigEnabled]: {
-    envVar: "CODEQL_ACTION_LANGUAGE_BASELINE_CONFIG",
-    minimumVersion: CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
-    defaultValue: false,
   },
   [Feature.MlPoweredQueriesEnabled]: {
     envVar: "CODEQL_ML_POWERED_QUERIES",

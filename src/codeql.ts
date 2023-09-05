@@ -326,6 +326,11 @@ export const CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED = "2.13.1";
 export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
 
 /**
+ * Versions 2.14.2+ of the CodeQL CLI support language-specific baseline configuration.
+ */
+export const CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG = "2.14.2";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -576,7 +581,10 @@ export async function getCodeQLForCmd(
       }
 
       if (
-        await features.getValue(Feature.LanguageBaselineConfigEnabled, this)
+        await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
+        )
       ) {
         extraArgs.push("--calculate-language-specific-baseline");
       }

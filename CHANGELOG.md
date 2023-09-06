@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - Enable improved file coverage information for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#1867](https://github.com/github/codeql-action/pull/1867)
+- Update default CodeQL bundle version to 2.14.4. [#1871](https://github.com/github/codeql-action/pull/1871)
 
 ## 2.21.5 - 28 Aug 2023
 

@@ -33,7 +33,7 @@ function combineSarifFiles(sarifFiles: string[]): SarifFile {
     if (combinedSarif.version === null) {
       combinedSarif.version = sarifObject.version;
     } else if (combinedSarif.version !== sarifObject.version) {
-      throw new Error(
+      throw new InvalidUploadSarifRequest(
         `Different SARIF versions encountered: ${combinedSarif.version} and ${sarifObject.version}`,
       );
     }
@@ -155,40 +155,54 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
   return sarifFiles;
 }
 
-// Uploads a single sarif file or a directory of sarif files
-// depending on what the path happens to refer to.
+/**
+ * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers to.
+ *
+ * @param invalidRequestIsUserError Whether an invalid request, for example one with a `sarifPath`
+ *                                  that does not exist, should be considered a user error.
+ */
 export async function uploadFromActions(
   sarifPath: string,
   checkoutPath: string,
   category: string | undefined,
   logger: Logger,
+  { invalidRequestIsUserError }: { invalidRequestIsUserError: boolean },
 ): Promise<UploadResult> {
-  return await uploadFiles(
-    getSarifFilePaths(sarifPath),
-    parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    await actionsUtil.getCommitOid(checkoutPath),
-    await actionsUtil.getRef(),
-    await api.getAnalysisKey(),
-    category,
-    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-    actionsUtil.getWorkflowRunID(),
-    actionsUtil.getWorkflowRunAttempt(),
-    checkoutPath,
-    actionsUtil.getRequiredInput("matrix"),
-    logger,
-  );
+  try {
+    return await uploadFiles(
+      getSarifFilePaths(sarifPath),
+      parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
+      await actionsUtil.getCommitOid(checkoutPath),
+      await actionsUtil.getRef(),
+      await api.getAnalysisKey(),
+      category,
+      util.getRequiredEnvParam("GITHUB_WORKFLOW"),
+      actionsUtil.getWorkflowRunID(),
+      actionsUtil.getWorkflowRunAttempt(),
+      checkoutPath,
+      actionsUtil.getRequiredInput("matrix"),
+      logger,
+    );
+  } catch (e) {
+    if (e instanceof InvalidUploadSarifRequest && invalidRequestIsUserError) {
+      throw new UserError(e.message);
+    }
+    throw e;
+  }
 }
 
 function getSarifFilePaths(sarifPath: string) {
   if (!fs.existsSync(sarifPath)) {
-    throw new Error(`Path does not exist: ${sarifPath}`);
+    throw new InvalidUploadSarifRequest(`Path does not exist: ${sarifPath}`);
   }
 
   let sarifFiles: string[];
   if (fs.lstatSync(sarifPath).isDirectory()) {
     sarifFiles = findSarifFilesInDir(sarifPath);
     if (sarifFiles.length === 0) {
-      throw new Error(`No SARIF files found to upload in "${sarifPath}".`);
+      throw new InvalidUploadSarifRequest(
+        `No SARIF files found to upload in "${sarifPath}".`,
+      );
     }
   } else {
     sarifFiles = [sarifPath];
@@ -203,17 +217,19 @@ function countResultsInSarif(sarif: string): number {
   try {
     parsedSarif = JSON.parse(sarif);
   } catch (e) {
-    throw new Error(
+    throw new InvalidUploadSarifRequest(
       `Invalid SARIF. JSON syntax error: ${wrapError(e).message}`,
     );
   }
   if (!Array.isArray(parsedSarif.runs)) {
-    throw new Error("Invalid SARIF. Missing 'runs' array.");
+    throw new InvalidUploadSarifRequest("Invalid SARIF. Missing 'runs' array.");
   }
 
   for (const run of parsedSarif.runs) {
     if (!Array.isArray(run.results)) {
-      throw new Error("Invalid SARIF. Missing 'results' array in run.");
+      throw new InvalidUploadSarifRequest(
+        "Invalid SARIF. Missing 'results' array in run.",
+      );
     }
     numResults += run.results.length;
   }
@@ -253,7 +269,7 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
     // Set the main error message to the stacks of all the errors.
     // This should be of a manageable size and may even give enough to fix the error.
     const sarifErrors = errors.map((e) => `- ${e.stack}`);
-    throw new Error(
+    throw new InvalidUploadSarifRequest(
       `Unable to upload "${sarifFilePath}" as it is not valid SARIF:\n${sarifErrors.join(
         "\n",
       )}`,
@@ -475,7 +491,7 @@ export async function waitForProcessing(
         const message = `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`;
         throw shouldConsiderAsUserError(response.data.errors as string[])
           ? new UserError(message)
-          : new Error(message);
+          : new InvalidUploadSarifRequest(message);
       } else {
         util.assertNever(status);
       }
@@ -552,7 +568,7 @@ export function validateUniqueCategory(sarif: SarifFile): void {
   for (const [category, { id, tool }] of Object.entries(categories)) {
     const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
     if (process.env[sentinelEnvVar]) {
-      throw new Error(
+      throw new InvalidUploadSarifRequest(
         "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
           "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
           "in the sarif file, that will take precedence over your configured `category`. " +
@@ -613,4 +629,13 @@ export function pruneInvalidResults(
     );
   }
   return { ...sarif, runs: newRuns };
+}
+
+/**
+ * An error that occurred due to an invalid SARIF upload request.
+ */
+class InvalidUploadSarifRequest extends Error {
+  constructor(message: string) {
+    super(message);
+  }
 }

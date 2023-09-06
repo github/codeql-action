@@ -11,7 +11,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'Update dependencies') && (github.event.pull_request.head.repo.full_name == 'github/codeql-action')
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Remove PR label
       env:
@@ -34,4 +34,8 @@ jobs:
           git add node_modules
           git commit -am "Update checked-in dependencies"
           git push origin "HEAD:$BRANCH"
+          echo "Pushed a commit to update the checked-in dependencies." \
+            "Please mark the PR as ready for review to trigger PR checks." |
+            gh pr comment --body-file - --repo github/codeql-action --pr "${{ github.event.pull_request.number }}"
+          gh pr ready --undo --repo github/codeql-action --pr "${{ github.event.pull_request.number }}"
         fi

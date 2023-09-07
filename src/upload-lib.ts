@@ -33,7 +33,7 @@ function combineSarifFiles(sarifFiles: string[]): SarifFile {
     if (combinedSarif.version === null) {
       combinedSarif.version = sarifObject.version;
     } else if (combinedSarif.version !== sarifObject.version) {
-      throw new InvalidUploadSarifRequest(
+      throw new InvalidRequestError(
         `Different SARIF versions encountered: ${combinedSarif.version} and ${sarifObject.version}`,
       );
     }
@@ -156,17 +156,21 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 }
 
 /**
- * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers to.
+ * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers
+ * to.
  *
- * @param invalidRequestIsUserError Whether an invalid request, for example one with a `sarifPath`
- *                                  that does not exist, should be considered a user error.
+ * @param considerInvalidRequestUserError Whether an invalid request, for example one with a
+ *                                        `sarifPath` that does not exist, should be considered a
+ *                                        user error.
  */
 export async function uploadFromActions(
   sarifPath: string,
   checkoutPath: string,
   category: string | undefined,
   logger: Logger,
-  { invalidRequestIsUserError }: { invalidRequestIsUserError: boolean },
+  {
+    considerInvalidRequestUserError,
+  }: { considerInvalidRequestUserError: boolean },
 ): Promise<UploadResult> {
   try {
     return await uploadFiles(
@@ -184,7 +188,7 @@ export async function uploadFromActions(
       logger,
     );
   } catch (e) {
-    if (e instanceof InvalidUploadSarifRequest && invalidRequestIsUserError) {
+    if (e instanceof InvalidRequestError && considerInvalidRequestUserError) {
       throw new UserError(e.message);
     }
     throw e;
@@ -193,14 +197,14 @@ export async function uploadFromActions(
 
 function getSarifFilePaths(sarifPath: string) {
   if (!fs.existsSync(sarifPath)) {
-    throw new InvalidUploadSarifRequest(`Path does not exist: ${sarifPath}`);
+    throw new InvalidRequestError(`Path does not exist: ${sarifPath}`);
   }
 
   let sarifFiles: string[];
   if (fs.lstatSync(sarifPath).isDirectory()) {
     sarifFiles = findSarifFilesInDir(sarifPath);
     if (sarifFiles.length === 0) {
-      throw new InvalidUploadSarifRequest(
+      throw new InvalidRequestError(
         `No SARIF files found to upload in "${sarifPath}".`,
       );
     }
@@ -217,17 +221,17 @@ function countResultsInSarif(sarif: string): number {
   try {
     parsedSarif = JSON.parse(sarif);
   } catch (e) {
-    throw new InvalidUploadSarifRequest(
+    throw new InvalidRequestError(
       `Invalid SARIF. JSON syntax error: ${wrapError(e).message}`,
     );
   }
   if (!Array.isArray(parsedSarif.runs)) {
-    throw new InvalidUploadSarifRequest("Invalid SARIF. Missing 'runs' array.");
+    throw new InvalidRequestError("Invalid SARIF. Missing 'runs' array.");
   }
 
   for (const run of parsedSarif.runs) {
     if (!Array.isArray(run.results)) {
-      throw new InvalidUploadSarifRequest(
+      throw new InvalidRequestError(
         "Invalid SARIF. Missing 'results' array in run.",
       );
     }
@@ -269,7 +273,7 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
     // Set the main error message to the stacks of all the errors.
     // This should be of a manageable size and may even give enough to fix the error.
     const sarifErrors = errors.map((e) => `- ${e.stack}`);
-    throw new InvalidUploadSarifRequest(
+    throw new InvalidRequestError(
       `Unable to upload "${sarifFilePath}" as it is not valid SARIF:\n${sarifErrors.join(
         "\n",
       )}`,
@@ -491,7 +495,7 @@ export async function waitForProcessing(
         const message = `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`;
         throw shouldConsiderAsUserError(response.data.errors as string[])
           ? new UserError(message)
-          : new InvalidUploadSarifRequest(message);
+          : new InvalidRequestError(message);
       } else {
         util.assertNever(status);
       }
@@ -568,7 +572,7 @@ export function validateUniqueCategory(sarif: SarifFile): void {
   for (const [category, { id, tool }] of Object.entries(categories)) {
     const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
     if (process.env[sentinelEnvVar]) {
-      throw new InvalidUploadSarifRequest(
+      throw new InvalidRequestError(
         "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
           "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
           "in the sarif file, that will take precedence over your configured `category`. " +
@@ -580,7 +584,7 @@ export function validateUniqueCategory(sarif: SarifFile): void {
 }
 
 /**
- * Santizes a string to be used as an environment variable name.
+ * Sanitizes a string to be used as an environment variable name.
  * This will replace all non-alphanumeric characters with underscores.
  * There could still be some false category clashes if two uploads
  * occur that differ only in their non-alphanumeric characters. This is
@@ -634,7 +638,7 @@ export function pruneInvalidResults(
 /**
  * An error that occurred due to an invalid SARIF upload request.
  */
-class InvalidUploadSarifRequest extends Error {
+class InvalidRequestError extends Error {
   constructor(message: string) {
     super(message);
   }

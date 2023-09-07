@@ -63,7 +63,7 @@ async function run() {
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getOptionalInput("category"),
       logger,
-      { invalidRequestIsUserError: true },
+      { considerInvalidRequestUserError: true },
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
 

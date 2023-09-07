@@ -57,7 +57,7 @@ export class CommandInvocationError extends Error {
       .join(" ");
     super(
       `Encountered a fatal error while running "${prettyCommand}". ` +
-        `Exit code was ${exitCode} and error was: ${error.trim()}`,
+      `Exit code was ${exitCode} and error was: ${error.trim()}`,
     );
   }
 }
@@ -580,15 +580,6 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
 
-      if (
-        await util.codeQlVersionAbove(
-          this,
-          CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
-        )
-      ) {
-        extraArgs.push("--calculate-language-specific-baseline");
-      }
-
       await runTool(
         cmd,
         [
@@ -686,7 +677,7 @@ export async function getCodeQLForCmd(
         ) {
           throw new util.UserError(
             "No code found during the build. Please see: " +
-              "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+            "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
           );
         }
         throw e;
@@ -1085,15 +1076,15 @@ export async function getCodeQLForCmd(
   ) {
     core.warning(
       `CodeQL CLI version ${await codeql.getVersion()} was deprecated on 2023-06-20 alongside ` +
-        "GitHub Enterprise Server 3.5 and will not be supported by the next release of the " +
-        `CodeQL Action. Please update to CodeQL CLI version ${CODEQL_NEXT_MINIMUM_VERSION} or ` +
-        "later. For instance, if you have specified a custom version of the CLI using the " +
-        "'tools' input to the 'init' Action, you can remove this input to use the default " +
-        "version.\n\n" +
-        "Alternatively, if you want to continue using CodeQL CLI version " +
-        `${await codeql.getVersion()}, you can replace 'github/codeql-action/*@v2' by ` +
-        "'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue " +
-        "using this version of the CodeQL Action.",
+      "GitHub Enterprise Server 3.5 and will not be supported by the next release of the " +
+      `CodeQL Action. Please update to CodeQL CLI version ${CODEQL_NEXT_MINIMUM_VERSION} or ` +
+      "later. For instance, if you have specified a custom version of the CLI using the " +
+      "'tools' input to the 'init' Action, you can remove this input to use the default " +
+      "version.\n\n" +
+      "Alternatively, if you want to continue using CodeQL CLI version " +
+      `${await codeql.getVersion()}, you can replace 'github/codeql-action/*@v2' by ` +
+      "'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue " +
+      "using this version of the CodeQL Action.",
     );
     core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
@@ -1153,10 +1144,10 @@ export function getExtraOptions(
     paths.length === 0
       ? asExtraOptions(options, pathInfo)
       : getExtraOptions(
-          options?.[paths[0]],
-          paths?.slice(1),
-          pathInfo.concat(paths[0]),
-        );
+        options?.[paths[0]],
+        paths?.slice(1),
+        pathInfo.concat(paths[0]),
+      );
   return all.concat(specific);
 }
 

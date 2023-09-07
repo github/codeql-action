@@ -37,6 +37,12 @@ export enum EnvVar {
 
   ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 
+  /**
+   * What percentage of the total amount of RAM over 8 GB that the Action should reserve for the
+   * system.
+   */
+  SCALING_RESERVED_RAM_PERCENTAGE = "CODEQL_ACTION_SCALING_RESERVED_RAM_PERCENTAGE",
+
   /** Whether to suppress the warning if the current CLI will soon be unsupported. */
   SUPPRESS_DEPRECATED_SOON_WARNING = "CODEQL_ACTION_SUPPRESS_DEPRECATED_SOON_WARNING",
 

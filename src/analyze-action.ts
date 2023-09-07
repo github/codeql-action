@@ -19,7 +19,7 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig, getMlPoweredJsQueriesStatus } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -233,7 +233,6 @@ async function run() {
 
     const memory = util.getMemoryFlag(
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
-      await features.getValue(Feature.ScalingReservedRamEnabled),
     );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);

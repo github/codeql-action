@@ -26,7 +26,7 @@ jobs:
       security-events: write
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Init with default CodeQL bundle from the VM image
       id: init-default
       uses: ./init
@@ -82,7 +82,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Initialize CodeQL
       uses: ./init
       id: init

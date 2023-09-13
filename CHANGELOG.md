@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.21.6 - 13 Sep 2023
 
 - Better error message when there is a failure to determine the merge base of the code to analysis. [#1860](https://github.com/github/codeql-action/pull/1860)

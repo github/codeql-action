@@ -98,6 +98,7 @@ async function maybeUploadFailedSarif(
     checkoutPath,
     category,
     logger,
+    { considerInvalidRequestUserError: false },
   );
   await uploadLib.waitForProcessing(
     repositoryNwo,

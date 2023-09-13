@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import test from "ava";
 import * as sinon from "sinon";
 
@@ -266,4 +267,51 @@ test("isAnalyzingDefaultBranch()", async (t) => {
     t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), false);
     getAdditionalInputStub.restore();
   });
+});
+
+test("determineMergeBaseCommitOid non-pullrequest", async (t) => {
+  const infoStub = sinon.stub(core, "info");
+
+  process.env["GITHUB_EVENT_NAME"] = "hucairz";
+  process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
+  const result = await actionsUtil.determineMergeBaseCommitOid(__dirname);
+  t.deepEqual(result, undefined);
+  t.deepEqual(0, infoStub.callCount);
+
+  infoStub.restore();
+});
+
+test("determineMergeBaseCommitOid no error", async (t) => {
+  const infoStub = sinon.stub(core, "info");
+
+  process.env["GITHUB_EVENT_NAME"] = "pull_request";
+  process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
+  await actionsUtil.determineMergeBaseCommitOid(path.join(__dirname, "../.."));
+  t.deepEqual(1, infoStub.callCount);
+  t.assert(
+    infoStub.firstCall.args[0].startsWith(
+      "The checkout path provided to the action does not appear to be a git repository.",
+    ),
+  );
+
+  infoStub.restore();
+});
+
+test("determineMergeBaseCommitOid other error", async (t) => {
+  const infoStub = sinon.stub(core, "info");
+
+  process.env["GITHUB_EVENT_NAME"] = "pull_request";
+  process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
+  const result = await actionsUtil.determineMergeBaseCommitOid(
+    path.join(__dirname, "../../i-dont-exist"),
+  );
+  t.deepEqual(result, undefined);
+  t.deepEqual(1, infoStub.callCount);
+  t.assert(
+    infoStub.firstCall.args[0].startsWith(
+      "Failed to call git to determine merge base.",
+    ),
+  );
+
+  infoStub.restore();
 });

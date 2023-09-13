@@ -3,7 +3,7 @@ description: "Checks that a custom `checkout_path` will find the proper commit_o
 steps:
   # Check out the actions repo again, but at a different location.
   # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
-  - uses: actions/checkout@v3
+  - uses: actions/checkout@v4
     with:
       ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
       path: x/y/z/some-path

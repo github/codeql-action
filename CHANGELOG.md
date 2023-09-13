@@ -2,6 +2,13 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.21.6 - 13 Sep 2023
+
+- Better error message when there is a failure to determine the merge base of the code to analysis. [#1860](https://github.com/github/codeql-action/pull/1860)
+- Improve the calculation of default amount of RAM used for query execution on GitHub Enterprise Server. This now reduces in proportion to the runner's total memory to better account for system memory usage, helping to avoid out-of-memory failures on larger runners. This feature is already available to GitHub.com users. [#1866](https://github.com/github/codeql-action/pull/1866)
+- Enable improved file coverage information for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#1867](https://github.com/github/codeql-action/pull/1867)
+- Update default CodeQL bundle version to 2.14.4. [#1873](https://github.com/github/codeql-action/pull/1873)
+
 ## 2.21.5 - 28 Aug 2023
 
 - Update default CodeQL bundle version to 2.14.3. [#1845](https://github.com/github/codeql-action/pull/1845)

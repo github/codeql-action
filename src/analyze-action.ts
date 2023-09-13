@@ -19,7 +19,7 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig, getMlPoweredJsQueriesStatus } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -168,6 +168,9 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
     }
     return;
   }
+  logger.debug(
+    "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
+  );
   await runAutobuild(Language.go, config, logger);
 }
 
@@ -203,7 +206,7 @@ async function run() {
     }
 
     if (hasBadExpectErrorInput()) {
-      throw new Error(
+      throw new util.UserError(
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork.",
       );
     }
@@ -230,7 +233,6 @@ async function run() {
 
     const memory = util.getMemoryFlag(
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
-      await features.getValue(Feature.ScalingReservedRamEnabled),
     );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);
@@ -278,6 +280,7 @@ async function run() {
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
         logger,
+        { considerInvalidRequestUserError: false },
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {

@@ -4,6 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 2.21.6 - 13 Sep 2023
+
+- Better error message when there is a failure to determine the merge base of the code to analysis. [#1860](https://github.com/github/codeql-action/pull/1860)
 - Improve the calculation of default amount of RAM used for query execution on GitHub Enterprise Server. This now reduces in proportion to the runner's total memory to better account for system memory usage, helping to avoid out-of-memory failures on larger runners. This feature is already available to GitHub.com users. [#1866](https://github.com/github/codeql-action/pull/1866)
 - Enable improved file coverage information for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#1867](https://github.com/github/codeql-action/pull/1867)
 - Update default CodeQL bundle version to 2.14.4. [#1873](https://github.com/github/codeql-action/pull/1873)
@@ -13,7 +18,6 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - Update default CodeQL bundle version to 2.14.3. [#1845](https://github.com/github/codeql-action/pull/1845)
 - Fixed a bug in CodeQL Action 2.21.3 onwards that affected beta support for [Project Lombok](https://projectlombok.org/) when analyzing Java. The environment variable `CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS` will now be respected if it was manually configured in the workflow. [#1844](https://github.com/github/codeql-action/pull/1844)
 - Enable support for Kotlin 1.9.20 when running with CodeQL CLI v2.13.4 through v2.14.3. [#1853](https://github.com/github/codeql-action/pull/1853)
-- Better error message when there is a failure to determine the merge base of the code to analysis. [#1860](https://github.com/github/codeql-action/pull/1860)
 
 ## 2.21.4 - 14 Aug 2023
 

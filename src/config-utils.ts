@@ -9,6 +9,7 @@ import * as api from "./api-client";
 import {
   CodeQL,
   CODEQL_VERSION_GHES_PACK_DOWNLOAD,
+  CODEQL_VERSION_LANGUAGE_ALIASING,
   CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE,
   ResolveQueriesOutput,
 } from "./codeql";
@@ -19,12 +20,7 @@ import {
   logCodeScanningConfigInCli,
   useCodeScanningConfigInCli,
 } from "./feature-flags";
-import {
-  Language,
-  LanguageOrAlias,
-  parseLanguage,
-  resolveAlias,
-} from "./languages";
+import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
@@ -874,7 +870,7 @@ export function getNoLanguagesError(): string {
 }
 
 export function getUnknownLanguagesError(languages: string[]): string {
-  return `Did not recognise the following languages: ${languages.join(", ")}`;
+  return `Did not recognize the following languages: ${languages.join(", ")}`;
 }
 
 /**
@@ -884,7 +880,7 @@ export function getUnknownLanguagesError(languages: string[]): string {
 export async function getLanguagesInRepo(
   repository: RepositoryNwo,
   logger: Logger,
-): Promise<LanguageOrAlias[]> {
+): Promise<Language[]> {
   logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
   const response = await api.getApiClient().rest.repos.listLanguages({
     owner: repository.owner,
@@ -897,7 +893,7 @@ export async function getLanguagesInRepo(
   // When we pick a language to autobuild we want to pick the most popular traced language
   // Since sets in javascript maintain insertion order, using a set here and then splatting it
   // into an array gives us an array of languages ordered by popularity
-  const languages: Set<LanguageOrAlias> = new Set();
+  const languages: Set<Language> = new Set();
   for (const lang of Object.keys(response.data as Record<string, number>)) {
     const parsedLang = parseLanguage(lang);
     if (parsedLang !== undefined) {
@@ -930,13 +926,22 @@ export async function getLanguages(
     logger,
   );
 
-  let languages = rawLanguages.map(resolveAlias);
-
+  let languages = rawLanguages;
   if (autodetected) {
-    const availableLanguages = await codeQL.resolveLanguages();
-    languages = languages.filter((value) => value in availableLanguages);
+    const supportedLanguages = Object.keys(await codeQL.resolveLanguages());
+
+    languages = languages
+      .map(parseLanguage)
+      .filter((value) => value && supportedLanguages.includes(value))
+      .map((value) => value as Language);
+
     logger.info(`Automatically detected languages: ${languages.join(", ")}`);
   } else {
+    const aliases = await getLanguageAliases(codeQL);
+    if (aliases) {
+      languages = languages.map((lang) => aliases[lang] || lang);
+    }
+
     logger.info(`Languages from configuration: ${languages.join(", ")}`);
   }
 
@@ -950,7 +955,6 @@ export async function getLanguages(
   const parsedLanguages: Language[] = [];
   const unknownLanguages: string[] = [];
   for (const language of languages) {
-    // We know this is not an alias since we resolved it above.
     const parsedLanguage = parseLanguage(language) as Language;
     if (parsedLanguage === undefined) {
       unknownLanguages.push(language);
@@ -966,6 +970,19 @@ export async function getLanguages(
   }
 
   return parsedLanguages;
+}
+
+/**
+ * Gets the set of languages supported by CodeQL, along with their aliases if supported by the
+ * version of the CLI.
+ */
+export async function getLanguageAliases(
+  codeql: CodeQL,
+): Promise<{ [alias: string]: string } | undefined> {
+  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
+    return (await codeql.betterResolveLanguages()).aliases;
+  }
+  return undefined;
 }
 
 /**

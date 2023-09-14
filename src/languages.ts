@@ -19,23 +19,16 @@ export const LANGUAGE_ALIASES: { [lang: string]: Language } = {
   typescript: Language.javascript,
 };
 
-export type LanguageOrAlias = Language | keyof typeof LANGUAGE_ALIASES;
-
-export function resolveAlias(lang: LanguageOrAlias): Language {
-  return LANGUAGE_ALIASES[lang] || lang;
-}
-
 /**
  * Translate from user input or GitHub's API names for languages to CodeQL's
- * names for languages. This does not translate a language alias to the actual
- * language used by CodeQL.
+ * names for languages.
  *
  * @param language The language to translate.
  * @returns A language supported by CodeQL, an alias for a language, or
- * `undefined` if the input language cannot be parsed into a langauge supported
+ * `undefined` if the input language cannot be parsed into a language supported
  * by CodeQL.
  */
-export function parseLanguage(language: string): LanguageOrAlias | undefined {
+export function parseLanguage(language: string): Language | undefined {
   // Normalise to lower case
   language = language.trim().toLowerCase();
 
@@ -47,7 +40,7 @@ export function parseLanguage(language: string): LanguageOrAlias | undefined {
   // Check language aliases, but return the original language name,
   // the alias will be resolved later.
   if (language in LANGUAGE_ALIASES) {
-    return language;
+    return LANGUAGE_ALIASES[language];
   }
 
   return undefined;

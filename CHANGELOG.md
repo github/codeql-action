@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.14.5. [#1882](https://github.com/github/codeql-action/pull/1882)
+- Enable the following language aliases when using CodeQL 2.14.4 and later: `c-cpp` for C/C++ analysis, `java-kotlin` for Java/Kotlin analysis, and `javascript-typescript` for JavaScript/TypeScript analysis. [#1883](https://github.com/github/codeql-action/pull/1883)
 
 ## 2.21.6 - 13 Sep 2023
 

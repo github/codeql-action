@@ -212,16 +212,21 @@ export function getMemoryFlagValueForPlatform(
 }
 
 /**
- * Get the total amount of memory available to the Action.
+ * Get the total amount of memory available to the Action, taking into account constraints imposed
+ * by cgroups on Linux.
  */
 function getTotalMemoryAvailable(): number {
-  if (fs.existsSync("/sys/fs/cgroup/memory/memory.limit_in_bytes")) {
-    return Number(
-      fs.readFileSync("/sys/fs/cgroup/memory/memory.limit_in_bytes", "utf8"),
-    );
-  }
-  if (fs.existsSync("/sys/fs/cgroup/memory.max")) {
-    return Number(fs.readFileSync("/sys/fs/cgroup/memory.max", "utf8"));
+  if (os.platform() === "linux") {
+    // Respect constraints imposed by Linux cgroups v1
+    if (fs.existsSync("/sys/fs/cgroup/memory/memory.limit_in_bytes")) {
+      return Number(
+        fs.readFileSync("/sys/fs/cgroup/memory/memory.limit_in_bytes", "utf8"),
+      );
+    }
+    // Respect constraints imposed by Linux cgroups v2
+    if (fs.existsSync("/sys/fs/cgroup/memory.max")) {
+      return Number(fs.readFileSync("/sys/fs/cgroup/memory.max", "utf8"));
+    }
   }
   return os.totalmem();
 }

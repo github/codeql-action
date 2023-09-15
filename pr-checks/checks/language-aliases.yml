@@ -1,5 +1,5 @@
 name: "Language aliases"
-description: "Tests that ML-powered queries are run with the security-extended suite and that they produce alerts on a test DB"
+description: "Tests that language aliases are resolved correctly"
 versions: ["latest"]
 operatingSystems: ["ubuntu"]
 steps:

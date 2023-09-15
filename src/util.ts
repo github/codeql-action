@@ -212,6 +212,21 @@ export function getMemoryFlagValueForPlatform(
 }
 
 /**
+ * Get the total amount of memory available to the Action.
+ */
+function getTotalMemoryAvailable(): number {
+  if (fs.existsSync("/sys/fs/cgroup/memory/memory.limit_in_bytes")) {
+    return Number(
+      fs.readFileSync("/sys/fs/cgroup/memory/memory.limit_in_bytes", "utf8"),
+    );
+  }
+  if (fs.existsSync("/sys/fs/cgroup/memory.max")) {
+    return Number(fs.readFileSync("/sys/fs/cgroup/memory.max", "utf8"));
+  }
+  return os.totalmem();
+}
+
+/**
  * Get the value of the codeql `--ram` flag as configured by the `ram` input.
  * If no value was specified, the total available memory will be used minus a
  * threshold reserved for the OS.
@@ -221,7 +236,7 @@ export function getMemoryFlagValueForPlatform(
 export function getMemoryFlagValue(userInput: string | undefined): number {
   return getMemoryFlagValueForPlatform(
     userInput,
-    os.totalmem(),
+    getTotalMemoryAvailable(),
     process.platform,
   );
 }

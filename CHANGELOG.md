@@ -4,12 +4,14 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Add a deprecation warning for customers using CodeQL version 2.10.4 and earlier. These versions of CodeQL were discontinued on 12 September 2023 alongside GitHub Enterprise Server 3.6, and will be unsupported by the next minor release of the CodeQL Action. [#1884](https://github.com/github/codeql-action/pull/1884)
+  - If you are using one of these versions, please update to CodeQL CLI version 2.10.5 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
+  - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.9.5 and 2.10.4, you can replace `github/codeql-action/*@v2` by `github/codeql-action/*@v2.21.7` in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
+- Enable the following language aliases when using CodeQL 2.14.4 and later: `c-cpp` for C/C++ analysis, `java-kotlin` for Java/Kotlin analysis, and `javascript-typescript` for JavaScript/TypeScript analysis. [#1883](https://github.com/github/codeql-action/pull/1883)
 
 ## 2.21.7 - 14 Sep 2023
 
 - Update default CodeQL bundle version to 2.14.5. [#1882](https://github.com/github/codeql-action/pull/1882)
-- Enable the following language aliases when using CodeQL 2.14.4 and later: `c-cpp` for C/C++ analysis, `java-kotlin` for Java/Kotlin analysis, and `javascript-typescript` for JavaScript/TypeScript analysis. [#1883](https://github.com/github/codeql-action/pull/1883)
 
 ## 2.21.6 - 13 Sep 2023
 

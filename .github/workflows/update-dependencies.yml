@@ -15,15 +15,16 @@ jobs:
 
     - name: Remove PR label
       env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         REPOSITORY: '${{ github.repository }}'
         PR_NUMBER: '${{ github.event.pull_request.number }}'
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
       run: |
         gh api "repos/$REPOSITORY/issues/$PR_NUMBER/labels/Update%20dependencies" -X DELETE
 
     - name: Push updated dependencies
       env:
         BRANCH: '${{ github.head_ref }}'
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
       run: |
         git fetch origin "$BRANCH" --depth=1
         git checkout "origin/$BRANCH"

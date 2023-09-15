@@ -216,6 +216,9 @@ export interface ResolveLanguagesOutput {
 }
 
 export interface BetterResolveLanguagesOutput {
+  aliases?: {
+    [alias: string]: string;
+  };
   extractors: {
     [language: string]: [
       {
@@ -343,6 +346,11 @@ export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
  * Versions 2.14.2+ of the CodeQL CLI support language-specific baseline configuration.
  */
 export const CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG = "2.14.2";
+
+/**
+ * Versions 2.14.4+ of the CodeQL CLI support language aliasing.
+ */
+export const CODEQL_VERSION_LANGUAGE_ALIASING = "2.14.4";
 
 /**
  * Set up CodeQL CLI access.
@@ -724,11 +732,20 @@ export async function getCodeQLForCmd(
       }
     },
     async betterResolveLanguages() {
+      const extraArgs: string[] = [];
+
+      if (
+        await util.codeQlVersionAbove(this, CODEQL_VERSION_LANGUAGE_ALIASING)
+      ) {
+        extraArgs.push("--extractor-include-aliases");
+      }
+
       const codeqlArgs = [
         "resolve",
         "languages",
         "--format=betterjson",
         "--extractor-options-verbosity=4",
+        ...extraArgs,
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
       const output = await runTool(cmd, codeqlArgs);

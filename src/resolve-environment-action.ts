@@ -8,7 +8,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CommandInvocationError } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Language, resolveAlias } from "./languages";
+import { Language, parseLanguage } from "./languages";
 import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
 import {
@@ -29,7 +29,6 @@ const ENVIRONMENT_OUTPUT_NAME = "environment";
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  const language: Language = resolveAlias(getRequiredInput("language"));
 
   try {
     if (
@@ -43,6 +42,16 @@ async function run() {
       ))
     ) {
       return;
+    }
+
+    const language: Language | undefined = parseLanguage(
+      getRequiredInput("language"),
+    );
+
+    if (language === undefined) {
+      throw new Error(
+        `Did not recognize the language "${getRequiredInput("language")}".`,
+      );
     }
 
     const gitHubVersion = await getGitHubVersion();

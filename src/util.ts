@@ -215,7 +215,7 @@ export function getMemoryFlagValueForPlatform(
  * Get the total amount of memory available to the Action, taking into account constraints imposed
  * by cgroups on Linux.
  */
-function getTotalMemoryAvailable(): number {
+function getTotalMemoryAvailable(logger: Logger): number {
   if (os.platform() === "linux") {
     // Respect constraints imposed by Linux cgroups v1 and v2
     for (const limitFile of [
@@ -225,6 +225,11 @@ function getTotalMemoryAvailable(): number {
       if (fs.existsSync(limitFile)) {
         const limit = Number(fs.readFileSync(limitFile, "utf8"));
         if (Number.isInteger(limit)) {
+          logger.info(
+            `While resolving RAM, found cgroup limit of ${
+              limit / (1024 * 1024)
+            } MiB in ${limitFile}.`,
+          );
           return limit;
         }
       }
@@ -240,10 +245,13 @@ function getTotalMemoryAvailable(): number {
  *
  * @returns {number} the amount of RAM to use, in megabytes
  */
-export function getMemoryFlagValue(userInput: string | undefined): number {
+export function getMemoryFlagValue(
+  userInput: string | undefined,
+  logger: Logger,
+): number {
   return getMemoryFlagValueForPlatform(
     userInput,
-    getTotalMemoryAvailable(),
+    getTotalMemoryAvailable(logger),
     process.platform,
   );
 }
@@ -255,8 +263,11 @@ export function getMemoryFlagValue(userInput: string | undefined): number {
  *
  * @returns string
  */
-export function getMemoryFlag(userInput: string | undefined): string {
-  const megabytes = getMemoryFlagValue(userInput);
+export function getMemoryFlag(
+  userInput: string | undefined,
+  logger: Logger,
+): string {
+  const megabytes = getMemoryFlagValue(userInput, logger);
   return `--ram=${megabytes}`;
 }
 

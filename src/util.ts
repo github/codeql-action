@@ -223,12 +223,13 @@ function getTotalMemoryAvailable(logger: Logger): number {
       "/sys/fs/cgroup/memory.max",
     ]) {
       if (fs.existsSync(limitFile)) {
-        const limit = Number(fs.readFileSync(limitFile, "utf8"));
+        const contents = fs.readFileSync(limitFile, "utf8");
+        const limit = Number(contents);
         if (Number.isInteger(limit)) {
           logger.info(
             `While resolving RAM, found cgroup limit of ${
               limit / (1024 * 1024)
-            } MiB in ${limitFile}.`,
+            } MiB based on file contents "${contents}" in ${limitFile}.`,
           );
           return limit;
         }

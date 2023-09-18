@@ -42,6 +42,12 @@ export const DEFAULT_DEBUG_DATABASE_NAME = "db";
  */
 const DEFAULT_RESERVED_RAM_SCALING_FACTOR = 0.05;
 
+/**
+ * The minimum amount of memory imposed by a cgroup limit that we will consider. Memory limits below
+ * this amount are ignored.
+ */
+const MINIMUM_CGROUP_MEMORY_LIMIT_BYTES = 1024 * 1024;
+
 export interface SarifFile {
   version?: string | null;
   runs: SarifRun[];
@@ -215,22 +221,67 @@ export function getMemoryFlagValueForPlatform(
  * Get the total amount of memory available to the Action, taking into account constraints imposed
  * by cgroups on Linux.
  */
-function getTotalMemoryAvailable(): number {
+function getTotalMemoryBytes(logger: Logger): number {
+  const limits = [os.totalmem()];
   if (os.platform() === "linux") {
-    // Respect constraints imposed by Linux cgroups v1 and v2
-    for (const limitFile of [
-      "/sys/fs/cgroup/memory/memory.limit_in_bytes",
-      "/sys/fs/cgroup/memory.max",
-    ]) {
-      if (fs.existsSync(limitFile)) {
-        const limit = Number(fs.readFileSync(limitFile, "utf8"));
-        if (Number.isInteger(limit)) {
-          return limit;
-        }
-      }
-    }
+    limits.push(
+      ...[
+        "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+        "/sys/fs/cgroup/memory.max",
+      ]
+        .map((file) => getCgroupMemoryLimitBytes(file, logger))
+        .filter((limit) => limit !== undefined)
+        .map((limit) => limit as number),
+    );
   }
-  return os.totalmem();
+  const limit = Math.min(...limits);
+  logger.debug(
+    `While resolving RAM, determined that the total memory available to the Action is ${
+      limit / (1024 * 1024)
+    } MiB.`,
+  );
+  return limit;
+}
+
+/**
+ * Gets the number of bytes of available memory specified by the cgroup limit file at the given path.
+ *
+ * May be greater than the total memory reported by the operating system if there is no cgroup limit.
+ */
+function getCgroupMemoryLimitBytes(
+  limitFile: string,
+  logger: Logger,
+): number | undefined {
+  if (!fs.existsSync(limitFile)) {
+    logger.debug(
+      `While resolving RAM, did not find a cgroup memory limit at ${limitFile}.`,
+    );
+    return undefined;
+  }
+
+  const limit = Number(fs.readFileSync(limitFile, "utf8"));
+  if (!Number.isInteger(limit)) {
+    logger.debug(
+      `While resolving RAM, ignored the file ${limitFile} that may contain a cgroup memory limit ` +
+        "as this file did not contain an integer.",
+    );
+    return undefined;
+  }
+
+  const displayLimit = `${Math.floor(limit / (1024 * 1024))} MiB`;
+  if (limit < MINIMUM_CGROUP_MEMORY_LIMIT_BYTES) {
+    logger.info(
+      `While resolving RAM, ignored a cgroup limit of ${displayLimit} in ${limitFile} as it was below ${
+        MINIMUM_CGROUP_MEMORY_LIMIT_BYTES / (1024 * 1024)
+      } MiB.`,
+    );
+    return undefined;
+  }
+
+  logger.info(
+    `While resolving RAM, found a cgroup limit of ${displayLimit} in ${limitFile}.`,
+  );
+  return limit;
 }
 
 /**
@@ -240,10 +291,13 @@ function getTotalMemoryAvailable(): number {
  *
  * @returns {number} the amount of RAM to use, in megabytes
  */
-export function getMemoryFlagValue(userInput: string | undefined): number {
+export function getMemoryFlagValue(
+  userInput: string | undefined,
+  logger: Logger,
+): number {
   return getMemoryFlagValueForPlatform(
     userInput,
-    getTotalMemoryAvailable(),
+    getTotalMemoryBytes(logger),
     process.platform,
   );
 }
@@ -255,8 +309,11 @@ export function getMemoryFlagValue(userInput: string | undefined): number {
  *
  * @returns string
  */
-export function getMemoryFlag(userInput: string | undefined): string {
-  const megabytes = getMemoryFlagValue(userInput);
+export function getMemoryFlag(
+  userInput: string | undefined,
+  logger: Logger,
+): string {
+  const megabytes = getMemoryFlagValue(userInput, logger);
   return `--ram=${megabytes}`;
 }
 

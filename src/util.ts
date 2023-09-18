@@ -216,6 +216,7 @@ export function getMemoryFlagValueForPlatform(
  * by cgroups on Linux.
  */
 function getTotalMemoryAvailable(logger: Logger): number {
+  const osTotalMemory = os.totalmem();
   if (os.platform() === "linux") {
     // Respect constraints imposed by Linux cgroups v1 and v2
     for (const limitFile of [
@@ -225,17 +226,31 @@ function getTotalMemoryAvailable(logger: Logger): number {
       if (fs.existsSync(limitFile)) {
         const limit = Number(fs.readFileSync(limitFile, "utf8"));
         if (Number.isInteger(limit)) {
-          logger.info(
-            `While resolving RAM, found cgroup limit of ${
-              limit / (1024 * 1024)
-            } MiB in ${limitFile}.`,
+          const displayLimit = `${Math.floor(limit / (1024 * 1024))} MiB`;
+          if (limit < osTotalMemory) {
+            logger.info(
+              `While resolving RAM, found cgroup limit of ${displayLimit} in ${limitFile}.`,
+            );
+            return limit;
+          } else {
+            logger.debug(
+              `While resolving RAM, ignoring cgroup file ${limitFile} since the limit (${displayLimit}) ` +
+                "is greater than the total RAM reported by the operating system.",
+            );
+          }
+        } else {
+          logger.debug(
+            `While resolving RAM, ignoring cgroup file ${limitFile} as it does not contain an integer.`,
           );
-          return limit;
         }
+      } else {
+        logger.debug(
+          `While resolving RAM, did not find cgroup constraints at ${limitFile}.`,
+        );
       }
     }
   }
-  return os.totalmem();
+  return osTotalMemory;
 }
 
 /**

@@ -51,6 +51,7 @@ export enum Feature {
   AnalysisSummaryV2Enabled = "analysis_summary_v2_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
   CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
+  CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
@@ -72,6 +73,11 @@ export const featureConfig: Record<
   [Feature.CodeqlJavaLombokEnabled]: {
     envVar: "CODEQL_JAVA_LOMBOK",
     minimumVersion: "2.14.0",
+    defaultValue: false,
+  },
+  [Feature.CppDependencyInstallation]: {
+    envVar: "CODEQL_CPP_DEPENDENCY_INSTALLATION",
+    minimumVersion: "2.15.0",
     defaultValue: false,
   },
   [Feature.DisableKotlinAnalysisEnabled]: {

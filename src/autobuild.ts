@@ -1,7 +1,14 @@
-import { getCodeQL } from "./codeql";
+import * as core from "@actions/core";
+
+import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
+import { getGitHubVersion } from "./api-client";
+import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Language, isTracedLanguage } from "./languages";
+import { Feature, Features } from "./feature-flags";
+import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
+import { codeQlVersionAbove, getRequiredEnvParam } from "./util";
 
 export async function determineAutobuildLanguages(
   config: configUtils.Config,
@@ -91,6 +98,50 @@ export async function determineAutobuildLanguages(
   return languages;
 }
 
+async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
+  const envVar = "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES";
+  const actionInput = getOptionalInput("cpp-autoinstall-dependencies");
+  const featureName = "C++ automatic installation of dependencies";
+  if (actionInput === "true") {
+    if (!(await codeQlVersionAbove(codeql, "2.15.0"))) {
+      logger.warning(
+        `${featureName} was explicitly requested but is only available starting from CodeQL version 2.15.0, disabling it`,
+      );
+      core.exportVariable(envVar, "false");
+    } else {
+      logger.info(
+        `${
+          actionInput === "true" ? "Enabling" : "Disabling"
+        } ${featureName} explicitly requested`,
+      );
+      core.exportVariable(envVar, actionInput);
+    }
+  } else if (process.env["RUNNER_ENVIRONMENT"] === "self-hosted") {
+    logger.info(
+      `Disabling ${featureName} which is the default for self-hosted runners`,
+    );
+    core.exportVariable(envVar, "false");
+  } else {
+    const gitHubVersion = await getGitHubVersion();
+    const repositoryNwo = parseRepositoryNwo(
+      getRequiredEnvParam("GITHUB_REPOSITORY"),
+    );
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger,
+    );
+    if (await features.getValue(Feature.CppDependencyInstallation, codeql)) {
+      logger.info(`Enabling  ${featureName}`);
+      core.exportVariable(envVar, "true");
+    } else {
+      logger.info(`Disabling ${featureName}`);
+      core.exportVariable(envVar, "false");
+    }
+  }
+}
+
 export async function runAutobuild(
   language: Language,
   config: configUtils.Config,
@@ -98,6 +149,9 @@ export async function runAutobuild(
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
   const codeQL = await getCodeQL(config.codeQLCmd);
+  if (language === Language.cpp) {
+    await setupCppAutobuild(codeQL, logger);
+  }
   await codeQL.runAutobuild(language);
   logger.endGroup();
 }

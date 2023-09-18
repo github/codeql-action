@@ -12,6 +12,17 @@ inputs:
       working directory. If this input is not set, the autobuilder runs with
       $GITHUB_WORKSPACE as its working directory.
     required: false
+  cpp-autoinstall-dependencies:
+    description: >-
+      Experimental input, the API may change in the future.
+      Set to true to enable trying to automatically detect and install
+      dependencies when running the C/C++ autobuilder, set to anything else
+      to explicitly disable it. This only works when running on Ubuntu and
+      is automatically disabled otherwise. If this input is not set the
+      default is currently driven by the cpp_dependency_installation_enabled
+      feature flag or the CODEQL_CPP_DEPENDENCY_INSTALLATION environment
+      variable.
+    required: false
 runs:
   using: 'node16'
   main: '../lib/autobuild-action.js'

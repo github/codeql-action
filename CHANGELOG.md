@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 2.21.8 - 19 Sep 2023
 
 - Add a deprecation warning for customers using CodeQL version 2.10.4 and earlier. These versions of CodeQL were discontinued on 12 September 2023 alongside GitHub Enterprise Server 3.6, and will be unsupported by the next minor release of the CodeQL Action. [#1884](https://github.com/github/codeql-action/pull/1884)
   - If you are using one of these versions, please update to CodeQL CLI version 2.10.5 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.

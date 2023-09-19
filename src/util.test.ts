@@ -93,7 +93,7 @@ for (const {
 
 test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   for (const input of ["-1", "hello!"]) {
-    t.throws(() => util.getMemoryFlag(input));
+    t.throws(() => util.getMemoryFlag(input, getRunnerLogger(true)));
   }
 });
 

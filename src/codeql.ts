@@ -5,7 +5,11 @@ import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
 
-import { getOptionalInput, isAnalyzingDefaultBranch } from "./actions-util";
+import {
+  getActionVersion,
+  getOptionalInput,
+  isAnalyzingDefaultBranch,
+} from "./actions-util";
 import * as api from "./api-client";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
@@ -212,6 +216,9 @@ export interface ResolveLanguagesOutput {
 }
 
 export interface BetterResolveLanguagesOutput {
+  aliases?: {
+    [alias: string]: string;
+  };
   extractors: {
     [language: string]: [
       {
@@ -274,7 +281,17 @@ const CODEQL_MINIMUM_VERSION = "2.9.4";
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.9.4";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.10.5";
+
+/**
+ * This is the version of GHES that was most recently deprecated.
+ */
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.6";
+
+/**
+ * This is the deprecation date for the version of GHES that was most recently deprecated.
+ */
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-09-12";
 
 /**
  * Versions of CodeQL that version-flag certain functionality in the Action.
@@ -329,6 +346,11 @@ export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
  * Versions 2.14.2+ of the CodeQL CLI support language-specific baseline configuration.
  */
 export const CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG = "2.14.2";
+
+/**
+ * Versions 2.14.4+ of the CodeQL CLI support language aliasing.
+ */
+export const CODEQL_VERSION_LANGUAGE_ALIASING = "2.14.4";
 
 /**
  * Set up CodeQL CLI access.
@@ -710,11 +732,20 @@ export async function getCodeQLForCmd(
       }
     },
     async betterResolveLanguages() {
+      const extraArgs: string[] = [];
+
+      if (
+        await util.codeQlVersionAbove(this, CODEQL_VERSION_LANGUAGE_ALIASING)
+      ) {
+        extraArgs.push("--extractor-include-aliases");
+      }
+
       const codeqlArgs = [
         "resolve",
         "languages",
         "--format=betterjson",
         "--extractor-options-verbosity=4",
+        ...extraArgs,
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
       const output = await runTool(cmd, codeqlArgs);
@@ -1084,16 +1115,17 @@ export async function getCodeQLForCmd(
     !(await util.codeQlVersionAbove(codeql, CODEQL_NEXT_MINIMUM_VERSION))
   ) {
     core.warning(
-      `CodeQL CLI version ${await codeql.getVersion()} was deprecated on 2023-06-20 alongside ` +
-        "GitHub Enterprise Server 3.5 and will not be supported by the next release of the " +
-        `CodeQL Action. Please update to CodeQL CLI version ${CODEQL_NEXT_MINIMUM_VERSION} or ` +
-        "later. For instance, if you have specified a custom version of the CLI using the " +
-        "'tools' input to the 'init' Action, you can remove this input to use the default " +
-        "version.\n\n" +
+      `CodeQL CLI version ${await codeql.getVersion()} was discontinued on ` +
+        `${GHES_MOST_RECENT_DEPRECATION_DATE} alongside GitHub Enterprise Server ` +
+        `${GHES_VERSION_MOST_RECENTLY_DEPRECATED} and will not be supported by the next minor ` +
+        `release of the CodeQL Action. Please update to CodeQL CLI version ` +
+        `${CODEQL_NEXT_MINIMUM_VERSION} or later. For instance, if you have specified a custom ` +
+        "version of the CLI using the 'tools' input to the 'init' Action, you can remove this " +
+        "input to use the default version.\n\n" +
         "Alternatively, if you want to continue using CodeQL CLI version " +
         `${await codeql.getVersion()}, you can replace 'github/codeql-action/*@v2' by ` +
-        "'github/codeql-action/*@v2.20.4' in your code scanning workflow to ensure you continue " +
-        "using this version of the CodeQL Action.",
+        `'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
+        "continue using this version of the CodeQL Action.",
     );
     core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }

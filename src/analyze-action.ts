@@ -233,6 +233,7 @@ async function run() {
 
     const memory = util.getMemoryFlag(
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
+      logger,
     );
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);

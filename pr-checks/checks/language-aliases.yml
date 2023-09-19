@@ -1,0 +1,20 @@
+name: "Language aliases"
+description: "Tests that language aliases are resolved correctly"
+versions: ["latest"]
+operatingSystems: ["ubuntu"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: C#,java-kotlin,swift,typescript
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: "Check languages"
+    run: |
+      expected_languages="csharp,java,swift,javascript"
+      actual_languages=$(jq -r '.languages | join(",")' "$RUNNER_TEMP"/config)
+
+      if [ "$expected_languages" != "$actual_languages" ]; then
+        echo "Resolved languages did not match expected list. " \
+          "Expected languages: $expected_languages. Actual languages: $actual_languages."
+        exit 1
+      fi

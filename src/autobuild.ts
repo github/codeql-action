@@ -1,14 +1,14 @@
 import * as core from "@actions/core";
 
-import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
+import { getTemporaryDirectory } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Feature, Features } from "./feature-flags";
+import { Feature, featureConfig, Features } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { codeQlVersionAbove, getRequiredEnvParam } from "./util";
+import { getRequiredEnvParam } from "./util";
 
 export async function determineAutobuildLanguages(
   config: configUtils.Config,
@@ -99,46 +99,34 @@ export async function determineAutobuildLanguages(
 }
 
 async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
-  const envVar = "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES";
-  const actionInput = getOptionalInput("cpp-autoinstall-dependencies");
+  const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
   const featureName = "C++ automatic installation of dependencies";
-  if (actionInput === "true") {
-    if (!(await codeQlVersionAbove(codeql, "2.15.0"))) {
-      logger.warning(
-        `${featureName} was explicitly requested but is only available starting from CodeQL version 2.15.0, disabling it`,
-      );
+  const gitHubVersion = await getGitHubVersion();
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+  const features = new Features(
+    gitHubVersion,
+    repositoryNwo,
+    getTemporaryDirectory(),
+    logger,
+  );
+  if (await features.getValue(Feature.CppDependencyInstallation, codeql)) {
+    // disable autoinstall on self-hosted runners unless explicitly requested
+    if (
+      process.env["RUNNER_ENVIRONMENT"] === "self-hosted" &&
+      process.env[envVar] !== "true"
+    ) {
+      logger.info(`Disabling ${featureName} as we are on a self-hosted runner`);
+      logger.info(`This can be enabled by setting ${envVar}: true in the env`);
       core.exportVariable(envVar, "false");
     } else {
-      logger.info(
-        `${
-          actionInput === "true" ? "Enabling" : "Disabling"
-        } ${featureName} explicitly requested`,
-      );
-      core.exportVariable(envVar, actionInput);
-    }
-  } else if (process.env["RUNNER_ENVIRONMENT"] === "self-hosted") {
-    logger.info(
-      `Disabling ${featureName} which is the default for self-hosted runners`,
-    );
-    core.exportVariable(envVar, "false");
-  } else {
-    const gitHubVersion = await getGitHubVersion();
-    const repositoryNwo = parseRepositoryNwo(
-      getRequiredEnvParam("GITHUB_REPOSITORY"),
-    );
-    const features = new Features(
-      gitHubVersion,
-      repositoryNwo,
-      getTemporaryDirectory(),
-      logger,
-    );
-    if (await features.getValue(Feature.CppDependencyInstallation, codeql)) {
-      logger.info(`Enabling  ${featureName}`);
+      logger.info(`Enabling ${featureName}`);
       core.exportVariable(envVar, "true");
-    } else {
-      logger.info(`Disabling ${featureName}`);
-      core.exportVariable(envVar, "false");
     }
+  } else {
+    logger.info(`Disabling ${featureName}`);
+    core.exportVariable(envVar, "false");
   }
 }
 

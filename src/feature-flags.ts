@@ -76,7 +76,7 @@ export const featureConfig: Record<
     defaultValue: false,
   },
   [Feature.CppDependencyInstallation]: {
-    envVar: "CODEQL_CPP_DEPENDENCY_INSTALLATION",
+    envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     minimumVersion: "2.15.0",
     defaultValue: false,
   },

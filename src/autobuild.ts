@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 
-import { getTemporaryDirectory } from "./actions-util";
+import { getTemporaryDirectory, getWorkflowEventName } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
@@ -101,6 +101,8 @@ export async function determineAutobuildLanguages(
 async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
   const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
   const featureName = "C++ automatic installation of dependencies";
+  const envDoc =
+    "https://docs.github.com/en/actions/learn-github-actions/variables#defining-environment-variables-for-a-single-workflow";
   const gitHubVersion = await getGitHubVersion();
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY"),
@@ -117,10 +119,18 @@ async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
       process.env["RUNNER_ENVIRONMENT"] === "self-hosted" &&
       process.env[envVar] !== "true"
     ) {
-      logger.info(`Disabling ${featureName} as we are on a self-hosted runner.` + getWorkflowEventName() !== "dynamic" ? ` To override this, set the ${envVar} environment variable to 'true' in your workflow (see https://docs.github.com/en/actions/learn-github-actions/variables#defining-environment-variables-for-a-single-workflow).` : "");
+      logger.info(
+        `Disabling ${featureName} as we are on a self-hosted runner.${
+          getWorkflowEventName() !== "dynamic"
+            ? ` To override this, set the ${envVar} environment variable to 'true' in your workflow (see ${envDoc}).`
+            : ""
+        }`,
+      );
       core.exportVariable(envVar, "false");
     } else {
-      logger.info(`Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false' (see https://docs.github.com/en/actions/learn-github-actions/variables#defining-environment-variables-for-a-single-workflow).`);
+      logger.info(
+        `Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false' (see ${envDoc}).`,
+      );
       core.exportVariable(envVar, "true");
     }
   } else {

@@ -117,15 +117,14 @@ async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
       process.env["RUNNER_ENVIRONMENT"] === "self-hosted" &&
       process.env[envVar] !== "true"
     ) {
-      logger.info(`Disabling ${featureName} as we are on a self-hosted runner`);
-      logger.info(`This can be enabled by setting ${envVar}: true in the env`);
+      logger.info(`Disabling ${featureName} as we are on a self-hosted runner.` + getWorkflowEventName() !== "dynamic" ? ` To override this, set the ${envVar} environment variable to 'true' in your workflow (see https://docs.github.com/en/actions/learn-github-actions/variables#defining-environment-variables-for-a-single-workflow).` : "");
       core.exportVariable(envVar, "false");
     } else {
-      logger.info(`Enabling ${featureName}`);
+      logger.info(`Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false' (see https://docs.github.com/en/actions/learn-github-actions/variables#defining-environment-variables-for-a-single-workflow).`);
       core.exportVariable(envVar, "true");
     }
   } else {
-    logger.info(`Disabling ${featureName}`);
+    logger.info(`Disabling ${featureName}.`);
     core.exportVariable(envVar, "false");
   }
 }

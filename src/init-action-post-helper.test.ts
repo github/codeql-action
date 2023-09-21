@@ -87,7 +87,7 @@ test("uploads failed SARIF run with `diagnostics export` if feature flag is off"
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v3",
+      uses: "actions/checkout@v4",
     },
     {
       name: "Initialize CodeQL",
@@ -111,7 +111,7 @@ test("uploads failed SARIF run with `diagnostics export` if the database doesn't
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v3",
+      uses: "actions/checkout@v4",
     },
     {
       name: "Initialize CodeQL",
@@ -138,7 +138,7 @@ test("uploads failed SARIF run with database export-diagnostics if the database 
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v3",
+      uses: "actions/checkout@v4",
     },
     {
       name: "Initialize CodeQL",
@@ -195,7 +195,7 @@ for (const { uploadInput, shouldUpload } of UPLOAD_INPUT_TEST_CASES) {
     const actionsWorkflow = createTestWorkflow([
       {
         name: "Checkout repository",
-        uses: "actions/checkout@v3",
+        uses: "actions/checkout@v4",
       },
       {
         name: "Initialize CodeQL",
@@ -230,7 +230,7 @@ test("uploading failed SARIF run succeeds when workflow uses an input with a mat
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v3",
+      uses: "actions/checkout@v4",
     },
     {
       name: "Initialize CodeQL",
@@ -257,7 +257,7 @@ test("uploading failed SARIF run fails when workflow uses a complex upload input
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v3",
+      uses: "actions/checkout@v4",
     },
     {
       name: "Initialize CodeQL",
@@ -288,7 +288,7 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v3",
+      uses: "actions/checkout@v4",
     },
   ]);
   const result = await testFailedSarifUpload(t, actionsWorkflow, {

@@ -106,6 +106,33 @@ export const WorkflowErrors = toCodedErrors({
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 
+/**
+ * Groups the given list of CodeQL languages by their extractor name.
+ *
+ * Resolves to `undefined` if the CodeQL version does not support language aliasing.
+ */
+async function groupLanguagesByExtractor(
+  languages: string[],
+  codeql: CodeQL,
+): Promise<{ [extractorName: string]: string[] } | undefined> {
+  const resolveResult = await codeql.betterResolveLanguages();
+  if (!resolveResult.aliases) {
+    return undefined;
+  }
+  const aliases = resolveResult.aliases;
+  const languagesByExtractor: {
+    [extractorName: string]: string[];
+  } = {};
+  for (const language of languages) {
+    const extractorName = aliases[language] || language;
+    if (!languagesByExtractor[extractorName]) {
+      languagesByExtractor[extractorName] = [];
+    }
+    languagesByExtractor[extractorName].push(language);
+  }
+  return languagesByExtractor;
+}
+
 export async function getWorkflowErrors(
   doc: Workflow,
   codeql: CodeQL,
@@ -120,22 +147,15 @@ export async function getWorkflowErrors(
     if (job?.strategy?.matrix?.language) {
       const matrixLanguages = job.strategy.matrix.language;
       if (Array.isArray(matrixLanguages)) {
-        const resolveResult = await codeql.betterResolveLanguages();
-        if (resolveResult.aliases) {
-          const aliases = resolveResult.aliases;
-          // Map extractors to entries in the `language` matrix parameter. This will allow us to
-          // detect languages which are analyzed in more than one job.
-          const matrixLanguagesByExtractor: {
-            [extractorName: string]: string[];
-          } = {};
-          for (const language of matrixLanguages) {
-            const extractorName = aliases[language] || language;
-            if (!matrixLanguagesByExtractor[extractorName]) {
-              matrixLanguagesByExtractor[extractorName] = [];
-            }
-            matrixLanguagesByExtractor[extractorName].push(language);
-          }
-
+        // Map extractors to entries in the `language` matrix parameter. This will allow us to
+        // detect languages which are analyzed in more than one job.
+        const matrixLanguagesByExtractor = await groupLanguagesByExtractor(
+          matrixLanguages,
+          codeql,
+        );
+        // If the CodeQL version does not support language aliasing, then `matrixLanguagesByExtractor`
+        // will be `undefined`. In this case, we cannot detect duplicate languages in the matrix.
+        if (matrixLanguagesByExtractor !== undefined) {
           // Check for duplicate languages in the matrix
           for (const [extractor, languages] of Object.entries(
             matrixLanguagesByExtractor,

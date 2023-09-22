@@ -6,6 +6,7 @@ import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
+import { CodeQL } from "./codeql";
 import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import { getRequiredEnvParam, isInTestMode } from "./util";
@@ -21,6 +22,7 @@ interface WorkflowJob {
   name?: string;
   "runs-on"?: string;
   steps?: WorkflowJobStep[];
+  strategy?: { matrix: { [key: string]: string[] } };
   uses?: string;
 }
 
@@ -104,13 +106,55 @@ export const WorkflowErrors = toCodedErrors({
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
 });
 
-export function getWorkflowErrors(doc: Workflow): CodedError[] {
+export async function getWorkflowErrors(
+  doc: Workflow,
+  codeql: CodeQL,
+): Promise<CodedError[]> {
   const errors: CodedError[] = [];
 
   const jobName = process.env.GITHUB_JOB;
 
   if (jobName) {
     const job = doc?.jobs?.[jobName];
+
+    if (job?.strategy?.matrix?.language) {
+      const matrixLanguages = job.strategy.matrix.language;
+      if (Array.isArray(matrixLanguages)) {
+        const resolveResult = await codeql.betterResolveLanguages();
+        if (resolveResult.aliases) {
+          const aliases = resolveResult.aliases;
+          // Map extractors to entries in the `language` matrix parameter. This will allow us to
+          // detect languages which are analyzed in more than one job.
+          const matrixLanguagesByExtractor: {
+            [extractorName: string]: string[];
+          } = {};
+          for (const language of matrixLanguages) {
+            const extractorName = aliases[language] || language;
+            if (!matrixLanguagesByExtractor[extractorName]) {
+              matrixLanguagesByExtractor[extractorName] = [];
+            }
+            matrixLanguagesByExtractor[extractorName].push(language);
+          }
+
+          // Check for duplicate languages in the matrix
+          for (const [extractor, languages] of Object.entries(
+            matrixLanguagesByExtractor,
+          )) {
+            if (languages.length > 1) {
+              errors.push({
+                message:
+                  `CodeQL language '${extractor}' is referenced by more than one entry in the ` +
+                  `'language' matrix parameter for job '${jobName}'. This may result in duplicate alerts. ` +
+                  `Please edit the 'language' matrix parameter to keep only one of the following: ${languages
+                    .map((language) => `'${language}'`)
+                    .join(", ")}.`,
+                code: "DuplicateLanguageInMatrix",
+              });
+            }
+          }
+        }
+      }
+    }
 
     const steps = job?.steps;
 
@@ -163,6 +207,7 @@ export function getWorkflowErrors(doc: Workflow): CodedError[] {
 }
 
 export async function validateWorkflow(
+  codeql: CodeQL,
   logger: Logger,
 ): Promise<undefined | string> {
   let workflow: Workflow;
@@ -173,7 +218,7 @@ export async function validateWorkflow(
   }
   let workflowErrors: CodedError[];
   try {
-    workflowErrors = getWorkflowErrors(workflow);
+    workflowErrors = await getWorkflowErrors(workflow, codeql);
   } catch (e) {
     return `error: getWorkflowErrors() failed: ${String(e)}`;
   }

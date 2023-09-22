@@ -49,6 +49,7 @@ export async function uploadDebugArtifacts(
     sanitizeArifactName(`${artifactName}${suffix}`),
     toUpload.map((file) => path.normalize(file)),
     path.normalize(rootDir),
+    { continueOnError: true },
   );
 }
 

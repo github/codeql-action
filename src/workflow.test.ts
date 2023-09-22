@@ -312,12 +312,11 @@ test("getWorkflowErrors() when HEAD^2 is checked out", async (t) => {
   t.deepEqual(...errorCodes(errors, [WorkflowErrors.CheckoutWrongHead]));
 });
 
-test("getWorkflowErrors() for workflow with language name and its alias", async (t) => {
+test("getWorkflowErrors() produces an error for workflow with language name and its alias", async (t) => {
   await testLanguageAliases(
     t,
     ["java", "kotlin"],
-    "java",
-    ["java-kotlin", "kotlin"],
+    { java: ["java-kotlin", "kotlin"] },
     [
       "CodeQL language 'java' is referenced by more than one entry in the 'language' matrix " +
         "parameter for job 'test'. This may result in duplicate alerts. Please edit the 'language' " +
@@ -326,12 +325,11 @@ test("getWorkflowErrors() for workflow with language name and its alias", async 
   );
 });
 
-test("getWorkflowErrors() for workflow with two aliases same language", async (t) => {
+test("getWorkflowErrors() produces an error for workflow with two aliases same language", async (t) => {
   await testLanguageAliases(
     t,
     ["java-kotlin", "kotlin"],
-    "java",
-    ["java-kotlin", "kotlin"],
+    { java: ["java-kotlin", "kotlin"] },
     [
       "CodeQL language 'java' is referenced by more than one entry in the 'language' matrix " +
         "parameter for job 'test'. This may result in duplicate alerts. Please edit the 'language' " +
@@ -340,21 +338,26 @@ test("getWorkflowErrors() for workflow with two aliases same language", async (t
   );
 });
 
-test("getWorkflowErrors() does not produce error if codeql doesn't support language aliases", async (t) => {
+test("getWorkflowErrors() does not produce an error for workflow with two distinct languages", async (t) => {
   await testLanguageAliases(
     t,
-    ["java-kotlin", "kotlin"],
-    "java",
-    undefined,
+    ["java", "typescript"],
+    {
+      java: ["java-kotlin", "kotlin"],
+      javascript: ["javascript-typescript", "typescript"],
+    },
     [],
   );
+});
+
+test("getWorkflowErrors() does not produce an error if codeql doesn't support language aliases", async (t) => {
+  await testLanguageAliases(t, ["java-kotlin", "kotlin"], undefined, []);
 });
 
 async function testLanguageAliases(
   t: ExecutionContext<unknown>,
   matrixLanguages: string[],
-  languageName: string,
-  aliases: string[] | undefined,
+  aliases: { [languageName: string]: string[] } | undefined,
   expectedErrorMessages: string[],
 ) {
   process.env.GITHUB_JOB = "test";
@@ -363,9 +366,14 @@ async function testLanguageAliases(
   sinon.stub(codeql, "betterResolveLanguages").resolves({
     aliases:
       aliases !== undefined
-        ? Object.assign(
+        ? // Remap from languageName -> aliases to alias -> languageName
+          Object.assign(
             {},
-            ...aliases.map((alias) => ({ [alias]: languageName })),
+            ...Object.entries(aliases).flatMap(([language, languageAliases]) =>
+              languageAliases.map((alias) => ({
+                [alias]: language,
+              })),
+            ),
           )
         : undefined,
     extractors: {

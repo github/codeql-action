@@ -1,6 +1,8 @@
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
+import * as sinon from "sinon";
 
+import { getCodeQLForTesting } from "./codeql";
 import { setupTests } from "./testing-utils";
 import {
   CodedError,
@@ -22,226 +24,394 @@ function errorCodes(
 
 setupTests(test);
 
-test("getWorkflowErrors() when on is empty", (t) => {
-  const errors = getWorkflowErrors({ on: {} });
+test("getWorkflowErrors() when on is empty", async (t) => {
+  const errors = await getWorkflowErrors(
+    { on: {} },
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push is an array missing pull_request", (t) => {
-  const errors = getWorkflowErrors({ on: ["push"] });
+test("getWorkflowErrors() when on.push is an array missing pull_request", async (t) => {
+  const errors = await getWorkflowErrors(
+    { on: ["push"] },
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push is an array missing push", (t) => {
-  const errors = getWorkflowErrors({ on: ["pull_request"] });
+test("getWorkflowErrors() when on.push is an array missing push", async (t) => {
+  const errors = await getWorkflowErrors(
+    { on: ["pull_request"] },
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, [WorkflowErrors.MissingPushHook]));
 });
 
-test("getWorkflowErrors() when on.push is valid", (t) => {
-  const errors = getWorkflowErrors({
-    on: ["push", "pull_request"],
-  });
+test("getWorkflowErrors() when on.push is valid", async (t) => {
+  const errors = await getWorkflowErrors(
+    {
+      on: ["push", "pull_request"],
+    },
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push is a valid superset", (t) => {
-  const errors = getWorkflowErrors({
-    on: ["push", "pull_request", "schedule"],
-  });
+test("getWorkflowErrors() when on.push is a valid superset", async (t) => {
+  const errors = await getWorkflowErrors(
+    {
+      on: ["push", "pull_request", "schedule"],
+    },
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push is a correct object", (t) => {
-  const errors = getWorkflowErrors({
-    on: { push: { branches: ["main"] }, pull_request: { branches: ["main"] } },
-  });
+test("getWorkflowErrors() when on.push is a correct object", async (t) => {
+  const errors = await getWorkflowErrors(
+    {
+      on: {
+        push: { branches: ["main"] },
+        pull_request: { branches: ["main"] },
+      },
+    },
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.pull_requests is a string and correct", (t) => {
-  const errors = getWorkflowErrors({
-    on: { push: { branches: "*" }, pull_request: { branches: "*" } },
-  });
+test("getWorkflowErrors() when on.pull_requests is a string and correct", async (t) => {
+  const errors = await getWorkflowErrors(
+    {
+      on: { push: { branches: "*" }, pull_request: { branches: "*" } },
+    },
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push is correct with empty objects", (t) => {
-  const errors = getWorkflowErrors(
+test("getWorkflowErrors() when on.push is correct with empty objects", async (t) => {
+  const errors = await getWorkflowErrors(
     yaml.load(`
   on:
     push:
     pull_request:
   `) as Workflow,
+    await getCodeQLForTesting(),
   );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push is not mismatched", (t) => {
-  const errors = getWorkflowErrors({
-    on: {
-      push: { branches: ["main", "feature"] },
-      pull_request: { branches: ["main"] },
+test("getWorkflowErrors() when on.push is not mismatched", async (t) => {
+  const errors = await getWorkflowErrors(
+    {
+      on: {
+        push: { branches: ["main", "feature"] },
+        pull_request: { branches: ["main"] },
+      },
     },
-  });
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() for a range of malformed workflows", (t) => {
+test("getWorkflowErrors() for a range of malformed workflows", async (t) => {
   t.deepEqual(
     ...errorCodes(
-      getWorkflowErrors({
-        on: {
-          push: 1,
-          pull_request: 1,
-        },
-      } as Workflow),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      getWorkflowErrors({
-        on: 1,
-      } as Workflow),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      getWorkflowErrors({
-        on: 1,
-        jobs: 1,
-      } as any),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      getWorkflowErrors({
-        on: 1,
-        jobs: [1],
-      } as any),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      getWorkflowErrors({
-        on: 1,
-        jobs: { 1: 1 },
-      } as Workflow),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      getWorkflowErrors({
-        on: 1,
-        jobs: { test: 1 },
-      } as Workflow),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      getWorkflowErrors({
-        on: 1,
-        jobs: { test: [1] },
-      } as Workflow),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      getWorkflowErrors({
-        on: 1,
-        jobs: { test: { steps: 1 } },
-      } as any),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      getWorkflowErrors({
-        on: 1,
-        jobs: { test: { steps: [{ notrun: "git checkout HEAD^2" }] } },
-      } as any),
-      [],
-    ),
-  );
-
-  t.deepEqual(
-    ...errorCodes(
-      getWorkflowErrors({
-        on: 1,
-        jobs: { test: [undefined] },
-      } as Workflow),
-      [],
-    ),
-  );
-
-  t.deepEqual(...errorCodes(getWorkflowErrors(1 as Workflow), []));
-
-  t.deepEqual(
-    ...errorCodes(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      getWorkflowErrors({
-        on: {
-          push: {
-            branches: 1,
+      await getWorkflowErrors(
+        {
+          on: {
+            push: 1,
+            pull_request: 1,
           },
-          pull_request: {
-            branches: 1,
+        } as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+        } as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+          jobs: 1,
+        } as unknown as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+          jobs: [1],
+        } as unknown as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+          jobs: { 1: 1 },
+        } as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+          jobs: { test: 1 },
+        } as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+          jobs: { test: [1] },
+        } as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+          jobs: { test: { steps: 1 } },
+        } as unknown as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+          jobs: { test: { steps: [{ notrun: "git checkout HEAD^2" }] } },
+        } as unknown as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: 1,
+          jobs: { test: [undefined] },
+        } as Workflow,
+        await getCodeQLForTesting(),
+      ),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(1 as Workflow, await getCodeQLForTesting()),
+      [],
+    ),
+  );
+
+  t.deepEqual(
+    ...errorCodes(
+      await getWorkflowErrors(
+        {
+          on: {
+            push: {
+              branches: 1,
+            },
+            pull_request: {
+              branches: 1,
+            },
           },
-        },
-      } as any),
+        } as unknown as Workflow,
+        await getCodeQLForTesting(),
+      ),
       [],
     ),
   );
 });
 
-test("getWorkflowErrors() when on.pull_request for wildcard branches", (t) => {
-  const errors = getWorkflowErrors({
-    on: {
-      push: { branches: ["feature/*"] },
-      pull_request: { branches: "feature/moose" },
+test("getWorkflowErrors() when on.pull_request for wildcard branches", async (t) => {
+  const errors = await getWorkflowErrors(
+    {
+      on: {
+        push: { branches: ["feature/*"] },
+        pull_request: { branches: "feature/moose" },
+      },
     },
-  });
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when HEAD^2 is checked out", (t) => {
+test("getWorkflowErrors() when HEAD^2 is checked out", async (t) => {
   process.env.GITHUB_JOB = "test";
 
-  const errors = getWorkflowErrors({
-    on: ["push", "pull_request"],
-    jobs: { test: { steps: [{ run: "git checkout HEAD^2" }] } },
-  });
+  const errors = await getWorkflowErrors(
+    {
+      on: ["push", "pull_request"],
+      jobs: { test: { steps: [{ run: "git checkout HEAD^2" }] } },
+    },
+    await getCodeQLForTesting(),
+  );
 
   t.deepEqual(...errorCodes(errors, [WorkflowErrors.CheckoutWrongHead]));
 });
+
+test("getWorkflowErrors() produces an error for workflow with language name and its alias", async (t) => {
+  await testLanguageAliases(
+    t,
+    ["java", "kotlin"],
+    { java: ["java-kotlin", "kotlin"] },
+    [
+      "CodeQL language 'java' is referenced by more than one entry in the 'language' matrix " +
+        "parameter for job 'test'. This may result in duplicate alerts. Please edit the 'language' " +
+        "matrix parameter to keep only one of the following: 'java', 'kotlin'.",
+    ],
+  );
+});
+
+test("getWorkflowErrors() produces an error for workflow with two aliases same language", async (t) => {
+  await testLanguageAliases(
+    t,
+    ["java-kotlin", "kotlin"],
+    { java: ["java-kotlin", "kotlin"] },
+    [
+      "CodeQL language 'java' is referenced by more than one entry in the 'language' matrix " +
+        "parameter for job 'test'. This may result in duplicate alerts. Please edit the 'language' " +
+        "matrix parameter to keep only one of the following: 'java-kotlin', 'kotlin'.",
+    ],
+  );
+});
+
+test("getWorkflowErrors() does not produce an error for workflow with two distinct languages", async (t) => {
+  await testLanguageAliases(
+    t,
+    ["java", "typescript"],
+    {
+      java: ["java-kotlin", "kotlin"],
+      javascript: ["javascript-typescript", "typescript"],
+    },
+    [],
+  );
+});
+
+test("getWorkflowErrors() does not produce an error if codeql doesn't support language aliases", async (t) => {
+  await testLanguageAliases(t, ["java-kotlin", "kotlin"], undefined, []);
+});
+
+async function testLanguageAliases(
+  t: ExecutionContext<unknown>,
+  matrixLanguages: string[],
+  aliases: { [languageName: string]: string[] } | undefined,
+  expectedErrorMessages: string[],
+) {
+  process.env.GITHUB_JOB = "test";
+
+  const codeql = await getCodeQLForTesting();
+  sinon.stub(codeql, "betterResolveLanguages").resolves({
+    aliases:
+      aliases !== undefined
+        ? // Remap from languageName -> aliases to alias -> languageName
+          Object.assign(
+            {},
+            ...Object.entries(aliases).flatMap(([language, languageAliases]) =>
+              languageAliases.map((alias) => ({
+                [alias]: language,
+              })),
+            ),
+          )
+        : undefined,
+    extractors: {
+      java: [
+        {
+          extractor_root: "",
+        },
+      ],
+    },
+  });
+
+  const errors = await getWorkflowErrors(
+    {
+      on: ["push", "pull_request"],
+      jobs: {
+        test: {
+          strategy: {
+            matrix: {
+              language: matrixLanguages,
+            },
+          },
+          steps: [
+            { uses: "actions/checkout@v2" },
+            { uses: "github/codeql-action/init@v2" },
+            { uses: "github/codeql-action/analyze@v2" },
+          ],
+        },
+      },
+    } as Workflow,
+    codeql,
+  );
+
+  t.is(errors.length, expectedErrorMessages.length);
+  t.deepEqual(
+    errors.map((e) => e.message),
+    expectedErrorMessages,
+  );
+}
 
 test("formatWorkflowErrors() when there is one error", (t) => {
   const message = formatWorkflowErrors([WorkflowErrors.CheckoutWrongHead]);
@@ -297,8 +467,8 @@ test("patternIsSuperset()", (t) => {
   );
 });
 
-test("getWorkflowErrors() when branches contain dots", (t) => {
-  const errors = getWorkflowErrors(
+test("getWorkflowErrors() when branches contain dots", async (t) => {
+  const errors = await getWorkflowErrors(
     yaml.load(`
     on:
       push:
@@ -307,13 +477,14 @@ test("getWorkflowErrors() when branches contain dots", (t) => {
         # The branches below must be a subset of the branches above
         branches: [4.1, master]
   `) as Workflow,
+    await getCodeQLForTesting(),
   );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on.push has a trailing comma", (t) => {
-  const errors = getWorkflowErrors(
+test("getWorkflowErrors() when on.push has a trailing comma", async (t) => {
+  const errors = await getWorkflowErrors(
     yaml.load(`
   name: "CodeQL"
   on:
@@ -323,15 +494,16 @@ test("getWorkflowErrors() when on.push has a trailing comma", (t) => {
       # The branches below must be a subset of the branches above
       branches: [master]
   `) as Workflow,
+    await getCodeQLForTesting(),
   );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() should only report the current job's CheckoutWrongHead", (t) => {
+test("getWorkflowErrors() should only report the current job's CheckoutWrongHead", async (t) => {
   process.env.GITHUB_JOB = "test";
 
-  const errors = getWorkflowErrors(
+  const errors = await getWorkflowErrors(
     yaml.load(`
   name: "CodeQL"
   on:
@@ -352,15 +524,16 @@ test("getWorkflowErrors() should only report the current job's CheckoutWrongHead
     test3:
       steps: []
   `) as Workflow,
+    await getCodeQLForTesting(),
   );
 
   t.deepEqual(...errorCodes(errors, [WorkflowErrors.CheckoutWrongHead]));
 });
 
-test("getWorkflowErrors() should not report a different job's CheckoutWrongHead", (t) => {
+test("getWorkflowErrors() should not report a different job's CheckoutWrongHead", async (t) => {
   process.env.GITHUB_JOB = "test3";
 
-  const errors = getWorkflowErrors(
+  const errors = await getWorkflowErrors(
     yaml.load(`
   name: "CodeQL"
   on:
@@ -381,29 +554,32 @@ test("getWorkflowErrors() should not report a different job's CheckoutWrongHead"
     test3:
       steps: []
   `) as Workflow,
+    await getCodeQLForTesting(),
   );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when on is missing", (t) => {
-  const errors = getWorkflowErrors(
+test("getWorkflowErrors() when on is missing", async (t) => {
+  const errors = await getWorkflowErrors(
     yaml.load(`
   name: "CodeQL"
   `) as Workflow,
+    await getCodeQLForTesting(),
   );
 
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() with a different on setup", (t) => {
+test("getWorkflowErrors() with a different on setup", async (t) => {
   t.deepEqual(
     ...errorCodes(
-      getWorkflowErrors(
+      await getWorkflowErrors(
         yaml.load(`
   name: "CodeQL"
   on: "workflow_dispatch"
   `) as Workflow,
+        await getCodeQLForTesting(),
       ),
       [],
     ),
@@ -411,11 +587,12 @@ test("getWorkflowErrors() with a different on setup", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      getWorkflowErrors(
+      await getWorkflowErrors(
         yaml.load(`
   name: "CodeQL"
   on: [workflow_dispatch]
   `) as Workflow,
+        await getCodeQLForTesting(),
       ),
       [],
     ),
@@ -423,28 +600,30 @@ test("getWorkflowErrors() with a different on setup", (t) => {
 
   t.deepEqual(
     ...errorCodes(
-      getWorkflowErrors(
+      await getWorkflowErrors(
         yaml.load(`
   name: "CodeQL"
   on:
     workflow_dispatch: {}
   `) as Workflow,
+        await getCodeQLForTesting(),
       ),
       [],
     ),
   );
 });
 
-test("getWorkflowErrors() should not report an error if PRs are totally unconfigured", (t) => {
+test("getWorkflowErrors() should not report an error if PRs are totally unconfigured", async (t) => {
   t.deepEqual(
     ...errorCodes(
-      getWorkflowErrors(
+      await getWorkflowErrors(
         yaml.load(`
   name: "CodeQL"
   on:
     push:
       branches: [master]
   `) as Workflow,
+        await getCodeQLForTesting(),
       ),
       [],
     ),
@@ -452,11 +631,12 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
 
   t.deepEqual(
     ...errorCodes(
-      getWorkflowErrors(
+      await getWorkflowErrors(
         yaml.load(`
   name: "CodeQL"
   on: ["push"]
   `) as Workflow,
+        await getCodeQLForTesting(),
       ),
       [],
     ),

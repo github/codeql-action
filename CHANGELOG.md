@@ -4,6 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+- Update default CodeQL bundle version to 2.14.6. [#1897](https://github.com/github/codeql-action/pull/1897)
 - We are rolling out a feature in October 2023 that will improve the success rate of C/C++ autobuild. [#1889](https://github.com/github/codeql-action/pull/1889)
 - Add a warning to help customers avoid inadvertently analyzing the same CodeQL language in multiple matrix jobs. [#1901](https://github.com/github/codeql-action/pull/1901)
 

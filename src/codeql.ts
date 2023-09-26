@@ -20,6 +20,7 @@ import {
   Feature,
   FeatureEnablement,
   useCodeScanningConfigInCli,
+  CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
 } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -609,6 +610,19 @@ export async function getCodeQLForCmd(
         )
       ) {
         extraArgs.push("--calculate-language-specific-baseline");
+      }
+
+      if (
+        await features.getValue(Feature.SublanguageFileCoverageEnabled, this)
+      ) {
+        extraArgs.push("--sublanguage-file-coverage");
+      } else if (
+        await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
+        )
+      ) {
+        extraArgs.push("--no-sublanguage-file-coverage");
       }
 
       await runTool(

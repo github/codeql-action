@@ -217,8 +217,6 @@ async function run() {
   core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
 
   try {
-    const workflowErrors = await validateWorkflow(logger);
-
     if (
       !(await sendStatusReport(
         await createStatusReportBase(
@@ -226,7 +224,6 @@ async function run() {
           "starting",
           startedAt,
           await checkDiskUsage(logger),
-          workflowErrors,
         ),
       ))
     ) {
@@ -249,6 +246,8 @@ async function run() {
     toolsDownloadDurationMs = initCodeQLResult.toolsDownloadDurationMs;
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
+
+    await validateWorkflow(codeql, logger);
 
     config = await initConfig(
       getOptionalInput("languages"),

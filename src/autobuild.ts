@@ -1,7 +1,14 @@
-import { getCodeQL } from "./codeql";
+import * as core from "@actions/core";
+
+import { getTemporaryDirectory, getWorkflowEventName } from "./actions-util";
+import { getGitHubVersion } from "./api-client";
+import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Language, isTracedLanguage } from "./languages";
+import { Feature, featureConfig, Features } from "./feature-flags";
+import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
+import { getRequiredEnvParam } from "./util";
 
 export async function determineAutobuildLanguages(
   config: configUtils.Config,
@@ -91,6 +98,47 @@ export async function determineAutobuildLanguages(
   return languages;
 }
 
+async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
+  const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
+  const featureName = "C++ automatic installation of dependencies";
+  const envDoc =
+    "https://docs.github.com/en/actions/learn-github-actions/variables#defining-environment-variables-for-a-single-workflow";
+  const gitHubVersion = await getGitHubVersion();
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+  const features = new Features(
+    gitHubVersion,
+    repositoryNwo,
+    getTemporaryDirectory(),
+    logger,
+  );
+  if (await features.getValue(Feature.CppDependencyInstallation, codeql)) {
+    // disable autoinstall on self-hosted runners unless explicitly requested
+    if (
+      process.env["RUNNER_ENVIRONMENT"] === "self-hosted" &&
+      process.env[envVar] !== "true"
+    ) {
+      logger.info(
+        `Disabling ${featureName} as we are on a self-hosted runner.${
+          getWorkflowEventName() !== "dynamic"
+            ? ` To override this, set the ${envVar} environment variable to 'true' in your workflow (see ${envDoc}).`
+            : ""
+        }`,
+      );
+      core.exportVariable(envVar, "false");
+    } else {
+      logger.info(
+        `Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false' (see ${envDoc}).`,
+      );
+      core.exportVariable(envVar, "true");
+    }
+  } else {
+    logger.info(`Disabling ${featureName}.`);
+    core.exportVariable(envVar, "false");
+  }
+}
+
 export async function runAutobuild(
   language: Language,
   config: configUtils.Config,
@@ -98,6 +146,9 @@ export async function runAutobuild(
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
   const codeQL = await getCodeQL(config.codeQLCmd);
+  if (language === Language.cpp) {
+    await setupCppAutobuild(codeQL, logger);
+  }
   await codeQL.runAutobuild(language);
   logger.endGroup();
 }

@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - We are rolling out a feature in October 2023 that will improve the success rate of C/C++ autobuild. [#1889](https://github.com/github/codeql-action/pull/1889)
+- We are rolling out a feature in October 2023 that will provide specific file coverage information for C and C++, Java and Kotlin, and JavaScript and TypeScript. Currently file coverage information for each of these pairs of languages is grouped together. [#1903](https://github.com/github/codeql-action/pull/1903)
 - Add a warning to help customers avoid inadvertently analyzing the same CodeQL language in multiple matrix jobs. [#1901](https://github.com/github/codeql-action/pull/1901)
 
 ## 2.21.8 - 19 Sep 2023

@@ -2,6 +2,13 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.21.9 - 27 Sep 2023
+
+- Update default CodeQL bundle version to 2.14.6. [#1897](https://github.com/github/codeql-action/pull/1897)
+- We are rolling out a feature in October 2023 that will improve the success rate of C/C++ autobuild. [#1889](https://github.com/github/codeql-action/pull/1889)
+- We are rolling out a feature in October 2023 that will provide specific file coverage information for C and C++, Java and Kotlin, and JavaScript and TypeScript. Currently file coverage information for each of these pairs of languages is grouped together. [#1903](https://github.com/github/codeql-action/pull/1903)
+- Add a warning to help customers avoid inadvertently analyzing the same CodeQL language in multiple matrix jobs. [#1901](https://github.com/github/codeql-action/pull/1901)
+
 ## 2.21.8 - 19 Sep 2023
 
 - Add a deprecation warning for customers using CodeQL version 2.10.4 and earlier. These versions of CodeQL were discontinued on 12 September 2023 alongside GitHub Enterprise Server 3.6, and will be unsupported by the next minor release of the CodeQL Action. [#1884](https://github.com/github/codeql-action/pull/1884)

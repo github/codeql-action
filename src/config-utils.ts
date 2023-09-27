@@ -8,7 +8,6 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import {
   CodeQL,
-  CODEQL_VERSION_GHES_PACK_DOWNLOAD,
   CODEQL_VERSION_LANGUAGE_ALIASING,
   CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE,
   ResolveQueriesOutput,
@@ -1977,7 +1976,6 @@ export async function downloadPacks(
   // This code path is only used when config parsing occurs in the Action.
   const { registriesAuthTokens, qlconfigFile } = await generateRegistries(
     registriesInput,
-    codeQL,
     tempDir,
     logger,
   );
@@ -2033,7 +2031,6 @@ export async function downloadPacks(
  */
 export async function generateRegistries(
   registriesInput: string | undefined,
-  codeQL: CodeQL,
   tempDir: string,
   logger: Logger,
 ) {
@@ -2041,14 +2038,6 @@ export async function generateRegistries(
   let registriesAuthTokens: string | undefined;
   let qlconfigFile: string | undefined;
   if (registries) {
-    if (
-      !(await codeQlVersionAbove(codeQL, CODEQL_VERSION_GHES_PACK_DOWNLOAD))
-    ) {
-      throw new UserError(
-        `The 'registries' input is not supported on CodeQL CLI versions earlier than ${CODEQL_VERSION_GHES_PACK_DOWNLOAD}. Please upgrade to CodeQL CLI version ${CODEQL_VERSION_GHES_PACK_DOWNLOAD} or later.`,
-      );
-    }
-
     // generate a qlconfig.yml file to hold the registry configs.
     const qlconfig = createRegistriesBlock(registries);
     qlconfigFile = path.join(tempDir, "qlconfig.yml");

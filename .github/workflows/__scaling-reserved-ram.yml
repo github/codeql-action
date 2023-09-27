@@ -32,7 +32,7 @@ jobs:
         - os: ubuntu-latest
           version: stable-20221211
         - os: macos-latest
-          version: 1211
+          version: stable-20221211
         - os: ubuntu-latest
           version: stable-20230418
         - os: macos-latest

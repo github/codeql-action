@@ -260,6 +260,7 @@ function getCgroupMemoryLimitBytes(
   }
 
   const limit = Number(fs.readFileSync(limitFile, "utf8"));
+
   if (!Number.isInteger(limit)) {
     logger.debug(
       `While resolving RAM, ignored the file ${limitFile} that may contain a cgroup memory limit ` +
@@ -269,6 +270,14 @@ function getCgroupMemoryLimitBytes(
   }
 
   const displayLimit = `${Math.floor(limit / (1024 * 1024))} MiB`;
+  if (limit > os.totalmem()) {
+    logger.debug(
+      `While resolving RAM, ignored the file ${limitFile} that may contain a cgroup memory limit as ` +
+        `its contents ${displayLimit} were greater than the total amount of system memory.`,
+    );
+    return undefined;
+  }
+
   if (limit < MINIMUM_CGROUP_MEMORY_LIMIT_BYTES) {
     logger.info(
       `While resolving RAM, ignored a cgroup limit of ${displayLimit} in ${limitFile} as it was below ${

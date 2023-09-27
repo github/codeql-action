@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The CodeQL Action now requires CodeQL version 2.10.5 or later. For more information, see the corresponding changelog entry for CodeQL Action version 2.21.8. [#1907](https://github.com/github/codeql-action/pull/1907)
 
 ## 2.21.9 - 27 Sep 2023
 

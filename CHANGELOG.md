@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 2.21.9 - 27 Sep 2023
 
 - Update default CodeQL bundle version to 2.14.6. [#1897](https://github.com/github/codeql-action/pull/1897)
 - We are rolling out a feature in October 2023 that will improve the success rate of C/C++ autobuild. [#1889](https://github.com/github/codeql-action/pull/1889)

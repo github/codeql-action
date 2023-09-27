@@ -118,7 +118,6 @@ export async function runInit(
       ({ registriesAuthTokens, qlconfigFile } =
         await configUtils.generateRegistries(
           registriesInput,
-          codeql,
           config.tempDir,
           logger,
         ));

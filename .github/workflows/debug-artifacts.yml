@@ -25,10 +25,11 @@ jobs:
         - ubuntu-latest
         - macos-latest
         version:
-        - stable-20220615
         - stable-20220908
         - stable-20221211
         - stable-20230418
+        - stable-v2.13.5
+        - stable-v2.14.6
         - default
         - latest
         - nightly-latest
@@ -74,11 +75,11 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20220615 stable-20220908 stable-20221211 stable-20230418 default latest nightly-latest"
+          VERSIONS="stable-20220908 stable-20221211 stable-20230418 stable-v2.13.5 stable-v2.14.6 default latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             for os in ubuntu-latest macos-latest; do
-              pushd "./my-debug-artifacts-$os-$version"
+              pushd "./my-debug-artifacts-$os-${version//./}"
               echo "Artifacts from version $version on $os:"
               for language in $LANGUAGES; do
                 echo "- Checking $language"

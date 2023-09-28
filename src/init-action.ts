@@ -1,10 +1,13 @@
+import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
+import { safeWhich } from "@chrisgavin/safe-which";
 import { v4 as uuidV4 } from "uuid";
 
 import {
   getActionVersion,
+  getFileType,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
@@ -319,6 +322,40 @@ async function run() {
       core.warning(
         "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.",
       );
+    }
+
+    // https://github.com/github/codeql-team/issues/2411
+    if (
+      config.languages.includes(Language.go) &&
+      process.platform === "linux"
+    ) {
+      try {
+        const goBinaryPath = await safeWhich("go");
+        const fileOutput = await getFileType(goBinaryPath);
+
+        if (fileOutput.includes("statically linked")) {
+          // Create a directory that we can add to the system PATH.
+          const tempBinPath = path.resolve(getTemporaryDirectory(), "bin");
+          fs.mkdirSync(tempBinPath, { recursive: true });
+          core.addPath(tempBinPath);
+
+          // Write the wrapper script to the directory we just added to the PATH.
+          const goWrapperPath = path.resolve(tempBinPath, "go");
+          fs.writeFileSync(
+            goWrapperPath,
+            `#!/bin/bash\n\nexec ${goBinaryPath} "$@"`,
+          );
+          fs.chmodSync(goWrapperPath, "755");
+
+          // Store the original location of our wrapper script somewhere where we can
+          // later retrieve it from and cross-check that it hasn't been changed.
+          core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
+        }
+      } catch (e) {
+        core.warning(
+          `Analyzing Go on Linux, but failed to install wrapper script: ${e}`,
+        );
+      }
     }
 
     // Limit RAM and threads for extractors. When running extractors, the CodeQL CLI obeys the

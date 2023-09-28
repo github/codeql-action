@@ -80,6 +80,9 @@ jobs:
         )
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+    - uses: actions/setup-go@v4
+      with:
+        go-version: 1.21.1
     - uses: ./../action/init
       with:
         languages: go

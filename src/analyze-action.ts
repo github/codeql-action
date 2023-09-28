@@ -3,6 +3,7 @@ import path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
+import { safeWhich } from "@chrisgavin/safe-which";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -230,6 +231,19 @@ async function run() {
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
       logger,
     );
+
+    // Check that the Go wrapper script still exists, if set
+    const goWrapperPath = process.env[EnvVar.GO_BINARY_LOCATION];
+
+    if (goWrapperPath !== undefined) {
+      const goBinaryPath = await safeWhich("go");
+
+      if (goWrapperPath !== goBinaryPath) {
+        core.warning(
+          "Unexpected result for `which go`: please ensure that the correct version of Go is installed before the `codeql-action/init` Action is used.",
+        );
+      }
+    }
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 

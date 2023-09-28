@@ -78,6 +78,27 @@ Since the `codeql-action` runs most of its testing through individual Actions wo
 2. Run the script. If there's a reason to, you can pass in a different SHA as a CLI argument.
 3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v1`, and `v2` have been updated.
 
+## Deprecating a CodeQL version (write access required)
+
+We typically deprecate a version of CodeQL when the GitHub Enterprise Server (GHES) version that it first shipped in is deprecated.
+
+1. Work out the next minimum version of CodeQL. This is the version that shipped in the version of GHES after the one that has just been deprecated.
+1. Notify users using the old version of CodeQL about the deprecation.
+    - Update `CODEQL_NEXT_MINIMUM_VERSION`, `GHES_VERSION_MOST_RECENTLY_DEPRECATED`, and `GHES_MOST_RECENT_DEPRECATION_DATE` in `src/codeql.ts` to reflect the new minimum version of CodeQL and the GHES version that has just been deprecated.
+    - Add a changelog note announcing the deprecation.
+    - Example PR: https://github.com/github/codeql-action/pull/1884
+1. Release the Action, or wait for the next scheduled release of the Action, then wait at least a week so users have time to see and act on the deprecation warning.
+1. Remove support for the old version of CodeQL.
+    - Bump `CODEQL_MINIMUM_VERSION` in `src/codeql.ts` to the new minimum version of CodeQL.
+    - Remove any code that is only needed to support the old version of CodeQL. This is often behind a version guard, so look for instances of version numbers between the old minimum version and the new minimum version in the codebase. A good place to start is the list of version numbers in `src/codeql.ts`.
+    - Update the default set of CodeQL test versions in `pr-checks/sync.py`.
+        - Remove the old minimum version of CodeQL.
+        - Add the latest patch release for any new CodeQL minor version series that have shipped in GHES.
+        - Run the script to update the generated PR checks.
+    - Do the same for PR checks that aren't auto-generated.
+    - Add a changelog note announcing the new minimum version of CodeQL that is now required.
+    - Example PR: https://github.com/github/codeql-action/pull/1907
+
 ## Resources
 
 - [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)

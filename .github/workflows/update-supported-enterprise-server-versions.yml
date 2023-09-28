@@ -52,5 +52,13 @@ jobs:
             git add .
             git commit --message "Update supported GitHub Enterprise Server versions"
             git push origin update-supported-enterprise-server-versions
-            gh pr create --fill --draft
+
+            body="This PR updates the list of supported GitHub Enterprise Server versions, either because a new "
+            body+="version is about to be feature frozen, or because an old release has been deprecated.\n\n"
+            body+="If an old release has been deprecated, please follow the instructions in CONTRIBUTING.md to "
+            body+="deprecate the corresponding version of CodeQL."
+
+            gh pr create --draft \
+              --title "Update supported GitHub Enterprise Server versions" \
+              --body "$body"
           fi

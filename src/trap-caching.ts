@@ -4,11 +4,11 @@ import * as path from "path";
 import * as cache from "@actions/cache";
 
 import * as actionsUtil from "./actions-util";
-import { CodeQL, CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES } from "./codeql";
+import { CodeQL } from "./codeql";
 import type { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { codeQlVersionAbove, tryGetFolderBytes, withTimeout } from "./util";
+import { tryGetFolderBytes, withTimeout } from "./util";
 
 // This constant should be bumped if we make a breaking change
 // to how the CodeQL Action stores or retrieves the TRAP cache,
@@ -164,10 +164,6 @@ export async function getLanguagesSupportingCaching(
   logger: Logger,
 ): Promise<Language[]> {
   const result: Language[] = [];
-  if (
-    !(await codeQlVersionAbove(codeql, CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES))
-  )
-    return result;
   const resolveResult = await codeql.betterResolveLanguages();
   outer: for (const lang of languages) {
     const extractorsForLanguage = resolveResult.extractors[lang];

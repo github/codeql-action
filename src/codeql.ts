@@ -20,6 +20,7 @@ import {
   Feature,
   FeatureEnablement,
   useCodeScanningConfigInCli,
+  CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
 } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -276,7 +277,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.9.4";
+const CODEQL_MINIMUM_VERSION = "2.10.5";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -293,21 +294,13 @@ const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.6";
  */
 const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-09-12";
 
-/**
+/*
  * Versions of CodeQL that version-flag certain functionality in the Action.
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
  */
-const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
-const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
-export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
-const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
 
-/**
- * Previous versions had the option already, but were missing the
- * --extractor-options-verbosity that we need.
- */
-export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
+const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
 
 /**
  * Versions 2.11.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for
@@ -558,24 +551,6 @@ export async function getCodeQLForCmd(
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
         extraArgs.push(`--trace-process-name=${processName}`);
-        if (
-          // There's a bug in Lua tracing for Go on Windows in versions earlier than
-          // `CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED`, so don't use Lua tracing
-          // when tracing Go on Windows on these CodeQL versions.
-          (await util.codeQlVersionAbove(
-            this,
-            CODEQL_VERSION_LUA_TRACER_CONFIG,
-          )) &&
-          config.languages.includes(Language.go) &&
-          isTracedLanguage(Language.go) &&
-          process.platform === "win32" &&
-          !(await util.codeQlVersionAbove(
-            this,
-            CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED,
-          ))
-        ) {
-          extraArgs.push("--no-internal-use-lua-tracing");
-        }
       }
 
       // A code scanning config file is only generated if the CliConfigFileEnabled feature flag is enabled.
@@ -609,6 +584,19 @@ export async function getCodeQLForCmd(
         )
       ) {
         extraArgs.push("--calculate-language-specific-baseline");
+      }
+
+      if (
+        await features.getValue(Feature.SublanguageFileCoverageEnabled, this)
+      ) {
+        extraArgs.push("--sublanguage-file-coverage");
+      } else if (
+        await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
+        )
+      ) {
+        extraArgs.push("--no-sublanguage-file-coverage");
       }
 
       await runTool(

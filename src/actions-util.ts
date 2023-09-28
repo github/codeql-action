@@ -425,3 +425,33 @@ export function getWorkflowRunAttempt(): number {
   }
   return workflowRunAttempt;
 }
+
+/**
+ * Tries to obtain the output of the `file` command for the file at the specified path.
+ */
+export const getFileType = async (fp: string): Promise<string> => {
+  let stderr = "";
+  try {
+    let fileOut = "";
+    await new toolrunner.ToolRunner(
+      await safeWhich.safeWhich("file"),
+      ["-L", fp],
+      {
+        silent: true,
+        listeners: {
+          stdout: (data) => {
+            fileOut += data.toString();
+          },
+          stderr: (data) => {
+            stderr += data.toString();
+          },
+        },
+      },
+    ).exec();
+    return fileOut;
+  } catch (e) {
+    core.info(`Could not determine type of ${fp}. ${stderr}`);
+
+    throw e;
+  }
+};

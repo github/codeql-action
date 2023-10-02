@@ -46,6 +46,9 @@ function getRole(context, node) {
   const explicitRole = getLiteralPropValue(getProp(node.attributes, 'role'))
   if (explicitRole) {
     return explicitRole
+  } else if (getProp(node.attributes, 'role')) {
+    // If role is set to anything other than a literal prop
+    return undefined
   }
 
   // Assemble a key for looking-up the element’s role in the `elementRolesMap`

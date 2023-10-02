@@ -12,7 +12,6 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { getMlPoweredJsQueriesStatus } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import { initCodeQL, initConfig, installPythonDeps, runInit } from "./init";
@@ -160,7 +159,6 @@ async function sendCompletedStatusReport(
       ...initStatusReport,
       disable_default_queries: disableDefaultQueries,
       languages,
-      ml_powered_javascript_queries: getMlPoweredJsQueriesStatus(config),
       paths,
       paths_ignore: pathsIgnore,
       queries: queries.join(","),

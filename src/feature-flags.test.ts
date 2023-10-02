@@ -119,12 +119,11 @@ test("Feature flags exception is propagated if the API request errors", async (t
 
     mockFeatureFlagApiEndpoint(500, {});
 
+    const someFeature = Object.values(Feature)[0];
+
     await t.throwsAsync(
       async () =>
-        features.getValue(
-          Feature.MlPoweredQueriesEnabled,
-          includeCodeQlIfRequired(Feature.MlPoweredQueriesEnabled),
-        ),
+        features.getValue(someFeature, includeCodeQlIfRequired(someFeature)),
       {
         message:
           "Encountered an error while trying to determine feature enablement: Error: some error message",

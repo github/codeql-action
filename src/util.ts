@@ -909,28 +909,6 @@ export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-export const ML_POWERED_JS_QUERIES_PACK_NAME =
-  "codeql/javascript-experimental-atm-queries";
-
-/**
- * Gets the ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
- * queries beta.
- */
-export async function getMlPoweredJsQueriesPack(
-  codeQL: CodeQL,
-): Promise<string> {
-  let version;
-  if (await codeQlVersionAbove(codeQL, "2.11.3")) {
-    version = "~0.4.0";
-  } else {
-    version = `~0.3.0`;
-  }
-  return prettyPrintPack({
-    name: ML_POWERED_JS_QUERIES_PACK_NAME,
-    version,
-  });
-}
-
 export function prettyPrintPack(pack: Pack) {
   return `${pack.name}${pack.version ? `@${pack.version}` : ""}${
     pack.path ? `:${pack.path}` : ""

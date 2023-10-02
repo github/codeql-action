@@ -1353,20 +1353,6 @@ async function generateCodeScanningConfig(
   if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
     delete augmentedConfig.packs;
   }
-  if (config.augmentationProperties.injectedMlQueries) {
-    // We need to inject the ML queries into the original user input before
-    // we pass this on to the CLI, to make sure these get run.
-    const packString = await util.getMlPoweredJsQueriesPack(codeql);
-
-    if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
-    if (Array.isArray(augmentedConfig.packs)) {
-      augmentedConfig.packs.push(packString);
-    } else {
-      if (!augmentedConfig.packs.javascript)
-        augmentedConfig.packs["javascript"] = [];
-      augmentedConfig.packs["javascript"].push(packString);
-    }
-  }
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`,
   );

@@ -119,7 +119,6 @@ test("status report fields and search path setting", async (t) => {
         debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
         debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
         augmentationProperties: {
-          injectedMlQueries: false,
           packsInputCombines: false,
           queriesInputCombines: false,
         },
@@ -283,7 +282,6 @@ function createBaseConfig(tmpDir: string): Config {
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     augmentationProperties: {
-      injectedMlQueries: false,
       packsInputCombines: false,
       queriesInputCombines: false,
     },

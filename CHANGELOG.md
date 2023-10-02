@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - The CodeQL Action now requires CodeQL version 2.10.5 or later. For more information, see the corresponding changelog entry for CodeQL Action version 2.21.8. [#1907](https://github.com/github/codeql-action/pull/1907)
+- The CodeQL Action no longer runs ML-powered queries. For more information, including details on our investment in AI-powered security technology, see ["CodeQL code scanning deprecates ML-powered alerts."](https://github.blog/changelog/2023-09-29-codeql-code-scanning-deprecates-ml-powered-alerts/) [#1910](https://github.com/github/codeql-action/pull/1910)
 
 ## 2.21.9 - 27 Sep 2023
 

@@ -61,7 +61,6 @@ test.beforeEach(() => {
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     augmentationProperties: {
-      injectedMlQueries: false,
       packsInputCombines: false,
       queriesInputCombines: false,
     },
@@ -572,7 +571,6 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
       ...stubConfig,
       tempDir,
       augmentationProperties: {
-        injectedMlQueries: false,
         queriesInputCombines: false,
         packsInputCombines: false,
       },
@@ -649,77 +647,17 @@ test(
   "basic",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: false,
   },
   {},
   {},
-);
-
-test(
-  "injected ML queries",
-  injectedConfigMacro,
-  {
-    injectedMlQueries: true,
-    queriesInputCombines: false,
-    packsInputCombines: false,
-  },
-  {},
-  {
-    packs: ["codeql/javascript-experimental-atm-queries@~0.4.0"],
-  },
-);
-
-test(
-  "injected ML queries with existing packs",
-  injectedConfigMacro,
-  {
-    injectedMlQueries: true,
-    queriesInputCombines: false,
-    packsInputCombines: false,
-  },
-  {
-    originalUserInput: {
-      packs: { javascript: ["codeql/something-else"] },
-    },
-  },
-  {
-    packs: {
-      javascript: [
-        "codeql/something-else",
-        "codeql/javascript-experimental-atm-queries@~0.4.0",
-      ],
-    },
-  },
-);
-
-test(
-  "injected ML queries with existing packs of different language",
-  injectedConfigMacro,
-  {
-    injectedMlQueries: true,
-    queriesInputCombines: false,
-    packsInputCombines: false,
-  },
-  {
-    originalUserInput: {
-      packs: { cpp: ["codeql/something-else"] },
-    },
-  },
-  {
-    packs: {
-      cpp: ["codeql/something-else"],
-      javascript: ["codeql/javascript-experimental-atm-queries@~0.4.0"],
-    },
-  },
 );
 
 test(
   "injected packs from input",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: false,
     packsInput: ["xxx", "yyy"],
@@ -734,7 +672,6 @@ test(
   "injected packs from input with existing packs combines",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: true,
     packsInput: ["xxx", "yyy"],
@@ -757,7 +694,6 @@ test(
   "injected packs from input with existing packs overrides",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: false,
     packsInput: ["xxx", "yyy"],
@@ -774,33 +710,11 @@ test(
   },
 );
 
-test(
-  "injected packs from input with existing packs overrides and ML model inject",
-  injectedConfigMacro,
-  {
-    injectedMlQueries: true,
-    queriesInputCombines: false,
-    packsInputCombines: false,
-    packsInput: ["xxx", "yyy"],
-  },
-  {
-    originalUserInput: {
-      packs: {
-        cpp: ["codeql/something-else"],
-      },
-    },
-  },
-  {
-    packs: ["xxx", "yyy", "codeql/javascript-experimental-atm-queries@~0.4.0"],
-  },
-);
-
 // similar, but with queries
 test(
   "injected queries from input",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -822,7 +736,6 @@ test(
   "injected queries from input overrides",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: false,
     packsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -848,7 +761,6 @@ test(
   "injected queries from input combines",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: true,
     packsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -877,7 +789,6 @@ test(
   "injected queries from input combines 2",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: true,
     packsInputCombines: true,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -899,7 +810,6 @@ test(
   "injected queries and packs, but empty",
   injectedConfigMacro,
   {
-    injectedMlQueries: false,
     queriesInputCombines: true,
     packsInputCombines: true,
     queriesInput: [],

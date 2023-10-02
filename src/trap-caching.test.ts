@@ -82,7 +82,6 @@ const testConfigWithoutTmpDir: Config = {
   debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
   debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
   augmentationProperties: {
-    injectedMlQueries: false,
     packsInputCombines: false,
     queriesInputCombines: false,
   },
@@ -108,7 +107,6 @@ function getTestConfigWithTempDir(tmpDir: string): configUtils.Config {
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     augmentationProperties: {
-      injectedMlQueries: false,
       packsInputCombines: false,
       queriesInputCombines: false,
     },

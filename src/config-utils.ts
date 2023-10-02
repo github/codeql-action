@@ -973,7 +973,7 @@ export async function getRawLanguages(
   return { rawLanguages, autodetected };
 }
 
-async function addQueriesAndPacksFromWorkflow(
+async function addQueriesFromWorkflow(
   codeQL: CodeQL,
   queriesInput: string,
   languages: string[],
@@ -1061,7 +1061,7 @@ export async function getDefaultConfig(
       }
     : {};
   if (rawQueriesInput) {
-    await addQueriesAndPacksFromWorkflow(
+    await addQueriesFromWorkflow(
       codeQL,
       rawQueriesInput,
       languages,
@@ -1209,7 +1209,7 @@ async function loadConfig(
   // unless they're prefixed with "+", in which case they supplement those
   // in the config file.
   if (rawQueriesInput) {
-    await addQueriesAndPacksFromWorkflow(
+    await addQueriesFromWorkflow(
       codeQL,
       rawQueriesInput,
       languages,

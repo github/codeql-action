@@ -1,7 +1,6 @@
 import { VersionInfo } from "./codeql";
 
 export enum ToolsFeature {
-  FeaturesInVersionResult = "featuresInVersionResult",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
 }
 

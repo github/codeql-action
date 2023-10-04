@@ -554,9 +554,14 @@ export async function getCodeQLForCmd(
     async getVersion() {
       let result = util.getCachedCodeQlVersion();
       if (result === undefined) {
-        result = JSON.parse(
-          await runTool(cmd, ["version", "--format=json"]),
-        ) as VersionOutput;
+        const output = await runTool(cmd, ["version", "--format=json"]);
+        try {
+          result = JSON.parse(output) as VersionOutput;
+        } catch (err) {
+          throw Error(
+            `Invalid JSON output from \`version --format=json\`: ${output}`,
+          );
+        }
         util.cacheCodeQlVersion(result);
       }
       return result;

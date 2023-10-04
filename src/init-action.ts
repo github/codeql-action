@@ -328,7 +328,10 @@ async function run() {
       );
     }
 
-    // https://github.com/github/codeql-team/issues/2411
+    // Go 1.21 and above ships with statically linked binaries on Linux. CodeQL cannot currently trace custom builds
+    // where the entry point is a statically linked binary. Until that is fixed, we work around the problem by
+    // replacing the `go` binary with a shell script that invokes the actual `go` binary. Since the shell is typically
+    // dynamically linked, this provides a suitable entry point for the CodeQL tracer.
     if (
       config.languages.includes(Language.go) &&
       process.platform === "linux" &&

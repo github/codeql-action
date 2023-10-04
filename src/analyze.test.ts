@@ -21,7 +21,7 @@ import {
   setupTests,
   setupActionsVars,
   createFeatures,
-  makeVersionOutput,
+  makeVersionInfo,
 } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
@@ -262,7 +262,7 @@ test("status report fields and search path setting", async (t) => {
 
 function mockCodeQL(): Partial<CodeQL> {
   return {
-    getVersion: async () => makeVersionOutput("1.0.0"),
+    getVersion: async () => makeVersionInfo("1.0.0"),
     databaseRunQueries: sinon.spy(),
     databaseInterpretResults: async () => "",
     databasePrintBaseline: async () => "",

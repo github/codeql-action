@@ -10,7 +10,7 @@ import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
-import type { CodeQL, VersionOutput } from "./codeql";
+import type { CodeQL, VersionInfo } from "./codeql";
 import type { Config, Pack } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
@@ -576,16 +576,16 @@ export function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }
 
-let cachedCodeQlVersion: undefined | VersionOutput = undefined;
+let cachedCodeQlVersion: undefined | VersionInfo = undefined;
 
-export function cacheCodeQlVersion(version: VersionOutput): void {
+export function cacheCodeQlVersion(version: VersionInfo): void {
   if (cachedCodeQlVersion !== undefined) {
     throw new Error("cacheCodeQlVersion() should be called only once");
   }
   cachedCodeQlVersion = version;
 }
 
-export function getCachedCodeQlVersion(): undefined | VersionOutput {
+export function getCachedCodeQlVersion(): undefined | VersionInfo {
   return cachedCodeQlVersion;
 }
 

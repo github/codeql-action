@@ -28,6 +28,7 @@ import {
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
+import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkDiskUsage,
@@ -315,6 +316,9 @@ async function run() {
   }
 
   try {
+    // Query CLI for supported features
+    const versionInfo = await codeql.getVersion();
+
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {
@@ -327,7 +331,11 @@ async function run() {
     // https://github.com/github/codeql-team/issues/2411
     if (
       config.languages.includes(Language.go) &&
-      process.platform === "linux"
+      process.platform === "linux" &&
+      !isSupportedToolsFeature(
+        versionInfo,
+        ToolsFeature.IndirectTracingSupportsStaticBinaries,
+      )
     ) {
       try {
         const goBinaryPath = await safeWhich("go");

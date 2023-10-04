@@ -240,7 +240,7 @@ async function run() {
 
       if (goWrapperPath !== goBinaryPath) {
         core.warning(
-          "Unexpected result for `which go`: please ensure that the correct version of Go is installed before the `codeql-action/init` Action is used.",
+          `Expected \`which go\` to return ${goWrapperPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
         );
       }
     }

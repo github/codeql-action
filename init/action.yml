@@ -7,7 +7,8 @@ inputs:
     required: false
     # If not specified the Action will check in several places until it finds the CodeQL tools.
   languages:
-    description: The languages to be analysed
+    description: |
+      A comma-separated value of the languages to be analysed e.g. python,javascript
     required: false
   token:
     description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
@@ -44,7 +45,7 @@ inputs:
   db-location:
     description: Path where CodeQL databases should be created. If not specified, a temporary directory will be used.
     required: false
-  config:    
+  config:
     description: Configuration passed as a YAML string in the same format as the config-file input. This takes precedence over the config-file input.
     required: false
   queries:

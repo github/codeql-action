@@ -27,6 +27,7 @@ import {
   SAMPLE_DOTCOM_API_DETAILS,
   SAMPLE_DEFAULT_CLI_VERSION,
   mockBundleDownloadApi,
+  makeVersionInfo,
 } from "./testing-utils";
 import * as util from "./util";
 import { initializeEnvironment } from "./util";
@@ -563,7 +564,7 @@ test("databaseInitCluster() without injected codescanning config", async (t) => 
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves("2.10.5");
+    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.10.5"));
     // safeWhich throws because of the test CodeQL object.
     sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -607,7 +608,12 @@ const injectedConfigMacro = test.macro({
       const codeqlObject = await codeql.getCodeQLForTesting();
       sinon
         .stub(codeqlObject, "getVersion")
-        .resolves(featureConfig[Feature.CliConfigFileEnabled].minimumVersion);
+        .resolves(
+          makeVersionInfo(
+            featureConfig[Feature.CliConfigFileEnabled].minimumVersion ||
+              "1.0.0",
+          ),
+        );
 
       const thisStubConfig: Config = {
         ...stubConfig,
@@ -829,7 +835,7 @@ test("does not pass a code scanning config or qlconfig file to the CLI when CLI 
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
     // stubbed version doesn't matter. It just needs to be valid semver.
-    sinon.stub(codeqlObject, "getVersion").resolves("0.0.0");
+    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("0.0.0"));
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
@@ -861,7 +867,7 @@ test("passes a code scanning config AND qlconfig to the CLI when CLI config pass
     const codeqlObject = await codeql.getCodeQLForTesting();
     sinon
       .stub(codeqlObject, "getVersion")
-      .resolves(codeql.CODEQL_VERSION_INIT_WITH_QLCONFIG);
+      .resolves(makeVersionInfo(codeql.CODEQL_VERSION_INIT_WITH_QLCONFIG));
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
@@ -891,7 +897,7 @@ test("passes a code scanning config BUT NOT a qlconfig to the CLI when CLI confi
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves("2.12.2");
+    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.2"));
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
@@ -926,7 +932,7 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
     const codeqlObject = await codeql.getCodeQLForTesting();
     sinon
       .stub(codeqlObject, "getVersion")
-      .resolves(codeql.CODEQL_VERSION_INIT_WITH_QLCONFIG);
+      .resolves(makeVersionInfo(codeql.CODEQL_VERSION_INIT_WITH_QLCONFIG));
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
@@ -948,7 +954,7 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
 test("databaseInterpretResults() sets --sarif-add-baseline-file-info for 2.11.3", async (t) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.11.3");
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.11.3"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
   await codeqlObject.databaseInterpretResults(
@@ -974,7 +980,7 @@ test("databaseInterpretResults() sets --sarif-add-baseline-file-info for 2.11.3"
 test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for 2.11.2", async (t) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.11.2");
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.11.2"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
   await codeqlObject.databaseInterpretResults(
@@ -1035,7 +1041,9 @@ for (const {
   }`, async (t) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(codeqlVersion);
+    sinon
+      .stub(codeqlObject, "getVersion")
+      .resolves(makeVersionInfo(codeqlVersion));
     // safeWhich throws because of the test CodeQL object.
     sinon.stub(safeWhich, "safeWhich").resolves("");
     await codeqlObject.databaseInterpretResults(
@@ -1078,7 +1086,7 @@ test("database finalize recognises JavaScript no code found error on CodeQL 2.11
     2020-09-07T17:39:53.9251124Z [2020-09-07 17:39:53] [ERROR] Spawned process exited abnormally (code 255; tried to run: [/opt/hostedtoolcache/CodeQL/0.0.0-20200630/x64/codeql/javascript/tools/autobuild.sh])`,
   );
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.11.6");
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.11.6"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -1095,7 +1103,7 @@ test("database finalize recognises JavaScript no code found error on CodeQL 2.11
 test("database finalize overrides no code found error on CodeQL 2.11.6", async (t) => {
   stubToolRunnerConstructor(32);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.11.6");
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.11.6"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -1115,7 +1123,7 @@ test("database finalize does not override no code found error on CodeQL 2.12.4",
     "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.";
   stubToolRunnerConstructor(32, cliMessage);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.12.4");
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -1140,7 +1148,7 @@ test("runTool summarizes several fatal errors", async (t) => {
     `${heapError}\n${datasetImportError}.`;
   stubToolRunnerConstructor(32, cliStderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves("2.12.4");
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 

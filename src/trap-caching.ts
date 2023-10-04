@@ -225,5 +225,7 @@ async function cachePrefix(
   codeql: CodeQL,
   language: Language,
 ): Promise<string> {
-  return `codeql-trap-${CACHE_VERSION}-${await codeql.getVersion()}-${language}-`;
+  return `codeql-trap-${CACHE_VERSION}-${
+    (await codeql.getVersion()).version
+  }-${language}-`;
 }

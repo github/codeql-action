@@ -14,7 +14,11 @@ import {
 import * as configUtils from "./config-utils";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
-import { getRecordingLogger, setupTests } from "./testing-utils";
+import {
+  getRecordingLogger,
+  makeVersionInfo,
+  setupTests,
+} from "./testing-utils";
 import {
   downloadTrapCaches,
   getLanguagesSupportingCaching,
@@ -26,7 +30,7 @@ setupTests(test);
 
 const stubCodeql = setCodeQL({
   async getVersion() {
-    return "2.10.3";
+    return makeVersionInfo("2.10.3");
   },
   async betterResolveLanguages() {
     return {

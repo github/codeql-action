@@ -75,7 +75,7 @@ export interface CodeQL {
   /**
    * Get a string containing the semver version of the CodeQL executable.
    */
-  getVersion(): Promise<string>;
+  getVersion(): Promise<VersionInfo>;
   /**
    * Print version information about CodeQL.
    */
@@ -210,6 +210,11 @@ export interface CodeQL {
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
+}
+
+export interface VersionInfo {
+  version: string;
+  features?: { [name: string]: boolean };
 }
 
 export interface ResolveLanguagesOutput {
@@ -442,7 +447,12 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     getVersion: resolveFunction(
       partialCodeql,
       "getVersion",
-      () => new Promise((resolve) => resolve("1.0.0")),
+      () =>
+        new Promise((resolve) =>
+          resolve({
+            version: "1.0.0",
+          }),
+        ),
     ),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
@@ -528,7 +538,14 @@ export async function getCodeQLForCmd(
     async getVersion() {
       let result = util.getCachedCodeQlVersion();
       if (result === undefined) {
-        result = (await runTool(cmd, ["version", "--format=terse"])).trim();
+        const output = await runTool(cmd, ["version", "--format=json"]);
+        try {
+          result = JSON.parse(output) as VersionInfo;
+        } catch (err) {
+          throw Error(
+            `Invalid JSON output from \`version --format=json\`: ${output}`,
+          );
+        }
         util.cacheCodeQlVersion(result);
       }
       return result;
@@ -1095,15 +1112,18 @@ export async function getCodeQLForCmd(
     !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))
   ) {
     throw new Error(
-      `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${await codeql.getVersion()}`,
+      `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
+        (await codeql.getVersion()).version
+      }`,
     );
   } else if (
     checkVersion &&
     process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_NEXT_MINIMUM_VERSION))
   ) {
+    const result = await codeql.getVersion();
     core.warning(
-      `CodeQL CLI version ${await codeql.getVersion()} was discontinued on ` +
+      `CodeQL CLI version ${result.version} was discontinued on ` +
         `${GHES_MOST_RECENT_DEPRECATION_DATE} alongside GitHub Enterprise Server ` +
         `${GHES_VERSION_MOST_RECENTLY_DEPRECATED} and will not be supported by the next minor ` +
         `release of the CodeQL Action. Please update to CodeQL CLI version ` +
@@ -1111,7 +1131,7 @@ export async function getCodeQLForCmd(
         "version of the CLI using the 'tools' input to the 'init' Action, you can remove this " +
         "input to use the default version.\n\n" +
         "Alternatively, if you want to continue using CodeQL CLI version " +
-        `${await codeql.getVersion()}, you can replace 'github/codeql-action/*@v2' by ` +
+        `${result.version}, you can replace 'github/codeql-action/*@v2' by ` +
         `'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );

@@ -348,7 +348,11 @@ async function run() {
           logger.debug(`Applying static binary workaround for Go`);
 
           // Create a directory that we can add to the system PATH.
-          const tempBinPath = path.resolve(getTemporaryDirectory(), "bin");
+          const tempBinPath = path.resolve(
+            getTemporaryDirectory(),
+            "codeql-action-go-tracing",
+            "bin",
+          );
           fs.mkdirSync(tempBinPath, { recursive: true });
           core.addPath(tempBinPath);
 

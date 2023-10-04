@@ -208,10 +208,25 @@ export function mockLanguagesInRepo(languages: string[]) {
   return listLanguages;
 }
 
+/**
+ * Constructs a `VersionOutput` object for testing purposes only.
+ */
+export const makeVersionOutput = (version: string): CodeQL.VersionOutput => ({
+  productName: "CodeQL",
+  vendor: "GitHub",
+  sha: "",
+  branches: [],
+  copyright: "",
+  unpackedLocation: "",
+  configFileLocation: "",
+  configFileFound: false,
+  version,
+});
+
 export function mockCodeQLVersion(version: string) {
   return {
     async getVersion() {
-      return CodeQL.makeVersionOutput(version);
+      return makeVersionOutput(version);
     },
   } as CodeQL.CodeQL;
 }

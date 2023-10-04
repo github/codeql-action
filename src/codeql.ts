@@ -444,21 +444,6 @@ function resolveFunction<T>(
 }
 
 /**
- * Constructs a `VersionOutput` object for testing purposes only.
- */
-export const makeVersionOutput = (version: string): VersionOutput => ({
-  productName: "CodeQL",
-  vendor: "GitHub",
-  sha: "",
-  branches: [],
-  copyright: "",
-  unpackedLocation: "",
-  configFileLocation: "",
-  configFileFound: false,
-  version,
-});
-
-/**
  * Set the functionality for CodeQL methods. Only for use in tests.
  *
  * Accepts a partial object and any undefined methods will be implemented
@@ -470,7 +455,20 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     getVersion: resolveFunction(
       partialCodeql,
       "getVersion",
-      () => new Promise((resolve) => resolve(makeVersionOutput("1.0.0"))),
+      () =>
+        new Promise((resolve) =>
+          resolve({
+            productName: "CodeQL",
+            vendor: "GitHub",
+            sha: "",
+            branches: [],
+            copyright: "",
+            unpackedLocation: "",
+            configFileLocation: "",
+            configFileFound: false,
+            version: "1.0.0",
+          }),
+        ),
     ),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),

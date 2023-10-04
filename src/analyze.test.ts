@@ -12,12 +12,17 @@ import {
   validateQueryFilters,
   QueriesStatusReport,
 } from "./analyze";
-import { CodeQL, makeVersionOutput, setCodeQL } from "./codeql";
+import { CodeQL, setCodeQL } from "./codeql";
 import { Config, QueriesWithSearchPath } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
+import {
+  setupTests,
+  setupActionsVars,
+  createFeatures,
+  makeVersionOutput,
+} from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 

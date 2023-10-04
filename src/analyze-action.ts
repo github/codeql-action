@@ -232,7 +232,10 @@ async function run() {
       logger,
     );
 
-    // Check that the Go wrapper script still exists, if set
+    // Check that `which go` still points at the wrapper script we installed in the `init` Action,
+    // if the corresponding environment variable is set. This is to ensure that there isn't a step
+    // in the workflow after the `init` step which installs a different version of Go and takes
+    // precedence in the PATH, thus potentially circumventing our workaround that allows tracing to work.
     const goWrapperPath = process.env[EnvVar.GO_BINARY_LOCATION];
 
     if (goWrapperPath !== undefined) {

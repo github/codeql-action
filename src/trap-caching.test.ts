@@ -10,12 +10,15 @@ import {
   setCodeQL,
   getTrapCachingExtractorConfigArgs,
   getTrapCachingExtractorConfigArgsForLang,
-  makeVersionOutput,
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
-import { getRecordingLogger, setupTests } from "./testing-utils";
+import {
+  getRecordingLogger,
+  makeVersionOutput,
+  setupTests,
+} from "./testing-utils";
 import {
   downloadTrapCaches,
   getLanguagesSupportingCaching,

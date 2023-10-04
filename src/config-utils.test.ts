@@ -7,12 +7,7 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import {
-  getCachedCodeQL,
-  makeVersionOutput,
-  PackDownloadOutput,
-  setCodeQL,
-} from "./codeql";
+import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
@@ -21,6 +16,7 @@ import {
   setupTests,
   createFeatures,
   mockLanguagesInRepo as mockLanguagesInRepo,
+  makeVersionOutput,
 } from "./testing-utils";
 import {
   GitHubVariant,

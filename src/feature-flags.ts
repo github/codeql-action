@@ -213,7 +213,9 @@ export class Features implements FeatureEnablement {
         return false;
       } else {
         this.logger.debug(
-          `CodeQL CLI version ${await codeql.getVersion()} is newer than the minimum ` +
+          `CodeQL CLI version ${
+            (await codeql.getVersion()).version
+          } is newer than the minimum ` +
             `version ${minimumVersion} for feature ${feature}.`,
         );
       }

@@ -7,7 +7,12 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
+import {
+  getCachedCodeQL,
+  makeVersionOutput,
+  PackDownloadOutput,
+  setCodeQL,
+} from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
@@ -2352,7 +2357,7 @@ test("downloadPacks-with-registries", async (t) => {
 
     const codeQL = setCodeQL({
       packDownload: packDownloadStub,
-      getVersion: () => Promise.resolve("2.10.5"),
+      getVersion: () => Promise.resolve(makeVersionOutput("2.10.5")),
     });
 
     // packs are supplied for go, java, and python
@@ -2410,7 +2415,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
     ]);
 
     const codeQL = setCodeQL({
-      getVersion: () => Promise.resolve("2.10.4"),
+      getVersion: () => Promise.resolve(makeVersionOutput("2.10.4")),
     });
     await t.throwsAsync(
       async () => {

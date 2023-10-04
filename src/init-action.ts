@@ -342,6 +342,8 @@ async function run() {
         const fileOutput = await getFileType(goBinaryPath);
 
         if (fileOutput.includes("statically linked")) {
+          logger.debug(`Applying static binary workaround for Go`);
+
           // Create a directory that we can add to the system PATH.
           const tempBinPath = path.resolve(getTemporaryDirectory(), "bin");
           fs.mkdirSync(tempBinPath, { recursive: true });
@@ -360,8 +362,8 @@ async function run() {
           core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
         }
       } catch (e) {
-        core.warning(
-          `Analyzing Go on Linux, but failed to install wrapper script: ${e}`,
+        logger.warning(
+          `Analyzing Go on Linux, but failed to install wrapper script. Tracing custom builds may fail: ${e}`,
         );
       }
     }

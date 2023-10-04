@@ -431,8 +431,8 @@ export function getWorkflowRunAttempt(): number {
  */
 export const getFileType = async (fp: string): Promise<string> => {
   let stderr = "";
+  let stdout = "";
   try {
-    let fileOut = "";
     await new toolrunner.ToolRunner(
       await safeWhich.safeWhich("file"),
       ["-L", fp],
@@ -440,7 +440,7 @@ export const getFileType = async (fp: string): Promise<string> => {
         silent: true,
         listeners: {
           stdout: (data) => {
-            fileOut += data.toString();
+            stdout += data.toString();
           },
           stderr: (data) => {
             stderr += data.toString();
@@ -448,9 +448,9 @@ export const getFileType = async (fp: string): Promise<string> => {
         },
       },
     ).exec();
-    return fileOut;
+    return stdout;
   } catch (e) {
-    core.info(`Could not determine type of ${fp}. ${stderr}`);
+    core.info(`Could not determine type of ${fp} from ${stdout}. ${stderr}`);
 
     throw e;
   }

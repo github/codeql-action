@@ -213,15 +213,7 @@ export interface CodeQL {
 }
 
 export interface VersionOutput {
-  productName: string;
-  vendor: string;
   version: string;
-  sha: string;
-  branches: string[];
-  copyright: string;
-  unpackedLocation: string;
-  configFileLocation: string;
-  configFileFound: boolean;
   features?: { [name: string]: boolean };
 }
 
@@ -458,14 +450,6 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       () =>
         new Promise((resolve) =>
           resolve({
-            productName: "CodeQL",
-            vendor: "GitHub",
-            sha: "",
-            branches: [],
-            copyright: "",
-            unpackedLocation: "",
-            configFileLocation: "",
-            configFileFound: false,
             version: "1.0.0",
           }),
         ),

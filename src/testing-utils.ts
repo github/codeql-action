@@ -212,14 +212,6 @@ export function mockLanguagesInRepo(languages: string[]) {
  * Constructs a `VersionOutput` object for testing purposes only.
  */
 export const makeVersionOutput = (version: string): CodeQL.VersionOutput => ({
-  productName: "CodeQL",
-  vendor: "GitHub",
-  sha: "",
-  branches: [],
-  copyright: "",
-  unpackedLocation: "",
-  configFileLocation: "",
-  configFileFound: false,
   version,
 });
 

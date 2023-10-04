@@ -75,7 +75,7 @@ export interface CodeQL {
   /**
    * Get a string containing the semver version of the CodeQL executable.
    */
-  getVersion(): Promise<VersionOutput>;
+  getVersion(): Promise<VersionInfo>;
   /**
    * Print version information about CodeQL.
    */
@@ -212,7 +212,7 @@ export interface CodeQL {
   resolveExtractor(language: Language): Promise<string>;
 }
 
-export interface VersionOutput {
+export interface VersionInfo {
   version: string;
   features?: { [name: string]: boolean };
 }
@@ -540,7 +540,7 @@ export async function getCodeQLForCmd(
       if (result === undefined) {
         const output = await runTool(cmd, ["version", "--format=json"]);
         try {
-          result = JSON.parse(output) as VersionOutput;
+          result = JSON.parse(output) as VersionInfo;
         } catch (err) {
           throw Error(
             `Invalid JSON output from \`version --format=json\`: ${output}`,

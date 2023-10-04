@@ -10,6 +10,7 @@ import {
   setCodeQL,
   getTrapCachingExtractorConfigArgs,
   getTrapCachingExtractorConfigArgsForLang,
+  makeVersionOutput,
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Config } from "./config-utils";
@@ -26,7 +27,7 @@ setupTests(test);
 
 const stubCodeql = setCodeQL({
   async getVersion() {
-    return "2.10.3";
+    return makeVersionOutput("2.10.3");
   },
   async betterResolveLanguages() {
     return {

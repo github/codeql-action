@@ -10,7 +10,7 @@ import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
-import type { CodeQL } from "./codeql";
+import type { CodeQL, VersionOutput } from "./codeql";
 import type { Config, Pack } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
@@ -576,16 +576,16 @@ export function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }
 
-let cachedCodeQlVersion: undefined | string = undefined;
+let cachedCodeQlVersion: undefined | VersionOutput = undefined;
 
-export function cacheCodeQlVersion(version: string): void {
+export function cacheCodeQlVersion(version: VersionOutput): void {
   if (cachedCodeQlVersion !== undefined) {
     throw new Error("cacheCodeQlVersion() should be called only once");
   }
   cachedCodeQlVersion = version;
 }
 
-export function getCachedCodeQlVersion(): undefined | string {
+export function getCachedCodeQlVersion(): undefined | VersionOutput {
   return cachedCodeQlVersion;
 }
 
@@ -593,7 +593,7 @@ export async function codeQlVersionAbove(
   codeql: CodeQL,
   requiredVersion: string,
 ): Promise<boolean> {
-  return semver.gte(await codeql.getVersion(), requiredVersion);
+  return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
 // Create a bundle for the given DB, if it doesn't already exist

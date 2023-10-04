@@ -208,10 +208,10 @@ export function mockLanguagesInRepo(languages: string[]) {
   return listLanguages;
 }
 
-export function mockCodeQLVersion(version) {
+export function mockCodeQLVersion(version: string) {
   return {
     async getVersion() {
-      return version;
+      return CodeQL.makeVersionOutput(version);
     },
   } as CodeQL.CodeQL;
 }

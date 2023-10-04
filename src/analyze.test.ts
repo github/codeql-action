@@ -12,7 +12,7 @@ import {
   validateQueryFilters,
   QueriesStatusReport,
 } from "./analyze";
-import { CodeQL, setCodeQL } from "./codeql";
+import { CodeQL, makeVersionOutput, setCodeQL } from "./codeql";
 import { Config, QueriesWithSearchPath } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
@@ -257,7 +257,7 @@ test("status report fields and search path setting", async (t) => {
 
 function mockCodeQL(): Partial<CodeQL> {
   return {
-    getVersion: async () => "2.12.2",
+    getVersion: async () => makeVersionOutput("1.0.0"),
     databaseRunQueries: sinon.spy(),
     databaseInterpretResults: async () => "",
     databasePrintBaseline: async () => "",

@@ -1,0 +1,49 @@
+name: "Go: diagnostic when Go is changed after init step"
+description: "Checks that we emit a diagnostic if Go is changed after the init step"
+# only Linux is affected
+operatingSystems: ["ubuntu"]
+# pinned to a version which does not support statically linked binaries for indirect tracing
+versions: ["stable-v2.14.6"]
+steps:
+  - uses: actions/setup-go@v4
+    with:
+      # We need a Go version that ships with statically linked binaries on Linux
+      go-version: ">=1.21.0"
+  - uses: ./../action/init
+    with:
+      languages: go
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  # Deliberately change Go after the `init` step
+  - uses: actions/setup-go@v4
+    with:
+      go-version: "1.20"
+  - name: Build code
+    shell: bash
+    run: go build main.go
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+      upload-database: false
+  - name: Check diagnostic appears in SARIF
+    uses: actions/github-script@v6
+    env:
+      SARIF_PATH: "${{ runner.temp }}/results/go.sarif"
+    with:
+      script: |
+        const fs = require('fs');
+
+        const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+        const run = sarif.runs[0];
+
+        const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
+        const statusPageNotifications = toolExecutionNotifications.filter(n =>
+          n.descriptor.id === 'go/workflow/go-installed-after-codeql-init' && n.properties?.visibility?.statusPage
+        );
+        if (statusPageNotifications.length !== 1) {
+          core.setFailed(
+            'Expected exactly one status page reporting descriptor for this diagnostic in the ' +
+              `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
+              `${statusPageNotifications.length}. All notification reporting descriptors: ` +
+              `${JSON.stringify(toolExecutionNotifications)}.`
+          );
+        }

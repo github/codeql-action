@@ -1,17 +1,29 @@
 name: "Resolve environment"
-description: "Tests that the resolve-environment action works for Go"
-versions: ["stable-v2.13.4"]
+description: "Tests that the resolve-environment action works for Go and JavaScript/TypeScript"
+versions: ["stable-v2.13.4", "default", "latest", "nightly-latest"]
 steps:
   - uses: ./../action/init
     with:
-      languages: go
+      languages: ${{ matrix.version == 'stable-v2.13.4' && 'go' || 'go,javascript-typescript' }}
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-  - uses: ./../action/resolve-environment
-    id: resolve-environment
+  - name: Resolve environment for Go
+    uses: ./../action/resolve-environment
+    id: resolve-environment-go
     with:
       language: go
 
-  - name: "Fail if no Go configuration was returned"
-    if: (!fromJSON(steps.resolve-environment.outputs.environment).configuration.go)
+  - name: Fail if Go configuration missing
+    if: (!fromJSON(steps.resolve-environment-go.outputs.environment).configuration.go)
+    run: exit 1
+
+  - name: Resolve environment for JavaScript/TypeScript
+    if: matrix.version != 'stable-v2.13.4'
+    uses: ./../action/resolve-environment
+    id: resolve-environment-js
+    with:
+      language: javascript-typescript
+
+  - name: Fail if JavaScript/TypeScript configuration present
+    if: matrix.version != 'stable-v2.13.4' && fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
     run: exit 1

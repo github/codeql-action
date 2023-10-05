@@ -2,7 +2,9 @@ import { mkdirSync, writeFileSync } from "fs";
 import path from "path";
 
 import { Config } from "./config-utils";
+import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
+import { getCodeQLDatabasePath } from "./util";
 
 /** Represents a diagnostic message for the tool status page, etc. */
 export interface DiagnosticMessage {
@@ -79,10 +81,14 @@ export function makeDiagnostic(
  * @param config The configuration that tells us where to store the diagnostic.
  * @param diagnostic The diagnostic message to add to the database.
  */
-export function addDiagnostic(config: Config, diagnostic: DiagnosticMessage) {
+export function addDiagnostic(
+  config: Config,
+  language: Language,
+  diagnostic: DiagnosticMessage,
+) {
   const logger = getActionsLogger();
   const diagnosticsPath = path.resolve(
-    config.dbLocation,
+    getCodeQLDatabasePath(config, language),
     "diagnostic",
     "codeql-action",
   );

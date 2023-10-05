@@ -452,7 +452,7 @@ export const getFileType = async (filePath: string): Promise<string> => {
         },
       },
     ).exec();
-    return stdout;
+    return stdout.trim();
   } catch (e) {
     core.info(
       `Could not determine type of ${filePath} from ${stdout}. ${stderr}`,

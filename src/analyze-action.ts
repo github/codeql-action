@@ -255,7 +255,7 @@ async function run() {
             "Go was installed after the `codeql-action/init` Action was run",
             {
               plaintextMessage:
-                "To avoid interfering with the CodeQL analysis after the `codeql-action/init` Action is run, you should perform all installation steps beforehand.",
+                "To avoid interfering with the CodeQL analysis, perform all installation steps before calling the `github/codeql-action/init` Action.",
               visibility: {
                 statusPage: true,
                 telemetry: true,

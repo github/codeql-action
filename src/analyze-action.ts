@@ -254,7 +254,7 @@ async function run() {
             "go/workflow/go-installed-after-codeql-init",
             "Go was installed after the `codeql-action/init` Action was run",
             {
-              plaintextMessage:
+              markdownMessage:
                 "To avoid interfering with the CodeQL analysis, perform all installation steps before calling the `github/codeql-action/init` Action.",
               visibility: {
                 statusPage: true,

@@ -1,10 +1,14 @@
-name: "Go: tracing with custom build steps"
-description: "Checks that Go tracing traces the build when using custom build steps"
-operatingSystems: ["ubuntu", "macos"]
+name: "Go: workaround for indirect tracing"
+description: "Checks that our workaround for indirect tracing for Go 1.21+ on Linux works"
+# only Linux is affected
+operatingSystems: ["ubuntu"]
+# pinned to a version which does not support statically linked binaries for indirect tracing
+versions: ["stable-v2.14.6"]
 steps:
   - uses: actions/setup-go@v4
     with:
-      go-version: "~1.21.1"
+      # We need a Go version that ships with statically linked binaries on Linux
+      go-version: ">=1.21.0"
   - uses: ./../action/init
     with:
       languages: go
@@ -17,6 +21,17 @@ steps:
       upload-database: false
   - shell: bash
     run: |
+      if [[ -z "${CODEQL_ACTION_GO_BINARY}" ]]; then
+        echo "Expected the workaround for indirect tracing of static binaries to trigger, but the" \
+          "CODEQL_ACTION_GO_BINARY environment variable is not set."
+        exit 1
+      fi
+      if [[ ! -f "${CODEQL_ACTION_GO_BINARY}" ]]; then
+        echo "CODEQL_ACTION_GO_BINARY is set, but the corresponding script does not exist."
+        exit 1
+      fi
+
+
       # Once we start running Bash 4.2 in all environments, we can replace the
       # `! -z` flag with the more elegant `-v` which confirms that the variable
       # is actually unset and not potentially set to a blank value.

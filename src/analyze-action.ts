@@ -3,6 +3,7 @@ import path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
+import { safeWhich } from "@chrisgavin/safe-which";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -18,6 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
@@ -230,6 +232,41 @@ async function run() {
       actionsUtil.getOptionalInput("ram") || process.env["CODEQL_RAM"],
       logger,
     );
+
+    // Check that `which go` still points at the wrapper script we installed in the `init` Action,
+    // if the corresponding environment variable is set. This is to ensure that there isn't a step
+    // in the workflow after the `init` step which installs a different version of Go and takes
+    // precedence in the PATH, thus potentially circumventing our workaround that allows tracing to work.
+    const goWrapperPath = process.env[EnvVar.GO_BINARY_LOCATION];
+
+    if (goWrapperPath !== undefined) {
+      const goBinaryPath = await safeWhich("go");
+
+      if (goWrapperPath !== goBinaryPath) {
+        core.warning(
+          `Expected \`which go\` to return ${goWrapperPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
+        );
+
+        addDiagnostic(
+          config,
+          Language.go,
+          makeDiagnostic(
+            "go/workflow/go-installed-after-codeql-init",
+            "Go was installed after the `codeql-action/init` Action was run",
+            {
+              markdownMessage:
+                "To avoid interfering with the CodeQL analysis, perform all installation steps before calling the `github/codeql-action/init` Action.",
+              visibility: {
+                statusPage: true,
+                telemetry: true,
+                cliSummaryTable: true,
+              },
+              severity: "warning",
+            },
+          ),
+        );
+      }
+    }
 
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 

@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: 'PR Check - Go: tracing with autobuilder step'
+name: 'PR Check - Go: workaround for indirect tracing'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,43 +21,13 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  go-tracing-autobuilder:
+  go-indirect-tracing-workaround:
     strategy:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20220908
-        - os: macos-latest
-          version: stable-20220908
-        - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: stable-20230418
-        - os: macos-latest
-          version: stable-20230418
-        - os: ubuntu-latest
-          version: stable-v2.13.5
-        - os: macos-latest
-          version: stable-v2.13.5
-        - os: ubuntu-latest
           version: stable-v2.14.6
-        - os: macos-latest
-          version: stable-v2.14.6
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
-    name: 'Go: tracing with autobuilder step'
+    name: 'Go: workaround for indirect tracing'
     permissions:
       contents: read
       security-events: write
@@ -82,20 +52,37 @@ jobs:
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - uses: actions/setup-go@v4
       with:
-        go-version: ~1.21.1
+      # We need a Go version that ships with statically linked binaries on Linux
+        go-version: '>=1.21.0'
     - uses: ./../action/init
       with:
         languages: go
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/autobuild
+    - name: Build code
+      shell: bash
+      run: go build main.go
     - uses: ./../action/analyze
       with:
         upload-database: false
     - shell: bash
       run: |
-        if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
-          echo "Expected the Go autobuilder to be run, but the" \
-            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+        if [[ -z "${CODEQL_ACTION_GO_BINARY}" ]]; then
+          echo "Expected the workaround for indirect tracing of static binaries to trigger, but the" \
+            "CODEQL_ACTION_GO_BINARY environment variable is not set."
+          exit 1
+        fi
+        if [[ ! -f "${CODEQL_ACTION_GO_BINARY}" ]]; then
+          echo "CODEQL_ACTION_GO_BINARY is set, but the corresponding script does not exist."
+          exit 1
+        fi
+
+
+        # Once we start running Bash 4.2 in all environments, we can replace the
+        # `! -z` flag with the more elegant `-v` which confirms that the variable
+        # is actually unset and not potentially set to a blank value.
+        if [[ ! -z "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" ]]; then
+          echo "Expected the Go autobuilder not to be run, but the" \
+            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was set."
           exit 1
         fi
         cd "$RUNNER_TEMP/codeql_databases"
@@ -104,5 +91,4 @@ jobs:
           exit 1
         fi
     env:
-      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       CODEQL_ACTION_TEST_MODE: true

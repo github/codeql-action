@@ -19,6 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
@@ -244,6 +245,24 @@ async function run() {
       if (goWrapperPath !== goBinaryPath) {
         core.warning(
           `Expected \`which go\` to return ${goWrapperPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
+        );
+
+        addDiagnostic(
+          config,
+          makeDiagnostic(
+            "go/workflow/go-installed-after-codeql-init",
+            "Go was installed after the `codeql-action/init` Action was run",
+            {
+              plaintextMessage:
+                "To avoid interfering with the CodeQL analysis after the `codeql-action/init` Action is run, you should perform all installation steps beforehand.",
+              visibility: {
+                statusPage: true,
+                telemetry: true,
+                cliSummaryTable: true,
+              },
+              severity: "warning",
+            },
+          ),
         );
       }
     }

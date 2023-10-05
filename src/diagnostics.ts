@@ -93,15 +93,15 @@ export function addDiagnostic(
     "codeql-action",
   );
 
-  // Create the directory if it doesn't exist yet.
-  mkdirSync(diagnosticsPath, { recursive: true });
-
-  const jsonPath = path.resolve(
-    diagnosticsPath,
-    `codeql-action-${diagnostic.timestamp}.json`,
-  );
-
   try {
+    // Create the directory if it doesn't exist yet.
+    mkdirSync(diagnosticsPath, { recursive: true });
+
+    const jsonPath = path.resolve(
+      diagnosticsPath,
+      `codeql-action-${diagnostic.timestamp}.json`,
+    );
+
     writeFileSync(jsonPath, JSON.stringify(diagnostic));
   } catch (err) {
     logger.warning(`Unable to write diagnostic message to database: ${err}`);

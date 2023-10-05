@@ -128,7 +128,7 @@ export interface CodeQL {
    */
   resolveBuildEnvironment(
     workingDir: string | undefined,
-    language: Language,
+    language: string,
   ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
@@ -780,7 +780,7 @@ export async function getCodeQLForCmd(
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,
-      language: Language,
+      language: string,
     ) {
       const codeqlArgs = [
         "resolve",

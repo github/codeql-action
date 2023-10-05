@@ -128,7 +128,7 @@ export interface CodeQL {
    */
   resolveBuildEnvironment(
     workingDir: string | undefined,
-    language: Language,
+    language: string,
   ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
@@ -624,6 +624,7 @@ export async function getCodeQLForCmd(
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
+          ...(await getLanguageAliasingArguments(this)),
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"]),
         ],
@@ -737,20 +738,12 @@ export async function getCodeQLForCmd(
       }
     },
     async betterResolveLanguages() {
-      const extraArgs: string[] = [];
-
-      if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_LANGUAGE_ALIASING)
-      ) {
-        extraArgs.push("--extractor-include-aliases");
-      }
-
       const codeqlArgs = [
         "resolve",
         "languages",
         "--format=betterjson",
         "--extractor-options-verbosity=4",
-        ...extraArgs,
+        ...(await getLanguageAliasingArguments(this)),
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
       const output = await runTool(cmd, codeqlArgs);
@@ -787,12 +780,13 @@ export async function getCodeQLForCmd(
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,
-      language: Language,
+      language: string,
     ) {
       const codeqlArgs = [
         "resolve",
         "build-environment",
         `--language=${language}`,
+        ...(await getLanguageAliasingArguments(this)),
         ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
       ];
       if (workingDir !== undefined) {
@@ -1082,6 +1076,7 @@ export async function getCodeQLForCmd(
           "extractor",
           "--format=json",
           `--language=${language}`,
+          ...(await getLanguageAliasingArguments(this)),
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {
@@ -1469,4 +1464,11 @@ async function isDiagnosticsExportInvalidSarifFixed(
     codeql,
     CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED,
   );
+}
+
+async function getLanguageAliasingArguments(codeql: CodeQL): Promise<string[]> {
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
+    return ["--extractor-include-aliases"];
+  }
+  return [];
 }

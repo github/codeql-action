@@ -1,7 +1,6 @@
 import * as fs from "fs";
 
 import * as actionsUtil from "./actions-util";
-import { getOptionalInput } from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
@@ -45,8 +44,9 @@ export async function uploadDatabases(
       const bundledDb = await bundleDb(config, language, codeql, language);
       const bundledDbSize = fs.statSync(bundledDb).size;
       const bundledDbReadStream = fs.createReadStream(bundledDb);
-      const commitOid =
-        getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
+      const commitOid = actionsUtil.getCommitOid(
+        actionsUtil.getRequiredInput("checkout_path"),
+      );
       try {
         await client.request(
           `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,

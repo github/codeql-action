@@ -81,7 +81,11 @@ export function makeDiagnostic(
  */
 export function addDiagnostic(config: Config, diagnostic: DiagnosticMessage) {
   const logger = getActionsLogger();
-  const diagnosticsPath = path.resolve(config.dbLocation, "diagnostic");
+  const diagnosticsPath = path.resolve(
+    config.dbLocation,
+    "diagnostic",
+    "codeql-action",
+  );
   const jsonPath = path.resolve(
     diagnosticsPath,
     `codeql-action-${diagnostic.timestamp}.json`,

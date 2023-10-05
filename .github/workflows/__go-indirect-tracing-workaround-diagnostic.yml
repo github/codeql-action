@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: 'PR Check - Go: workaround for indirect tracing'
+name: 'PR Check - Go: diagnostic when Go is changed after init step'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -27,7 +27,7 @@ jobs:
         include:
         - os: ubuntu-latest
           version: stable-v2.14.6
-    name: 'Go: workaround for indirect tracing'
+    name: 'Go: diagnostic when Go is changed after init step'
     permissions:
       contents: read
       security-events: write

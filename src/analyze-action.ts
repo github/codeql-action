@@ -249,6 +249,7 @@ async function run() {
 
         addDiagnostic(
           config,
+          Language.go,
           makeDiagnostic(
             "go/workflow/go-installed-after-codeql-init",
             "Go was installed after the `codeql-action/init` Action was run",

@@ -1,4 +1,4 @@
-import { writeFileSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import path from "path";
 
 import { Config } from "./config-utils";
@@ -86,6 +86,10 @@ export function addDiagnostic(config: Config, diagnostic: DiagnosticMessage) {
     "diagnostic",
     "codeql-action",
   );
+
+  // Create the directory if it doesn't exist yet.
+  mkdirSync(diagnosticsPath, { recursive: true });
+
   const jsonPath = path.resolve(
     diagnosticsPath,
     `codeql-action-${diagnostic.timestamp}.json`,

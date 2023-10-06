@@ -1,5 +1,15 @@
 #! /usr/bin/pwsh
 
+# If we are running greater than or equal to python 3.12, add src to the python path
+Write-Host "Checking python version"
+Write-Host "PYTHONPATH $Env:PYTHONPATH"
+if ((py -3 -c "import sys; print(0 if sys.version_info >= (3, 12) else 1)") -eq "0") {
+    Write-Host "Python 3.12+ detected, setting PY_PYTHON3=3.11"
+    Write-Output "PY_PYTHON3=3.11" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+} else {
+    Write-Host "Python 3.12+ not detected, not PY_PYTHON3"
+}
+
 py -2 -m pip install --user --upgrade pip setuptools wheel
 py -3 -m pip install --user --upgrade pip setuptools wheel
 

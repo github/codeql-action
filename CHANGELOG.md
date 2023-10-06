@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Improve the log output when an error occurs in an invocation of the CodeQL CLI. [#1927](https://github.com/github/codeql-action/pull/1927)
 
 ## 2.22.0 - 06 Oct 2023
 

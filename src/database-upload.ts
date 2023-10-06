@@ -49,7 +49,7 @@ export async function uploadDatabases(
       );
       try {
         await client.request(
-          `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
+          `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name?commit_oid=:commit_oid`,
           {
             owner: repositoryNwo.owner,
             repo: repositoryNwo.repo,

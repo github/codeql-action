@@ -17,7 +17,13 @@ import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
-import { initCodeQL, initConfig, installPythonDeps, runInit } from "./init";
+import {
+  checkInstallPython311,
+  initCodeQL,
+  initConfig,
+  installPythonDeps,
+  runInit,
+} from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -276,6 +282,8 @@ async function run() {
       features,
       logger,
     );
+
+    await checkInstallPython311(config.languages);
 
     if (
       config.languages.includes(Language.python) &&

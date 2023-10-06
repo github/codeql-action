@@ -283,7 +283,7 @@ async function run() {
       logger,
     );
 
-    await checkInstallPython311(config.languages);
+    await checkInstallPython311(config.languages, codeql);
 
     if (
       config.languages.includes(Language.python) &&

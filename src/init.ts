@@ -186,8 +186,15 @@ function processError(e: any): Error {
  * If we are running python 3.12+ on windows, we need to switch to python 3.11.
  * This check happens in a powershell script.
  */
-export async function checkInstallPython311(languages: Language[]) {
-  if (languages.includes(Language.python) && process.platform === "win32") {
+export async function checkInstallPython311(
+  languages: Language[],
+  codeql: CodeQL,
+) {
+  if (
+    languages.includes(Language.python) &&
+    process.platform === "win32" &&
+    !(await codeql.getVersion()).features?.supportsPython312
+  ) {
     const script = path.resolve(
       __dirname,
       "../python-setup",

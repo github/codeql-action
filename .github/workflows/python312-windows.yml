@@ -30,7 +30,7 @@ jobs:
         version: default
 
     - name: Initialize CodeQL
-      uses: ./../init
+      uses: ./../action/init
       with:
         tools: latest
         languages: python

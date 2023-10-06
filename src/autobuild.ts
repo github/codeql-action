@@ -4,6 +4,7 @@ import { getTemporaryDirectory, getWorkflowEventName } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { Feature, featureConfig, Features } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -150,5 +151,8 @@ export async function runAutobuild(
     await setupCppAutobuild(codeQL, logger);
   }
   await codeQL.runAutobuild(language);
+  if (language === Language.go) {
+    core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
+  }
   logger.endGroup();
 }

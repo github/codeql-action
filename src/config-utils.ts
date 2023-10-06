@@ -8,14 +8,12 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import {
   CodeQL,
-  CODEQL_VERSION_GHES_PACK_DOWNLOAD,
   CODEQL_VERSION_LANGUAGE_ALIASING,
   CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE,
   ResolveQueriesOutput,
 } from "./codeql";
 import * as externalQueries from "./external-queries";
 import {
-  Feature,
   FeatureEnablement,
   logCodeScanningConfigInCli,
   useCodeScanningConfigInCli,
@@ -26,9 +24,7 @@ import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
 import {
   codeQlVersionAbove,
-  getMlPoweredJsQueriesPack,
   GitHubVersion,
-  ML_POWERED_JS_QUERIES_PACK_NAME,
   prettyPrintPack,
   UserError,
 } from "./util";
@@ -245,20 +241,15 @@ export interface AugmentationProperties {
    * The packs input from the `with` block of the action declaration
    */
   packsInput?: string[];
-  /**
-   * Whether we injected ML queries into this configuration.
-   */
-  injectedMlQueries: boolean;
 }
 
 /**
- * The default, empty augmentation properties. This is most useeful
+ * The default, empty augmentation properties. This is most useful
  * for tests.
  */
 export const defaultAugmentationProperties: AugmentationProperties = {
   queriesInputCombines: false,
   packsInputCombines: false,
-  injectedMlQueries: false,
   packsInput: undefined,
   queriesInput: undefined,
 };
@@ -390,18 +381,14 @@ const builtinSuites = [
 /**
  * Determine the set of queries associated with suiteName's suites and add them to resultMap.
  * Throws an error if suiteName is not a valid builtin suite.
- * May inject ML queries, and the return value will declare if this was done.
  */
 async function addBuiltinSuiteQueries(
   languages: string[],
   codeQL: CodeQL,
   resultMap: Queries,
-  packs: Packs,
   suiteName: string,
-  features: FeatureEnablement,
   configFile?: string,
-): Promise<boolean> {
-  let injectedMlQueries = false;
+): Promise<void> {
   const found = builtinSuites.find((suite) => suite === suiteName);
   if (!found) {
     throw new UserError(getQueryUsesInvalid(configFile, suiteName));
@@ -420,31 +407,8 @@ async function addBuiltinSuiteQueries(
     );
   }
 
-  // If we're running the JavaScript security-extended analysis (or a superset of it), the repo is
-  // opted into the ML-powered queries beta, and a user hasn't already added the ML-powered query
-  // pack, then add the ML-powered query pack so that we run ML-powered queries.
-  if (
-    languages.includes("javascript") &&
-    (found === "security-experimental" ||
-      found === "security-extended" ||
-      found === "security-and-quality") &&
-    !packs.javascript?.some(isMlPoweredJsQueriesPack) &&
-    (await features.getValue(Feature.MlPoweredQueriesEnabled, codeQL))
-  ) {
-    if (!packs.javascript) {
-      packs.javascript = [];
-    }
-    packs.javascript.push(await getMlPoweredJsQueriesPack(codeQL));
-    injectedMlQueries = true;
-  }
-
   const suites = languages.map((l) => `${l}-${suiteName}.qls`);
   await runResolveQueries(codeQL, resultMap, suites, undefined);
-  return injectedMlQueries;
-}
-
-function isMlPoweredJsQueriesPack(pack: string) {
-  return parsePacksSpecification(pack).name === ML_POWERED_JS_QUERIES_PACK_NAME;
 }
 
 /**
@@ -546,17 +510,11 @@ async function addRemoteQueries(
  * parsing the 'uses' actions in the workflow file. So it can handle
  * local paths starting with './', or references to remote repos, or
  * a finite set of hardcoded terms for builtin suites.
- *
- * This may inject ML queries into the packs to use, and the return value will
- * declare if this was done.
- *
- * @returns whether or not we injected ML queries into the packs
  */
 async function parseQueryUses(
   languages: string[],
   codeQL: CodeQL,
   resultMap: Queries,
-  packs: Packs,
   queryUses: string,
   tempDir: string,
   workspacePath: string,
@@ -564,7 +522,7 @@ async function parseQueryUses(
   features: FeatureEnablement,
   logger: Logger,
   configFile?: string,
-): Promise<boolean> {
+): Promise<void> {
   queryUses = queryUses.trim();
   if (queryUses === "") {
     throw new UserError(getQueryUsesInvalid(configFile));
@@ -579,20 +537,19 @@ async function parseQueryUses(
       workspacePath,
       configFile,
     );
-    return false;
+    return;
   }
 
   // Check for one of the builtin suites
   if (queryUses.indexOf("/") === -1 && queryUses.indexOf("@") === -1) {
-    return await addBuiltinSuiteQueries(
+    await addBuiltinSuiteQueries(
       languages,
       codeQL,
       resultMap,
-      packs,
       queryUses,
-      features,
       configFile,
     );
+    return;
   }
 
   // Otherwise, must be a reference to another repo.
@@ -609,7 +566,6 @@ async function parseQueryUses(
       configFile,
     );
   }
-  return false;
 }
 
 // Regex validating stars in paths or paths-ignore entries.
@@ -1017,29 +973,26 @@ export async function getRawLanguages(
   return { rawLanguages, autodetected };
 }
 
-async function addQueriesAndPacksFromWorkflow(
+async function addQueriesFromWorkflow(
   codeQL: CodeQL,
   queriesInput: string,
   languages: string[],
   resultMap: Queries,
-  packs: Packs,
   tempDir: string,
   workspacePath: string,
   apiDetails: api.GitHubApiExternalRepoDetails,
   features: FeatureEnablement,
   logger: Logger,
-): Promise<boolean> {
-  let injectedMlQueries = false;
+): Promise<void> {
   queriesInput = queriesInput.trim();
   // "+" means "don't override config file" - see shouldAddConfigFileQueries
   queriesInput = queriesInput.replace(/^\+/, "");
 
   for (const query of queriesInput.split(",")) {
-    const didInject = await parseQueryUses(
+    await parseQueryUses(
       languages,
       codeQL,
       resultMap,
-      packs,
       query,
       tempDir,
       workspacePath,
@@ -1047,10 +1000,7 @@ async function addQueriesAndPacksFromWorkflow(
       features,
       logger,
     );
-    injectedMlQueries = injectedMlQueries || didInject;
   }
-
-  return injectedMlQueries;
 }
 
 // Returns true if either no queries were provided in the workflow.
@@ -1111,19 +1061,17 @@ export async function getDefaultConfig(
       }
     : {};
   if (rawQueriesInput) {
-    augmentationProperties.injectedMlQueries =
-      await addQueriesAndPacksFromWorkflow(
-        codeQL,
-        rawQueriesInput,
-        languages,
-        queries,
-        packs,
-        tempDir,
-        workspacePath,
-        apiDetails,
-        features,
-        logger,
-      );
+    await addQueriesFromWorkflow(
+      codeQL,
+      rawQueriesInput,
+      languages,
+      queries,
+      tempDir,
+      workspacePath,
+      apiDetails,
+      features,
+      logger,
+    );
   }
 
   const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
@@ -1261,19 +1209,17 @@ async function loadConfig(
   // unless they're prefixed with "+", in which case they supplement those
   // in the config file.
   if (rawQueriesInput) {
-    augmentationProperties.injectedMlQueries =
-      await addQueriesAndPacksFromWorkflow(
-        codeQL,
-        rawQueriesInput,
-        languages,
-        queries,
-        packs,
-        tempDir,
-        workspacePath,
-        apiDetails,
-        features,
-        logger,
-      );
+    await addQueriesFromWorkflow(
+      codeQL,
+      rawQueriesInput,
+      languages,
+      queries,
+      tempDir,
+      workspacePath,
+      apiDetails,
+      features,
+      logger,
+    );
   }
   if (
     shouldAddConfigFileQueries(rawQueriesInput) &&
@@ -1291,7 +1237,6 @@ async function loadConfig(
         languages,
         codeQL,
         queries,
-        packs,
         query[QUERIES_USES_PROPERTY],
         tempDir,
         workspacePath,
@@ -1405,7 +1350,6 @@ export function calculateAugmentation(
   );
 
   return {
-    injectedMlQueries: false, // filled in later
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
     queriesInput,
@@ -1686,48 +1630,6 @@ function combinePacks(packs1: Packs, packs2: Packs): Packs {
   return packs;
 }
 
-/**
- * Get information about ML-powered JS queries to populate status reports with.
- *
- * This will be:
- *
- * - The version string if the analysis is using a single version of the ML-powered query pack.
- * - "latest" if the version string of the ML-powered query pack is undefined. This is unlikely to
- *   occur in practice (see comment below).
- * - "false" if the analysis won't run any ML-powered JS queries.
- * - "other" in all other cases.
- *
- * Our goal of the status report here is to allow us to compare the occurrence of timeouts and other
- * errors with ML-powered queries turned on and off. We also want to be able to compare minor
- * version bumps caused by us bumping the version range of `ML_POWERED_JS_QUERIES_PACK` in a new
- * version of the CodeQL Action. For instance, we might want to compare the `~0.1.0` and `~0.0.2`
- * version strings.
- *
- * This function lives here rather than in `init-action.ts` so it's easier to test, since tests for
- * `init-action.ts` would each need to live in their own file. See `analyze-action-env.ts` for an
- * explanation as to why this is.
- */
-export function getMlPoweredJsQueriesStatus(config: Config): string {
-  const mlPoweredJsQueryPacks = (config.packs.javascript || [])
-    .map((p) => parsePacksSpecification(p))
-    .filter(
-      (pack) => pack.name === ML_POWERED_JS_QUERIES_PACK_NAME && !pack.path,
-    );
-  switch (mlPoweredJsQueryPacks.length) {
-    case 1:
-      // We should always specify an explicit version string in `getMlPoweredJsQueriesPack`,
-      // otherwise we won't be able to make changes to the pack unless those changes are compatible
-      // with each version of the CodeQL Action. Therefore in practice we should only hit the
-      // `latest` case here when customers have explicitly added the ML-powered query pack to their
-      // CodeQL config.
-      return mlPoweredJsQueryPacks[0].version || "latest";
-    case 0:
-      return "false";
-    default:
-      return "other";
-  }
-}
-
 function dbLocationOrDefault(
   dbLocation: string | undefined,
   tempDir: string,
@@ -1977,7 +1879,6 @@ export async function downloadPacks(
   // This code path is only used when config parsing occurs in the Action.
   const { registriesAuthTokens, qlconfigFile } = await generateRegistries(
     registriesInput,
-    codeQL,
     tempDir,
     logger,
   );
@@ -2033,7 +1934,6 @@ export async function downloadPacks(
  */
 export async function generateRegistries(
   registriesInput: string | undefined,
-  codeQL: CodeQL,
   tempDir: string,
   logger: Logger,
 ) {
@@ -2041,14 +1941,6 @@ export async function generateRegistries(
   let registriesAuthTokens: string | undefined;
   let qlconfigFile: string | undefined;
   if (registries) {
-    if (
-      !(await codeQlVersionAbove(codeQL, CODEQL_VERSION_GHES_PACK_DOWNLOAD))
-    ) {
-      throw new UserError(
-        `The 'registries' input is not supported on CodeQL CLI versions earlier than ${CODEQL_VERSION_GHES_PACK_DOWNLOAD}. Please upgrade to CodeQL CLI version ${CODEQL_VERSION_GHES_PACK_DOWNLOAD} or later.`,
-      );
-    }
-
     // generate a qlconfig.yml file to hold the registry configs.
     const qlconfig = createRegistriesBlock(registries);
     qlconfigFile = path.join(tempDir, "qlconfig.yml");

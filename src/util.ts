@@ -10,7 +10,7 @@ import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
-import type { CodeQL } from "./codeql";
+import type { CodeQL, VersionInfo } from "./codeql";
 import type { Config, Pack } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
@@ -260,6 +260,7 @@ function getCgroupMemoryLimitBytes(
   }
 
   const limit = Number(fs.readFileSync(limitFile, "utf8"));
+
   if (!Number.isInteger(limit)) {
     logger.debug(
       `While resolving RAM, ignored the file ${limitFile} that may contain a cgroup memory limit ` +
@@ -269,6 +270,14 @@ function getCgroupMemoryLimitBytes(
   }
 
   const displayLimit = `${Math.floor(limit / (1024 * 1024))} MiB`;
+  if (limit > os.totalmem()) {
+    logger.debug(
+      `While resolving RAM, ignored the file ${limitFile} that may contain a cgroup memory limit as ` +
+        `its contents ${displayLimit} were greater than the total amount of system memory.`,
+    );
+    return undefined;
+  }
+
   if (limit < MINIMUM_CGROUP_MEMORY_LIMIT_BYTES) {
     logger.info(
       `While resolving RAM, ignored a cgroup limit of ${displayLimit} in ${limitFile} as it was below ${
@@ -567,16 +576,16 @@ export function isHTTPError(arg: any): arg is HTTPError {
   return arg?.status !== undefined && Number.isInteger(arg.status);
 }
 
-let cachedCodeQlVersion: undefined | string = undefined;
+let cachedCodeQlVersion: undefined | VersionInfo = undefined;
 
-export function cacheCodeQlVersion(version: string): void {
+export function cacheCodeQlVersion(version: VersionInfo): void {
   if (cachedCodeQlVersion !== undefined) {
     throw new Error("cacheCodeQlVersion() should be called only once");
   }
   cachedCodeQlVersion = version;
 }
 
-export function getCachedCodeQlVersion(): undefined | string {
+export function getCachedCodeQlVersion(): undefined | VersionInfo {
   return cachedCodeQlVersion;
 }
 
@@ -584,7 +593,7 @@ export async function codeQlVersionAbove(
   codeql: CodeQL,
   requiredVersion: string,
 ): Promise<boolean> {
-  return semver.gte(await codeql.getVersion(), requiredVersion);
+  return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
 // Create a bundle for the given DB, if it doesn't already exist
@@ -898,28 +907,6 @@ export function fixInvalidNotificationsInFile(
 
 export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
-}
-
-export const ML_POWERED_JS_QUERIES_PACK_NAME =
-  "codeql/javascript-experimental-atm-queries";
-
-/**
- * Gets the ML-powered JS query pack to add to the analysis if a repo is opted into the ML-powered
- * queries beta.
- */
-export async function getMlPoweredJsQueriesPack(
-  codeQL: CodeQL,
-): Promise<string> {
-  let version;
-  if (await codeQlVersionAbove(codeQL, "2.11.3")) {
-    version = "~0.4.0";
-  } else {
-    version = `~0.3.0`;
-  }
-  return prettyPrintPack({
-    name: ML_POWERED_JS_QUERIES_PACK_NAME,
-    version,
-  });
 }
 
 export function prettyPrintPack(pack: Pack) {

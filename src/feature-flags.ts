@@ -62,7 +62,6 @@ export enum Feature {
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
-  MlPoweredQueriesEnabled = "ml_powered_queries_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   SublanguageFileCoverageEnabled = "sublanguage_file_coverage_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
@@ -106,11 +105,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     minimumVersion: "2.12.4",
     defaultValue: true,
-  },
-  [Feature.MlPoweredQueriesEnabled]: {
-    envVar: "CODEQL_ML_POWERED_QUERIES",
-    minimumVersion: undefined,
-    defaultValue: false,
   },
   [Feature.QaTelemetryEnabled]: {
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
@@ -219,7 +213,9 @@ export class Features implements FeatureEnablement {
         return false;
       } else {
         this.logger.debug(
-          `CodeQL CLI version ${await codeql.getVersion()} is newer than the minimum ` +
+          `CodeQL CLI version ${
+            (await codeql.getVersion()).version
+          } is newer than the minimum ` +
             `version ${minimumVersion} for feature ${feature}.`,
         );
       }

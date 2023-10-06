@@ -17,7 +17,12 @@ import { Config, QueriesWithSearchPath } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
+import {
+  setupTests,
+  setupActionsVars,
+  createFeatures,
+  makeVersionInfo,
+} from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 
@@ -119,7 +124,6 @@ test("status report fields and search path setting", async (t) => {
         debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
         debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
         augmentationProperties: {
-          injectedMlQueries: false,
           packsInputCombines: false,
           queriesInputCombines: false,
         },
@@ -258,7 +262,7 @@ test("status report fields and search path setting", async (t) => {
 
 function mockCodeQL(): Partial<CodeQL> {
   return {
-    getVersion: async () => "2.12.2",
+    getVersion: async () => makeVersionInfo("1.0.0"),
     databaseRunQueries: sinon.spy(),
     databaseInterpretResults: async () => "",
     databasePrintBaseline: async () => "",
@@ -283,7 +287,6 @@ function createBaseConfig(tmpDir: string): Config {
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     augmentationProperties: {
-      injectedMlQueries: false,
       packsInputCombines: false,
       queriesInputCombines: false,
     },

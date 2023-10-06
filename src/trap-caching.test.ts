@@ -14,7 +14,11 @@ import {
 import * as configUtils from "./config-utils";
 import { Config } from "./config-utils";
 import { Language } from "./languages";
-import { getRecordingLogger, setupTests } from "./testing-utils";
+import {
+  getRecordingLogger,
+  makeVersionInfo,
+  setupTests,
+} from "./testing-utils";
 import {
   downloadTrapCaches,
   getLanguagesSupportingCaching,
@@ -26,7 +30,7 @@ setupTests(test);
 
 const stubCodeql = setCodeQL({
   async getVersion() {
-    return "2.10.3";
+    return makeVersionInfo("2.10.3");
   },
   async betterResolveLanguages() {
     return {
@@ -82,7 +86,6 @@ const testConfigWithoutTmpDir: Config = {
   debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
   debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
   augmentationProperties: {
-    injectedMlQueries: false,
     packsInputCombines: false,
     queriesInputCombines: false,
   },
@@ -108,7 +111,6 @@ function getTestConfigWithTempDir(tmpDir: string): configUtils.Config {
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
     augmentationProperties: {
-      injectedMlQueries: false,
       packsInputCombines: false,
       queriesInputCombines: false,
     },

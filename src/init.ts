@@ -13,6 +13,7 @@ import {
   FeatureEnablement,
   useCodeScanningConfigInCli,
 } from "./feature-flags";
+import { Language } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
@@ -179,6 +180,19 @@ function processError(e: any): Error {
   }
 
   return e;
+}
+
+export async function checkInstallPython311(languages: Language[]) {
+  if (languages.includes(Language.python) && process.platform === "win32") {
+    const script = path.resolve(
+      __dirname,
+      "../python-setup",
+      "check_python12.ps1",
+    );
+    await new toolrunner.ToolRunner(await safeWhich.safeWhich("powershell"), [
+      script,
+    ]).exec();
+  }
 }
 
 export async function installPythonDeps(codeql: CodeQL, logger: Logger) {

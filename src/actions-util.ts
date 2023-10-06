@@ -425,3 +425,39 @@ export function getWorkflowRunAttempt(): number {
   }
   return workflowRunAttempt;
 }
+
+/**
+ * Tries to obtain the output of the `file` command for the file at the specified path.
+ * The output will vary depending on the type of `file`, which operating system we are running on, etc.
+ */
+export const getFileType = async (filePath: string): Promise<string> => {
+  let stderr = "";
+  let stdout = "";
+  try {
+    // The `file` command will output information about the type of file pointed at by `filePath`.
+    // For binary files, this may include e.g. whether they are static of dynamic binaries.
+    // The `-L` switch instructs the command to follow symbolic links.
+    await new toolrunner.ToolRunner(
+      await safeWhich.safeWhich("file"),
+      ["-L", filePath],
+      {
+        silent: true,
+        listeners: {
+          stdout: (data) => {
+            stdout += data.toString();
+          },
+          stderr: (data) => {
+            stderr += data.toString();
+          },
+        },
+      },
+    ).exec();
+    return stdout.trim();
+  } catch (e) {
+    core.info(
+      `Could not determine type of ${filePath} from ${stdout}. ${stderr}`,
+    );
+
+    throw e;
+  }
+};

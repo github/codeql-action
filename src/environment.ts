@@ -62,4 +62,11 @@ export enum EnvVar {
    * rather that the init action.
    */
   WORKFLOW_STARTED_AT = "CODEQL_WORKFLOW_STARTED_AT",
+
+  /**
+   * The path where we initially discovered the Go binary in the system path
+   * before replacing it with a wrapper script. We check this later to ensure
+   * that it hasn't been tampered with by a late e.g. `setup-go` step.
+   */
+  GO_BINARY_LOCATION = "CODEQL_ACTION_GO_BINARY",
 }

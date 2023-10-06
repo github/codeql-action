@@ -242,7 +242,7 @@ export async function createStatusReportBase(
     statusReport.runner_os_release = os.release();
   }
   if (codeQlCliVersion !== undefined) {
-    statusReport.codeql_version = codeQlCliVersion;
+    statusReport.codeql_version = codeQlCliVersion.version;
   }
   const imageVersion = process.env["ImageVersion"];
   if (imageVersion) {

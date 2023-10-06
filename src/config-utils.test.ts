@@ -7,14 +7,8 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import {
-  CODEQL_VERSION_GHES_PACK_DOWNLOAD,
-  getCachedCodeQL,
-  PackDownloadOutput,
-  setCodeQL,
-} from "./codeql";
+import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -22,11 +16,9 @@ import {
   setupTests,
   createFeatures,
   mockLanguagesInRepo as mockLanguagesInRepo,
+  makeVersionInfo,
 } from "./testing-utils";
 import {
-  DEFAULT_DEBUG_ARTIFACT_NAME,
-  DEFAULT_DEBUG_DATABASE_NAME,
-  ML_POWERED_JS_QUERIES_PACK_NAME,
   GitHubVariant,
   GitHubVersion,
   prettyPrintPack,
@@ -2115,158 +2107,6 @@ test(
   /"xxx" is not a valid pack/,
 );
 
-const mlPoweredQueriesMacro = test.macro({
-  exec: async (
-    t: ExecutionContext,
-    codeQLVersion: string,
-    isMlPoweredQueriesEnabled: boolean,
-    packsInput: string | undefined,
-    queriesInput: string | undefined,
-    expectedVersionString: string | undefined,
-  ) => {
-    return await withTmpDir(async (tmpDir) => {
-      const codeQL = setCodeQL({
-        async getVersion() {
-          return codeQLVersion;
-        },
-        async resolveQueries() {
-          return {
-            byLanguage: {
-              javascript: { "fake-query.ql": {} },
-            },
-            noDeclaredLanguage: {},
-            multipleDeclaredLanguages: {},
-          };
-        },
-        async packDownload(): Promise<PackDownloadOutput> {
-          return { packs: [] };
-        },
-      });
-
-      const { packs } = await configUtils.initConfig(
-        "javascript",
-        queriesInput,
-        packsInput,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        codeQL,
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        createFeatures(
-          isMlPoweredQueriesEnabled ? [Feature.MlPoweredQueriesEnabled] : [],
-        ),
-        getRunnerLogger(true),
-      );
-      if (expectedVersionString !== undefined) {
-        t.deepEqual(packs as unknown, {
-          [Language.javascript]: [
-            `codeql/javascript-experimental-atm-queries@${expectedVersionString}`,
-          ],
-        });
-      } else {
-        t.deepEqual(packs as unknown, {});
-      }
-    });
-  },
-  title: (
-    _providedTitle: string | undefined,
-    codeQLVersion: string,
-    isMlPoweredQueriesEnabled: boolean,
-    packsInput: string | undefined,
-    queriesInput: string | undefined,
-    expectedVersionString: string | undefined,
-  ) =>
-    `ML-powered queries ${
-      expectedVersionString !== undefined
-        ? `${expectedVersionString} are`
-        : "aren't"
-    } loaded for packs: ${packsInput}, queries: ${queriesInput} using CLI v${codeQLVersion} when feature is ${
-      isMlPoweredQueriesEnabled ? "enabled" : "disabled"
-    }`,
-});
-
-// macro, codeQLVersion, isMlPoweredQueriesEnabled, packsInput, queriesInput, expectedVersionString
-// Test that ML-powered queries aren't run when the feature is off.
-test(
-  mlPoweredQueriesMacro,
-  "2.12.3",
-  false,
-  undefined,
-  "security-extended",
-  undefined,
-);
-// Test that ML-powered queries aren't run when the user hasn't specified that we should run the
-//  `security-extended`, `security-and-quality`, or `security-experimental` query suite.
-test(mlPoweredQueriesMacro, "2.12.3", true, undefined, undefined, undefined);
-// Test that we don't inject an ML-powered query pack if the user has already specified one.
-test(
-  mlPoweredQueriesMacro,
-  "2.12.3",
-  true,
-  "codeql/javascript-experimental-atm-queries@0.0.1",
-  "security-and-quality",
-  "0.0.1",
-);
-// Test that ML-powered queries ~0.3.0 are run on all platforms running `security-extended` on
-// CodeQL CLI 2.9.4+.
-test(
-  mlPoweredQueriesMacro,
-  "2.9.4",
-  true,
-  undefined,
-  "security-extended",
-  "~0.3.0",
-);
-// Test that ML-powered queries ~0.3.0 are run on all platforms running `security-and-quality` on
-// CodeQL CLI 2.9.4+.
-test(
-  mlPoweredQueriesMacro,
-  "2.9.4",
-  true,
-  undefined,
-  "security-and-quality",
-  "~0.3.0",
-);
-// Test that ML-powered queries ~0.4.0 are run on all platforms running `security-extended` on
-// CodeQL CLI 2.11.3+.
-test(
-  mlPoweredQueriesMacro,
-  "2.11.3",
-  true,
-  undefined,
-  "security-extended",
-  "~0.4.0",
-);
-// Test that ML-powered queries ~0.4.0 are run on all platforms running `security-and-quality` on
-// CodeQL CLI 2.11.3+.
-test(
-  mlPoweredQueriesMacro,
-  "2.11.3",
-  true,
-  undefined,
-  "security-and-quality",
-  "~0.4.0",
-);
-// Test that ML-powered queries are run on all platforms running `security-experimental` on CodeQL
-// CLI 2.12.1+.
-test(
-  mlPoweredQueriesMacro,
-  "2.12.1",
-  true,
-  undefined,
-  "security-experimental",
-  "~0.4.0",
-);
-
 const calculateAugmentationMacro = test.macro({
   exec: async (
     t: ExecutionContext,
@@ -2297,7 +2137,6 @@ test(
     queriesInput: undefined,
     packsInputCombines: false,
     packsInput: undefined,
-    injectedMlQueries: false,
   } as configUtils.AugmentationProperties,
 );
 
@@ -2312,7 +2151,6 @@ test(
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
     packsInputCombines: false,
     packsInput: undefined,
-    injectedMlQueries: false,
   } as configUtils.AugmentationProperties,
 );
 
@@ -2327,7 +2165,6 @@ test(
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
     packsInputCombines: false,
     packsInput: undefined,
-    injectedMlQueries: false,
   } as configUtils.AugmentationProperties,
 );
 
@@ -2342,7 +2179,6 @@ test(
     queriesInput: undefined,
     packsInputCombines: false,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-    injectedMlQueries: false,
   } as configUtils.AugmentationProperties,
 );
 
@@ -2357,7 +2193,6 @@ test(
     queriesInput: undefined,
     packsInputCombines: true,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-    injectedMlQueries: false,
   } as configUtils.AugmentationProperties,
 );
 
@@ -2518,7 +2353,7 @@ test("downloadPacks-with-registries", async (t) => {
 
     const codeQL = setCodeQL({
       packDownload: packDownloadStub,
-      getVersion: () => Promise.resolve("2.10.5"),
+      getVersion: () => Promise.resolve(makeVersionInfo("2.10.5")),
     });
 
     // packs are supplied for go, java, and python
@@ -2554,48 +2389,6 @@ test("downloadPacks-with-registries", async (t) => {
   });
 });
 
-test("downloadPacks-with-registries fails on 2.10.3", async (t) => {
-  // same thing, but this time include a registries block and
-  // associated env vars
-  return await withTmpDir(async (tmpDir) => {
-    process.env.GITHUB_TOKEN = "not-a-token";
-    process.env.CODEQL_REGISTRIES_AUTH = "not-a-registries-auth";
-    const logger = getRunnerLogger(true);
-
-    const registriesInput = yaml.dump([
-      {
-        url: "http://ghcr.io",
-        packages: ["codeql/*", "codeql-testing/*"],
-        token: "not-a-token",
-      },
-      {
-        url: "https://containers.GHEHOSTNAME1/v2/",
-        packages: "semmle/*",
-        token: "still-not-a-token",
-      },
-    ]);
-
-    const codeQL = setCodeQL({
-      getVersion: () => Promise.resolve("2.10.3"),
-    });
-    await t.throwsAsync(
-      async () => {
-        return await configUtils.downloadPacks(
-          codeQL,
-          [Language.javascript, Language.java, Language.python],
-          {},
-          sampleApiDetails,
-          registriesInput,
-          tmpDir,
-          logger,
-        );
-      },
-      { instanceOf: Error },
-      "'registries' input is not supported on CodeQL versions less than 2.10.4.",
-    );
-  });
-});
-
 test("downloadPacks-with-registries fails with invalid registries block", async (t) => {
   // same thing, but this time include a registries block and
   // associated env vars
@@ -2618,7 +2411,7 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
     ]);
 
     const codeQL = setCodeQL({
-      getVersion: () => Promise.resolve("2.10.4"),
+      getVersion: () => Promise.resolve(makeVersionInfo("2.10.4")),
     });
     await t.throwsAsync(
       async () => {
@@ -2638,51 +2431,12 @@ test("downloadPacks-with-registries fails with invalid registries block", async 
   });
 });
 
-// the happy path for generateRegistries is already tested in downloadPacks.
-// these following tests are for the error cases and when nothing is generated.
-test("no generateRegistries when CLI is too old", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
-    const registriesInput = yaml.dump([
-      {
-        // no slash
-        url: "http://ghcr.io",
-        packages: ["codeql/*", "codeql-testing/*"],
-        token: "not-a-token",
-      },
-    ]);
-    const codeQL = setCodeQL({
-      // Accepted CLI versions are 2.10.4 or higher
-      getVersion: () => Promise.resolve("2.10.3"),
-    });
-    const logger = getRunnerLogger(true);
-    await t.throwsAsync(
-      async () =>
-        await configUtils.generateRegistries(
-          registriesInput,
-          codeQL,
-          tmpDir,
-          logger,
-        ),
-      undefined,
-      "'registries' input is not supported on CodeQL versions less than 2.10.4.",
-    );
-  });
-});
 test("no generateRegistries when registries is undefined", async (t) => {
   return await withTmpDir(async (tmpDir) => {
     const registriesInput = undefined;
-    const codeQL = setCodeQL({
-      // Accepted CLI versions are 2.10.4 or higher
-      getVersion: () => Promise.resolve(CODEQL_VERSION_GHES_PACK_DOWNLOAD),
-    });
     const logger = getRunnerLogger(true);
     const { registriesAuthTokens, qlconfigFile } =
-      await configUtils.generateRegistries(
-        registriesInput,
-        codeQL,
-        tmpDir,
-        logger,
-      );
+      await configUtils.generateRegistries(registriesInput, tmpDir, logger);
 
     t.is(registriesAuthTokens, undefined);
     t.is(qlconfigFile, undefined);
@@ -2699,18 +2453,9 @@ test("generateRegistries prefers original CODEQL_REGISTRIES_AUTH", async (t) => 
         token: "not-a-token",
       },
     ]);
-    const codeQL = setCodeQL({
-      // Accepted CLI versions are 2.10.4 or higher
-      getVersion: () => Promise.resolve(CODEQL_VERSION_GHES_PACK_DOWNLOAD),
-    });
     const logger = getRunnerLogger(true);
     const { registriesAuthTokens, qlconfigFile } =
-      await configUtils.generateRegistries(
-        registriesInput,
-        codeQL,
-        tmpDir,
-        logger,
-      );
+      await configUtils.generateRegistries(registriesInput, tmpDir, logger);
 
     t.is(registriesAuthTokens, "original");
     t.is(qlconfigFile, path.join(tmpDir, "qlconfig.yml"));
@@ -2818,66 +2563,3 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
 });
-
-const ML_POWERED_JS_STATUS_TESTS: Array<[string[], string]> = [
-  // If no packs are loaded, status is false.
-  [[], "false"],
-  // If another pack is loaded but not the ML-powered query pack, status is false.
-  [["some-other/pack"], "false"],
-  // If the ML-powered query pack is loaded with a specific version, status is that version.
-  [[`${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
-  // If the ML-powered query pack is loaded with a specific version and another pack is loaded, the
-  // status is the version of the ML-powered query pack.
-  [["some-other/pack", `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.1.0`], "~0.1.0"],
-  // If the ML-powered query pack is loaded without a version, the status is "latest".
-  [[ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
-  // If the ML-powered query pack is loaded with two different versions, the status is "other".
-  [
-    [
-      `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.1`,
-      `${ML_POWERED_JS_QUERIES_PACK_NAME}@~0.0.2`,
-    ],
-    "other",
-  ],
-  // If the ML-powered query pack is loaded with no specific version, and another pack is loaded,
-  // the status is "latest".
-  [["some-other/pack", ML_POWERED_JS_QUERIES_PACK_NAME], "latest"],
-];
-
-for (const [packs, expectedStatus] of ML_POWERED_JS_STATUS_TESTS) {
-  const packDescriptions = `[${packs
-    .map((pack) => JSON.stringify(pack))
-    .join(", ")}]`;
-  test(`ML-powered JS queries status report is "${expectedStatus}" for packs = ${packDescriptions}`, (t) => {
-    return withTmpDir(async (tmpDir) => {
-      const config: configUtils.Config = {
-        languages: [],
-        queries: {},
-        paths: [],
-        pathsIgnore: [],
-        originalUserInput: {},
-        tempDir: tmpDir,
-        codeQLCmd: "",
-        gitHubVersion: {
-          type: GitHubVariant.DOTCOM,
-        } as GitHubVersion,
-        dbLocation: "",
-        packs: {
-          javascript: packs,
-        },
-        debugMode: false,
-        debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
-        debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
-        augmentationProperties: {
-          injectedMlQueries: false,
-          packsInputCombines: false,
-          queriesInputCombines: false,
-        },
-        trapCaches: {},
-        trapCacheDownloadTime: 0,
-      };
-
-      t.is(configUtils.getMlPoweredJsQueriesStatus(config), expectedStatus);
-    });
-  });
-}

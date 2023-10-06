@@ -26,10 +26,6 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20220615
-        - os: macos-latest
-          version: stable-20220615
-        - os: ubuntu-latest
           version: stable-20220908
         - os: macos-latest
           version: stable-20220908
@@ -41,6 +37,14 @@ jobs:
           version: stable-20230418
         - os: macos-latest
           version: stable-20230418
+        - os: ubuntu-latest
+          version: stable-v2.13.5
+        - os: macos-latest
+          version: stable-v2.13.5
+        - os: ubuntu-latest
+          version: stable-v2.14.6
+        - os: macos-latest
+          version: stable-v2.14.6
         - os: ubuntu-latest
           version: default
         - os: macos-latest
@@ -76,6 +80,9 @@ jobs:
         )
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+    - uses: actions/setup-go@v4
+      with:
+        go-version: ~1.21.1
     - uses: ./../action/init
       with:
         languages: go

@@ -75,7 +75,7 @@ export interface CodeQL {
   /**
    * Get a string containing the semver version of the CodeQL executable.
    */
-  getVersion(): Promise<string>;
+  getVersion(): Promise<VersionInfo>;
   /**
    * Print version information about CodeQL.
    */
@@ -128,7 +128,7 @@ export interface CodeQL {
    */
   resolveBuildEnvironment(
     workingDir: string | undefined,
-    language: Language,
+    language: string,
   ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
@@ -212,6 +212,11 @@ export interface CodeQL {
   resolveExtractor(language: Language): Promise<string>;
 }
 
+export interface VersionInfo {
+  version: string;
+  features?: { [name: string]: boolean };
+}
+
 export interface ResolveLanguagesOutput {
   [language: string]: [string];
 }
@@ -277,7 +282,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.9.4";
+const CODEQL_MINIMUM_VERSION = "2.10.5";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -294,21 +299,13 @@ const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.6";
  */
 const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-09-12";
 
-/**
+/*
  * Versions of CodeQL that version-flag certain functionality in the Action.
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
  */
-const CODEQL_VERSION_LUA_TRACER_CONFIG = "2.10.0";
-const CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED = "2.10.4";
-export const CODEQL_VERSION_GHES_PACK_DOWNLOAD = "2.10.4";
-const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
 
-/**
- * Previous versions had the option already, but were missing the
- * --extractor-options-verbosity that we need.
- */
-export const CODEQL_VERSION_BETTER_RESOLVE_LANGUAGES = "2.10.3";
+const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
 
 /**
  * Versions 2.11.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for
@@ -450,7 +447,12 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     getVersion: resolveFunction(
       partialCodeql,
       "getVersion",
-      () => new Promise((resolve) => resolve("1.0.0")),
+      () =>
+        new Promise((resolve) =>
+          resolve({
+            version: "1.0.0",
+          }),
+        ),
     ),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
@@ -536,7 +538,14 @@ export async function getCodeQLForCmd(
     async getVersion() {
       let result = util.getCachedCodeQlVersion();
       if (result === undefined) {
-        result = (await runTool(cmd, ["version", "--format=terse"])).trim();
+        const output = await runTool(cmd, ["version", "--format=json"]);
+        try {
+          result = JSON.parse(output) as VersionInfo;
+        } catch (err) {
+          throw Error(
+            `Invalid JSON output from \`version --format=json\`: ${output}`,
+          );
+        }
         util.cacheCodeQlVersion(result);
       }
       return result;
@@ -559,24 +568,6 @@ export async function getCodeQLForCmd(
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
         extraArgs.push(`--trace-process-name=${processName}`);
-        if (
-          // There's a bug in Lua tracing for Go on Windows in versions earlier than
-          // `CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED`, so don't use Lua tracing
-          // when tracing Go on Windows on these CodeQL versions.
-          (await util.codeQlVersionAbove(
-            this,
-            CODEQL_VERSION_LUA_TRACER_CONFIG,
-          )) &&
-          config.languages.includes(Language.go) &&
-          isTracedLanguage(Language.go) &&
-          process.platform === "win32" &&
-          !(await util.codeQlVersionAbove(
-            this,
-            CODEQL_VERSION_LUA_TRACING_GO_WINDOWS_FIXED,
-          ))
-        ) {
-          extraArgs.push("--no-internal-use-lua-tracing");
-        }
       }
 
       // A code scanning config file is only generated if the CliConfigFileEnabled feature flag is enabled.
@@ -633,6 +624,7 @@ export async function getCodeQLForCmd(
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
+          ...(await getLanguageAliasingArguments(this)),
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"]),
         ],
@@ -746,20 +738,12 @@ export async function getCodeQLForCmd(
       }
     },
     async betterResolveLanguages() {
-      const extraArgs: string[] = [];
-
-      if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_LANGUAGE_ALIASING)
-      ) {
-        extraArgs.push("--extractor-include-aliases");
-      }
-
       const codeqlArgs = [
         "resolve",
         "languages",
         "--format=betterjson",
         "--extractor-options-verbosity=4",
-        ...extraArgs,
+        ...(await getLanguageAliasingArguments(this)),
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
       const output = await runTool(cmd, codeqlArgs);
@@ -796,12 +780,13 @@ export async function getCodeQLForCmd(
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,
-      language: Language,
+      language: string,
     ) {
       const codeqlArgs = [
         "resolve",
         "build-environment",
         `--language=${language}`,
+        ...(await getLanguageAliasingArguments(this)),
         ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
       ];
       if (workingDir !== undefined) {
@@ -1091,6 +1076,7 @@ export async function getCodeQLForCmd(
           "extractor",
           "--format=json",
           `--language=${language}`,
+          ...(await getLanguageAliasingArguments(this)),
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {
@@ -1121,15 +1107,18 @@ export async function getCodeQLForCmd(
     !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))
   ) {
     throw new Error(
-      `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${await codeql.getVersion()}`,
+      `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
+        (await codeql.getVersion()).version
+      }`,
     );
   } else if (
     checkVersion &&
     process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_NEXT_MINIMUM_VERSION))
   ) {
+    const result = await codeql.getVersion();
     core.warning(
-      `CodeQL CLI version ${await codeql.getVersion()} was discontinued on ` +
+      `CodeQL CLI version ${result.version} was discontinued on ` +
         `${GHES_MOST_RECENT_DEPRECATION_DATE} alongside GitHub Enterprise Server ` +
         `${GHES_VERSION_MOST_RECENTLY_DEPRECATED} and will not be supported by the next minor ` +
         `release of the CodeQL Action. Please update to CodeQL CLI version ` +
@@ -1137,7 +1126,7 @@ export async function getCodeQLForCmd(
         "version of the CLI using the 'tools' input to the 'init' Action, you can remove this " +
         "input to use the default version.\n\n" +
         "Alternatively, if you want to continue using CodeQL CLI version " +
-        `${await codeql.getVersion()}, you can replace 'github/codeql-action/*@v2' by ` +
+        `${result.version}, you can replace 'github/codeql-action/*@v2' by ` +
         `'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );
@@ -1379,20 +1368,6 @@ async function generateCodeScanningConfig(
   if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
     delete augmentedConfig.packs;
   }
-  if (config.augmentationProperties.injectedMlQueries) {
-    // We need to inject the ML queries into the original user input before
-    // we pass this on to the CLI, to make sure these get run.
-    const packString = await util.getMlPoweredJsQueriesPack(codeql);
-
-    if (augmentedConfig.packs === undefined) augmentedConfig.packs = [];
-    if (Array.isArray(augmentedConfig.packs)) {
-      augmentedConfig.packs.push(packString);
-    } else {
-      if (!augmentedConfig.packs.javascript)
-        augmentedConfig.packs["javascript"] = [];
-      augmentedConfig.packs["javascript"].push(packString);
-    }
-  }
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`,
   );
@@ -1489,4 +1464,11 @@ async function isDiagnosticsExportInvalidSarifFixed(
     codeql,
     CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED,
   );
+}
+
+async function getLanguageAliasingArguments(codeql: CodeQL): Promise<string[]> {
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
+    return ["--extractor-include-aliases"];
+  }
+  return [];
 }

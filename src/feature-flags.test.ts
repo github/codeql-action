@@ -119,12 +119,11 @@ test("Feature flags exception is propagated if the API request errors", async (t
 
     mockFeatureFlagApiEndpoint(500, {});
 
+    const someFeature = Object.values(Feature)[0];
+
     await t.throwsAsync(
       async () =>
-        features.getValue(
-          Feature.MlPoweredQueriesEnabled,
-          includeCodeQlIfRequired(Feature.MlPoweredQueriesEnabled),
-        ),
+        features.getValue(someFeature, includeCodeQlIfRequired(someFeature)),
       {
         message:
           "Encountered an error while trying to determine feature enablement: Error: some error message",
@@ -246,7 +245,9 @@ for (const feature of Object.keys(featureConfig)) {
         // feature should be enabled when a new CLI version is set
         // and env var is not set
         process.env[featureConfig[feature].envVar] = "";
-        codeql = mockCodeQLVersion(featureConfig[feature].minimumVersion);
+        codeql = mockCodeQLVersion(
+          featureConfig[feature].minimumVersion as string,
+        );
         t.assert(await features.getValue(feature as Feature, codeql));
 
         // set env var to false and check that the feature is now disabled

@@ -239,7 +239,10 @@ async function run() {
     // precedence in the PATH, thus potentially circumventing our workaround that allows tracing to work.
     const goWrapperPath = process.env[EnvVar.GO_BINARY_LOCATION];
 
-    if (goWrapperPath !== undefined) {
+    if (
+      process.env[EnvVar.DID_AUTOBUILD_GOLANG] !== "true" &&
+      goWrapperPath !== undefined
+    ) {
       const goBinaryPath = await safeWhich("go");
 
       if (goWrapperPath !== goBinaryPath) {

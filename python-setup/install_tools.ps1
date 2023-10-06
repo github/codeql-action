@@ -5,7 +5,7 @@ Write-Host "Checking python version"
 Write-Host "PYTHONPATH $Env:PYTHONPATH"
 if ((py -3 -c "import sys; print(0 if sys.version_info >= (3, 12) else 1)") -eq "0") {
     Write-Host "Python 3.12+ detected, adding imp.py to PYTHONPATH"
-    Write-Output "PYTHONPATH=$Env:PYTHONPATH;$pwd/src" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+    Write-Output "PYTHONPATH=$Env:PYTHONPATH;$PSScriptRoot/src" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
 } else {
     Write-Host "Python 3.12+ not detected, not adding imp.py to PYTHONPATH"
 }

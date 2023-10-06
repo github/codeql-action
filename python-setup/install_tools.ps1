@@ -14,9 +14,9 @@ py -3 -m pip install --user pipenv
 
 # If we are running greater than or equal to python 3.12, add src to the python path
 Write-Host "Checking python version"
-if (python -c "import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)" -eq 0) {
+if (py -3 -c "import sys; print(0 if sys.version_info >= (3, 12) else 1)" -eq "0") {
     Write-Host "Python 3.12+ detected, adding imp.py to PYTHONPATH"
-    Write-Host "PYTHONPATH=$Env:PYTHONPATH;$pwd/src" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+    Write-Output "PYTHONPATH=$Env:PYTHONPATH;$pwd/src" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
 } else {
     Write-Host "Python 3.12+ not detected, not adding imp.py to PYTHONPATH"
 }

@@ -44,7 +44,7 @@ export async function uploadDatabases(
       const bundledDb = await bundleDb(config, language, codeql, language);
       const bundledDbSize = fs.statSync(bundledDb).size;
       const bundledDbReadStream = fs.createReadStream(bundledDb);
-      const commitOid = actionsUtil.getCommitOid(
+      const commitOid = await actionsUtil.getCommitOid(
         actionsUtil.getRequiredInput("checkout_path"),
       );
       try {

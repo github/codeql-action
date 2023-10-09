@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- Add a workaround python 3.12, which is not supported in CodeQL CLI version 2.14.6 or earlier. If you are running an analysis on Windows and using python 3.12 or later, the CodeQL Action will switch to running python 3.11. If python 3.11 is not found, then the workflow will fail.
+- Add a workaround for Python 3.12, which is not supported in CodeQL CLI version 2.14.6 or earlier. If you are running an analysis on Windows and using Python 3.12 or later, the CodeQL Action will switch to running Python 3.11. In this case, if Python 3.11 is not found, then the workflow will fail. [#1928](https://github.com/github/codeql-action/pull/1928)
 
 ## 2.22.0 - 06 Oct 2023
 

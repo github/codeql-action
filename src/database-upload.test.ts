@@ -68,7 +68,7 @@ async function mockHttpRequests(databaseUploadStatusCode: number) {
   const requestSpy = sinon.stub(client, "request");
 
   const url =
-    "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name";
+    "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid";
   const databaseUploadSpy = requestSpy.withArgs(url);
   if (databaseUploadStatusCode < 300) {
     databaseUploadSpy.resolves(undefined);

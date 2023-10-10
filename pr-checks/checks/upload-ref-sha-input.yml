@@ -1,5 +1,6 @@
 name: "Upload-sarif: 'ref' and 'sha' from inputs"
 description: "Checks that specifying 'ref' and 'sha' as inputs works"
+versions: ["default"]
 steps:
   - uses: ./../action/init
     with:

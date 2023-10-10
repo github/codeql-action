@@ -7,7 +7,6 @@ name: PR Check - Resolve environment
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
-  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
@@ -96,8 +95,7 @@ jobs:
         language: javascript-typescript
 
     - name: Fail if JavaScript/TypeScript configuration present
-      if: matrix.version != 'stable-v2.13.4' && 
-        fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
+      if: matrix.version != 'stable-v2.13.4' && fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
       run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

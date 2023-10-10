@@ -1,10 +1,13 @@
+import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
+import { safeWhich } from "@chrisgavin/safe-which";
 import { v4 as uuidV4 } from "uuid";
 
 import {
   getActionVersion,
+  getFileType,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
@@ -14,7 +17,13 @@ import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
-import { initCodeQL, initConfig, installPythonDeps, runInit } from "./init";
+import {
+  checkInstallPython311,
+  initCodeQL,
+  initConfig,
+  installPythonDeps,
+  runInit,
+} from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -25,6 +34,7 @@ import {
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
+import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkDiskUsage,
@@ -273,6 +283,8 @@ async function run() {
       logger,
     );
 
+    await checkInstallPython311(config.languages, codeql);
+
     if (
       config.languages.includes(Language.python) &&
       getRequiredInput("setup-python-dependencies") === "true"
@@ -312,6 +324,9 @@ async function run() {
   }
 
   try {
+    // Query CLI for supported features
+    const versionInfo = await codeql.getVersion();
+
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {
@@ -319,6 +334,53 @@ async function run() {
       core.warning(
         "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.",
       );
+    }
+
+    // Go 1.21 and above ships with statically linked binaries on Linux. CodeQL cannot currently trace custom builds
+    // where the entry point is a statically linked binary. Until that is fixed, we work around the problem by
+    // replacing the `go` binary with a shell script that invokes the actual `go` binary. Since the shell is typically
+    // dynamically linked, this provides a suitable entry point for the CodeQL tracer.
+    if (
+      config.languages.includes(Language.go) &&
+      process.platform === "linux" &&
+      !isSupportedToolsFeature(
+        versionInfo,
+        ToolsFeature.IndirectTracingSupportsStaticBinaries,
+      )
+    ) {
+      try {
+        const goBinaryPath = await safeWhich("go");
+        const fileOutput = await getFileType(goBinaryPath);
+
+        if (fileOutput.includes("statically linked")) {
+          logger.debug(`Applying static binary workaround for Go`);
+
+          // Create a directory that we can add to the system PATH.
+          const tempBinPath = path.resolve(
+            getTemporaryDirectory(),
+            "codeql-action-go-tracing",
+            "bin",
+          );
+          fs.mkdirSync(tempBinPath, { recursive: true });
+          core.addPath(tempBinPath);
+
+          // Write the wrapper script to the directory we just added to the PATH.
+          const goWrapperPath = path.resolve(tempBinPath, "go");
+          fs.writeFileSync(
+            goWrapperPath,
+            `#!/bin/bash\n\nexec ${goBinaryPath} "$@"`,
+          );
+          fs.chmodSync(goWrapperPath, "755");
+
+          // Store the original location of our wrapper script somewhere where we can
+          // later retrieve it from and cross-check that it hasn't been changed.
+          core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
+        }
+      } catch (e) {
+        logger.warning(
+          `Analyzing Go on Linux, but failed to install wrapper script. Tracing custom builds may fail: ${e}`,
+        );
+      }
     }
 
     // Limit RAM and threads for extractors. When running extractors, the CodeQL CLI obeys the

@@ -13,6 +13,7 @@ import {
   FeatureEnablement,
   useCodeScanningConfigInCli,
 } from "./feature-flags";
+import { Language } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
@@ -179,6 +180,30 @@ function processError(e: any): Error {
   }
 
   return e;
+}
+
+/**
+ * If we are running python 3.12+ on windows, we need to switch to python 3.11.
+ * This check happens in a powershell script.
+ */
+export async function checkInstallPython311(
+  languages: Language[],
+  codeql: CodeQL,
+) {
+  if (
+    languages.includes(Language.python) &&
+    process.platform === "win32" &&
+    !(await codeql.getVersion()).features?.supportsPython312
+  ) {
+    const script = path.resolve(
+      __dirname,
+      "../python-setup",
+      "check_python12.ps1",
+    );
+    await new toolrunner.ToolRunner(await safeWhich.safeWhich("powershell"), [
+      script,
+    ]).exec();
+  }
 }
 
 export async function installPythonDeps(codeql: CodeQL, logger: Logger) {

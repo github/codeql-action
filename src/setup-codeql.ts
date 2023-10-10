@@ -553,7 +553,7 @@ export async function downloadCodeQL(
     logger.debug("Downloading CodeQL tools without an authorization token.");
   }
   logger.info(
-    `Downloading CodeQL tools from ${codeqlURL}. This may take a while.`,
+    `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
   );
 
   const dest = path.join(tempDir, uuidV4());

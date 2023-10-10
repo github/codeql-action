@@ -8,7 +8,6 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import * as configUtils from "./config-utils";
-import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger, getActionsLogger } from "./logging";
 import {
@@ -98,9 +97,6 @@ async function run() {
       for (const language of languages) {
         currentLanguage = language;
         await runAutobuild(language, config, logger);
-        if (language === Language.go) {
-          core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
-        }
       }
     }
   } catch (unwrappedError) {

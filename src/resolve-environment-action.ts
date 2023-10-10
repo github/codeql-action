@@ -8,7 +8,6 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CommandInvocationError } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Language, parseLanguage } from "./languages";
 import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
 import {
@@ -44,16 +43,6 @@ async function run() {
       return;
     }
 
-    const language: Language | undefined = parseLanguage(
-      getRequiredInput("language"),
-    );
-
-    if (language === undefined) {
-      throw new Error(
-        `Did not recognize the language "${getRequiredInput("language")}".`,
-      );
-    }
-
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 
@@ -69,7 +58,7 @@ async function run() {
       config.codeQLCmd,
       logger,
       workingDirectory,
-      language,
+      getRequiredInput("language"),
     );
     core.setOutput(ENVIRONMENT_OUTPUT_NAME, result);
   } catch (unwrappedError) {

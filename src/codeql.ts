@@ -54,15 +54,27 @@ export class CommandInvocationError extends Error {
     cmd: string,
     args: string[],
     public exitCode: number,
-    public error: string,
-    public output: string,
+    public stderr: string,
+    public stdout: string,
   ) {
     const prettyCommand = [cmd, ...args]
       .map((x) => (x.includes(" ") ? `'${x}'` : x))
       .join(" ");
+
+    const fatalErrors = extractFatalErrors(stderr);
+    const lastLine = stderr.trim().split("\n").pop()?.trim();
+    let error = fatalErrors
+      ? ` and error was: ${fatalErrors.trim()}`
+      : lastLine
+      ? ` and last log line was: ${lastLine}`
+      : "";
+    if (error[error.length - 1] !== ".") {
+      error += ".";
+    }
+
     super(
       `Encountered a fatal error while running "${prettyCommand}". ` +
-        `Exit code was ${exitCode} and error was: ${error.trim()}`,
+        `Exit code was ${exitCode}${error} See the logs for more details.`,
     );
   }
 }
@@ -128,7 +140,7 @@ export interface CodeQL {
    */
   resolveBuildEnvironment(
     workingDir: string | undefined,
-    language: Language,
+    language: string,
   ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
@@ -624,6 +636,7 @@ export async function getCodeQLForCmd(
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
+          ...(await getLanguageAliasingArguments(this)),
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"]),
         ],
@@ -737,20 +750,12 @@ export async function getCodeQLForCmd(
       }
     },
     async betterResolveLanguages() {
-      const extraArgs: string[] = [];
-
-      if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_LANGUAGE_ALIASING)
-      ) {
-        extraArgs.push("--extractor-include-aliases");
-      }
-
       const codeqlArgs = [
         "resolve",
         "languages",
         "--format=betterjson",
         "--extractor-options-verbosity=4",
-        ...extraArgs,
+        ...(await getLanguageAliasingArguments(this)),
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
       const output = await runTool(cmd, codeqlArgs);
@@ -787,12 +792,13 @@ export async function getCodeQLForCmd(
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,
-      language: Language,
+      language: string,
     ) {
       const codeqlArgs = [
         "resolve",
         "build-environment",
         `--language=${language}`,
+        ...(await getLanguageAliasingArguments(this)),
         ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
       ];
       if (workingDir !== undefined) {
@@ -1082,6 +1088,7 @@ export async function getCodeQLForCmd(
           "extractor",
           "--format=json",
           `--language=${language}`,
+          ...(await getLanguageAliasingArguments(this)),
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {
@@ -1243,7 +1250,6 @@ async function runTool(
     ...(opts.stdin ? { input: Buffer.from(opts.stdin || "") } : {}),
   }).exec();
   if (exitCode !== 0) {
-    error = extractFatalErrors(error) || error;
     throw new CommandInvocationError(cmd, args, exitCode, error, output);
   }
   return output;
@@ -1459,7 +1465,7 @@ function isNoCodeFoundError(e: CommandInvocationError): boolean {
    */
   const javascriptNoCodeFoundWarning =
     "No JavaScript or TypeScript code found.";
-  return e.exitCode === 32 || e.error.includes(javascriptNoCodeFoundWarning);
+  return e.exitCode === 32 || e.stderr.includes(javascriptNoCodeFoundWarning);
 }
 
 async function isDiagnosticsExportInvalidSarifFixed(
@@ -1469,4 +1475,11 @@ async function isDiagnosticsExportInvalidSarifFixed(
     codeql,
     CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED,
   );
+}
+
+async function getLanguageAliasingArguments(codeql: CodeQL): Promise<string[]> {
+  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
+    return ["--extractor-include-aliases"];
+  }
+  return [];
 }

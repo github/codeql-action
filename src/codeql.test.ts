@@ -1006,19 +1006,19 @@ test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for
 const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
   {
     featureEnabled: true,
-    codeqlVersion: "2.14.0",
+    codeqlVersion: "2.15.0",
     flagPassed: true,
     negativeFlagPassed: false,
   },
   {
     featureEnabled: false,
-    codeqlVersion: "2.14.0",
+    codeqlVersion: "2.15.0",
     flagPassed: false,
     negativeFlagPassed: true,
   },
   {
     featureEnabled: false,
-    codeqlVersion: "2.13.5",
+    codeqlVersion: "2.14.6",
     flagPassed: false,
     negativeFlagPassed: false,
   },

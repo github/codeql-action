@@ -134,10 +134,7 @@ for file in os.listdir('checks'):
             'name': f"PR Check - {checkSpecification['name']}",
             'env': {
                 'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}',
-                'GO111MODULE': 'auto',
-                # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
-                # workaround for our PR checks.
-                'CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN': 'true',
+                'GO111MODULE': 'auto'
             },
             'on': {
                 'push': {

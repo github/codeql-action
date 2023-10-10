@@ -12,9 +12,7 @@ steps:
       codeql-path: ${{ steps.init.outputs.codeql-path }}
   - name: Build code
     shell: bash
-    # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
-    # workaround for our PR checks.
-    run: env -i CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN=true PATH="$PATH" HOME="$HOME" ./build.sh
+    run: env -i PATH="$PATH" HOME="$HOME" ./build.sh
   - uses: ./../action/analyze
     id: analysis
     with:

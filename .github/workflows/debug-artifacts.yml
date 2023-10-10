@@ -1,9 +1,6 @@
 # Checks logs, SARIF, and database bundle debug artifacts exist.
 name: PR Check - Debug artifact upload
 env:
-  # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
-  # workaround for our PR checks.
-  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
   push:
@@ -63,7 +60,7 @@ jobs:
         shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
-        id: analysis  
+        id: analysis
   download-and-check-artifacts:
     name: Download and check debug artifacts
     needs: upload-artifacts

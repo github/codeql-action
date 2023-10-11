@@ -4,6 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+- Update default CodeQL bundle version to 2.15.0. [#1938](https://github.com/github/codeql-action/pull/1938)
 - Improve the log output when an error occurs in an invocation of the CodeQL CLI. [#1927](https://github.com/github/codeql-action/pull/1927)
 
 ## 2.22.1 - 09 Oct 2023

@@ -14,7 +14,7 @@ import * as api from "./api-client";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
-  CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
+  CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
   CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
   CodeQLDefaultVersionInfo,
   Feature,
@@ -845,7 +845,7 @@ export async function getCodeQLForCmd(
       }
       if (
         await features.getValue(
-          Feature.EvaluatorIntraLayerParallelismEnabled,
+          Feature.EvaluatorFineGrainedParallelismEnabled,
           this,
         )
       ) {
@@ -853,7 +853,7 @@ export async function getCodeQLForCmd(
       } else if (
         await util.codeQlVersionAbove(
           this,
-          CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
+          CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
         )
       ) {
         codeqlArgs.push("--no-intra-layer-parallelism");

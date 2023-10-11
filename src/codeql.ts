@@ -616,16 +616,12 @@ export async function getCodeQLForCmd(
       }
 
       if (
-        await features.getValue(Feature.SublanguageFileCoverageEnabled, this)
-      ) {
-        extraArgs.push("--sublanguage-file-coverage");
-      } else if (
         await util.codeQlVersionAbove(
           this,
           CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
         )
       ) {
-        extraArgs.push("--no-sublanguage-file-coverage");
+        extraArgs.push("--sublanguage-file-coverage");
       }
 
       await runTool(

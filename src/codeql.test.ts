@@ -1006,19 +1006,19 @@ test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for
 const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
   {
     featureEnabled: true,
-    codeqlVersion: "2.14.0",
+    codeqlVersion: "2.15.0",
     flagPassed: true,
     negativeFlagPassed: false,
   },
   {
     featureEnabled: false,
-    codeqlVersion: "2.14.0",
+    codeqlVersion: "2.15.0",
     flagPassed: false,
     negativeFlagPassed: true,
   },
   {
     featureEnabled: false,
-    codeqlVersion: "2.13.5",
+    codeqlVersion: "2.14.6",
     flagPassed: false,
     negativeFlagPassed: false,
   },
@@ -1133,7 +1133,7 @@ test("database finalize does not override no code found error on CodeQL 2.12.4",
     {
       message:
         'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
-        `Exit code was 32 and error was: ${cliMessage}`,
+        `Exit code was 32 and last log line was: ${cliMessage} See the logs for more details.`,
     },
   );
 });
@@ -1158,7 +1158,26 @@ test("runTool summarizes several fatal errors", async (t) => {
     {
       message:
         'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
-        `Exit code was 32 and error was: ${datasetImportError}. Context: ${heapError}.`,
+        `Exit code was 32 and error was: ${datasetImportError}. Context: ${heapError}. See the logs for more details.`,
+    },
+  );
+});
+
+test("runTool outputs last line of stderr if fatal error could not be found", async (t) => {
+  const cliStderr = "line1\nline2\nline3\nline4\nline5";
+  stubToolRunnerConstructor(32, cliStderr);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () =>
+      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+    {
+      message:
+        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
+        "Exit code was 32 and last log line was: line5. See the logs for more details.",
     },
   );
 });

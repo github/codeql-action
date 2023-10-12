@@ -2,6 +2,11 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 2.22.2 - 12 Oct 2023
+
+- Update default CodeQL bundle version to 2.15.0. [#1938](https://github.com/github/codeql-action/pull/1938)
+- Improve the log output when an error occurs in an invocation of the CodeQL CLI. [#1927](https://github.com/github/codeql-action/pull/1927)
+
 ## 2.22.1 - 09 Oct 2023
 
 - Add a workaround for Python 3.12, which is not supported in CodeQL CLI version 2.14.6 or earlier. If you are running an analysis on Windows and using Python 3.12 or later, the CodeQL Action will switch to running Python 3.11. In this case, if Python 3.11 is not found, then the workflow will fail. [#1928](https://github.com/github/codeql-action/pull/1928)

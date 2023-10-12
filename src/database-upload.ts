@@ -44,14 +44,18 @@ export async function uploadDatabases(
       const bundledDb = await bundleDb(config, language, codeql, language);
       const bundledDbSize = fs.statSync(bundledDb).size;
       const bundledDbReadStream = fs.createReadStream(bundledDb);
+      const commitOid = await actionsUtil.getCommitOid(
+        actionsUtil.getRequiredInput("checkout_path"),
+      );
       try {
         await client.request(
-          `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name`,
+          `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
           {
             owner: repositoryNwo.owner,
             repo: repositoryNwo.repo,
             language,
             name: `${language}-database`,
+            commit_oid: commitOid,
             data: bundledDbReadStream,
             headers: {
               authorization: `token ${apiDetails.auth}`,

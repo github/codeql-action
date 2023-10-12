@@ -10,9 +10,6 @@ env:
   CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
-    branches:
-    - main
-    - releases/v2
   pull_request:
     types:
     - opened

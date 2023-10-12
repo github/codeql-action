@@ -394,14 +394,10 @@ export async function runQueries(
         await runPrintLinesOfCode(language);
       }
     } catch (e) {
-      logger.info(String(e));
-      if (e instanceof Error) {
-        logger.info(e.stack!);
-      }
       statusReport.analyze_failure_language = language;
       throw new CodeQLAnalysisError(
         statusReport,
-        `Error running analysis for ${language}: ${e}`,
+        `Error running analysis for ${language}: ${util.wrapError(e).message}`,
       );
     }
   }

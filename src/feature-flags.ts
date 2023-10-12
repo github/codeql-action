@@ -19,15 +19,15 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
 
 /**
- * Versions 2.14.0+ of the CodeQL CLI support new analysis summaries.
- */
-export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.14.0";
-
-/**
  * Versions 2.14.0+ of the CodeQL CLI support intra-layer parallelism (aka fine-grained parallelism) options, but we
  * limit to 2.14.6 onwards, since that's the version that has mitigations against OOM failures.
  */
 export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.6";
+
+/**
+ * Versions 2.15.0+ of the CodeQL CLI support new analysis summaries.
+ */
+export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
 
 /**
  * Versions 2.15.0+ of the CodeQL CLI support sub-language file coverage information.

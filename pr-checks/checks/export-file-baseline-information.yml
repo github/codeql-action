@@ -1,14 +1,14 @@
 name: "Export file baseline information"
 description: "Tests that file baseline information is exported when the feature is enabled"
 versions: ["nightly-latest"]
+env:
+  CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
 steps:
   - uses: ./../action/init
     id: init
     with:
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      CODEQL_FILE_BASELINE_INFORMATION: true
   - uses: ./../action/.github/actions/setup-swift
     with:
       codeql-path: ${{ steps.init.outputs.codeql-path }}
@@ -18,8 +18,6 @@ steps:
   - uses: ./../action/analyze
     with:
       output: "${{ runner.temp }}/results"
-    env:
-      CODEQL_FILE_BASELINE_INFORMATION: true
   - name: Upload SARIF
     uses: actions/upload-artifact@v3
     with:
@@ -30,13 +28,13 @@ steps:
     shell: bash
     run: |
       cd "$RUNNER_TEMP/results"
-      expected_baseline_languages="cpp cs go java js py rb"
+      expected_baseline_languages="c csharp go java kotlin javascript python ruby"
       if [[ $RUNNER_OS != "Windows" ]]; then
         expected_baseline_languages+=" swift"
       fi
 
       for lang in ${expected_baseline_languages}; do
-        rule_name="${lang}/baseline/expected-extracted-files"
+        rule_name="cli/expected-extracted-files/${lang}"
         found_notification=$(jq --arg rule_name "${rule_name}" '[.runs[0].tool.driver.notifications |
           select(. != null) | flatten | .[].id] | any(. == $rule_name)' javascript.sarif)
         if [[ "${found_notification}" != "true" ]]; then

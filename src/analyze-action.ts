@@ -233,21 +233,23 @@ async function run() {
       logger,
     );
 
-    // Check that `which go` still points at the wrapper script we installed in the `init` Action,
-    // if the corresponding environment variable is set. This is to ensure that there isn't a step
-    // in the workflow after the `init` step which installs a different version of Go and takes
-    // precedence in the PATH, thus potentially circumventing our workaround that allows tracing to work.
-    const goWrapperPath = process.env[EnvVar.GO_BINARY_LOCATION];
+    // Check that `which go` still points at the same path it did when the `init` Action ran to ensure that no steps
+    // in-between performed any setup. We encourage users to perform all setup tasks before initializing CodeQL so that
+    // the setup tasks do not interfere with our analysis.
+    // Furthermore, if we installed a wrapper script in the `init` Action, we need to ensure that there isn't a step
+    // in the workflow after the `init` step which installs a different version of Go and takes precedence in the PATH,
+    // thus potentially circumventing our workaround that allows tracing to work.
+    const goInitPath = process.env[EnvVar.GO_BINARY_LOCATION];
 
     if (
       process.env[EnvVar.DID_AUTOBUILD_GOLANG] !== "true" &&
-      goWrapperPath !== undefined
+      goInitPath !== undefined
     ) {
       const goBinaryPath = await safeWhich("go");
 
-      if (goWrapperPath !== goBinaryPath) {
+      if (goInitPath !== goBinaryPath) {
         core.warning(
-          `Expected \`which go\` to return ${goWrapperPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
+          `Expected \`which go\` to return ${goInitPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
         );
 
         addDiagnostic(

@@ -908,6 +908,18 @@ export async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--sarif-add-baseline-file-info");
       }
+      if (
+        await features.getValue(Feature.SublanguageFileCoverageEnabled, this)
+      ) {
+        codeqlArgs.push("--sublanguage-file-coverage");
+      } else if (
+        await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
+        )
+      ) {
+        codeqlArgs.push("--no-sublanguage-file-coverage");
+      }
       if (shouldExportDiagnostics) {
         codeqlArgs.push("--sarif-include-diagnostics");
       } else if (await util.codeQlVersionAbove(this, "2.12.4")) {

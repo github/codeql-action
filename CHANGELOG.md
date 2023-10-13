@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 2.22.3 - 13 Oct 2023
 
 - Provide an authentication token when downloading the CodeQL Bundle from the API of a GitHub Enterprise Server instance. [#1945](https://github.com/github/codeql-action/pull/1945)

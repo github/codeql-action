@@ -80,7 +80,10 @@ for file in os.listdir('checks'):
             'uses': './.github/actions/prepare-test',
             'with': {
                 'version': '${{ matrix.version }}',
-                'use-all-platform-bundle': useAllPlatformBundle
+                'use-all-platform-bundle': useAllPlatformBundle,
+                # If the action is being run from a container, then do not setup kotlin.
+                # This is because the kotlin binaries cannot be downloaded from the container.
+                'setup-kotlin': not 'container' in checkSpecification,
             }
         },
         # We don't support Swift on Windows or prior versions of the CLI.

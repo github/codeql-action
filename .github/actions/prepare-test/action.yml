@@ -8,6 +8,10 @@ inputs:
     description: "If true, we output a tools URL with codeql-bundle.tar.gz file rather than platform-specific URL"
     default: 'false'
     required: false
+  setup-kotlin:
+    description: "If true, we setup kotlin"
+    default: 'true'
+    required: true
 outputs:
   tools-url:
     description: "The value that should be passed as the 'tools' input of the 'init' step."
@@ -58,3 +62,8 @@ runs:
           echo "::error::Unrecognized version specified!"
           exit 1
         fi
+
+    - uses: fwilhe2/setup-kotlin@fa932efcc943c56bfd69ddace2e61129eb495d58
+      if: ${{ inputs.setup-kotlin }} == "true"
+      with:
+        version: 1.7.21

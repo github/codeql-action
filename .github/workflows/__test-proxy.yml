@@ -41,6 +41,7 @@ jobs:
       with:
         version: ${{ matrix.version }}
         use-all-platform-bundle: 'false'
+        setup-kotlin: false
     - name: Set environment variable for Swift enablement
       if: >-
         runner.os != 'Windows' && (

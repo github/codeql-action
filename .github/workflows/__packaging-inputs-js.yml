@@ -57,6 +57,7 @@ jobs:
       with:
         version: ${{ matrix.version }}
         use-all-platform-bundle: 'false'
+        setup-kotlin: true
     - name: Set environment variable for Swift enablement
       if: >-
         runner.os != 'Windows' && (
@@ -82,7 +83,8 @@ jobs:
       uses: ./../action/.github/actions/check-sarif
       with:
         sarif-file: ${{ runner.temp }}/results/javascript.sarif
-        queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+        queries-run: 
+          javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
         queries-not-run: foo,bar
 
     - name: Assert Results

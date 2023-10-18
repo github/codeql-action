@@ -84,7 +84,8 @@ export const featureConfig: Record<
   [Feature.CppDependencyInstallation]: {
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     minimumVersion: "2.15.0",
-    defaultValue: false,
+    // test CI with flag enabled
+    defaultValue: true,
   },
   [Feature.DisableKotlinAnalysisEnabled]: {
     envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",

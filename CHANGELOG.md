@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 2.22.4 - 20 Oct 2023
 
 - Update default CodeQL bundle version to 2.15.1. [#1953](https://github.com/github/codeql-action/pull/1953)
 - Users will begin to see warnings on Node.js 16 deprecation in their Actions logs on code scanning runs starting October 23, 2023.

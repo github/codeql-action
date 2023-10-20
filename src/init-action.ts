@@ -336,49 +336,61 @@ async function run() {
       );
     }
 
-    // Go 1.21 and above ships with statically linked binaries on Linux. CodeQL cannot currently trace custom builds
-    // where the entry point is a statically linked binary. Until that is fixed, we work around the problem by
-    // replacing the `go` binary with a shell script that invokes the actual `go` binary. Since the shell is typically
-    // dynamically linked, this provides a suitable entry point for the CodeQL tracer.
     if (
       config.languages.includes(Language.go) &&
-      process.platform === "linux" &&
-      !isSupportedToolsFeature(
-        versionInfo,
-        ToolsFeature.IndirectTracingSupportsStaticBinaries,
-      )
+      process.platform === "linux"
     ) {
       try {
         const goBinaryPath = await safeWhich("go");
         const fileOutput = await getFileType(goBinaryPath);
 
-        if (fileOutput.includes("statically linked")) {
-          logger.debug(`Applying static binary workaround for Go`);
+        // Go 1.21 and above ships with statically linked binaries on Linux. CodeQL cannot currently trace custom builds
+        // where the entry point is a statically linked binary. Until that is fixed, we work around the problem by
+        // replacing the `go` binary with a shell script that invokes the actual `go` binary. Since the shell is
+        // typically dynamically linked, this provides a suitable entry point for the CodeQL tracer.
+        if (
+          fileOutput.includes("statically linked") &&
+          !isSupportedToolsFeature(
+            versionInfo,
+            ToolsFeature.IndirectTracingSupportsStaticBinaries,
+          )
+        ) {
+          try {
+            logger.debug(`Applying static binary workaround for Go`);
 
-          // Create a directory that we can add to the system PATH.
-          const tempBinPath = path.resolve(
-            getTemporaryDirectory(),
-            "codeql-action-go-tracing",
-            "bin",
-          );
-          fs.mkdirSync(tempBinPath, { recursive: true });
-          core.addPath(tempBinPath);
+            // Create a directory that we can add to the system PATH.
+            const tempBinPath = path.resolve(
+              getTemporaryDirectory(),
+              "codeql-action-go-tracing",
+              "bin",
+            );
+            fs.mkdirSync(tempBinPath, { recursive: true });
+            core.addPath(tempBinPath);
 
-          // Write the wrapper script to the directory we just added to the PATH.
-          const goWrapperPath = path.resolve(tempBinPath, "go");
-          fs.writeFileSync(
-            goWrapperPath,
-            `#!/bin/bash\n\nexec ${goBinaryPath} "$@"`,
-          );
-          fs.chmodSync(goWrapperPath, "755");
+            // Write the wrapper script to the directory we just added to the PATH.
+            const goWrapperPath = path.resolve(tempBinPath, "go");
+            fs.writeFileSync(
+              goWrapperPath,
+              `#!/bin/bash\n\nexec ${goBinaryPath} "$@"`,
+            );
+            fs.chmodSync(goWrapperPath, "755");
 
-          // Store the original location of our wrapper script somewhere where we can
-          // later retrieve it from and cross-check that it hasn't been changed.
-          core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
+            // Store the original location of our wrapper script somewhere where we can
+            // later retrieve it from and cross-check that it hasn't been changed.
+            core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
+          } catch (e) {
+            logger.warning(
+              `Analyzing Go on Linux, but failed to install wrapper script. Tracing custom builds may fail: ${e}`,
+            );
+          }
+        } else {
+          // Store the location of the original Go binary, so we can check that no setup tasks were performed after the
+          // `init` Action ran.
+          core.exportVariable(EnvVar.GO_BINARY_LOCATION, goBinaryPath);
         }
       } catch (e) {
         logger.warning(
-          `Analyzing Go on Linux, but failed to install wrapper script. Tracing custom builds may fail: ${e}`,
+          `Failed to determine the location of the Go binary: ${e}`,
         );
       }
     }

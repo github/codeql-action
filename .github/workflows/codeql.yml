@@ -11,6 +11,7 @@ on:
   schedule:
     # Weekly on Sunday.
     - cron: '30 1 * * 0'
+  workflow_dispatch:
 
 env:
   CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks

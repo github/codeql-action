@@ -96,27 +96,42 @@ jobs:
         )
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+    - name: Delete original checkout
+      shell: bash
+      run: |
+        # delete the original checkout so we don't accidentally use it.
+        # Actions does not support deleting the current working directory, so we
+        # delete the contents of the directory instead.
+        rm -rf ./* .github .git
+  # Check out the actions repo again, but at a different location.
+  # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
     - uses: actions/checkout@v4
       with:
         ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
         path: x/y/z/some-path
+
     - uses: ./../action/init
       with:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       # it's enough to test one compiled language and one interpreted language
         languages: csharp,javascript
-        source-path: x/y/z/some-path/tests/multi-language-repo
+        source-root: x/y/z/some-path/tests/multi-language-repo
         debug: true
+
     - name: Build code (non-windows)
       shell: bash
       if: ${{ runner.os != 'Windows' }}
+      working-directory: x/y/z/some-path/tests/multi-language-repo
       run: |
-        $CODEQL_RUNNER x/y/z/some-path/tests/multi-language-repo/build.sh
+        $CODEQL_RUNNER ./build.sh
+
     - name: Build code (windows)
       shell: bash
       if: ${{ runner.os == 'Windows' }}
+      working-directory: x/y/z/some-path/tests/multi-language-repo
       run: |
-        x/y/z/some-path/tests/multi-language-repo/build.sh
+        ./build.sh
+
     - uses: ./../action/analyze
       with:
         checkout_path: x/y/z/some-path/tests/multi-language-repo

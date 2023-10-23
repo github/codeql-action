@@ -1,11 +1,11 @@
 'use strict';
 
-var ArraySpeciesCreate = require('es-abstract/2022/ArraySpeciesCreate');
-var FlattenIntoArray = require('es-abstract/2022/FlattenIntoArray');
-var Get = require('es-abstract/2022/Get');
-var ToIntegerOrInfinity = require('es-abstract/2022/ToIntegerOrInfinity');
-var ToLength = require('es-abstract/2022/ToLength');
-var ToObject = require('es-abstract/2022/ToObject');
+var ArraySpeciesCreate = require('es-abstract/2023/ArraySpeciesCreate');
+var FlattenIntoArray = require('es-abstract/2023/FlattenIntoArray');
+var Get = require('es-abstract/2023/Get');
+var ToIntegerOrInfinity = require('es-abstract/2023/ToIntegerOrInfinity');
+var ToLength = require('es-abstract/2023/ToLength');
+var ToObject = require('es-abstract/2023/ToObject');
 
 module.exports = function flat() {
 	var O = ToObject(this);

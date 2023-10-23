@@ -1,4 +1,5 @@
 var path = require('path');
+var fs = require('fs');
 var test = require('tape');
 var resolve = require('../');
 var async = require('../async');
@@ -539,14 +540,15 @@ test('absolute paths', function (t) {
     });
 });
 
-test('malformed package.json', function (t) {
+var malformedDir = path.join(__dirname, 'resolver/malformed_package_json');
+test('malformed package.json', { skip: !fs.existsSync(malformedDir) }, function (t) {
     /* eslint operator-linebreak: ["error", "before"], function-paren-newline: "off" */
     t.plan(
         (3 * 3) // 3 sets of 3 assertions in the final callback
         + 2 // 1 readPackage call with malformed package.json
     );
 
-    var basedir = path.join(__dirname, 'resolver/malformed_package_json');
+    var basedir = malformedDir;
     var expected = path.join(basedir, 'index.js');
 
     resolve('./index.js', { basedir: basedir }, function (err, res, pkg) {

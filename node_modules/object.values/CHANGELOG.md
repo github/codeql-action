@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.7](https://github.com/ljharb/Object.values/compare/v1.1.6...v1.1.7) - 2023-08-27
+
+### Commits
+
+- [Dev Deps] update `@es-shims/api`, `@ljharb/eslint-config`, `aud`, `tape` [`7a52cb5`](https://github.com/ljharb/Object.values/commit/7a52cb5bd457db370f7928ab411fa39c06c3a1ac)
+- [Deps] update `define-properties`, `es-abstract` [`4adc158`](https://github.com/ljharb/Object.values/commit/4adc15840a9521a952f4620d80ef657397119da9)
+
 ## [v1.1.6](https://github.com/ljharb/Object.values/compare/v1.1.5...v1.1.6) - 2022-11-06
 
 ### Commits

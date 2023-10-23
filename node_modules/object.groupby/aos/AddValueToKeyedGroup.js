@@ -2,7 +2,7 @@
 
 var callBound = require('call-bind/callBound');
 var GetIntrinsic = require('get-intrinsic');
-var SameValue = require('es-abstract/2022/SameValue');
+var SameValue = require('es-abstract/2023/SameValue');
 
 var $TypeError = GetIntrinsic('%TypeError%');
 

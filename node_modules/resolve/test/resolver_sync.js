@@ -8,6 +8,9 @@ var sync = require('../sync');
 var requireResolveSupportsPaths = require.resolve.length > 1
     && !(/^v12\.[012]\./).test(process.version); // broken in v12.0-12.2, see https://github.com/nodejs/node/issues/27794
 
+var requireResolveDefaultPathsBroken = (/^v8\.9\.|^v9\.[01]\.0|^v9\.2\./).test(process.version);
+// broken in node v8.9.x, v9.0, v9.1, v9.2.x. see https://github.com/nodejs/node/pull/17113
+
 test('`./sync` entry point', function (t) {
     t.equal(resolve.sync, sync, '`./sync` entry point is the same as `.sync` on `main`');
     t.end();
@@ -75,7 +78,7 @@ test('bar', function (t) {
         path.join(dir, 'bar/node_modules/foo/index.js'),
         'foo in bar'
     );
-    if (requireResolveSupportsPaths) {
+    if (!requireResolveDefaultPathsBroken && requireResolveSupportsPaths) {
         t.equal(
             resolve.sync('foo', { basedir: basedir }),
             require.resolve('foo', { paths: [basedir] }),
@@ -125,7 +128,7 @@ test('biz', function (t) {
         resolve.sync('tiv', { basedir: tivDir }),
         path.join(dir, 'tiv/index.js')
     );
-    if (requireResolveSupportsPaths) {
+    if (!requireResolveDefaultPathsBroken && requireResolveSupportsPaths) {
         t.equal(
             resolve.sync('tiv', { basedir: tivDir }),
             require.resolve('tiv', { paths: [tivDir] }),
@@ -138,7 +141,7 @@ test('biz', function (t) {
         resolve.sync('grux', { basedir: gruxDir }),
         path.join(dir, 'grux/index.js')
     );
-    if (requireResolveSupportsPaths) {
+    if (!requireResolveDefaultPathsBroken && requireResolveSupportsPaths) {
         t.equal(
             resolve.sync('grux', { basedir: gruxDir }),
             require.resolve('grux', { paths: [gruxDir] }),
@@ -667,10 +670,11 @@ test('absolute paths', function (t) {
     t.end();
 });
 
-test('malformed package.json', function (t) {
+var malformedDir = path.join(__dirname, 'resolver/malformed_package_json');
+test('malformed package.json', { skip: !fs.existsSync(malformedDir) }, function (t) {
     t.plan(5 + (requireResolveSupportsPaths ? 1 : 0));
 
-    var basedir = path.join(__dirname, 'resolver/malformed_package_json');
+    var basedir = malformedDir;
     var expected = path.join(basedir, 'index.js');
 
     t.equal(

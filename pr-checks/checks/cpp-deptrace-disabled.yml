@@ -1,0 +1,25 @@
+name: "Cpp: disabling autoinstalling dependencies"
+description: "Checks that running C/C++ autobuild with autoinstalling dependencies explicitly disabled works"
+operatingSystems: ["ubuntu", "macos"]
+env:
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+steps:
+  - name: Test setup
+    shell: bash
+    run: |
+      cp -a ../action/tests/cpp-autobuild autobuild-dir
+  - uses: ./../action/init
+    with:
+      languages: cpp
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/autobuild
+    with:
+      working-directory: autobuild-dir
+    env:
+      CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: false
+  - shell: bash
+    run: |
+      if ls /usr/bin/errno; then
+        echo "Did autoinstall errno, and it should not have"
+        exit 1
+      fi

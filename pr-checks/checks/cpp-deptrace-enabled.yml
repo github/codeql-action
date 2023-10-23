@@ -1,6 +1,7 @@
 name: "Cpp: enabling autoinstalling dependencies"
 description: "Checks that running C/C++ autobuild with autoinstalling dependencies works"
 operatingSystems: ["ubuntu", "macos"]
+versions: ["latest"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:

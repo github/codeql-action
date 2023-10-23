@@ -26,37 +26,9 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20220908
-        - os: macos-latest
-          version: stable-20220908
-        - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: stable-20230418
-        - os: macos-latest
-          version: stable-20230418
-        - os: ubuntu-latest
-          version: stable-v2.13.5
-        - os: macos-latest
-          version: stable-v2.13.5
-        - os: ubuntu-latest
-          version: stable-v2.14.6
-        - os: macos-latest
-          version: stable-v2.14.6
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
     name: 'Cpp: disabling autoinstalling dependencies'
     permissions:
       contents: read

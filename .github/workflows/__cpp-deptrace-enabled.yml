@@ -27,6 +27,10 @@ jobs:
         include:
         - os: ubuntu-latest
           version: latest
+        - os: ubuntu-latest
+          version: default
+        - os: ubuntu-latest
+          version: nightly-latest
     name: 'Cpp: enabling autoinstalling dependencies'
     permissions:
       contents: read

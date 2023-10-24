@@ -21,11 +21,11 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  cpp-deptrace-disabled:
+  cpp-deptrace-enabled-on-macos:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
+        - os: macos-latest
           version: latest
     name: 'Cpp: disabling autoinstalling dependencies'
     permissions:
@@ -62,11 +62,13 @@ jobs:
       with:
         working-directory: autobuild-dir
       env:
-        CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: false
+        CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
     - shell: bash
       run: |
-        if ls /usr/bin/errno; then
-          echo "Did autoinstall errno, and it should not have"
+        if ! ls /usr/bin/errno; then
+          echo "As expected, CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES is a no-op on macOS"
+        else
+          echo "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES should not have had any effect on macOS"
           exit 1
         fi
     env:

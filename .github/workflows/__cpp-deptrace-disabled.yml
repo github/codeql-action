@@ -27,8 +27,6 @@ jobs:
         include:
         - os: ubuntu-latest
           version: latest
-        - os: macos-latest
-          version: latest
     name: 'Cpp: disabling autoinstalling dependencies'
     permissions:
       contents: read

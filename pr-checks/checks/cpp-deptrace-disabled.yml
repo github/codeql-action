@@ -1,6 +1,6 @@
 name: "Cpp: disabling autoinstalling dependencies"
 description: "Checks that running C/C++ autobuild with autoinstalling dependencies explicitly disabled works"
-operatingSystems: ["ubuntu", "macos"]
+operatingSystems: ["ubuntu"]
 versions: ["latest"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"

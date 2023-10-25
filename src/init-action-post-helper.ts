@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getCodeQL } from "./codeql";
+import { CODEQL_VERSION_EXPORT_FAILED_SARIF, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -9,6 +9,7 @@ import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as uploadLib from "./upload-lib";
 import {
+  codeQlVersionAbove,
   getRequiredEnvParam,
   isInTestMode,
   parseMatrixInput,
@@ -54,8 +55,8 @@ async function maybeUploadFailedSarif(
     return { upload_failed_run_skipped_because: "CodeQL command not found" };
   }
   const codeql = await getCodeQL(config.codeQLCmd);
-  if (!(await features.getValue(Feature.UploadFailedSarifEnabled, codeql))) {
-    return { upload_failed_run_skipped_because: "Feature disabled" };
+  if (!(await codeQlVersionAbove(codeql, CODEQL_VERSION_EXPORT_FAILED_SARIF))) {
+    return { upload_failed_run_skipped_because: "Unsupported by CodeQL CLI" };
   }
   const workflow = await getWorkflow(logger);
   const jobName = getRequiredEnvParam("GITHUB_JOB");

@@ -52,7 +52,6 @@ export enum Feature {
   EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
 export const featureConfig: Record<
@@ -93,11 +92,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     minimumVersion: undefined,
     defaultValue: false,
-  },
-  [Feature.UploadFailedSarifEnabled]: {
-    envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
-    minimumVersion: "2.11.3",
-    defaultValue: true,
   },
   [Feature.DisablePythonDependencyInstallationEnabled]: {
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",

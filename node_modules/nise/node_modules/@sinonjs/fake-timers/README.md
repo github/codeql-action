@@ -255,6 +255,13 @@ Advances the clock to the the moment of the first scheduled timer, firing it.
 The `nextAsync()` will also break the event loop, allowing any scheduled promise
 callbacks to execute _before_ running the timers.
 
+### `clock.jump(time)`
+
+Advance the clock by jumping forward in time, firing callbacks at most once.
+`time` takes the same formats as [`clock.tick`](#clockticktime--await-clocktickasynctime).
+
+This can be used to simulate the JS engine (such as a browser) being put to sleep and resumed later, skipping intermediary timers.
+
 ### `clock.reset()`
 
 Removes all timers and ticks without firing them, and sets `now` to `config.now`

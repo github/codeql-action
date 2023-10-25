@@ -377,7 +377,7 @@ async function testFailedSarifUpload(
   } as uploadLib.UploadResult);
   const waitForProcessing = sinon.stub(uploadLib, "waitForProcessing");
 
-  const features = [Feature.UploadFailedSarifEnabled];
+  const features = [] as Feature[];
   if (exportDiagnosticsEnabled) {
     features.push(Feature.ExportDiagnosticsEnabled);
   }

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
+import * as semver from "semver";
 
 import {
   getActionVersion,
@@ -15,7 +16,6 @@ import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
   CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
-  CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
@@ -361,6 +361,11 @@ export const CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG = "2.14.2";
  * Versions 2.14.4+ of the CodeQL CLI support language aliasing.
  */
 export const CODEQL_VERSION_LANGUAGE_ALIASING = "2.14.4";
+
+/**
+ * Versions 2.15.0+ of the CodeQL CLI support new analysis summaries.
+ */
+export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
 
 /**
  * Set up CodeQL CLI access.
@@ -925,7 +930,16 @@ export async function getCodeQLForCmd(
       } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
-      if (await features.getValue(Feature.AnalysisSummaryV2Enabled, this)) {
+      if (
+        // Analysis summary v2 links to the status page, so check the GHES version we're running on
+        // supports the status page.
+        (config.gitHubVersion.type !== util.GitHubVariant.GHES ||
+          semver.gte(config.gitHubVersion.version, "3.9.0")) &&
+        (await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
+        ))
+      ) {
         codeqlArgs.push("--new-analysis-summary");
       } else if (
         await util.codeQlVersionAbove(this, CODEQL_VERSION_ANALYSIS_SUMMARY_V2)

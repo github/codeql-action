@@ -79,6 +79,7 @@ const globalObject = require("@sinonjs/commons").global;
  * @property {function(): Promise<number>} runToLastAsync
  * @property {function(): void} reset
  * @property {function(number | Date): void} setSystemTime
+ * @property {function(number): void} jump
  * @property {Performance} performance
  * @property {function(number[]): number[]} hrtime - process.hrtime (legacy)
  * @property {function(): void} uninstall Uninstall the clock.
@@ -1603,6 +1604,25 @@ function withGlobal(_global) {
                     timer.callAt += difference;
                 }
             }
+        };
+
+        /**
+         * @param {string|number} tickValue number of milliseconds or a human-readable value like "01:11:15"
+         * @returns {number} will return the new `now` value
+         */
+        clock.jump = function jump(tickValue) {
+            const msFloat =
+                typeof tickValue === "number"
+                    ? tickValue
+                    : parseTime(tickValue);
+            const ms = Math.floor(msFloat);
+
+            for (const timer of Object.values(clock.timers)) {
+                if (clock.now + ms > timer.callAt) {
+                    timer.callAt = clock.now + ms;
+                }
+            }
+            clock.tick(ms);
         };
 
         if (performancePresent) {

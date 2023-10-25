@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: 'PR Check - Cpp: disabling autoinstalling dependencies'
+name: 'PR Check - C/C++: autoinstalling dependencies is skipped (macOS)'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -27,7 +27,7 @@ jobs:
         include:
         - os: macos-latest
           version: nightly-latest
-    name: 'Cpp: disabling autoinstalling dependencies'
+    name: 'C/C++: autoinstalling dependencies is skipped (macOS)'
     permissions:
       contents: read
       security-events: write

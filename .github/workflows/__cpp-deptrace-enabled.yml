@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: 'PR Check - Cpp: enabling autoinstalling dependencies'
+name: 'PR Check - C/C++: autoinstalling dependencies (Linux)'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -31,7 +31,7 @@ jobs:
           version: default
         - os: ubuntu-latest
           version: nightly-latest
-    name: 'Cpp: enabling autoinstalling dependencies'
+    name: 'C/C++: autoinstalling dependencies (Linux)'
     permissions:
       contents: read
       security-events: write

@@ -20,7 +20,6 @@ import {
   Feature,
   FeatureEnablement,
   useCodeScanningConfigInCli,
-  CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
 } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -368,6 +367,11 @@ export const CODEQL_VERSION_LANGUAGE_ALIASING = "2.14.4";
 export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
 
 /**
+ * Versions 2.15.0+ of the CodeQL CLI support sub-language file coverage information.
+ */
+export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -620,9 +624,7 @@ export async function getCodeQLForCmd(
         extraArgs.push("--calculate-language-specific-baseline");
       }
 
-      if (
-        await features.getValue(Feature.SublanguageFileCoverageEnabled, this)
-      ) {
+      if (await isSublanguageFileCoverageEnabled(config, this)) {
         extraArgs.push("--sublanguage-file-coverage");
       } else if (
         await util.codeQlVersionAbove(
@@ -913,9 +915,7 @@ export async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--sarif-add-baseline-file-info");
       }
-      if (
-        await features.getValue(Feature.SublanguageFileCoverageEnabled, this)
-      ) {
+      if (await isSublanguageFileCoverageEnabled(config, this)) {
         codeqlArgs.push("--sublanguage-file-coverage");
       } else if (
         await util.codeQlVersionAbove(
@@ -1508,4 +1508,19 @@ async function getLanguageAliasingArguments(codeql: CodeQL): Promise<string[]> {
     return ["--extractor-include-aliases"];
   }
   return [];
+}
+
+async function isSublanguageFileCoverageEnabled(
+  config: Config,
+  codeql: CodeQL,
+) {
+  return (
+    // Sub-language file coverage is first supported in GHES 3.12.
+    (config.gitHubVersion.type !== util.GitHubVariant.GHES ||
+      semver.gte(config.gitHubVersion.version, "3.12.0")) &&
+    (await util.codeQlVersionAbove(
+      codeql,
+      CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
+    ))
+  );
 }

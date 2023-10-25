@@ -24,11 +24,6 @@ export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
  */
 export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.6";
 
-/**
- * Versions 2.15.0+ of the CodeQL CLI support sub-language file coverage information.
- */
-export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
-
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
   tagName: string;
@@ -57,7 +52,6 @@ export enum Feature {
   EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  SublanguageFileCoverageEnabled = "sublanguage_file_coverage_enabled",
   UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
@@ -98,11 +92,6 @@ export const featureConfig: Record<
   [Feature.QaTelemetryEnabled]: {
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     minimumVersion: undefined,
-    defaultValue: false,
-  },
-  [Feature.SublanguageFileCoverageEnabled]: {
-    envVar: "CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE",
-    minimumVersion: CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
     defaultValue: false,
   },
   [Feature.UploadFailedSarifEnabled]: {

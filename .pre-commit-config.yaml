@@ -1,0 +1,20 @@
+repos:
+  - repo: local
+    hooks:
+      - id: compile-ts
+        name: Compile typescript
+        files: \.[tj]s$
+        language: system
+        entry: npm run build
+        pass_filenames: false
+      - id: lint-ts
+        name: Lint typescript code
+        files: \.ts$
+        language: system
+        entry: npm run lint -- --fix
+      - id: pr-checks-sync
+        name: Synchronize PR check workflows
+        files: ^.github/workflows/__.*\.yml$|^pr-checks
+        language: system
+        entry: python3 pr-checks/sync.py
+        pass_filenames: false

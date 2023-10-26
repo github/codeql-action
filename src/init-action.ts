@@ -256,7 +256,9 @@ async function run() {
     toolsSource = initCodeQLResult.toolsSource;
 
     core.startGroup("Validating workflow");
-    await validateWorkflow(codeql, logger);
+    if ((await validateWorkflow(codeql, logger)) === undefined) {
+      logger.info("Detected no issues with the code scanning workflow.");
+    }
     core.endGroup();
 
     config = await initConfig(

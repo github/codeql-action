@@ -317,7 +317,7 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-09-12";
  */
 
 /**
- * Versions 2.13.3+ of the CodeQL CLI support exporting a failed SARIF file via
+ * Versions 2.11.3+ of the CodeQL CLI support exporting a failed SARIF file via
  * `codeql database export-diagnostics` or `codeql diagnostics export`.
  */
 export const CODEQL_VERSION_EXPORT_FAILED_SARIF = "2.11.3";

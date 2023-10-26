@@ -1,6 +1,8 @@
+#!/usr/bin/env python
+
 import ruamel.yaml
 from ruamel.yaml.scalarstring import FoldedScalarString
-import os
+import pathlib
 import textwrap
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
@@ -47,9 +49,11 @@ def writeHeader(checkStream):
 yaml = ruamel.yaml.YAML()
 yaml.Representer = NonAliasingRTRepresenter
 
+this_dir = pathlib.Path(__file__).resolve().parent
+
 allJobs = {}
-for file in os.listdir('checks'):
-    with open(f"checks/{file}", 'r') as checkStream:
+for file in (this_dir / 'checks').glob('*.yml'):
+    with open(file, 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
 
     matrix = []
@@ -126,9 +130,9 @@ for file in os.listdir('checks'):
     checkJob['env'] = checkJob.get('env', {})
     if 'CODEQL_ACTION_TEST_MODE' not in checkJob['env']:
         checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
-    checkName = file[:len(file) - 4]
+    checkName = file.stem
 
-    with open(f"../.github/workflows/__{checkName}.yml", 'w') as output_stream:
+    with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w') as output_stream:
         writeHeader(output_stream)
         yaml.dump({
             'name': f"PR Check - {checkSpecification['name']}",

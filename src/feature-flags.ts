@@ -19,10 +19,10 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
 
 /**
- * Versions 2.14.0+ of the CodeQL CLI support intra-layer parallelism (aka fine-grained parallelism) options, but we
- * limit to 2.14.6 onwards, since that's the version that has mitigations against OOM failures.
+ * Evaluator fine-grained parallelism (aka intra-layer parallelism) is only safe to enable in 2.15.1 onwards.
+ * (Some earlier versions recognize the command-line flag, but they contain a bug which makes it unsafe to use).
  */
-export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.6";
+export const CODEQL_VERSION_FINE_GRAINED_PARALLELISM = "2.15.1";
 
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
@@ -49,7 +49,7 @@ export enum Feature {
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
-  EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
+  EvaluatorFineGrainedParallelismEnabled = "evaluator_fine_grained_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
 }
@@ -78,9 +78,9 @@ export const featureConfig: Record<
     minimumVersion: "2.11.6",
     defaultValue: true,
   },
-  [Feature.EvaluatorIntraLayerParallelismEnabled]: {
-    envVar: "CODEQL_EVALUATOR_INTRA_LAYER_PARALLELISM",
-    minimumVersion: CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
+  [Feature.EvaluatorFineGrainedParallelismEnabled]: {
+    envVar: "CODEQL_EVALUATOR_FINE_GRAINED_PARALLELISM",
+    minimumVersion: CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
     defaultValue: false,
   },
   [Feature.ExportDiagnosticsEnabled]: {

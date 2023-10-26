@@ -255,7 +255,9 @@ async function run() {
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
 
+    core.startGroup("Validating workflow");
     await validateWorkflow(codeql, logger);
+    core.endGroup();
 
     config = await initConfig(
       getOptionalInput("languages"),

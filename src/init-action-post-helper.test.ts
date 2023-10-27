@@ -8,7 +8,7 @@ import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { createFeatures, setupTests } from "./testing-utils";
+import { createFeatures, makeVersionInfo, setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 import * as workflow from "./workflow";
@@ -362,6 +362,7 @@ async function testFailedSarifUpload(
 
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.0"));
   const databaseExportDiagnosticsStub = sinon.stub(
     codeqlObject,
     "databaseExportDiagnostics",
@@ -377,7 +378,7 @@ async function testFailedSarifUpload(
   } as uploadLib.UploadResult);
   const waitForProcessing = sinon.stub(uploadLib, "waitForProcessing");
 
-  const features = [Feature.UploadFailedSarifEnabled];
+  const features = [] as Feature[];
   if (exportDiagnosticsEnabled) {
     features.push(Feature.ExportDiagnosticsEnabled);
   }

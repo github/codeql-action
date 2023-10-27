@@ -19,20 +19,10 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
 
 /**
- * Versions 2.14.0+ of the CodeQL CLI support intra-layer parallelism (aka fine-grained parallelism) options, but we
- * limit to 2.14.6 onwards, since that's the version that has mitigations against OOM failures.
+ * Evaluator fine-grained parallelism (aka intra-layer parallelism) is only safe to enable in 2.15.1 onwards.
+ * (Some earlier versions recognize the command-line flag, but they contain a bug which makes it unsafe to use).
  */
-export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.6";
-
-/**
- * Versions 2.15.0+ of the CodeQL CLI support new analysis summaries.
- */
-export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
-
-/**
- * Versions 2.15.0+ of the CodeQL CLI support sub-language file coverage information.
- */
-export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
+export const CODEQL_VERSION_FINE_GRAINED_PARALLELISM = "2.15.1";
 
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
@@ -54,28 +44,20 @@ export interface FeatureEnablement {
  * Each value of this enum should end with `_enabled`.
  */
 export enum Feature {
-  AnalysisSummaryV2Enabled = "analysis_summary_v2_enabled",
   CliConfigFileEnabled = "cli_config_file_enabled",
   CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
-  EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
+  EvaluatorFineGrainedParallelismEnabled = "evaluator_fine_grained_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  SublanguageFileCoverageEnabled = "sublanguage_file_coverage_enabled",
-  UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
 export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
-  [Feature.AnalysisSummaryV2Enabled]: {
-    envVar: "CODEQL_ACTION_ANALYSIS_SUMMARY_V2",
-    minimumVersion: CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
-    defaultValue: false,
-  },
   [Feature.CodeqlJavaLombokEnabled]: {
     envVar: "CODEQL_JAVA_LOMBOK",
     minimumVersion: "2.14.0",
@@ -96,9 +78,9 @@ export const featureConfig: Record<
     minimumVersion: "2.11.6",
     defaultValue: true,
   },
-  [Feature.EvaluatorIntraLayerParallelismEnabled]: {
-    envVar: "CODEQL_EVALUATOR_INTRA_LAYER_PARALLELISM",
-    minimumVersion: CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
+  [Feature.EvaluatorFineGrainedParallelismEnabled]: {
+    envVar: "CODEQL_EVALUATOR_FINE_GRAINED_PARALLELISM",
+    minimumVersion: CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
     defaultValue: false,
   },
   [Feature.ExportDiagnosticsEnabled]: {
@@ -110,16 +92,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     minimumVersion: undefined,
     defaultValue: false,
-  },
-  [Feature.SublanguageFileCoverageEnabled]: {
-    envVar: "CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE",
-    minimumVersion: CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
-    defaultValue: false,
-  },
-  [Feature.UploadFailedSarifEnabled]: {
-    envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
-    minimumVersion: "2.11.3",
-    defaultValue: true,
   },
   [Feature.DisablePythonDependencyInstallationEnabled]: {
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",

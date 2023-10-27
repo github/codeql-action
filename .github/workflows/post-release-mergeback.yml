@@ -36,7 +36,7 @@ jobs:
         run: echo "${GITHUB_CONTEXT}"
 
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
 
       - name: Update git config
         run: |

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
+import * as semver from "semver";
 
 import {
   getActionVersion,
@@ -15,12 +16,10 @@ import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
   CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
-  CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
   useCodeScanningConfigInCli,
-  CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
 } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -317,6 +316,12 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-09-12";
  * flag is older than the oldest supported version above, it may be removed.
  */
 
+/**
+ * Versions 2.11.3+ of the CodeQL CLI support exporting a failed SARIF file via
+ * `codeql database export-diagnostics` or `codeql diagnostics export`.
+ */
+export const CODEQL_VERSION_EXPORT_FAILED_SARIF = "2.11.3";
+
 const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
 
 /**
@@ -361,6 +366,16 @@ export const CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG = "2.14.2";
  * Versions 2.14.4+ of the CodeQL CLI support language aliasing.
  */
 export const CODEQL_VERSION_LANGUAGE_ALIASING = "2.14.4";
+
+/**
+ * Versions 2.15.0+ of the CodeQL CLI support new analysis summaries.
+ */
+export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
+
+/**
+ * Versions 2.15.0+ of the CodeQL CLI support sub-language file coverage information.
+ */
+export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
 
 /**
  * Set up CodeQL CLI access.
@@ -615,9 +630,7 @@ export async function getCodeQLForCmd(
         extraArgs.push("--calculate-language-specific-baseline");
       }
 
-      if (
-        await features.getValue(Feature.SublanguageFileCoverageEnabled, this)
-      ) {
+      if (await isSublanguageFileCoverageEnabled(config, this)) {
         extraArgs.push("--sublanguage-file-coverage");
       } else if (
         await util.codeQlVersionAbove(
@@ -908,9 +921,7 @@ export async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--sarif-add-baseline-file-info");
       }
-      if (
-        await features.getValue(Feature.SublanguageFileCoverageEnabled, this)
-      ) {
+      if (await isSublanguageFileCoverageEnabled(config, this)) {
         codeqlArgs.push("--sublanguage-file-coverage");
       } else if (
         await util.codeQlVersionAbove(
@@ -925,7 +936,16 @@ export async function getCodeQLForCmd(
       } else if (await util.codeQlVersionAbove(this, "2.12.4")) {
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
-      if (await features.getValue(Feature.AnalysisSummaryV2Enabled, this)) {
+      if (
+        // Analysis summary v2 links to the status page, so check the GHES version we're running on
+        // supports the status page.
+        (config.gitHubVersion.type !== util.GitHubVariant.GHES ||
+          semver.gte(config.gitHubVersion.version, "3.9.0")) &&
+        (await util.codeQlVersionAbove(
+          this,
+          CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
+        ))
+      ) {
         codeqlArgs.push("--new-analysis-summary");
       } else if (
         await util.codeQlVersionAbove(this, CODEQL_VERSION_ANALYSIS_SUMMARY_V2)
@@ -1494,4 +1514,19 @@ async function getLanguageAliasingArguments(codeql: CodeQL): Promise<string[]> {
     return ["--extractor-include-aliases"];
   }
   return [];
+}
+
+async function isSublanguageFileCoverageEnabled(
+  config: Config,
+  codeql: CodeQL,
+) {
+  return (
+    // Sub-language file coverage is first supported in GHES 3.12.
+    (config.gitHubVersion.type !== util.GitHubVariant.GHES ||
+      semver.gte(config.gitHubVersion.version, "3.12.0")) &&
+    (await util.codeQlVersionAbove(
+      codeql,
+      CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
+    ))
+  );
 }

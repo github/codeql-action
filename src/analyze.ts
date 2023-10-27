@@ -7,7 +7,11 @@ import del from "del";
 import * as yaml from "js-yaml";
 
 import * as analysisPaths from "./analysis-paths";
-import { CodeQL, getCodeQL } from "./codeql";
+import {
+  CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
+  CodeQL,
+  getCodeQL,
+} from "./codeql";
 import * as configUtils from "./config-utils";
 import {
   FeatureEnablement,
@@ -389,7 +393,10 @@ export async function runQueries(
       }
 
       if (
-        !(await features.getValue(Feature.AnalysisSummaryV2Enabled, codeql))
+        !(await util.codeQlVersionAbove(
+          codeql,
+          CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
+        ))
       ) {
         await runPrintLinesOfCode(language);
       }

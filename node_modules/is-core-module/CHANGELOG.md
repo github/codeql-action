@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.13.1](https://github.com/inspect-js/is-core-module/compare/v2.13.0...v2.13.1) - 2023-10-20
+
+### Commits
+
+- [Refactor] use `hasown` instead of `has` [`0e52096`](https://github.com/inspect-js/is-core-module/commit/0e520968b0a725276b67420ab4b877486b243ae0)
+- [Dev Deps] update `mock-property`, `tape` [`8736b35`](https://github.com/inspect-js/is-core-module/commit/8736b35464d0f297b55da2c6b30deee04b8303c5)
+
 ## [v2.13.0](https://github.com/inspect-js/is-core-module/compare/v2.12.1...v2.13.0) - 2023-08-05
 
 ### Commits

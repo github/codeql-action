@@ -81,7 +81,7 @@ export const featureConfig: Record<
   [Feature.EvaluatorFineGrainedParallelismEnabled]: {
     envVar: "CODEQL_EVALUATOR_FINE_GRAINED_PARALLELISM",
     minimumVersion: CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
-    defaultValue: true,
+    defaultValue: true, // test
   },
   [Feature.ExportDiagnosticsEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",

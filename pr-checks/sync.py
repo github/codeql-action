@@ -75,6 +75,14 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
     steps = [
         {
+            'name': 'Setup Python on MacOS',
+            'uses': 'actions/setup-python@v2',
+            'if': 'matrix.os == \'macos-latest\'',
+            'with': {
+                'python-version': '3.11'
+            }
+        },
+        {
             'name': 'Check out repository',
             'uses': 'actions/checkout@v4'
         },

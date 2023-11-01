@@ -36,6 +36,12 @@ jobs:
       PYTHON_VERSION: ${{ matrix.python_version }}
 
     steps:
+    - name: Setup Python on MacOS
+      uses: actions/setup-python@v2
+      if: matrix.os == 'macos-latest'
+      with:
+        python-version: '3.11'
+
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v4
 

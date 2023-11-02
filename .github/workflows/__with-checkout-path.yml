@@ -134,16 +134,8 @@ jobs:
         source-root: x/y/z/some-path/tests/multi-language-repo
         debug: true
 
-    - name: Build code (non-windows)
+    - name: Build code
       shell: bash
-      if: ${{ runner.os != 'Windows' }}
-      working-directory: x/y/z/some-path/tests/multi-language-repo
-      run: |
-        $CODEQL_RUNNER ./build.sh
-
-    - name: Build code (windows)
-      shell: bash
-      if: ${{ runner.os == 'Windows' }}
       working-directory: x/y/z/some-path/tests/multi-language-repo
       run: |
         ./build.sh

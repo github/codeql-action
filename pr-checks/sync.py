@@ -76,7 +76,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
     steps = [
         {
             'name': 'Setup Python on MacOS',
-            'uses': 'actions/setup-python@v2',
+            'uses': 'actions/setup-python@v4',
             # Ensure that this is serialized as a folded (`>`) string to preserve the readability
             # of the generated workflow.
             'if': FoldedScalarString(textwrap.dedent('''

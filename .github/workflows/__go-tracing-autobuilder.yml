@@ -65,7 +65,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Setup Python on MacOS
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       if: >-
         matrix.os == 'macos-latest' && (
 

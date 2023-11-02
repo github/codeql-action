@@ -75,6 +75,23 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
     steps = [
         {
+            'name': 'Setup Python on MacOS',
+            'uses': 'actions/setup-python@v4',
+            # Ensure that this is serialized as a folded (`>`) string to preserve the readability
+            # of the generated workflow.
+            'if': FoldedScalarString(textwrap.dedent('''
+                    matrix.os == 'macos-latest' && (
+                    matrix.version == 'stable-20220908' ||
+                    matrix.version == 'stable-20221211' ||
+                    matrix.version == 'stable-20230418' ||
+                    matrix.version == 'stable-v2.13.5' ||
+                    matrix.version == 'stable-v2.14.6')
+            ''').strip()),
+            'with': {
+                'python-version': '3.11'
+            }
+        },
+        {
             'name': 'Check out repository',
             'uses': 'actions/checkout@v4'
         },

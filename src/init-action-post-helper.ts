@@ -1,12 +1,13 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
+import { getApiClient } from "./api-client";
 import { CODEQL_VERSION_EXPORT_FAILED_SARIF, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
-import { RepositoryNwo } from "./repository";
+import { RepositoryNwo, parseRepositoryNwo } from "./repository";
 import * as uploadLib from "./upload-lib";
 import {
   codeQlVersionAbove,
@@ -29,6 +30,9 @@ export interface UploadFailedSarifResult extends uploadLib.UploadStatusReport {
   upload_failed_run_stack_trace?: string;
   /** Reason why we did not upload a SARIF payload with `executionSuccessful: false`. */
   upload_failed_run_skipped_because?: string;
+
+  /** The internal ID of SARIF analysis. */
+  sarifID?: string;
 }
 
 function createFailedUploadFailedSarifResult(
@@ -107,7 +111,9 @@ async function maybeUploadFailedSarif(
     logger,
     { isUnsuccessfulExecution: true },
   );
-  return uploadResult?.statusReport ?? {};
+  return uploadResult
+    ? { ...uploadResult.statusReport, sarifID: uploadResult.sarifID }
+    : {};
 }
 
 export async function tryUploadSarifIfRunFailed(
@@ -180,6 +186,10 @@ export async function run(
     );
   }
 
+  if (process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true") {
+    await removeUploadedSarif(uploadFailedSarifResult);
+  }
+
   // Upload appropriate Actions artifacts for debugging
   if (config.debugMode) {
     core.info(
@@ -192,4 +202,75 @@ export async function run(
   }
 
   return uploadFailedSarifResult;
+}
+
+async function removeUploadedSarif(
+  uploadFailedSarifResult: UploadFailedSarifResult,
+) {
+  const sarifID = uploadFailedSarifResult.sarifID;
+  if (sarifID) {
+    core.startGroup("Deleting failed SARIF upload");
+    core.info(
+      `Uploaded failed SARIF file with ID ${sarifID}. Because this is a test, the analysis associated with it will now be deleted.`,
+    );
+    const client = getApiClient();
+
+    try {
+      const repositoryNwo = parseRepositoryNwo(
+        getRequiredEnvParam("GITHUB_REPOSITORY"),
+      );
+
+      // Get the analysis associated with the uploaded sarif
+      const analysisInfo = await client.request(
+        "GET /repos/:owner/:repo/code-scanning/analyses?sarif_id=:sarif_id",
+        {
+          owner: repositoryNwo.owner,
+          repo: repositoryNwo.repo,
+          sarif_id: sarifID,
+        },
+      );
+
+      // Delete the analysis.
+      if (analysisInfo.data.length === 1) {
+        const analysis = analysisInfo.data[0];
+        core.info(`Deleting analysis ${analysis.id}`);
+        try {
+          await client.request(
+            "DELETE /repos/:owner/:repo/code-scanning/analyses/:analysis_id?confirm_delete",
+            {
+              owner: repositoryNwo.owner,
+              repo: repositoryNwo.repo,
+              analysis_id: analysis.id,
+            },
+          );
+        } catch (e) {
+          if (
+            e instanceof Error &&
+            e.message.includes("No analysis found for analysis ID")
+          ) {
+            core.info(
+              `Analysis ${analysis.id} does not exist. It was likely already deleted.`,
+            );
+          } else {
+            throw e;
+          }
+        }
+      } else {
+        core.warning(
+          `Expected to find exactly one analysis with sarif_id ${sarifID}. Found ${analysisInfo.data.length}.`,
+        );
+      }
+      core.endGroup();
+    } catch (e) {
+      // Fail the test if we can't delete the analysis.
+      core.error("Failed to delete uploaded SARIF analysis.");
+      throw e;
+    } finally {
+      core.endGroup();
+    }
+  } else {
+    core.warning(
+      "Could not delete uploaded SARIF analysis because no sarifID was returned.",
+    );
+  }
 }

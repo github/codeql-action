@@ -49,6 +49,17 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: ^1.13.1
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v4
+        if: |
+          matrix.os == 'macos-latest' && (
+          matrix.version == 'stable-20220908' ||
+          matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-v2.13.5' ||
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
       - uses: ./../action/init
         id: init
         with:
@@ -63,7 +74,7 @@ jobs:
         shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
-        id: analysis  
+        id: analysis
   download-and-check-artifacts:
     name: Download and check debug artifacts
     needs: upload-artifacts

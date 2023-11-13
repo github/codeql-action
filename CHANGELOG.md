@@ -4,6 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+- Customers running Python analysis on macOS using version 2.14.6 or earlier of the CodeQL CLI should upgrade to CodeQL CLI version 2.15.0 or later. If you do not wish to upgrade the CodeQL CLI, ensure that you are using Python version 3.11 or earlier, as CodeQL version 2.14.6 and earlier do not support Python 3.12. You can achieve this by adding a [`setup-python`](https://github.com/actions/setup-python) step to your code scanning workflow before the step that invokes `github/codeql-action/init`.
 - Update default CodeQL bundle version to 2.15.2. [#1978](https://github.com/github/codeql-action/pull/1978)
 
 ## 2.22.5 - 27 Oct 2023
@@ -16,7 +17,7 @@ No user facing changes.
 - Users will begin to see warnings on Node.js 16 deprecation in their Actions logs on code scanning runs starting October 23, 2023.
   - All code scanning workflows should continue to succeed regardless of the warning.
   - The team at GitHub maintaining the CodeQL Action is aware of the deprecation timeline and actively working on creating another version of the CodeQL Action, v3, that will bump us to Node 20.
-  - For more information, and to communicate with the maintaining team, please use [this issue](https://github.com/github/codeql-action/issues/1959). 
+  - For more information, and to communicate with the maintaining team, please use [this issue](https://github.com/github/codeql-action/issues/1959).
 
 ## 2.22.3 - 13 Oct 2023
 

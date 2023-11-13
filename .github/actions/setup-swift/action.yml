@@ -24,9 +24,11 @@ runs:
             VERSION="5.7.0"
           elif [ $VERSION = "5.8" ]; then
             VERSION="5.8.0"
-          # setup-swift does not yet support v5.8.1 Remove this when it does.
-          elif [ $VERSION = "5.8.1" ]; then
-            VERSION="5.8.0"
+          elif [ $VERSION = "5.9" ]; then
+            VERSION="5.9.0"
+          # setup-swift does not yet support v5.9.1 Remove this when it does.
+          elif [ $VERSION = "5.9.1" ]; then
+            VERSION="5.9.0"
           fi 
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT

@@ -54,7 +54,7 @@
   ],
   "devDependencies": {
     "@ava/typescript": "4.1.0",
-    "@types/adm-zip": "^0.5.3",
+    "@types/adm-zip": "^0.5.4",
     "@types/get-folder-size": "^2.0.0",
     "@types/js-yaml": "^4.0.8",
     "@types/node": "16.11.22",

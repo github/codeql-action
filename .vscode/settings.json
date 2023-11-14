@@ -12,5 +12,8 @@
   "git.ignoreLimitWarning": true,
   // Use the vendored TypeScript version to have a consistent development experience across
   // machines.
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
 }

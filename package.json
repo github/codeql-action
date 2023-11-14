@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.22.5",
+  "version": "2.22.6",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -30,7 +30,7 @@
     "@actions/tool-cache": "^2.0.1",
     "@chrisgavin/safe-which": "^1.0.2",
     "@octokit/plugin-retry": "^5.0.2",
-    "@octokit/types": "^12.0.0",
+    "@octokit/types": "^12.1.1",
     "@schemastore/package": "0.0.10",
     "@types/uuid": "^9.0.6",
     "adm-zip": "^0.5.10",
@@ -59,9 +59,9 @@
     "@types/js-yaml": "^4.0.8",
     "@types/node": "16.11.22",
     "@types/semver": "^7.5.4",
-    "@types/sinon": "^10.0.19",
-    "@typescript-eslint/eslint-plugin": "^6.9.0",
-    "@typescript-eslint/parser": "^6.9.0",
+    "@types/sinon": "^10.0.20",
+    "@typescript-eslint/eslint-plugin": "^6.9.1",
+    "@typescript-eslint/parser": "^6.9.1",
     "ava": "^5.3.1",
     "eslint": "^8.52.0",
     "eslint-import-resolver-typescript": "^3.6.1",
@@ -70,7 +70,7 @@
     "eslint-plugin-import": "^2.29.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "micromatch": "4.0.5",
-    "nock": "^13.3.6",
+    "nock": "^13.3.7",
     "removeNPMAbsolutePaths": "3.0.1",
     "sinon": "^17.0.0",
     "typescript": "^5.2.2"

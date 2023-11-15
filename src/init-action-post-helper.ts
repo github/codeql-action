@@ -9,11 +9,11 @@ import { RepositoryNwo, parseRepositoryNwo } from "./repository";
 import * as uploadLib from "./upload-lib";
 import {
   codeQlVersionAbove,
+  delay,
   getErrorMessage,
   getRequiredEnvParam,
   isInTestMode,
   parseMatrixInput,
-  wait,
   wrapError,
 } from "./util";
 import {
@@ -222,7 +222,7 @@ async function removeUploadedSarif(
       );
 
       // Wait to make sure the analysis is ready for download before requesting it.
-      await wait(5000);
+      await delay(5000);
 
       // Get the analysis associated with the uploaded sarif
       const analysisInfo = await client.request(

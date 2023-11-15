@@ -624,8 +624,9 @@ export async function bundleDb(
  */
 export async function delay(
   milliseconds: number,
-  { allowProcessExit }: { allowProcessExit: boolean },
+  opts?: { allowProcessExit: boolean },
 ) {
+  const { allowProcessExit } = opts || {};
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, milliseconds);
     if (allowProcessExit) {
@@ -911,10 +912,6 @@ export function wrapError(error: unknown): Error {
 
 export function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.toString() : String(error);
-}
-
-export async function wait(ms: number) {
-  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function prettyPrintPack(pack: Pack) {

@@ -909,6 +909,14 @@ export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.toString() : String(error);
+}
+
+export async function wait(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function prettyPrintPack(pack: Pack) {
   return `${pack.name}${pack.version ? `@${pack.version}` : ""}${
     pack.path ? `:${pack.path}` : ""

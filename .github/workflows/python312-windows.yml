@@ -38,4 +38,5 @@ jobs:
     - name: Analyze
       uses: ./../action/analyze
       with:
+        upload: false
         upload-database: false

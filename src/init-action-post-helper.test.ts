@@ -391,6 +391,7 @@ async function testFailedSarifUpload(
   );
   if (expectUpload) {
     t.deepEqual(result, {
+      sarifID: "42",
       raw_upload_size_bytes: 20,
       zipped_upload_size_bytes: 10,
     });

@@ -624,8 +624,9 @@ export async function bundleDb(
  */
 export async function delay(
   milliseconds: number,
-  { allowProcessExit }: { allowProcessExit: boolean },
+  opts?: { allowProcessExit: boolean },
 ) {
+  const { allowProcessExit } = opts || {};
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, milliseconds);
     if (allowProcessExit) {
@@ -907,6 +908,10 @@ export function fixInvalidNotificationsInFile(
 
 export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
+}
+
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.toString() : String(error);
 }
 
 export function prettyPrintPack(pack: Pack) {

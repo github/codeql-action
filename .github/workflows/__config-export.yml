@@ -92,7 +92,7 @@ jobs:
         path: ${{ runner.temp }}/results/javascript.sarif
         retention-days: 7
     - name: Check config properties appear in SARIF
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       env:
         SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
       with:

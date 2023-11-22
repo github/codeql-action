@@ -16,7 +16,7 @@ npm install @eslint/eslintrc --save-dev
 yarn add @eslint/eslintrc -D
 ```
 
-## Usage
+## Usage (ESM)
 
 The primary class in this package is `FlatCompat`, which is a utility to translate ESLintRC-style configs into flat configs. Here's how you use it inside of your `eslint.config.js` file:
 
@@ -38,6 +38,50 @@ const compat = new FlatCompat({
 });
 
 export default [
+
+    // mimic ESLintRC-style extends
+    ...compat.extends("standard", "example"),
+
+    // mimic environments
+    ...compat.env({
+        es2020: true,
+        node: true
+    }),
+
+    // mimic plugins
+    ...compat.plugins("airbnb", "react"),
+
+    // translate an entire config
+    ...compat.config({
+        plugins: ["airbnb", "react"],
+        extends: "standard",
+        env: {
+            es2020: true,
+            node: true
+        },
+        rules: {
+            semi: "error"
+        }
+    })
+];
+```
+
+## Usage (CommonJS)
+
+Using `FlatCompat` in CommonJS files is similar to ESM, but you'll use `require()` and `module.exports` instead of `import` and `export`. Here's how you use it inside of your `eslint.config.js` CommonJS file:
+
+```js
+const { FlatCompat } = require("@eslint/eslintrc");
+const js = require("@eslint/js");
+
+const compat = new FlatCompat({
+    baseDirectory: __dirname,                  // optional; default: process.cwd()
+    resolvePluginsRelativeTo: __dirname,       // optional
+    recommendedConfig: js.configs.recommended, // optional
+    allConfig: js.configs.all,                 // optional
+});
+
+module.exports = [
 
     // mimic ESLintRC-style extends
     ...compat.extends("standard", "example"),

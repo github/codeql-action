@@ -1435,6 +1435,7 @@ interface RTCInboundRtpStreamStats extends RTCReceivedRtpStreamStats {
     keyFramesDecoded?: number;
     kind: string;
     lastPacketReceivedTimestamp?: DOMHighResTimeStamp;
+    mid?: string;
     nackCount?: number;
     packetsDiscarded?: number;
     pliCount?: number;
@@ -1449,6 +1450,7 @@ interface RTCInboundRtpStreamStats extends RTCReceivedRtpStreamStats {
     totalSamplesDuration?: number;
     totalSamplesReceived?: number;
     totalSquaredInterFrameDelay?: number;
+    trackIdentifier: string;
 }
 
 interface RTCLocalSessionDescriptionInit {
@@ -21843,7 +21845,9 @@ interface SubtleCrypto {
     /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/SubtleCrypto/exportKey) */
     exportKey(format: "jwk", key: CryptoKey): Promise<JsonWebKey>;
     exportKey(format: Exclude<KeyFormat, "jwk">, key: CryptoKey): Promise<ArrayBuffer>;
+    exportKey(format: KeyFormat, key: CryptoKey): Promise<ArrayBuffer | JsonWebKey>;
     /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/SubtleCrypto/generateKey) */
+    generateKey(algorithm: "Ed25519", extractable: boolean, keyUsages: ReadonlyArray<"sign" | "verify">): Promise<CryptoKeyPair>;
     generateKey(algorithm: RsaHashedKeyGenParams | EcKeyGenParams, extractable: boolean, keyUsages: ReadonlyArray<KeyUsage>): Promise<CryptoKeyPair>;
     generateKey(algorithm: AesKeyGenParams | HmacKeyGenParams | Pbkdf2Params, extractable: boolean, keyUsages: ReadonlyArray<KeyUsage>): Promise<CryptoKey>;
     generateKey(algorithm: AlgorithmIdentifier, extractable: boolean, keyUsages: KeyUsage[]): Promise<CryptoKeyPair | CryptoKey>;

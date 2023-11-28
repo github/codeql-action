@@ -69,9 +69,14 @@ inputs:
     required: true
     default: "true"
   token:
+    description: "The GitHub token to use for communicating with the GitHub API."
     default: ${{ github.token }}
   matrix:
+    description: "The job matrix, applicable. Do not modify this input."
     default: ${{ toJson(matrix) }}
+  steps:
+    description: "The job steps. Do not modify this input."
+    default: ${{ toJson(steps) }}
   expect-error:
     description: "[Internal] It is an error to use this input outside of integration testing of the codeql-action."
     required: false

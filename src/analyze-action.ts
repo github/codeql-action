@@ -208,6 +208,9 @@ async function run() {
       );
     }
 
+    // Log steps input for debugging
+    logger.info(`Steps input: ${actionsUtil.getRequiredInput("steps")}`);
+
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
     const threads = util.getThreadsFlag(

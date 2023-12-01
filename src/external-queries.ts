@@ -6,6 +6,7 @@ import * as safeWhich from "@chrisgavin/safe-which";
 
 import { GitHubApiExternalRepoDetails } from "./api-client";
 import { Logger } from "./logging";
+import { UserError } from "./util";
 
 /**
  * Check out repository at the given ref, and return the directory of the checkout.
@@ -23,7 +24,7 @@ export async function checkoutExternalRepository(
 
   if (!checkoutLocation.startsWith(tempDir)) {
     // this still permits locations that mess with sibling repositories in `tempDir`, but that is acceptable
-    throw new Error(
+    throw new UserError(
       `'${repository}@${ref}' is not a valid repository and reference.`,
     );
   }

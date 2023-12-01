@@ -418,7 +418,7 @@ export async function setupCodeQL(
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
     } else if (process.platform !== "linux" && process.platform !== "darwin") {
-      throw new Error(`Unsupported platform: ${process.platform}`);
+      throw new util.UserError(`Unsupported platform: ${process.platform}`);
     }
 
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
@@ -1150,7 +1150,7 @@ export async function getCodeQLForCmd(
     checkVersion &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))
   ) {
-    throw new Error(
+    throw new util.UserError(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
         (await codeql.getVersion()).version
       }`,

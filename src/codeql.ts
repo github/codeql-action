@@ -692,24 +692,13 @@ export async function getCodeQLForCmd(
       await runTool(autobuildCmd);
     },
     async extractScannedLanguage(config: Config, language: Language) {
-      const databasePath = util.getCodeQLDatabasePath(config, language);
-
-      // Set trace command
-      const ext = process.platform === "win32" ? ".cmd" : ".sh";
-      const traceCommand = path.resolve(
-        await this.resolveExtractor(language),
-        "tools",
-        `autobuild${ext}`,
-      );
-      // Run trace command
       await runTool(cmd, [
         "database",
         "trace-command",
+        "--index-traceless-dbs",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
-        databasePath,
-        "--",
-        traceCommand,
+        util.getCodeQLDatabasePath(config, language),
       ]);
     },
     async finalizeDatabase(

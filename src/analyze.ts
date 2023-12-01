@@ -25,6 +25,7 @@ import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
 import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
+import { UserError } from "./util";
 
 export class CodeQLAnalysisError extends Error {
   queriesStatusReport: QueriesStatusReport;
@@ -297,7 +298,7 @@ export async function runQueries(
           !hasCustomQueries &&
           !hasPackWithCustomQueries
         ) {
-          throw new Error(
+          throw new UserError(
             `Unable to analyze ${language} as no queries were selected for this language`,
           );
         }
@@ -614,7 +615,7 @@ export function validateQueryFilters(queryFilters?: configUtils.QueryFilter[]) {
   }
 
   if (!Array.isArray(queryFilters)) {
-    throw new Error(
+    throw new UserError(
       `Query filters must be an array of "include" or "exclude" entries. Found ${typeof queryFilters}`,
     );
   }
@@ -637,7 +638,7 @@ export function validateQueryFilters(queryFilters?: configUtils.QueryFilter[]) {
   }
 
   if (errors.length) {
-    throw new Error(`Invalid query filter.\n${errors.join("\n")}`);
+    throw new UserError(`Invalid query filter.\n${errors.join("\n")}`);
   }
 
   return queryFilters;

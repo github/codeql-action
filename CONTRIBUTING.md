@@ -101,7 +101,14 @@ We typically deprecate a version of CodeQL when the GitHub Enterprise Server (GH
 
 ## Deprecating a CodeQL-Action version (write access required)
 
-TODO: fill this section in!
+When necessary we maintain multiple versions of the CodeQL action, for example to support older version of NodeJS as required by GHES versions that are still supported. The automated release process opens backport PRs to update older versions once the primary release is merged. Deprecation of older versions of the action will generally happen once a particular older GHES version is no longer supported, and hence we can stop maintainin the action for a particular NodeJS version.
+
+The backport process is controlled by setting the minimum version number of the action that is still supported, defined at the in the [release-branches](.github/actions/release-branches/release-branches.py) action. To stop udpating an older version of the action:
+
+1. Notify any users who are still pinned to the `vN` tag of the deprecated version of the action.
+   - Add a changelog note announcing the deprecation.
+2. Bump the `OLDEST_SUPPORTED_MAJOR_VERSION` in [release-branches.py](.github/actions/release-branches/release-branches.py)
+3. Merge this change to main and the next release will not backport changes to the deprecated release version.
 
 ## Resources
 

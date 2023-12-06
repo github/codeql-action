@@ -317,7 +317,7 @@ def main():
     subprocess.check_output(['npm', 'version', version, '--no-git-tag-version'])
     run_git('add', 'package.json', 'package-lock.json')
 
-    # Migrate the changelog notes from v2 version numbers to v1 version numbers
+    # Migrate the changelog notes from vLatest version numbers to vOlder version numbers
     print(f'Migrating changelog notes from v{source_branch_major_version} to v{target_branch_major_version}')
     subprocess.check_output(['sed', '-i', f's/^## {source_branch_major_version}\./## {target_branch_major_version}./g', 'CHANGELOG.md'])
 

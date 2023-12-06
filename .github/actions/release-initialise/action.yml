@@ -1,5 +1,5 @@
 name: 'Prepare release job'
-description: 'Executed preparatory steps before update a release branch'
+description: 'Prepare for updating a release branch'
 
 runs:
   using: "composite"

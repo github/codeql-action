@@ -1,5 +1,5 @@
 # This workflow runs after a merge to any release branch of the action. It:
-# 1. Tags the merge commit on the release branch that represents the new release with n `vN.x.y`
+# 1. Tags the merge commit on the release branch that represents the new release with an `vN.x.y`
 #    tag
 # 2. Updates the `vN` tag to refer to this merge commit.
 # 3. Iff vN == vLatest, merges any changes from the release back into the main branch.

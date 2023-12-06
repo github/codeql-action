@@ -97,13 +97,13 @@ def open_pr(
   if not is_primary_release:
     body.append(' - [ ] Remove and re-add the "Update dependencies" label to the PR to trigger just this workflow.')
     body.append(' - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.')
-    body.append(' - [ ] Mark the PR as ready for review to trigger the full set of PR checks.')
 
+  body.append(' - [ ] Mark the PR as ready for review to trigger the full set of PR checks.')
   body.append(' - [ ] Approve and merge this PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.')
 
   if is_primary_release:
     body.append(' - [ ] Merge the mergeback PR that will automatically be created once this PR is merged.')
-    body.append(' - [ ] Merge the v1 release PR that will automatically be created once this PR is merged.')
+    body.append(' - [ ] Merge all backport PRs to older release branches, that will automatically be created once this PR is merged.')
 
   title = f'Merge {source_branch} into {target_branch}'
   labels = ['Update dependencies'] if not is_primary_release else []
@@ -300,7 +300,6 @@ def main():
 
       # Also revert the "Update checked-in dependencies" commit created by Actions.
       update_dependencies_commit = run_git('log', '--grep', '^Update checked-in dependencies', '--format=%H').split()[0]
-      # TODO: why is this failing for the v2 branch currently...?
       print(f'  Reverting {update_dependencies_commit}')
       run_git('revert', update_dependencies_commit, '--no-edit')
 
@@ -326,7 +325,7 @@ def main():
 
     # Remove changelog notes from all versions that do not apply to the vOlder branch
     print(f'Removing changelog notes that do not apply to v{target_branch_major_version}')
-    for v in range(int(target_branch_major_version)+1, int(source_branch_major_version)+1):
+    for v in range(int(source_branch_major_version), int(target_branch_major_version), -1):
       print(f'Removing changelog notes that are tagged [v{v}+ only\]')
       subprocess.check_output(['sed', '-i', f'/^- \[v{v}+ only\]/d', 'CHANGELOG.md'])
 

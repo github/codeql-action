@@ -1,5 +1,6 @@
 import argparse
-import os, json
+import json
+import os
 import subprocess
 
 # Name of the remote

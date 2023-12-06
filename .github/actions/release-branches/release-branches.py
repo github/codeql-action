@@ -8,16 +8,6 @@ ORIGIN = 'origin'
 
 OLDEST_SUPPORTED_MAJOR_VERSION = 2
 
-# Runs git with the given args and returns the stdout.
-# Raises an error if git does not exit successfully (unless passed
-# allow_non_zero_exit_code=True).
-def run_git(*args, allow_non_zero_exit_code=False):
-  cmd = ['git', *args]
-  p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  if not allow_non_zero_exit_code and p.returncode != 0:
-    raise Exception(f'Call to {" ".join(cmd)} exited with code {p.returncode} stderr: {p.stderr.decode("ascii")}.')
-  return p.stdout.decode('ascii')
-
 def main():
 
   parser = argparse.ArgumentParser()

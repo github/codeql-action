@@ -3,7 +3,7 @@
 #    tag
 # 2. Updates the `vN` tag to refer to this merge commit.
 # 3. Iff vN == vLatest, merges any changes from the release back into the main branch.
-#    Typically, this is just a single commit that updates the changelog.
+#    Typically, this is two commits – one to update the version number and one to update dependencies.
 name: Tag release and merge back
 
 on:

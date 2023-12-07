@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        node-types-version: [12.16, current]
+        node-types-version: [16.11, current]
 
     steps:
       - name: Checkout

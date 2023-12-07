@@ -162,7 +162,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
             },
             'on': {
                 'push': {
-                    'branches': ['main', 'releases/v2']
+                    'branches': ['main', 'releases/v*']
                 },
                 'pull_request': {
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]

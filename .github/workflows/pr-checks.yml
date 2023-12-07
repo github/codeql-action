@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        node-types-version: [16.11, current]
+        node-types-version: [16.11, current] # run tests on 16.11 while codeql-action v2 is still supported
 
     steps:
       - name: Checkout

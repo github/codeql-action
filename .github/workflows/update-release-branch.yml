@@ -1,46 +1,131 @@
 name: Update release branch
 on:
   # You can trigger this workflow via workflow dispatch to start a release.
-  # This will open a PR to update the v2 release branch.
+  # This will open a PR to update the latest release branch.
   workflow_dispatch:
 
+  # When a release is complete this workflow will open up backport PRs to older release branches.
+  # NB while it will trigger on any release branch update, the backport job will not proceed for
+  # anything other than than releases/v{latest}
+  push:
+    branches:
+      - releases/*
+
 jobs:
+
+  prepare:
+    runs-on: ubuntu-latest
+    if: github.repository == 'github/codeql-action'
+    outputs:
+      version: ${{ steps.versions.outputs.version }}
+      major_version: ${{ steps.versions.outputs.major_version }}
+      latest_tag: ${{ steps.versions.outputs.latest_tag }}
+      backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}
+      backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for calculation of diffs
+    - uses: ./.github/actions/release-initialise
+
+    - name: Get version tags
+      id: versions
+      run: |
+        VERSION="v$(jq '.version' -r 'package.json')"
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        MAJOR_VERSION=$(cut -d '.' -f1 <<< "${VERSION}")
+        echo "major_version=${MAJOR_VERSION}" >> $GITHUB_OUTPUT
+        LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+
+    - id: branches
+      name: Determine older release branches
+      uses: ./.github/actions/release-branches
+      with:
+        major_version: ${{ steps.versions.outputs.major_version }}
+        latest_tag: ${{ steps.versions.outputs.latest_tag }}
+
+    - name: debug logging
+      run: |
+        echo 'version: ${{ steps.versions.outputs.version }}'
+        echo 'major_version: ${{ steps.versions.outputs.major_version }}'
+        echo 'latest_tag: ${{ steps.versions.outputs.latest_tag }}'
+        echo 'backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}'
+        echo 'backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}'
+
   update:
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    if: github.repository == 'github/codeql-action'
+    if: github.event_name == 'workflow_dispatch'
+    needs: [prepare]
+    env:
+      REF_NAME: "${{ github.ref_name }}"
+      REPOSITORY: "${{ github.repository }}"
+      MAJOR_VERSION: "${{ needs.prepare.outputs.major_version }}"
+      LATEST_TAG: "${{ needs.prepare.outputs.latest_tag }}"
     steps:
-    - name: Dump environment
-      run: env
-
-    - name: Dump GitHub context
-      env:
-        GITHUB_CONTEXT: '${{ toJson(github) }}'
-      run: echo "$GITHUB_CONTEXT"
-
     - uses: actions/checkout@v4
       with:
-        # Need full history so we calculate diffs
-        fetch-depth: 0
+        fetch-depth: 0  # Need full history for calculation of diffs
+    - uses: ./.github/actions/release-initialise
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.8
-
-    - name: Install dependencies
+    # when the workflow has been manually triggered on main,
+    # we know that we definitely want the release branch to exist
+    - name: Ensure release branch exists
       run: |
-        python -m pip install --upgrade pip
-        pip install PyGithub==1.55 requests
+        echo "MAJOR_VERSION ${MAJOR_VERSION}"
+        RELEASE_BRANCH=releases/${MAJOR_VERSION}
+        if git checkout $RELEASE_BRANCH > /dev/null 2>&1; then
+            echo "Branch $RELEASE_BRANCH already exists"
+            echo ""
+        else
+            echo "Creating $RELEASE_BRANCH branch"
+            git checkout -b ${RELEASE_BRANCH} ${LATEST_TAG}
+            git push --set-upstream origin ${RELEASE_BRANCH}
+            git branch --show-current
+            echo ""
+        fi
+        echo "Returning to branch: ${REF_NAME}"
+        git checkout ${REF_NAME}
 
-    - name: Update git config
+    - name: Update current release branch
+      if: github.event_name == 'workflow_dispatch'
       run: |
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --global user.name "github-actions[bot]"
-
-    - name: Update release branch
-      run: |
+        echo SOURCE_BRANCH=${REF_NAME}
+        echo TARGET_BRANCH=releases/${MAJOR_VERSION}
         python .github/update-release-branch.py \
           --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
+          --source-branch '${{ env.REF_NAME }}' \
+          --target-branch 'releases/${{ env.MAJOR_VERSION }}' \
+          --is-primary-release \
+          --conductor ${GITHUB_ACTOR}
+
+  backport:
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    if: ${{ (github.event_name == 'push') && needs.prepare.outputs.backport_target_branches != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target_branch: ${{ fromJson(needs.prepare.outputs.backport_target_branches) }}
+    env:
+      SOURCE_BRANCH: ${{ needs.prepare.outputs.backport_source_branch }}
+      TARGET_BRANCH: ${{ matrix.target_branch }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for calculation of diffs
+    - uses: ./.github/actions/release-initialise
+
+    - name: Update older release branch
+      run: |
+        echo SOURCE_BRANCH=${SOURCE_BRANCH}
+        echo TARGET_BRANCH=${TARGET_BRANCH}
+        python .github/update-release-branch.py \
+          --github-token ${{ secrets.GITHUB_TOKEN }} \
+          --repository-nwo ${{ github.repository }} \
+          --source-branch ${SOURCE_BRANCH} \
+          --target-branch ${TARGET_BRANCH} \
           --conductor ${GITHUB_ACTOR}

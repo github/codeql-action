@@ -1,0 +1,25 @@
+name: 'Release branches'
+description: 'Determine branches for release & backport'
+inputs:
+  major_version:
+    description: 'The version as extracted from the package.json file'
+    required: true
+  latest_tag:
+    description: 'The most recent tag published to the repository'
+    required: true
+outputs:
+  backport_source_branch:
+    description: "The release branch for the given tag"
+    value: ${{ steps.branches.outputs.backport_source_branch }}
+  backport_target_branches:
+    description: "JSON encoded list of branches to target with backports"
+    value: ${{ steps.branches.outputs.backport_target_branches }}
+runs:
+  using: "composite"
+  steps:
+    - id: branches
+      run: |
+        python ${{ github.action_path }}/release-branches.py \
+            --major-version ${{ inputs.major_version }} \
+            --latest-tag ${{ inputs.latest_tag }}
+      shell: bash

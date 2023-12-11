@@ -116,13 +116,18 @@ jobs:
   #         npm test
 
   check-backport-node-versions:
-    # if: ${{ github.ref_name }}
+    # if: ${{ github.event.pull_request && startsWith(github.ref_name, 'backport-v') }}
+    if: ${{ github.event.pull_request && startsWith(github.ref_name, 'nickfyson') }}
     name: Check node version for backports
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      BASE_REF: ${{ github.event.pull_request.base }}
+      HEAD_REF: ${{ github.event.pull_request.head }}
 
     steps:
       - uses: actions/checkout@v4
-      - name: npm test
+      - name: check diff for change of node version
         run: |
-          echo '${{ github.ref_name }}'
+          git diff --ignore-space-change <branch1> <branch2> | grep "using: 'node"
+          

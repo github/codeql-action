@@ -161,6 +161,16 @@ export async function withTmpDir<T>(
  * when the user doesn't explicitly specify a memory setting.
  * This is a heuristic to avoid OOM errors (exit code 137 / SIGKILL)
  * from committing too much of the available memory to CodeQL.
+ *
+ * BEWARE: Eventually, with new enough CLIs, this computation can be made
+ * less conservative, because the CLI can now itself reserve space for memory
+ * overhead of the JVM. When this happens, stop passing FEATURE_RAM_2023
+ * feature variable.
+ *
+ * Also this rewrite cannot happen until the Action version is strictly above
+ * 2.22.10, because the CLI will interpret a version of 2.22.10 or lower as
+ * "old action that does not yet know to pass FEATURE_RAM_2023".
+ *
  * @returns number
  */
 function getSystemReservedMemoryMegaBytes(
@@ -539,6 +549,7 @@ export function initializeEnvironment(version: string) {
   core.exportVariable(String(EnvVar.FEATURE_SANDWICH), "false");
   core.exportVariable(String(EnvVar.FEATURE_SARIF_COMBINE), "true");
   core.exportVariable(String(EnvVar.FEATURE_WILL_UPLOAD), "true");
+  core.exportVariable(String(EnvVar.FEATURE_RAM_2023), "true");
   core.exportVariable(String(EnvVar.VERSION), version);
 }
 

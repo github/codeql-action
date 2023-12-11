@@ -29,6 +29,13 @@ export enum EnvVar {
   /** Whether the CodeQL Action will upload SARIF, not the CLI. */
   FEATURE_WILL_UPLOAD = "CODEQL_ACTION_FEATURE_WILL_UPLOAD",
 
+  /**
+   * This flag tells `codeql database analyze` that the `--ram` option it gets is still
+   * computed by the 2023 algorithm that leaves space for overshooting.
+   * The CLI will _implicitly_ treat this flag as set if the Action version is 2.22.10 or earlier.
+   */
+  FEATURE_RAM_2023 = "CODEQL_ACTION_FEATURE_RAM_2023",
+
   /** Whether the CodeQL Action has already warned the user about low disk space. */
   HAS_WARNED_ABOUT_DISK_SPACE = "CODEQL_ACTION_HAS_WARNED_ABOUT_DISK_SPACE",
 

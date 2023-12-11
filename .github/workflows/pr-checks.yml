@@ -114,3 +114,15 @@ jobs:
           # we won't be able to find them on Windows.
           npm config set script-shell bash
           npm test
+
+  check-backport-node-versions:
+    # if: ${{ github.ref_name }}
+    name: Check node version for backports
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: npm test
+        run: |
+          echo '${{ github.ref_name }}''

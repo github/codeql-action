@@ -53,7 +53,7 @@ export namespace SYMS {
     export const BREAK: symbol;
     export const STREAM: symbol;
 }
-export var SHIFT32: number;
+export const SHIFT32: 4294967296;
 export namespace BI {
     const MINUS_ONE: bigint;
     const NEG_MAX: bigint;

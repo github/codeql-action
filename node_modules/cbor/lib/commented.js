@@ -128,10 +128,24 @@ class Commented extends stream.Transform {
     c.end(v)
   }
 
+  /**
+   * Transforming.
+   *
+   * @param {any} fresh Buffer to transcode.
+   * @param {BufferEncoding} encoding Name of encoding.
+   * @param {stream.TransformCallback} cb Callback when done.
+   * @ignore
+   */
   _transform(fresh, encoding, cb) {
     this.parser.write(fresh, encoding, cb)
   }
 
+  /**
+   * Flushing.
+   *
+   * @param {stream.TransformCallback} cb Callback when done.
+   * @ignore
+   */
   _flush(cb) {
     // TODO: find the test that covers this, and look at the return value
     return this.parser._flush(cb)
@@ -141,7 +155,6 @@ class Commented extends stream.Transform {
    * Comment on an input Buffer or string, creating a string passed to the
    * callback.  If callback not specified, a promise is returned.
    *
-   * @static
    * @param {string|Buffer|ArrayBuffer|Uint8Array|Uint8ClampedArray
    *   |DataView|stream.Readable} input Something to parse.
    * @param {CommentOptions|commentCallback|string|number} [options={}]
@@ -149,6 +162,7 @@ class Commented extends stream.Transform {
    * @param {commentCallback} [cb] If specified, called on completion.
    * @returns {Promise} If cb not specified.
    * @throws {Error} Input required.
+   * @static
    */
   static comment(input, options = {}, cb = null) {
     if (input == null) {

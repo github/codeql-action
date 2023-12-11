@@ -1,5 +1,3 @@
-import AggregateError from 'aggregate-error';
-
 /**
 An error to be thrown when the request is aborted by AbortController.
 DOMException is thrown instead of this Error when DOMException is available.
@@ -99,7 +97,7 @@ export default async function pMap(
 
 				if (resolvingCount === 0 && !isResolved) {
 					if (!stopOnError && errors.length > 0) {
-						reject(new AggregateError(errors));
+						reject(new AggregateError(errors)); // eslint-disable-line unicorn/error-message
 						return;
 					}
 

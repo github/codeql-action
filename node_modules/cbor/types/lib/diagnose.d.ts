@@ -12,8 +12,8 @@ declare class Diagnose extends stream.Transform {
      * @param {DiagnoseOptions |diagnoseCallback|string} [options={}]
      *   Options, the callback, or the input encoding.
      * @param {diagnoseCallback} [cb] Callback.
-     * @throws {TypeError} Input not provided.
      * @returns {Promise} If callback not specified.
+     * @throws {TypeError} Input not provided.
      */
     static diagnose(input: BufferLike, options?: DiagnoseOptions | diagnoseCallback | string, cb?: diagnoseCallback): Promise<any>;
     /**

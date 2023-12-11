@@ -105,12 +105,26 @@ class Diagnose extends stream.Transform {
     this.parser.on('error', this._on_error.bind(this))
   }
 
+  /**
+   * Transforming.
+   *
+   * @param {any} fresh Buffer to transcode.
+   * @param {BufferEncoding} encoding Name of encoding.
+   * @param {stream.TransformCallback} cb Callback when done.
+   * @ignore
+   */
   _transform(fresh, encoding, cb) {
-    return this.parser.write(fresh, encoding, cb)
+    this.parser.write(fresh, encoding, cb)
   }
 
+  /**
+   * Flushing.
+   *
+   * @param {stream.TransformCallback} cb Callback when done.
+   * @ignore
+   */
   _flush(cb) {
-    return this.parser._flush(er => {
+    this.parser._flush(er => {
       if (this.stream_errors) {
         if (er) {
           this._on_error(er)
@@ -128,8 +142,8 @@ class Diagnose extends stream.Transform {
    * @param {DiagnoseOptions |diagnoseCallback|string} [options={}]
    *   Options, the callback, or the input encoding.
    * @param {diagnoseCallback} [cb] Callback.
-   * @throws {TypeError} Input not provided.
    * @returns {Promise} If callback not specified.
+   * @throws {TypeError} Input not provided.
    */
   static diagnose(input, options = {}, cb = null) {
     if (input == null) {

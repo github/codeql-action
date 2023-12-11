@@ -8,8 +8,8 @@ This is different from `Promise.all()` in that you can control the concurrency a
 
 ## Install
 
-```
-$ npm install p-map
+```sh
+npm install p-map
 ```
 
 ## Usage
@@ -74,7 +74,7 @@ Default: `true`
 
 When `true`, the first mapper rejection will be rejected back to the consumer.
 
-When `false`, instead of stopping when a promise rejects, it will wait for all the promises to settle and then reject with an [aggregated error](https://github.com/sindresorhus/aggregate-error) containing all the errors from the rejected promises.
+When `false`, instead of stopping when a promise rejects, it will wait for all the promises to settle and then reject with an [`AggregateError`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AggregateError) containing all the errors from the rejected promises.
 
 Caveat: When `true`, any already-started async mappers will continue to run until they resolve or reject. In the case of infinite concurrency with sync iterables, *all* mappers are invoked on startup and will continue after the first rejection. [Issue #51](https://github.com/sindresorhus/p-map/issues/51) can be implemented for abort control.
 
@@ -83,8 +83,6 @@ Caveat: When `true`, any already-started async mappers will continue to run unti
 Type: [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)
 
 You can abort the promises using [`AbortController`](https://developer.mozilla.org/en-US/docs/Web/API/AbortController).
-
-*Requires Node.js 16 or later.*
 
 ```js
 import pMap from 'p-map';
@@ -132,12 +130,6 @@ console.log(result);
 //=> ['https://sindresorhus.com/', 'https://avajs.dev/', 'https://github.com/']
 ```
 
-## p-map for enterprise
-
-Available as part of the Tidelift Subscription.
-
-The maintainers of p-map and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/npm-p-map?utm_source=npm-p-map&utm_medium=referral&utm_campaign=enterprise&utm_term=repo)
-
 ## Related
 
 - [p-all](https://github.com/sindresorhus/p-all) - Run promise-returning & async functions concurrently with optional limited concurrency
@@ -145,5 +137,4 @@ The maintainers of p-map and thousands of other packages are working with Tideli
 - [p-times](https://github.com/sindresorhus/p-times) - Run promise-returning & async functions a specific number of times concurrently
 - [p-props](https://github.com/sindresorhus/p-props) - Like `Promise.all()` but for `Map` and `Object`
 - [p-map-series](https://github.com/sindresorhus/p-map-series) - Map over promises serially
-- [p-queue](https://github.com/sindresorhus/p-queue) - Promise queue with concurrency control
 - [More…](https://github.com/sindresorhus/promise-fun)

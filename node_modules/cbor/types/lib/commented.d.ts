@@ -10,7 +10,6 @@ declare class Commented extends stream.Transform {
      * Comment on an input Buffer or string, creating a string passed to the
      * callback.  If callback not specified, a promise is returned.
      *
-     * @static
      * @param {string|Buffer|ArrayBuffer|Uint8Array|Uint8ClampedArray
      *   |DataView|stream.Readable} input Something to parse.
      * @param {CommentOptions|commentCallback|string|number} [options={}]
@@ -18,6 +17,7 @@ declare class Commented extends stream.Transform {
      * @param {commentCallback} [cb] If specified, called on completion.
      * @returns {Promise} If cb not specified.
      * @throws {Error} Input required.
+     * @static
      */
     static comment(input: string | Buffer | ArrayBuffer | Uint8Array | Uint8ClampedArray | DataView | stream.Readable, options?: CommentOptions | commentCallback | string | number, cb?: commentCallback): Promise<any>;
     /**

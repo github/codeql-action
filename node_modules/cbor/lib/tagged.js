@@ -332,6 +332,9 @@ class Tagged {
    */
   convert(converters) {
     let f = (converters == null) ? undefined : converters[this.tag]
+    if (f === null) { // === is intentional. null has semantic meaning as above
+      return this
+    }
     if (typeof f !== 'function') {
       f = Tagged.TAGS[this.tag]
       if (typeof f !== 'function') {

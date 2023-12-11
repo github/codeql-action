@@ -155,10 +155,10 @@ class Decoder extends BinaryParseStream {
    * Check the given value for a symbol encoding a NULL or UNDEFINED value in
    * the CBOR stream.
    *
-   * @static
    * @param {any} val The value to check.
    * @returns {any} The corrected value.
    * @throws {Error} Nothing was found.
+   * @static
    * @example
    * myDecoder.on('data', val => {
    *   val = Decoder.nullcheck(val)
@@ -187,7 +187,6 @@ class Decoder extends BinaryParseStream {
    * an exception if the input is not valid CBOR, or if there are more bytes
    * left over at the end (if options.extendedResults is not true).
    *
-   * @static
    * @param {BufferLike} input If a Readable stream, must have
    *   received the `readable` event already, or you will get an error
    *   claiming "Insufficient data".
@@ -195,6 +194,7 @@ class Decoder extends BinaryParseStream {
    * @returns {ExtendedResults|any} The decoded value.
    * @throws {UnexpectedDataError} Data is left over after decoding.
    * @throws {Error} Insufficient data.
+   * @static
    */
   static decodeFirstSync(input, options = {}) {
     if (input == null) {
@@ -244,13 +244,13 @@ class Decoder extends BinaryParseStream {
    * an exception if the input is not valid CBOR; a zero-length input will
    * return an empty array.
    *
-   * @static
    * @param {BufferLike} input What to parse?
    * @param {DecoderOptions|string} [options={}] Options or encoding
    *   for input.
    * @returns {Array<ExtendedResults>|Array<any>} Array of all found items.
    * @throws {TypeError} No input provided.
    * @throws {Error} Insufficient data provided.
+   * @static
    */
   static decodeAllSync(input, options = {}) {
     if (input == null) {
@@ -289,7 +289,6 @@ class Decoder extends BinaryParseStream {
    * {Decoder.NOT_FOUND} Symbol in the callback if no data was found and the
    * `required` option is false.
    *
-   * @static
    * @param {BufferLike} input What to parse?
    * @param {DecoderOptions|decodeCallback|string} [options={}] Options, the
    *   callback, or input encoding.
@@ -297,6 +296,7 @@ class Decoder extends BinaryParseStream {
    * @returns {Promise<ExtendedResults|any>} Returned even if callback is
    *   specified.
    * @throws {TypeError} No input provided.
+   * @static
    */
   static decodeFirst(input, options = {}, cb = null) {
     if (input == null) {
@@ -363,7 +363,6 @@ class Decoder extends BinaryParseStream {
    * Decode all of the CBOR items in the input.  This will error if there are
    * more bytes left over at the end.
    *
-   * @static
    * @param {BufferLike} input What to parse?
    * @param {DecoderOptions|decodeAllCallback|string} [options={}]
    *   Decoding options, the callback, or the input encoding.
@@ -371,6 +370,7 @@ class Decoder extends BinaryParseStream {
    * @returns {Promise<Array<ExtendedResults>|Array<any>>} Even if callback
    *   is specified.
    * @throws {TypeError} No input specified.
+   * @static
    */
   static decodeAll(input, options = {}, cb = null) {
     if (input == null) {
@@ -414,10 +414,10 @@ class Decoder extends BinaryParseStream {
   }
 
   /**
-   * @yields {number} Number of bytes to read.
    * @returns {Generator<number, any, Buffer>} Yields a number of bytes,
    *   returns anything, next returns a Buffer.
    * @throws {Error} Maximum depth exceeded.
+   * @yields {number} Number of bytes to read.
    * @ignore
    */
   *_parse() {

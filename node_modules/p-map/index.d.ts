@@ -1,4 +1,4 @@
-export interface Options {
+export type Options = {
 	/**
 	Number of concurrently pending promises returned by `mapper`.
 
@@ -11,7 +11,7 @@ export interface Options {
 	/**
 	When `true`, the first mapper rejection will be rejected back to the consumer.
 
-	When `false`, instead of stopping when a promise rejects, it will wait for all the promises to settle and then reject with an [aggregated error](https://github.com/sindresorhus/aggregate-error) containing all the errors from the rejected promises.
+	When `false`, instead of stopping when a promise rejects, it will wait for all the promises to settle and then reject with an [`AggregateError`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AggregateError) containing all the errors from the rejected promises.
 
 	Caveat: When `true`, any already-started async mappers will continue to run until they resolve or reject. In the case of infinite concurrency with sync iterables, *all* mappers are invoked on startup and will continue after the first rejection. [Issue #51](https://github.com/sindresorhus/p-map/issues/51) can be implemented for abort control.
 
@@ -21,8 +21,6 @@ export interface Options {
 
 	/**
 	You can abort the promises using [`AbortController`](https://developer.mozilla.org/en-US/docs/Web/API/AbortController).
-
-	**Requires Node.js 16 or later.*
 
 	@example
 	```
@@ -42,7 +40,7 @@ export interface Options {
 	```
 	*/
 	readonly signal?: AbortSignal;
-}
+};
 
 type MaybePromise<T> = T | Promise<T>;
 

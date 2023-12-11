@@ -24,8 +24,8 @@ class BinaryParseStream extends stream.Transform {
   /**
    * Creates an instance of BinaryParseStream.
    *
-   * @param {stream.TransformOptions} options Stream options.
    * @memberof BinaryParseStream
+   * @param {stream.TransformOptions} options Stream options.
    */
   constructor(options) {
     super(options)
@@ -40,6 +40,14 @@ class BinaryParseStream extends stream.Transform {
     this.__restart()
   }
 
+  /**
+   * Transforming.
+   *
+   * @param {any} fresh Buffer to transcode.
+   * @param {BufferEncoding} encoding Name of encoding.
+   * @param {stream.TransformCallback} cb Callback when done.
+   * @ignore
+   */
   _transform(fresh, encoding, cb) {
     this.bs.write(fresh)
 
@@ -75,7 +83,7 @@ class BinaryParseStream extends stream.Transform {
    * number to receive a Buffer of that many bytes.
    *
    * @abstract
-   * @returns {Generator<number, undefined, Buffer>}
+   * @returns {Generator<number, any, Buffer>}
    */
   /* istanbul ignore next */
   *_parse() { // eslint-disable-line class-methods-use-this, require-yield
@@ -88,6 +96,12 @@ class BinaryParseStream extends stream.Transform {
     this.__fresh = true
   }
 
+  /**
+   * Flushing.
+   *
+   * @param {stream.TransformCallback} cb Callback when done.
+   * @ignore
+   */
   _flush(cb) {
     cb(this.__fresh ? null : new Error('unexpected end of input'))
   }

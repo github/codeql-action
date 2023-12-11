@@ -6,8 +6,8 @@ Gracefully handles [ANSI escapes](https://en.wikipedia.org/wiki/ANSI_escape_code
 
 ## Install
 
-```
-$ npm install cli-truncate
+```sh
+npm install cli-truncate
 ```
 
 ## Usage
@@ -41,7 +41,7 @@ cliTruncate('안녕하세요', 3);
 
 // Truncate the paragraph to the terminal width
 const paragraph = 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa.';
-cliTruncate(paragraph, process.stdout.columns));
+cliTruncate(paragraph, process.stdout.columns);
 //=> 'Lorem ipsum dolor sit amet, consectetuer adipiscing…'
 ```
 
@@ -53,7 +53,7 @@ cliTruncate(paragraph, process.stdout.columns));
 
 Type: `string`
 
-Text to truncate.
+The text to truncate.
 
 #### columns
 
@@ -69,7 +69,7 @@ Type: `object`
 
 Type: `string`\
 Default: `'end'`\
-Values: `'start'` `'middle'` `'end'`
+Values: `'start' | 'middle' | 'end'`
 
 The position to truncate the string.
 
@@ -148,15 +148,3 @@ cliTruncate('unicorns', 5, {position: 'end', truncationCharacter: ''});
 
 - [wrap-ansi](https://github.com/chalk/wrap-ansi) - Wordwrap a string with ANSI escape codes
 - [slice-ansi](https://github.com/chalk/slice-ansi) - Slice a string with ANSI escape codes
-
----
-
-<div align="center">
-	<b>
-		<a href="https://tidelift.com/subscription/pkg/npm-cli-truncate?utm_source=npm-cli-truncate&utm_medium=referral&utm_campaign=readme">Get professional support for this package with a Tidelift subscription</a>
-	</b>
-	<br>
-	<sub>
-		Tidelift helps make open source sustainable for maintainers while giving companies<br>assurances about security, maintenance, and licensing for their dependencies.
-	</sub>
-</div>

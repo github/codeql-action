@@ -1,6 +1,13 @@
 /// <reference types="node" />
 export = Encoder;
 /**
+ * @typedef ObjectOptions
+ * @property {boolean} [indefinite = false] Force indefinite encoding for this
+ *   object.
+ * @property {boolean} [skipTypes = false] Do not use available type mappings
+ *   for this object, but encode it as a "normal" JS object would be.
+ */
+/**
  * @typedef EncodingOptions
  * @property {any[]|object} [genTypes=[]] Array of pairs of
  *   `type`, `function(Encoder)` for semantic types to be encoded.  Not
@@ -170,10 +177,10 @@ declare class Encoder extends stream.Transform {
     /**
      * Encode one JavaScript object using the given options.
      *
-     * @static
      * @param {any} obj The object to encode.
      * @param {EncodingOptions} [options={}] Passed to the Encoder constructor.
      * @returns {Buffer} The encoded objects.
+     * @static
      */
     static encodeOne(obj: any, options?: EncodingOptions): Buffer;
     /**
@@ -266,7 +273,7 @@ declare class Encoder extends stream.Transform {
      * Choose the best float representation for a number and encode it.
      *
      * @param {number} obj A number that is known to be not-integer, but not
-     *    how many bytes of precision it needs.
+     *   how many bytes of precision it needs.
      * @returns {boolean} True on success.
      * @ignore
      */
@@ -277,13 +284,13 @@ declare class Encoder extends stream.Transform {
      * don't remember why).
      *
      * @param {number} obj A positive number that is known to be an integer,
-     *    but not how many bytes of precision it needs.
+     *   but not how many bytes of precision it needs.
      * @param {number} mt The Major Type number to combine with the integer.
-     *    Not yet shifted.
+     *   Not yet shifted.
      * @param {number} [orig] The number before it was transformed to positive.
-     *    If the mt is NEG_INT, and the positive number is over MAX_SAFE_INT,
-     *    then we'll encode this as a float rather than making the number
-     *    negative again and losing precision.
+     *   If the mt is NEG_INT, and the positive number is over MAX_SAFE_INT,
+     *   then we'll encode this as a float rather than making the number
+     *   negative again and losing precision.
      * @returns {boolean} True on success.
      * @ignore
      */
@@ -292,7 +299,7 @@ declare class Encoder extends stream.Transform {
      * Choose the best integer representation for a number and encode it.
      *
      * @param {number} obj A number that is known to be an integer,
-     *    but not how many bytes of precision it needs.
+     *   but not how many bytes of precision it needs.
      * @returns {boolean} True on success.
      * @ignore
      */
@@ -341,11 +348,12 @@ declare class Encoder extends stream.Transform {
     _pushJSBigint(obj: bigint): boolean;
     /**
      * @param {object} obj Object to encode.
+     * @param {ObjectOptions} [opts] Options for encoding this object.
      * @returns {boolean} True on success.
      * @throws {Error} Loop detected.
      * @ignore
      */
-    _pushObject(obj: object, opts: any): boolean;
+    _pushObject(obj: object, opts?: ObjectOptions): boolean;
     /**
      * @param {any[]} objs Array of supported things.
      * @returns {Buffer} Concatenation of encodings for the supported things.
@@ -379,7 +387,7 @@ declare class Encoder extends stream.Transform {
     removeLoopDetectors(): boolean;
 }
 declare namespace Encoder {
-    export { EncodeFunction, SemanticMap, EncodingOptions };
+    export { EncodeFunction, SemanticMap, ObjectOptions, EncodingOptions };
 }
 import stream = require("stream");
 /**
@@ -388,6 +396,18 @@ import stream = require("stream");
  * Encoder to reuse existing non-documented behavior.
  */
 type EncodeFunction = (enc: Encoder, val: any) => boolean;
+type ObjectOptions = {
+    /**
+     * Force indefinite encoding for this
+     * object.
+     */
+    indefinite?: boolean;
+    /**
+     * Do not use available type mappings
+     * for this object, but encode it as a "normal" JS object would be.
+     */
+    skipTypes?: boolean;
+};
 import { Buffer } from "buffer";
 import NoFilter = require("nofilter");
 type EncodingOptions = {

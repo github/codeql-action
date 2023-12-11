@@ -266,4 +266,3 @@ console.log(figures.tick);
 ```
 */
 export function replaceSymbols(string: string): string;
-

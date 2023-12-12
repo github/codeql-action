@@ -114,3 +114,45 @@ jobs:
           # we won't be able to find them on Windows.
           npm config set script-shell bash
           npm test
+
+  check-backport-node-versions:
+    if: ${{ github.event.pull_request }}
+    name: Check node version for backports
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BASE_REF: ${{ github.event.pull_request.base }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - id: head-version
+        name: check HEAD node version
+        run: |
+          # NB we are matching the node version string both with and without single quotes
+          NODE_VERSION=$(find . -name "*.yml" -exec grep -oh "using: 'node[0-9][0-9]\|using: node[0-9][0-9]" {} \; | sed -e "s/using: '//g" -e "s/using: //g" | sort | uniq)
+          echo "NODE_VERSION: ${NODE_VERSION}"
+          if [[ $(echo "$NODE_VERSION" | wc -l) -gt 1 ]]; then
+            echo "Error: More than one node version used in actions."
+            exit 1
+          fi
+          echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
+
+      - id: checkout-base
+        name: check out base ref for backport check
+        if: ${{ startsWith(github.ref_name, 'backport-v') }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_REF }}
+
+      - name: compare with node version on base ref for backport check
+        if: steps.checkout-base.outcome == 'success'
+        env:
+          HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}
+        run: |
+          BASE_VERSION=$(find . -name "*.yml" -exec grep -oh "using: 'node[0-9][0-9]\|using: node[0-9][0-9]" {} \; | sed -e "s/using: '//g" -e "s/using: //g" | sort | uniq)
+          echo "HEAD_VERSION: ${HEAD_VERSION}"
+          echo "BASE_VERSION: ${BASE_VERSION}"
+          if [[ "$BASE_VERSION" != "$HEAD_VERSION" ]]; then
+            echo "Error: Cannot change node version in a backport PR."
+            exit 1
+          fi

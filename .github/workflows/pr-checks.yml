@@ -137,12 +137,13 @@ jobs:
           echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
 
       - id: checkout-base
-        if: ${{ startsWith(github.ref_name, 'sdf_nickfyson') }}
+        name: check out base ref for backport check
+        if: ${{ startsWith(github.ref_name, 'nickfyson') }}
         uses: actions/checkout@v4
         with:
           ref: ${{ env.BASE_REF }}
 
-      - name: compare with node version on base ref
+      - name: compare with node version on base ref for backport check
         if: steps.checkout-base.outcome == 'success'
         env:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}

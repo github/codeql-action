@@ -117,25 +117,41 @@ jobs:
 
   check-backport-node-versions:
     # if: ${{ github.event.pull_request && startsWith(github.ref_name, 'backport-v') }}
-    # if: ${{ startsWith(github.ref_name, 'nickfyson') }}
     name: Check node version for backports
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      BASE_REF: ${{ github.event.pull_request.base }}
-      HEAD_REF: ${{ github.event.pull_request.head }}
+      BASE_REF: 'main' # ${{ github.event.pull_request.base }}
 
     steps:
       - uses: actions/checkout@v4
-      - name: extract current diff
+      - id: head-version
+        name: extract current diff
         run: |
-          NODE_VERSION_HEAD=$(find . -name "*.yml" -exec grep -oh "using: 'node[0-9][0-9]\|using: node[0-9][0-9]" {} \; | sed -e "s/using: '//g" -e "s/using: //g" | sort | uniq)
-          echo "NODE_VERSION_HEAD: ${NODE_VERSION_HEAD}"
-          if [[ $(echo "$NODE_VERSION_HEAD" | wc -l) -gt 1 ]]; then
+          NODE_VERSION=$(find . -name "*.yml" -exec grep -oh "using: 'node[0-9][0-9]\|using: node[0-9][0-9]" {} \; | sed -e "s/using: '//g" -e "s/using: //g" | sort | uniq)
+          echo "NODE_VERSION: ${NODE_VERSION}"
+          if [[ $(echo "$NODE_VERSION" | wc -l) -gt 1 ]]; then
             echo "Error: More than one node version used in actions."
             exit 1
           fi
-          echo "node_version_head=${NODE_VERSION_HEAD}" >> $GITHUB_OUTPUT
+          echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
 
+      - id: checkout-base
+        if: ${{ startsWith(github.ref_name, 'nickfyson') }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_REF }}
+
+      - name: compare with node version on base ref
+        if: steps.checkout-base.outcome == 'success'
+        env:
+          HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}
+        run: |
+          BASE_VERSION=$(find . -name "*.yml" -exec grep -oh "using: 'node[0-9][0-9]\|using: node[0-9][0-9]" {} \; | sed -e "s/using: '//g" -e "s/using: //g" | sort | uniq)
+          echo "BASE_VERSION: ${BASE_VERSION}"
+          if [[ "$BASE_VERSION" != "$HEAD_VERSION" ]]; then
+            echo "Error: Cannot change node version in a backport PR."
+            exit 1
+          fi
 
 

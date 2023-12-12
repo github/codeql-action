@@ -35,7 +35,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       if: >-
         matrix.os == 'macos-latest' && (
 
@@ -66,7 +66,7 @@ jobs:
         )
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v4
       with:
       # We need a Go version that ships with statically linked binaries on Linux
         go-version: '>=1.21.0'
@@ -75,7 +75,7 @@ jobs:
         languages: go
         tools: ${{ steps.prepare-test.outputs.tools-url }}
   # Deliberately change Go after the `init` step
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v4
       with:
         go-version: '1.20'
     - name: Build code

@@ -16,5 +16,5 @@ inputs:
       Comma separated list of query ids that should NOT be included in this SARIF file.
 
 runs:
-  using: 'node20'
+  using: 'node16'
   main: index.js

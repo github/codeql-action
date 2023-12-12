@@ -84,6 +84,6 @@ outputs:
   sarif-id:
     description: The ID of the uploaded SARIF file.
 runs:
-  using: 'node20'
+  using: 'node16'
   main: "../lib/analyze-action.js"
   post: "../lib/analyze-action-post.js"

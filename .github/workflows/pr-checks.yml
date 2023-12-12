@@ -117,7 +117,7 @@ jobs:
 
   check-backport-node-versions:
     # if: ${{ github.event.pull_request && startsWith(github.ref_name, 'backport-v') }}
-    if: ${{ github.event.pull_request && startsWith(github.ref_name, 'nickfyson') }}
+    # if: ${{ startsWith(github.ref_name, 'nickfyson') }}
     name: Check node version for backports
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -127,7 +127,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: check diff for change of node version
+      - name: extract current diff
         run: |
-          git diff --ignore-space-change <branch1> <branch2> | grep "using: 'node"
-          
+          NODE_VERSION_HEAD=$(find . -name "*.yml" -exec grep -oh "using: 'node[0-9][0-9]\|using: node[0-9][0-9]" {} \; | sed -e "s/using: '//g" -e "s/using: //g" | sort | uniq)
+          if [[ $(echo "$NODE_VERSION_HEAD" | wc -l) -gt 1 ]]; then
+            echo "Error: More than one node version used in actions."
+            exit 1
+          fi
+          echo "NODE_VERSION_HEAD: ${NODE_VERSION_HEAD}"
+          echo "node_version_head=${NODE_VERSION_HEAD}" >> $GITHUB_OUTPUT
+
+
+

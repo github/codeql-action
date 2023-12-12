@@ -148,6 +148,7 @@ jobs:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}
         run: |
           BASE_VERSION=$(find . -name "*.yml" -exec grep -oh "using: 'node[0-9][0-9]\|using: node[0-9][0-9]" {} \; | sed -e "s/using: '//g" -e "s/using: //g" | sort | uniq)
+          echo "HEAD_VERSION: ${HEAD_VERSION}"
           echo "BASE_VERSION: ${BASE_VERSION}"
           if [[ "$BASE_VERSION" != "$HEAD_VERSION" ]]; then
             echo "Error: Cannot change node version in a backport PR."

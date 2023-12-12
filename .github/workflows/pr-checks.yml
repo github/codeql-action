@@ -130,11 +130,11 @@ jobs:
       - name: extract current diff
         run: |
           NODE_VERSION_HEAD=$(find . -name "*.yml" -exec grep -oh "using: 'node[0-9][0-9]\|using: node[0-9][0-9]" {} \; | sed -e "s/using: '//g" -e "s/using: //g" | sort | uniq)
+          echo "NODE_VERSION_HEAD: ${NODE_VERSION_HEAD}"
           if [[ $(echo "$NODE_VERSION_HEAD" | wc -l) -gt 1 ]]; then
             echo "Error: More than one node version used in actions."
             exit 1
           fi
-          echo "NODE_VERSION_HEAD: ${NODE_VERSION_HEAD}"
           echo "node_version_head=${NODE_VERSION_HEAD}" >> $GITHUB_OUTPUT
 
 

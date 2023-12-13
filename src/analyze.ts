@@ -108,6 +108,10 @@ async function setupPythonExtractor(
     await features.getValue(
       Feature.DisablePythonDependencyInstallationEnabled,
       codeql,
+    ) ||
+    await features.getValue(
+      Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
+      codeql,
     )
   ) {
     logger.warning(

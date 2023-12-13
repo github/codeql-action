@@ -396,9 +396,9 @@ async function testLanguageAliases(
             },
           },
           steps: [
-            { uses: "actions/checkout@v2" },
-            { uses: "github/codeql-action/init@v2" },
-            { uses: "github/codeql-action/analyze@v2" },
+            { uses: "actions/checkout@v3" },
+            { uses: "github/codeql-action/init@v3" },
+            { uses: "github/codeql-action/analyze@v3" },
           ],
         },
       },
@@ -516,11 +516,11 @@ test("getWorkflowErrors() should only report the current job's CheckoutWrongHead
     test:
       steps:
         - run: "git checkout HEAD^2"
-  
+
     test2:
       steps:
         - run: "git checkout HEAD^2"
-  
+
     test3:
       steps: []
   `) as Workflow,
@@ -546,11 +546,11 @@ test("getWorkflowErrors() should not report a different job's CheckoutWrongHead"
     test:
       steps:
         - run: "git checkout HEAD^2"
-  
+
     test2:
       steps:
         - run: "git checkout HEAD^2"
-  
+
     test3:
       steps: []
   `) as Workflow,
@@ -652,9 +652,9 @@ test("getCategoryInputOrThrow returns category for simple workflow with category
           analysis:
             runs-on: ubuntu-latest
             steps:
-              - uses: actions/checkout@v2
-              - uses: github/codeql-action/init@v2
-              - uses: github/codeql-action/analyze@v2
+              - uses: actions/checkout@v3
+              - uses: github/codeql-action/init@v3
+              - uses: github/codeql-action/analyze@v3
                 with:
                   category: some-category
       `) as Workflow,
@@ -674,9 +674,9 @@ test("getCategoryInputOrThrow returns undefined for simple workflow without cate
           analysis:
             runs-on: ubuntu-latest
             steps:
-              - uses: actions/checkout@v2
-              - uses: github/codeql-action/init@v2
-              - uses: github/codeql-action/analyze@v2
+              - uses: actions/checkout@v3
+              - uses: github/codeql-action/init@v3
+              - uses: github/codeql-action/analyze@v3
       `) as Workflow,
       "analysis",
       {},
@@ -694,19 +694,19 @@ test("getCategoryInputOrThrow returns category for workflow with multiple jobs",
           foo:
             runs-on: ubuntu-latest
             steps:
-              - uses: actions/checkout@v2
-              - uses: github/codeql-action/init@v2
+              - uses: actions/checkout@v3
+              - uses: github/codeql-action/init@v3
               - runs: ./build foo
-              - uses: github/codeql-action/analyze@v2
+              - uses: github/codeql-action/analyze@v3
                 with:
                   category: foo-category
           bar:
             runs-on: ubuntu-latest
             steps:
-              - uses: actions/checkout@v2
-              - uses: github/codeql-action/init@v2
+              - uses: actions/checkout@v3
+              - uses: github/codeql-action/init@v3
               - runs: ./build bar
-              - uses: github/codeql-action/analyze@v2
+              - uses: github/codeql-action/analyze@v3
                 with:
                   category: bar-category
       `) as Workflow,
@@ -729,11 +729,11 @@ test("getCategoryInputOrThrow finds category for workflow with language matrix",
               matrix:
                 language: [javascript, python]
             steps:
-              - uses: actions/checkout@v2
-              - uses: github/codeql-action/init@v2
+              - uses: actions/checkout@v3
+              - uses: github/codeql-action/init@v3
                 with:
                   language: \${{ matrix.language }}
-              - uses: github/codeql-action/analyze@v2
+              - uses: github/codeql-action/analyze@v3
                 with:
                   category: "/language:\${{ matrix.language }}"
       `) as Workflow,
@@ -753,9 +753,9 @@ test("getCategoryInputOrThrow throws error for workflow with dynamic category", 
           jobs:
             analysis:
               steps:
-                - uses: actions/checkout@v2
-                - uses: github/codeql-action/init@v2
-                - uses: github/codeql-action/analyze@v2
+                - uses: actions/checkout@v3
+                - uses: github/codeql-action/init@v3
+                - uses: github/codeql-action/analyze@v3
                   with:
                     category: "\${{ github.workflow }}"
         `) as Workflow,
@@ -780,12 +780,12 @@ test("getCategoryInputOrThrow throws error for workflow with multiple calls to a
             analysis:
               runs-on: ubuntu-latest
               steps:
-                - uses: actions/checkout@v2
-                - uses: github/codeql-action/init@v2
-                - uses: github/codeql-action/analyze@v2
+                - uses: actions/checkout@v3
+                - uses: github/codeql-action/init@v3
+                - uses: github/codeql-action/analyze@v3
                   with:
                     category: some-category
-                - uses: github/codeql-action/analyze@v2
+                - uses: github/codeql-action/analyze@v3
                   with:
                     category: another-category
         `) as Workflow,

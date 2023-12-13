@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- We have disabled Python dependency installation for all users by default. This improves the speed of analysis while having only a very minor impact on results. You can override this behavior until CodeQL CLI 2.17.0 is released by setting `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION=false` in your workflow. [#2031](https://github.com/github/codeql-action/pull/2031)
+- We have disabled Python dependency installation for all users by default. This improves the speed of analysis while having only a very minor impact on results. You can override this behavior by setting `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION=false` in your workflow. This feature will be removed in future versions of the CodeQL Action. [#2031](https://github.com/github/codeql-action/pull/2031)
 
 ## 2.22.10 - 12 Dec 2023
 

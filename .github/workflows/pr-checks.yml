@@ -117,7 +117,7 @@ jobs:
 
   check-node-version:
     if: ${{ github.event.pull_request }}
-    name: Check node version consistency
+    name: Check Action Node versions
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -126,24 +126,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: head-version
-        name: check HEAD node version
+        name: Verify all Actions use the same Node version
         run: |
           NODE_VERSION=$(find . -name "action.yml" -exec yq -e '.runs.using' {} \; | grep node | sort | uniq)
           echo "NODE_VERSION: ${NODE_VERSION}"
           if [[ $(echo "$NODE_VERSION" | wc -l) -gt 1 ]]; then
-            echo "Error: More than one node version used in actions."
+            echo "::error::More than one node version used in 'action.yml' files."
             exit 1
           fi
           echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
 
       - id: checkout-base
-        name: check out base ref for backport check
+        name: 'Backport: Check out base ref'
         if: ${{ startsWith(github.head_ref, 'backport-') }}
         uses: actions/checkout@v4
         with:
           ref: ${{ env.BASE_REF }}
 
-      - name: compare with node version on base ref for backport check
+      - name: 'Backport: Verify Node versions unchanged'
         if: steps.checkout-base.outcome == 'success'
         env:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}
@@ -152,6 +152,6 @@ jobs:
           echo "HEAD_VERSION: ${HEAD_VERSION}"
           echo "BASE_VERSION: ${BASE_VERSION}"
           if [[ "$BASE_VERSION" != "$HEAD_VERSION" ]]; then
-            echo "Error: Cannot change node version in a backport PR."
+            echo "::error::Cannot change the Node version of an Action in a backport PR."
             exit 1
           fi

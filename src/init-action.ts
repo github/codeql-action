@@ -297,6 +297,10 @@ async function run() {
         await features.getValue(
           Feature.DisablePythonDependencyInstallationEnabled,
           codeql,
+        ) ||
+        await features.getValue(
+          Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
+          codeql,
         )
       ) {
         logger.info("Skipping python dependency installation");
@@ -449,6 +453,10 @@ async function run() {
     if (
       await features.getValue(
         Feature.DisablePythonDependencyInstallationEnabled,
+        codeql,
+      ) ||
+      await features.getValue(
+        Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
         codeql,
       )
     ) {

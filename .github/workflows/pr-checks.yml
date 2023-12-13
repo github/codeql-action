@@ -71,7 +71,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.11
 
@@ -96,7 +96,7 @@ jobs:
 
     steps:
       - name: Setup Python on MacOS
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         if: |
           matrix.os == 'macos-latest' && (
           matrix.version == 'stable-20220908' ||

@@ -105,14 +105,14 @@ async function setupPythonExtractor(
   }
 
   if (
-    await features.getValue(
+    (await features.getValue(
       Feature.DisablePythonDependencyInstallationEnabled,
       codeql,
-    ) ||
-    await features.getValue(
+    )) ||
+    (await features.getValue(
       Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
       codeql,
-    )
+    ))
   ) {
     logger.warning(
       "We recommend that you remove the CODEQL_PYTHON environment variable from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +

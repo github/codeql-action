@@ -109,6 +109,6 @@ outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis
 runs:
-  using: 'node20'
+  using: node20
   main: '../lib/init-action.js'
   post: '../lib/init-action-post.js'

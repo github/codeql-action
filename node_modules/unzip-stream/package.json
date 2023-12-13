@@ -1,0 +1,45 @@
+{
+  "name": "unzip-stream",
+  "version": "0.3.1",
+  "description": "Process zip files using streaming API",
+  "author": "Michal Hruby <michal.mhr@gmail.com>",
+  "maintainers": [
+    {
+      "name": "Michal Hruby",
+      "email": "michal.mhr@gmail.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mhr3/unzip-stream.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "binary": "^0.3.0",
+    "mkdirp": "^0.5.1"
+  },
+  "devDependencies": {
+    "dirdiff": ">= 0.0.1 < 1",
+    "stream-buffers": ">= 0.2.5 < 1",
+    "tap": "^11.0.1",
+    "temp": ">= 0.4.0 < 1"
+  },
+  "directories": {
+    "example": "examples",
+    "test": "test"
+  },
+  "keywords": [
+    "zip",
+    "unzip",
+    "zlib",
+    "uncompress",
+    "archive",
+    "stream",
+    "extract"
+  ],
+  "main": "unzip.js",
+  "scripts": {
+    "test": "tap ./test/*.js",
+    "coverage": "tap ./test/*.js --cov --coverage-report=html"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.22.10",
+  "version": "3.22.11",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -57,7 +57,7 @@
     "@types/adm-zip": "^0.5.5",
     "@types/get-folder-size": "^2.0.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "16.11.22",
+    "@types/node": "20.9.0",
     "@types/semver": "^7.5.6",
     "@types/sinon": "^17.0.2",
     "@typescript-eslint/eslint-plugin": "^6.13.2",

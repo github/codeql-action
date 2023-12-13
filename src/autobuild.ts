@@ -38,11 +38,11 @@ export async function determineAutobuildLanguages(
    * For example, consider a user with the following workflow file:
    *
    * ```yml
-   * - uses: github/codeql-action/init@v2
+   * - uses: github/codeql-action/init@v3
    *   with:
    *     languages: go, java
-   * - uses: github/codeql-action/autobuild@v2
-   * - uses: github/codeql-action/analyze@v2
+   * - uses: github/codeql-action/autobuild@v3
+   * - uses: github/codeql-action/analyze@v3
    * ```
    *
    * - With Go extraction disabled, we will run the Java autobuilder in the

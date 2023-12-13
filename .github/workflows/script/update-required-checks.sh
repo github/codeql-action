@@ -29,7 +29,10 @@ echo "$CHECKS" | jq
 
 echo "{\"contexts\": ${CHECKS}}" > checks.json
 
-for BRANCH in main releases/v2; do
+# retrieve lists of branches on origin that match releases/v[0-9]*, putting them on same line
+RELEASE_BRANCHES="$(git ls-remote --heads origin 'releases/v[0-9]*' | sed -e 's/.*refs\/heads\///' | sort -V | tr '\n' ' ')"
+
+for BRANCH in main $RELEASE_BRANCHES; do
   echo "Updating $BRANCH"
   gh api --silent -X "PATCH" "repos/github/codeql-action/branches/$BRANCH/protection/required_status_checks" --input checks.json
 done

@@ -464,6 +464,11 @@ async function run() {
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
       );
+    } else {
+      core.exportVariable(
+        "CODEQL_EXTRACTOR_PYTHON_FORCE_ENABLE_LIBRARY_EXTRACTION_UNTIL_2_17_0",
+        "true",
+      );
     }
 
     const sourceRoot = path.resolve(

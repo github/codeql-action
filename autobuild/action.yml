@@ -13,5 +13,5 @@ inputs:
       $GITHUB_WORKSPACE as its working directory.
     required: false
 runs:
-  using: 'node16'
+  using: node16
   main: '../lib/autobuild-action.js'

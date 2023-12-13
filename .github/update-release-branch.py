@@ -255,10 +255,13 @@ def main():
     print(f'No commits to merge from {source_branch} to {target_branch}.')
     return
 
+  # define distinct prefix in order to support specific pr checks on backports
+  branch_prefix = 'update' if is_primary_release else 'backport'
+
   # The branch name is based off of the name of branch being merged into
   # and the SHA of the branch being merged from. Thus if the branch already
   # exists we can assume we don't need to recreate it.
-  new_branch_name = f'update-v{version}-{source_branch_short_sha}'
+  new_branch_name = f'{branch_prefix}-v{version}-{source_branch_short_sha}'
   print(f'Branch name is {new_branch_name}.')
 
   # Check if the branch already exists. If so we can abort as this script

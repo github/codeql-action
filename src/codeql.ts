@@ -1159,7 +1159,7 @@ export async function getCodeQLForCmd(
         "version of the CLI using the 'tools' input to the 'init' Action, you can remove this " +
         "input to use the default version.\n\n" +
         "Alternatively, if you want to continue using CodeQL CLI version " +
-        `${result.version}, you can replace 'github/codeql-action/*@v2' by ` +
+        `${result.version}, you can replace 'github/codeql-action/*@v3' by ` +
         `'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );

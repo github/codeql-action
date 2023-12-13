@@ -49,7 +49,6 @@ export enum Feature {
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
-  // NOTE: `python_default_is_to_skip_dependency_installation_enabled` is never actually returned by the GitHub API.
   PythonDefaultIsToSkipDependencyInstallationEnabled = "python_default_is_to_skip_dependency_installation_enabled",
   EvaluatorFineGrainedParallelismEnabled = "evaluator_fine_grained_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
@@ -112,7 +111,7 @@ export const featureConfig: Record<
     // here!
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
     minimumVersion: "2.16.0",
-    defaultValue: true,
+    defaultValue: false,
   },
 };
 

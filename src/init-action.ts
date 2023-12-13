@@ -294,14 +294,14 @@ async function run() {
       getRequiredInput("setup-python-dependencies") === "true"
     ) {
       if (
-        await features.getValue(
+        (await features.getValue(
           Feature.DisablePythonDependencyInstallationEnabled,
           codeql,
-        ) ||
-        await features.getValue(
+        )) ||
+        (await features.getValue(
           Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
           codeql,
-        )
+        ))
       ) {
         logger.info("Skipping python dependency installation");
       } else {
@@ -451,14 +451,14 @@ async function run() {
 
     // Disable Python dependency extraction if feature flag set
     if (
-      await features.getValue(
+      (await features.getValue(
         Feature.DisablePythonDependencyInstallationEnabled,
         codeql,
-      ) ||
-      await features.getValue(
+      )) ||
+      (await features.getValue(
         Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
         codeql,
-      )
+      ))
     ) {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",

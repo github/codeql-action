@@ -177,7 +177,7 @@ def get_today_string():
 
 def process_changelog_for_backports(source_branch_major_version, target_branch_major_version):
 
-  # changelog entries use a speficic format to indicate
+  # changelog entries can use the following format to indicate
   # that they only apply to newer versions
   regex = re.compile(r'\[v(\d+)\+ only\]')
 
@@ -216,7 +216,7 @@ def process_changelog_for_backports(source_branch_major_version, target_branch_m
           # we have found two headings in a row, so we need to add the placeholder message.
           output += 'No user facing changes.\n'
         found_content = False
-        output += '\n' +line + '\n\n'
+        output += f'\n{line}\n\n'
       else:
         if line.strip() != '':
           found_content = True

@@ -179,7 +179,7 @@ def process_changelog_for_backports(source_branch_major_version, target_branch_m
 
   # changelog entries can use the following format to indicate
   # that they only apply to newer versions
-  regex = re.compile(r'\[v(\d+)\+ only\]')
+  some_versions_only_regex = re.compile(r'\[v(\d+)\+ only\]')
 
   output = ''
 
@@ -205,7 +205,7 @@ def process_changelog_for_backports(source_branch_major_version, target_branch_m
       line = line.rstrip()
 
       # filter out changenote entries that apply only to newer versions
-      match = regex.search(line)
+      match = some_versions_only_regex.search(line)
       if match:
         if int(target_branch_major_version) < int(match.group(1)):
           continue

@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-Note that for the CodeQL Action we use the major version number to mark a change in the node version used, while the minor & patch numbers indicate releases that support the same features across node versions. For example `3.22.11` is the first `v3` release and is functionally identical to `2.22.11`, which was released while we continue to support `v2`. This approach ensures an easy way to track exactly which features are included in different versions.
+Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
 ## [UNRELEASED]
 

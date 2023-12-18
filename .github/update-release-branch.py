@@ -188,6 +188,8 @@ def process_changelog_for_backports(source_branch_major_version, target_branch_m
     # until we find the first section, just duplicate all lines
     while True:
       line = f.readline()
+      if not line:
+        raise Exception('Could not find any change sections in CHANGELOG.md') # EOF
 
       output += line
       if line.startswith('## '):

@@ -187,9 +187,9 @@ def process_changelog_for_backports(source_branch_major_version, target_branch_m
 
     # until we find the first section, just duplicate all lines
     while True:
-      line = f.readline().rstrip()
+      line = f.readline()
 
-      output += line + '\n'
+      output += line
       if line.startswith('## '):
         line = line.replace(f'## {source_branch_major_version}', f'## {target_branch_major_version}')
         # we have found the first section, so now handle things differently
@@ -202,7 +202,7 @@ def process_changelog_for_backports(source_branch_major_version, target_branch_m
       line = f.readline()
       if not line:
         break # EOF
-      line = line.rstrip()
+      line = line.rstrip('\n')
 
       # filter out changenote entries that apply only to newer versions
       match = some_versions_only_regex.search(line)

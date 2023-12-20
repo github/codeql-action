@@ -27,11 +27,18 @@ CHECKS="$(gh api repos/github/codeql-action/commits/"${GITHUB_SHA}"/check-runs -
 
 echo "$CHECKS" | jq
 
-echo "{\"contexts\": ${CHECKS}}" > checks.json
-
-for BRANCH in main releases/v2; do
+for BRANCH in main releases/v2 releases/v3; do
   echo "Updating $BRANCH"
+  echo "{\"contexts\": ${CHECKS}}" > checks.json
+
+  # we need to special case the JS checks for releases/v2
+  if [ "$BRANCH" == "releases/v2" ]; then
+    # we remove entries matching "Check JS (*" and add "Check JS" to the list
+    PROCESSED_CHECKS="$(echo "$CHECKS" | jq --compact-output --raw-output 'map(select(. | contains("Check JS (") | not)) + ["Check JS"] | unique | sort' )"
+    echo "{\"contexts\": ${PROCESSED_CHECKS}}" > checks.json
+  fi
   gh api --silent -X "PATCH" "repos/github/codeql-action/branches/$BRANCH/protection/required_status_checks" --input checks.json
+  # cat checks.json | jq > checks-"${BRANCH//\//-}".json
 done
 
 rm checks.json

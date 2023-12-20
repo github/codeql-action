@@ -72,11 +72,13 @@ Once the mergeback has been merged to `main`, the release is complete.
 
 ## Keeping the PR checks up to date (admin access required)
 
-Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred jobs that need to pass in order for a PR to turn green. You can regenerate the checks automatically by running the [update-required-checks.sh](.github/workflows/script/update-required-checks.sh) script:
+Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred jobs that need to pass in order for a PR to turn green. You can regenerate the required checks automatically by running the [update-required-checks.sh](.github/workflows/script/update-required-checks.sh) script:
 
 1. By default, this script retrieves the checks from the latest SHA on `main`, so make sure that your `main` branch is up to date.
 2. Run the script. If there's a reason to, you can pass in a different SHA as a CLI argument.
-3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v1`, and `v2` have been updated.
+3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v2`, and `v2` have been updated.
+
+Note that the `update-required-checks.sh` script should be updated when there are new diversions between the checks on different release branches.
 
 ## Deprecating a CodeQL version (write access required)
 
@@ -111,7 +113,7 @@ To deprecate an older version of the Action:
    - Add a changelog note announcing the deprecation.
    - Implement an Actions warning for customers using the deprecated version.
 1. Wait for the deprecation period to pass.
-1. Upgrade the Actions warning for customers using the deprecated version to a non-fatal error, and mention that this version of the Action is no longer supported. 
+1. Upgrade the Actions warning for customers using the deprecated version to a non-fatal error, and mention that this version of the Action is no longer supported.
 1. Make a PR to bump the `OLDEST_SUPPORTED_MAJOR_VERSION` in [release-branches.py](.github/actions/release-branches/release-branches.py).  Once this PR is merged, the release process will no longer backport changes to the deprecated release version.
 
 ## Resources

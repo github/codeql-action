@@ -111,8 +111,8 @@ To deprecate an older version of the Action:
    - Add a changelog note announcing the deprecation.
    - Implement an Actions warning for customers using the deprecated version.
 1. Wait for the deprecation period to pass.
-1. Upgrade the Actions warning for customers using the deprecated version to a non-fatal error, and mention that this version of the Action is no longer supported. 
-1. Make a PR to bump the `OLDEST_SUPPORTED_MAJOR_VERSION` in [release-branches.py](.github/actions/release-branches/release-branches.py).  Once this PR is merged, the release process will no longer backport changes to the deprecated release version.
+1. Upgrade the Actions warning for customers using the deprecated version to a non-fatal error, and mention that this version of the Action is no longer supported.
+1. Make a PR to bump the `OLDEST_SUPPORTED_MAJOR_VERSION` in [releases.ini](.github/releases.ini).  Once this PR is merged, the release process will no longer backport changes to the deprecated release version.
 
 ## Resources
 

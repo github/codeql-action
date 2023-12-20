@@ -1,12 +1,19 @@
 import argparse
 import json
 import os
-import subprocess
+import configparser
 
 # Name of the remote
 ORIGIN = 'origin'
 
-OLDEST_SUPPORTED_MAJOR_VERSION = 2
+script_dir = os.path.dirname(os.path.realpath(__file__))
+grandparent_dir = os.path.dirname(os.path.dirname(script_dir))
+
+config = configparser.ConfigParser()
+with open(os.path.join(grandparent_dir, 'releases.ini')) as stream:
+    config.read_string('[default]\n' + stream.read())
+
+OLDEST_SUPPORTED_MAJOR_VERSION = config['default']['OLDEST_SUPPORTED_MAJOR_VERSION']
 
 def main():
 

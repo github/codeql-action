@@ -13,7 +13,7 @@ config = configparser.ConfigParser()
 with open(os.path.join(grandparent_dir, 'releases.ini')) as stream:
     config.read_string('[default]\n' + stream.read())
 
-OLDEST_SUPPORTED_MAJOR_VERSION = config['default']['OLDEST_SUPPORTED_MAJOR_VERSION']
+OLDEST_SUPPORTED_MAJOR_VERSION = int(config['default']['OLDEST_SUPPORTED_MAJOR_VERSION'])
 
 def main():
 

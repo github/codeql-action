@@ -13,7 +13,7 @@ config = configparser.ConfigParser()
 with open(os.path.join(grandparent_dir, 'releases.ini')) as stream:
     config.read_string('[default]\n' + stream.read())
 
-OLDEST_SUPPORTED_MAJOR_VERSION = config['default']['OLDEST_SUPPORTED_MAJOR_VERSION']
+OLDEST_SUPPORTED_MAJOR_VERSION = int(config['default']['OLDEST_SUPPORTED_MAJOR_VERSION'])
 
 def main():
 
@@ -46,7 +46,7 @@ def main():
     if consider_backports:
       for i in range(int(major_version.strip("v"))-1, 0, -1):
         branch_name = f"releases/v{i}"
-        if i >= int(OLDEST_SUPPORTED_MAJOR_VERSION):
+        if i >= OLDEST_SUPPORTED_MAJOR_VERSION:
           backport_target_branches.append(branch_name)
 
     f.write("backport_target_branches="+json.dumps(backport_target_branches)+"\n")

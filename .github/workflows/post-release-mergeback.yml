@@ -133,8 +133,8 @@ jobs:
           # Update the version number ready for the next release
           npm version patch --no-git-tag-version
 
-          # Update the changelog
-          perl -i -pe 's/^/## \[UNRELEASED\]\n\nNo user facing changes.\n\n/ if($.==5)' CHANGELOG.md
+          # Update the changelog, adding a new version heading directly above the most recent existing one
+          awk '!f && /##/{print "'"## [UNRELEASED]\n\nNo user facing changes.\n"'"; f=1}1' CHANGELOG.md > temp && mv temp CHANGELOG.md
           git add .
           git commit -m "Update changelog and version after ${VERSION}"
 

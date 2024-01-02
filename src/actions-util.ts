@@ -187,7 +187,7 @@ export async function getRef(): Promise<string> {
   const hasShaInput = !!shaInput;
   // If one of 'ref' or 'sha' are provided, both are required
   if ((hasRefInput || hasShaInput) && !(hasRefInput && hasShaInput)) {
-    throw new Error(
+    throw new UserError(
       "Both 'ref' and 'sha' are required if one of them is provided.",
     );
   }

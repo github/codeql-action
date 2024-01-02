@@ -2,9 +2,27 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
+
 ## [UNRELEASED]
 
 - The CodeQL Action now requires CodeQL version 2.11.6 or later. For more information, see [the corresponding changelog entry for CodeQL Action version 2.22.7](#2227---16-nov-2023). [#2009](https://github.com/github/codeql-action/pull/2009)
+
+## 3.22.12 - 22 Dec 2023
+
+- Update default CodeQL bundle version to 2.15.5. [#2047](https://github.com/github/codeql-action/pull/2047)
+
+## 3.22.11 - 13 Dec 2023
+
+- [v3+ only] The CodeQL Action now runs on Node.js v20. [#2006](https://github.com/github/codeql-action/pull/2006)
+
+## 2.22.10 - 12 Dec 2023
+
+- Update default CodeQL bundle version to 2.15.4. [#2016](https://github.com/github/codeql-action/pull/2016)
+
+## 2.22.9 - 07 Dec 2023
+
+No user facing changes.
 
 ## 2.22.8 - 23 Nov 2023
 

@@ -9,7 +9,7 @@ on:
   push:
     branches:
     - main
-    - releases/v2
+    - releases/v*
   pull_request:
     types:
     - opened
@@ -45,11 +45,11 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ^1.13.1
       - name: Setup Python on MacOS
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         if: |
           matrix.os == 'macos-latest' && (
           matrix.version == 'stable-20221211' ||

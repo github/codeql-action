@@ -418,7 +418,7 @@ export async function setupCodeQL(
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
     } else if (process.platform !== "linux" && process.platform !== "darwin") {
-      throw new Error(`Unsupported platform: ${process.platform}`);
+      throw new util.UserError(`Unsupported platform: ${process.platform}`);
     }
 
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
@@ -692,24 +692,13 @@ export async function getCodeQLForCmd(
       await runTool(autobuildCmd);
     },
     async extractScannedLanguage(config: Config, language: Language) {
-      const databasePath = util.getCodeQLDatabasePath(config, language);
-
-      // Set trace command
-      const ext = process.platform === "win32" ? ".cmd" : ".sh";
-      const traceCommand = path.resolve(
-        await this.resolveExtractor(language),
-        "tools",
-        `autobuild${ext}`,
-      );
-      // Run trace command
       await runTool(cmd, [
         "database",
         "trace-command",
+        "--index-traceless-dbs",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
-        databasePath,
-        "--",
-        traceCommand,
+        util.getCodeQLDatabasePath(config, language),
       ]);
     },
     async finalizeDatabase(
@@ -1150,7 +1139,7 @@ export async function getCodeQLForCmd(
     checkVersion &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))
   ) {
-    throw new Error(
+    throw new util.UserError(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
         (await codeql.getVersion()).version
       }`,
@@ -1170,7 +1159,7 @@ export async function getCodeQLForCmd(
         "version of the CLI using the 'tools' input to the 'init' Action, you can remove this " +
         "input to use the default version.\n\n" +
         "Alternatively, if you want to continue using CodeQL CLI version " +
-        `${result.version}, you can replace 'github/codeql-action/*@v2' by ` +
+        `${result.version}, you can replace 'github/codeql-action/*@v3' by ` +
         `'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );

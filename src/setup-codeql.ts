@@ -647,7 +647,7 @@ export async function downloadCodeQL(
 export function getCodeQLURLVersion(url: string): string {
   const match = url.match(/\/codeql-bundle-(.*)\//);
   if (match === null || match.length < 2) {
-    throw new Error(
+    throw new util.UserError(
       `Malformed tools url: ${url}. Version could not be inferred`,
     );
   }

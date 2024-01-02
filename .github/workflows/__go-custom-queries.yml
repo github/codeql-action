@@ -12,7 +12,7 @@ on:
   push:
     branches:
     - main
-    - releases/v2
+    - releases/v*
   pull_request:
     types:
     - opened
@@ -81,7 +81,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Setup Python on MacOS
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       if: >-
         matrix.os == 'macos-latest' && (
 

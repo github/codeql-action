@@ -1,15 +1,16 @@
-import * as core from "@actions/core";
-
 import * as actionsUtil from "./actions-util";
+import { getApiClient } from "./api-client";
 import { CODEQL_VERSION_EXPORT_FAILED_SARIF, getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
-import { RepositoryNwo } from "./repository";
+import { RepositoryNwo, parseRepositoryNwo } from "./repository";
 import * as uploadLib from "./upload-lib";
 import {
   codeQlVersionAbove,
+  delay,
+  getErrorMessage,
   getRequiredEnvParam,
   isInTestMode,
   parseMatrixInput,
@@ -29,6 +30,9 @@ export interface UploadFailedSarifResult extends uploadLib.UploadStatusReport {
   upload_failed_run_stack_trace?: string;
   /** Reason why we did not upload a SARIF payload with `executionSuccessful: false`. */
   upload_failed_run_skipped_because?: string;
+
+  /** The internal ID of SARIF analysis. */
+  sarifID?: string;
 }
 
 function createFailedUploadFailedSarifResult(
@@ -93,7 +97,7 @@ async function maybeUploadFailedSarif(
     );
   }
 
-  core.info(`Uploading failed SARIF file ${sarifFile}`);
+  logger.info(`Uploading failed SARIF file ${sarifFile}`);
   const uploadResult = await uploadLib.uploadFromActions(
     sarifFile,
     checkoutPath,
@@ -107,7 +111,9 @@ async function maybeUploadFailedSarif(
     logger,
     { isUnsuccessfulExecution: true },
   );
-  return uploadResult?.statusReport ?? {};
+  return uploadResult
+    ? { ...uploadResult.statusReport, sarifID: uploadResult.sarifID }
+    : {};
 }
 
 export async function tryUploadSarifIfRunFailed(
@@ -180,9 +186,13 @@ export async function run(
     );
   }
 
+  if (process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true") {
+    await removeUploadedSarif(uploadFailedSarifResult, logger);
+  }
+
   // Upload appropriate Actions artifacts for debugging
   if (config.debugMode) {
-    core.info(
+    logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
     await uploadDatabaseBundleDebugArtifact(config, logger);
@@ -192,4 +202,78 @@ export async function run(
   }
 
   return uploadFailedSarifResult;
+}
+
+async function removeUploadedSarif(
+  uploadFailedSarifResult: UploadFailedSarifResult,
+  logger: Logger,
+) {
+  const sarifID = uploadFailedSarifResult.sarifID;
+  if (sarifID) {
+    logger.startGroup("Deleting failed SARIF upload");
+    logger.info(
+      `In test mode, therefore deleting the failed analysis to avoid impacting tool status for the Action repository. SARIF ID to delete: ${sarifID}.`,
+    );
+    const client = getApiClient();
+
+    try {
+      const repositoryNwo = parseRepositoryNwo(
+        getRequiredEnvParam("GITHUB_REPOSITORY"),
+      );
+
+      // Wait to make sure the analysis is ready for download before requesting it.
+      await delay(5000);
+
+      // Get the analysis associated with the uploaded sarif
+      const analysisInfo = await client.request(
+        "GET /repos/:owner/:repo/code-scanning/analyses?sarif_id=:sarif_id",
+        {
+          owner: repositoryNwo.owner,
+          repo: repositoryNwo.repo,
+          sarif_id: sarifID,
+        },
+      );
+
+      // Delete the analysis.
+      if (analysisInfo.data.length === 1) {
+        const analysis = analysisInfo.data[0];
+        logger.info(`Analysis ID to delete: ${analysis.id}.`);
+        try {
+          await client.request(
+            "DELETE /repos/:owner/:repo/code-scanning/analyses/:analysis_id?confirm_delete",
+            {
+              owner: repositoryNwo.owner,
+              repo: repositoryNwo.repo,
+              analysis_id: analysis.id,
+            },
+          );
+          logger.info(`Analysis deleted.`);
+        } catch (e) {
+          const origMessage = getErrorMessage(e);
+          const newMessage = origMessage.includes(
+            "No analysis found for analysis ID",
+          )
+            ? `Analysis ${analysis.id} does not exist. It was likely already deleted.`
+            : origMessage;
+          throw new Error(newMessage);
+        }
+      } else {
+        throw new Error(
+          `Expected to find exactly one analysis with sarif_id ${sarifID}. Found ${analysisInfo.data.length}.`,
+        );
+      }
+    } catch (e) {
+      throw new Error(
+        `Failed to delete uploaded SARIF analysis. Reason: ${getErrorMessage(
+          e,
+        )}`,
+      );
+    } finally {
+      logger.endGroup();
+    }
+  } else {
+    logger.warning(
+      "Could not delete the uploaded SARIF analysis because a SARIF ID wasn't provided by the API when uploading the SARIF file.",
+    );
+  }
 }

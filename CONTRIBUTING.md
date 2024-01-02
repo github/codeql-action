@@ -76,7 +76,9 @@ Since the `codeql-action` runs most of its testing through individual Actions wo
 
 1. By default, this script retrieves the checks from the latest SHA on `main`, so make sure that your `main` branch is up to date.
 2. Run the script. If there's a reason to, you can pass in a different SHA as a CLI argument.
-3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v1`, and `v2` have been updated.
+3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v2`, and `v3` have been updated.
+
+Note that any updates to checks need to be backported to the `releases/v2` branch, in order to maintain the same set of names for required checks.
 
 ## Deprecating a CodeQL version (write access required)
 
@@ -98,6 +100,21 @@ We typically deprecate a version of CodeQL when the GitHub Enterprise Server (GH
     - Do the same for PR checks that aren't auto-generated.
     - Add a changelog note announcing the new minimum version of CodeQL that is now required.
     - Example PR: https://github.com/github/codeql-action/pull/1907
+
+## Deprecating a CodeQL Action version (write access required)
+
+We sometimes maintain multiple versions of the CodeQL Action to enable customers on older but still supported versions of GitHub Enterprise Server (GHES) to continue to benefit from the latest CodeQL improvements. To accomplish this, the release process automation listens to updates to the release branch for the newest supported version.  When this branch is updated, the release process automatically opens backport PRs to update the release branches for older versions.
+
+We typically deprecate older versions of the Action once all supported GHES versions are compatible with the version of Node.js we are using on `main`.
+
+To deprecate an older version of the Action:
+
+1. Notify any users who are still pinned to the `vN` tag of the deprecated version of the Action, giving as much notice as is practical.
+   - Add a changelog note announcing the deprecation.
+   - Implement an Actions warning for customers using the deprecated version.
+1. Wait for the deprecation period to pass.
+1. Upgrade the Actions warning for customers using the deprecated version to a non-fatal error, and mention that this version of the Action is no longer supported.
+1. Make a PR to bump the `OLDEST_SUPPORTED_MAJOR_VERSION` in [releases.ini](.github/releases.ini).  Once this PR is merged, the release process will no longer backport changes to the deprecated release version.
 
 ## Resources
 

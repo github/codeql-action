@@ -76,7 +76,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
     steps = [
         {
             'name': 'Setup Python on MacOS',
-            'uses': 'actions/setup-python@v4',
+            'uses': 'actions/setup-python@v5',
             # Ensure that this is serialized as a folded (`>`) string to preserve the readability
             # of the generated workflow.
             'if': FoldedScalarString(textwrap.dedent('''
@@ -162,7 +162,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
             },
             'on': {
                 'push': {
-                    'branches': ['main', 'releases/v2']
+                    'branches': ['main', 'releases/v*']
                 },
                 'pull_request': {
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]

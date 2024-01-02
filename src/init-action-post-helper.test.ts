@@ -91,14 +91,14 @@ test("uploads failed SARIF run with `diagnostics export` if feature flag is off"
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         category: "my-category",
       },
@@ -115,14 +115,14 @@ test("uploads failed SARIF run with `diagnostics export` if the database doesn't
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         category: "my-category",
       },
@@ -142,14 +142,14 @@ test("uploads failed SARIF run with database export-diagnostics if the database 
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         category: "my-category",
       },
@@ -199,14 +199,14 @@ for (const { uploadInput, shouldUpload } of UPLOAD_INPUT_TEST_CASES) {
       },
       {
         name: "Initialize CodeQL",
-        uses: "github/codeql-action/init@v2",
+        uses: "github/codeql-action/init@v3",
         with: {
           languages: "javascript",
         },
       },
       {
         name: "Perform CodeQL Analysis",
-        uses: "github/codeql-action/analyze@v2",
+        uses: "github/codeql-action/analyze@v3",
         with: {
           category: "my-category",
           upload: uploadInput,
@@ -234,14 +234,14 @@ test("uploading failed SARIF run succeeds when workflow uses an input with a mat
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         category: "/language:${{ matrix.language }}",
       },
@@ -261,14 +261,14 @@ test("uploading failed SARIF run fails when workflow uses a complex upload input
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         upload: "${{ matrix.language != 'csharp' }}",
       },
@@ -391,6 +391,7 @@ async function testFailedSarifUpload(
   );
   if (expectUpload) {
     t.deepEqual(result, {
+      sarifID: "42",
       raw_upload_size_bytes: 20,
       zipped_upload_size_bytes: 10,
     });

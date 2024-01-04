@@ -6,7 +6,6 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import del from "del";
 import * as yaml from "js-yaml";
 
-import * as analysisPaths from "./analysis-paths";
 import {
   CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
   CodeQL,
@@ -147,10 +146,6 @@ export async function createdDBForScannedLanguages(
   logger: Logger,
   features: FeatureEnablement,
 ) {
-  // Insert the LGTM_INDEX_X env vars at this point so they are set when
-  // we extract any scanned languages.
-  analysisPaths.includeAndExcludeAnalysisPaths(config);
-
   for (const language of config.languages) {
     if (
       isScannedLanguage(language) &&

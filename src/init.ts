@@ -4,12 +4,11 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
-import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
-import { Language } from "./languages";
+import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
@@ -84,7 +83,7 @@ export async function initConfig(
     apiDetails,
     logger,
   );
-  analysisPaths.printPathFiltersWarning(config, logger);
+  printPathFiltersWarning(config, logger);
   logger.endGroup();
   return config;
 }
@@ -126,6 +125,19 @@ export async function runInit(
     throw processError(e);
   }
   return await getCombinedTracerConfig(config);
+}
+
+function printPathFiltersWarning(config: configUtils.Config, logger: Logger) {
+  // Index include/exclude/filters only work in javascript/python/ruby.
+  // If any other languages are detected/configured then show a warning.
+  if (
+    (config.paths.length !== 0 || config.pathsIgnore.length !== 0) &&
+    !config.languages.every(isScannedLanguage)
+  ) {
+    logger.warning(
+      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby',
+    );
+  }
 }
 
 /**

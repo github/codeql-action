@@ -76,7 +76,7 @@ export const featureConfig: Record<
   },
   [Feature.CliConfigFileEnabled]: {
     envVar: "CODEQL_PASS_CONFIG_TO_CLI",
-    minimumVersion: "2.11.6",
+    minimumVersion: undefined,
     defaultValue: true,
   },
   [Feature.EvaluatorFineGrainedParallelismEnabled]: {

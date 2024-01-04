@@ -95,18 +95,6 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - name: Setup Python on MacOS
-        uses: actions/setup-python@v5
-        if: |
-          matrix.os == 'macos-latest' && (
-          matrix.version == 'stable-20220908' ||
-          matrix.version == 'stable-20221211' ||
-          matrix.version == 'stable-20230418' ||
-          matrix.version == 'stable-v2.13.5' ||
-          matrix.version == 'stable-v2.14.6')
-        with:
-          python-version: '3.11'
-
       - uses: actions/checkout@v4
       - name: npm test
         run: |

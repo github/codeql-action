@@ -293,7 +293,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.10.5";
+const CODEQL_MINIMUM_VERSION = "2.11.6";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -317,15 +317,7 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-11-08";
  */
 
 /**
- * Versions 2.11.3+ of the CodeQL CLI support exporting a failed SARIF file via
- * `codeql database export-diagnostics` or `codeql diagnostics export`.
- */
-export const CODEQL_VERSION_EXPORT_FAILED_SARIF = "2.11.3";
-
-const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
-
-/**
- * Versions 2.11.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for
+ * Versions 2.12.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for
  * each language.
  */
 export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
@@ -894,6 +886,7 @@ export async function getCodeQLForCmd(
         addSnippetsFlag,
         "--print-diagnostics-summary",
         "--print-metrics-summary",
+        "--sarif-add-baseline-file-info",
         "--sarif-add-query-help",
         "--sarif-group-rules-by-pack",
         ...(await getCodeScanningConfigExportArguments(config, this)),
@@ -901,14 +894,6 @@ export async function getCodeQLForCmd(
       ];
       if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
-      }
-      if (
-        await util.codeQlVersionAbove(
-          this,
-          CODEQL_VERSION_FILE_BASELINE_INFORMATION,
-        )
-      ) {
-        codeqlArgs.push("--sarif-add-baseline-file-info");
       }
       if (await isSublanguageFileCoverageEnabled(config, this)) {
         codeqlArgs.push("--sublanguage-file-coverage");

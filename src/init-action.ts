@@ -469,7 +469,6 @@ async function run() {
       sourceRoot,
       "Runner.Worker.exe",
       registriesInput,
-      features,
       apiDetails,
       logger,
     );

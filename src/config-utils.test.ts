@@ -1101,62 +1101,6 @@ test("Using config input and file together, config input should be used.", async
   });
 });
 
-test("Invalid queries in workflow file handled correctly", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
-    const queries = "foo/bar@v1@v3";
-    const languages = "javascript";
-
-    // This function just needs to be type-correct; it doesn't need to do anything,
-    // since we're deliberately passing in invalid data
-    const codeQL = setCodeQL({
-      async resolveQueries() {
-        return {
-          byLanguage: {
-            javascript: {},
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
-      },
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
-    });
-
-    try {
-      await configUtils.initConfig(
-        languages,
-        queries,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        codeQL,
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        createFeatures([]),
-        getRunnerLogger(true),
-      );
-      t.fail("initConfig did not throw error");
-    } catch (err) {
-      t.deepEqual(
-        err,
-        new UserError(
-          configUtils.getQueryUsesInvalid(undefined, "foo/bar@v1@v3"),
-        ),
-      );
-    }
-  });
-});
-
 test("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tmpDir) => {
     const codeQL = setCodeQL({
@@ -1642,18 +1586,6 @@ function doInvalidQueryUsesTest(
 // Various "uses" fields, and the errors they should produce
 doInvalidQueryUsesTest("''", (c) =>
   configUtils.getQueryUsesInvalid(c, undefined),
-);
-doInvalidQueryUsesTest("foo/bar", (c) =>
-  configUtils.getQueryUsesInvalid(c, "foo/bar"),
-);
-doInvalidQueryUsesTest("foo/bar@v1@v2", (c) =>
-  configUtils.getQueryUsesInvalid(c, "foo/bar@v1@v2"),
-);
-doInvalidQueryUsesTest("foo@master", (c) =>
-  configUtils.getQueryUsesInvalid(c, "foo@master"),
-);
-doInvalidQueryUsesTest("https://github.com/foo/bar@master", (c) =>
-  configUtils.getQueryUsesInvalid(c, "https://github.com/foo/bar@master"),
 );
 doInvalidQueryUsesTest("./foo", (c) =>
   configUtils.getLocalPathDoesNotExist(c, "foo"),

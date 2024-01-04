@@ -19,7 +19,6 @@ import {
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
-  useCodeScanningConfigInCli,
 } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -98,7 +97,6 @@ export interface CodeQL {
     config: Config,
     sourceRoot: string,
     processName: string | undefined,
-    features: FeatureEnablement,
     qlconfigFile: string | undefined,
     logger: Logger,
   ): Promise<void>;
@@ -576,7 +574,6 @@ export async function getCodeQLForCmd(
       config: Config,
       sourceRoot: string,
       processName: string | undefined,
-      features: FeatureEnablement,
       qlconfigFile: string | undefined,
       logger: Logger,
     ) {
@@ -589,21 +586,16 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--trace-process-name=${processName}`);
       }
 
-      // A code scanning config file is only generated if the CliConfigFileEnabled feature flag is enabled.
       const codeScanningConfigFile = await generateCodeScanningConfig(
-        codeql,
         config,
-        features,
         logger,
       );
-      // Only pass external repository token if a config file is going to be parsed by the CLI.
-      let externalRepositoryToken: string | undefined;
-      if (codeScanningConfigFile) {
-        externalRepositoryToken = getOptionalInput("external-repository-token");
-        extraArgs.push(`--codescanning-config=${codeScanningConfigFile}`);
-        if (externalRepositoryToken) {
-          extraArgs.push("--external-repository-token-stdin");
-        }
+      const externalRepositoryToken = getOptionalInput(
+        "external-repository-token",
+      );
+      extraArgs.push(`--codescanning-config=${codeScanningConfigFile}`);
+      if (externalRepositoryToken) {
+        extraArgs.push("--external-repository-token-stdin");
       }
 
       if (
@@ -1325,22 +1317,16 @@ function ensureEndsInPeriod(text: string): string {
 }
 
 /**
- * If appropriate, generates a code scanning configuration that is to be used for a scan.
- * If the configuration is not to be generated, returns undefined.
+ * Generates a code scanning configuration that is to be used for a scan.
  *
  * @param codeql The CodeQL object to use.
  * @param config The configuration to use.
  * @returns the path to the generated user configuration file.
  */
 async function generateCodeScanningConfig(
-  codeql: CodeQL,
   config: Config,
-  features: FeatureEnablement,
   logger: Logger,
-): Promise<string | undefined> {
-  if (!(await useCodeScanningConfigInCli(codeql, features))) {
-    return;
-  }
+): Promise<string> {
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
 
   // make a copy so we can modify it

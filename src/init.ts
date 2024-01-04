@@ -8,11 +8,7 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import {
-  CodeQLDefaultVersionInfo,
-  FeatureEnablement,
-  useCodeScanningConfigInCli,
-} from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -103,26 +99,17 @@ export async function runInit(
   sourceRoot: string,
   processName: string | undefined,
   registriesInput: string | undefined,
-  features: FeatureEnablement,
   apiDetails: GitHubApiCombinedDetails,
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
   try {
-    // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.
-    // So, create it now.
-    // If we are parsing the config file in the Action, then the qlconfig file was already created
-    // before the `pack download` command was invoked. It is not required for the init command.
-    let registriesAuthTokens: string | undefined;
-    let qlconfigFile: string | undefined;
-    if (await useCodeScanningConfigInCli(codeql, features)) {
-      ({ registriesAuthTokens, qlconfigFile } =
-        await configUtils.generateRegistries(
-          registriesInput,
-          config.tempDir,
-          logger,
-        ));
-    }
+    const { registriesAuthTokens, qlconfigFile } =
+      await configUtils.generateRegistries(
+        registriesInput,
+        config.tempDir,
+        logger,
+      );
     await configUtils.wrapEnvironment(
       {
         GITHUB_TOKEN: apiDetails.auth,
@@ -135,7 +122,6 @@ export async function runInit(
           config,
           sourceRoot,
           processName,
-          features,
           qlconfigFile,
           logger,
         ),

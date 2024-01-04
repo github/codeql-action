@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 import test, { ExecutionContext } from "ava";
-import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import {
@@ -13,7 +12,7 @@ import {
   QueriesStatusReport,
 } from "./analyze";
 import { CodeQL, setCodeQL } from "./codeql";
-import { Config, QueriesWithSearchPath } from "./config-utils";
+import { Config } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -134,10 +133,6 @@ test("status report fields and search path setting", async (t) => {
         recursive: true,
       });
 
-      config.queries[language] = {
-        builtin: ["foo.ql"],
-        custom: [],
-      };
       const builtinStatusReport = await runQueries(
         tmpDir,
         memoryFlag,
@@ -148,116 +143,18 @@ test("status report fields and search path setting", async (t) => {
         getRunnerLogger(true),
         createFeatures([Feature.QaTelemetryEnabled]),
       );
-      const hasPacks = language in packs;
-      const statusReportKeys = Object.keys(builtinStatusReport).sort();
-      if (hasPacks) {
-        t.deepEqual(statusReportKeys.length, 4, statusReportKeys.toString());
-        t.deepEqual(
-          statusReportKeys[0],
-          `analyze_builtin_queries_${language}_duration_ms`,
-        );
-        t.deepEqual(
-          statusReportKeys[1],
-          `analyze_custom_queries_${language}_duration_ms`,
-        );
-        t.deepEqual(statusReportKeys[2], "event_reports");
-        t.deepEqual(
-          statusReportKeys[3],
-          `interpret_results_${language}_duration_ms`,
-        );
-      } else {
-        t.deepEqual(
-          statusReportKeys[0],
-          `analyze_builtin_queries_${language}_duration_ms`,
-        );
-        t.deepEqual(statusReportKeys[1], "event_reports");
-        t.deepEqual(
-          statusReportKeys[2],
-          `interpret_results_${language}_duration_ms`,
-        );
-      }
-      if (builtinStatusReport.event_reports) {
-        for (const eventReport of builtinStatusReport.event_reports) {
-          t.deepEqual(eventReport.event, "codeql database interpret-results");
-          t.true("properties" in eventReport);
-          t.true("alertCounts" in eventReport.properties!);
-        }
-      }
-
-      config.queries[language] = {
-        builtin: [],
-        custom: [
-          {
-            queries: ["foo.ql"],
-            searchPath: "/1",
-          },
-          {
-            queries: ["bar.ql"],
-            searchPath: "/2",
-          },
-        ],
-      };
-      const customStatusReport = await runQueries(
-        tmpDir,
-        memoryFlag,
-        addSnippetsFlag,
-        threadsFlag,
-        undefined,
-        config,
-        getRunnerLogger(true),
-        createFeatures([Feature.QaTelemetryEnabled]),
-      );
-      t.deepEqual(Object.keys(customStatusReport).length, 3);
-      t.true(
-        `analyze_custom_queries_${language}_duration_ms` in customStatusReport,
-      );
-      const expectedSearchPathsUsed = hasPacks
-        ? [undefined, undefined, "/1", "/2", undefined]
-        : [undefined, "/1", "/2"];
-      t.deepEqual(searchPathsUsed, expectedSearchPathsUsed);
-      t.true(`interpret_results_${language}_duration_ms` in customStatusReport);
-      t.true("event_reports" in customStatusReport);
-      if (customStatusReport.event_reports) {
-        for (const eventReport of customStatusReport.event_reports) {
-          t.deepEqual(eventReport.event, "codeql database interpret-results");
-          t.true("properties" in eventReport);
-          t.true("alertCounts" in eventReport.properties!);
-        }
+      t.deepEqual(Object.keys(builtinStatusReport).sort(), [
+        `analyze_builtin_queries_${language}_duration_ms`,
+        "event_reports",
+        `interpret_results_${language}_duration_ms`,
+      ]);
+      for (const eventReport of builtinStatusReport.event_reports!) {
+        t.deepEqual(eventReport.event, "codeql database interpret-results");
+        t.true("properties" in eventReport);
+        t.true("alertCounts" in eventReport.properties!);
       }
     }
-
-    verifyQuerySuites(tmpDir);
   });
-
-  function verifyQuerySuites(tmpDir: string) {
-    const qlsContent = [
-      {
-        query: "foo.ql",
-      },
-    ];
-    const qlsContent2 = [
-      {
-        query: "bar.ql",
-      },
-    ];
-    for (const lang of Object.values(Language)) {
-      t.deepEqual(readContents(`${lang}-queries-builtin.qls`), qlsContent);
-      t.deepEqual(readContents(`${lang}-queries-custom-0.qls`), qlsContent);
-      t.deepEqual(readContents(`${lang}-queries-custom-1.qls`), qlsContent2);
-    }
-
-    function readContents(name: string) {
-      const x = fs.readFileSync(
-        path.join(tmpDir, "codeql_databases", name),
-        "utf8",
-      );
-      console.log(x);
-
-      return yaml.load(
-        fs.readFileSync(path.join(tmpDir, "codeql_databases", name), "utf8"),
-      );
-    }
-  }
 });
 
 function mockCodeQL(): Partial<CodeQL> {
@@ -295,16 +192,6 @@ function createBaseConfig(tmpDir: string): Config {
   };
 }
 
-function createQueryConfig(
-  builtin: string[],
-  custom: string[],
-): { builtin: string[]; custom: QueriesWithSearchPath[] } {
-  return {
-    builtin,
-    custom: custom.map((c) => ({ searchPath: "/search", queries: [c] })),
-  };
-}
-
 async function runQueriesWithConfig(
   config: Config,
   features: Feature[],
@@ -336,7 +223,6 @@ test("optimizeForLastQueryRun for one language", async (t) => {
     setCodeQL(codeql);
     const config: Config = createBaseConfig(tmpDir);
     config.languages = [Language.cpp];
-    config.queries.cpp = createQueryConfig(["foo.ql"], []);
 
     await runQueriesWithConfig(config, []);
     t.deepEqual(
@@ -352,75 +238,8 @@ test("optimizeForLastQueryRun for two languages", async (t) => {
     setCodeQL(codeql);
     const config: Config = createBaseConfig(tmpDir);
     config.languages = [Language.cpp, Language.java];
-    config.queries.cpp = createQueryConfig(["foo.ql"], []);
-    config.queries.java = createQueryConfig(["bar.ql"], []);
 
     await runQueriesWithConfig(config, []);
-    t.deepEqual(
-      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [true, true],
-    );
-  });
-});
-
-test("optimizeForLastQueryRun for two languages, with custom queries", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
-    const codeql = mockCodeQL();
-    setCodeQL(codeql);
-    const config: Config = createBaseConfig(tmpDir);
-    config.languages = [Language.cpp, Language.java];
-    config.queries.cpp = createQueryConfig(["foo.ql"], ["c1.ql", "c2.ql"]);
-    config.queries.java = createQueryConfig(["bar.ql"], ["c3.ql"]);
-
-    await runQueriesWithConfig(config, []);
-    t.deepEqual(
-      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [false, false, true, false, true],
-    );
-  });
-});
-
-test("optimizeForLastQueryRun for two languages, with custom queries and packs", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
-    const codeql = mockCodeQL();
-    setCodeQL(codeql);
-    const config: Config = createBaseConfig(tmpDir);
-    config.languages = [Language.cpp, Language.java];
-    config.queries.cpp = createQueryConfig(["foo.ql"], ["c1.ql", "c2.ql"]);
-    config.queries.java = createQueryConfig(["bar.ql"], ["c3.ql"]);
-    config.packs.cpp = ["a/cpp-pack1@0.1.0"];
-    config.packs.java = ["b/java-pack1@0.2.0", "b/java-pack2@0.3.3"];
-    await runQueriesWithConfig(config, []);
-    t.deepEqual(
-      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [false, false, false, true, false, false, true],
-    );
-  });
-});
-
-test("optimizeForLastQueryRun for one language, CliConfigFileEnabled", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
-    const codeql = mockCodeQL();
-    setCodeQL(codeql);
-    const config: Config = createBaseConfig(tmpDir);
-    config.languages = [Language.cpp];
-
-    await runQueriesWithConfig(config, [Feature.CliConfigFileEnabled]);
-    t.deepEqual(
-      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [true],
-    );
-  });
-});
-
-test("optimizeForLastQueryRun for two languages, CliConfigFileEnabled", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
-    const codeql = mockCodeQL();
-    setCodeQL(codeql);
-    const config: Config = createBaseConfig(tmpDir);
-    config.languages = [Language.cpp, Language.java];
-
-    await runQueriesWithConfig(config, [Feature.CliConfigFileEnabled]);
     t.deepEqual(
       getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
       [true, true],

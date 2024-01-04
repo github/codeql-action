@@ -21,12 +21,11 @@ import * as util from "./util";
 
 setupTests(test);
 
-/** Checks that the duration fields are populated for the correct language
- * and correct case of builtin or custom. Also checks the correct search
- * paths are set in the database analyze invocation.
+/**
+ * Checks that the duration fields are populated for the correct language. Also checks the correct
+ * search paths are set in the database analyze invocation.
  *
- * Mocks the QA telemetry feature flag and checks the appropriate status report
- * fields.
+ * Mocks the QA telemetry feature flag and checks the appropriate status report fields.
  */
 test("status report fields and search path setting", async (t) => {
   let searchPathsUsed: Array<string | undefined> = [];
@@ -118,7 +117,7 @@ test("status report fields and search path setting", async (t) => {
         recursive: true,
       });
 
-      const builtinStatusReport = await runQueries(
+      const statusReport = await runQueries(
         tmpDir,
         memoryFlag,
         addSnippetsFlag,
@@ -128,12 +127,12 @@ test("status report fields and search path setting", async (t) => {
         getRunnerLogger(true),
         createFeatures([Feature.QaTelemetryEnabled]),
       );
-      t.deepEqual(Object.keys(builtinStatusReport).sort(), [
+      t.deepEqual(Object.keys(statusReport).sort(), [
         `analyze_builtin_queries_${language}_duration_ms`,
         "event_reports",
         `interpret_results_${language}_duration_ms`,
       ]);
-      for (const eventReport of builtinStatusReport.event_reports!) {
+      for (const eventReport of statusReport.event_reports!) {
         t.deepEqual(eventReport.event, "codeql database interpret-results");
         t.true("properties" in eventReport);
         t.true("alertCounts" in eventReport.properties!);

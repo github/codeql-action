@@ -32,38 +32,62 @@ export class CodeQLAnalysisError extends Error {
 }
 
 export interface QueriesStatusReport {
-  /** Time taken in ms to run builtin queries for cpp (or undefined if this language was not analyzed). */
+  /**
+   * Time taken in ms to run queries for cpp (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
   analyze_builtin_queries_cpp_duration_ms?: number;
-  /** Time taken in ms to run builtin queries for csharp (or undefined if this language was not analyzed). */
+  /**
+   * Time taken in ms to run queries for csharp (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
   analyze_builtin_queries_csharp_duration_ms?: number;
-  /** Time taken in ms to run builtin queries for go (or undefined if this language was not analyzed). */
+  /**
+   * Time taken in ms to run queries for go (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
   analyze_builtin_queries_go_duration_ms?: number;
-  /** Time taken in ms to run builtin queries for java (or undefined if this language was not analyzed). */
+  /**
+   * Time taken in ms to run queries for java (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
   analyze_builtin_queries_java_duration_ms?: number;
-  /** Time taken in ms to run builtin queries for javascript (or undefined if this language was not analyzed). */
+  /**
+   * Time taken in ms to run queries for javascript (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
   analyze_builtin_queries_javascript_duration_ms?: number;
-  /** Time taken in ms to run builtin queries for python (or undefined if this language was not analyzed). */
+  /**
+   * Time taken in ms to run queries for python (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
   analyze_builtin_queries_python_duration_ms?: number;
-  /** Time taken in ms to run builtin queries for ruby (or undefined if this language was not analyzed). */
+  /**
+   * Time taken in ms to run queries for ruby (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
   analyze_builtin_queries_ruby_duration_ms?: number;
-  /** Time taken in ms to run builtin queries for swift (or undefined if this language was not analyzed). */
+  /** Time taken in ms to run queries for swift (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
   analyze_builtin_queries_swift_duration_ms?: number;
-  /** Time taken in ms to run custom queries for cpp (or undefined if this language was not analyzed). */
-  analyze_custom_queries_cpp_duration_ms?: number;
-  /** Time taken in ms to run custom queries for csharp (or undefined if this language was not analyzed). */
-  analyze_custom_queries_csharp_duration_ms?: number;
-  /** Time taken in ms to run custom queries for go (or undefined if this language was not analyzed). */
-  analyze_custom_queries_go_duration_ms?: number;
-  /** Time taken in ms to run custom queries for java (or undefined if this language was not analyzed). */
-  analyze_custom_queries_java_duration_ms?: number;
-  /** Time taken in ms to run custom queries for javascript (or undefined if this language was not analyzed). */
-  analyze_custom_queries_javascript_duration_ms?: number;
-  /** Time taken in ms to run custom queries for python (or undefined if this language was not analyzed). */
-  analyze_custom_queries_python_duration_ms?: number;
-  /** Time taken in ms to run custom queries for ruby (or undefined if this language was not analyzed). */
-  analyze_custom_queries_ruby_duration_ms?: number;
-  /** Time taken in ms to run custom queries for swift (or undefined if this language was not analyzed). */
-  analyze_custom_queries_swift_duration_ms?: number;
+
   /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
   interpret_results_cpp_duration_ms?: number;
   /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */
@@ -80,6 +104,7 @@ export interface QueriesStatusReport {
   interpret_results_ruby_duration_ms?: number;
   /** Time taken in ms to interpret results for swift (or undefined if this language was not analyzed). */
   interpret_results_swift_duration_ms?: number;
+
   /** Name of language that errored during analysis (or undefined if no language failed). */
   analyze_failure_language?: string;
   /** Reports on discrete events associated with this status report. */
@@ -243,12 +268,12 @@ export async function runQueries(
       // call to run all the queries for each language and
       // another to interpret the results.
       logger.startGroup(`Running queries for ${language}`);
-      const startTimeBuiltIn = new Date().getTime();
+      const startTimeRunQueries = new Date().getTime();
       await runQueryGroup(language, "all", undefined, undefined, true);
       // TODO should not be using `builtin` here. We should be using `all` instead.
       // The status report does not support `all` yet.
       statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
-        new Date().getTime() - startTimeBuiltIn;
+        new Date().getTime() - startTimeRunQueries;
 
       logger.startGroup(`Interpreting results for ${language}`);
       const startTimeInterpretResults = new Date();

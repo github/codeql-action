@@ -76,7 +76,9 @@ Since the `codeql-action` runs most of its testing through individual Actions wo
 
 1. By default, this script retrieves the checks from the latest SHA on `main`, so make sure that your `main` branch is up to date.
 2. Run the script. If there's a reason to, you can pass in a different SHA as a CLI argument.
-3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v1`, and `v2` have been updated.
+3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v2`, and `v3` have been updated.
+
+Note that any updates to checks need to be backported to the `releases/v2` branch, in order to maintain the same set of names for required checks.
 
 ## Deprecating a CodeQL version (write access required)
 
@@ -111,8 +113,8 @@ To deprecate an older version of the Action:
    - Add a changelog note announcing the deprecation.
    - Implement an Actions warning for customers using the deprecated version.
 1. Wait for the deprecation period to pass.
-1. Upgrade the Actions warning for customers using the deprecated version to a non-fatal error, and mention that this version of the Action is no longer supported. 
-1. Make a PR to bump the `OLDEST_SUPPORTED_MAJOR_VERSION` in [release-branches.py](.github/actions/release-branches/release-branches.py).  Once this PR is merged, the release process will no longer backport changes to the deprecated release version.
+1. Upgrade the Actions warning for customers using the deprecated version to a non-fatal error, and mention that this version of the Action is no longer supported.
+1. Make a PR to bump the `OLDEST_SUPPORTED_MAJOR_VERSION` in [releases.ini](.github/releases.ini).  Once this PR is merged, the release process will no longer backport changes to the deprecated release version.
 
 ## Resources
 

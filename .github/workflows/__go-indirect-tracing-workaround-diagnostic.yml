@@ -35,11 +35,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Setup Python on MacOS
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       if: >-
         matrix.os == 'macos-latest' && (
-
-        matrix.version == 'stable-20220908' ||
 
         matrix.version == 'stable-20221211' ||
 
@@ -59,14 +57,10 @@ jobs:
         version: ${{ matrix.version }}
         use-all-platform-bundle: 'false'
     - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
+      if: runner.os != 'Windows' && matrix.version == '20221211'
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: actions/setup-go@v4
+    - uses: actions/setup-go@v5
       with:
       # We need a Go version that ships with statically linked binaries on Linux
         go-version: '>=1.21.0'
@@ -75,7 +69,7 @@ jobs:
         languages: go
         tools: ${{ steps.prepare-test.outputs.tools-url }}
   # Deliberately change Go after the `init` step
-    - uses: actions/setup-go@v4
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.20'
     - name: Build code

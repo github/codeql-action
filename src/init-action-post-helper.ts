@@ -1,6 +1,6 @@
 import * as actionsUtil from "./actions-util";
 import { getApiClient } from "./api-client";
-import { CODEQL_VERSION_EXPORT_FAILED_SARIF, getCodeQL } from "./codeql";
+import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -8,7 +8,6 @@ import { Logger } from "./logging";
 import { RepositoryNwo, parseRepositoryNwo } from "./repository";
 import * as uploadLib from "./upload-lib";
 import {
-  codeQlVersionAbove,
   delay,
   getErrorMessage,
   getRequiredEnvParam,
@@ -58,10 +57,6 @@ async function maybeUploadFailedSarif(
   if (!config.codeQLCmd) {
     return { upload_failed_run_skipped_because: "CodeQL command not found" };
   }
-  const codeql = await getCodeQL(config.codeQLCmd);
-  if (!(await codeQlVersionAbove(codeql, CODEQL_VERSION_EXPORT_FAILED_SARIF))) {
-    return { upload_failed_run_skipped_because: "Unsupported by CodeQL CLI" };
-  }
   const workflow = await getWorkflow(logger);
   const jobName = getRequiredEnvParam("GITHUB_JOB");
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
@@ -78,6 +73,7 @@ async function maybeUploadFailedSarif(
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
   const databasePath = config.dbLocation;
 
+  const codeql = await getCodeQL(config.codeQLCmd);
   const sarifFile = "../codeql-failed-run.sarif";
 
   // If there is no database or the feature flag is off, we run 'export diagnostics'

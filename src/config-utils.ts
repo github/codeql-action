@@ -12,7 +12,6 @@ import {
   CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE,
   ResolveQueriesOutput,
 } from "./codeql";
-import { FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -462,12 +461,7 @@ async function parseQueryUses(
   codeQL: CodeQL,
   resultMap: Queries,
   queryUses: string,
-  // TODO: will clean this up in a future commit
-  _tempDir: string,
   workspacePath: string,
-  _apiDetails: api.GitHubApiExternalRepoDetails,
-  _features: FeatureEnablement,
-  _logger: Logger,
   configFile?: string,
 ): Promise<void> {
   queryUses = queryUses.trim();
@@ -910,28 +904,14 @@ async function addQueriesFromWorkflow(
   queriesInput: string,
   languages: string[],
   resultMap: Queries,
-  tempDir: string,
   workspacePath: string,
-  apiDetails: api.GitHubApiExternalRepoDetails,
-  features: FeatureEnablement,
-  logger: Logger,
 ): Promise<void> {
   queriesInput = queriesInput.trim();
   // "+" means "don't override config file" - see shouldAddConfigFileQueries
   queriesInput = queriesInput.replace(/^\+/, "");
 
   for (const query of queriesInput.split(",")) {
-    await parseQueryUses(
-      languages,
-      codeQL,
-      resultMap,
-      query,
-      tempDir,
-      workspacePath,
-      apiDetails,
-      features,
-      logger,
-    );
+    await parseQueryUses(languages, codeQL, resultMap, query, workspacePath);
   }
 }
 
@@ -964,8 +944,6 @@ export async function getDefaultConfig(
   codeQL: CodeQL,
   workspacePath: string,
   gitHubVersion: GitHubVersion,
-  apiDetails: api.GitHubApiCombinedDetails,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Config> {
   const languages = await getLanguages(
@@ -998,11 +976,7 @@ export async function getDefaultConfig(
       rawQueriesInput,
       languages,
       queries,
-      tempDir,
       workspacePath,
-      apiDetails,
-      features,
-      logger,
     );
   }
 
@@ -1071,7 +1045,6 @@ async function loadConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -1146,11 +1119,7 @@ async function loadConfig(
       rawQueriesInput,
       languages,
       queries,
-      tempDir,
       workspacePath,
-      apiDetails,
-      features,
-      logger,
     );
   }
   if (
@@ -1170,11 +1139,7 @@ async function loadConfig(
         codeQL,
         queries,
         query[QUERIES_USES_PROPERTY],
-        tempDir,
         workspacePath,
-        apiDetails,
-        features,
-        logger,
         configFile,
       );
     }
@@ -1579,8 +1544,6 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   packsInput: string | undefined,
-  // TODO: will clean this up in a future commit
-  _registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
   configInput: string | undefined,
@@ -1594,7 +1557,6 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: GitHubVersion,
   apiDetails: api.GitHubApiCombinedDetails,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Config> {
   let config: Config;
@@ -1628,8 +1590,6 @@ export async function initConfig(
       codeQL,
       workspacePath,
       gitHubVersion,
-      apiDetails,
-      features,
       logger,
     );
   } else {
@@ -1649,7 +1609,6 @@ export async function initConfig(
       workspacePath,
       gitHubVersion,
       apiDetails,
-      features,
       logger,
     );
   }

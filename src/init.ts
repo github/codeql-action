@@ -8,7 +8,7 @@ import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -49,7 +49,6 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   packsInput: string | undefined,
-  registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
   configInput: string | undefined,
@@ -63,7 +62,6 @@ export async function initConfig(
   workspacePath: string,
   gitHubVersion: util.GitHubVersion,
   apiDetails: GitHubApiCombinedDetails,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<configUtils.Config> {
   logger.startGroup("Load language configuration");
@@ -71,7 +69,6 @@ export async function initConfig(
     languagesInput,
     queriesInput,
     packsInput,
-    registriesInput,
     configFile,
     dbLocation,
     configInput,
@@ -85,7 +82,6 @@ export async function initConfig(
     workspacePath,
     gitHubVersion,
     apiDetails,
-    features,
     logger,
   );
   analysisPaths.printPathFiltersWarning(config, logger);

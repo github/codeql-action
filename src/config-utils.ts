@@ -12,12 +12,7 @@ import {
   CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE,
   ResolveQueriesOutput,
 } from "./codeql";
-import * as externalQueries from "./external-queries";
-import {
-  FeatureEnablement,
-  logCodeScanningConfigInCli,
-  useCodeScanningConfigInCli,
-} from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -455,55 +450,6 @@ async function addLocalQueries(
 }
 
 /**
- * Retrieve the set of queries at the referenced remote repo and add them to resultMap.
- */
-async function addRemoteQueries(
-  codeQL: CodeQL,
-  resultMap: Queries,
-  queryUses: string,
-  tempDir: string,
-  apiDetails: api.GitHubApiExternalRepoDetails,
-  logger: Logger,
-  configFile?: string,
-) {
-  let tok = queryUses.split("@");
-  if (tok.length !== 2) {
-    throw new UserError(getQueryUsesInvalid(configFile, queryUses));
-  }
-
-  const ref = tok[1];
-
-  tok = tok[0].split("/");
-  // The first token is the owner
-  // The second token is the repo
-  // The rest is a path, if there is more than one token combine them to form the full path
-  if (tok.length < 2) {
-    throw new UserError(getQueryUsesInvalid(configFile, queryUses));
-  }
-  // Check none of the parts of the repository name are empty
-  if (tok[0].trim() === "" || tok[1].trim() === "") {
-    throw new UserError(getQueryUsesInvalid(configFile, queryUses));
-  }
-  const nwo = `${tok[0]}/${tok[1]}`;
-
-  // Checkout the external repository
-  const checkoutPath = await externalQueries.checkoutExternalRepository(
-    nwo,
-    ref,
-    apiDetails,
-    tempDir,
-    logger,
-  );
-
-  const queryPath =
-    tok.length > 2
-      ? path.join(checkoutPath, tok.slice(2).join("/"))
-      : checkoutPath;
-
-  await runResolveQueries(codeQL, resultMap, [queryPath], checkoutPath);
-}
-
-/**
  * Parse a query 'uses' field to a discrete set of query files and update resultMap.
  *
  * The logic for parsing the string is based on what actions does for
@@ -516,11 +462,12 @@ async function parseQueryUses(
   codeQL: CodeQL,
   resultMap: Queries,
   queryUses: string,
-  tempDir: string,
+  // TODO: will clean this up in a future commit
+  _tempDir: string,
   workspacePath: string,
-  apiDetails: api.GitHubApiExternalRepoDetails,
-  features: FeatureEnablement,
-  logger: Logger,
+  _apiDetails: api.GitHubApiExternalRepoDetails,
+  _features: FeatureEnablement,
+  _logger: Logger,
   configFile?: string,
 ): Promise<void> {
   queryUses = queryUses.trim();
@@ -550,21 +497,6 @@ async function parseQueryUses(
       configFile,
     );
     return;
-  }
-
-  // Otherwise, must be a reference to another repo.
-  // If config parsing is handled in CLI, then this repo will be downloaded
-  // later by the CLI.
-  if (!(await useCodeScanningConfigInCli(codeQL, features))) {
-    await addRemoteQueries(
-      codeQL,
-      resultMap,
-      queryUses,
-      tempDir,
-      apiDetails,
-      logger,
-      configFile,
-    );
   }
 }
 
@@ -1647,7 +1579,8 @@ export async function initConfig(
   languagesInput: string | undefined,
   queriesInput: string | undefined,
   packsInput: string | undefined,
-  registriesInput: string | undefined,
+  // TODO: will clean this up in a future commit
+  _registriesInput: string | undefined,
   configFile: string | undefined,
   dbLocation: string | undefined,
   configInput: string | undefined,
@@ -1717,38 +1650,6 @@ export async function initConfig(
       gitHubVersion,
       apiDetails,
       features,
-      logger,
-    );
-  }
-
-  // When using the codescanning config in the CLI, pack downloads
-  // happen in the CLI during the `database init` command, so no need
-  // to download them here.
-  await logCodeScanningConfigInCli(codeQL, features, logger);
-
-  if (!(await useCodeScanningConfigInCli(codeQL, features))) {
-    // The list of queries should not be empty for any language. If it is then
-    // it is a user configuration error.
-    // This check occurs in the CLI when it parses the config file.
-    for (const language of config.languages) {
-      const hasBuiltinQueries = config.queries[language]?.builtin.length > 0;
-      const hasCustomQueries = config.queries[language]?.custom.length > 0;
-      const hasPacks = (config.packs[language]?.length || 0) > 0;
-      if (!hasPacks && !hasBuiltinQueries && !hasCustomQueries) {
-        throw new UserError(
-          `Did not detect any queries to run for ${language}. ` +
-            "Please make sure that the default queries are enabled, or you are specifying queries to run.",
-        );
-      }
-    }
-
-    await downloadPacks(
-      codeQL,
-      config.languages,
-      config.packs,
-      apiDetails,
-      registriesInput,
-      config.tempDir,
       logger,
     );
   }

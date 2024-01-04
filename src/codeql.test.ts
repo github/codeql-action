@@ -951,58 +951,6 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
   });
 });
 
-test("databaseInterpretResults() sets --sarif-add-baseline-file-info for 2.11.3", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.11.3"));
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    stubConfig,
-    createFeatures([]),
-    getRunnerLogger(true),
-  );
-  t.true(
-    runnerConstructorStub.firstCall.args[1].includes(
-      "--sarif-add-baseline-file-info",
-    ),
-    "--sarif-add-baseline-file-info should be present, but it is absent",
-  );
-});
-
-test("databaseInterpretResults() does not set --sarif-add-baseline-file-info for 2.11.2", async (t) => {
-  const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.11.2"));
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-  await codeqlObject.databaseInterpretResults(
-    "",
-    [],
-    "",
-    "",
-    "",
-    "-v",
-    "",
-    stubConfig,
-    createFeatures([]),
-    getRunnerLogger(true),
-  );
-  t.false(
-    runnerConstructorStub.firstCall.args[1].includes(
-      "--sarif-add-baseline-file-info",
-    ),
-    "--sarif-add-baseline-file-info must be absent, but it is present",
-  );
-});
-
 const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
   {
     codeqlVersion: "2.15.0",

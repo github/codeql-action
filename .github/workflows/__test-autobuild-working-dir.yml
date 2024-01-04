@@ -39,8 +39,6 @@ jobs:
       if: >-
         matrix.os == 'macos-latest' && (
 
-        matrix.version == 'stable-20220908' ||
-
         matrix.version == 'stable-20221211' ||
 
         matrix.version == 'stable-20230418' ||
@@ -59,11 +57,7 @@ jobs:
         version: ${{ matrix.version }}
         use-all-platform-bundle: 'false'
     - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
+      if: runner.os != 'Windows' && matrix.version == '20221211'
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - name: Test setup

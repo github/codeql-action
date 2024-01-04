@@ -7,9 +7,7 @@ import textwrap
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
-    # The oldest supported CodeQL version: 2.10.5. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-20220908",
-    # The last CodeQL release in the 2.11 series: 2.11.6.
+    # The oldest supported CodeQL version: 2.11.6. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
     "stable-20221211",
     # The last CodeQL release in the 2.12 series: 2.12.7.
     "stable-20230418",
@@ -81,7 +79,6 @@ for file in (this_dir / 'checks').glob('*.yml'):
             # of the generated workflow.
             'if': FoldedScalarString(textwrap.dedent('''
                     matrix.os == 'macos-latest' && (
-                    matrix.version == 'stable-20220908' ||
                     matrix.version == 'stable-20221211' ||
                     matrix.version == 'stable-20230418' ||
                     matrix.version == 'stable-v2.13.5' ||
@@ -107,14 +104,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
         # We don't support Swift on Windows or prior versions of the CLI.
         {
             'name': 'Set environment variable for Swift enablement',
-            # Ensure that this is serialized as a folded (`>`) string to preserve the readability
-            # of the generated workflow.
-            'if': FoldedScalarString(textwrap.dedent('''
-                runner.os != 'Windows' && (
-                    matrix.version == '20220908' ||
-                    matrix.version == '20221211'
-                )
-            ''').strip()),
+            'if': "runner.os != 'Windows' && matrix.version == '20221211'",
             'shell': 'bash',
             'run': 'echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV'
         },

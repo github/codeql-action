@@ -46,9 +46,6 @@ test.beforeEach(() => {
 
   stubConfig = {
     languages: [Language.cpp],
-    queries: {},
-    pathsIgnore: [],
-    paths: [],
     originalUserInput: {},
     tempDir: "",
     codeQLCmd: "",
@@ -56,7 +53,6 @@ test.beforeEach(() => {
       type: util.GitHubVariant.DOTCOM,
     } as util.GitHubVersion,
     dbLocation: "",
-    packs: {},
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,

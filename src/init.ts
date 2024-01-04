@@ -131,7 +131,8 @@ function printPathFiltersWarning(config: configUtils.Config, logger: Logger) {
   // Index include/exclude/filters only work in javascript/python/ruby.
   // If any other languages are detected/configured then show a warning.
   if (
-    (config.paths.length !== 0 || config.pathsIgnore.length !== 0) &&
+    (config.originalUserInput.paths?.length !== 0 ||
+      config.originalUserInput["paths-ignore"]?.length !== 0) &&
     !config.languages.every(isScannedLanguage)
   ) {
     logger.warning(

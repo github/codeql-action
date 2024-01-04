@@ -19,7 +19,6 @@ import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
 import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
-import { UserError } from "./util";
 
 export class CodeQLAnalysisError extends Error {
   queriesStatusReport: QueriesStatusReport;
@@ -391,32 +390,6 @@ export async function runQueries(
   }
 }
 
-export function convertPackToQuerySuiteEntry(
-  packStr: string,
-): configUtils.QuerySuitePackEntry {
-  const pack = configUtils.parsePacksSpecification(packStr);
-  return {
-    qlpack: !pack.path ? pack.name : undefined,
-    from: pack.path ? pack.name : undefined,
-    version: pack.version,
-    query: pack.path?.endsWith(".ql") ? pack.path : undefined,
-    queries:
-      !pack.path?.endsWith(".ql") && !pack.path?.endsWith(".qls")
-        ? pack.path
-        : undefined,
-    apply: pack.path?.endsWith(".qls") ? pack.path : undefined,
-  };
-}
-
-export function createQuerySuiteContents(
-  queries: string[],
-  queryFilters: configUtils.QueryFilter[],
-) {
-  return yaml.dump(
-    queries.map((q: string) => ({ query: q })).concat(queryFilters as any[]),
-  );
-}
-
 export async function runFinalize(
   outputDir: string,
   threadsFlag: string,
@@ -464,40 +437,4 @@ export async function runCleanup(
     await codeql.databaseCleanup(databasePath, cleanupLevel);
   }
   logger.endGroup();
-}
-
-// exported for testing
-export function validateQueryFilters(queryFilters?: configUtils.QueryFilter[]) {
-  if (!queryFilters) {
-    return [];
-  }
-
-  if (!Array.isArray(queryFilters)) {
-    throw new UserError(
-      `Query filters must be an array of "include" or "exclude" entries. Found ${typeof queryFilters}`,
-    );
-  }
-
-  const errors: string[] = [];
-  for (const qf of queryFilters) {
-    const keys = Object.keys(qf);
-    if (keys.length !== 1) {
-      errors.push(
-        `Query filter must have exactly one key: ${JSON.stringify(qf)}`,
-      );
-    }
-    if (!["exclude", "include"].includes(keys[0])) {
-      errors.push(
-        `Only "include" or "exclude" filters are allowed:\n${JSON.stringify(
-          qf,
-        )}`,
-      );
-    }
-  }
-
-  if (errors.length) {
-    throw new UserError(`Invalid query filter.\n${errors.join("\n")}`);
-  }
-
-  return queryFilters;
 }

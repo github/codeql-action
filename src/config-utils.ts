@@ -952,59 +952,6 @@ export async function getConfig(
   return JSON.parse(configString);
 }
 
-export async function downloadPacks(
-  codeQL: CodeQL,
-  languages: Language[],
-  packs: Packs,
-  apiDetails: api.GitHubApiDetails,
-  registriesInput: string | undefined,
-  tempDir: string,
-  logger: Logger,
-) {
-  // This code path is only used when config parsing occurs in the Action.
-  const { registriesAuthTokens, qlconfigFile } = await generateRegistries(
-    registriesInput,
-    tempDir,
-    logger,
-  );
-  await wrapEnvironment(
-    {
-      GITHUB_TOKEN: apiDetails.auth,
-      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-    },
-    async () => {
-      let numPacksDownloaded = 0;
-      logger.startGroup("Downloading packs");
-      for (const language of languages) {
-        const packsWithVersion = packs[language];
-        if (packsWithVersion?.length) {
-          logger.info(`Downloading custom packs for ${language}`);
-          const results = await codeQL.packDownload(
-            packsWithVersion,
-            qlconfigFile,
-          );
-          numPacksDownloaded += results.packs.length;
-          logger.info(
-            `Downloaded: ${results.packs
-              .map((r) => `${r.name}@${r.version || "latest"}`)
-              .join(", ")}`,
-          );
-        }
-      }
-      if (numPacksDownloaded > 0) {
-        logger.info(
-          `Downloaded ${numPacksDownloaded} ${
-            numPacksDownloaded === 1 ? "pack" : "packs"
-          }`,
-        );
-      } else {
-        logger.info("No packs to download");
-      }
-      logger.endGroup();
-    },
-  );
-}
-
 /**
  * Generate a `qlconfig.yml` file from the `registries` input.
  * This file is used by the CodeQL CLI to list the registries to use for each

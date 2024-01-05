@@ -465,6 +465,8 @@ async function run() {
         "true",
       );
     } else {
+      // From 2.16.0 the default for the python extractor is to not perform any library
+      // extraction, so we need to set this flag to enable it.
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_FORCE_ENABLE_LIBRARY_EXTRACTION_UNTIL_2_17_0",
         "true",

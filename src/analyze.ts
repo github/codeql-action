@@ -18,6 +18,7 @@ import {
   Feature,
   logCodeScanningConfigInCli,
   useCodeScanningConfigInCli,
+  isPythonDependencyInstallationDisabled,
 } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -104,12 +105,7 @@ async function setupPythonExtractor(
     return;
   }
 
-  if (
-    await features.getValue(
-      Feature.DisablePythonDependencyInstallationEnabled,
-      codeql,
-    )
-  ) {
+  if (await isPythonDependencyInstallationDisabled(codeql, features)) {
     logger.warning(
       "We recommend that you remove the CODEQL_PYTHON environment variable from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
         "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'.",

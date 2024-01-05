@@ -268,7 +268,9 @@ export async function runQueries(
       // another to interpret the results.
       logger.startGroup(`Running queries for ${language}`);
       const startTimeRunQueries = new Date().getTime();
-      await runQueryGroup(language, "all", undefined, undefined, true);
+      const databasePath = util.getCodeQLDatabasePath(config, language);
+      await codeql.databaseRunQueries(databasePath, queryFlags, features);
+      logger.debug(`Finished running queries for ${language}.`);
       // TODO should not be using `builtin` here. We should be using `all` instead.
       // The status report does not support `all` yet.
       statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
@@ -379,38 +381,6 @@ export async function runQueries(
   async function runPrintLinesOfCode(language: Language): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     return await codeql.databasePrintBaseline(databasePath);
-  }
-
-  async function runQueryGroup(
-    language: Language,
-    type: string,
-    querySuiteContents: string | undefined,
-    searchPath: string | undefined,
-    optimizeForLastQueryRun: boolean,
-  ): Promise<string | undefined> {
-    const databasePath = util.getCodeQLDatabasePath(config, language);
-    // Pass the queries to codeql using a file instead of using the command
-    // line to avoid command line length restrictions, particularly on windows.
-    const querySuitePath = querySuiteContents
-      ? `${databasePath}-queries-${type}.qls`
-      : undefined;
-    if (querySuiteContents && querySuitePath) {
-      fs.writeFileSync(querySuitePath, querySuiteContents);
-      logger.debug(
-        `Query suite file for ${language}-${type}...\n${querySuiteContents}`,
-      );
-    }
-    await codeql.databaseRunQueries(
-      databasePath,
-      searchPath,
-      querySuitePath,
-      queryFlags,
-      optimizeForLastQueryRun,
-      features,
-    );
-
-    logger.debug(`BQRS results produced for ${language} (queries: ${type})"`);
-    return querySuitePath;
   }
 }
 

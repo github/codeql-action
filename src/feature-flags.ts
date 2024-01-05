@@ -484,3 +484,19 @@ export async function logCodeScanningConfigInCli(
     );
   }
 }
+
+export async function isPythonDependencyInstallationDisabled(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+): Promise<boolean> {
+  return (
+    (await features.getValue(
+      Feature.DisablePythonDependencyInstallationEnabled,
+      codeql,
+    )) ||
+    (await features.getValue(
+      Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
+      codeql,
+    ))
+  );
+}

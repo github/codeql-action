@@ -71,9 +71,6 @@ const stubCodeql = setCodeQL({
 
 const testConfigWithoutTmpDir: Config = {
   languages: [Language.javascript, Language.cpp],
-  queries: {},
-  pathsIgnore: [],
-  paths: [],
   originalUserInput: {},
   tempDir: "",
   codeQLCmd: "",
@@ -81,7 +78,6 @@ const testConfigWithoutTmpDir: Config = {
     type: util.GitHubVariant.DOTCOM,
   } as util.GitHubVersion,
   dbLocation: "",
-  packs: {},
   debugMode: false,
   debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
   debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
@@ -98,15 +94,11 @@ const testConfigWithoutTmpDir: Config = {
 function getTestConfigWithTempDir(tmpDir: string): configUtils.Config {
   return {
     languages: [Language.javascript, Language.ruby],
-    queries: {},
-    pathsIgnore: [],
-    paths: [],
     originalUserInput: {},
     tempDir: tmpDir,
     codeQLCmd: "",
     gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
     dbLocation: path.resolve(tmpDir, "codeql_databases"),
-    packs: {},
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,

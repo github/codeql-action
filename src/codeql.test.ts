@@ -16,7 +16,6 @@ import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { Feature, featureConfig } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -47,9 +46,6 @@ test.beforeEach(() => {
 
   stubConfig = {
     languages: [Language.cpp],
-    queries: {},
-    pathsIgnore: [],
-    paths: [],
     originalUserInput: {},
     tempDir: "",
     codeQLCmd: "",
@@ -57,7 +53,6 @@ test.beforeEach(() => {
       type: util.GitHubVariant.DOTCOM,
     } as util.GitHubVersion,
     dbLocation: "",
-    packs: {},
     debugMode: false,
     debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
@@ -560,41 +555,6 @@ test("getExtraOptions throws for bad content", (t) => {
   );
 });
 
-test("databaseInitCluster() without injected codescanning config", async (t) => {
-  await util.withTmpDir(async (tempDir) => {
-    const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.10.5"));
-    // safeWhich throws because of the test CodeQL object.
-    sinon.stub(safeWhich, "safeWhich").resolves("");
-
-    const thisStubConfig: Config = {
-      ...stubConfig,
-      tempDir,
-      augmentationProperties: {
-        queriesInputCombines: false,
-        packsInputCombines: false,
-      },
-    };
-
-    await codeqlObject.databaseInitCluster(
-      thisStubConfig,
-      "",
-      undefined,
-      createFeatures([]),
-      "/path/to/qlconfig.yml",
-      getRunnerLogger(true),
-    );
-
-    const args = runnerConstructorStub.firstCall.args[1];
-    // should NOT have used an config file
-    const configArg = args.find((arg: string) =>
-      arg.startsWith("--codescanning-config="),
-    );
-    t.falsy(configArg, "Should NOT have injected a codescanning config");
-  });
-});
-
 // Test macro for ensuring different variants of injected augmented configurations
 const injectedConfigMacro = test.macro({
   exec: async (
@@ -606,14 +566,7 @@ const injectedConfigMacro = test.macro({
     await util.withTmpDir(async (tempDir) => {
       const runnerConstructorStub = stubToolRunnerConstructor();
       const codeqlObject = await codeql.getCodeQLForTesting();
-      sinon
-        .stub(codeqlObject, "getVersion")
-        .resolves(
-          makeVersionInfo(
-            featureConfig[Feature.CliConfigFileEnabled].minimumVersion ||
-              "1.0.0",
-          ),
-        );
+      sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("1.0.0"));
 
       const thisStubConfig: Config = {
         ...stubConfig,
@@ -626,7 +579,6 @@ const injectedConfigMacro = test.macro({
         thisStubConfig,
         "",
         undefined,
-        createFeatures([Feature.CliConfigFileEnabled]),
         undefined,
         getRunnerLogger(true),
       );
@@ -830,38 +782,7 @@ test(
   {},
 );
 
-test("does not pass a code scanning config or qlconfig file to the CLI when CLI config passing is disabled", async (t: ExecutionContext<unknown>) => {
-  await util.withTmpDir(async (tempDir) => {
-    const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    // stubbed version doesn't matter. It just needs to be valid semver.
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("0.0.0"));
-
-    await codeqlObject.databaseInitCluster(
-      { ...stubConfig, tempDir },
-      "",
-      undefined,
-      createFeatures([]),
-      "/path/to/qlconfig.yml",
-      getRunnerLogger(true),
-    );
-
-    const args = runnerConstructorStub.firstCall.args[1];
-    // should not have used a config file
-    const hasConfigArg = args.some((arg: string) =>
-      arg.startsWith("--codescanning-config="),
-    );
-    t.false(hasConfigArg, "Should NOT have injected a codescanning config");
-
-    // should not have passed a qlconfig file
-    const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig-file="),
-    );
-    t.false(hasQlconfigArg, "Should NOT have passed a qlconfig file");
-  });
-});
-
-test("passes a code scanning config AND qlconfig to the CLI when CLI config passing is enabled", async (t: ExecutionContext<unknown>) => {
+test("passes a code scanning config AND qlconfig to the CLI", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
@@ -873,7 +794,6 @@ test("passes a code scanning config AND qlconfig to the CLI when CLI config pass
       { ...stubConfig, tempDir },
       "",
       undefined,
-      createFeatures([Feature.CliConfigFileEnabled]),
       "/path/to/qlconfig.yml",
       getRunnerLogger(true),
     );
@@ -893,7 +813,7 @@ test("passes a code scanning config AND qlconfig to the CLI when CLI config pass
   });
 });
 
-test("passes a code scanning config BUT NOT a qlconfig to the CLI when CLI config passing is enabled", async (t: ExecutionContext<unknown>) => {
+test("passes a code scanning config BUT NOT a qlconfig to the CLI for CodeQL v2.12.2", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
@@ -903,7 +823,6 @@ test("passes a code scanning config BUT NOT a qlconfig to the CLI when CLI confi
       { ...stubConfig, tempDir },
       "",
       undefined,
-      createFeatures([Feature.CliConfigFileEnabled]),
       "/path/to/qlconfig.yml",
       getRunnerLogger(true),
     );
@@ -938,7 +857,6 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
       { ...stubConfig, tempDir },
       "",
       undefined,
-      createFeatures([Feature.CliConfigFileEnabled]),
       undefined, // undefined qlconfigFile
       getRunnerLogger(true),
     );

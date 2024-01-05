@@ -44,7 +44,6 @@ export interface FeatureEnablement {
  * Each value of this enum should end with `_enabled`.
  */
 export enum Feature {
-  CliConfigFileEnabled = "cli_config_file_enabled",
   CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
@@ -73,11 +72,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
     minimumVersion: undefined,
     defaultValue: false,
-  },
-  [Feature.CliConfigFileEnabled]: {
-    envVar: "CODEQL_PASS_CONFIG_TO_CLI",
-    minimumVersion: undefined,
-    defaultValue: true,
   },
   [Feature.EvaluatorFineGrainedParallelismEnabled]: {
     envVar: "CODEQL_EVALUATOR_FINE_GRAINED_PARALLELISM",
@@ -455,33 +449,6 @@ class GitHubFeatureFlags {
         );
       }
     }
-  }
-}
-
-/**
- * @returns Whether the Action should generate a code scanning config file
- * that gets passed to the CLI.
- */
-export async function useCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-): Promise<boolean> {
-  return await features.getValue(Feature.CliConfigFileEnabled, codeql);
-}
-
-export async function logCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger,
-) {
-  if (await useCodeScanningConfigInCli(codeql, features)) {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql CLI.",
-    );
-  } else {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql-action.",
-    );
   }
 }
 

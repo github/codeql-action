@@ -217,8 +217,6 @@ async function run() {
     getRequiredEnvParam("GITHUB_REPOSITORY"),
   );
 
-  const registriesInput = getOptionalInput("registries");
-
   const features = new Features(
     gitHubVersion,
     repositoryNwo,
@@ -269,7 +267,6 @@ async function run() {
       getOptionalInput("languages"),
       getOptionalInput("queries"),
       getOptionalInput("packs"),
-      registriesInput,
       getOptionalInput("config-file"),
       getOptionalInput("db-location"),
       getOptionalInput("config"),
@@ -287,7 +284,6 @@ async function run() {
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       gitHubVersion,
       apiDetails,
-      features,
       logger,
     );
 
@@ -469,8 +465,7 @@ async function run() {
       config,
       sourceRoot,
       "Runner.Worker.exe",
-      registriesInput,
-      features,
+      getOptionalInput("registries"),
       apiDetails,
       logger,
     );

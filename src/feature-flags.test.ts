@@ -291,8 +291,8 @@ test("Feature flags are saved to disk", async (t) => {
 
     t.true(
       await features.getValue(
-        Feature.CliConfigFileEnabled,
-        includeCodeQlIfRequired(Feature.CliConfigFileEnabled),
+        Feature.QaTelemetryEnabled,
+        includeCodeQlIfRequired(Feature.QaTelemetryEnabled),
       ),
       "Feature flag should be enabled initially",
     );
@@ -308,7 +308,7 @@ test("Feature flags are saved to disk", async (t) => {
     t.deepEqual(actualFeatureEnablement, expectedFeatureEnablement);
 
     // now test that we actually use the feature flag cache instead of the server
-    actualFeatureEnablement[Feature.CliConfigFileEnabled] = false;
+    actualFeatureEnablement[Feature.QaTelemetryEnabled] = false;
     fs.writeFileSync(
       cachedFeatureFlags,
       JSON.stringify(actualFeatureEnablement),
@@ -319,8 +319,8 @@ test("Feature flags are saved to disk", async (t) => {
 
     t.false(
       await features.getValue(
-        Feature.CliConfigFileEnabled,
-        includeCodeQlIfRequired(Feature.CliConfigFileEnabled),
+        Feature.QaTelemetryEnabled,
+        includeCodeQlIfRequired(Feature.QaTelemetryEnabled),
       ),
       "Feature flag should be enabled after reading from cached file",
     );
@@ -336,8 +336,8 @@ test("Environment variable can override feature flag cache", async (t) => {
     const cachedFeatureFlags = path.join(tmpDir, FEATURE_FLAGS_FILE_NAME);
     t.true(
       await features.getValue(
-        Feature.CliConfigFileEnabled,
-        includeCodeQlIfRequired(Feature.CliConfigFileEnabled),
+        Feature.QaTelemetryEnabled,
+        includeCodeQlIfRequired(Feature.QaTelemetryEnabled),
       ),
       "Feature flag should be enabled initially",
     );
@@ -346,12 +346,12 @@ test("Environment variable can override feature flag cache", async (t) => {
       fs.existsSync(cachedFeatureFlags),
       "Feature flag cached file should exist after getting feature flags",
     );
-    process.env.CODEQL_PASS_CONFIG_TO_CLI = "false";
+    process.env.CODEQL_ACTION_QA_TELEMETRY = "false";
 
     t.false(
       await features.getValue(
-        Feature.CliConfigFileEnabled,
-        includeCodeQlIfRequired(Feature.CliConfigFileEnabled),
+        Feature.QaTelemetryEnabled,
+        includeCodeQlIfRequired(Feature.QaTelemetryEnabled),
       ),
       "Feature flag should be disabled after setting env var",
     );

@@ -43,15 +43,11 @@ const testApiDetails: GitHubApiDetails = {
 function getTestConfig(tmpDir: string): Config {
   return {
     languages: [Language.javascript],
-    queries: {},
-    pathsIgnore: [],
-    paths: [],
     originalUserInput: {},
     tempDir: tmpDir,
     codeQLCmd: "foo",
     gitHubVersion: { type: GitHubVariant.DOTCOM },
     dbLocation: tmpDir,
-    packs: {},
     debugMode: false,
     debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
     debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,

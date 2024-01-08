@@ -19,7 +19,6 @@ import {
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
-  useCodeScanningConfigInCli,
 } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -98,7 +97,6 @@ export interface CodeQL {
     config: Config,
     sourceRoot: string,
     processName: string | undefined,
-    features: FeatureEnablement,
     qlconfigFile: string | undefined,
     logger: Logger,
   ): Promise<void>;
@@ -164,19 +162,10 @@ export interface CodeQL {
   ): Promise<void>;
   /**
    * Run 'codeql database run-queries'.
-   *
-   * @param optimizeForLastQueryRun Whether to apply additional optimization for
-   *                                the last database query run in the action.
-   *                                It is always safe to set it to false.
-   *                                It should be set to true only for the very
-   *                                last databaseRunQueries() call.
    */
   databaseRunQueries(
     databasePath: string,
-    extraSearchPath: string | undefined,
-    querySuitePath: string | undefined,
     flags: string[],
-    optimizeForLastQueryRun: boolean,
     features: FeatureEnablement,
   ): Promise<void>;
   /**
@@ -293,7 +282,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.10.5";
+const CODEQL_MINIMUM_VERSION = "2.11.6";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -317,15 +306,7 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-11-08";
  */
 
 /**
- * Versions 2.11.3+ of the CodeQL CLI support exporting a failed SARIF file via
- * `codeql database export-diagnostics` or `codeql diagnostics export`.
- */
-export const CODEQL_VERSION_EXPORT_FAILED_SARIF = "2.11.3";
-
-const CODEQL_VERSION_FILE_BASELINE_INFORMATION = "2.11.3";
-
-/**
- * Versions 2.11.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for
+ * Versions 2.12.1+ of the CodeQL Bundle include a `security-experimental` built-in query suite for
  * each language.
  */
 export const CODEQL_VERSION_SECURITY_EXPERIMENTAL_SUITE = "2.12.1";
@@ -584,7 +565,6 @@ export async function getCodeQLForCmd(
       config: Config,
       sourceRoot: string,
       processName: string | undefined,
-      features: FeatureEnablement,
       qlconfigFile: string | undefined,
       logger: Logger,
     ) {
@@ -597,21 +577,16 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--trace-process-name=${processName}`);
       }
 
-      // A code scanning config file is only generated if the CliConfigFileEnabled feature flag is enabled.
       const codeScanningConfigFile = await generateCodeScanningConfig(
-        codeql,
         config,
-        features,
         logger,
       );
-      // Only pass external repository token if a config file is going to be parsed by the CLI.
-      let externalRepositoryToken: string | undefined;
-      if (codeScanningConfigFile) {
-        externalRepositoryToken = getOptionalInput("external-repository-token");
-        extraArgs.push(`--codescanning-config=${codeScanningConfigFile}`);
-        if (externalRepositoryToken) {
-          extraArgs.push("--external-repository-token-stdin");
-        }
+      const externalRepositoryToken = getOptionalInput(
+        "external-repository-token",
+      );
+      extraArgs.push(`--codescanning-config=${codeScanningConfigFile}`);
+      if (externalRepositoryToken) {
+        extraArgs.push("--external-repository-token-stdin");
       }
 
       if (
@@ -818,10 +793,7 @@ export async function getCodeQLForCmd(
     },
     async databaseRunQueries(
       databasePath: string,
-      extraSearchPath: string | undefined,
-      querySuitePath: string | undefined,
       flags: string[],
-      optimizeForLastQueryRun: boolean,
       features: FeatureEnablement,
     ): Promise<void> {
       const codeqlArgs = [
@@ -833,17 +805,8 @@ export async function getCodeQLForCmd(
         "-v",
         ...getExtraOptionsFromEnv(["database", "run-queries"]),
       ];
-      if (
-        optimizeForLastQueryRun &&
-        (await util.supportExpectDiscardedCache(this))
-      ) {
+      if (await util.supportExpectDiscardedCache(this)) {
         codeqlArgs.push("--expect-discarded-cache");
-      }
-      if (extraSearchPath !== undefined) {
-        codeqlArgs.push("--additional-packs", extraSearchPath);
-      }
-      if (querySuitePath) {
-        codeqlArgs.push(querySuitePath);
       }
       if (
         await features.getValue(
@@ -894,6 +857,7 @@ export async function getCodeQLForCmd(
         addSnippetsFlag,
         "--print-diagnostics-summary",
         "--print-metrics-summary",
+        "--sarif-add-baseline-file-info",
         "--sarif-add-query-help",
         "--sarif-group-rules-by-pack",
         ...(await getCodeScanningConfigExportArguments(config, this)),
@@ -901,14 +865,6 @@ export async function getCodeQLForCmd(
       ];
       if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
-      }
-      if (
-        await util.codeQlVersionAbove(
-          this,
-          CODEQL_VERSION_FILE_BASELINE_INFORMATION,
-        )
-      ) {
-        codeqlArgs.push("--sarif-add-baseline-file-info");
       }
       if (await isSublanguageFileCoverageEnabled(config, this)) {
         codeqlArgs.push("--sublanguage-file-coverage");
@@ -1340,22 +1296,16 @@ function ensureEndsInPeriod(text: string): string {
 }
 
 /**
- * If appropriate, generates a code scanning configuration that is to be used for a scan.
- * If the configuration is not to be generated, returns undefined.
+ * Generates a code scanning configuration that is to be used for a scan.
  *
  * @param codeql The CodeQL object to use.
  * @param config The configuration to use.
  * @returns the path to the generated user configuration file.
  */
 async function generateCodeScanningConfig(
-  codeql: CodeQL,
   config: Config,
-  features: FeatureEnablement,
   logger: Logger,
-): Promise<string | undefined> {
-  if (!(await useCodeScanningConfigInCli(codeql, features))) {
-    return;
-  }
+): Promise<string> {
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
 
   // make a copy so we can modify it

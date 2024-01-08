@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import path from "path";
 
 import { ExecOptions } from "@actions/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
@@ -32,12 +31,6 @@ import * as util from "./util";
 import { initializeEnvironment } from "./util";
 
 setupTests(test);
-
-const sampleGHAEApiDetails = {
-  auth: "token",
-  url: "https://example.githubenterprise.com",
-  apiURL: "https://example.githubenterprise.com/api/v3",
-};
 
 let stubConfig: Config;
 
@@ -302,72 +295,70 @@ for (const toolcacheVersion of [
   );
 }
 
-for (const variant of [util.GitHubVariant.GHAE, util.GitHubVariant.GHES]) {
-  test(`uses a cached bundle when no tools input is given on ${util.GitHubVariant[variant]}`, async (t) => {
-    await util.withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+test(`uses a cached bundle when no tools input is given on GHES`, async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
 
-      await installIntoToolcache({
-        tagName: "codeql-bundle-20200601",
-        isPinned: true,
-        tmpDir,
-      });
-
-      const result = await codeql.setupCodeQL(
-        undefined,
-        SAMPLE_DOTCOM_API_DETAILS,
-        tmpDir,
-        variant,
-        {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
-        },
-        getRunnerLogger(true),
-        false,
-      );
-      t.deepEqual(result.toolsVersion, "0.0.0-20200601");
-      t.is(result.toolsSource, ToolsSource.Toolcache);
-      t.is(result.toolsDownloadDurationMs, undefined);
-
-      const cachedVersions = toolcache.findAllVersions("CodeQL");
-      t.is(cachedVersions.length, 1);
+    await installIntoToolcache({
+      tagName: "codeql-bundle-20200601",
+      isPinned: true,
+      tmpDir,
     });
-  });
 
-  test(`downloads bundle if only an unpinned version is cached on ${util.GitHubVariant[variant]}`, async (t) => {
-    await util.withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
-
-      await installIntoToolcache({
-        tagName: "codeql-bundle-20200601",
-        isPinned: false,
-        tmpDir,
-      });
-
-      mockBundleDownloadApi({
+    const result = await codeql.setupCodeQL(
+      undefined,
+      SAMPLE_DOTCOM_API_DETAILS,
+      tmpDir,
+      util.GitHubVariant.GHES,
+      {
+        cliVersion: defaults.cliVersion,
         tagName: defaults.bundleVersion,
-      });
-      const result = await codeql.setupCodeQL(
-        undefined,
-        SAMPLE_DOTCOM_API_DETAILS,
-        tmpDir,
-        variant,
-        {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
-        },
-        getRunnerLogger(true),
-        false,
-      );
-      t.deepEqual(result.toolsVersion, defaults.cliVersion);
-      t.is(result.toolsSource, ToolsSource.Download);
-      t.assert(Number.isInteger(result.toolsDownloadDurationMs));
+      },
+      getRunnerLogger(true),
+      false,
+    );
+    t.deepEqual(result.toolsVersion, "0.0.0-20200601");
+    t.is(result.toolsSource, ToolsSource.Toolcache);
+    t.is(result.toolsDownloadDurationMs, undefined);
 
-      const cachedVersions = toolcache.findAllVersions("CodeQL");
-      t.is(cachedVersions.length, 2);
-    });
+    const cachedVersions = toolcache.findAllVersions("CodeQL");
+    t.is(cachedVersions.length, 1);
   });
-}
+});
+
+test(`downloads bundle if only an unpinned version is cached on GHES`, async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+
+    await installIntoToolcache({
+      tagName: "codeql-bundle-20200601",
+      isPinned: false,
+      tmpDir,
+    });
+
+    mockBundleDownloadApi({
+      tagName: defaults.bundleVersion,
+    });
+    const result = await codeql.setupCodeQL(
+      undefined,
+      SAMPLE_DOTCOM_API_DETAILS,
+      tmpDir,
+      util.GitHubVariant.GHES,
+      {
+        cliVersion: defaults.cliVersion,
+        tagName: defaults.bundleVersion,
+      },
+      getRunnerLogger(true),
+      false,
+    );
+    t.deepEqual(result.toolsVersion, defaults.cliVersion);
+    t.is(result.toolsSource, ToolsSource.Download);
+    t.assert(Number.isInteger(result.toolsDownloadDurationMs));
+
+    const cachedVersions = toolcache.findAllVersions("CodeQL");
+    t.is(cachedVersions.length, 2);
+  });
+});
 
 test('downloads bundle if "latest" tools specified but not cached', async (t) => {
   await util.withTmpDir(async (tmpDir) => {
@@ -399,82 +390,6 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
     t.is(cachedVersions.length, 2);
   });
 });
-
-for (const isBundleVersionInUrl of [true, false]) {
-  const inclusionString = isBundleVersionInUrl
-    ? "includes"
-    : "does not include";
-  test(`download codeql bundle from github ae endpoint (URL ${inclusionString} bundle version)`, async (t) => {
-    await util.withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
-
-      const bundleAssetID = 10;
-
-      const platform =
-        process.platform === "win32"
-          ? "win64"
-          : process.platform === "linux"
-          ? "linux64"
-          : "osx64";
-      const codeQLBundleName = `codeql-bundle-${platform}.tar.gz`;
-
-      const eventualDownloadUrl = isBundleVersionInUrl
-        ? `https://example.githubenterprise.com/github/codeql-action/releases/download/${defaults.bundleVersion}/${codeQLBundleName}`
-        : `https://example.githubenterprise.com/api/v3/repos/github/codeql-action/releases/assets/${bundleAssetID}`;
-
-      nock("https://example.githubenterprise.com")
-        .get(
-          `/api/v3/enterprise/code-scanning/codeql-bundle/find/${defaults.bundleVersion}`,
-        )
-        .reply(200, {
-          assets: { [codeQLBundleName]: bundleAssetID },
-        });
-
-      nock("https://example.githubenterprise.com")
-        .get(
-          `/api/v3/enterprise/code-scanning/codeql-bundle/download/${bundleAssetID}`,
-        )
-        .reply(200, {
-          url: eventualDownloadUrl,
-        });
-
-      nock("https://example.githubenterprise.com")
-        .get(
-          eventualDownloadUrl.replace(
-            "https://example.githubenterprise.com",
-            "",
-          ),
-        )
-        .replyWithFile(
-          200,
-          path.join(__dirname, `/../src/testdata/codeql-bundle-pinned.tar.gz`),
-        );
-
-      mockApiDetails(sampleGHAEApiDetails);
-      sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
-      process.env["GITHUB_ACTION_REPOSITORY"] = "github/codeql-action";
-
-      const result = await codeql.setupCodeQL(
-        undefined,
-        sampleGHAEApiDetails,
-        tmpDir,
-        util.GitHubVariant.GHAE,
-        {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
-        },
-        getRunnerLogger(true),
-        false,
-      );
-
-      t.is(result.toolsSource, ToolsSource.Download);
-      t.assert(Number.isInteger(result.toolsDownloadDurationMs));
-
-      const cachedVersions = toolcache.findAllVersions("CodeQL");
-      t.is(cachedVersions.length, 1);
-    });
-  });
-}
 
 test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) => {
   await util.withTmpDir(async (tmpDir) => {

@@ -90,10 +90,6 @@ export async function getGitHubVersionFromApi(
     return { type: GitHubVariant.DOTCOM };
   }
 
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "GitHub AE") {
-    return { type: GitHubVariant.GHAE };
-  }
-
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
     return { type: GitHubVariant.GHE_DOTCOM };
   }

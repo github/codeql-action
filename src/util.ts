@@ -453,12 +453,10 @@ let hasBeenWarnedAboutVersion = false;
 export enum GitHubVariant {
   DOTCOM,
   GHES,
-  GHAE,
   GHE_DOTCOM,
 }
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }
-  | { type: GitHubVariant.GHAE }
   | { type: GitHubVariant.GHE_DOTCOM }
   | { type: GitHubVariant.GHES; version: string };
 

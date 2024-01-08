@@ -45,11 +45,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Setup Python on MacOS
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       if: >-
         matrix.os == 'macos-latest' && (
-
-        matrix.version == 'stable-20220908' ||
 
         matrix.version == 'stable-20221211' ||
 
@@ -69,11 +67,7 @@ jobs:
         version: ${{ matrix.version }}
         use-all-platform-bundle: 'false'
     - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
+      if: runner.os != 'Windows' && matrix.version == '20221211'
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - uses: ./../action/init
@@ -118,5 +112,4 @@ jobs:
           }
           core.info('Finished config export tests.');
     env:
-      CODEQL_PASS_CONFIG_TO_CLI: true
       CODEQL_ACTION_TEST_MODE: true

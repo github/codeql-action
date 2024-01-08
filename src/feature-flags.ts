@@ -44,11 +44,11 @@ export interface FeatureEnablement {
  * Each value of this enum should end with `_enabled`.
  */
 export enum Feature {
-  CliConfigFileEnabled = "cli_config_file_enabled",
   CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
+  PythonDefaultIsToSkipDependencyInstallationEnabled = "python_default_is_to_skip_dependency_installation_enabled",
   EvaluatorFineGrainedParallelismEnabled = "evaluator_fine_grained_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
@@ -73,11 +73,6 @@ export const featureConfig: Record<
     minimumVersion: undefined,
     defaultValue: false,
   },
-  [Feature.CliConfigFileEnabled]: {
-    envVar: "CODEQL_PASS_CONFIG_TO_CLI",
-    minimumVersion: "2.11.6",
-    defaultValue: true,
-  },
   [Feature.EvaluatorFineGrainedParallelismEnabled]: {
     envVar: "CODEQL_EVALUATOR_FINE_GRAINED_PARALLELISM",
     minimumVersion: CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
@@ -101,6 +96,15 @@ export const featureConfig: Record<
     // minimumVersion is set to 'undefined'. This means that with an old CodeQL version,
     // packages available with current python3 installation might get extracted.
     minimumVersion: undefined,
+    defaultValue: false,
+  },
+  [Feature.PythonDefaultIsToSkipDependencyInstallationEnabled]: {
+    // we can reuse the same environment variable as above. If someone has set it to
+    // `true` in their workflow this means dependencies are not installed, setting it to
+    // `false` means dependencies _will_ be installed. The same semantics are applied
+    // here!
+    envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
+    minimumVersion: "2.16.0",
     defaultValue: false,
   },
 };
@@ -448,29 +452,18 @@ class GitHubFeatureFlags {
   }
 }
 
-/**
- * @returns Whether the Action should generate a code scanning config file
- * that gets passed to the CLI.
- */
-export async function useCodeScanningConfigInCli(
+export async function isPythonDependencyInstallationDisabled(
   codeql: CodeQL,
   features: FeatureEnablement,
 ): Promise<boolean> {
-  return await features.getValue(Feature.CliConfigFileEnabled, codeql);
-}
-
-export async function logCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger,
-) {
-  if (await useCodeScanningConfigInCli(codeql, features)) {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql CLI.",
-    );
-  } else {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql-action.",
-    );
-  }
+  return (
+    (await features.getValue(
+      Feature.DisablePythonDependencyInstallationEnabled,
+      codeql,
+    )) ||
+    (await features.getValue(
+      Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
+      codeql,
+    ))
+  );
 }

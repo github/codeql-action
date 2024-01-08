@@ -111,7 +111,6 @@ export async function tryFindCliVersionDotcomOnly(
 async function getCodeQLBundleDownloadURL(
   tagName: string,
   apiDetails: api.GitHubApiDetails,
-  variant: util.GitHubVariant,
   logger: Logger,
 ): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository(logger);
@@ -131,39 +130,6 @@ async function getCodeQLBundleDownloadURL(
     },
   );
   const codeQLBundleName = getCodeQLBundleName();
-  if (variant === util.GitHubVariant.GHAE) {
-    try {
-      const release = await api
-        .getApiClient()
-        .request("GET /enterprise/code-scanning/codeql-bundle/find/{tag}", {
-          tag: tagName,
-        });
-      const assetID = release.data.assets[codeQLBundleName];
-      if (assetID !== undefined) {
-        const download = await api
-          .getApiClient()
-          .request(
-            "GET /enterprise/code-scanning/codeql-bundle/download/{asset_id}",
-            { asset_id: assetID },
-          );
-        const downloadURL = download.data.url;
-        logger.info(
-          `Found CodeQL bundle at GitHub AE endpoint with URL ${downloadURL}.`,
-        );
-        return downloadURL;
-      } else {
-        logger.info(
-          `Attempted to fetch bundle from GitHub AE endpoint but the bundle ${codeQLBundleName} was not found in the assets ${JSON.stringify(
-            release.data.assets,
-          )}.`,
-        );
-      }
-    } catch (e) {
-      logger.info(
-        `Attempted to fetch bundle from GitHub AE endpoint but got error ${e}.`,
-      );
-    }
-  }
   for (const downloadSource of uniqueDownloadSources) {
     const [apiURL, repository] = downloadSource;
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
@@ -483,12 +449,7 @@ export async function getCodeQLSource(
   }
 
   if (!url) {
-    url = await getCodeQLBundleDownloadURL(
-      tagName!,
-      apiDetails,
-      variant,
-      logger,
-    );
+    url = await getCodeQLBundleDownloadURL(tagName!, apiDetails, logger);
   }
 
   return {

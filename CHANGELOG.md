@@ -8,9 +8,9 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 - Update default CodeQL bundle version to 2.15.5. [#2047](https://github.com/github/codeql-action/pull/2047)
 
-## 2.22.11 - 13 Dec 2023
+## 3.22.11 - 13 Dec 2023
 
-No user facing changes.
+- [v3+ only] The CodeQL Action now runs on Node.js v20. [#2006](https://github.com/github/codeql-action/pull/2006)
 
 ## 2.22.10 - 12 Dec 2023
 

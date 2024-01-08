@@ -6,6 +6,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 3.23.0 - 08 Jan 2024
+
 - We are rolling out a feature in January 2024 that will disable Python dependency installation by default for all users. This improves the speed of analysis while having only a very minor impact on results. You can override this behavior by setting `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION=false` in your workflow, however we plan to remove this ability in future versions of the CodeQL Action. [#2031](https://github.com/github/codeql-action/pull/2031)
 - The CodeQL Action now requires CodeQL version 2.11.6 or later. For more information, see [the corresponding changelog entry for CodeQL Action version 2.22.7](#2227---16-nov-2023). [#2009](https://github.com/github/codeql-action/pull/2009)
 

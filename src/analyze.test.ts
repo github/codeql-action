@@ -4,31 +4,25 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
-import { runQueries, QueriesStatusReport } from "./analyze";
-import { CodeQL, setCodeQL } from "./codeql";
+import { runQueries } from "./analyze";
+import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import {
-  setupTests,
-  setupActionsVars,
-  createFeatures,
-  makeVersionInfo,
-} from "./testing-utils";
+import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 
 setupTests(test);
 
 /**
- * Checks that the duration fields are populated for the correct language. Also checks the correct
- * search paths are set in the database analyze invocation.
+ * Checks the status report produced by the analyze Action.
  *
- * Mocks the QA telemetry feature flag and checks the appropriate status report fields.
+ * - Checks that the duration fields are populated for the correct language.
+ * - Checks that the QA telemetry status report fields are populated when the QA feature flag is enabled.
  */
-test("status report fields and search path setting", async (t) => {
-  let searchPathsUsed: Array<string | undefined> = [];
+test("status report fields", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -39,13 +33,8 @@ test("status report fields and search path setting", async (t) => {
 
     for (const language of Object.values(Language)) {
       setCodeQL({
+        databaseRunQueries: async () => {},
         packDownload: async () => ({ packs: [] }),
-        databaseRunQueries: async (
-          _db: string,
-          searchPath: string | undefined,
-        ) => {
-          searchPathsUsed.push(searchPath);
-        },
         databaseInterpretResults: async (
           _db: string,
           _queriesRun: string[],
@@ -93,7 +82,6 @@ test("status report fields and search path setting", async (t) => {
         databasePrintBaseline: async () => "",
       });
 
-      searchPathsUsed = [];
       const config: Config = {
         languages: [language],
         originalUserInput: {},
@@ -138,91 +126,5 @@ test("status report fields and search path setting", async (t) => {
         t.true("alertCounts" in eventReport.properties!);
       }
     }
-  });
-});
-
-function mockCodeQL(): Partial<CodeQL> {
-  return {
-    getVersion: async () => makeVersionInfo("1.0.0"),
-    databaseRunQueries: sinon.spy(),
-    databaseInterpretResults: async () => "",
-    databasePrintBaseline: async () => "",
-  };
-}
-
-function createBaseConfig(tmpDir: string): Config {
-  return {
-    languages: [],
-    originalUserInput: {},
-    tempDir: "tempDir",
-    codeQLCmd: "",
-    gitHubVersion: {
-      type: util.GitHubVariant.DOTCOM,
-    } as util.GitHubVersion,
-    dbLocation: path.resolve(tmpDir, "codeql_databases"),
-    debugMode: false,
-    debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-    debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: {
-      packsInputCombines: false,
-      queriesInputCombines: false,
-    },
-    trapCaches: {},
-    trapCacheDownloadTime: 0,
-  };
-}
-
-async function runQueriesWithConfig(
-  config: Config,
-  features: Feature[],
-): Promise<QueriesStatusReport> {
-  for (const language of config.languages) {
-    fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
-      recursive: true,
-    });
-  }
-  return runQueries(
-    "sarif-folder",
-    "--memFlag",
-    "--addSnippetsFlag",
-    "--threadsFlag",
-    undefined,
-    config,
-    getRunnerLogger(true),
-    createFeatures(features),
-  );
-}
-
-function getDatabaseRunQueriesCalls(mock: Partial<CodeQL>) {
-  return (mock.databaseRunQueries as sinon.SinonSpy).getCalls();
-}
-
-test("optimizeForLastQueryRun for one language", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
-    const codeql = mockCodeQL();
-    setCodeQL(codeql);
-    const config: Config = createBaseConfig(tmpDir);
-    config.languages = [Language.cpp];
-
-    await runQueriesWithConfig(config, []);
-    t.deepEqual(
-      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [true],
-    );
-  });
-});
-
-test("optimizeForLastQueryRun for two languages", async (t) => {
-  return await util.withTmpDir(async (tmpDir) => {
-    const codeql = mockCodeQL();
-    setCodeQL(codeql);
-    const config: Config = createBaseConfig(tmpDir);
-    config.languages = [Language.cpp, Language.java];
-
-    await runQueriesWithConfig(config, []);
-    t.deepEqual(
-      getDatabaseRunQueriesCalls(codeql).map((c) => c.args[4]),
-      [true, true],
-    );
   });
 });

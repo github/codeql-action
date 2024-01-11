@@ -12,7 +12,7 @@ jobs:
       matrix:
         include:
           - os: windows-2022
-            tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20240110/codeql-bundle-win64.tar.gz
+            tools: https://github.com/dsp-testing/henrymercer-test/releases/download/codeql-bundle-20240111/codeql-bundle-win64.tar.gz
     runs-on: ${{ matrix.os }}
 
     permissions:

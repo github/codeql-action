@@ -211,14 +211,21 @@ export function mockLanguagesInRepo(languages: string[]) {
 /**
  * Constructs a `VersionInfo` object for testing purposes only.
  */
-export const makeVersionInfo = (version: string): CodeQL.VersionInfo => ({
+export const makeVersionInfo = (
+  version: string,
+  features?: { [name: string]: boolean },
+): CodeQL.VersionInfo => ({
   version,
+  features,
 });
 
-export function mockCodeQLVersion(version: string) {
+export function mockCodeQLVersion(
+  version: string,
+  features?: { [name: string]: boolean },
+) {
   return {
     async getVersion() {
-      return makeVersionInfo(version);
+      return makeVersionInfo(version, features);
     },
   } as CodeQL.CodeQL;
 }

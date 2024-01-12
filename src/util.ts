@@ -354,7 +354,16 @@ export function getThreadsFlagValue(
   logger: Logger,
 ): number {
   let numThreads: number;
-  const maxThreads = os.cpus().length;
+  const maxThreadsCandidates = [os.cpus().length];
+  if (os.platform() === "linux") {
+    maxThreadsCandidates.push(
+      ...["/sys/fs/cgroup/cpuset.cpus.effective", "/sys/fs/cgroup/cpuset.cpus"]
+        .map((file) => getCgroupCpuCount(file, logger))
+        .filter((count) => count !== undefined && count > 0)
+        .map((count) => count as number),
+    );
+  }
+  const maxThreads = Math.min(...maxThreadsCandidates);
   if (userInput) {
     numThreads = Number(userInput);
     if (Number.isNaN(numThreads)) {
@@ -378,6 +387,42 @@ export function getThreadsFlagValue(
     numThreads = maxThreads;
   }
   return numThreads;
+}
+
+/**
+ * Gets the number of available cores specified by the cgroup cpuset.cpus file at the given path.
+ */
+function getCgroupCpuCount(
+  cpusFile: string,
+  logger: Logger,
+): number | undefined {
+  if (!fs.existsSync(cpusFile)) {
+    logger.debug(
+      `While resolving threads, did not find a cgroup CPUs file at ${cpusFile}.`,
+    );
+    return undefined;
+  }
+
+  let cpuCount = 0;
+  // Comma-separated numbers and ranges, for eg. 0-1,3
+  const cpusString = fs.readFileSync(cpusFile, "utf-8");
+  for (const token of cpusString.split(",")) {
+    // If it's a single character
+    if (token.length === 1) {
+      ++cpuCount;
+    } else {
+      // Otherwise it's a range
+      const cpuStartIndex = parseInt(token.charAt(0));
+      const cpuEndIndex = parseInt(token.charAt(2));
+      cpuCount += cpuEndIndex - cpuStartIndex + 1;
+    }
+  }
+
+  logger.info(
+    `While resolving threads, found a cgroup CPUs file with ${cpuCount} CPUs in ${cpusFile}.`,
+  );
+
+  return cpuCount;
 }
 
 /**

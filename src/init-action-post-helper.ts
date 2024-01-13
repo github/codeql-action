@@ -1,5 +1,3 @@
-import * as core from "@actions/core";
-
 import * as actionsUtil from "./actions-util";
 import { getApiClient } from "./api-client";
 import { getCodeQL } from "./codeql";
@@ -184,7 +182,6 @@ export async function run(
     );
   }
 
-  core.info(`GITHUB_ACTOR is ${process.env["GITHUB_ACTOR"]}`);
   // We do not delete uploaded SARIFs if we're on a fork, as we're missing the
   // appropriate permissions.
   if (

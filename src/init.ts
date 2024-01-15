@@ -124,15 +124,18 @@ export async function runInit(
   } catch (e) {
     throw processError(e);
   }
-  return await getCombinedTracerConfig(config);
+  return await getCombinedTracerConfig(await codeql.getVersion(), config);
 }
 
-function printPathFiltersWarning(config: configUtils.Config, logger: Logger) {
+export function printPathFiltersWarning(
+  config: configUtils.Config,
+  logger: Logger,
+) {
   // Index include/exclude/filters only work in javascript/python/ruby.
   // If any other languages are detected/configured then show a warning.
   if (
-    (config.originalUserInput.paths?.length !== 0 ||
-      config.originalUserInput["paths-ignore"]?.length !== 0) &&
+    (config.originalUserInput.paths?.length ||
+      config.originalUserInput["paths-ignore"]?.length) &&
     !config.languages.every(isScannedLanguage)
   ) {
     logger.warning(

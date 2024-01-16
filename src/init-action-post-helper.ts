@@ -184,13 +184,15 @@ export async function run(
     );
   }
 
-  // We do not delete uploaded SARIFs if we're on a fork, as we're missing the
-  // appropriate permissions.
-  if (
-    process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true" &&
-    github.context.payload.pull_request?.head.repo.fork === false
-  ) {
-    await removeUploadedSarif(uploadFailedSarifResult, logger);
+  if (process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true") {
+    if (!github.context.payload.pull_request?.head.repo.fork) {
+      await removeUploadedSarif(uploadFailedSarifResult, logger);
+    } else {
+      logger.info(
+        "Skipping deletion of failed SARIF because the workflow was triggered from a fork of " +
+          "codeql-action and doesn't have the appropriate permissions for deletion.",
+      );
+    }
   }
 
   // Upload appropriate Actions artifacts for debugging

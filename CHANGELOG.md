@@ -6,6 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
+- Update default CodeQL bundle version to 2.16.0. [#2073](https://github.com/github/codeql-action/pull/2073)
 - Change the retention period for uploaded debug artifacts to 7 days. Previously, this was whatever the repository default was. [#2079](https://github.com/github/codeql-action/pull/2079)
 
 ## 3.23.0 - 08 Jan 2024

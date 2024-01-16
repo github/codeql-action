@@ -1,3 +1,5 @@
+import * as github from "@actions/github";
+
 import * as actionsUtil from "./actions-util";
 import { getApiClient } from "./api-client";
 import { getCodeQL } from "./codeql";
@@ -186,7 +188,7 @@ export async function run(
   // appropriate permissions.
   if (
     process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true" &&
-    repositoryNwo.owner !== "github"
+    github.context.payload.pull_request?.head.repo.fork === false
   ) {
     await removeUploadedSarif(uploadFailedSarifResult, logger);
   }

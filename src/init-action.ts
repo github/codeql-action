@@ -449,7 +449,8 @@ async function run() {
           `Environment variable ${envVar} already set. Not en/disabling CodeQL C++ TRAP caching support`,
         );
       } else if (
-        await features.getValue(Feature.CppTrapCachingEnabled, codeql)
+        getTrapCachingEnabled() &&
+        (await features.getValue(Feature.CppTrapCachingEnabled, codeql))
       ) {
         logger.info("Enabling CodeQL C++ TRAP caching support");
         core.exportVariable(envVar, "true");

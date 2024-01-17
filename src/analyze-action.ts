@@ -36,7 +36,6 @@ import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
-import { checkForTimeout, wrapError } from "./util";
 
 interface AnalysisStatusReport
   extends uploadLib.UploadStatusReport,
@@ -355,7 +354,7 @@ async function run() {
     }
     core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
-    const error = wrapError(unwrappedError);
+    const error = util.wrapError(unwrappedError);
     if (
       actionsUtil.getOptionalInput("expect-error") !== "true" ||
       hasBadExpectErrorInput()
@@ -436,9 +435,9 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    core.setFailed(`analyze action failed: ${wrapError(error).message}`);
+    core.setFailed(`analyze action failed: ${util.wrapError(error).message}`);
   }
-  await checkForTimeout();
+  await util.checkForTimeout();
 }
 
 void runWrapper();

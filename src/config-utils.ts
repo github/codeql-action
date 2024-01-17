@@ -98,8 +98,7 @@ export interface Config {
    */
   codeQLCmd: string;
   /**
-   * Version of GHES that we have determined that we are talking to, or undefined
-   * if talking to github.com or GitHub AE.
+   * Version of GitHub we are talking to.
    */
   gitHubVersion: GitHubVersion;
   /**

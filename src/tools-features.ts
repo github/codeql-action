@@ -2,6 +2,7 @@ import { VersionInfo } from "./codeql";
 
 export enum ToolsFeature {
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
+  SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",
 }
 
 /**

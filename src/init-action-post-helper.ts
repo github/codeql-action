@@ -1,3 +1,5 @@
+import * as github from "@actions/github";
+
 import * as actionsUtil from "./actions-util";
 import { getApiClient } from "./api-client";
 import { getCodeQL } from "./codeql";
@@ -183,7 +185,14 @@ export async function run(
   }
 
   if (process.env["CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF"] === "true") {
-    await removeUploadedSarif(uploadFailedSarifResult, logger);
+    if (!github.context.payload.pull_request?.head.repo.fork) {
+      await removeUploadedSarif(uploadFailedSarifResult, logger);
+    } else {
+      logger.info(
+        "Skipping deletion of failed SARIF because the workflow was triggered from a fork of " +
+          "codeql-action and doesn't have the appropriate permissions for deletion.",
+      );
+    }
   }
 
   // Upload appropriate Actions artifacts for debugging

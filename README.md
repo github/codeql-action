@@ -4,15 +4,6 @@ This action runs GitHub's industry-leading semantic code analysis engine, [CodeQ
 
 For a list of recent changes, see the CodeQL Action's [changelog](CHANGELOG.md).
 
-## :loudspeaker: Node 16 deprecation, upcoming CodeQL Action v3 :loudspeaker:
-Announcement for users of this Action and code scanning workflows on GitHub.com:
-
-- You will begin to see these warnings about Node.js 16 deprecation in your Actions logs on code scanning runs starting October 23, 2023.
-- All code scanning workflows should continue to succeed regardless of the warning.
-- The team at GitHub maintaining the CodeQL Action is aware of the deprecation timeline and actively working on creating another version of the CodeQL Action, v3, that will bump us to Node 20.
-
-For more information, and to communicate with the maintaining team, please use [this issue](https://github.com/github/codeql-action/issues/1959). 
-
 ## License
 
 This project is released under the [MIT License](LICENSE).

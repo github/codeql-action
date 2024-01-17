@@ -133,35 +133,6 @@ test("Abort database upload if running against GHES", async (t) => {
   });
 });
 
-test("Abort database upload if running against GHAE", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    sinon
-      .stub(actionsUtil, "getRequiredInput")
-      .withArgs("upload-database")
-      .returns("true");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
-
-    const config = getTestConfig(tmpDir);
-    config.gitHubVersion = { type: GitHubVariant.GHAE };
-
-    const loggedMessages = [];
-    await uploadDatabases(
-      testRepoName,
-      config,
-      testApiDetails,
-      getRecordingLogger(loggedMessages),
-    );
-    t.assert(
-      loggedMessages.find(
-        (v: LoggedMessage) =>
-          v.type === "debug" &&
-          v.message === "Not running against github.com. Skipping upload.",
-      ) !== undefined,
-    );
-  });
-});
-
 test("Abort database upload if not analyzing default branch", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);

@@ -944,3 +944,38 @@ export async function checkDiskUsage(logger?: Logger): Promise<DiskUsage> {
     numTotalBytes: diskUsage.size,
   };
 }
+
+/**
+ * Prompt the customer to upgrade to CodeQL Action v2, if appropriate.
+ *
+ * Check whether a customer is running v2. If they are, and we can determine that the GitHub
+ * instance supports v3, then log a warning about v2's upcoming deprecation prompting the customer
+ * to upgrade to v3.
+ */
+export function checkActionVersion(
+  version: string,
+  githubVersion: GitHubVersion,
+) {
+  if (!semver.satisfies(version, ">=3")) {
+    // Only log a warning for versions of GHES that are compatible with CodeQL Action version 3.
+    //
+    // GHES 3.11 shipped without the v3 tag, but it also shipped without this warning message code.
+    // Therefore users who are seeing this warning message code have pulled in a new version of the
+    // Action, and with it the v3 tag.
+    if (
+      githubVersion.type === GitHubVariant.DOTCOM ||
+      githubVersion.type === GitHubVariant.GHE_DOTCOM ||
+      (githubVersion.type === GitHubVariant.GHES &&
+        semver.satisfies(
+          semver.coerce(githubVersion.version) ?? "0.0.0",
+          ">=3.11",
+        ))
+    ) {
+      core.warning(
+        "CodeQL Action v2 will be deprecated on December 5th, 2024. Please upgrade to v3. For " +
+          "more information, see " +
+          "https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/",
+      );
+    }
+  }
+}

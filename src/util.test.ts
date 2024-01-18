@@ -2,8 +2,11 @@ import * as fs from "fs";
 import * as os from "os";
 import path from "path";
 
+import * as core from "@actions/core";
 import test from "ava";
+import * as sinon from "sinon";
 
+import * as api from "./api-client";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
 import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
@@ -385,3 +388,62 @@ test("fixInvalidNotifications removes duplicate locations", (t) => {
     message: "Removed 1 duplicate locations from SARIF notification objects.",
   });
 });
+
+function formatGitHubVersion(version: util.GitHubVersion): string {
+  switch (version.type) {
+    case util.GitHubVariant.DOTCOM:
+      return "dotcom";
+    case util.GitHubVariant.GHE_DOTCOM:
+      return "GHE dotcom";
+    case util.GitHubVariant.GHES:
+      return `GHES ${version.version}`;
+    default:
+      util.assertNever(version);
+  }
+}
+
+const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
+  [
+    ["2.2.1", { type: util.GitHubVariant.DOTCOM }, true],
+    ["2.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, true],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.10" }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, true],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, true],
+    ["3.2.1", { type: util.GitHubVariant.DOTCOM }, false],
+    ["3.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, false],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.10" }, false],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, false],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, false],
+  ];
+
+for (const [
+  version,
+  githubVersion,
+  shouldReportWarning,
+] of CHECK_ACTION_VERSION_TESTS) {
+  const reportWarningDescription = shouldReportWarning
+    ? "reports warning"
+    : "doesn't report warning";
+  const versionsDescription = `CodeQL Action version ${version} and GitHub version ${formatGitHubVersion(
+    githubVersion,
+  )}`;
+  test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {
+    const warningSpy = sinon.spy(core, "warning");
+    const versionStub = sinon
+      .stub(api, "getGitHubVersion")
+      .resolves(githubVersion);
+
+    util.checkActionVersion(version, await api.getGitHubVersion());
+
+    if (shouldReportWarning) {
+      t.true(
+        warningSpy.calledOnceWithExactly(
+          sinon.match("CodeQL Action v2 will be deprecated"),
+        ),
+      );
+    } else {
+      t.false(warningSpy.called);
+    }
+    versionStub.restore();
+  });
+}

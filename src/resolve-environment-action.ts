@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 
 import {
+  getActionVersion,
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
@@ -16,6 +17,7 @@ import {
   getActionsStatus,
 } from "./status-report";
 import {
+  checkActionVersion,
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
@@ -45,6 +47,7 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
+    checkActionVersion(getActionVersion(), gitHubVersion);
 
     const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {

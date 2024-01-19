@@ -65,7 +65,7 @@ export const featureConfig: Record<
   },
   [Feature.CppTrapCachingEnabled]: {
     envVar: "CODEQL_CPP_TRAP_CACHING",
-    minimumVersion: undefined,
+    minimumVersion: "2.16.1",
     defaultValue: false,
   },
   [Feature.DisableKotlinAnalysisEnabled]: {

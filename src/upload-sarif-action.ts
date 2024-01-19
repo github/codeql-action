@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionVersion } from "./actions-util";
+import { getGitHubVersion } from "./api-client";
 import { getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -12,6 +13,7 @@ import {
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
+  checkActionVersion,
   checkDiskUsage,
   getRequiredEnvParam,
   initializeEnvironment,
@@ -44,6 +46,10 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
+
+  const gitHubVersion = await getGitHubVersion();
+  checkActionVersion(getActionVersion(), gitHubVersion);
+
   if (
     !(await sendStatusReport(
       await createStatusReportBase(

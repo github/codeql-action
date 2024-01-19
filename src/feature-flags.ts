@@ -44,7 +44,6 @@ export interface FeatureEnablement {
  * Each value of this enum should end with `_enabled`.
  */
 export enum Feature {
-  CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
@@ -58,11 +57,6 @@ export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
-  [Feature.CodeqlJavaLombokEnabled]: {
-    envVar: "CODEQL_JAVA_LOMBOK",
-    minimumVersion: "2.14.0",
-    defaultValue: false,
-  },
   [Feature.CppDependencyInstallation]: {
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     minimumVersion: "2.15.0",

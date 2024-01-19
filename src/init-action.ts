@@ -54,6 +54,7 @@ import {
   isHostedRunner,
   UserError,
   wrapError,
+  checkActionVersion,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -212,6 +213,7 @@ async function run() {
 
   const gitHubVersion = await getGitHubVersion();
   checkGitHubVersionInRange(gitHubVersion, logger);
+  checkActionVersion(getActionVersion(), gitHubVersion);
 
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY"),

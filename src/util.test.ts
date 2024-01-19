@@ -433,6 +433,8 @@ for (const [
       .stub(api, "getGitHubVersion")
       .resolves(githubVersion);
 
+    // call checkActionVersion twice and assert below that warning is reported only once
+    util.checkActionVersion(version, await api.getGitHubVersion());
     util.checkActionVersion(version, await api.getGitHubVersion());
 
     if (shouldReportWarning) {

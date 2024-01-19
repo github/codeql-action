@@ -956,7 +956,10 @@ export function checkActionVersion(
   version: string,
   githubVersion: GitHubVersion,
 ) {
-  if (!semver.satisfies(version, ">=3")) {
+  if (
+    !semver.satisfies(version, ">=3") && // do not warn if the customer is already running v3
+    !process.env.CODEQL_V2_DEPRECATION_WARNING // do not warn if we have already warned
+  ) {
     // Only log a warning for versions of GHES that are compatible with CodeQL Action version 3.
     //
     // GHES 3.11 shipped without the v3 tag, but it also shipped without this warning message code.
@@ -976,6 +979,8 @@ export function checkActionVersion(
           "more information, see " +
           "https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/",
       );
+      // set CODEQL_V2_DEPRECATION_WARNING env var to prevent the warning from being logged multiple times
+      core.exportVariable("CODEQL_V2_DEPRECATION_WARNING", "true");
     }
   }
 }

@@ -427,6 +427,7 @@ async function run() {
 
     if (
       config.languages.includes(Language.java) &&
+      // Java Lombok support is enabled by default for >= 2.14.4
       (await codeQlVersionAbove(codeql, "2.14.0")) &&
       !(await codeQlVersionAbove(codeql, "2.14.4"))
     ) {

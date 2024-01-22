@@ -10,6 +10,20 @@ inputs:
     description: |
       A comma-separated value of the languages to be analysed e.g. python,javascript
     required: false
+  build-mode:
+    description: >-
+      [Experimental, for internal testing only] The build mode that will be used to analyze the language.
+      This input is only available in single-language analyses.
+
+      Available build modes will differ based on the language being analyzed. One of: 
+
+      - none:      The database will be created without building the source code.
+                   Available for all interpreted languages and some compiled languages.
+      - autobuild: The database will be created by attempting to automatically build the source code.
+                   Available for all compiled languages.
+      - manual:    The database will be created by building the source code using a manually specified
+                   build command. Available for all compiled languages.
+    required: false
   token:
     description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
     default: ${{ github.token }}

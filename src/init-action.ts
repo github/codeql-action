@@ -442,6 +442,24 @@ async function run() {
       }
     }
 
+    if (config.languages.includes(Language.cpp)) {
+      const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
+      if (process.env[envVar]) {
+        logger.info(
+          `Environment variable ${envVar} already set. Not en/disabling CodeQL C++ TRAP caching support`,
+        );
+      } else if (
+        getTrapCachingEnabled() &&
+        (await features.getValue(Feature.CppTrapCachingEnabled, codeql))
+      ) {
+        logger.info("Enabling CodeQL C++ TRAP caching support");
+        core.exportVariable(envVar, "true");
+      } else {
+        logger.info("Disabling CodeQL C++ TRAP caching support");
+        core.exportVariable(envVar, "false");
+      }
+    }
+
     // Disable Python dependency extraction if feature flag set
     if (await isPythonDependencyInstallationDisabled(codeql, features)) {
       core.exportVariable(

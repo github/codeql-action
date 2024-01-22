@@ -425,20 +425,20 @@ async function run() {
       core.exportVariable(kotlinLimitVar, "1.9.20");
     }
 
-    if (config.languages.includes(Language.java)) {
+    if (
+      config.languages.includes(Language.java) &&
+      // Java Lombok support is enabled by default for >= 2.14.4
+      (await codeQlVersionAbove(codeql, "2.14.0")) &&
+      !(await codeQlVersionAbove(codeql, "2.14.4"))
+    ) {
       const envVar = "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS";
       if (process.env[envVar]) {
         logger.info(
           `Environment variable ${envVar} already set. Not en/disabling CodeQL Java Lombok support`,
         );
-      } else if (
-        await features.getValue(Feature.CodeqlJavaLombokEnabled, codeql)
-      ) {
+      } else {
         logger.info("Enabling CodeQL Java Lombok support");
         core.exportVariable(envVar, "true");
-      } else {
-        logger.info("Disabling CodeQL Java Lombok support");
-        core.exportVariable(envVar, "false");
       }
     }
 

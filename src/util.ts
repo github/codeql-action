@@ -358,7 +358,13 @@ export function getThreadsFlagValue(
   if (os.platform() === "linux") {
     maxThreadsCandidates.push(
       ...["/sys/fs/cgroup/cpuset.cpus.effective", "/sys/fs/cgroup/cpuset.cpus"]
-        .map((file) => getCgroupCpuCount(file, logger))
+        .map((file) => getCgroupCpuCountFromCpus(file, logger))
+        .filter((count) => count !== undefined && count > 0)
+        .map((count) => count as number),
+    );
+    maxThreadsCandidates.push(
+      ...["/sys/fs/cgroup/cpu.max"]
+        .map((file) => getCgroupCpuCountFromCpuMax(file, logger))
         .filter((count) => count !== undefined && count > 0)
         .map((count) => count as number),
     );
@@ -390,9 +396,40 @@ export function getThreadsFlagValue(
 }
 
 /**
- * Gets the number of available cores specified by the cgroup cpuset.cpus file at the given path.
+ * Gets the number of available cores specified by the cgroup cpu.max file at the given path.
+ * Format of file: two values, the limit and the duration (period). If the limit is "max" then
+ * we return undefined and do not use this file to determine CPU limits.
  */
-function getCgroupCpuCount(
+function getCgroupCpuCountFromCpuMax(
+  cpuMaxFile: string,
+  logger: Logger,
+): number | undefined {
+  if (!fs.existsSync(cpuMaxFile)) {
+    logger.debug(
+      `While resolving threads, did not find a cgroup CPU file at ${cpuMaxFile}.`,
+    );
+    return undefined;
+  }
+
+  const cpuMaxString = fs.readFileSync(cpuMaxFile, "utf-8");
+  const cpuLimit = cpuMaxString.split(" ")[0];
+  if (cpuLimit === "max") {
+    return undefined;
+  }
+  const duration = cpuMaxString.split(" ")[1];
+  const cpuCount = Math.floor(parseInt(cpuLimit) / parseInt(duration));
+
+  logger.info(
+    `While resolving threads, found a cgroup CPU file with ${cpuCount} CPUs in ${cpuMaxFile}.`,
+  );
+
+  return cpuCount;
+}
+
+/**
+ * Gets the number of available cores listed in the cgroup cpuset.cpus file at the given path.
+ */
+function getCgroupCpuCountFromCpus(
   cpusFile: string,
   logger: Logger,
 ): number | undefined {

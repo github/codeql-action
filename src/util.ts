@@ -455,8 +455,8 @@ function getCgroupCpuCountFromCpus(
       // Not a range
       ++cpuCount;
     } else {
-      const cpuStartIndex = parseInt(token.charAt(0));
-      const cpuEndIndex = parseInt(token.charAt(2));
+      const cpuStartIndex = parseInt(token.split("-")[0]);
+      const cpuEndIndex = parseInt(token.split("-")[1]);
       cpuCount += cpuEndIndex - cpuStartIndex + 1;
     }
   }

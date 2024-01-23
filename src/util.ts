@@ -412,11 +412,18 @@ function getCgroupCpuCountFromCpuMax(
   }
 
   const cpuMaxString = fs.readFileSync(cpuMaxFile, "utf-8");
-  const cpuLimit = cpuMaxString.split(" ")[0];
+  const cpuMaxStringSplit = cpuMaxString.split(" ");
+  if (cpuMaxStringSplit.length !== 2) {
+    logger.debug(
+      `While resolving threads, did not use cgroup CPU file at ${cpuMaxFile} because it contained ${cpuMaxStringSplit.length} value(s) rather than the two expected.`,
+    );
+    return undefined;
+  }
+  const cpuLimit = cpuMaxStringSplit[0];
   if (cpuLimit === "max") {
     return undefined;
   }
-  const duration = cpuMaxString.split(" ")[1];
+  const duration = cpuMaxStringSplit[1];
   const cpuCount = Math.floor(parseInt(cpuLimit) / parseInt(duration));
 
   logger.info(
@@ -444,11 +451,10 @@ function getCgroupCpuCountFromCpus(
   // Comma-separated numbers and ranges, for eg. 0-1,3
   const cpusString = fs.readFileSync(cpusFile, "utf-8");
   for (const token of cpusString.split(",")) {
-    // If it's a single character
-    if (token.length === 1) {
+    if (!token.includes("-")) {
+      // Not a range
       ++cpuCount;
     } else {
-      // Otherwise it's a range
       const cpuStartIndex = parseInt(token.charAt(0));
       const cpuEndIndex = parseInt(token.charAt(2));
       cpuCount += cpuEndIndex - cpuStartIndex + 1;

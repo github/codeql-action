@@ -8,6 +8,7 @@ import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo, parseRepositoryNwo } from "./repository";
+import { JobStatus } from "./status-report";
 import * as uploadLib from "./upload-lib";
 import {
   delay,
@@ -34,6 +35,10 @@ export interface UploadFailedSarifResult extends uploadLib.UploadStatusReport {
 
   /** The internal ID of SARIF analysis. */
   sarifID?: string;
+}
+
+export interface JobStatusReport {
+  job_status: JobStatus;
 }
 
 function createFailedUploadFailedSarifResult(

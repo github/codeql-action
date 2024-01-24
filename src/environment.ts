@@ -35,6 +35,9 @@ export enum EnvVar {
   /** UUID representing the current job run. */
   JOB_RUN_UUID = "JOB_RUN_UUID",
 
+  /** Status for the entire job, submitted to the status report in `init-post` */
+  JOB_STATUS = "JOB_STATUS",
+
   ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 
   /**

@@ -38,6 +38,14 @@ export type ActionStatus =
   | "success"
   | "user-error";
 
+/** Overall status of the entire job. String values match the Hydro schema. */
+export enum JobStatus {
+  Unknown = "JOB_STATUS_UNKNOWN",
+  Success = "JOB_STATUS_SUCCESS",
+  Failure = "JOB_STATUS_FAILURE",
+  ConfigurationError = "JOB_STATUS_CONFIGURATION_ERROR",
+}
+
 export interface StatusReportBase {
   /** Name of the action being executed. */
   action_name: ActionName;
@@ -122,12 +130,27 @@ export interface DatabaseCreationTimings {
   trap_import_duration_ms?: number;
 }
 
+/** Returns the current ActionStatus and sets the JOB_STATUS environment variable
+ * to ConfigurationError or Failure, if not already set.
+ */
 export function getActionsStatus(
   error?: unknown,
   otherFailureCause?: string,
 ): ActionStatus {
   if (error || otherFailureCause) {
-    return error instanceof UserError ? "user-error" : "failure";
+    if (error instanceof UserError) {
+      core.exportVariable(
+        EnvVar.JOB_STATUS,
+        process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
+      );
+      return "user-error";
+    } else {
+      core.exportVariable(
+        EnvVar.JOB_STATUS,
+        process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,
+      );
+      return "failure";
+    }
   } else {
     return "success";
   }

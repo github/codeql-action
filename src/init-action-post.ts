@@ -9,6 +9,7 @@ import * as core from "@actions/core";
 import { getTemporaryDirectory, printDebugLogs } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
+import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getActionsLogger } from "./logging";
@@ -18,6 +19,7 @@ import {
   sendStatusReport,
   createStatusReportBase,
   getActionsStatus,
+  JobStatus,
 } from "./status-report";
 import {
   checkDiskUsage,
@@ -28,7 +30,8 @@ import {
 
 interface InitPostStatusReport
   extends StatusReportBase,
-    initActionPostHelper.UploadFailedSarifResult {}
+    initActionPostHelper.UploadFailedSarifResult,
+    initActionPostHelper.JobStatusReport {}
 
 async function runWrapper() {
   const startedAt = new Date();
@@ -83,7 +86,14 @@ async function runWrapper() {
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,
     ...uploadFailedSarifResult,
+    job_status:
+      (process.env[EnvVar.JOB_STATUS] as JobStatus) ?? JobStatus.Success,
   };
+  core.info(
+    `Sending job_status field as ${
+      (process.env[EnvVar.JOB_STATUS] as JobStatus) ?? JobStatus.Success
+    }`,
+  );
   await sendStatusReport(statusReport);
 }
 

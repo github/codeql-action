@@ -1,3 +1,4 @@
+import * as core from "@actions/core";
 import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
@@ -126,6 +127,13 @@ export async function tryUploadSarifIfRunFailed(
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
   if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
+    // At this point, if the job status has not been set previously, but we
+    // know that analyze didn't complete successfully, we consider the job
+    // failed — we can't tell if the failure was due to configuration error.
+    core.exportVariable(
+      EnvVar.JOB_STATUS,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,
+    );
     try {
       return await maybeUploadFailedSarif(
         config,

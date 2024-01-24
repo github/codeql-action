@@ -127,12 +127,13 @@ export async function tryUploadSarifIfRunFailed(
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
   if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
-    // At this point, if the job status has not been set previously, but we
-    // know that analyze didn't complete successfully, we consider the job
-    // failed — we can't tell if the failure was due to configuration error.
+    // If analyze didn't complete successfully and the job status hasn't
+    // already been set to Failure/ConfigurationError previously, this
+    // means that something along the way failed in a step that is not
+    // owned by the Action. This is considered configuration error.
     core.exportVariable(
       EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
     );
     try {
       return await maybeUploadFailedSarif(

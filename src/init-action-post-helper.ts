@@ -148,6 +148,10 @@ export async function tryUploadSarifIfRunFailed(
       return createFailedUploadFailedSarifResult(e);
     }
   } else {
+    core.exportVariable(
+      EnvVar.JOB_STATUS,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Success,
+    );
     return {
       upload_failed_run_skipped_because:
         "Analyze Action completed successfully",

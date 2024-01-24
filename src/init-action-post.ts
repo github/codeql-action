@@ -87,11 +87,11 @@ async function runWrapper() {
     ...statusReportBase,
     ...uploadFailedSarifResult,
     job_status:
-      (process.env[EnvVar.JOB_STATUS] as JobStatus) ?? JobStatus.Success,
+      (process.env[EnvVar.JOB_STATUS] as JobStatus) ?? JobStatus.Unknown,
   };
   core.info(
     `Sending job_status field as ${
-      (process.env[EnvVar.JOB_STATUS] as JobStatus) ?? JobStatus.Success
+      (process.env[EnvVar.JOB_STATUS] as JobStatus) ?? JobStatus.Unknown
     }`,
   );
   await sendStatusReport(statusReport);

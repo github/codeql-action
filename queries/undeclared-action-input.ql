@@ -24,7 +24,7 @@ class ActionDeclaration extends File {
     result = getRelativePath().regexpCapture("(.*)/action.yml", 1)
   }
 
-  YAMLDocument getRootNode() {
+  YamlDocument getRootNode() {
     result.getFile() = this
   }
 
@@ -32,7 +32,7 @@ class ActionDeclaration extends File {
    * The name of any input to this action.
    */
   string getAnInput() {
-    result = getRootNode().(YAMLMapping).lookup("inputs").(YAMLMapping).getKey(_).(YAMLString).getValue()
+    result = getRootNode().(YamlMapping).lookup("inputs").(YamlMapping).getKey(_).(YamlString).getValue()
   }
 
   /**
@@ -40,9 +40,9 @@ class ActionDeclaration extends File {
    */
   FunctionDeclStmt getEntrypoint() {
     result.getFile().getRelativePath() = getRootNode().
-      (YAMLMapping).lookup("runs").
-      (YAMLMapping).lookup("main").
-      (YAMLString).getValue().regexpReplaceAll("\\.\\./lib/(.*)\\.js", "src/$1.ts") and
+      (YamlMapping).lookup("runs").
+      (YamlMapping).lookup("main").
+      (YamlString).getValue().regexpReplaceAll("\\.\\./lib/(.*)\\.js", "src/$1.ts") and
     result.getName() = "run"
   }
 }

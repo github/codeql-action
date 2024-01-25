@@ -310,10 +310,8 @@ async function removeUploadedSarif(
  */
 export function getFinalJobStatus(): JobStatus {
   const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
-  if (!jobStatusFromEnvironment) {
-    return JobStatus.Unknown;
-  }
   if (
+    !jobStatusFromEnvironment ||
     !Object.values(JobStatus).includes(jobStatusFromEnvironment as JobStatus)
   ) {
     return JobStatus.Unknown;

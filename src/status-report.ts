@@ -32,7 +32,7 @@ export type ActionName =
   | "upload-sarif";
 
 export type ActionStatus =
-  | "aborted"
+  | "aborted" // Only used in the init Action, if init failed and it wasn't a configuration error.
   | "failure"
   | "starting"
   | "success"
@@ -152,7 +152,7 @@ function setJobStatusIfUnsuccessful(actionStatus: ActionStatus) {
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
     );
-  } else if (actionStatus === "failure") {
+  } else if (actionStatus === "failure" || actionStatus === "aborted") {
     core.exportVariable(
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,

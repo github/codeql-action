@@ -9,7 +9,6 @@ import * as core from "@actions/core";
 import { getTemporaryDirectory, printDebugLogs } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
-import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getActionsLogger } from "./logging";
@@ -19,7 +18,6 @@ import {
   sendStatusReport,
   createStatusReportBase,
   getActionsStatus,
-  JobStatus,
 } from "./status-report";
 import {
   checkDiskUsage,

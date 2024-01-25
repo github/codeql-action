@@ -130,7 +130,8 @@ export async function tryUploadSarifIfRunFailed(
     // If analyze didn't complete successfully and the job status hasn't
     // already been set to Failure/ConfigurationError previously, this
     // means that something along the way failed in a step that is not
-    // owned by the Action. This is considered configuration error.
+    // owned by the Action, for example a manual build step. We
+    // consider this a configuration error.
     core.exportVariable(
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,

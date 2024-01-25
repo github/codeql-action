@@ -1,3 +1,4 @@
+// NB: prefix these variables with `CODEQL_ACTION` to reduce risk of their being overwritten by other steps. */
 export enum EnvVar {
   /** Whether the `analyze` Action completes successfully. */
   ANALYZE_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY",
@@ -36,7 +37,7 @@ export enum EnvVar {
   JOB_RUN_UUID = "JOB_RUN_UUID",
 
   /** Status for the entire job, submitted to the status report in `init-post` */
-  JOB_STATUS = "JOB_STATUS",
+  JOB_STATUS = "CODEQL_ACTION_JOB_STATUS",
 
   ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 

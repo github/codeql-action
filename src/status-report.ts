@@ -130,29 +130,33 @@ export interface DatabaseCreationTimings {
   trap_import_duration_ms?: number;
 }
 
-/** Returns the current ActionStatus and sets the JOB_STATUS environment variable
- * to ConfigurationError or Failure, if not already set.
- */
 export function getActionsStatus(
   error?: unknown,
   otherFailureCause?: string,
 ): ActionStatus {
   if (error || otherFailureCause) {
-    if (error instanceof UserError) {
-      core.exportVariable(
-        EnvVar.JOB_STATUS,
-        process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
-      );
-      return "user-error";
-    } else {
-      core.exportVariable(
-        EnvVar.JOB_STATUS,
-        process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,
-      );
-      return "failure";
-    }
+    return error instanceof UserError ? "user-error" : "failure";
   } else {
     return "success";
+  }
+}
+
+/**
+ * Sets the overall job status environment variable to configuration error
+ * or failure, unless it's already been set to one of these values in a
+ * previous step.
+ */
+function setJobStatusIfUnsuccessful(actionStatus: ActionStatus) {
+  if (actionStatus === "user-error") {
+    core.exportVariable(
+      EnvVar.JOB_STATUS,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
+    );
+  } else if (actionStatus === "failure") {
+    core.exportVariable(
+      EnvVar.JOB_STATUS,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,
+    );
   }
 }
 
@@ -296,6 +300,8 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
 ): Promise<boolean> {
+  setJobStatusIfUnsuccessful(statusReport.status);
+
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
   // If in test mode we don't want to upload the results

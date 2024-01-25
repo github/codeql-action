@@ -300,3 +300,22 @@ async function removeUploadedSarif(
     );
   }
 }
+
+/**
+ * Returns the final job status sent in the `init-post` Action, based on the
+ * current value of the JOB_STATUS environment variable. If the variable is
+ * unset, or if its value is not one of the JobStatus enum values, returns
+ * Unknown. Otherwise it returns the status set in the environment variable.
+ */
+export function getFinalJobStatus(): JobStatus {
+  const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
+  if (!jobStatusFromEnvironment) {
+    return JobStatus.Unknown;
+  }
+  if (
+    !Object.values(JobStatus).includes(jobStatusFromEnvironment as JobStatus)
+  ) {
+    return JobStatus.Unknown;
+  }
+  return jobStatusFromEnvironment as JobStatus;
+}

@@ -86,9 +86,7 @@ async function runWrapper() {
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,
     ...uploadFailedSarifResult,
-    job_status: process.env[EnvVar.JOB_STATUS]
-      ? (process.env[EnvVar.JOB_STATUS] as JobStatus)
-      : JobStatus.Unknown,
+    job_status: initActionPostHelper.getFinalJobStatus(),
   };
   await sendStatusReport(statusReport);
 }

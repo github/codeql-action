@@ -1,4 +1,8 @@
-// NB: prefix these variables with `CODEQL_ACTION` to reduce risk of their being overwritten by other steps. */
+/**
+ * Environment variables used by the CodeQL Action.
+ *
+ * We recommend prefixing environment variables with `CODEQL_ACTION_` to reduce the risk that they are overwritten by other steps.
+ */
 export enum EnvVar {
   /** Whether the `analyze` Action completes successfully. */
   ANALYZE_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY",

@@ -32,7 +32,7 @@ export type ActionName =
   | "upload-sarif";
 
 export type ActionStatus =
-  | "aborted" // Only used in the init Action, if init failed and it wasn't a configuration error.
+  | "aborted" // Only used in the init Action, if init failed before initializing the tracer due to something other than a configuration error.
   | "failure"
   | "starting"
   | "success"

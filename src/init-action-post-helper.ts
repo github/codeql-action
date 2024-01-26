@@ -1,3 +1,4 @@
+import * as core from "@actions/core";
 import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
@@ -8,6 +9,7 @@ import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { RepositoryNwo, parseRepositoryNwo } from "./repository";
+import { JobStatus } from "./status-report";
 import * as uploadLib from "./upload-lib";
 import {
   delay,
@@ -34,6 +36,10 @@ export interface UploadFailedSarifResult extends uploadLib.UploadStatusReport {
 
   /** The internal ID of SARIF analysis. */
   sarifID?: string;
+}
+
+export interface JobStatusReport {
+  job_status: JobStatus;
 }
 
 function createFailedUploadFailedSarifResult(
@@ -121,6 +127,15 @@ export async function tryUploadSarifIfRunFailed(
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
   if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
+    // If analyze didn't complete successfully and the job status hasn't
+    // already been set to Failure/ConfigurationError previously, this
+    // means that something along the way failed in a step that is not
+    // owned by the Action, for example a manual build step. We
+    // consider this a configuration error.
+    core.exportVariable(
+      EnvVar.JOB_STATUS,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
+    );
     try {
       return await maybeUploadFailedSarif(
         config,
@@ -135,6 +150,10 @@ export async function tryUploadSarifIfRunFailed(
       return createFailedUploadFailedSarifResult(e);
     }
   } else {
+    core.exportVariable(
+      EnvVar.JOB_STATUS,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Success,
+    );
     return {
       upload_failed_run_skipped_because:
         "Analyze Action completed successfully",
@@ -281,4 +300,21 @@ async function removeUploadedSarif(
       "Could not delete the uploaded SARIF analysis because a SARIF ID wasn't provided by the API when uploading the SARIF file.",
     );
   }
+}
+
+/**
+ * Returns the final job status sent in the `init-post` Action, based on the
+ * current value of the JOB_STATUS environment variable. If the variable is
+ * unset, or if its value is not one of the JobStatus enum values, returns
+ * Unknown. Otherwise it returns the status set in the environment variable.
+ */
+export function getFinalJobStatus(): JobStatus {
+  const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
+  if (
+    !jobStatusFromEnvironment ||
+    !Object.values(JobStatus).includes(jobStatusFromEnvironment as JobStatus)
+  ) {
+    return JobStatus.Unknown;
+  }
+  return jobStatusFromEnvironment as JobStatus;
 }

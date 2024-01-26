@@ -354,7 +354,22 @@ export function getThreadsFlagValue(
   logger: Logger,
 ): number {
   let numThreads: number;
-  const maxThreads = os.cpus().length;
+  const maxThreadsCandidates = [os.cpus().length];
+  if (os.platform() === "linux") {
+    maxThreadsCandidates.push(
+      ...["/sys/fs/cgroup/cpuset.cpus.effective", "/sys/fs/cgroup/cpuset.cpus"]
+        .map((file) => getCgroupCpuCountFromCpus(file, logger))
+        .filter((count) => count !== undefined && count > 0)
+        .map((count) => count as number),
+    );
+    maxThreadsCandidates.push(
+      ...["/sys/fs/cgroup/cpu.max"]
+        .map((file) => getCgroupCpuCountFromCpuMax(file, logger))
+        .filter((count) => count !== undefined && count > 0)
+        .map((count) => count as number),
+    );
+  }
+  const maxThreads = Math.min(...maxThreadsCandidates);
   if (userInput) {
     numThreads = Number(userInput);
     if (Number.isNaN(numThreads)) {
@@ -378,6 +393,79 @@ export function getThreadsFlagValue(
     numThreads = maxThreads;
   }
   return numThreads;
+}
+
+/**
+ * Gets the number of available cores specified by the cgroup cpu.max file at the given path.
+ * Format of file: two values, the limit and the duration (period). If the limit is "max" then
+ * we return undefined and do not use this file to determine CPU limits.
+ */
+function getCgroupCpuCountFromCpuMax(
+  cpuMaxFile: string,
+  logger: Logger,
+): number | undefined {
+  if (!fs.existsSync(cpuMaxFile)) {
+    logger.debug(
+      `While resolving threads, did not find a cgroup CPU file at ${cpuMaxFile}.`,
+    );
+    return undefined;
+  }
+
+  const cpuMaxString = fs.readFileSync(cpuMaxFile, "utf-8");
+  const cpuMaxStringSplit = cpuMaxString.split(" ");
+  if (cpuMaxStringSplit.length !== 2) {
+    logger.debug(
+      `While resolving threads, did not use cgroup CPU file at ${cpuMaxFile} because it contained ${cpuMaxStringSplit.length} value(s) rather than the two expected.`,
+    );
+    return undefined;
+  }
+  const cpuLimit = cpuMaxStringSplit[0];
+  if (cpuLimit === "max") {
+    return undefined;
+  }
+  const duration = cpuMaxStringSplit[1];
+  const cpuCount = Math.floor(parseInt(cpuLimit) / parseInt(duration));
+
+  logger.info(
+    `While resolving threads, found a cgroup CPU file with ${cpuCount} CPUs in ${cpuMaxFile}.`,
+  );
+
+  return cpuCount;
+}
+
+/**
+ * Gets the number of available cores listed in the cgroup cpuset.cpus file at the given path.
+ */
+function getCgroupCpuCountFromCpus(
+  cpusFile: string,
+  logger: Logger,
+): number | undefined {
+  if (!fs.existsSync(cpusFile)) {
+    logger.debug(
+      `While resolving threads, did not find a cgroup CPUs file at ${cpusFile}.`,
+    );
+    return undefined;
+  }
+
+  let cpuCount = 0;
+  // Comma-separated numbers and ranges, for eg. 0-1,3
+  const cpusString = fs.readFileSync(cpusFile, "utf-8");
+  for (const token of cpusString.split(",")) {
+    if (!token.includes("-")) {
+      // Not a range
+      ++cpuCount;
+    } else {
+      const cpuStartIndex = parseInt(token.split("-")[0]);
+      const cpuEndIndex = parseInt(token.split("-")[1]);
+      cpuCount += cpuEndIndex - cpuStartIndex + 1;
+    }
+  }
+
+  logger.info(
+    `While resolving threads, found a cgroup CPUs file with ${cpuCount} CPUs in ${cpusFile}.`,
+  );
+
+  return cpuCount;
 }
 
 /**
@@ -943,4 +1031,45 @@ export async function checkDiskUsage(logger?: Logger): Promise<DiskUsage> {
     numAvailableBytes: diskUsage.free,
     numTotalBytes: diskUsage.size,
   };
+}
+
+/**
+ * Prompt the customer to upgrade to CodeQL Action v3, if appropriate.
+ *
+ * Check whether a customer is running v2. If they are, and we can determine that the GitHub
+ * instance supports v3, then log a warning about v2's upcoming deprecation prompting the customer
+ * to upgrade to v3.
+ */
+export function checkActionVersion(
+  version: string,
+  githubVersion: GitHubVersion,
+) {
+  if (
+    !semver.satisfies(version, ">=3") && // do not warn if the customer is already running v3
+    !process.env.CODEQL_V2_DEPRECATION_WARNING // do not warn if we have already warned
+  ) {
+    // Only log a warning for versions of GHES that are compatible with CodeQL Action version 3.
+    //
+    // GHES 3.11 shipped without the v3 tag, but it also shipped without this warning message code.
+    // Therefore users who are seeing this warning message code have pulled in a new version of the
+    // Action, and with it the v3 tag.
+    if (
+      githubVersion.type === GitHubVariant.DOTCOM ||
+      githubVersion.type === GitHubVariant.GHE_DOTCOM ||
+      (githubVersion.type === GitHubVariant.GHES &&
+        semver.satisfies(
+          semver.coerce(githubVersion.version) ?? "0.0.0",
+          ">=3.11",
+        ))
+    ) {
+      core.warning(
+        "CodeQL Action v2 will be deprecated on December 5th, 2024. " +
+          "Please update all occurrences of the CodeQL Action in your workflow files to v3. " +
+          "For more information, see " +
+          "https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/",
+      );
+      // set CODEQL_V2_DEPRECATION_WARNING env var to prevent the warning from being logged multiple times
+      core.exportVariable("CODEQL_V2_DEPRECATION_WARNING", "true");
+    }
+  }
 }

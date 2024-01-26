@@ -220,6 +220,8 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion();
 
+    util.checkActionVersion(actionsUtil.getActionVersion(), gitHubVersion);
+
     const features = new Features(
       gitHubVersion,
       repositoryNwo,

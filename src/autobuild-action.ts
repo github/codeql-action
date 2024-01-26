@@ -17,6 +17,7 @@ import {
   sendStatusReport,
 } from "./status-report";
 import {
+  checkActionVersion,
   checkDiskUsage,
   checkGitHubVersionInRange,
   initializeEnvironment,
@@ -77,6 +78,7 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
+    checkActionVersion(getActionVersion(), gitHubVersion);
 
     const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {

@@ -8,6 +8,11 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 2.23.2 - 26 Jan 2024
+
+- On Linux, the maximum possible value for the `--threads` option now respects the CPU count as specified in `cgroup` files to more accurately reflect the number of available cores when running in containers. [#2083](https://github.com/github/codeql-action/pull/2083)
+- Update default CodeQL bundle version to 2.16.1. [#2096](https://github.com/github/codeql-action/pull/2096)
+
 ## 2.23.1 - 17 Jan 2024
 
 - Update default CodeQL bundle version to 2.16.0. [#2073](https://github.com/github/codeql-action/pull/2073)

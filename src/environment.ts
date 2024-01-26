@@ -1,3 +1,9 @@
+/**
+ * Environment variables used by the CodeQL Action.
+ *
+ * We recommend prefixing environment variables with `CODEQL_ACTION_`
+ * to reduce the risk that they are overwritten by other steps.
+ */
 export enum EnvVar {
   /** Whether the `analyze` Action completes successfully. */
   ANALYZE_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY",
@@ -34,6 +40,9 @@ export enum EnvVar {
 
   /** UUID representing the current job run. */
   JOB_RUN_UUID = "JOB_RUN_UUID",
+
+  /** Status for the entire job, submitted to the status report in `init-post` */
+  JOB_STATUS = "CODEQL_ACTION_JOB_STATUS",
 
   ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 

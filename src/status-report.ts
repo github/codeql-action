@@ -32,11 +32,19 @@ export type ActionName =
   | "upload-sarif";
 
 export type ActionStatus =
-  | "aborted"
+  | "aborted" // Only used in the init Action, if init failed before initializing the tracer due to something other than a configuration error.
   | "failure"
   | "starting"
   | "success"
   | "user-error";
+
+/** Overall status of the entire job. String values match the Hydro schema. */
+export enum JobStatus {
+  Unknown = "JOB_STATUS_UNKNOWN",
+  Success = "JOB_STATUS_SUCCESS",
+  Failure = "JOB_STATUS_FAILURE",
+  ConfigurationError = "JOB_STATUS_CONFIGURATION_ERROR",
+}
 
 export interface StatusReportBase {
   /** Name of the action being executed. */
@@ -130,6 +138,25 @@ export function getActionsStatus(
     return error instanceof UserError ? "user-error" : "failure";
   } else {
     return "success";
+  }
+}
+
+/**
+ * Sets the overall job status environment variable to configuration error
+ * or failure, unless it's already been set to one of these values in a
+ * previous step.
+ */
+function setJobStatusIfUnsuccessful(actionStatus: ActionStatus) {
+  if (actionStatus === "user-error") {
+    core.exportVariable(
+      EnvVar.JOB_STATUS,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
+    );
+  } else if (actionStatus === "failure" || actionStatus === "aborted") {
+    core.exportVariable(
+      EnvVar.JOB_STATUS,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,
+    );
   }
 }
 
@@ -273,6 +300,8 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
 ): Promise<boolean> {
+  setJobStatusIfUnsuccessful(statusReport.status);
+
   const statusReportJSON = JSON.stringify(statusReport);
   core.debug(`Sending status report: ${statusReportJSON}`);
   // If in test mode we don't want to upload the results

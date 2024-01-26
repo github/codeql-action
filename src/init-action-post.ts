@@ -28,7 +28,8 @@ import {
 
 interface InitPostStatusReport
   extends StatusReportBase,
-    initActionPostHelper.UploadFailedSarifResult {}
+    initActionPostHelper.UploadFailedSarifResult,
+    initActionPostHelper.JobStatusReport {}
 
 async function runWrapper() {
   const startedAt = new Date();
@@ -83,6 +84,7 @@ async function runWrapper() {
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,
     ...uploadFailedSarifResult,
+    job_status: initActionPostHelper.getFinalJobStatus(),
   };
   await sendStatusReport(statusReport);
 }

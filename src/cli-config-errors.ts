@@ -8,8 +8,9 @@ export enum CliError {
 /**
  * All of our caught CLI error messages that we handle specially: ie. if we
  * would like to categorize an error as a configuration error or not. Optionally
- * associated with a CLI error code as well. Note that the CLI error code, if
- * it exists, always takes precedence over the error message snippet.
+ * associated with a CLI error code as well. Note that either of the conditions
+ * is enough to be considered a match: if the exit code is a match, or the error
+ * messages match.
  */
 export const cliErrorsConfig: Record<
   CliError,
@@ -48,8 +49,8 @@ export const cliErrorsConfig: Record<
 
 /**
  * Checks whether or not the error message received from the CLI is a config
- * error: if there is an exit code, this takes precedence. Otherwise, matches
- * the error message against the expected message snippets.
+ * error. Returns true as long as either of the conditions holds: the exit
+ * codes are a match, or the error message matches the expected message snippets.
  */
 export function isCliConfigurationError(
   cliError: CliError,
@@ -58,9 +59,12 @@ export function isCliConfigurationError(
 ): boolean {
   const cliErrorConfig = cliErrorsConfig[cliError];
 
-  // If both exit codes exist, exit codes take precedence over message matching.
-  if (exitCode && cliErrorConfig.exitCode) {
-    return exitCode === cliErrorConfig.exitCode;
+  if (
+    exitCode !== undefined &&
+    cliErrorConfig.exitCode !== undefined &&
+    exitCode === cliErrorConfig.exitCode
+  ) {
+    return true;
   }
 
   for (const e of cliErrorConfig.cliErrorMessageSnippets) {

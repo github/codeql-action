@@ -45,6 +45,7 @@ function createTestInitConfigInputs(
       configFile: undefined,
       dbLocation: undefined,
       configInput: undefined,
+      buildModeInput: undefined,
       trapCachingEnabled: false,
       debugMode: false,
       debugArtifactName: "",
@@ -322,6 +323,7 @@ test("load non-empty input", async (t) => {
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
       languages: [Language.javascript],
+      buildMode: "none",
       originalUserInput: {
         name: "my config",
         "disable-default-queries": true,
@@ -347,6 +349,7 @@ test("load non-empty input", async (t) => {
     const actualConfig = await configUtils.initConfig(
       createTestInitConfigInputs({
         languagesInput,
+        buildModeInput: "none",
         configFile: configFilePath,
         debugArtifactName: "my-artifact",
         debugDatabaseName: "my-db",

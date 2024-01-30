@@ -81,6 +81,10 @@ export interface Config {
    */
   languages: Language[];
   /**
+   * Build mode, if set. Currently only a single build mode is supported per job.
+   */
+  buildMode: string | undefined;
+  /**
    * A unaltered copy of the original user input.
    * Mainly intended to be used for status reporting.
    * If any field is useful for the actual processing
@@ -399,6 +403,7 @@ export interface InitConfigInputs {
   configFile: string | undefined;
   dbLocation: string | undefined;
   configInput: string | undefined;
+  buildModeInput: string | undefined;
   trapCachingEnabled: boolean;
   debugMode: boolean;
   debugArtifactName: string;
@@ -428,6 +433,7 @@ export async function getDefaultConfig({
   languagesInput,
   queriesInput,
   packsInput,
+  buildModeInput,
   dbLocation,
   trapCachingEnabled,
   debugMode,
@@ -460,6 +466,7 @@ export async function getDefaultConfig({
 
   return {
     languages,
+    buildMode: buildModeInput,
     originalUserInput: {},
     tempDir,
     codeQLCmd: codeql.getPath(),
@@ -500,6 +507,7 @@ async function loadConfig({
   languagesInput,
   queriesInput,
   packsInput,
+  buildModeInput,
   configFile,
   dbLocation,
   trapCachingEnabled,
@@ -546,6 +554,7 @@ async function loadConfig({
 
   return {
     languages,
+    buildMode: buildModeInput,
     originalUserInput: parsedYAML,
     tempDir,
     codeQLCmd: codeql.getPath(),

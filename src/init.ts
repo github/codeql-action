@@ -5,6 +5,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
+import { CliError, isConfigurationError } from "./cli-config-errors";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
@@ -123,26 +124,17 @@ function processError(e: any): Error {
   if (!(e instanceof Error)) {
     return e;
   }
-
-  if (
-    // Init action called twice
-    e.message?.includes("Refusing to create databases") &&
-    e.message?.includes("exists and is not an empty directory.")
-  ) {
+  if (isConfigurationError(CliError.InitCalledTwice, e.message)) {
     return new util.UserError(
       `Is the "init" action called twice in the same job? ${e.message}`,
     );
   }
-
   if (
-    // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
-    e.message?.includes("is not compatible with this CodeQL CLI") ||
-    // Expected source location for database creation does not exist
-    e.message?.includes("Invalid source root")
+    isConfigurationError(CliError.IncompatibleWithActionVersion, e.message) ||
+    isConfigurationError(CliError.InvalidSourceRoot, e.message)
   ) {
     return new util.UserError(e.message);
   }
-
   return e;
 }
 

@@ -12,6 +12,10 @@ import {
   isAnalyzingDefaultBranch,
 } from "./actions-util";
 import * as api from "./api-client";
+import {
+  CliError,
+  isConfigurationError as isCliConfigurationError,
+} from "./cli-config-errors";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
@@ -713,7 +717,11 @@ export async function getCodeQLForCmd(
             this,
             CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE,
           )) &&
-          isNoCodeFoundError(e)
+          isCliConfigurationError(
+            CliError.NoJavaScriptTypeScriptCodeFound,
+            e.stderr,
+            e.exitCode,
+          )
         ) {
           throw new util.UserError(
             "No code found during the build. Please see: " +
@@ -1437,20 +1445,6 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  */
 export function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
-}
-
-function isNoCodeFoundError(e: CommandInvocationError): boolean {
-  /**
-   * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
-   * source code was found. This means that we don't get the no code found error from
-   * `codeql database finalize`. To ensure users get a good error message, we detect this manually
-   * here, and upon detection override the error message.
-   *
-   * This can be removed once support for CodeQL 2.11.6 is removed.
-   */
-  const javascriptNoCodeFoundWarning =
-    "No JavaScript or TypeScript code found.";
-  return e.exitCode === 32 || e.stderr.includes(javascriptNoCodeFoundWarning);
 }
 
 async function isDiagnosticsExportInvalidSarifFixed(

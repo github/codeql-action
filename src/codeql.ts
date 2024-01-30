@@ -598,6 +598,12 @@ export async function getCodeQLForCmd(
       }
 
       if (
+        config.buildMode !== undefined &&
+        (await this.supportsFeature(ToolsFeature.BuildModeOption))
+      ) {
+        extraArgs.push(`--build-mode=${config.buildMode}`);
+      }
+      if (
         qlconfigFile !== undefined &&
         (await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG))
       ) {

@@ -9,13 +9,20 @@ import * as sinon from "sinon";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
+import { Config } from "./config-utils";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
-import { HTTPError } from "./util";
+import {
+  DEFAULT_DEBUG_ARTIFACT_NAME,
+  DEFAULT_DEBUG_DATABASE_NAME,
+  GitHubVariant,
+  GitHubVersion,
+  HTTPError,
+} from "./util";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
   auth: "token",
@@ -290,4 +297,30 @@ export function mockBundleDownloadApi({
     );
 
   return `${baseUrl}${relativeUrl}`;
+}
+
+export function createTestConfig(overrides: Partial<Config>): Config {
+  return Object.assign(
+    {},
+    {
+      languages: [],
+      originalUserInput: {},
+      tempDir: "",
+      codeQLCmd: "",
+      gitHubVersion: {
+        type: GitHubVariant.DOTCOM,
+      } as GitHubVersion,
+      dbLocation: "",
+      debugMode: false,
+      debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
+      debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
+      augmentationProperties: {
+        packsInputCombines: false,
+        queriesInputCombines: false,
+      },
+      trapCaches: {},
+      trapCacheDownloadTime: 0,
+    },
+    overrides,
+  );
 }

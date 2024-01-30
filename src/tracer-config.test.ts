@@ -5,27 +5,18 @@ import test from "ava";
 
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
-import { makeVersionInfo, setupTests } from "./testing-utils";
+import { createTestConfig, makeVersionInfo, setupTests } from "./testing-utils";
 import { getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
 setupTests(test);
 
-function getTestConfig(tmpDir: string): configUtils.Config {
-  return {
+function getTestConfig(tempDir: string): configUtils.Config {
+  return createTestConfig({
     languages: [Language.java],
-    originalUserInput: {},
-    tempDir: tmpDir,
-    codeQLCmd: "",
-    gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
-    dbLocation: path.resolve(tmpDir, "codeql_databases"),
-    debugMode: false,
-    debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-    debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: configUtils.defaultAugmentationProperties,
-    trapCaches: {},
-    trapCacheDownloadTime: 0,
-  };
+    tempDir,
+    dbLocation: path.resolve(tempDir, "codeql_databases"),
+  });
 }
 
 test("getCombinedTracerConfig - return undefined when no languages are traced languages", async (t) => {

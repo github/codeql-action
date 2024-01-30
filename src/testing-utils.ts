@@ -230,11 +230,11 @@ export function mockCodeQLVersion(
   version: string,
   features?: { [name: string]: boolean },
 ) {
-  return {
+  return codeql.setCodeQL({
     async getVersion() {
       return makeVersionInfo(version, features);
     },
-  } as codeql.CodeQL;
+  });
 }
 
 /**

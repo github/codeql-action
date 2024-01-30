@@ -5,7 +5,11 @@ import test from "ava";
 
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
-import { createTestConfig, makeVersionInfo, setupTests } from "./testing-utils";
+import {
+  createTestConfig,
+  mockCodeQLVersion,
+  setupTests,
+} from "./testing-utils";
 import { getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
@@ -25,7 +29,7 @@ test("getCombinedTracerConfig - return undefined when no languages are traced la
     // No traced languages
     config.languages = [Language.javascript, Language.python];
     t.deepEqual(
-      await getCombinedTracerConfig(makeVersionInfo("1.0.0"), config),
+      await getCombinedTracerConfig(mockCodeQLVersion("1.0.0"), config),
       undefined,
     );
   });
@@ -61,7 +65,7 @@ test("getCombinedTracerConfig - with start-tracing.json environment file", async
     fs.writeFileSync(startTracingJson, JSON.stringify(startTracingEnv));
 
     const result = await getCombinedTracerConfig(
-      makeVersionInfo("1.0.0"),
+      mockCodeQLVersion("1.0.0"),
       config,
     );
     t.notDeepEqual(result, undefined);
@@ -121,7 +125,7 @@ test("getCombinedTracerConfig - with SetsCodeqlRunnerEnvVar feature enabled in C
     fs.writeFileSync(startTracingJson, JSON.stringify(startTracingEnv));
 
     const result = await getCombinedTracerConfig(
-      makeVersionInfo("1.0.0", { setsCodeqlRunnerEnvVar: true }),
+      mockCodeQLVersion("1.0.0", { setsCodeqlRunnerEnvVar: true }),
       config,
     );
     t.notDeepEqual(result, undefined);

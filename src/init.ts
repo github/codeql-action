@@ -90,7 +90,7 @@ export async function runInit(
   } catch (e) {
     throw processError(e);
   }
-  return await getCombinedTracerConfig(await codeql.getVersion(), config);
+  return await getCombinedTracerConfig(codeql, config);
 }
 
 export function printPathFiltersWarning(

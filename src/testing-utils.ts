@@ -8,7 +8,7 @@ import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
-import * as CodeQL from "./codeql";
+import * as codeql from "./codeql";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -73,7 +73,7 @@ export function setupTests(test: TestFn<any>) {
   typedTest.beforeEach((t) => {
     // Set an empty CodeQL object so that all method calls will fail
     // unless the test explicitly sets one up.
-    CodeQL.setCodeQL({});
+    codeql.setCodeQL({});
 
     // Replace stdout and stderr so we can record output during tests
     t.context.testOutput = "";
@@ -214,7 +214,7 @@ export function mockLanguagesInRepo(languages: string[]) {
 export const makeVersionInfo = (
   version: string,
   features?: { [name: string]: boolean },
-): CodeQL.VersionInfo => ({
+): codeql.VersionInfo => ({
   version,
   features,
 });
@@ -227,7 +227,7 @@ export function mockCodeQLVersion(
     async getVersion() {
       return makeVersionInfo(version, features);
     },
-  } as CodeQL.CodeQL;
+  } as codeql.CodeQL;
 }
 
 /**

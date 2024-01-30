@@ -10,7 +10,6 @@ import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
-import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
@@ -45,44 +44,11 @@ export async function initCodeQL(
 }
 
 export async function initConfig(
-  languagesInput: string | undefined,
-  queriesInput: string | undefined,
-  packsInput: string | undefined,
-  configFile: string | undefined,
-  dbLocation: string | undefined,
-  configInput: string | undefined,
-  trapCachingEnabled: boolean,
-  debugMode: boolean,
-  debugArtifactName: string,
-  debugDatabaseName: string,
-  repository: RepositoryNwo,
-  tempDir: string,
-  codeQL: CodeQL,
-  workspacePath: string,
-  gitHubVersion: util.GitHubVersion,
-  apiDetails: GitHubApiCombinedDetails,
-  logger: Logger,
+  inputs: configUtils.InitConfigInputs,
 ): Promise<configUtils.Config> {
+  const logger = inputs.logger;
   logger.startGroup("Load language configuration");
-  const config = await configUtils.initConfig(
-    languagesInput,
-    queriesInput,
-    packsInput,
-    configFile,
-    dbLocation,
-    configInput,
-    trapCachingEnabled,
-    debugMode,
-    debugArtifactName,
-    debugDatabaseName,
-    repository,
-    tempDir,
-    codeQL,
-    workspacePath,
-    gitHubVersion,
-    apiDetails,
-    logger,
-  );
+  const config = await configUtils.initConfig(inputs);
   printPathFiltersWarning(config, logger);
   logger.endGroup();
   return config;

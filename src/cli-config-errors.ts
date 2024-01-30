@@ -51,7 +51,7 @@ export const cliErrorsConfig: Record<
  * error: if there is an exit code, this takes precedence. Otherwise, matches
  * the error message against the expected message snippets.
  */
-export function isConfigurationError(
+export function isCliConfigurationError(
   cliError: CliError,
   cliErrorMessage: string,
   exitCode?: number,

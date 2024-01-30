@@ -12,10 +12,7 @@ import {
   isAnalyzingDefaultBranch,
 } from "./actions-util";
 import * as api from "./api-client";
-import {
-  CliError,
-  isConfigurationError as isCliConfigurationError,
-} from "./cli-config-errors";
+import { CliError, isCliConfigurationError } from "./cli-config-errors";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
@@ -634,20 +631,40 @@ export async function getCodeQLForCmd(
         extraArgs.push("--no-sublanguage-file-coverage");
       }
 
-      await runTool(
-        cmd,
-        [
-          "database",
-          "init",
-          "--db-cluster",
-          config.dbLocation,
-          `--source-root=${sourceRoot}`,
-          ...(await getLanguageAliasingArguments(this)),
-          ...extraArgs,
-          ...getExtraOptionsFromEnv(["database", "init"]),
-        ],
-        { stdin: externalRepositoryToken },
-      );
+      try {
+        await runTool(
+          cmd,
+          [
+            "database",
+            "init",
+            "--db-cluster",
+            config.dbLocation,
+            `--source-root=${sourceRoot}`,
+            ...(await getLanguageAliasingArguments(this)),
+            ...extraArgs,
+            ...getExtraOptionsFromEnv(["database", "init"]),
+          ],
+          { stdin: externalRepositoryToken },
+        );
+      } catch (e) {
+        if (e instanceof CommandInvocationError) {
+          if (isCliConfigurationError(CliError.InitCalledTwice, e.message)) {
+            throw new util.UserError(
+              `Is the "init" action called twice in the same job? ${e.message}`,
+            );
+          }
+          if (
+            isCliConfigurationError(
+              CliError.IncompatibleWithActionVersion,
+              e.message,
+            ) ||
+            isCliConfigurationError(CliError.InvalidSourceRoot, e.message)
+          ) {
+            throw new util.UserError(e.message);
+          }
+        }
+        throw e;
+      }
     },
     async runAutobuild(language: Language) {
       const autobuildCmd = path.join(

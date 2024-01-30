@@ -38,7 +38,7 @@ import {
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
-import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
+import { ToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkDiskUsage,
@@ -328,9 +328,6 @@ async function run() {
   }
 
   try {
-    // Query CLI for supported features
-    const versionInfo = await codeql.getVersion();
-
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {
@@ -354,10 +351,9 @@ async function run() {
         // typically dynamically linked, this provides a suitable entry point for the CodeQL tracer.
         if (
           fileOutput.includes("statically linked") &&
-          !isSupportedToolsFeature(
-            versionInfo,
+          !(await codeql.supportsFeature(
             ToolsFeature.IndirectTracingSupportsStaticBinaries,
-          )
+          ))
         ) {
           try {
             logger.debug(`Applying static binary workaround for Go`);

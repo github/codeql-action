@@ -391,39 +391,69 @@ export async function getRawLanguages(
   return { rawLanguages, autodetected };
 }
 
+/** Inputs required to initialize a configuration. */
+export interface InitConfigInputs {
+  languagesInput: string | undefined;
+  queriesInput: string | undefined;
+  packsInput: string | undefined;
+  configFile: string | undefined;
+  dbLocation: string | undefined;
+  configInput: string | undefined;
+  trapCachingEnabled: boolean;
+  debugMode: boolean;
+  debugArtifactName: string;
+  debugDatabaseName: string;
+  repository: RepositoryNwo;
+  tempDir: string;
+  codeql: CodeQL;
+  workspacePath: string;
+  githubVersion: GitHubVersion;
+  apiDetails: api.GitHubApiCombinedDetails;
+  logger: Logger;
+}
+
+type GetDefaultConfigInputs = Omit<
+  InitConfigInputs,
+  "configFile" | "configInput"
+>;
+
+type LoadConfigInputs = Omit<InitConfigInputs, "configInput"> & {
+  configFile: string;
+};
+
 /**
  * Get the default config for when the user has not supplied one.
  */
-export async function getDefaultConfig(
-  languagesInput: string | undefined,
-  rawQueriesInput: string | undefined,
-  rawPacksInput: string | undefined,
-  dbLocation: string | undefined,
-  trapCachingEnabled: boolean,
-  debugMode: boolean,
-  debugArtifactName: string,
-  debugDatabaseName: string,
-  repository: RepositoryNwo,
-  tempDir: string,
-  codeQL: CodeQL,
-  gitHubVersion: GitHubVersion,
-  logger: Logger,
-): Promise<Config> {
+export async function getDefaultConfig({
+  languagesInput,
+  queriesInput,
+  packsInput,
+  dbLocation,
+  trapCachingEnabled,
+  debugMode,
+  debugArtifactName,
+  debugDatabaseName,
+  repository,
+  tempDir,
+  codeql,
+  githubVersion,
+  logger,
+}: GetDefaultConfigInputs): Promise<Config> {
   const languages = await getLanguages(
-    codeQL,
+    codeql,
     languagesInput,
     repository,
     logger,
   );
   const augmentationProperties = calculateAugmentation(
-    rawPacksInput,
-    rawQueriesInput,
+    packsInput,
+    queriesInput,
     languages,
   );
 
   const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
     trapCachingEnabled,
-    codeQL,
+    codeql,
     languages,
     logger,
   );
@@ -432,8 +462,8 @@ export async function getDefaultConfig(
     languages,
     originalUserInput: {},
     tempDir,
-    codeQLCmd: codeQL.getPath(),
-    gitHubVersion,
+    codeQLCmd: codeql.getPath(),
+    gitHubVersion: githubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
     debugMode,
     debugArtifactName,
@@ -466,24 +496,24 @@ async function downloadCacheWithTime(
 /**
  * Load the config from the given file.
  */
-async function loadConfig(
-  languagesInput: string | undefined,
-  rawQueriesInput: string | undefined,
-  rawPacksInput: string | undefined,
-  configFile: string,
-  dbLocation: string | undefined,
-  trapCachingEnabled: boolean,
-  debugMode: boolean,
-  debugArtifactName: string,
-  debugDatabaseName: string,
-  repository: RepositoryNwo,
-  tempDir: string,
-  codeQL: CodeQL,
-  workspacePath: string,
-  gitHubVersion: GitHubVersion,
-  apiDetails: api.GitHubApiCombinedDetails,
-  logger: Logger,
-): Promise<Config> {
+async function loadConfig({
+  languagesInput,
+  queriesInput,
+  packsInput,
+  configFile,
+  dbLocation,
+  trapCachingEnabled,
+  debugMode,
+  debugArtifactName,
+  debugDatabaseName,
+  repository,
+  tempDir,
+  codeql,
+  workspacePath,
+  githubVersion,
+  apiDetails,
+  logger,
+}: LoadConfigInputs): Promise<Config> {
   let parsedYAML: UserConfig;
 
   if (isLocal(configFile)) {
@@ -495,21 +525,21 @@ async function loadConfig(
   }
 
   const languages = await getLanguages(
-    codeQL,
+    codeql,
     languagesInput,
     repository,
     logger,
   );
 
   const augmentationProperties = calculateAugmentation(
-    rawPacksInput,
-    rawQueriesInput,
+    packsInput,
+    queriesInput,
     languages,
   );
 
   const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
     trapCachingEnabled,
-    codeQL,
+    codeql,
     languages,
     logger,
   );
@@ -518,8 +548,8 @@ async function loadConfig(
     languages,
     originalUserInput: parsedYAML,
     tempDir,
-    codeQLCmd: codeQL.getPath(),
-    gitHubVersion,
+    codeQLCmd: codeql.getPath(),
+    gitHubVersion: githubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
     debugMode,
     debugArtifactName,
@@ -765,76 +795,33 @@ function dbLocationOrDefault(
  * This will parse the config from the user input if present, or generate
  * a default config. The parsed config is then stored to a known location.
  */
-export async function initConfig(
-  languagesInput: string | undefined,
-  queriesInput: string | undefined,
-  packsInput: string | undefined,
-  configFile: string | undefined,
-  dbLocation: string | undefined,
-  configInput: string | undefined,
-  trapCachingEnabled: boolean,
-  debugMode: boolean,
-  debugArtifactName: string,
-  debugDatabaseName: string,
-  repository: RepositoryNwo,
-  tempDir: string,
-  codeQL: CodeQL,
-  workspacePath: string,
-  gitHubVersion: GitHubVersion,
-  apiDetails: api.GitHubApiCombinedDetails,
-  logger: Logger,
-): Promise<Config> {
+export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   let config: Config;
 
+  const { logger, workspacePath } = inputs;
+
   // if configInput is set, it takes precedence over configFile
-  if (configInput) {
-    if (configFile) {
+  if (inputs.configInput) {
+    if (inputs.configFile) {
       logger.warning(
         `Both a config file and config input were provided. Ignoring config file.`,
       );
     }
-    configFile = path.resolve(workspacePath, "user-config-from-action.yml");
-    fs.writeFileSync(configFile, configInput);
-    logger.debug(`Using config from action input: ${configFile}`);
+    inputs.configFile = path.resolve(
+      workspacePath,
+      "user-config-from-action.yml",
+    );
+    fs.writeFileSync(inputs.configFile, inputs.configInput);
+    logger.debug(`Using config from action input: ${inputs.configFile}`);
   }
 
   // If no config file was provided create an empty one
-  if (!configFile) {
+  if (!inputs.configFile) {
     logger.debug("No configuration file was provided");
-    config = await getDefaultConfig(
-      languagesInput,
-      queriesInput,
-      packsInput,
-      dbLocation,
-      trapCachingEnabled,
-      debugMode,
-      debugArtifactName,
-      debugDatabaseName,
-      repository,
-      tempDir,
-      codeQL,
-      gitHubVersion,
-      logger,
-    );
+    config = await getDefaultConfig(inputs);
   } else {
-    config = await loadConfig(
-      languagesInput,
-      queriesInput,
-      packsInput,
-      configFile,
-      dbLocation,
-      trapCachingEnabled,
-      debugMode,
-      debugArtifactName,
-      debugDatabaseName,
-      repository,
-      tempDir,
-      codeQL,
-      workspacePath,
-      gitHubVersion,
-      apiDetails,
-      logger,
-    );
+    // Convince the type checker that inputs.configFile is defined.
+    config = await loadConfig({ ...inputs, configFile: inputs.configFile });
   }
 
   // Save the config so we can easily access it again in the future

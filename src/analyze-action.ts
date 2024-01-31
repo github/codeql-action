@@ -202,7 +202,7 @@ async function run() {
     }
 
     if (hasBadExpectErrorInput()) {
-      throw new util.UserError(
+      throw new util.ConfigurationError(
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork.",
       );
     }
@@ -319,7 +319,7 @@ async function run() {
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
         logger,
-        { considerInvalidRequestUserError: false },
+        { considerInvalidRequestConfigError: false },
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {

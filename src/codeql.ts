@@ -409,7 +409,9 @@ export async function setupCodeQL(
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
     } else if (process.platform !== "linux" && process.platform !== "darwin") {
-      throw new util.UserError(`Unsupported platform: ${process.platform}`);
+      throw new util.ConfigurationError(
+        `Unsupported platform: ${process.platform}`,
+      );
     }
 
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
@@ -653,7 +655,7 @@ export async function getCodeQLForCmd(
       } catch (e) {
         if (e instanceof CommandInvocationError) {
           if (isCliConfigurationError(CliError.InitCalledTwice, e.message)) {
-            throw new util.UserError(
+            throw new util.ConfigurationError(
               processCliConfigurationError(CliError.InitCalledTwice, e.message),
             );
           }
@@ -663,7 +665,7 @@ export async function getCodeQLForCmd(
               e.message,
             )
           ) {
-            throw new util.UserError(
+            throw new util.ConfigurationError(
               processCliConfigurationError(
                 CliError.IncompatibleWithActionVersion,
                 e.message,
@@ -671,7 +673,7 @@ export async function getCodeQLForCmd(
             );
           }
           if (isCliConfigurationError(CliError.InvalidSourceRoot, e.message)) {
-            throw new util.UserError(
+            throw new util.ConfigurationError(
               processCliConfigurationError(
                 CliError.InvalidSourceRoot,
                 e.message,
@@ -756,7 +758,7 @@ export async function getCodeQLForCmd(
             e.exitCode,
           )
         ) {
-          throw new util.UserError(
+          throw new util.ConfigurationError(
             processCliConfigurationError(
               CliError.NoJavaScriptTypeScriptCodeFound,
               e.stderr,
@@ -1152,7 +1154,7 @@ export async function getCodeQLForCmd(
     checkVersion &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))
   ) {
-    throw new util.UserError(
+    throw new util.ConfigurationError(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
         (await codeql.getVersion()).version
       }`,

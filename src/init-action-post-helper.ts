@@ -107,7 +107,7 @@ async function maybeUploadFailedSarif(
     checkoutPath,
     category,
     logger,
-    { considerInvalidRequestUserError: false },
+    { considerInvalidRequestConfigError: false },
   );
   await uploadLib.waitForProcessing(
     repositoryNwo,
@@ -134,7 +134,7 @@ export async function tryUploadSarifIfRunFailed(
     // consider this a configuration error.
     core.exportVariable(
       EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigError,
     );
     try {
       return await maybeUploadFailedSarif(

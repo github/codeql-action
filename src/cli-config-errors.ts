@@ -8,16 +8,17 @@ export enum CliError {
 
 /**
  * All of our caught CLI error messages that we handle specially: ie. if we
- * would like to categorize an error as a configuration error or not. Optionally
- * associated with a CLI error code as well. Note that either of the conditions
- * is enough to be considered a match: if the exit code is a match, or the error
- * messages match.
+ * would like to categorize an error as a configuration error or not.
  */
 export const cliErrorsConfig: Record<
   CliError,
   {
     cliErrorMessageSnippets: string[];
     exitCode?: number;
+    // Error message to return in the action for this type of CLI error. If undefined, uses original CLI error message.
+    actionErrorMessage?: string;
+    // Whether to append the original CLI error to action error message. Default: true
+    appendCliErrorToActionError?: boolean;
   }
 > = {
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
@@ -29,6 +30,8 @@ export const cliErrorsConfig: Record<
       "Refusing to create databases",
       "exists and is not an empty directory",
     ],
+    actionErrorMessage: `Is the "init" action called twice in the same job?`,
+    appendCliErrorToActionError: true,
   },
   // Expected source location for database creation does not exist
   [CliError.InvalidSourceRoot]: {
@@ -45,6 +48,10 @@ export const cliErrorsConfig: Record<
   [CliError.NoJavaScriptTypeScriptCodeFound]: {
     exitCode: 32,
     cliErrorMessageSnippets: ["No JavaScript or TypeScript code found."],
+    actionErrorMessage:
+      "No code found during the build. Please see: " +
+      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+    appendCliErrorToActionError: false,
   },
 };
 
@@ -77,45 +84,25 @@ export function isCliConfigurationError(
 }
 
 /**
- * Maps a CLI error class to the error message that the Action should return in
- * case of this error. Leave undefined if the CLI error message should be returned
- * directly.
- *
- * Otherwise, specify an error message to return for this CLI error; and whether the
- * original CLI error text should be appended to it.
+ * Returns the error message that the Action should return in case of this CLI error. If no
+ * `actionErrorMessage` was defined, return the original CLI error. Otherwise, return the
+ * `actionErrorMessage` with the CLI error message appended, depending on the value of
+ * `appendCliErrorToActionError` in `cliErrorsConfig`.
  */
-export const cliToActionErrorsConfig: Record<
-  CliError,
-  | {
-      actionErrorMessage: string;
-      appendCliError: boolean;
-    }
-  | undefined
-> = {
-  [CliError.InitCalledTwice]: {
-    actionErrorMessage: `Is the "init" action called twice in the same job?`,
-    appendCliError: true,
-  },
-  [CliError.NoJavaScriptTypeScriptCodeFound]: {
-    actionErrorMessage:
-      "No code found during the build. Please see: " +
-      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
-    appendCliError: false,
-  },
-  [CliError.IncompatibleWithActionVersion]: undefined,
-  [CliError.InvalidSourceRoot]: undefined,
-};
-
 export function processCliConfigurationError(
   cliError: CliError,
   cliErrorMessage: string,
 ): string {
-  const cliToActionErrorConfig = cliToActionErrorsConfig[cliError];
-  if (cliToActionErrorConfig === undefined) {
+  const cliErrorConfig = cliErrorsConfig[cliError];
+  if (
+    cliErrorConfig === undefined ||
+    cliErrorConfig.actionErrorMessage === undefined
+  ) {
     return cliErrorMessage;
   }
 
-  return cliToActionErrorConfig.appendCliError
-    ? cliToActionErrorConfig.actionErrorMessage + cliErrorMessage
-    : cliToActionErrorConfig.actionErrorMessage;
+  // Append the CLI error message by default.
+  return cliErrorConfig.appendCliErrorToActionError === false
+    ? cliErrorConfig.actionErrorMessage
+    : cliErrorConfig.actionErrorMessage + cliErrorMessage;
 }

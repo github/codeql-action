@@ -1,3 +1,4 @@
+/** Error messages from the CLI that we handle specially. */
 export enum CliError {
   IncompatibleWithActionVersion,
   InitCalledTwice,
@@ -73,4 +74,48 @@ export function isCliConfigurationError(
     }
   }
   return true;
+}
+
+/**
+ * Maps a CLI error class to the error message that the Action should return in
+ * case of this error. Leave undefined if the CLI error message should be returned
+ * directly.
+ *
+ * Otherwise, specify an error message to return for this CLI error; and whether the
+ * original CLI error text should be appended to it.
+ */
+export const cliToActionErrorsConfig: Record<
+  CliError,
+  | {
+      actionErrorMessage: string;
+      appendCliError: boolean;
+    }
+  | undefined
+> = {
+  [CliError.InitCalledTwice]: {
+    actionErrorMessage: `Is the "init" action called twice in the same job?`,
+    appendCliError: true,
+  },
+  [CliError.NoJavaScriptTypeScriptCodeFound]: {
+    actionErrorMessage:
+      "No code found during the build. Please see: " +
+      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+    appendCliError: false,
+  },
+  [CliError.IncompatibleWithActionVersion]: undefined,
+  [CliError.InvalidSourceRoot]: undefined,
+};
+
+export function processCliConfigurationError(
+  cliError: CliError,
+  cliErrorMessage: string,
+): string {
+  const cliToActionErrorConfig = cliToActionErrorsConfig[cliError];
+  if (cliToActionErrorConfig === undefined) {
+    return cliErrorMessage;
+  }
+
+  return cliToActionErrorConfig.appendCliError
+    ? cliToActionErrorConfig.actionErrorMessage + cliErrorMessage
+    : cliToActionErrorConfig.actionErrorMessage;
 }

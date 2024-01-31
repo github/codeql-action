@@ -12,7 +12,11 @@ import {
   isAnalyzingDefaultBranch,
 } from "./actions-util";
 import * as api from "./api-client";
-import { CliError, isCliConfigurationError } from "./cli-config-errors";
+import {
+  CliError,
+  isCliConfigurationError,
+  processCliConfigurationError,
+} from "./cli-config-errors";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
@@ -650,17 +654,29 @@ export async function getCodeQLForCmd(
         if (e instanceof CommandInvocationError) {
           if (isCliConfigurationError(CliError.InitCalledTwice, e.message)) {
             throw new util.UserError(
-              `Is the "init" action called twice in the same job? ${e.message}`,
+              processCliConfigurationError(CliError.InitCalledTwice, e.message),
             );
           }
           if (
             isCliConfigurationError(
               CliError.IncompatibleWithActionVersion,
               e.message,
-            ) ||
-            isCliConfigurationError(CliError.InvalidSourceRoot, e.message)
+            )
           ) {
-            throw new util.UserError(e.message);
+            throw new util.UserError(
+              processCliConfigurationError(
+                CliError.IncompatibleWithActionVersion,
+                e.message,
+              ),
+            );
+          }
+          if (isCliConfigurationError(CliError.InvalidSourceRoot, e.message)) {
+            throw new util.UserError(
+              processCliConfigurationError(
+                CliError.InvalidSourceRoot,
+                e.message,
+              ),
+            );
           }
         }
         throw e;
@@ -741,8 +757,10 @@ export async function getCodeQLForCmd(
           )
         ) {
           throw new util.UserError(
-            "No code found during the build. Please see: " +
-              "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+            processCliConfigurationError(
+              CliError.NoJavaScriptTypeScriptCodeFound,
+              e.stderr,
+            ),
           );
         }
         throw e;

@@ -32,18 +32,14 @@ async function run() {
   const logger = getActionsLogger();
 
   try {
-    if (
-      !(await sendStatusReport(
-        await createStatusReportBase(
-          ACTION_NAME,
-          "starting",
-          startedAt,
-          await checkDiskUsage(logger),
-        ),
-      ))
-    ) {
-      return;
-    }
+    await sendStatusReport(
+      await createStatusReportBase(
+        ACTION_NAME,
+        "starting",
+        startedAt,
+        await checkDiskUsage(logger),
+      ),
+    );
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);

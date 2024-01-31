@@ -50,18 +50,14 @@ async function run() {
   const gitHubVersion = await getGitHubVersion();
   checkActionVersion(getActionVersion(), gitHubVersion);
 
-  if (
-    !(await sendStatusReport(
-      await createStatusReportBase(
-        "upload-sarif",
-        "starting",
-        startedAt,
-        await checkDiskUsage(),
-      ),
-    ))
-  ) {
-    return;
-  }
+  await sendStatusReport(
+    await createStatusReportBase(
+      "upload-sarif",
+      "starting",
+      startedAt,
+      await checkDiskUsage(),
+    ),
+  );
 
   try {
     const uploadResult = await upload_lib.uploadFromActions(

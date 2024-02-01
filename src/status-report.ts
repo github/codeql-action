@@ -10,6 +10,7 @@ import {
   getWorkflowRunAttempt,
   getActionVersion,
   getRequiredInput,
+  isFirstPartyAnalysis,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
 import { EnvVar } from "./environment";
@@ -69,6 +70,8 @@ export interface StatusReportBase {
   completed_at?: string;
   /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
+  /** Whether this is a first-party (CodeQL) run of the action. */
+  first_party_analysis: boolean;
   /** Job name from the workflow. */
   job_name: string;
   /**
@@ -227,6 +230,7 @@ export async function createStatusReportBase(
     action_version: getActionVersion(),
     analysis_key,
     commit_oid: commitOid,
+    first_party_analysis: isFirstPartyAnalysis(),
     job_name: jobName,
     job_run_uuid: jobRunUUID,
     ref,

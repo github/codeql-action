@@ -41,6 +41,9 @@ export enum EnvVar {
   /** Whether the CodeQL Action has already warned the user about low disk space. */
   HAS_WARNED_ABOUT_DISK_SPACE = "CODEQL_ACTION_HAS_WARNED_ABOUT_DISK_SPACE",
 
+  /** Whether the init action has been run. */
+  INIT_ACTION_HAS_RUN = "CODEQL_INIT_ACTION_HAS_RUN",
+
   /** UUID representing the current job run. */
   JOB_RUN_UUID = "JOB_RUN_UUID",
 

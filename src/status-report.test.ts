@@ -58,3 +58,66 @@ test("createStatusReportBase", async (t) => {
     t.is(statusReport.workflow_run_id, 100);
   });
 });
+
+test("createStatusReportBase_firstParty", async (t) => {
+  await withTmpDir(async (tmpDir: string) => {
+    setupActionsVars(tmpDir, tmpDir);
+
+    process.env["CODEQL_ACTION_ANALYSIS_KEY"] = "analysis-key";
+    process.env["GITHUB_REF"] = "refs/heads/main";
+    process.env["GITHUB_REPOSITORY"] = "octocat/HelloWorld";
+    process.env["GITHUB_RUN_ATTEMPT"] = "2";
+    process.env["GITHUB_RUN_ID"] = "100";
+    process.env["GITHUB_SHA"] = "a".repeat(40);
+    process.env["ImageVersion"] = "2023.05.19.1";
+    process.env["RUNNER_OS"] = "macOS";
+    process.env["RUNNER_TEMP"] = tmpDir;
+
+    const getRequiredInput = sinon.stub(actionsUtil, "getRequiredInput");
+    getRequiredInput.withArgs("matrix").resolves("input/matrix");
+
+    t.is(
+      (
+        await createStatusReportBase(
+          "init",
+          "failure",
+          new Date("May 19, 2023 05:19:00"),
+          { numAvailableBytes: 100, numTotalBytes: 500 },
+          "failure cause",
+          "exception stack trace",
+        )
+      ).first_party_analysis,
+      false,
+    );
+
+    process.env["CODEQL_INIT_ACTION_HAS_RUN"] = "foobar";
+    t.is(
+      (
+        await createStatusReportBase(
+          "init",
+          "failure",
+          new Date("May 19, 2023 05:19:00"),
+          { numAvailableBytes: 100, numTotalBytes: 500 },
+          "failure cause",
+          "exception stack trace",
+        )
+      ).first_party_analysis,
+      false,
+    );
+
+    process.env["CODEQL_INIT_ACTION_HAS_RUN"] = "true";
+    t.is(
+      (
+        await createStatusReportBase(
+          "init",
+          "failure",
+          new Date("May 19, 2023 05:19:00"),
+          { numAvailableBytes: 100, numTotalBytes: 500 },
+          "failure cause",
+          "exception stack trace",
+        )
+      ).first_party_analysis,
+      true,
+    );
+  });
+});

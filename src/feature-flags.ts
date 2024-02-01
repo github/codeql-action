@@ -105,7 +105,7 @@ export const featureConfig: Record<
     // here!
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
     minimumVersion: "2.16.0",
-    defaultValue: false,
+    defaultValue: true,
   },
 };
 

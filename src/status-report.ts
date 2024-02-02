@@ -96,7 +96,7 @@ export interface StatusReportBase {
   /** Action runner hardware architecture (context runner.arch). */
   runner_arch?: string;
   /** Available disk space on the runner, in bytes. */
-  runner_available_disk_space_bytes: number;
+  runner_available_disk_space_bytes?: number;
   /**
    * Version of the runner image, for workflows running on GitHub-hosted runners. Absent otherwise.
    */
@@ -106,7 +106,7 @@ export interface StatusReportBase {
   /** Action runner operating system release (x.y.z from os.release()). */
   runner_os_release?: string;
   /** Total disk space on the runner, in bytes. */
-  runner_total_disk_space_bytes: number;
+  runner_total_disk_space_bytes?: number;
   /** Time the first action started. Normally the init action. */
   started_at: string;
   /** State this action is currently in. */
@@ -192,7 +192,7 @@ export async function createStatusReportBase(
   actionName: ActionName,
   status: ActionStatus,
   actionStartedAt: Date,
-  diskInfo: DiskUsage,
+  diskInfo: DiskUsage | undefined,
   cause?: string,
   exception?: string,
 ): Promise<StatusReportBase> {
@@ -230,9 +230,7 @@ export async function createStatusReportBase(
     job_name: jobName,
     job_run_uuid: jobRunUUID,
     ref,
-    runner_available_disk_space_bytes: diskInfo.numAvailableBytes,
     runner_os: runnerOs,
-    runner_total_disk_space_bytes: diskInfo.numTotalBytes,
     started_at: workflowStartedAt,
     status,
     testing_environment: testingEnvironment,
@@ -240,6 +238,11 @@ export async function createStatusReportBase(
     workflow_run_attempt: workflowRunAttempt,
     workflow_run_id: workflowRunID,
   };
+
+  if (diskInfo) {
+    statusReport.runner_available_disk_space_bytes = diskInfo.numAvailableBytes;
+    statusReport.runner_total_disk_space_bytes = diskInfo.numTotalBytes;
+  }
 
   // Add optional parameters
   if (cause) {

@@ -3,6 +3,7 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import { safeWhich } from "@chrisgavin/safe-which";
 import del from "del";
 import * as yaml from "js-yaml";
 
@@ -12,6 +13,8 @@ import {
   getCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
+import { addDiagnostic, makeDiagnostic } from "./diagnostics";
+import { EnvVar } from "./environment";
 import {
   FeatureEnablement,
   Feature,
@@ -417,6 +420,51 @@ export async function runFinalize(
   // Delete variables as specified by the end-tracing script
   await endTracingForCluster(config);
   return timings;
+}
+
+export async function warnIfGoInstalledAfterInit(
+  config: configUtils.Config,
+  logger: Logger,
+) {
+  // Check that `which go` still points at the same path it did when the `init` Action ran to ensure that no steps
+  // in-between performed any setup. We encourage users to perform all setup tasks before initializing CodeQL so that
+  // the setup tasks do not interfere with our analysis.
+  // Furthermore, if we installed a wrapper script in the `init` Action, we need to ensure that there isn't a step
+  // in the workflow after the `init` step which installs a different version of Go and takes precedence in the PATH,
+  // thus potentially circumventing our workaround that allows tracing to work.
+  const goInitPath = process.env[EnvVar.GO_BINARY_LOCATION];
+
+  if (
+    process.env[EnvVar.DID_AUTOBUILD_GOLANG] !== "true" &&
+    goInitPath !== undefined
+  ) {
+    const goBinaryPath = await safeWhich("go");
+
+    if (goInitPath !== goBinaryPath) {
+      logger.warning(
+        `Expected \`which go\` to return ${goInitPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
+      );
+
+      addDiagnostic(
+        config,
+        Language.go,
+        makeDiagnostic(
+          "go/workflow/go-installed-after-codeql-init",
+          "Go was installed after the `codeql-action/init` Action was run",
+          {
+            markdownMessage:
+              "To avoid interfering with the CodeQL analysis, perform all installation steps before calling the `github/codeql-action/init` Action.",
+            visibility: {
+              statusPage: true,
+              telemetry: true,
+              cliSummaryTable: true,
+            },
+            severity: "warning",
+          },
+        ),
+      );
+    }
+  }
 }
 
 export async function runCleanup(

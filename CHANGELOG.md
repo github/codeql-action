@@ -6,6 +6,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 3.24.0 - 02 Feb 2024
+
 - CodeQL Python analysis will no longer install dependencies on GitHub Enterprise Server, as is already the case for GitHub.com. See [release notes for 3.23.0](#3230---08-jan-2024) for more details. [#2106](https://github.com/github/codeql-action/pull/2106)
 
 ## 3.23.2 - 26 Jan 2024

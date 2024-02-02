@@ -38,7 +38,7 @@ import {
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
-import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
+import { ToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkDiskUsage,
@@ -265,29 +265,32 @@ async function run() {
     }
     core.endGroup();
 
-    config = await initConfig(
-      getOptionalInput("languages"),
-      getOptionalInput("queries"),
-      getOptionalInput("packs"),
-      getOptionalInput("config-file"),
-      getOptionalInput("db-location"),
-      getOptionalInput("config"),
-      getTrapCachingEnabled(),
+    config = await initConfig({
+      languagesInput: getOptionalInput("languages"),
+      queriesInput: getOptionalInput("queries"),
+      packsInput: getOptionalInput("packs"),
+      buildModeInput: getOptionalInput("build-mode"),
+      configFile: getOptionalInput("config-file"),
+      dbLocation: getOptionalInput("db-location"),
+      configInput: getOptionalInput("config"),
+      trapCachingEnabled: getTrapCachingEnabled(),
       // Debug mode is enabled if:
       // - The `init` Action is passed `debug: true`.
       // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
       //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
-      getOptionalInput("debug") === "true" || core.isDebug(),
-      getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
-      getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
-      repositoryNwo,
-      getTemporaryDirectory(),
+      debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
+      debugArtifactName:
+        getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
+      debugDatabaseName:
+        getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
+      repository: repositoryNwo,
+      tempDir: getTemporaryDirectory(),
       codeql,
-      getRequiredEnvParam("GITHUB_WORKSPACE"),
-      gitHubVersion,
+      workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+      githubVersion: gitHubVersion,
       apiDetails,
       logger,
-    );
+    });
 
     await checkInstallPython311(config.languages, codeql);
 
@@ -325,9 +328,6 @@ async function run() {
   }
 
   try {
-    // Query CLI for supported features
-    const versionInfo = await codeql.getVersion();
-
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {
@@ -351,10 +351,9 @@ async function run() {
         // typically dynamically linked, this provides a suitable entry point for the CodeQL tracer.
         if (
           fileOutput.includes("statically linked") &&
-          !isSupportedToolsFeature(
-            versionInfo,
+          !(await codeql.supportsFeature(
             ToolsFeature.IndirectTracingSupportsStaticBinaries,
-          )
+          ))
         ) {
           try {
             logger.debug(`Applying static binary workaround for Go`);

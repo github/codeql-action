@@ -6,11 +6,15 @@ import * as sinon from "sinon";
 
 import { runQueries } from "./analyze";
 import { setCodeQL } from "./codeql";
-import { Config } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { setupTests, setupActionsVars, createFeatures } from "./testing-utils";
+import {
+  setupTests,
+  setupActionsVars,
+  createFeatures,
+  createTestConfig,
+} from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 
@@ -82,25 +86,11 @@ test("status report fields", async (t) => {
         databasePrintBaseline: async () => "",
       });
 
-      const config: Config = {
+      const config = createTestConfig({
         languages: [language],
-        originalUserInput: {},
         tempDir: tmpDir,
-        codeQLCmd: "",
-        gitHubVersion: {
-          type: util.GitHubVariant.DOTCOM,
-        } as util.GitHubVersion,
         dbLocation: path.resolve(tmpDir, "codeql_databases"),
-        debugMode: false,
-        debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-        debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-        augmentationProperties: {
-          packsInputCombines: false,
-          queriesInputCombines: false,
-        },
-        trapCaches: {},
-        trapCacheDownloadTime: 0,
-      };
+      });
       fs.mkdirSync(util.getCodeQLDatabasePath(config, language), {
         recursive: true,
       });

@@ -5,27 +5,22 @@ import test from "ava";
 
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
-import { makeVersionInfo, setupTests } from "./testing-utils";
+import {
+  createTestConfig,
+  mockCodeQLVersion,
+  setupTests,
+} from "./testing-utils";
 import { getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
 setupTests(test);
 
-function getTestConfig(tmpDir: string): configUtils.Config {
-  return {
+function getTestConfig(tempDir: string): configUtils.Config {
+  return createTestConfig({
     languages: [Language.java],
-    originalUserInput: {},
-    tempDir: tmpDir,
-    codeQLCmd: "",
-    gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
-    dbLocation: path.resolve(tmpDir, "codeql_databases"),
-    debugMode: false,
-    debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-    debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: configUtils.defaultAugmentationProperties,
-    trapCaches: {},
-    trapCacheDownloadTime: 0,
-  };
+    tempDir,
+    dbLocation: path.resolve(tempDir, "codeql_databases"),
+  });
 }
 
 test("getCombinedTracerConfig - return undefined when no languages are traced languages", async (t) => {
@@ -34,7 +29,7 @@ test("getCombinedTracerConfig - return undefined when no languages are traced la
     // No traced languages
     config.languages = [Language.javascript, Language.python];
     t.deepEqual(
-      await getCombinedTracerConfig(makeVersionInfo("1.0.0"), config),
+      await getCombinedTracerConfig(mockCodeQLVersion("1.0.0"), config),
       undefined,
     );
   });
@@ -70,7 +65,7 @@ test("getCombinedTracerConfig - with start-tracing.json environment file", async
     fs.writeFileSync(startTracingJson, JSON.stringify(startTracingEnv));
 
     const result = await getCombinedTracerConfig(
-      makeVersionInfo("1.0.0"),
+      mockCodeQLVersion("1.0.0"),
       config,
     );
     t.notDeepEqual(result, undefined);
@@ -130,7 +125,7 @@ test("getCombinedTracerConfig - with SetsCodeqlRunnerEnvVar feature enabled in C
     fs.writeFileSync(startTracingJson, JSON.stringify(startTracingEnv));
 
     const result = await getCombinedTracerConfig(
-      makeVersionInfo("1.0.0", { setsCodeqlRunnerEnvVar: true }),
+      mockCodeQLVersion("1.0.0", { setsCodeqlRunnerEnvVar: true }),
       config,
     );
     t.notDeepEqual(result, undefined);

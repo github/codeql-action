@@ -72,6 +72,12 @@ interface IncludeQueryFilter {
   include: Record<string, string[] | string>;
 }
 
+export enum BuildMode {
+  None = "none",
+  Autobuild = "autobuild",
+  Manual = "manual",
+}
+
 /**
  * Format of the parsed config file.
  */
@@ -83,7 +89,7 @@ export interface Config {
   /**
    * Build mode, if set. Currently only a single build mode is supported per job.
    */
-  buildMode: string | undefined;
+  buildMode: BuildMode | undefined;
   /**
    * A unaltered copy of the original user input.
    * Mainly intended to be used for status reporting.
@@ -466,7 +472,7 @@ export async function getDefaultConfig({
 
   return {
     languages,
-    buildMode: buildModeInput,
+    buildMode: validateBuildModeInput(buildModeInput),
     originalUserInput: {},
     tempDir,
     codeQLCmd: codeql.getPath(),
@@ -554,7 +560,7 @@ async function loadConfig({
 
   return {
     languages,
-    buildMode: buildModeInput,
+    buildMode: validateBuildModeInput(buildModeInput),
     originalUserInput: parsedYAML,
     tempDir,
     codeQLCmd: codeql.getPath(),
@@ -1055,4 +1061,21 @@ export async function wrapEnvironment(
       process.env[key] = value;
     }
   }
+}
+
+function validateBuildModeInput(
+  buildModeInput: string | undefined,
+): BuildMode | undefined {
+  if (buildModeInput === undefined) {
+    return undefined;
+  }
+
+  if (!Object.values(BuildMode).includes(buildModeInput as BuildMode)) {
+    throw new UserError(
+      `Invalid build mode: '${buildModeInput}'. Supported build modes are: ${Object.values(
+        BuildMode,
+      ).join(", ")}.`,
+    );
+  }
+  return buildModeInput as BuildMode;
 }

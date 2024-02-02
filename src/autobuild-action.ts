@@ -7,6 +7,7 @@ import {
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
+import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
 import { Logger, getActionsLogger } from "./logging";
@@ -87,7 +88,9 @@ async function run() {
       );
     }
 
-    languages = await determineAutobuildLanguages(config, logger);
+    const codeql = await getCodeQL(config.codeQLCmd);
+
+    languages = await determineAutobuildLanguages(codeql, config, logger);
     if (languages !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {

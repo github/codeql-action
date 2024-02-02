@@ -13,6 +13,7 @@ import {
   getCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
+import { BuildMode } from "./config-utils";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import {
@@ -23,6 +24,7 @@ import {
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
+import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
 import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
@@ -166,27 +168,47 @@ async function setupPythonExtractor(
   process.env["LGTM_PYTHON_SETUP_VERSION"] = output;
 }
 
-export async function createdDBForScannedLanguages(
+export async function runExtraction(
   codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
   features: FeatureEnablement,
 ) {
   for (const language of config.languages) {
-    if (
-      isScannedLanguage(language) &&
-      !dbIsFinalized(config, language, logger)
-    ) {
-      logger.startGroup(`Extracting ${language}`);
+    if (dbIsFinalized(config, language, logger)) {
+      logger.debug(
+        `Database for ${language} has already been finalized, skipping extraction.`,
+      );
+      continue;
+    }
 
+    if (shouldExtractLanguage(config, language)) {
+      logger.startGroup(`Extracting ${language}`);
       if (language === Language.python) {
         await setupPythonExtractor(logger, features, codeql);
       }
-
-      await codeql.extractScannedLanguage(config, language);
+      if (
+        config.buildMode &&
+        (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))
+      ) {
+        await codeql.extractUsingBuildMode(config, language);
+      } else {
+        await codeql.extractScannedLanguage(config, language);
+      }
       logger.endGroup();
     }
   }
+}
+
+function shouldExtractLanguage(
+  config: configUtils.Config,
+  language: Language,
+): boolean {
+  return (
+    config.buildMode === BuildMode.None ||
+    config.buildMode === BuildMode.Autobuild ||
+    (!config.buildMode && isScannedLanguage(language))
+  );
 }
 
 export function dbIsFinalized(
@@ -218,7 +240,7 @@ async function finalizeDatabaseCreation(
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await createdDBForScannedLanguages(codeql, config, logger, features);
+  await runExtraction(codeql, config, logger, features);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();

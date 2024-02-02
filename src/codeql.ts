@@ -115,6 +115,11 @@ export interface CodeQL {
    */
   extractScannedLanguage(config: Config, language: Language): Promise<void>;
   /**
+   * Extract code with 'codeql database trace-command --use-build-mode'. This can only be used when
+   * the database specifies a build mode. This requires the `traceCommandUseBuildMode` tool feature.
+   */
+  extractUsingBuildMode(config: Config, language: Language): Promise<void>;
+  /**
    * Finalize a database using 'codeql database finalize'.
    */
   finalizeDatabase(
@@ -474,6 +479,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "extractScannedLanguage",
     ),
+    extractUsingBuildMode: resolveFunction(
+      partialCodeql,
+      "extractUsingBuildMode",
+    ),
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
     resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
     betterResolveLanguages: resolveFunction(
@@ -685,6 +694,16 @@ export async function getCodeQLForCmd(
         "database",
         "trace-command",
         "--index-traceless-dbs",
+        ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+        ...getExtraOptionsFromEnv(["database", "trace-command"]),
+        util.getCodeQLDatabasePath(config, language),
+      ]);
+    },
+    async extractUsingBuildMode(config: Config, language: Language) {
+      await runTool(cmd, [
+        "database",
+        "trace-command",
+        "--use-build-mode",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
         util.getCodeQLDatabasePath(config, language),

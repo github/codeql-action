@@ -1,10 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { VersionInfo } from "./codeql";
+import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { isTracedLanguage } from "./languages";
-import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
+import { ToolsFeature } from "./tools-features";
 
 export type TracerConfig = {
   env: { [key: string]: string };
@@ -61,7 +61,7 @@ export async function getTracerConfigForCluster(
 }
 
 export async function getCombinedTracerConfig(
-  versionInfo: VersionInfo,
+  codeql: CodeQL,
   config: configUtils.Config,
 ): Promise<TracerConfig | undefined> {
   // Abort if there are no traced languages as there's nothing to do
@@ -74,9 +74,7 @@ export async function getCombinedTracerConfig(
 
   // If the CLI doesn't yet support setting the CODEQL_RUNNER environment variable to
   // the runner executable path, we set it here in the Action.
-  if (
-    !isSupportedToolsFeature(versionInfo, ToolsFeature.SetsCodeqlRunnerEnvVar)
-  ) {
+  if (!(await codeql.supportsFeature(ToolsFeature.SetsCodeqlRunnerEnvVar))) {
     // On MacOS when System Integrity Protection is enabled, it's necessary to prefix
     // the build command with the runner executable for indirect tracing, so we expose
     // it here via the CODEQL_RUNNER environment variable.

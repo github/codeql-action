@@ -7,7 +7,12 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
-import { getCachedCodeQL, PackDownloadOutput, setCodeQL } from "./codeql";
+import {
+  CodeQL,
+  getCachedCodeQL,
+  PackDownloadOutput,
+  setCodeQL,
+} from "./codeql";
 import * as configUtils from "./config-utils";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -26,15 +31,42 @@ import {
 
 setupTests(test);
 
-const sampleApiDetails = {
-  auth: "token",
-  externalRepoAuth: "token",
-  url: "https://github.example.com",
-  apiURL: undefined,
-  registriesAuthTokens: undefined,
-};
+const githubVersion = { type: GitHubVariant.DOTCOM } as GitHubVersion;
 
-const gitHubVersion = { type: GitHubVariant.DOTCOM } as GitHubVersion;
+function createTestInitConfigInputs(
+  overrides: Partial<configUtils.InitConfigInputs>,
+): configUtils.InitConfigInputs {
+  return Object.assign(
+    {},
+    {
+      languagesInput: undefined,
+      queriesInput: undefined,
+      packsInput: undefined,
+      configFile: undefined,
+      dbLocation: undefined,
+      configInput: undefined,
+      buildModeInput: undefined,
+      trapCachingEnabled: false,
+      debugMode: false,
+      debugArtifactName: "",
+      debugDatabaseName: "",
+      repository: { owner: "github", repo: "example" },
+      tempDir: "",
+      codeql: {} as CodeQL,
+      workspacePath: "",
+      githubVersion,
+      apiDetails: {
+        auth: "token",
+        externalRepoAuth: "token",
+        url: "https://github.example.com",
+        apiURL: undefined,
+        registriesAuthTokens: undefined,
+      },
+      logger: getRunnerLogger(true),
+    },
+    overrides,
+  );
+}
 
 // Returns the filepath of the newly-created file
 function createConfigFile(inputFileContents: string, tmpDir: string): string {
@@ -77,11 +109,11 @@ function mockListLanguages(languages: string[]) {
 }
 
 test("load empty config", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
     const languages = "javascript,python";
 
-    const codeQL = setCodeQL({
+    const codeql = setCodeQL({
       async resolveQueries() {
         return {
           byLanguage: {
@@ -98,51 +130,34 @@ test("load empty config", async (t) => {
     });
 
     const config = await configUtils.initConfig(
-      languages,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      false,
-      false,
-      "",
-      "",
-      { owner: "github", repo: "example" },
-      tmpDir,
-      codeQL,
-      tmpDir,
-      gitHubVersion,
-      sampleApiDetails,
-      logger,
+      createTestInitConfigInputs({
+        languagesInput: languages,
+        repository: { owner: "github", repo: "example" },
+        tempDir,
+        codeql,
+        logger,
+      }),
     );
 
     t.deepEqual(
       config,
       await configUtils.getDefaultConfig(
-        languages,
-        undefined,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        codeQL,
-        gitHubVersion,
-        logger,
+        createTestInitConfigInputs({
+          languagesInput: languages,
+          tempDir,
+          codeql,
+          logger,
+        }),
       ),
     );
   });
 });
 
 test("loading config saves config", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
 
-    const codeQL = setCodeQL({
+    const codeql = setCodeQL({
       async resolveQueries() {
         return {
           byLanguage: {
@@ -159,36 +174,26 @@ test("loading config saves config", async (t) => {
     });
 
     // Sanity check the saved config file does not already exist
-    t.false(fs.existsSync(configUtils.getPathToParsedConfigFile(tmpDir)));
+    t.false(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
 
     // Sanity check that getConfig returns undefined before we have called initConfig
-    t.deepEqual(await configUtils.getConfig(tmpDir, logger), undefined);
+    t.deepEqual(await configUtils.getConfig(tempDir, logger), undefined);
 
     const config1 = await configUtils.initConfig(
-      "javascript,python",
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      false,
-      false,
-      "",
-      "",
-      { owner: "github", repo: "example" },
-      tmpDir,
-      codeQL,
-      tmpDir,
-      gitHubVersion,
-      sampleApiDetails,
-      logger,
+      createTestInitConfigInputs({
+        languagesInput: "javascript,python",
+        tempDir,
+        codeql,
+        workspacePath: tempDir,
+        logger,
+      }),
     );
 
     // The saved config file should now exist
-    t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tmpDir)));
+    t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
 
     // And that same newly-initialised config should now be returned by getConfig
-    const config2 = await configUtils.getConfig(tmpDir, logger);
+    const config2 = await configUtils.getConfig(tempDir, logger);
     t.not(config2, undefined);
     if (config2 !== undefined) {
       // removes properties assigned to undefined.
@@ -199,26 +204,15 @@ test("loading config saves config", async (t) => {
 });
 
 test("load input outside of workspace", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tempDir) => {
     try {
       await configUtils.initConfig(
-        undefined,
-        undefined,
-        undefined,
-        "../input",
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        getCachedCodeQL(),
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        getRunnerLogger(true),
+        createTestInitConfigInputs({
+          configFile: "../input",
+          tempDir,
+          codeql: getCachedCodeQL(),
+          workspacePath: tempDir,
+        }),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -226,7 +220,7 @@ test("load input outside of workspace", async (t) => {
         err,
         new UserError(
           configUtils.getConfigFileOutsideWorkspaceErrorMessage(
-            path.join(tmpDir, "../input"),
+            path.join(tempDir, "../input"),
           ),
         ),
       );
@@ -235,29 +229,18 @@ test("load input outside of workspace", async (t) => {
 });
 
 test("load non-local input with invalid repo syntax", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tempDir) => {
     // no filename given, just a repo
     const configFile = "octo-org/codeql-config@main";
 
     try {
       await configUtils.initConfig(
-        undefined,
-        undefined,
-        undefined,
-        configFile,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        getCachedCodeQL(),
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        getRunnerLogger(true),
+        createTestInitConfigInputs({
+          configFile,
+          tempDir,
+          codeql: getCachedCodeQL(),
+          workspacePath: tempDir,
+        }),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -274,30 +257,20 @@ test("load non-local input with invalid repo syntax", async (t) => {
 });
 
 test("load non-existent input", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
-    const languages = "javascript";
+  return await withTmpDir(async (tempDir) => {
+    const languagesInput = "javascript";
     const configFile = "input";
-    t.false(fs.existsSync(path.join(tmpDir, configFile)));
+    t.false(fs.existsSync(path.join(tempDir, configFile)));
 
     try {
       await configUtils.initConfig(
-        languages,
-        undefined,
-        undefined,
-        configFile,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        getCachedCodeQL(),
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        getRunnerLogger(true),
+        createTestInitConfigInputs({
+          languagesInput,
+          configFile,
+          tempDir,
+          codeql: getCachedCodeQL(),
+          workspacePath: tempDir,
+        }),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -305,7 +278,7 @@ test("load non-existent input", async (t) => {
         err,
         new UserError(
           configUtils.getConfigFileDoesNotExistErrorMessage(
-            path.join(tmpDir, "input"),
+            path.join(tempDir, "input"),
           ),
         ),
       );
@@ -314,8 +287,8 @@ test("load non-existent input", async (t) => {
 });
 
 test("load non-empty input", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
-    const codeQL = setCodeQL({
+  return await withTmpDir(async (tempDir) => {
+    const codeql = setCodeQL({
       async resolveQueries() {
         return {
           byLanguage: {
@@ -345,11 +318,12 @@ test("load non-empty input", async (t) => {
       paths:
         - c/d`;
 
-    fs.mkdirSync(path.join(tmpDir, "foo"));
+    fs.mkdirSync(path.join(tempDir, "foo"));
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
       languages: [Language.javascript],
+      buildMode: "none",
       originalUserInput: {
         name: "my config",
         "disable-default-queries": true,
@@ -357,10 +331,10 @@ test("load non-empty input", async (t) => {
         "paths-ignore": ["a", "b"],
         paths: ["c/d"],
       },
-      tempDir: tmpDir,
-      codeQLCmd: codeQL.getPath(),
-      gitHubVersion,
-      dbLocation: path.resolve(tmpDir, "codeql_databases"),
+      tempDir,
+      codeQLCmd: codeql.getPath(),
+      gitHubVersion: githubVersion,
+      dbLocation: path.resolve(tempDir, "codeql_databases"),
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
@@ -369,27 +343,20 @@ test("load non-empty input", async (t) => {
       trapCacheDownloadTime: 0,
     };
 
-    const languages = "javascript";
-    const configFilePath = createConfigFile(inputFileContents, tmpDir);
+    const languagesInput = "javascript";
+    const configFilePath = createConfigFile(inputFileContents, tempDir);
 
     const actualConfig = await configUtils.initConfig(
-      languages,
-      undefined,
-      undefined,
-      configFilePath,
-      undefined,
-      undefined,
-      false,
-      false,
-      "my-artifact",
-      "my-db",
-      { owner: "github", repo: "example" },
-      tmpDir,
-      codeQL,
-      tmpDir,
-      gitHubVersion,
-      sampleApiDetails,
-      getRunnerLogger(true),
+      createTestInitConfigInputs({
+        languagesInput,
+        buildModeInput: "none",
+        configFile: configFilePath,
+        debugArtifactName: "my-artifact",
+        debugDatabaseName: "my-db",
+        tempDir,
+        codeql,
+        workspacePath: tempDir,
+      }),
     );
 
     // Should exactly equal the object we constructed earlier
@@ -417,15 +384,15 @@ function queriesToResolvedQueryForm(queries: string[]) {
 }
 
 test("Using config input and file together, config input should be used.", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
-    process.env["RUNNER_TEMP"] = tmpDir;
-    process.env["GITHUB_WORKSPACE"] = tmpDir;
+  return await withTmpDir(async (tempDir) => {
+    process.env["RUNNER_TEMP"] = tempDir;
+    process.env["GITHUB_WORKSPACE"] = tempDir;
 
     const inputFileContents = `
       name: my config
       queries:
         - uses: ./foo_file`;
-    const configFilePath = createConfigFile(inputFileContents, tmpDir);
+    const configFilePath = createConfigFile(inputFileContents, tempDir);
 
     const configInput = `
       name: my config
@@ -438,13 +405,13 @@ test("Using config input and file together, config input should be used.", async
           - c/d@1.2.3
     `;
 
-    fs.mkdirSync(path.join(tmpDir, "foo"));
+    fs.mkdirSync(path.join(tempDir, "foo"));
 
     const resolveQueriesArgs: Array<{
       queries: string[];
       extraSearchPath: string | undefined;
     }> = [];
-    const codeQL = setCodeQL({
+    const codeql = setCodeQL({
       async resolveQueries(
         queries: string[],
         extraSearchPath: string | undefined,
@@ -458,26 +425,17 @@ test("Using config input and file together, config input should be used.", async
     });
 
     // Only JS, python packs will be ignored
-    const languages = "javascript";
+    const languagesInput = "javascript";
 
     const config = await configUtils.initConfig(
-      languages,
-      undefined,
-      undefined,
-      undefined,
-      configFilePath,
-      configInput,
-      false,
-      false,
-      "",
-      "",
-      { owner: "github", repo: "example" },
-      tmpDir,
-      codeQL,
-      tmpDir,
-      gitHubVersion,
-      sampleApiDetails,
-      getRunnerLogger(true),
+      createTestInitConfigInputs({
+        languagesInput,
+        configFile: configFilePath,
+        configInput,
+        tempDir,
+        codeql,
+        workspacePath: tempDir,
+      }),
     );
 
     t.deepEqual(config.originalUserInput, yaml.load(configInput));
@@ -485,8 +443,8 @@ test("Using config input and file together, config input should be used.", async
 });
 
 test("API client used when reading remote config", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
-    const codeQL = setCodeQL({
+  return await withTmpDir(async (tempDir) => {
+    const codeql = setCodeQL({
       async resolveQueries() {
         return {
           byLanguage: {
@@ -521,59 +479,38 @@ test("API client used when reading remote config", async (t) => {
     const spyGetContents = mockGetContents(dummyResponse);
 
     // Create checkout directory for remote queries repository
-    fs.mkdirSync(path.join(tmpDir, "foo/bar/dev"), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, "foo/bar/dev"), { recursive: true });
 
     const configFile = "octo-org/codeql-config/config.yaml@main";
-    const languages = "javascript";
+    const languagesInput = "javascript";
 
     await configUtils.initConfig(
-      languages,
-      undefined,
-      undefined,
-      configFile,
-      undefined,
-      undefined,
-      false,
-      false,
-      "",
-      "",
-      { owner: "github", repo: "example" },
-      tmpDir,
-      codeQL,
-      tmpDir,
-      gitHubVersion,
-      sampleApiDetails,
-      getRunnerLogger(true),
+      createTestInitConfigInputs({
+        languagesInput,
+        configFile,
+        tempDir,
+        codeql,
+        workspacePath: tempDir,
+      }),
     );
     t.assert(spyGetContents.called);
   });
 });
 
 test("Remote config handles the case where a directory is provided", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tempDir) => {
     const dummyResponse = []; // directories are returned as arrays
     mockGetContents(dummyResponse);
 
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
-        undefined,
-        undefined,
-        undefined,
-        repoReference,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        getCachedCodeQL(),
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        getRunnerLogger(true),
+        createTestInitConfigInputs({
+          configFile: repoReference,
+          tempDir,
+          codeql: getCachedCodeQL(),
+          workspacePath: tempDir,
+        }),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -588,7 +525,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
 });
 
 test("Invalid format of remote config handled correctly", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tempDir) => {
     const dummyResponse = {
       // note no "content" property here
     };
@@ -597,23 +534,12 @@ test("Invalid format of remote config handled correctly", async (t) => {
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
-        undefined,
-        undefined,
-        undefined,
-        repoReference,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        getCachedCodeQL(),
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        getRunnerLogger(true),
+        createTestInitConfigInputs({
+          configFile: repoReference,
+          tempDir,
+          codeql: getCachedCodeQL(),
+          workspacePath: tempDir,
+        }),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -628,9 +554,9 @@ test("Invalid format of remote config handled correctly", async (t) => {
 });
 
 test("No detected languages", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
+  return await withTmpDir(async (tempDir) => {
     mockListLanguages([]);
-    const codeQL = setCodeQL({
+    const codeql = setCodeQL({
       async resolveLanguages() {
         return {};
       },
@@ -641,23 +567,11 @@ test("No detected languages", async (t) => {
 
     try {
       await configUtils.initConfig(
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        codeQL,
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        getRunnerLogger(true),
+        createTestInitConfigInputs({
+          tempDir,
+          codeql,
+          workspacePath: tempDir,
+        }),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -667,28 +581,17 @@ test("No detected languages", async (t) => {
 });
 
 test("Unknown languages", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
-    const languages = "rubbish,english";
+  return await withTmpDir(async (tempDir) => {
+    const languagesInput = "rubbish,english";
 
     try {
       await configUtils.initConfig(
-        languages,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        false,
-        false,
-        "",
-        "",
-        { owner: "github", repo: "example" },
-        tmpDir,
-        getCachedCodeQL(),
-        tmpDir,
-        gitHubVersion,
-        sampleApiDetails,
-        getRunnerLogger(true),
+        createTestInitConfigInputs({
+          languagesInput,
+          tempDir,
+          codeql: getCachedCodeQL(),
+          workspacePath: tempDir,
+        }),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {

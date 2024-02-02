@@ -23,7 +23,6 @@ steps:
       # it's enough to test one compiled language and one interpreted language
       languages: csharp,javascript
       source-root: x/y/z/some-path/tests/multi-language-repo
-      debug: true
 
   - name: Build code
     shell: bash

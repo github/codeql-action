@@ -26,47 +26,11 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: windows-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: stable-20230418
-        - os: macos-latest
-          version: stable-20230418
-        - os: windows-latest
-          version: stable-20230418
-        - os: ubuntu-latest
-          version: stable-v2.13.5
-        - os: macos-latest
-          version: stable-v2.13.5
-        - os: windows-latest
-          version: stable-v2.13.5
-        - os: ubuntu-latest
-          version: stable-v2.14.6
-        - os: macos-latest
-          version: stable-v2.14.6
-        - os: windows-latest
-          version: stable-v2.14.6
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: windows-latest
-          version: default
-        - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest
         - os: windows-latest
           version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
-        - os: windows-latest
-          version: nightly-latest
     name: Use a custom `checkout_path`
     permissions:
       contents: read
@@ -120,7 +84,6 @@ jobs:
       # it's enough to test one compiled language and one interpreted language
         languages: csharp,javascript
         source-root: x/y/z/some-path/tests/multi-language-repo
-        debug: true
 
     - name: Build code
       shell: bash

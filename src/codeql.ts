@@ -23,6 +23,7 @@ import {
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
+import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import * as util from "./util";
 import { wrapError } from "./util";
 
@@ -90,6 +91,10 @@ export interface CodeQL {
    * Print version information about CodeQL.
    */
   printVersion(): Promise<void>;
+  /**
+   * Returns whether the CodeQL executable supports the specified feature.
+   */
+  supportsFeature(feature: ToolsFeature): Promise<boolean>;
   /**
    * Run 'codeql database init --db-cluster'.
    */
@@ -452,17 +457,17 @@ function resolveFunction<T>(
 export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
   cachedCodeQL = {
     getPath: resolveFunction(partialCodeql, "getPath", () => "/tmp/dummy-path"),
-    getVersion: resolveFunction(
-      partialCodeql,
-      "getVersion",
-      () =>
-        new Promise((resolve) =>
-          resolve({
-            version: "1.0.0",
-          }),
-        ),
-    ),
+    getVersion: resolveFunction(partialCodeql, "getVersion", async () => ({
+      version: "1.0.0",
+    })),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
+    supportsFeature: resolveFunction(
+      partialCodeql,
+      "supportsFeature",
+      async (feature) =>
+        !!partialCodeql.getVersion &&
+        isSupportedToolsFeature(await partialCodeql.getVersion(), feature),
+    ),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
     runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
     extractScannedLanguage: resolveFunction(
@@ -561,6 +566,9 @@ export async function getCodeQLForCmd(
     async printVersion() {
       await runTool(cmd, ["version", "--format=json"]);
     },
+    async supportsFeature(feature: ToolsFeature) {
+      return isSupportedToolsFeature(await this.getVersion(), feature);
+    },
     async databaseInitCluster(
       config: Config,
       sourceRoot: string,
@@ -589,6 +597,12 @@ export async function getCodeQLForCmd(
         extraArgs.push("--external-repository-token-stdin");
       }
 
+      if (
+        config.buildMode !== undefined &&
+        (await this.supportsFeature(ToolsFeature.BuildModeOption))
+      ) {
+        extraArgs.push(`--build-mode=${config.buildMode}`);
+      }
       if (
         qlconfigFile !== undefined &&
         (await util.codeQlVersionAbove(this, CODEQL_VERSION_INIT_WITH_QLCONFIG))

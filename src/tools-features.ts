@@ -1,6 +1,7 @@
-import { VersionInfo } from "./codeql";
+import type { VersionInfo } from "./codeql";
 
 export enum ToolsFeature {
+  BuildModeOption = "buildModeOption",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",
 }

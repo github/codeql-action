@@ -230,11 +230,11 @@ export function mockCodeQLVersion(
   version: string,
   features?: { [name: string]: boolean },
 ) {
-  return {
+  return codeql.setCodeQL({
     async getVersion() {
       return makeVersionInfo(version, features);
     },
-  } as codeql.CodeQL;
+  });
 }
 
 /**
@@ -304,6 +304,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
     {},
     {
       languages: [],
+      buildMode: undefined,
       originalUserInput: {},
       tempDir: "",
       codeQLCmd: "",

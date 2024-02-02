@@ -26,6 +26,7 @@ import {
   SAMPLE_DEFAULT_CLI_VERSION,
   mockBundleDownloadApi,
   makeVersionInfo,
+  createTestConfig,
 } from "./testing-utils";
 import * as util from "./util";
 import { initializeEnvironment } from "./util";
@@ -37,25 +38,9 @@ let stubConfig: Config;
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 
-  stubConfig = {
+  stubConfig = createTestConfig({
     languages: [Language.cpp],
-    originalUserInput: {},
-    tempDir: "",
-    codeQLCmd: "",
-    gitHubVersion: {
-      type: util.GitHubVariant.DOTCOM,
-    } as util.GitHubVersion,
-    dbLocation: "",
-    debugMode: false,
-    debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-    debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: {
-      packsInputCombines: false,
-      queriesInputCombines: false,
-    },
-    trapCaches: {},
-    trapCacheDownloadTime: 0,
-  };
+  });
 });
 
 async function installIntoToolcache({

@@ -1011,26 +1011,37 @@ export interface DiskUsage {
   numTotalBytes: number;
 }
 
-export async function checkDiskUsage(logger?: Logger): Promise<DiskUsage> {
-  const diskUsage = await checkDiskSpace(
-    getRequiredEnvParam("GITHUB_WORKSPACE"),
-  );
-  const gbInBytes = 1024 * 1024 * 1024;
-  if (logger && diskUsage.free < 2 * gbInBytes) {
-    const message =
-      "The Actions runner is running low on disk space " +
-      `(${(diskUsage.free / gbInBytes).toPrecision(4)} GB available).`;
-    if (process.env[EnvVar.HAS_WARNED_ABOUT_DISK_SPACE] !== "true") {
-      logger.warning(message);
-    } else {
-      logger.debug(message);
+export async function checkDiskUsage(
+  logger?: Logger,
+): Promise<DiskUsage | undefined> {
+  try {
+    const diskUsage = await checkDiskSpace(
+      getRequiredEnvParam("GITHUB_WORKSPACE"),
+    );
+    const gbInBytes = 1024 * 1024 * 1024;
+    if (logger && diskUsage.free < 2 * gbInBytes) {
+      const message =
+        "The Actions runner is running low on disk space " +
+        `(${(diskUsage.free / gbInBytes).toPrecision(4)} GB available).`;
+      if (process.env[EnvVar.HAS_WARNED_ABOUT_DISK_SPACE] !== "true") {
+        logger.warning(message);
+      } else {
+        logger.debug(message);
+      }
+      core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
-    core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
+    return {
+      numAvailableBytes: diskUsage.free,
+      numTotalBytes: diskUsage.size,
+    };
+  } catch (error) {
+    if (logger) {
+      logger.warning(
+        `Failed to check available disk space: ${getErrorMessage(error)}`,
+      );
+    }
+    return undefined;
   }
-  return {
-    numAvailableBytes: diskUsage.free,
-    numTotalBytes: diskUsage.size,
-  };
 }
 
 /**

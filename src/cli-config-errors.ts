@@ -1,5 +1,5 @@
 /** Error messages from the CLI that we handle specially. */
-export enum CliError {
+export enum CliErrorCategory {
   IncompatibleWithActionVersion,
   InitCalledTwice,
   InvalidSourceRoot,
@@ -11,7 +11,7 @@ export enum CliError {
  * would like to categorize an error as a configuration error or not.
  */
 export const cliErrorsConfig: Record<
-  CliError,
+  CliErrorCategory,
   {
     cliErrorMessageSnippets: string[];
     exitCode?: number;
@@ -22,10 +22,10 @@ export const cliErrorsConfig: Record<
   }
 > = {
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
-  [CliError.IncompatibleWithActionVersion]: {
+  [CliErrorCategory.IncompatibleWithActionVersion]: {
     cliErrorMessageSnippets: ["is not compatible with this CodeQL CLI"],
   },
-  [CliError.InitCalledTwice]: {
+  [CliErrorCategory.InitCalledTwice]: {
     cliErrorMessageSnippets: [
       "Refusing to create databases",
       "exists and is not an empty directory",
@@ -34,7 +34,7 @@ export const cliErrorsConfig: Record<
     appendCliErrorToActionError: true,
   },
   // Expected source location for database creation does not exist
-  [CliError.InvalidSourceRoot]: {
+  [CliErrorCategory.InvalidSourceRoot]: {
     cliErrorMessageSnippets: ["Invalid source root"],
   },
   /**
@@ -45,7 +45,7 @@ export const cliErrorsConfig: Record<
    *
    * This can be removed once support for CodeQL 2.11.6 is removed.
    */
-  [CliError.NoJavaScriptTypeScriptCodeFound]: {
+  [CliErrorCategory.NoJavaScriptTypeScriptCodeFound]: {
     exitCode: 32,
     cliErrorMessageSnippets: ["No JavaScript or TypeScript code found."],
     actionErrorMessage:
@@ -61,7 +61,7 @@ export const cliErrorsConfig: Record<
  * codes are a match, or the error message matches the expected message snippets.
  */
 export function isCliConfigurationError(
-  cliError: CliError,
+  cliError: CliErrorCategory,
   cliErrorMessage: string,
   exitCode?: number,
 ): boolean {
@@ -90,7 +90,7 @@ export function isCliConfigurationError(
  * `appendCliErrorToActionError` in `cliErrorsConfig`.
  */
 export function processCliConfigurationError(
-  cliError: CliError,
+  cliError: CliErrorCategory,
   cliErrorMessage: string,
 ): string {
   const cliErrorConfig = cliErrorsConfig[cliError];

@@ -13,7 +13,7 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import {
-  CliError,
+  CliErrorCategory,
   isCliConfigurationError,
   processCliConfigurationError,
 } from "./cli-config-errors";
@@ -654,28 +654,38 @@ export async function getCodeQLForCmd(
         );
       } catch (e) {
         if (e instanceof CommandInvocationError) {
-          if (isCliConfigurationError(CliError.InitCalledTwice, e.message)) {
+          if (
+            isCliConfigurationError(CliErrorCategory.InitCalledTwice, e.message)
+          ) {
             throw new util.ConfigurationError(
-              processCliConfigurationError(CliError.InitCalledTwice, e.message),
+              processCliConfigurationError(
+                CliErrorCategory.InitCalledTwice,
+                e.message,
+              ),
             );
           }
           if (
             isCliConfigurationError(
-              CliError.IncompatibleWithActionVersion,
+              CliErrorCategory.IncompatibleWithActionVersion,
               e.message,
             )
           ) {
             throw new util.ConfigurationError(
               processCliConfigurationError(
-                CliError.IncompatibleWithActionVersion,
+                CliErrorCategory.IncompatibleWithActionVersion,
                 e.message,
               ),
             );
           }
-          if (isCliConfigurationError(CliError.InvalidSourceRoot, e.message)) {
+          if (
+            isCliConfigurationError(
+              CliErrorCategory.InvalidSourceRoot,
+              e.message,
+            )
+          ) {
             throw new util.ConfigurationError(
               processCliConfigurationError(
-                CliError.InvalidSourceRoot,
+                CliErrorCategory.InvalidSourceRoot,
                 e.message,
               ),
             );
@@ -753,14 +763,14 @@ export async function getCodeQLForCmd(
             CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE,
           )) &&
           isCliConfigurationError(
-            CliError.NoJavaScriptTypeScriptCodeFound,
+            CliErrorCategory.NoJavaScriptTypeScriptCodeFound,
             e.stderr,
             e.exitCode,
           )
         ) {
           throw new util.ConfigurationError(
             processCliConfigurationError(
-              CliError.NoJavaScriptTypeScriptCodeFound,
+              CliErrorCategory.NoJavaScriptTypeScriptCodeFound,
               e.stderr,
             ),
           );

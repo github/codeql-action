@@ -15,7 +15,7 @@ import * as api from "./api-client";
 import {
   CommandInvocationError,
   wrapCliConfigurationError,
-} from "./cli-config-errors";
+} from "./cli-errors";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {

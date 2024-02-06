@@ -1,7 +1,9 @@
-// TODO(angelapwen): Rename file
-
 import { ConfigurationError } from "./util";
 
+/**
+ * A class of Error that we can classify as an error stemming from a CLI
+ * invocation, with associated exit code, stderr,etc.
+ */
 export class CommandInvocationError extends Error {
   constructor(
     cmd: string,
@@ -95,7 +97,7 @@ function ensureEndsInPeriod(text: string): string {
   return text[text.length - 1] === "." ? text : `${text}.`;
 }
 
-/** Error messages from the CLI that we handle specially. */
+/** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
@@ -106,7 +108,8 @@ export enum CliConfigErrorCategory {
 type CliErrorConfiguration = {
   cliErrorMessageSnippets: string[];
   exitCode?: number;
-  // Error message to prepend for this type of CLI error. If undefined, use original CLI error message.
+  // Error message to prepend for this type of CLI error.
+  // If undefined, use original CLI error message.
   actionErrorMessage?: string;
 };
 
@@ -156,8 +159,6 @@ export const cliErrorsConfig: Record<
 export function getCliConfigCategoryIfExists(
   cliError: CommandInvocationError,
 ): CliConfigErrorCategory | undefined {
-  console.log(`exit code is ${cliError.exitCode}`);
-  console.log(`message is ${cliError.message}`);
   for (const [category, configuration] of Object.entries(cliErrorsConfig)) {
     if (
       cliError.exitCode !== undefined &&
@@ -169,11 +170,7 @@ export function getCliConfigCategoryIfExists(
 
     let allMessageSnippetsFound: boolean = true;
     for (const e of configuration.cliErrorMessageSnippets) {
-      if (e === "No JavaScript or TypeScript code found.") {
-        console.log("Trying to match JS/TS error");
-      }
       if (!cliError.message.includes(e) && !cliError.stderr.includes(e)) {
-        console.log("CLI error did not match JS/TS error");
         allMessageSnippetsFound = false;
       }
     }
@@ -191,12 +188,10 @@ export function getCliConfigCategoryIfExists(
  * simply returns the original error.
  */
 export function wrapCliConfigurationError(cliError: Error): Error {
-  // If it isn't a CommandInvocationError, return original error
   if (!(cliError instanceof CommandInvocationError)) {
     return cliError;
   }
 
-  // If the error isn't one of the known configuration error types, return original error
   const cliConfigErrorCategory = getCliConfigCategoryIfExists(cliError);
   if (cliConfigErrorCategory === undefined) {
     return cliError;

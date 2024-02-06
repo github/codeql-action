@@ -13,9 +13,8 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import {
-  CliErrorCategory,
-  isCliConfigurationError,
-  processCliConfigurationError,
+  CommandInvocationError,
+  wrapCliConfigurationError,
 } from "./cli-config-errors";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
@@ -51,36 +50,6 @@ interface ExtraOptions {
     extractor?: Options;
     queries?: Options;
   };
-}
-
-export class CommandInvocationError extends Error {
-  constructor(
-    cmd: string,
-    args: string[],
-    public exitCode: number,
-    public stderr: string,
-    public stdout: string,
-  ) {
-    const prettyCommand = [cmd, ...args]
-      .map((x) => (x.includes(" ") ? `'${x}'` : x))
-      .join(" ");
-
-    const fatalErrors = extractFatalErrors(stderr);
-    const lastLine = stderr.trim().split("\n").pop()?.trim();
-    let error = fatalErrors
-      ? ` and error was: ${fatalErrors.trim()}`
-      : lastLine
-      ? ` and last log line was: ${lastLine}`
-      : "";
-    if (error[error.length - 1] !== ".") {
-      error += ".";
-    }
-
-    super(
-      `Encountered a fatal error while running "${prettyCommand}". ` +
-        `Exit code was ${exitCode}${error} See the logs for more details.`,
-    );
-  }
 }
 
 export interface CodeQL {
@@ -653,45 +622,9 @@ export async function getCodeQLForCmd(
           { stdin: externalRepositoryToken },
         );
       } catch (e) {
-        if (e instanceof CommandInvocationError) {
-          if (
-            isCliConfigurationError(CliErrorCategory.InitCalledTwice, e.message)
-          ) {
-            throw new util.ConfigurationError(
-              processCliConfigurationError(
-                CliErrorCategory.InitCalledTwice,
-                e.message,
-              ),
-            );
-          }
-          if (
-            isCliConfigurationError(
-              CliErrorCategory.IncompatibleWithActionVersion,
-              e.message,
-            )
-          ) {
-            throw new util.ConfigurationError(
-              processCliConfigurationError(
-                CliErrorCategory.IncompatibleWithActionVersion,
-                e.message,
-              ),
-            );
-          }
-          if (
-            isCliConfigurationError(
-              CliErrorCategory.InvalidSourceRoot,
-              e.message,
-            )
-          ) {
-            throw new util.ConfigurationError(
-              processCliConfigurationError(
-                CliErrorCategory.InvalidSourceRoot,
-                e.message,
-              ),
-            );
-          }
+        if (e instanceof Error) {
+          throw wrapCliConfigurationError(e);
         }
-        throw e;
       }
     },
     async runAutobuild(language: Language) {
@@ -757,23 +690,13 @@ export async function getCodeQLForCmd(
         await runTool(cmd, args);
       } catch (e) {
         if (
-          e instanceof CommandInvocationError &&
+          e instanceof Error &&
           !(await util.codeQlVersionAbove(
             this,
             CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE,
-          )) &&
-          isCliConfigurationError(
-            CliErrorCategory.NoJavaScriptTypeScriptCodeFound,
-            e.stderr,
-            e.exitCode,
-          )
+          ))
         ) {
-          throw new util.ConfigurationError(
-            processCliConfigurationError(
-              CliErrorCategory.NoJavaScriptTypeScriptCodeFound,
-              e.stderr,
-            ),
-          );
+          throw wrapCliConfigurationError(e);
         }
         throw e;
       }
@@ -1299,69 +1222,6 @@ async function runTool(
     throw new CommandInvocationError(cmd, args, exitCode, error, output);
   }
   return output;
-}
-
-/**
- * Provide a better error message from the stderr of a CLI invocation that failed with a fatal
- * error.
- *
- * - If the CLI invocation failed with a fatal error, this returns that fatal error, followed by
- *   any fatal errors that occurred in plumbing commands.
- * - If the CLI invocation did not fail with a fatal error, this returns `undefined`.
- *
- * ### Example
- *
- * ```
- * Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...
- * A fatal error occurred: Evaluator heap must be at least 384.00 MiB
- * A fatal error occurred: Dataset import for
- * /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2
- * ```
- *
- * becomes
- *
- * ```
- * Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset
- * --threads=2 --ram=2048 db". Exit code was 32 and error was: A fatal error occurred: Dataset
- * import for /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2.
- * Context: A fatal error occurred: Evaluator heap must be at least 384.00 MiB.
- * ```
- *
- * Where possible, this tries to summarize the error into a single line, as this displays better in
- * the Actions UI.
- */
-function extractFatalErrors(error: string): string | undefined {
-  const fatalErrorRegex = /.*fatal error occurred:/gi;
-  let fatalErrors: string[] = [];
-  let lastFatalErrorIndex: number | undefined;
-  let match: RegExpMatchArray | null;
-  while ((match = fatalErrorRegex.exec(error)) !== null) {
-    if (lastFatalErrorIndex !== undefined) {
-      fatalErrors.push(error.slice(lastFatalErrorIndex, match.index).trim());
-    }
-    lastFatalErrorIndex = match.index;
-  }
-  if (lastFatalErrorIndex !== undefined) {
-    const lastError = error.slice(lastFatalErrorIndex).trim();
-    if (fatalErrors.length === 0) {
-      // No other errors
-      return lastError;
-    }
-    const isOneLiner = !fatalErrors.some((e) => e.includes("\n"));
-    if (isOneLiner) {
-      fatalErrors = fatalErrors.map(ensureEndsInPeriod);
-    }
-    return [
-      ensureEndsInPeriod(lastError),
-      "Context:",
-      ...fatalErrors.reverse(),
-    ].join(isOneLiner ? " " : "\n");
-  }
-  return undefined;
-}
-
-function ensureEndsInPeriod(text: string): string {
-  return text[text.length - 1] === "." ? text : `${text}.`;
 }
 
 /**

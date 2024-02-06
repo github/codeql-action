@@ -110,7 +110,7 @@ type CliErrorConfiguration = {
   exitCode?: number;
   // Error message to prepend for this type of CLI error.
   // If undefined, use original CLI error message.
-  actionErrorMessage?: string;
+  additionalErrorMessageToPrepend?: string;
 };
 
 /**
@@ -130,7 +130,7 @@ export const cliErrorsConfig: Record<
       "Refusing to create databases",
       "exists and is not an empty directory",
     ],
-    actionErrorMessage: `Is the "init" action called twice in the same job?`,
+    additionalErrorMessageToPrepend: `Is the "init" action called twice in the same job?`,
   },
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
@@ -147,7 +147,7 @@ export const cliErrorsConfig: Record<
   [CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound]: {
     exitCode: 32,
     cliErrorMessageSnippets: ["No JavaScript or TypeScript code found."],
-    actionErrorMessage:
+    additionalErrorMessageToPrepend:
       "No code found during the build. Please see: " +
       "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.",
   },
@@ -199,7 +199,7 @@ export function wrapCliConfigurationError(cliError: Error): Error {
   }
 
   const errorMessageWrapperIfExists =
-    cliErrorsConfig[cliConfigErrorCategory].actionErrorMessage;
+    cliErrorsConfig[cliConfigErrorCategory].additionalErrorMessageToPrepend;
 
   return errorMessageWrapperIfExists
     ? new ConfigurationError(

@@ -154,8 +154,9 @@ export const cliErrorsConfig: Record<
 };
 
 // Check if the given CLI error or exit code, if applicable, apply to any known
-// CLI errors in the configuration record. If either the CLI error or the exit code
-// matches, return the error category; if not, return undefined.
+// CLI errors in the configuration record. If either the CLI error message matches all of
+// the error messages in the config record, or the exit codes match, return the error category;
+// if not, return undefined.
 export function getCliConfigCategoryIfExists(
   cliError: CommandInvocationError,
 ): CliConfigErrorCategory | undefined {

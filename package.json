@@ -22,7 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "@actions/artifact": "^1.1.2",
-    "@actions/cache": "^3.2.3",
+    "@actions/cache": "^3.2.4",
     "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^5.1.1",
@@ -45,7 +45,7 @@
     "jsonschema": "1.4.1",
     "long": "^5.2.3",
     "path": "^0.12.7",
-    "semver": "^7.5.4",
+    "semver": "^7.6.0",
     "uuid": "^9.0.1",
     "zlib": "^1.0.5"
   },

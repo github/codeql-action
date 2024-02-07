@@ -625,6 +625,7 @@ export async function getCodeQLForCmd(
         if (e instanceof Error) {
           throw wrapCliConfigurationError(e);
         }
+        throw e;
       }
     },
     async runAutobuild(language: Language) {

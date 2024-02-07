@@ -206,7 +206,8 @@ function shouldExtractLanguage(
 ): boolean {
   return (
     config.buildMode === BuildMode.None ||
-    config.buildMode === BuildMode.Autobuild ||
+    (config.buildMode === BuildMode.Autobuild &&
+      process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") ||
     (!config.buildMode && isScannedLanguage(language))
   );
 }

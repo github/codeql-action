@@ -9,6 +9,7 @@ import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger, getActionsLogger } from "./logging";
 import {
@@ -118,6 +119,8 @@ async function run() {
     );
     return;
   }
+
+  core.exportVariable(EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY, "true");
 
   await sendCompletedStatusReport(logger, startedAt, languages ?? []);
 }

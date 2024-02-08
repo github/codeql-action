@@ -3,6 +3,7 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import { safeWhich } from "@chrisgavin/safe-which";
 import del from "del";
 import * as yaml from "js-yaml";
 
@@ -12,6 +13,9 @@ import {
   getCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
+import { BuildMode } from "./config-utils";
+import { addDiagnostic, makeDiagnostic } from "./diagnostics";
+import { EnvVar } from "./environment";
 import {
   FeatureEnablement,
   Feature,
@@ -20,6 +24,7 @@ import {
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
+import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
 import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
@@ -163,27 +168,48 @@ async function setupPythonExtractor(
   process.env["LGTM_PYTHON_SETUP_VERSION"] = output;
 }
 
-export async function createdDBForScannedLanguages(
+export async function runExtraction(
   codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
   features: FeatureEnablement,
 ) {
   for (const language of config.languages) {
-    if (
-      isScannedLanguage(language) &&
-      !dbIsFinalized(config, language, logger)
-    ) {
-      logger.startGroup(`Extracting ${language}`);
+    if (dbIsFinalized(config, language, logger)) {
+      logger.debug(
+        `Database for ${language} has already been finalized, skipping extraction.`,
+      );
+      continue;
+    }
 
+    if (shouldExtractLanguage(config, language)) {
+      logger.startGroup(`Extracting ${language}`);
       if (language === Language.python) {
         await setupPythonExtractor(logger, features, codeql);
       }
-
-      await codeql.extractScannedLanguage(config, language);
+      if (
+        config.buildMode &&
+        (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))
+      ) {
+        await codeql.extractUsingBuildMode(config, language);
+      } else {
+        await codeql.extractScannedLanguage(config, language);
+      }
       logger.endGroup();
     }
   }
+}
+
+function shouldExtractLanguage(
+  config: configUtils.Config,
+  language: Language,
+): boolean {
+  return (
+    config.buildMode === BuildMode.None ||
+    (config.buildMode === BuildMode.Autobuild &&
+      process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") ||
+    (!config.buildMode && isScannedLanguage(language))
+  );
 }
 
 export function dbIsFinalized(
@@ -215,7 +241,7 @@ async function finalizeDatabaseCreation(
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await createdDBForScannedLanguages(codeql, config, logger, features);
+  await runExtraction(codeql, config, logger, features);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -417,6 +443,51 @@ export async function runFinalize(
   // Delete variables as specified by the end-tracing script
   await endTracingForCluster(config);
   return timings;
+}
+
+export async function warnIfGoInstalledAfterInit(
+  config: configUtils.Config,
+  logger: Logger,
+) {
+  // Check that `which go` still points at the same path it did when the `init` Action ran to ensure that no steps
+  // in-between performed any setup. We encourage users to perform all setup tasks before initializing CodeQL so that
+  // the setup tasks do not interfere with our analysis.
+  // Furthermore, if we installed a wrapper script in the `init` Action, we need to ensure that there isn't a step
+  // in the workflow after the `init` step which installs a different version of Go and takes precedence in the PATH,
+  // thus potentially circumventing our workaround that allows tracing to work.
+  const goInitPath = process.env[EnvVar.GO_BINARY_LOCATION];
+
+  if (
+    process.env[EnvVar.DID_AUTOBUILD_GOLANG] !== "true" &&
+    goInitPath !== undefined
+  ) {
+    const goBinaryPath = await safeWhich("go");
+
+    if (goInitPath !== goBinaryPath) {
+      logger.warning(
+        `Expected \`which go\` to return ${goInitPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
+      );
+
+      addDiagnostic(
+        config,
+        Language.go,
+        makeDiagnostic(
+          "go/workflow/go-installed-after-codeql-init",
+          "Go was installed after the `codeql-action/init` Action was run",
+          {
+            markdownMessage:
+              "To avoid interfering with the CodeQL analysis, perform all installation steps before calling the `github/codeql-action/init` Action.",
+            visibility: {
+              statusPage: true,
+              telemetry: true,
+              cliSummaryTable: true,
+            },
+            severity: "warning",
+          },
+        ),
+      );
+    }
+  }
 }
 
 export async function runCleanup(

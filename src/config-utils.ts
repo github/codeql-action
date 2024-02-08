@@ -1081,7 +1081,7 @@ function validateBuildModeInput(
   }
 
   if (!Object.values(BuildMode).includes(buildModeInput as BuildMode)) {
-    throw new UserError(
+    throw new ConfigurationError(
       `Invalid build mode: '${buildModeInput}'. Supported build modes are: ${Object.values(
         BuildMode,
       ).join(", ")}.`,

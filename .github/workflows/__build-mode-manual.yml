@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: PR Check - Build mode none
+name: PR Check - Build mode manual
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,15 +21,13 @@ on:
     - ready_for_review
   workflow_dispatch: {}
 jobs:
-  build-mode-none:
+  build-mode-manual:
     strategy:
       matrix:
         include:
         - os: ubuntu-latest
-          version: latest
-        - os: ubuntu-latest
           version: nightly-latest
-    name: Build mode none
+    name: Build mode manual
     permissions:
       contents: read
       security-events: write
@@ -65,7 +63,7 @@ jobs:
     - uses: ./../action/init
       id: init
       with:
-        build-mode: none
+        build-mode: manual
         db-location: ${{ runner.temp }}/customDbLocation
         languages: java
         tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -74,14 +72,18 @@ jobs:
       run: |
         metadata_path="$RUNNER_TEMP/customDbLocation/java/codeql-database.yml"
         build_mode=$(yq eval '.buildMode' "$metadata_path")
-        if [[ "$build_mode" != "none" ]]; then
-          echo "Expected build mode to be 'none' but was $build_mode"
+        if [[ "$build_mode" != "manual" ]]; then
+          echo "Expected build mode to be 'manual' but was $build_mode"
           exit 1
         fi
 
-  # The latest nightly supports omitting the autobuild Action when the build mode is specified.
-    - uses: ./../action/autobuild
-      if: matrix.version != 'nightly-latest'
+    - uses: ./../action/.github/actions/setup-swift
+      with:
+        codeql-path: ${{ steps.init.outputs.codeql-path }}
+
+    - name: Build code
+      shell: bash
+      run: ./build.sh
 
     - uses: ./../action/analyze
     env:

@@ -14,6 +14,7 @@ import {
   setCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
+import { BuildMode } from "./config-utils";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -323,7 +324,7 @@ test("load non-empty input", async (t) => {
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
       languages: [Language.javascript],
-      buildMode: "none",
+      buildMode: BuildMode.None,
       originalUserInput: {
         name: "my config",
         "disable-default-queries": true,

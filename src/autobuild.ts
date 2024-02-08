@@ -4,17 +4,29 @@ import { getTemporaryDirectory, getWorkflowEventName } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { BuildMode } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, featureConfig, Features } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
+import { ToolsFeature } from "./tools-features";
 import { getRequiredEnvParam } from "./util";
 
 export async function determineAutobuildLanguages(
+  codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
 ): Promise<Language[] | undefined> {
+  if (
+    (config.buildMode === BuildMode.None &&
+      (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))) ||
+    config.buildMode === BuildMode.Manual
+  ) {
+    logger.info(`Using ${config.buildMode} build mode, nothing to autobuild.`);
+    return undefined;
+  }
+
   // Attempt to find a language to autobuild
   // We want pick the dominant language in the repo from the ones we're able to build
   // The languages are sorted in order specified by user or by lines of code if we got

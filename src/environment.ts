@@ -8,6 +8,9 @@ export enum EnvVar {
   /** Whether the `analyze` Action completes successfully. */
   ANALYZE_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY",
 
+  /** Whether the `autobuild` Action completes successfully. */
+  AUTOBUILD_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_AUTOBUILD_DID_COMPLETE_SUCCESSFULLY",
+
   /** Whether the CodeQL Action has invoked the Go autobuilder. */
   DID_AUTOBUILD_GOLANG = "CODEQL_ACTION_DID_AUTOBUILD_GOLANG",
 

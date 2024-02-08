@@ -1,0 +1,29 @@
+name: "Build mode autobuild"
+description: "An end-to-end integration test of a Java repository built using 'build-mode: autobuild'"
+operatingSystems: ["ubuntu"]
+versions: ["nightly-latest"]
+steps:
+  - name: Set up Java test repo configuration
+    run: |
+      mv * .github ../action/tests/multi-language-repo/
+      mv ../action/tests/multi-language-repo/.github/workflows .github
+      mv ../action/tests/java-repo/* .
+
+  - uses: ./../action/init
+    id: init
+    with:
+      build-mode: autobuild
+      db-location: "${{ runner.temp }}/customDbLocation"
+      languages: java
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: Validate database build mode
+    run: |
+      metadata_path="$RUNNER_TEMP/customDbLocation/java/codeql-database.yml"
+      build_mode=$(yq eval '.buildMode' "$metadata_path")
+      if [[ "$build_mode" != "autobuild" ]]; then
+        echo "Expected build mode to be 'autobuild' but was $build_mode"
+        exit 1
+      fi
+
+  - uses: ./../action/analyze

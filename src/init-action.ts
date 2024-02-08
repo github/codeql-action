@@ -52,7 +52,7 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
-  UserError,
+  ConfigurationError,
   wrapError,
   checkActionVersion,
 } from "./util";
@@ -317,7 +317,7 @@ async function run() {
     await sendStatusReport(
       await createStatusReportBase(
         "init",
-        error instanceof UserError ? "user-error" : "aborted",
+        error instanceof ConfigurationError ? "user-error" : "aborted",
         startedAt,
         await checkDiskUsage(),
         error.message,

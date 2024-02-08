@@ -12,6 +12,10 @@ import {
   isAnalyzingDefaultBranch,
 } from "./actions-util";
 import * as api from "./api-client";
+import {
+  CommandInvocationError,
+  wrapCliConfigurationError,
+} from "./cli-errors";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
@@ -46,36 +50,6 @@ interface ExtraOptions {
     extractor?: Options;
     queries?: Options;
   };
-}
-
-export class CommandInvocationError extends Error {
-  constructor(
-    cmd: string,
-    args: string[],
-    public exitCode: number,
-    public stderr: string,
-    public stdout: string,
-  ) {
-    const prettyCommand = [cmd, ...args]
-      .map((x) => (x.includes(" ") ? `'${x}'` : x))
-      .join(" ");
-
-    const fatalErrors = extractFatalErrors(stderr);
-    const lastLine = stderr.trim().split("\n").pop()?.trim();
-    let error = fatalErrors
-      ? ` and error was: ${fatalErrors.trim()}`
-      : lastLine
-      ? ` and last log line was: ${lastLine}`
-      : "";
-    if (error[error.length - 1] !== ".") {
-      error += ".";
-    }
-
-    super(
-      `Encountered a fatal error while running "${prettyCommand}". ` +
-        `Exit code was ${exitCode}${error} See the logs for more details.`,
-    );
-  }
 }
 
 export interface CodeQL {
@@ -409,7 +383,9 @@ export async function setupCodeQL(
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
     } else if (process.platform !== "linux" && process.platform !== "darwin") {
-      throw new util.UserError(`Unsupported platform: ${process.platform}`);
+      throw new util.ConfigurationError(
+        `Unsupported platform: ${process.platform}`,
+      );
     }
 
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
@@ -639,20 +615,27 @@ export async function getCodeQLForCmd(
         extraArgs.push("--no-sublanguage-file-coverage");
       }
 
-      await runTool(
-        cmd,
-        [
-          "database",
-          "init",
-          "--db-cluster",
-          config.dbLocation,
-          `--source-root=${sourceRoot}`,
-          ...(await getLanguageAliasingArguments(this)),
-          ...extraArgs,
-          ...getExtraOptionsFromEnv(["database", "init"]),
-        ],
-        { stdin: externalRepositoryToken },
-      );
+      try {
+        await runTool(
+          cmd,
+          [
+            "database",
+            "init",
+            "--db-cluster",
+            config.dbLocation,
+            `--source-root=${sourceRoot}`,
+            ...(await getLanguageAliasingArguments(this)),
+            ...extraArgs,
+            ...getExtraOptionsFromEnv(["database", "init"]),
+          ],
+          { stdin: externalRepositoryToken },
+        );
+      } catch (e) {
+        if (e instanceof Error) {
+          throw wrapCliConfigurationError(e);
+        }
+        throw e;
+      }
     },
     async runAutobuild(language: Language) {
       const autobuildCmd = path.join(
@@ -727,17 +710,13 @@ export async function getCodeQLForCmd(
         await runTool(cmd, args);
       } catch (e) {
         if (
-          e instanceof CommandInvocationError &&
+          e instanceof Error &&
           !(await util.codeQlVersionAbove(
             this,
             CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE,
-          )) &&
-          isNoCodeFoundError(e)
+          ))
         ) {
-          throw new util.UserError(
-            "No code found during the build. Please see: " +
-              "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
-          );
+          throw wrapCliConfigurationError(e);
         }
         throw e;
       }
@@ -1128,7 +1107,7 @@ export async function getCodeQLForCmd(
     checkVersion &&
     !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))
   ) {
-    throw new util.UserError(
+    throw new util.ConfigurationError(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
         (await codeql.getVersion()).version
       }`,
@@ -1266,69 +1245,6 @@ async function runTool(
 }
 
 /**
- * Provide a better error message from the stderr of a CLI invocation that failed with a fatal
- * error.
- *
- * - If the CLI invocation failed with a fatal error, this returns that fatal error, followed by
- *   any fatal errors that occurred in plumbing commands.
- * - If the CLI invocation did not fail with a fatal error, this returns `undefined`.
- *
- * ### Example
- *
- * ```
- * Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...
- * A fatal error occurred: Evaluator heap must be at least 384.00 MiB
- * A fatal error occurred: Dataset import for
- * /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2
- * ```
- *
- * becomes
- *
- * ```
- * Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset
- * --threads=2 --ram=2048 db". Exit code was 32 and error was: A fatal error occurred: Dataset
- * import for /home/runner/work/_temp/codeql_databases/javascript/db-javascript failed with code 2.
- * Context: A fatal error occurred: Evaluator heap must be at least 384.00 MiB.
- * ```
- *
- * Where possible, this tries to summarize the error into a single line, as this displays better in
- * the Actions UI.
- */
-function extractFatalErrors(error: string): string | undefined {
-  const fatalErrorRegex = /.*fatal error occurred:/gi;
-  let fatalErrors: string[] = [];
-  let lastFatalErrorIndex: number | undefined;
-  let match: RegExpMatchArray | null;
-  while ((match = fatalErrorRegex.exec(error)) !== null) {
-    if (lastFatalErrorIndex !== undefined) {
-      fatalErrors.push(error.slice(lastFatalErrorIndex, match.index).trim());
-    }
-    lastFatalErrorIndex = match.index;
-  }
-  if (lastFatalErrorIndex !== undefined) {
-    const lastError = error.slice(lastFatalErrorIndex).trim();
-    if (fatalErrors.length === 0) {
-      // No other errors
-      return lastError;
-    }
-    const isOneLiner = !fatalErrors.some((e) => e.includes("\n"));
-    if (isOneLiner) {
-      fatalErrors = fatalErrors.map(ensureEndsInPeriod);
-    }
-    return [
-      ensureEndsInPeriod(lastError),
-      "Context:",
-      ...fatalErrors.reverse(),
-    ].join(isOneLiner ? " " : "\n");
-  }
-  return undefined;
-}
-
-function ensureEndsInPeriod(text: string): string {
-  return text[text.length - 1] === "." ? text : `${text}.`;
-}
-
-/**
  * Generates a code scanning configuration that is to be used for a scan.
  *
  * @param codeql The CodeQL object to use.
@@ -1456,20 +1372,6 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  */
 export function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
-}
-
-function isNoCodeFoundError(e: CommandInvocationError): boolean {
-  /**
-   * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
-   * source code was found. This means that we don't get the no code found error from
-   * `codeql database finalize`. To ensure users get a good error message, we detect this manually
-   * here, and upon detection override the error message.
-   *
-   * This can be removed once support for CodeQL 2.11.6 is removed.
-   */
-  const javascriptNoCodeFoundWarning =
-    "No JavaScript or TypeScript code found.";
-  return e.exitCode === 32 || e.stderr.includes(javascriptNoCodeFoundWarning);
 }
 
 async function isDiagnosticsExportInvalidSarifFixed(

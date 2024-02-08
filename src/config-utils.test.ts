@@ -26,7 +26,7 @@ import {
   GitHubVariant,
   GitHubVersion,
   prettyPrintPack,
-  UserError,
+  ConfigurationError,
   withTmpDir,
 } from "./util";
 
@@ -219,7 +219,7 @@ test("load input outside of workspace", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new UserError(
+        new ConfigurationError(
           configUtils.getConfigFileOutsideWorkspaceErrorMessage(
             path.join(tempDir, "../input"),
           ),
@@ -247,7 +247,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new UserError(
+        new ConfigurationError(
           configUtils.getConfigFileRepoFormatInvalidMessage(
             "octo-org/codeql-config@main",
           ),
@@ -277,7 +277,7 @@ test("load non-existent input", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new UserError(
+        new ConfigurationError(
           configUtils.getConfigFileDoesNotExistErrorMessage(
             path.join(tempDir, "input"),
           ),
@@ -517,7 +517,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
     } catch (err) {
       t.deepEqual(
         err,
-        new UserError(
+        new ConfigurationError(
           configUtils.getConfigFileDirectoryGivenMessage(repoReference),
         ),
       );
@@ -546,7 +546,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new UserError(
+        new ConfigurationError(
           configUtils.getConfigFileFormatInvalidMessage(repoReference),
         ),
       );
@@ -576,7 +576,10 @@ test("No detected languages", async (t) => {
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
-      t.deepEqual(err, new UserError(configUtils.getNoLanguagesError()));
+      t.deepEqual(
+        err,
+        new ConfigurationError(configUtils.getNoLanguagesError()),
+      );
     }
   });
 });
@@ -598,7 +601,7 @@ test("Unknown languages", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new UserError(
+        new ConfigurationError(
           configUtils.getUnknownLanguagesError(["rubbish", "english"]),
         ),
       );

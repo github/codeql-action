@@ -14,7 +14,7 @@ import {
 import { getAnalysisKey, getApiClient } from "./api-client";
 import { EnvVar } from "./environment";
 import {
-  UserError,
+  ConfigurationError,
   isHTTPError,
   getRequiredEnvParam,
   getCachedCodeQlVersion,
@@ -40,10 +40,10 @@ export type ActionStatus =
 
 /** Overall status of the entire job. String values match the Hydro schema. */
 export enum JobStatus {
-  Unknown = "JOB_STATUS_UNKNOWN",
-  Success = "JOB_STATUS_SUCCESS",
-  Failure = "JOB_STATUS_FAILURE",
-  ConfigurationError = "JOB_STATUS_CONFIGURATION_ERROR",
+  UnknownStatus = "JOB_STATUS_UNKNOWN",
+  SuccessStatus = "JOB_STATUS_SUCCESS",
+  FailureStatus = "JOB_STATUS_FAILURE",
+  ConfigErrorStatus = "JOB_STATUS_CONFIGURATION_ERROR",
 }
 
 export interface StatusReportBase {
@@ -135,7 +135,7 @@ export function getActionsStatus(
   otherFailureCause?: string,
 ): ActionStatus {
   if (error || otherFailureCause) {
-    return error instanceof UserError ? "user-error" : "failure";
+    return error instanceof ConfigurationError ? "user-error" : "failure";
   } else {
     return "success";
   }
@@ -150,12 +150,12 @@ function setJobStatusIfUnsuccessful(actionStatus: ActionStatus) {
   if (actionStatus === "user-error") {
     core.exportVariable(
       EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigErrorStatus,
     );
   } else if (actionStatus === "failure" || actionStatus === "aborted") {
     core.exportVariable(
       EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.FailureStatus,
     );
   }
 }

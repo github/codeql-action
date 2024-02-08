@@ -64,32 +64,29 @@ export async function runInit(
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
-  try {
-    const { registriesAuthTokens, qlconfigFile } =
-      await configUtils.generateRegistries(
-        registriesInput,
-        config.tempDir,
-        logger,
-      );
-    await configUtils.wrapEnvironment(
-      {
-        GITHUB_TOKEN: apiDetails.auth,
-        CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-      },
 
-      // Init a database cluster
-      async () =>
-        await codeql.databaseInitCluster(
-          config,
-          sourceRoot,
-          processName,
-          qlconfigFile,
-          logger,
-        ),
+  const { registriesAuthTokens, qlconfigFile } =
+    await configUtils.generateRegistries(
+      registriesInput,
+      config.tempDir,
+      logger,
     );
-  } catch (e) {
-    throw processError(e);
-  }
+  await configUtils.wrapEnvironment(
+    {
+      GITHUB_TOKEN: apiDetails.auth,
+      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+    },
+
+    // Init a database cluster
+    async () =>
+      await codeql.databaseInitCluster(
+        config,
+        sourceRoot,
+        processName,
+        qlconfigFile,
+        logger,
+      ),
+  );
   return await getCombinedTracerConfig(codeql, config);
 }
 
@@ -108,42 +105,6 @@ export function printPathFiltersWarning(
       'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby',
     );
   }
-}
-
-/**
- * Possibly convert this error into a UserError in order to avoid
- * counting this error towards our internal error budget.
- *
- * @param e The error to possibly convert to a UserError.
- *
- * @returns A UserError if the error is a known error that can be
- *         attributed to the user, otherwise the original error.
- */
-function processError(e: any): Error {
-  if (!(e instanceof Error)) {
-    return e;
-  }
-
-  if (
-    // Init action called twice
-    e.message?.includes("Refusing to create databases") &&
-    e.message?.includes("exists and is not an empty directory.")
-  ) {
-    return new util.UserError(
-      `Is the "init" action called twice in the same job? ${e.message}`,
-    );
-  }
-
-  if (
-    // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
-    e.message?.includes("is not compatible with this CodeQL CLI") ||
-    // Expected source location for database creation does not exist
-    e.message?.includes("Invalid source root")
-  ) {
-    return new util.UserError(e.message);
-  }
-
-  return e;
 }
 
 /**

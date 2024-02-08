@@ -14,7 +14,7 @@ import * as fingerprints from "./fingerprints";
 import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as util from "./util";
-import { SarifFile, UserError, wrapError } from "./util";
+import { SarifFile, ConfigurationError, wrapError } from "./util";
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
@@ -158,7 +158,7 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
  * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers
  * to.
  *
- * @param considerInvalidRequestUserError Whether an invalid request, for example one with a
+ * @param considerInvalidRequestConfigError Whether an invalid request, for example one with a
  *                                        `sarifPath` that does not exist, should be considered a
  *                                        user error.
  */
@@ -168,8 +168,8 @@ export async function uploadFromActions(
   category: string | undefined,
   logger: Logger,
   {
-    considerInvalidRequestUserError,
-  }: { considerInvalidRequestUserError: boolean },
+    considerInvalidRequestConfigError: considerInvalidRequestConfigError,
+  }: { considerInvalidRequestConfigError: boolean },
 ): Promise<UploadResult> {
   try {
     return await uploadFiles(
@@ -187,8 +187,8 @@ export async function uploadFromActions(
       logger,
     );
   } catch (e) {
-    if (e instanceof InvalidRequestError && considerInvalidRequestUserError) {
-      throw new UserError(e.message);
+    if (e instanceof InvalidRequestError && considerInvalidRequestConfigError) {
+      throw new ConfigurationError(e.message);
     }
     throw e;
   }
@@ -489,8 +489,8 @@ export async function waitForProcessing(
         break;
       } else if (status === "failed") {
         const message = `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`;
-        throw shouldConsiderAsUserError(response.data.errors as string[])
-          ? new UserError(message)
+        throw shouldConsiderConfigurationError(response.data.errors as string[])
+          ? new ConfigurationError(message)
           : new InvalidRequestError(message);
       } else {
         util.assertNever(status);
@@ -508,7 +508,7 @@ export async function waitForProcessing(
 /**
  * Returns whether the provided processing errors should be considered a user error.
  */
-function shouldConsiderAsUserError(processingErrors: string[]): boolean {
+function shouldConsiderConfigurationError(processingErrors: string[]): boolean {
   return (
     processingErrors.length === 1 &&
     processingErrors[0] ===

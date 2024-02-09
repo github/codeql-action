@@ -121,25 +121,12 @@ export async function getGitHubVersion(): Promise<GitHubVersion> {
  * Get the path of the currently executing workflow relative to the repository root.
  */
 export async function getWorkflowRelativePath(): Promise<string> {
-  const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
-  const owner = repo_nwo[0];
-  const repo = repo_nwo[1];
-  const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
-
-  const apiClient = getApiClient();
-  const runsResponse = await apiClient.request(
-    "GET /repos/:owner/:repo/actions/runs/:run_id?exclude_pull_requests=true",
-    {
-      owner,
-      repo,
-      run_id,
-    },
-  );
-  const workflowUrl = runsResponse.data.workflow_url;
-
-  const workflowResponse = await apiClient.request(`GET ${workflowUrl}`);
-
-  return workflowResponse.data.path;
+  const workflow_ref = process.env["GITHUB_WORKFLOW_REF"];
+  const workflowRegExp = new RegExp("^[^/]+/[^/]+/(.*?)@.*");
+  const match = workflow_ref?.match(workflowRegExp);
+  return new Promise((resolve) => {
+    resolve(match ? match[1] : '');
+  });
 }
 
 /**

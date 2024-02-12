@@ -46,6 +46,7 @@ export interface FeatureEnablement {
 export enum Feature {
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
+  DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   PythonDefaultIsToSkipDependencyInstallationEnabled = "python_default_is_to_skip_dependency_installation_enabled",
@@ -66,6 +67,11 @@ export const featureConfig: Record<
   [Feature.CppTrapCachingEnabled]: {
     envVar: "CODEQL_CPP_TRAP_CACHING",
     minimumVersion: "2.16.1",
+    defaultValue: false,
+  },
+  [Feature.DisableJavaBuildlessEnabled]: {
+    envVar: "CODEQL_ACTION_DISABLE_JAVA_BUILDLESS",
+    minimumVersion: undefined,
     defaultValue: false,
   },
   [Feature.DisableKotlinAnalysisEnabled]: {

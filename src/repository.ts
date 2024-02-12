@@ -1,4 +1,4 @@
-import { UserError } from "./util";
+import { ConfigurationError } from "./util";
 
 // A repository name with owner, parsed into its two parts
 export interface RepositoryNwo {
@@ -9,7 +9,7 @@ export interface RepositoryNwo {
 export function parseRepositoryNwo(input: string): RepositoryNwo {
   const parts = input.split("/");
   if (parts.length !== 2) {
-    throw new UserError(`"${input}" is not a valid repository name`);
+    throw new ConfigurationError(`"${input}" is not a valid repository name`);
   }
   return {
     owner: parts[0],

@@ -107,7 +107,7 @@ async function maybeUploadFailedSarif(
     checkoutPath,
     category,
     logger,
-    { considerInvalidRequestUserError: false },
+    { considerInvalidRequestConfigError: false },
   );
   await uploadLib.waitForProcessing(
     repositoryNwo,
@@ -134,7 +134,7 @@ export async function tryUploadSarifIfRunFailed(
     // consider this a configuration error.
     core.exportVariable(
       EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigErrorStatus,
     );
     try {
       return await maybeUploadFailedSarif(
@@ -152,7 +152,7 @@ export async function tryUploadSarifIfRunFailed(
   } else {
     core.exportVariable(
       EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Success,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.SuccessStatus,
     );
     return {
       upload_failed_run_skipped_because:
@@ -314,7 +314,7 @@ export function getFinalJobStatus(): JobStatus {
     !jobStatusFromEnvironment ||
     !Object.values(JobStatus).includes(jobStatusFromEnvironment as JobStatus)
   ) {
-    return JobStatus.Unknown;
+    return JobStatus.UnknownStatus;
   }
   return jobStatusFromEnvironment as JobStatus;
 }

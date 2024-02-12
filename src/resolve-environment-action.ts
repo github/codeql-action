@@ -7,7 +7,7 @@ import {
   getTemporaryDirectory,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { CommandInvocationError } from "./codeql";
+import { CommandInvocationError } from "./cli-errors";
 import * as configUtils from "./config-utils";
 import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";

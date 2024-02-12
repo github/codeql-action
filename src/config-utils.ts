@@ -15,7 +15,7 @@ import {
   codeQlVersionAbove,
   GitHubVersion,
   prettyPrintPack,
-  UserError,
+  ConfigurationError,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -72,6 +72,12 @@ interface IncludeQueryFilter {
   include: Record<string, string[] | string>;
 }
 
+export enum BuildMode {
+  None = "none",
+  Autobuild = "autobuild",
+  Manual = "manual",
+}
+
 /**
  * Format of the parsed config file.
  */
@@ -83,7 +89,7 @@ export interface Config {
   /**
    * Build mode, if set. Currently only a single build mode is supported per job.
    */
-  buildMode: string | undefined;
+  buildMode: BuildMode | undefined;
   /**
    * A unaltered copy of the original user input.
    * Mainly intended to be used for status reporting.
@@ -326,7 +332,7 @@ export async function getLanguages(
   // If the languages parameter was not given and no languages were
   // detected then fail here as this is a workflow configuration error.
   if (languages.length === 0) {
-    throw new UserError(getNoLanguagesError());
+    throw new ConfigurationError(getNoLanguagesError());
   }
 
   // Make sure they are supported
@@ -344,7 +350,7 @@ export async function getLanguages(
   // Any unknown languages here would have come directly from the input
   // since we filter unknown languages coming from the GitHub API.
   if (unknownLanguages.length > 0) {
-    throw new UserError(getUnknownLanguagesError(unknownLanguages));
+    throw new ConfigurationError(getUnknownLanguagesError(unknownLanguages));
   }
 
   return parsedLanguages;
@@ -466,7 +472,7 @@ export async function getDefaultConfig({
 
   return {
     languages,
-    buildMode: buildModeInput,
+    buildMode: validateBuildModeInput(buildModeInput),
     originalUserInput: {},
     tempDir,
     codeQLCmd: codeql.getPath(),
@@ -554,7 +560,7 @@ async function loadConfig({
 
   return {
     languages,
-    buildMode: buildModeInput,
+    buildMode: validateBuildModeInput(buildModeInput),
     originalUserInput: parsedYAML,
     tempDir,
     codeQLCmd: codeql.getPath(),
@@ -625,7 +631,7 @@ function parseQueriesFromInput(
     ? rawQueriesInput.trim().slice(1).trim()
     : rawQueriesInput?.trim() ?? "";
   if (queriesInputCombines && trimmedInput.length === 0) {
-    throw new UserError(
+    throw new ConfigurationError(
       getConfigFilePropertyError(
         undefined,
         "queries",
@@ -658,11 +664,11 @@ export function parsePacksFromInput(
   }
 
   if (languages.length > 1) {
-    throw new UserError(
+    throw new ConfigurationError(
       "Cannot specify a 'packs' input in a multi-language analysis. Use a codeql-config.yml file instead and specify packs by language.",
     );
   } else if (languages.length === 0) {
-    throw new UserError(
+    throw new ConfigurationError(
       "No languages specified. Cannot process the packs input.",
     );
   }
@@ -671,7 +677,7 @@ export function parsePacksFromInput(
   if (packsInputCombines) {
     rawPacksInput = rawPacksInput.trim().substring(1).trim();
     if (!rawPacksInput) {
-      throw new UserError(
+      throw new ConfigurationError(
         getConfigFilePropertyError(
           undefined,
           "packs",
@@ -709,7 +715,7 @@ export function parsePacksFromInput(
  */
 export function parsePacksSpecification(packStr: string): Pack {
   if (typeof packStr !== "string") {
-    throw new UserError(getPacksStrInvalid(packStr));
+    throw new ConfigurationError(getPacksStrInvalid(packStr));
   }
 
   packStr = packStr.trim();
@@ -737,14 +743,14 @@ export function parsePacksSpecification(packStr: string): Pack {
     : undefined;
 
   if (!PACK_IDENTIFIER_PATTERN.test(packName)) {
-    throw new UserError(getPacksStrInvalid(packStr));
+    throw new ConfigurationError(getPacksStrInvalid(packStr));
   }
   if (version) {
     try {
       new semver.Range(version);
     } catch (e) {
       // The range string is invalid. OK to ignore the caught error
-      throw new UserError(getPacksStrInvalid(packStr));
+      throw new ConfigurationError(getPacksStrInvalid(packStr));
     }
   }
 
@@ -758,12 +764,12 @@ export function parsePacksSpecification(packStr: string): Pack {
       path.normalize(packPath).split(path.sep).join("/") !==
         packPath.split(path.sep).join("/"))
   ) {
-    throw new UserError(getPacksStrInvalid(packStr));
+    throw new ConfigurationError(getPacksStrInvalid(packStr));
   }
 
   if (!packPath && pathStart) {
     // 0 length path
-    throw new UserError(getPacksStrInvalid(packStr));
+    throw new ConfigurationError(getPacksStrInvalid(packStr));
   }
 
   return {
@@ -846,7 +852,9 @@ function parseRegistries(
       ? (yaml.load(registriesInput) as RegistryConfigWithCredentials[])
       : undefined;
   } catch (e) {
-    throw new UserError("Invalid registries input. Must be a YAML string.");
+    throw new ConfigurationError(
+      "Invalid registries input. Must be a YAML string.",
+    );
   }
 }
 
@@ -862,12 +870,16 @@ function isLocal(configPath: string): boolean {
 function getLocalConfig(configFile: string, workspacePath: string): UserConfig {
   // Error if the config file is now outside of the workspace
   if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
-    throw new UserError(getConfigFileOutsideWorkspaceErrorMessage(configFile));
+    throw new ConfigurationError(
+      getConfigFileOutsideWorkspaceErrorMessage(configFile),
+    );
   }
 
   // Error if the file does not exist
   if (!fs.existsSync(configFile)) {
-    throw new UserError(getConfigFileDoesNotExistErrorMessage(configFile));
+    throw new ConfigurationError(
+      getConfigFileDoesNotExistErrorMessage(configFile),
+    );
   }
 
   return yaml.load(fs.readFileSync(configFile, "utf8")) as UserConfig;
@@ -884,7 +896,9 @@ async function getRemoteConfig(
   const pieces = format.exec(configFile);
   // 5 = 4 groups + the whole expression
   if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
-    throw new UserError(getConfigFileRepoFormatInvalidMessage(configFile));
+    throw new ConfigurationError(
+      getConfigFileRepoFormatInvalidMessage(configFile),
+    );
   }
 
   const response = await api
@@ -900,9 +914,11 @@ async function getRemoteConfig(
   if ("content" in response.data && response.data.content !== undefined) {
     fileContents = response.data.content;
   } else if (Array.isArray(response.data)) {
-    throw new UserError(getConfigFileDirectoryGivenMessage(configFile));
+    throw new ConfigurationError(
+      getConfigFileDirectoryGivenMessage(configFile),
+    );
   } else {
-    throw new UserError(getConfigFileFormatInvalidMessage(configFile));
+    throw new ConfigurationError(getConfigFileFormatInvalidMessage(configFile));
   }
 
   return yaml.load(
@@ -1002,7 +1018,7 @@ function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
     !Array.isArray(registries) ||
     registries.some((r) => !r.url || !r.packages)
   ) {
-    throw new UserError(
+    throw new ConfigurationError(
       "Invalid 'registries' input. Must be an array of objects with 'url' and 'packages' properties.",
     );
   }
@@ -1055,4 +1071,21 @@ export async function wrapEnvironment(
       process.env[key] = value;
     }
   }
+}
+
+function validateBuildModeInput(
+  buildModeInput: string | undefined,
+): BuildMode | undefined {
+  if (buildModeInput === undefined) {
+    return undefined;
+  }
+
+  if (!Object.values(BuildMode).includes(buildModeInput as BuildMode)) {
+    throw new ConfigurationError(
+      `Invalid build mode: '${buildModeInput}'. Supported build modes are: ${Object.values(
+        BuildMode,
+      ).join(", ")}.`,
+    );
+  }
+  return buildModeInput as BuildMode;
 }

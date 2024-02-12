@@ -65,18 +65,14 @@ async function run() {
   let currentLanguage: Language | undefined = undefined;
   let languages: Language[] | undefined = undefined;
   try {
-    if (
-      !(await sendStatusReport(
-        await createStatusReportBase(
-          "autobuild",
-          "starting",
-          startedAt,
-          await checkDiskUsage(logger),
-        ),
-      ))
-    ) {
-      return;
-    }
+    await sendStatusReport(
+      await createStatusReportBase(
+        "autobuild",
+        "starting",
+        startedAt,
+        await checkDiskUsage(logger),
+      ),
+    );
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);

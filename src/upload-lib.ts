@@ -16,6 +16,11 @@ import { parseRepositoryNwo, RepositoryNwo } from "./repository";
 import * as util from "./util";
 import { SarifFile, ConfigurationError, wrapError } from "./util";
 
+const GENERIC_403_MSG =
+  "The repo on which this action is running has not opted-in to CodeQL code scanning.";
+const GENERIC_404_MSG =
+  "The CodeQL code scanning feature is forbidden on this repository.";
+
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
 function combineSarifFiles(sarifFiles: string[]): SarifFile {
@@ -107,19 +112,35 @@ async function uploadPayload(
 
   const client = api.getApiClient();
 
-  const response = await client.request(
-    "PUT /repos/:owner/:repo/code-scanning/analysis",
-    {
-      owner: repositoryNwo.owner,
-      repo: repositoryNwo.repo,
-      data: payload,
-    },
-  );
+  try {
+    const response = await client.request(
+      "PUT /repos/:owner/:repo/code-scanning/analysis",
+      {
+        owner: repositoryNwo.owner,
+        repo: repositoryNwo.repo,
+        data: payload,
+      },
+    );
 
-  logger.debug(`response status: ${response.status}`);
-  logger.info("Successfully uploaded results");
-
-  return response.data.id;
+    logger.debug(`response status: ${response.status}`);
+    logger.info("Successfully uploaded results");
+    return response.data.id;
+  } catch (e) {
+    if (util.isHTTPError(e)) {
+      switch (e.status) {
+        case 403:
+          core.warning(e.message || GENERIC_403_MSG);
+          break;
+        case 404:
+          core.warning(e.message || GENERIC_404_MSG);
+          break;
+        default:
+          core.warning(e.message);
+          break;
+      }
+    }
+    throw e;
+  }
 }
 
 export interface UploadStatusReport {

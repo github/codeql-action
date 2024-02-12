@@ -7,6 +7,7 @@ import * as semver from "semver";
 
 import * as api from "./api-client";
 import { CodeQL, CODEQL_VERSION_LANGUAGE_ALIASING } from "./codeql";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -420,6 +421,7 @@ export interface InitConfigInputs {
   workspacePath: string;
   githubVersion: GitHubVersion;
   apiDetails: api.GitHubApiCombinedDetails;
+  features: FeatureEnablement;
   logger: Logger;
 }
 
@@ -449,6 +451,7 @@ export async function getDefaultConfig({
   tempDir,
   codeql,
   githubVersion,
+  features,
   logger,
 }: GetDefaultConfigInputs): Promise<Config> {
   const languages = await getLanguages(
@@ -457,6 +460,14 @@ export async function getDefaultConfig({
     repository,
     logger,
   );
+
+  const buildMode = await parseBuildModeInput(
+    buildModeInput,
+    languages,
+    features,
+    logger,
+  );
+
   const augmentationProperties = calculateAugmentation(
     packsInput,
     queriesInput,
@@ -472,7 +483,7 @@ export async function getDefaultConfig({
 
   return {
     languages,
-    buildMode: validateBuildModeInput(buildModeInput),
+    buildMode,
     originalUserInput: {},
     tempDir,
     codeQLCmd: codeql.getPath(),
@@ -526,6 +537,7 @@ async function loadConfig({
   workspacePath,
   githubVersion,
   apiDetails,
+  features,
   logger,
 }: LoadConfigInputs): Promise<Config> {
   let parsedYAML: UserConfig;
@@ -545,6 +557,13 @@ async function loadConfig({
     logger,
   );
 
+  const buildMode = await parseBuildModeInput(
+    buildModeInput,
+    languages,
+    features,
+    logger,
+  );
+
   const augmentationProperties = calculateAugmentation(
     packsInput,
     queriesInput,
@@ -560,7 +579,7 @@ async function loadConfig({
 
   return {
     languages,
-    buildMode: validateBuildModeInput(buildModeInput),
+    buildMode,
     originalUserInput: parsedYAML,
     tempDir,
     codeQLCmd: codeql.getPath(),
@@ -1073,19 +1092,33 @@ export async function wrapEnvironment(
   }
 }
 
-function validateBuildModeInput(
-  buildModeInput: string | undefined,
-): BuildMode | undefined {
-  if (buildModeInput === undefined) {
+// Exported for testing
+export async function parseBuildModeInput(
+  input: string | undefined,
+  languages: Language[],
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<BuildMode | undefined> {
+  if (input === undefined) {
     return undefined;
   }
 
-  if (!Object.values(BuildMode).includes(buildModeInput as BuildMode)) {
+  if (!Object.values(BuildMode).includes(input as BuildMode)) {
     throw new ConfigurationError(
-      `Invalid build mode: '${buildModeInput}'. Supported build modes are: ${Object.values(
+      `Invalid build mode: '${input}'. Supported build modes are: ${Object.values(
         BuildMode,
       ).join(", ")}.`,
     );
   }
-  return buildModeInput as BuildMode;
+
+  if (
+    languages.includes(Language.java) &&
+    (await features.getValue(Feature.DisableJavaBuildlessEnabled))
+  ) {
+    logger.warning(
+      "Scanning Java code without a build is temporarily unavailable. Falling back to 'autobuild' build mode.",
+    );
+    return BuildMode.Autobuild;
+  }
+  return input as BuildMode;
 }

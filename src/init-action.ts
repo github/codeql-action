@@ -285,6 +285,7 @@ async function run() {
       workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
       githubVersion: gitHubVersion,
       apiDetails,
+      features,
       logger,
     });
 

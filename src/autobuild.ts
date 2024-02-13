@@ -20,7 +20,9 @@ export async function determineAutobuildLanguages(
 ): Promise<Language[] | undefined> {
   if (
     (config.buildMode === BuildMode.None &&
-      (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))) ||
+      (await codeql.supportsFeature(
+        ToolsFeature.TraceCommandUseBuildMode as ToolsFeature,
+      ))) ||
     config.buildMode === BuildMode.Manual
   ) {
     logger.info(`Using ${config.buildMode} build mode, nothing to autobuild.`);

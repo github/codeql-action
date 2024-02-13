@@ -586,9 +586,7 @@ export async function getCodeQLForCmd(
 
       if (
         config.buildMode !== undefined &&
-        (await this.supportsFeature(
-          ToolsFeature.BuildModeOption as ToolsFeature,
-        ))
+        (await this.supportsFeature(ToolsFeature.BuildModeOption))
       ) {
         extraArgs.push(`--build-mode=${config.buildMode}`);
       }

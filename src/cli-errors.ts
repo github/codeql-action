@@ -130,7 +130,6 @@ export const cliErrorsConfig: Record<
   // Usually when a manual build script has failed, or if an autodetected language
   // was unintended to have CodeQL analysis run on it.
   [CliConfigErrorCategory.DetectedCodeButCouldNotProcess]: {
-    exitCode: 32,
     cliErrorMessageSnippets: [
       "CodeQL detected code written in",
       "but could not process any of it",
@@ -158,7 +157,8 @@ export const cliErrorsConfig: Record<
    * `codeql database finalize`. To ensure users get a good error message, we detect this manually
    * here, and upon detection override the error message.
    *
-   * This can be removed once support for CodeQL 2.11.6 is removed.
+   * This can be removed once support for CodeQL 2.11.6 is removed, and once removed, exit code 32
+   * can be applied to the DetectedCodeButCouldNotProcess category.
    */
   [CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound]: {
     exitCode: 32,

@@ -33,13 +33,13 @@ steps:
           core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
         }
         if (configSummary.disableDefaultQueries !== false) {
-          core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' + 
+          core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' +
             `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
         }
         const expectedQueries = [{ type: 'builtinSuite', uses: 'security-extended' }];
         // Use JSON.stringify to deep-equal the arrays.
         if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
-          core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` + 
+          core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` +
             `${JSON.stringify(configSummary.queries)}.`);
         }
         core.info('Finished config export tests.');

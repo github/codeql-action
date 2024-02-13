@@ -875,9 +875,11 @@ test("database finalize recognises JavaScript no code found error on CodeQL 2.11
   await t.throwsAsync(
     async () => await codeqlObject.finalizeDatabase("", "", ""),
     {
-      message:
+      instanceOf: util.ConfigurationError,
+      message: new RegExp(
         "No code found during the build. Please see: " +
-        "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+          "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.+",
+      ),
     },
   );
 });
@@ -892,9 +894,11 @@ test("database finalize overrides no code found error on CodeQL 2.11.6", async (
   await t.throwsAsync(
     async () => await codeqlObject.finalizeDatabase("", "", ""),
     {
-      message:
+      instanceOf: util.ConfigurationError,
+      message: new RegExp(
         "No code found during the build. Please see: " +
-        "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build",
+          "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.+",
+      ),
     },
   );
 });

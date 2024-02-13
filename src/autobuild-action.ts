@@ -7,7 +7,9 @@ import {
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
+import { getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger, getActionsLogger } from "./logging";
 import {
@@ -63,18 +65,14 @@ async function run() {
   let currentLanguage: Language | undefined = undefined;
   let languages: Language[] | undefined = undefined;
   try {
-    if (
-      !(await sendStatusReport(
-        await createStatusReportBase(
-          "autobuild",
-          "starting",
-          startedAt,
-          await checkDiskUsage(logger),
-        ),
-      ))
-    ) {
-      return;
-    }
+    await sendStatusReport(
+      await createStatusReportBase(
+        "autobuild",
+        "starting",
+        startedAt,
+        await checkDiskUsage(logger),
+      ),
+    );
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
@@ -87,7 +85,9 @@ async function run() {
       );
     }
 
-    languages = await determineAutobuildLanguages(config, logger);
+    const codeql = await getCodeQL(config.codeQLCmd);
+
+    languages = await determineAutobuildLanguages(codeql, config, logger);
     if (languages !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {
@@ -115,6 +115,8 @@ async function run() {
     );
     return;
   }
+
+  core.exportVariable(EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY, "true");
 
   await sendCompletedStatusReport(logger, startedAt, languages ?? []);
 }

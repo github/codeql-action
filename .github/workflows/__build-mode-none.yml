@@ -79,7 +79,10 @@ jobs:
           exit 1
         fi
 
+  # The latest nightly supports omitting the autobuild Action when the build mode is specified.
     - uses: ./../action/autobuild
+      if: matrix.version != 'nightly-latest'
+
     - uses: ./../action/analyze
     env:
       CODEQL_ACTION_TEST_MODE: true

@@ -66,7 +66,7 @@ steps:
           core.setFailed(
             'Expected exactly one status page reporting descriptor for this diagnostic in the ' +
               `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
-              `${statusPageNotifications.length}. All notification reporting descriptors: ` + 
+              `${statusPageNotifications.length}. All notification reporting descriptors: ` +
               `${JSON.stringify(toolExecutionNotifications)}.`
           );
         }

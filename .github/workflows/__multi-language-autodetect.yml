@@ -146,7 +146,7 @@ jobs:
 
     - name: Check language autodetect for Swift
       if: >-
-        env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true' || 
+        env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true' ||
             (runner.os != 'Windows' && matrix.version == 'nightly-latest')
       shell: bash
       run: |

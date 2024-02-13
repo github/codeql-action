@@ -14,7 +14,7 @@ import {
 import { getAnalysisKey, getApiClient } from "./api-client";
 import { EnvVar } from "./environment";
 import {
-  UserError,
+  ConfigurationError,
   isHTTPError,
   getRequiredEnvParam,
   getCachedCodeQlVersion,
@@ -40,10 +40,10 @@ export type ActionStatus =
 
 /** Overall status of the entire job. String values match the Hydro schema. */
 export enum JobStatus {
-  Unknown = "JOB_STATUS_UNKNOWN",
-  Success = "JOB_STATUS_SUCCESS",
-  Failure = "JOB_STATUS_FAILURE",
-  ConfigurationError = "JOB_STATUS_CONFIGURATION_ERROR",
+  UnknownStatus = "JOB_STATUS_UNKNOWN",
+  SuccessStatus = "JOB_STATUS_SUCCESS",
+  FailureStatus = "JOB_STATUS_FAILURE",
+  ConfigErrorStatus = "JOB_STATUS_CONFIGURATION_ERROR",
 }
 
 export interface StatusReportBase {
@@ -135,7 +135,7 @@ export function getActionsStatus(
   otherFailureCause?: string,
 ): ActionStatus {
   if (error || otherFailureCause) {
-    return error instanceof UserError ? "user-error" : "failure";
+    return error instanceof ConfigurationError ? "user-error" : "failure";
   } else {
     return "success";
   }
@@ -150,12 +150,12 @@ function setJobStatusIfUnsuccessful(actionStatus: ActionStatus) {
   if (actionStatus === "user-error") {
     core.exportVariable(
       EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigurationError,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigErrorStatus,
     );
   } else if (actionStatus === "failure" || actionStatus === "aborted") {
     core.exportVariable(
       EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.Failure,
+      process.env[EnvVar.JOB_STATUS] ?? JobStatus.FailureStatus,
     );
   }
 }
@@ -282,10 +282,6 @@ export async function createStatusReportBase(
   return statusReport;
 }
 
-const GENERIC_403_MSG =
-  "The repo on which this action is running is not opted-in to CodeQL code scanning.";
-const GENERIC_404_MSG =
-  "Not authorized to use the CodeQL code scanning feature on this repo.";
 const OUT_OF_DATE_MSG =
   "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action.";
 const INCOMPATIBLE_MSG =
@@ -298,11 +294,14 @@ const INCOMPATIBLE_MSG =
  * as failed if the status report failed. This is only expected to be used
  * when sending a 'starting' report.
  *
- * Returns whether sending the status report was successful of not.
+ * The `/code-scanning/analysis/status` endpoint is internal and it is not critical that it succeeds:
+ * https://github.com/github/codeql/issues/15462#issuecomment-1919186317
+ *
+ * Failures while calling this endpoint are logged as warings.
  */
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
-): Promise<boolean> {
+): Promise<void> {
   setJobStatusIfUnsuccessful(statusReport.status);
 
   const statusReportJSON = JSON.stringify(statusReport);
@@ -310,7 +309,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
   // If in test mode we don't want to upload the results
   if (isInTestMode()) {
     core.debug("In test mode. Status reports are not uploaded.");
-    return true;
+    return;
   }
 
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
@@ -326,8 +325,6 @@ export async function sendStatusReport<S extends StatusReportBase>(
         data: statusReportJSON,
       },
     );
-
-    return true;
   } catch (e) {
     console.log(e);
     if (isHTTPError(e)) {
@@ -337,19 +334,19 @@ export async function sendStatusReport<S extends StatusReportBase>(
             getWorkflowEventName() === "push" &&
             process.env["GITHUB_ACTOR"] === "dependabot[bot]"
           ) {
-            core.setFailed(
+            core.warning(
               'Workflows triggered by Dependabot on the "push" event run with read-only access. ' +
                 "Uploading Code Scanning results requires write access. " +
                 'To use Code Scanning with Dependabot, please ensure you are using the "pull_request" event for this workflow and avoid triggering on the "push" event for Dependabot branches. ' +
                 "See https://docs.github.com/en/code-security/secure-coding/configuring-code-scanning#scanning-on-push for more information on how to configure these events.",
             );
           } else {
-            core.setFailed(e.message || GENERIC_403_MSG);
+            core.warning(e.message);
           }
-          return false;
+          return;
         case 404:
-          core.setFailed(GENERIC_404_MSG);
-          return false;
+          core.warning(e.message);
+          return;
         case 422:
           // schema incompatibility when reporting status
           // this means that this action version is no longer compatible with the API
@@ -359,15 +356,14 @@ export async function sendStatusReport<S extends StatusReportBase>(
           } else {
             core.debug(OUT_OF_DATE_MSG);
           }
-          return true;
+          return;
       }
     }
 
     // something else has gone wrong and the request/response will be logged by octokit
     // it's possible this is a transient error and we should continue scanning
-    core.error(
+    core.warning(
       "An unexpected error occurred when sending code scanning status report.",
     );
-    return true;
   }
 }

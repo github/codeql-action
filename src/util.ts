@@ -120,7 +120,7 @@ export function getExtraOptionsEnvParam(): object {
     return JSON.parse(raw);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
-    throw new UserError(
+    throw new ConfigurationError(
       `${varName} environment variable is set, but does not contain valid JSON: ${error.message}`,
     );
   }
@@ -204,7 +204,9 @@ export function getMemoryFlagValueForPlatform(
   if (userInput) {
     memoryToUseMegaBytes = Number(userInput);
     if (Number.isNaN(memoryToUseMegaBytes) || memoryToUseMegaBytes <= 0) {
-      throw new UserError(`Invalid RAM setting "${userInput}", specified.`);
+      throw new ConfigurationError(
+        `Invalid RAM setting "${userInput}", specified.`,
+      );
     }
   } else {
     const totalMemoryMegaBytes = totalMemoryBytes / (1024 * 1024);
@@ -373,7 +375,9 @@ export function getThreadsFlagValue(
   if (userInput) {
     numThreads = Number(userInput);
     if (Number.isNaN(numThreads)) {
-      throw new UserError(`Invalid threads setting "${userInput}", specified.`);
+      throw new ConfigurationError(
+        `Invalid threads setting "${userInput}", specified.`,
+      );
     }
     if (numThreads > maxThreads) {
       logger.info(
@@ -500,14 +504,14 @@ export function parseGitHubUrl(inputUrl: string): string {
     inputUrl = `https://${inputUrl}`;
   }
   if (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")) {
-    throw new UserError(`"${originalUrl}" is not a http or https URL`);
+    throw new ConfigurationError(`"${originalUrl}" is not a http or https URL`);
   }
 
   let url: URL;
   try {
     url = new URL(inputUrl);
   } catch (e) {
-    throw new UserError(`"${originalUrl}" is not a valid URL`);
+    throw new ConfigurationError(`"${originalUrl}" is not a valid URL`);
   }
 
   // If we detect this is trying to be to github.com
@@ -652,7 +656,7 @@ export class HTTPError extends Error {
  * An Error class that indicates an error that occurred due to
  * a misconfiguration of the action or the CodeQL CLI.
  */
-export class UserError extends Error {
+export class ConfigurationError extends Error {
   constructor(message: string) {
     super(message);
   }

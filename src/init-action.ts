@@ -52,7 +52,7 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
-  UserError,
+  ConfigurationError,
   wrapError,
   checkActionVersion,
 } from "./util";
@@ -229,18 +229,14 @@ async function run() {
   core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
 
   try {
-    if (
-      !(await sendStatusReport(
-        await createStatusReportBase(
-          "init",
-          "starting",
-          startedAt,
-          await checkDiskUsage(logger),
-        ),
-      ))
-    ) {
-      return;
-    }
+    await sendStatusReport(
+      await createStatusReportBase(
+        "init",
+        "starting",
+        startedAt,
+        await checkDiskUsage(logger),
+      ),
+    );
 
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
@@ -317,7 +313,7 @@ async function run() {
     await sendStatusReport(
       await createStatusReportBase(
         "init",
-        error instanceof UserError ? "user-error" : "aborted",
+        error instanceof ConfigurationError ? "user-error" : "aborted",
         startedAt,
         await checkDiskUsage(),
         error.message,

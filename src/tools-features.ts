@@ -4,6 +4,7 @@ export enum ToolsFeature {
   BuildModeOption = "buildModeOption",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",
+  TraceCommandUseBuildMode = "traceCommandUseBuildMode",
 }
 
 /**

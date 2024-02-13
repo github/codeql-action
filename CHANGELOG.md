@@ -8,6 +8,11 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 2.24.1 - 13 Feb 2024
+
+- Update default CodeQL bundle version to 2.16.2. [#2124](https://github.com/github/codeql-action/pull/2124)
+- The CodeQL action no longer fails if it can't write to the telemetry api endpoint. [#2121](https://github.com/github/codeql-action/pull/2121)
+
 ## 2.24.0 - 02 Feb 2024
 
 - CodeQL Python analysis will no longer install dependencies on GitHub Enterprise Server, as is already the case for GitHub.com. See [release notes for 3.23.0](#3230---08-jan-2024) for more details. [#2106](https://github.com/github/codeql-action/pull/2106)

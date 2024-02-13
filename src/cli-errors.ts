@@ -99,10 +99,16 @@ function ensureEndsInPeriod(text: string): string {
 
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
+  DetectedCodeButCouldNotProcess = "DetectedCodeButCouldNotProcess",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
   InvalidSourceRoot = "InvalidSourceRoot",
   NoJavaScriptTypeScriptCodeFound = "NoJavaScriptTypeScriptCodeFound",
+  NoBuildCommandAutodetected = "NoBuildCommandAutodetected",
+  NoBuildMethodAutodetected = "NoBuildMethodAutodetected",
+  NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
+  NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  NoSupportedLanguagesDetected = "NoSupportedLanguagesDetected",
 }
 
 type CliErrorConfiguration = {
@@ -121,6 +127,16 @@ export const cliErrorsConfig: Record<
   CliConfigErrorCategory,
   CliErrorConfiguration
 > = {
+  // Usually when a manual build script has failed, or if an autodetected language
+  // was unintended to have CodeQL analysis run on it.
+  [CliConfigErrorCategory.DetectedCodeButCouldNotProcess]: {
+    exitCode: 32,
+    cliErrorMessageSnippets: [
+      "CodeQL detected code written in",
+      "but could not process any of it",
+    ],
+    additionalErrorMessageToPrepend: `Check the build script, if applicable, for the language specified in the error:`,
+  },
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
   [CliConfigErrorCategory.IncompatibleWithActionVersion]: {
     cliErrorMessageSnippets: ["is not compatible with this CodeQL CLI"],
@@ -150,6 +166,25 @@ export const cliErrorsConfig: Record<
     additionalErrorMessageToPrepend:
       "No code found during the build. Please see: " +
       "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.",
+  },
+  [CliConfigErrorCategory.NoBuildCommandAutodetected]: {
+    cliErrorMessageSnippets: ["Could not auto-detect a suitable build method"],
+  },
+  [CliConfigErrorCategory.NoBuildMethodAutodetected]: {
+    cliErrorMessageSnippets: [
+      "Could not detect a suitable build command for the source checkout",
+    ],
+  },
+  [CliConfigErrorCategory.NoSupportedBuildCommandSucceeded]: {
+    cliErrorMessageSnippets: ["No supported build command succeeded"],
+  },
+  [CliConfigErrorCategory.NoSupportedBuildSystemDetected]: {
+    cliErrorMessageSnippets: ["No supported build system detected"],
+  },
+  [CliConfigErrorCategory.NoSupportedLanguagesDetected]: {
+    cliErrorMessageSnippets: [
+      "CodeQL did not detect any code written in languages supported by CodeQL",
+    ],
   },
 };
 

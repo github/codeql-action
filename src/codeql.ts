@@ -284,6 +284,8 @@ const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.7";
 const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-11-08";
 
 /*
+ * Deprecated in favor of ToolsFeature.
+ *
  * Versions of CodeQL that version-flag certain functionality in the Action.
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
@@ -672,7 +674,14 @@ export async function getCodeQLForCmd(
       // When `DYLD_INSERT_LIBRARIES` is set in the environment for a step,
       // the Actions runtime introduces its own workaround for SIP
       // (https://github.com/actions/runner/pull/416).
-      await runTool(autobuildCmd);
+      try {
+        await runTool(autobuildCmd);
+      } catch (e) {
+        if (e instanceof Error) {
+          throw wrapCliConfigurationError(e);
+        }
+        throw e;
+      }
     },
     async extractScannedLanguage(config: Config, language: Language) {
       await runTool(cmd, [

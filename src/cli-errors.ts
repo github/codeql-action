@@ -112,6 +112,7 @@ export enum CliConfigErrorCategory {
 }
 
 type CliErrorConfiguration = {
+  // All of these snippets should be present to match to a specific CliConfigErrorCategory.
   cliErrorMessageSnippets: string[];
   exitCode?: number;
   // Error message to prepend for this type of CLI error.
@@ -130,11 +131,14 @@ export const cliErrorsConfig: Record<
   // Usually when a manual build script has failed, or if an autodetected language
   // was unintended to have CodeQL analysis run on it.
   [CliConfigErrorCategory.DetectedCodeButCouldNotProcess]: {
+    exitCode: 32,
     cliErrorMessageSnippets: [
       "CodeQL detected code written in",
       "but could not process any of it",
     ],
-    additionalErrorMessageToPrepend: `Check the build script, if applicable, for the language specified in the error:`,
+    additionalErrorMessageToPrepend:
+      "No code found during the build. Please see: " +
+      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.",
   },
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
   [CliConfigErrorCategory.IncompatibleWithActionVersion]: {
@@ -157,11 +161,9 @@ export const cliErrorsConfig: Record<
    * `codeql database finalize`. To ensure users get a good error message, we detect this manually
    * here, and upon detection override the error message.
    *
-   * This can be removed once support for CodeQL 2.11.6 is removed, and once removed, exit code 32
-   * can be applied to the DetectedCodeButCouldNotProcess category.
+   * This can be removed once support for CodeQL 2.11.6 is removed.
    */
   [CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound]: {
-    exitCode: 32,
     cliErrorMessageSnippets: ["No JavaScript or TypeScript code found."],
     additionalErrorMessageToPrepend:
       "No code found during the build. Please see: " +

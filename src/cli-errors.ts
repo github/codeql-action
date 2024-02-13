@@ -112,7 +112,7 @@ export enum CliConfigErrorCategory {
 }
 
 type CliErrorConfiguration = {
-  // All of these snippets should be present to match to a specific CliConfigErrorCategory.
+  /** All of these snippets must be present in the error message. */
   cliErrorMessageSnippets: string[];
   exitCode?: number;
   // Error message to prepend for this type of CLI error.

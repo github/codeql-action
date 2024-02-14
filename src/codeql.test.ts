@@ -945,7 +945,13 @@ test("runTool summarizes several fatal errors", async (t) => {
       instanceOf: util.ConfigurationError,
       message: new RegExp(
         'Encountered a fatal error while running \\"codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db\\"\\. ' +
-          `Exit code was 32 and error was: ${datasetImportError}\\. Context: ${heapError}. See the logs for more details\\.`,
+          `Exit code was 32 and error was: ${datasetImportError.replaceAll(
+            ".",
+            "\\.",
+          )}\\. Context: ${heapError.replaceAll(
+            ".",
+            "\\.",
+          )}\\. See the logs for more details\\.`,
       ),
     },
   );

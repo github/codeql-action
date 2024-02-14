@@ -832,7 +832,7 @@ function dbLocationOrDefault(
 export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   let config: Config;
 
-  const { logger, workspacePath } = inputs;
+  const { logger, tempDir } = inputs;
 
   // if configInput is set, it takes precedence over configFile
   if (inputs.configInput) {
@@ -841,10 +841,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
         `Both a config file and config input were provided. Ignoring config file.`,
       );
     }
-    inputs.configFile = path.resolve(
-      workspacePath,
-      "user-config-from-action.yml",
-    );
+    inputs.configFile = path.resolve(tempDir, "user-config-from-action.yml");
     fs.writeFileSync(inputs.configFile, inputs.configInput);
     logger.debug(`Using config from action input: ${inputs.configFile}`);
   }

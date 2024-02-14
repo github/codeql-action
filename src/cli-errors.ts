@@ -118,9 +118,8 @@ type CliErrorConfiguration = {
   /** All of these snippets must be present in the error message. */
   cliErrorMessageSnippets: string[];
   exitCode?: number;
-  // Error message to prepend for this type of CLI error.
-  // If undefined, use original CLI error message.
-  additionalErrorMessageToPrepend?: string;
+  // Optional additional message to append for this type of CLI error.
+  additionalErrorMessageToAppend?: string;
 };
 
 /**
@@ -149,7 +148,7 @@ export const cliErrorsConfig: Record<
       "Refusing to create databases",
       "exists and is not an empty directory",
     ],
-    additionalErrorMessageToPrepend: `Is the "init" action called twice in the same job?`,
+    additionalErrorMessageToAppend: `Is the "init" action called twice in the same job?`,
   },
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
@@ -233,7 +232,7 @@ function prependDocsLinkIfApplicable(cliErrorMessage: string): string {
 
 /**
  * Changes an error received from the CLI to a ConfigurationError with optionally an extra
- * error message prepended, if it exists in a known set of configuration errors. Otherwise,
+ * error message appended, if it exists in a known set of configuration errors. Otherwise,
  * simply returns the original error.
  */
 export function wrapCliConfigurationError(cliError: Error): Error {
@@ -259,12 +258,12 @@ export function wrapCliConfigurationError(cliError: Error): Error {
     );
   }
 
-  const errorMessageWrapperIfExists =
-    cliErrorsConfig[cliConfigErrorCategory].additionalErrorMessageToPrepend;
+  const additionalErrorMessageToAppend =
+    cliErrorsConfig[cliConfigErrorCategory].additionalErrorMessageToAppend;
 
-  return errorMessageWrapperIfExists
+  return additionalErrorMessageToAppend
     ? new ConfigurationError(
-        `${errorMessageWrapperIfExists} ${cliError.message}`,
+        `${cliError.message} ${additionalErrorMessageToAppend}`,
       )
     : new ConfigurationError(cliError.message);
 }

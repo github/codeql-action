@@ -284,6 +284,8 @@ const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.7";
 const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-11-08";
 
 /*
+ * Deprecated in favor of ToolsFeature.
+ *
  * Versions of CodeQL that version-flag certain functionality in the Action.
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
@@ -305,12 +307,6 @@ export const CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG = "2.12.3";
  * Versions 2.12.4+ of the CodeQL CLI support the `--qlconfig-file` flag in calls to `database init`.
  */
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
-
-/**
- * Versions 2.12.4+ of the CodeQL CLI provide a better error message when `database finalize`
- * determines that no code has been found.
- */
-export const CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE = "2.12.4";
 
 /**
  * Versions 2.13.1+ of the CodeQL CLI fix a bug where diagnostics export could produce invalid SARIF.
@@ -670,7 +666,14 @@ export async function getCodeQLForCmd(
       // When `DYLD_INSERT_LIBRARIES` is set in the environment for a step,
       // the Actions runtime introduces its own workaround for SIP
       // (https://github.com/actions/runner/pull/416).
-      await runTool(autobuildCmd);
+      try {
+        await runTool(autobuildCmd);
+      } catch (e) {
+        if (e instanceof Error) {
+          throw wrapCliConfigurationError(e);
+        }
+        throw e;
+      }
     },
     async extractScannedLanguage(config: Config, language: Language) {
       await runTool(cmd, [
@@ -709,13 +712,7 @@ export async function getCodeQLForCmd(
       try {
         await runTool(cmd, args);
       } catch (e) {
-        if (
-          e instanceof Error &&
-          !(await util.codeQlVersionAbove(
-            this,
-            CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE,
-          ))
-        ) {
+        if (e instanceof Error) {
           throw wrapCliConfigurationError(e);
         }
         throw e;

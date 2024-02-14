@@ -15,12 +15,16 @@ import {
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { BuildMode } from "./config-utils";
+import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
   mockLanguagesInRepo as mockLanguagesInRepo,
+  createFeatures,
+  getRecordingLogger,
+  LoggedMessage,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -63,6 +67,7 @@ function createTestInitConfigInputs(
         apiURL: undefined,
         registriesAuthTokens: undefined,
       },
+      features: createFeatures([]),
       logger: getRunnerLogger(true),
     },
     overrides,
@@ -1079,4 +1084,46 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     }
     t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
+});
+
+test("Build mode not overridden when disable Java buildless feature flag disabled", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const buildMode = await configUtils.parseBuildModeInput(
+    "none",
+    [Language.java],
+    createFeatures([]),
+    getRecordingLogger(messages),
+  );
+  t.is(buildMode, BuildMode.None);
+  t.deepEqual(messages, []);
+});
+
+test("Build mode not overridden for other languages", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const buildMode = await configUtils.parseBuildModeInput(
+    "none",
+    [Language.python],
+    createFeatures([Feature.DisableJavaBuildlessEnabled]),
+    getRecordingLogger(messages),
+  );
+  t.is(buildMode, BuildMode.None);
+  t.deepEqual(messages, []);
+});
+
+test("Build mode overridden when analyzing Java and disable Java buildless feature flag enabled", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const buildMode = await configUtils.parseBuildModeInput(
+    "none",
+    [Language.java],
+    createFeatures([Feature.DisableJavaBuildlessEnabled]),
+    getRecordingLogger(messages),
+  );
+  t.is(buildMode, BuildMode.Autobuild);
+  t.deepEqual(messages, [
+    {
+      message:
+        "Scanning Java code without a build is temporarily unavailable. Falling back to 'autobuild' build mode.",
+      type: "warning",
+    },
+  ]);
 });

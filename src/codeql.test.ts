@@ -877,8 +877,8 @@ test("database finalize recognises JavaScript no code found error on CodeQL 2.11
     {
       instanceOf: util.ConfigurationError,
       message: new RegExp(
-        "No code found during the build. Please see: " +
-          "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.+",
+        "No code found during the build\\. Please see: " +
+          "https://gh\\.io/troubleshooting-code-scanning/no-source-code-seen-during-build\\.",
       ),
     },
   );
@@ -896,8 +896,8 @@ test("database finalize overrides no code found error on CodeQL 2.11.6", async (
     {
       instanceOf: util.ConfigurationError,
       message: new RegExp(
-        "No code found during the build. Please see: " +
-          "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.+",
+        "No code found during the build\\. Please see: " +
+          "https://gh\\.io/troubleshooting-code-scanning/no-source-code-seen-during-build\\.",
       ),
     },
   );
@@ -942,9 +942,17 @@ test("runTool summarizes several fatal errors", async (t) => {
     async () =>
       await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
     {
-      message:
-        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
-        `Exit code was 32 and error was: ${datasetImportError}. Context: ${heapError}. See the logs for more details.`,
+      instanceOf: util.ConfigurationError,
+      message: new RegExp(
+        'Encountered a fatal error while running \\"codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db\\"\\. ' +
+          `Exit code was 32 and error was: ${datasetImportError.replaceAll(
+            ".",
+            "\\.",
+          )}\\. Context: ${heapError.replaceAll(
+            ".",
+            "\\.",
+          )}\\. See the logs for more details\\.`,
+      ),
     },
   );
 });
@@ -961,9 +969,11 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
     async () =>
       await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
     {
-      message:
-        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
-        "Exit code was 32 and last log line was: line5. See the logs for more details.",
+      instanceOf: util.ConfigurationError,
+      message: new RegExp(
+        'Encountered a fatal error while running \\"codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db\\"\\. ' +
+          "Exit code was 32 and last log line was: line5\\. See the logs for more details\\.",
+      ),
     },
   );
 });

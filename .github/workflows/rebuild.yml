@@ -24,6 +24,23 @@ jobs:
           gh pr edit --repo github/codeql-action "$PR_NUMBER" \
             --remove-label "Rebuild"
 
+      - name: Merge in changes from base branch
+        env:
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch origin "$BASE_BRANCH"
+
+          # Allow merge conflicts in `lib`, since rebuilding should resolve them.
+          git merge "origin/$BASE_BRANCH" || echo "Merge conflicts detected"
+
+          # Check for merge conflicts outside of `lib`. Disable git diff's trailing whitespace check
+          # since `node_modules/@types/semver/README.md` fails it.
+          if git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/'; then
+            echo "Merge conflicts detected outside of lib/ directory. Please resolve them manually."
+            git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/' || true
+            exit 1
+          fi
+
       - name: Compile TypeScript
         run: |
           npm install

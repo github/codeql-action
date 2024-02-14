@@ -309,12 +309,6 @@ export const CODEQL_VERSION_EXPORT_CODE_SCANNING_CONFIG = "2.12.3";
 export const CODEQL_VERSION_INIT_WITH_QLCONFIG = "2.12.4";
 
 /**
- * Versions 2.12.4+ of the CodeQL CLI provide a better error message when `database finalize`
- * determines that no code has been found.
- */
-export const CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE = "2.12.4";
-
-/**
  * Versions 2.13.1+ of the CodeQL CLI fix a bug where diagnostics export could produce invalid SARIF.
  */
 export const CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED = "2.13.1";
@@ -718,13 +712,7 @@ export async function getCodeQLForCmd(
       try {
         await runTool(cmd, args);
       } catch (e) {
-        if (
-          e instanceof Error &&
-          !(await util.codeQlVersionAbove(
-            this,
-            CODEQL_VERSION_BETTER_NO_CODE_ERROR_MESSAGE,
-          ))
-        ) {
+        if (e instanceof Error) {
           throw wrapCliConfigurationError(e);
         }
         throw e;

@@ -1,5 +1,8 @@
 import { ConfigurationError } from "./util";
 
+const NO_SOURCE_CODE_SEEN_DOCS_LINK =
+  "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build";
+
 /**
  * A class of Error that we can classify as an error stemming from a CLI
  * invocation, with associated exit code, stderr,etc.
@@ -136,9 +139,6 @@ export const cliErrorsConfig: Record<
       "CodeQL detected code written in",
       "but could not process any of it",
     ],
-    additionalErrorMessageToPrepend:
-      "No code found during the build. Please see: " +
-      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.",
   },
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
   [CliConfigErrorCategory.IncompatibleWithActionVersion]: {
@@ -165,9 +165,6 @@ export const cliErrorsConfig: Record<
    */
   [CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound]: {
     cliErrorMessageSnippets: ["No JavaScript or TypeScript code found."],
-    additionalErrorMessageToPrepend:
-      "No code found during the build. Please see: " +
-      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.",
   },
   [CliConfigErrorCategory.NoBuildCommandAutodetected]: {
     cliErrorMessageSnippets: ["Could not auto-detect a suitable build method"],
@@ -190,10 +187,12 @@ export const cliErrorsConfig: Record<
   },
 };
 
-// Check if the given CLI error or exit code, if applicable, apply to any known
-// CLI errors in the configuration record. If either the CLI error message matches all of
-// the error messages in the config record, or the exit codes match, return the error category;
-// if not, return undefined.
+/**
+ * Check if the given CLI error or exit code, if applicable, apply to any known
+ * CLI errors in the configuration record. If either the CLI error message matches all of
+ * the error messages in the config record, or the exit codes match, return the error category;
+ * if not, return undefined.
+ */
 export function getCliConfigCategoryIfExists(
   cliError: CommandInvocationError,
 ): CliConfigErrorCategory | undefined {
@@ -221,6 +220,18 @@ export function getCliConfigCategoryIfExists(
 }
 
 /**
+ * Prepend a clearer error message with the docs link if the error message does not already
+ * include it. Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs
+ * should already include the doc link.
+ */
+function prependDocsLinkIfApplicable(cliErrorMessage: string): string {
+  if (!cliErrorMessage.includes(NO_SOURCE_CODE_SEEN_DOCS_LINK)) {
+    return `No code found during the build. Please see: ${NO_SOURCE_CODE_SEEN_DOCS_LINK}. Detailed error: ${cliErrorMessage}`;
+  }
+  return cliErrorMessage;
+}
+
+/**
  * Changes an error received from the CLI to a ConfigurationError with optionally an extra
  * error message prepended, if it exists in a known set of configuration errors. Otherwise,
  * simply returns the original error.
@@ -233,6 +244,19 @@ export function wrapCliConfigurationError(cliError: Error): Error {
   const cliConfigErrorCategory = getCliConfigCategoryIfExists(cliError);
   if (cliConfigErrorCategory === undefined) {
     return cliError;
+  }
+
+  // Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs should
+  // already include the doc link.
+  if (
+    [
+      CliConfigErrorCategory.DetectedCodeButCouldNotProcess,
+      CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound,
+    ].includes(cliConfigErrorCategory)
+  ) {
+    return new ConfigurationError(
+      prependDocsLinkIfApplicable(cliError.message),
+    );
   }
 
   const errorMessageWrapperIfExists =

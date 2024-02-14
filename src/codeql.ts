@@ -147,11 +147,7 @@ export interface CodeQL {
   /**
    * Run 'codeql database run-queries'.
    */
-  databaseRunQueries(
-    databasePath: string,
-    flags: string[],
-    features: FeatureEnablement,
-  ): Promise<void>;
+  databaseRunQueries(databasePath: string, flags: string[]): Promise<void>;
   /**
    * Run 'codeql database interpret-results'.
    */
@@ -803,7 +799,6 @@ export async function getCodeQLForCmd(
     async databaseRunQueries(
       databasePath: string,
       flags: string[],
-      features: FeatureEnablement,
     ): Promise<void> {
       const codeqlArgs = [
         "database",
@@ -818,19 +813,12 @@ export async function getCodeQLForCmd(
         codeqlArgs.push("--expect-discarded-cache");
       }
       if (
-        await features.getValue(
-          Feature.EvaluatorFineGrainedParallelismEnabled,
-          this,
-        )
-      ) {
-        codeqlArgs.push("--intra-layer-parallelism");
-      } else if (
         await util.codeQlVersionAbove(
           this,
           CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
         )
       ) {
-        codeqlArgs.push("--no-intra-layer-parallelism");
+        codeqlArgs.push("--intra-layer-parallelism");
       }
       await runTool(cmd, codeqlArgs);
     },

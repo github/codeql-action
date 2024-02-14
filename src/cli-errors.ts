@@ -113,10 +113,9 @@ export enum CliConfigErrorCategory {
 }
 
 type CliErrorConfiguration = {
-  /** One of these snippets, or the exit code, must be present in the error message. */
-  cliErrorMessageSnippets: RegExp[];
+  /** One of these candidates, or the exit code, must be present in the error message. */
+  cliErrorMessageCandidates: RegExp[];
   exitCode?: number;
-  // Optional additional message to append for this type of CLI error.
   additionalErrorMessageToAppend?: string;
 };
 
@@ -130,12 +129,12 @@ export const cliErrorsConfig: Record<
 > = {
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
   [CliConfigErrorCategory.IncompatibleWithActionVersion]: {
-    cliErrorMessageSnippets: [
+    cliErrorMessageCandidates: [
       new RegExp("is not compatible with this CodeQL CLI"),
     ],
   },
   [CliConfigErrorCategory.InitCalledTwice]: {
-    cliErrorMessageSnippets: [
+    cliErrorMessageCandidates: [
       new RegExp(
         "Refusing to create databases .* but could not process any of it",
       ),
@@ -144,15 +143,15 @@ export const cliErrorsConfig: Record<
   },
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
-    cliErrorMessageSnippets: [new RegExp("Invalid source root")],
+    cliErrorMessageCandidates: [new RegExp("Invalid source root")],
   },
   [CliConfigErrorCategory.NoBuildCommandAutodetected]: {
-    cliErrorMessageSnippets: [
+    cliErrorMessageCandidates: [
       new RegExp("Could not auto-detect a suitable build method"),
     ],
   },
   [CliConfigErrorCategory.NoBuildMethodAutodetected]: {
-    cliErrorMessageSnippets: [
+    cliErrorMessageCandidates: [
       new RegExp(
         "Could not detect a suitable build command for the source checkout",
       ),
@@ -162,7 +161,7 @@ export const cliErrorsConfig: Record<
   // was unintended to have CodeQL analysis run on it.
   [CliConfigErrorCategory.NoSourceCodeSeen]: {
     exitCode: 32,
-    cliErrorMessageSnippets: [
+    cliErrorMessageCandidates: [
       new RegExp(
         "CodeQL detected code written in .* but could not process any of it",
       ),
@@ -182,12 +181,14 @@ export const cliErrorsConfig: Record<
   },
 
   [CliConfigErrorCategory.NoSupportedBuildCommandSucceeded]: {
-    cliErrorMessageSnippets: [
+    cliErrorMessageCandidates: [
       new RegExp("No supported build command succeeded"),
     ],
   },
   [CliConfigErrorCategory.NoSupportedBuildSystemDetected]: {
-    cliErrorMessageSnippets: [new RegExp("No supported build system detected")],
+    cliErrorMessageCandidates: [
+      new RegExp("No supported build system detected"),
+    ],
   },
 };
 
@@ -209,7 +210,7 @@ export function getCliConfigCategoryIfExists(
       return category as CliConfigErrorCategory;
     }
 
-    for (const e of configuration.cliErrorMessageSnippets) {
+    for (const e of configuration.cliErrorMessageCandidates) {
       if (cliError.message.match(e) || cliError.stderr.match(e)) {
         return category as CliConfigErrorCategory;
       }

@@ -50,7 +50,6 @@ export enum Feature {
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
   PythonDefaultIsToSkipDependencyInstallationEnabled = "python_default_is_to_skip_dependency_installation_enabled",
-  EvaluatorFineGrainedParallelismEnabled = "evaluator_fine_grained_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
 }
@@ -77,11 +76,6 @@ export const featureConfig: Record<
   [Feature.DisableKotlinAnalysisEnabled]: {
     envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
     minimumVersion: undefined,
-    defaultValue: false,
-  },
-  [Feature.EvaluatorFineGrainedParallelismEnabled]: {
-    envVar: "CODEQL_EVALUATOR_FINE_GRAINED_PARALLELISM",
-    minimumVersion: CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
     defaultValue: false,
   },
   [Feature.ExportDiagnosticsEnabled]: {

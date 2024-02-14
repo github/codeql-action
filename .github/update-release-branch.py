@@ -60,7 +60,7 @@ def open_pr(
 
   # Start constructing the body text
   body = []
-  body.append(f'Merging {source_branch_short_sha} into {target_branch}.')
+  body.append(f'Merging {source_branch_short_sha} into `{target_branch}`.')
 
   body.append('')
   body.append(f'Conductor for this PR is @{conductor}.')
@@ -92,7 +92,7 @@ def open_pr(
       'branch to resolve the merge conflicts.')
   body.append(' - [ ] Ensure the CHANGELOG displays the correct version and date.')
   body.append(' - [ ] Ensure the CHANGELOG includes all relevant, user-facing changes since the last release.')
-  body.append(f' - [ ] Check that there are not any unexpected commits being merged into the {target_branch} branch.')
+  body.append(f' - [ ] Check that there are not any unexpected commits being merged into the `{target_branch}` branch.')
   body.append(' - [ ] Ensure the docs team is aware of any documentation changes that need to be released.')
 
   if not is_primary_release:

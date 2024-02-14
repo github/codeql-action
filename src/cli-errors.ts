@@ -245,6 +245,8 @@ export function wrapCliConfigurationError(cliError: Error): Error {
     return cliError;
   }
 
+  let errorMessageBuilder = cliError.message;
+
   // Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs should
   // already include the doc link.
   if (
@@ -253,17 +255,14 @@ export function wrapCliConfigurationError(cliError: Error): Error {
       CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound,
     ].includes(cliConfigErrorCategory)
   ) {
-    return new ConfigurationError(
-      prependDocsLinkIfApplicable(cliError.message),
-    );
+    errorMessageBuilder = prependDocsLinkIfApplicable(errorMessageBuilder);
   }
 
   const additionalErrorMessageToAppend =
     cliErrorsConfig[cliConfigErrorCategory].additionalErrorMessageToAppend;
+  if (additionalErrorMessageToAppend !== undefined) {
+    errorMessageBuilder = `${errorMessageBuilder} ${additionalErrorMessageToAppend}`;
+  }
 
-  return additionalErrorMessageToAppend
-    ? new ConfigurationError(
-        `${cliError.message} ${additionalErrorMessageToAppend}`,
-      )
-    : new ConfigurationError(cliError.message);
+  return new ConfigurationError(errorMessageBuilder);
 }

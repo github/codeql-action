@@ -102,21 +102,19 @@ function ensureEndsInPeriod(text: string): string {
 
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
-  DetectedCodeButCouldNotProcess = "DetectedCodeButCouldNotProcess",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
   InvalidSourceRoot = "InvalidSourceRoot",
-  NoJavaScriptTypeScriptCodeFound = "NoJavaScriptTypeScriptCodeFound",
   NoBuildCommandAutodetected = "NoBuildCommandAutodetected",
   NoBuildMethodAutodetected = "NoBuildMethodAutodetected",
+  NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
-  NoSupportedLanguagesDetected = "NoSupportedLanguagesDetected",
 }
 
 type CliErrorConfiguration = {
-  /** All of these snippets must be present in the error message. */
-  cliErrorMessageSnippets: string[];
+  /** One of these snippets, or the exit code, must be present in the error message. */
+  cliErrorMessageSnippets: RegExp[];
   exitCode?: number;
   // Optional additional message to append for this type of CLI error.
   additionalErrorMessageToAppend?: string;
@@ -130,65 +128,72 @@ export const cliErrorsConfig: Record<
   CliConfigErrorCategory,
   CliErrorConfiguration
 > = {
-  // Usually when a manual build script has failed, or if an autodetected language
-  // was unintended to have CodeQL analysis run on it.
-  [CliConfigErrorCategory.DetectedCodeButCouldNotProcess]: {
-    exitCode: 32,
-    cliErrorMessageSnippets: [
-      "CodeQL detected code written in",
-      "but could not process any of it",
-    ],
-  },
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
   [CliConfigErrorCategory.IncompatibleWithActionVersion]: {
-    cliErrorMessageSnippets: ["is not compatible with this CodeQL CLI"],
+    cliErrorMessageSnippets: [
+      new RegExp("is not compatible with this CodeQL CLI"),
+    ],
   },
   [CliConfigErrorCategory.InitCalledTwice]: {
     cliErrorMessageSnippets: [
-      "Refusing to create databases",
-      "exists and is not an empty directory",
+      new RegExp(
+        "Refusing to create databases .* but could not process any of it",
+      ),
     ],
     additionalErrorMessageToAppend: `Is the "init" action called twice in the same job?`,
   },
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
-    cliErrorMessageSnippets: ["Invalid source root"],
-  },
-  /**
-   * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
-   * source code was found. This means that we don't get the no code found error from
-   * `codeql database finalize`. To ensure users get a good error message, we detect this manually
-   * here, and upon detection override the error message.
-   *
-   * This can be removed once support for CodeQL 2.11.6 is removed.
-   */
-  [CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound]: {
-    cliErrorMessageSnippets: ["No JavaScript or TypeScript code found."],
+    cliErrorMessageSnippets: [new RegExp("Invalid source root")],
   },
   [CliConfigErrorCategory.NoBuildCommandAutodetected]: {
-    cliErrorMessageSnippets: ["Could not auto-detect a suitable build method"],
+    cliErrorMessageSnippets: [
+      new RegExp("Could not auto-detect a suitable build method"),
+    ],
   },
   [CliConfigErrorCategory.NoBuildMethodAutodetected]: {
     cliErrorMessageSnippets: [
-      "Could not detect a suitable build command for the source checkout",
+      new RegExp(
+        "Could not detect a suitable build command for the source checkout",
+      ),
     ],
   },
+  // Usually when a manual build script has failed, or if an autodetected language
+  // was unintended to have CodeQL analysis run on it.
+  [CliConfigErrorCategory.NoSourceCodeSeen]: {
+    exitCode: 32,
+    cliErrorMessageSnippets: [
+      new RegExp(
+        "CodeQL detected code written in .* but could not process any of it",
+      ),
+      new RegExp(
+        "CodeQL did not detect any code written in languages supported by CodeQL",
+      ),
+      /**
+       * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
+       * source code was found. This means that we don't get the no code found error from
+       * `codeql database finalize`. To ensure users get a good error message, we detect this manually
+       * here, and upon detection override the error message.
+       *
+       * This can be removed once support for CodeQL 2.11.6 is removed.
+       */
+      new RegExp("No JavaScript or TypeScript code found"),
+    ],
+  },
+
   [CliConfigErrorCategory.NoSupportedBuildCommandSucceeded]: {
-    cliErrorMessageSnippets: ["No supported build command succeeded"],
+    cliErrorMessageSnippets: [
+      new RegExp("No supported build command succeeded"),
+    ],
   },
   [CliConfigErrorCategory.NoSupportedBuildSystemDetected]: {
-    cliErrorMessageSnippets: ["No supported build system detected"],
-  },
-  [CliConfigErrorCategory.NoSupportedLanguagesDetected]: {
-    cliErrorMessageSnippets: [
-      "CodeQL did not detect any code written in languages supported by CodeQL",
-    ],
+    cliErrorMessageSnippets: [new RegExp("No supported build system detected")],
   },
 };
 
 /**
  * Check if the given CLI error or exit code, if applicable, apply to any known
- * CLI errors in the configuration record. If either the CLI error message matches all of
+ * CLI errors in the configuration record. If either the CLI error message matches one of
  * the error messages in the config record, or the exit codes match, return the error category;
  * if not, return undefined.
  */
@@ -204,14 +209,10 @@ export function getCliConfigCategoryIfExists(
       return category as CliConfigErrorCategory;
     }
 
-    let allMessageSnippetsFound: boolean = true;
     for (const e of configuration.cliErrorMessageSnippets) {
-      if (!cliError.message.includes(e) && !cliError.stderr.includes(e)) {
-        allMessageSnippetsFound = false;
+      if (cliError.message.match(e) || cliError.stderr.match(e)) {
+        return category as CliConfigErrorCategory;
       }
-    }
-    if (allMessageSnippetsFound === true) {
-      return category as CliConfigErrorCategory;
     }
   }
 
@@ -249,12 +250,7 @@ export function wrapCliConfigurationError(cliError: Error): Error {
 
   // Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs should
   // already include the doc link.
-  if (
-    [
-      CliConfigErrorCategory.DetectedCodeButCouldNotProcess,
-      CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound,
-    ].includes(cliConfigErrorCategory)
-  ) {
+  if (cliConfigErrorCategory === CliConfigErrorCategory.NoSourceCodeSeen) {
     errorMessageBuilder = prependDocsLinkIfApplicable(errorMessageBuilder);
   }
 

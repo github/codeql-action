@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           LANGUAGES="cpp csharp go java javascript python"
-          pushd "./my-debug-artifacts"
+          cd "./my-debug-artifacts"
           echo "Artifacts from run:"
           for language in $LANGUAGES; do
             echo "- Checking $language"
@@ -82,6 +82,5 @@ jobs:
               exit 1
             fi
           done
-          popd
         env:
           GO111MODULE: auto

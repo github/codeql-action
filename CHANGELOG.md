@@ -6,6 +6,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## 2.24.2 - 15 Feb 2024
 ## 2.22.12 - 22 Dec 2023
+## 3.24.3 - 15 Feb 2024
+
+- Fix an issue where the CodeQL Action would fail to load a configuration specified by the `config` input to the `init` Action. [#2147](https://github.com/github/codeql-action/pull/2147)
+
 ## 3.24.2 - 15 Feb 2024
 
 - Enable improved multi-threaded performance on larger runners for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#2141](https://github.com/github/codeql-action/pull/2141)

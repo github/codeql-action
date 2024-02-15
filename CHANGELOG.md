@@ -4,6 +4,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
+## 2.24.3 - 15 Feb 2024
+
+- Fix an issue where the CodeQL Action would fail to load a configuration specified by the `config` input to the `init` Action. [#2147](https://github.com/github/codeql-action/pull/2147)
+
 ## 2.24.2 - 15 Feb 2024
 
 - Enable improved multi-threaded performance on larger runners for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#2141](https://github.com/github/codeql-action/pull/2141)

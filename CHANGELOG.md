@@ -5,46 +5,52 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
 ## 2.24.2 - 15 Feb 2024
+
+No user facing changes.
+
 ## 2.22.12 - 22 Dec 2023
-## 3.24.3 - 15 Feb 2024
+
+No user facing changes.
+
+## 2.24.3 - 15 Feb 2024
 
 - Fix an issue where the CodeQL Action would fail to load a configuration specified by the `config` input to the `init` Action. [#2147](https://github.com/github/codeql-action/pull/2147)
 
-## 3.24.2 - 15 Feb 2024
+## 2.24.2 - 15 Feb 2024
 
 - Enable improved multi-threaded performance on larger runners for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#2141](https://github.com/github/codeql-action/pull/2141)
 
-## 3.24.1 - 13 Feb 2024
+## 2.24.1 - 13 Feb 2024
 
 - Update default CodeQL bundle version to 2.16.2. [#2124](https://github.com/github/codeql-action/pull/2124)
 - The CodeQL action no longer fails if it can't write to the telemetry api endpoint. [#2121](https://github.com/github/codeql-action/pull/2121)
 
-## 3.24.0 - 02 Feb 2024
+## 2.24.0 - 02 Feb 2024
 
 - CodeQL Python analysis will no longer install dependencies on GitHub Enterprise Server, as is already the case for GitHub.com. See [release notes for 3.23.0](#3230---08-jan-2024) for more details. [#2106](https://github.com/github/codeql-action/pull/2106)
 
-## 3.23.2 - 26 Jan 2024
+## 2.23.2 - 26 Jan 2024
 
 - On Linux, the maximum possible value for the `--threads` option now respects the CPU count as specified in `cgroup` files to more accurately reflect the number of available cores when running in containers. [#2083](https://github.com/github/codeql-action/pull/2083)
 - Update default CodeQL bundle version to 2.16.1. [#2096](https://github.com/github/codeql-action/pull/2096)
 
-## 3.23.1 - 17 Jan 2024
+## 2.23.1 - 17 Jan 2024
 
 - Update default CodeQL bundle version to 2.16.0. [#2073](https://github.com/github/codeql-action/pull/2073)
 - Change the retention period for uploaded debug artifacts to 7 days. Previously, this was whatever the repository default was. [#2079](https://github.com/github/codeql-action/pull/2079)
 
-## 3.23.0 - 08 Jan 2024
+## 2.23.0 - 08 Jan 2024
 
 - We are rolling out a feature in January 2024 that will disable Python dependency installation by default for all users. This improves the speed of analysis while having only a very minor impact on results. You can override this behavior by setting `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION=false` in your workflow, however we plan to remove this ability in future versions of the CodeQL Action. [#2031](https://github.com/github/codeql-action/pull/2031)
 - The CodeQL Action now requires CodeQL version 2.11.6 or later. For more information, see [the corresponding changelog entry for CodeQL Action version 2.22.7](#2227---16-nov-2023). [#2009](https://github.com/github/codeql-action/pull/2009)
 
-## 3.22.12 - 22 Dec 2023
+## 2.22.12 - 22 Dec 2023
 
 - Update default CodeQL bundle version to 2.15.5. [#2047](https://github.com/github/codeql-action/pull/2047)
 
-## 3.22.11 - 13 Dec 2023
+## 2.22.11 - 13 Dec 2023
 
-- [v3+ only] The CodeQL Action now runs on Node.js v20. [#2006](https://github.com/github/codeql-action/pull/2006)
+No user facing changes.
 
 ## 2.22.10 - 12 Dec 2023
 

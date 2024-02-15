@@ -295,7 +295,7 @@ export async function runQueries(
       logger.startGroup(`Running queries for ${language}`);
       const startTimeRunQueries = new Date().getTime();
       const databasePath = util.getCodeQLDatabasePath(config, language);
-      await codeql.databaseRunQueries(databasePath, queryFlags, features);
+      await codeql.databaseRunQueries(databasePath, queryFlags);
       logger.debug(`Finished running queries for ${language}.`);
       // TODO should not be using `builtin` here. We should be using `all` instead.
       // The status report does not support `all` yet.

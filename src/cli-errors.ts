@@ -1,5 +1,8 @@
 import { ConfigurationError } from "./util";
 
+const NO_SOURCE_CODE_SEEN_DOCS_LINK =
+  "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build";
+
 /**
  * A class of Error that we can classify as an error stemming from a CLI
  * invocation, with associated exit code, stderr,etc.
@@ -102,15 +105,18 @@ export enum CliConfigErrorCategory {
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
   InvalidSourceRoot = "InvalidSourceRoot",
-  NoJavaScriptTypeScriptCodeFound = "NoJavaScriptTypeScriptCodeFound",
+  NoBuildCommandAutodetected = "NoBuildCommandAutodetected",
+  NoBuildMethodAutodetected = "NoBuildMethodAutodetected",
+  NoSourceCodeSeen = "NoSourceCodeSeen",
+  NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
+  NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
 }
 
 type CliErrorConfiguration = {
-  cliErrorMessageSnippets: string[];
+  /** One of these candidates, or the exit code, must be present in the error message. */
+  cliErrorMessageCandidates: RegExp[];
   exitCode?: number;
-  // Error message to prepend for this type of CLI error.
-  // If undefined, use original CLI error message.
-  additionalErrorMessageToPrepend?: string;
+  additionalErrorMessageToAppend?: string;
 };
 
 /**
@@ -123,40 +129,75 @@ export const cliErrorsConfig: Record<
 > = {
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
   [CliConfigErrorCategory.IncompatibleWithActionVersion]: {
-    cliErrorMessageSnippets: ["is not compatible with this CodeQL CLI"],
+    cliErrorMessageCandidates: [
+      new RegExp("is not compatible with this CodeQL CLI"),
+    ],
   },
   [CliConfigErrorCategory.InitCalledTwice]: {
-    cliErrorMessageSnippets: [
-      "Refusing to create databases",
-      "exists and is not an empty directory",
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "Refusing to create databases .* but could not process any of it",
+      ),
     ],
-    additionalErrorMessageToPrepend: `Is the "init" action called twice in the same job?`,
+    additionalErrorMessageToAppend: `Is the "init" action called twice in the same job?`,
   },
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
-    cliErrorMessageSnippets: ["Invalid source root"],
+    cliErrorMessageCandidates: [new RegExp("Invalid source root")],
   },
-  /**
-   * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
-   * source code was found. This means that we don't get the no code found error from
-   * `codeql database finalize`. To ensure users get a good error message, we detect this manually
-   * here, and upon detection override the error message.
-   *
-   * This can be removed once support for CodeQL 2.11.6 is removed.
-   */
-  [CliConfigErrorCategory.NoJavaScriptTypeScriptCodeFound]: {
+  [CliConfigErrorCategory.NoBuildCommandAutodetected]: {
+    cliErrorMessageCandidates: [
+      new RegExp("Could not auto-detect a suitable build method"),
+    ],
+  },
+  [CliConfigErrorCategory.NoBuildMethodAutodetected]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "Could not detect a suitable build command for the source checkout",
+      ),
+    ],
+  },
+  // Usually when a manual build script has failed, or if an autodetected language
+  // was unintended to have CodeQL analysis run on it.
+  [CliConfigErrorCategory.NoSourceCodeSeen]: {
     exitCode: 32,
-    cliErrorMessageSnippets: ["No JavaScript or TypeScript code found."],
-    additionalErrorMessageToPrepend:
-      "No code found during the build. Please see: " +
-      "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.",
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "CodeQL detected code written in .* but could not process any of it",
+      ),
+      new RegExp(
+        "CodeQL did not detect any code written in languages supported by CodeQL",
+      ),
+      /**
+       * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
+       * source code was found. This means that we don't get the no code found error from
+       * `codeql database finalize`. To ensure users get a good error message, we detect this manually
+       * here, and upon detection override the error message.
+       *
+       * This can be removed once support for CodeQL 2.11.6 is removed.
+       */
+      new RegExp("No JavaScript or TypeScript code found"),
+    ],
+  },
+
+  [CliConfigErrorCategory.NoSupportedBuildCommandSucceeded]: {
+    cliErrorMessageCandidates: [
+      new RegExp("No supported build command succeeded"),
+    ],
+  },
+  [CliConfigErrorCategory.NoSupportedBuildSystemDetected]: {
+    cliErrorMessageCandidates: [
+      new RegExp("No supported build system detected"),
+    ],
   },
 };
 
-// Check if the given CLI error or exit code, if applicable, apply to any known
-// CLI errors in the configuration record. If either the CLI error message matches all of
-// the error messages in the config record, or the exit codes match, return the error category;
-// if not, return undefined.
+/**
+ * Check if the given CLI error or exit code, if applicable, apply to any known
+ * CLI errors in the configuration record. If either the CLI error message matches one of
+ * the error messages in the config record, or the exit codes match, return the error category;
+ * if not, return undefined.
+ */
 export function getCliConfigCategoryIfExists(
   cliError: CommandInvocationError,
 ): CliConfigErrorCategory | undefined {
@@ -169,14 +210,10 @@ export function getCliConfigCategoryIfExists(
       return category as CliConfigErrorCategory;
     }
 
-    let allMessageSnippetsFound: boolean = true;
-    for (const e of configuration.cliErrorMessageSnippets) {
-      if (!cliError.message.includes(e) && !cliError.stderr.includes(e)) {
-        allMessageSnippetsFound = false;
+    for (const e of configuration.cliErrorMessageCandidates) {
+      if (cliError.message.match(e) || cliError.stderr.match(e)) {
+        return category as CliConfigErrorCategory;
       }
-    }
-    if (allMessageSnippetsFound === true) {
-      return category as CliConfigErrorCategory;
     }
   }
 
@@ -184,8 +221,20 @@ export function getCliConfigCategoryIfExists(
 }
 
 /**
+ * Prepend a clearer error message with the docs link if the error message does not already
+ * include it. Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs
+ * should already include the doc link.
+ */
+function prependDocsLinkIfApplicable(cliErrorMessage: string): string {
+  if (!cliErrorMessage.includes(NO_SOURCE_CODE_SEEN_DOCS_LINK)) {
+    return `No code found during the build. Please see: ${NO_SOURCE_CODE_SEEN_DOCS_LINK}. Detailed error: ${cliErrorMessage}`;
+  }
+  return cliErrorMessage;
+}
+
+/**
  * Changes an error received from the CLI to a ConfigurationError with optionally an extra
- * error message prepended, if it exists in a known set of configuration errors. Otherwise,
+ * error message appended, if it exists in a known set of configuration errors. Otherwise,
  * simply returns the original error.
  */
 export function wrapCliConfigurationError(cliError: Error): Error {
@@ -198,12 +247,19 @@ export function wrapCliConfigurationError(cliError: Error): Error {
     return cliError;
   }
 
-  const errorMessageWrapperIfExists =
-    cliErrorsConfig[cliConfigErrorCategory].additionalErrorMessageToPrepend;
+  let errorMessageBuilder = cliError.message;
 
-  return errorMessageWrapperIfExists
-    ? new ConfigurationError(
-        `${errorMessageWrapperIfExists} ${cliError.message}`,
-      )
-    : new ConfigurationError(cliError.message);
+  // Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs should
+  // already include the doc link.
+  if (cliConfigErrorCategory === CliConfigErrorCategory.NoSourceCodeSeen) {
+    errorMessageBuilder = prependDocsLinkIfApplicable(errorMessageBuilder);
+  }
+
+  const additionalErrorMessageToAppend =
+    cliErrorsConfig[cliConfigErrorCategory].additionalErrorMessageToAppend;
+  if (additionalErrorMessageToAppend !== undefined) {
+    errorMessageBuilder = `${errorMessageBuilder} ${additionalErrorMessageToAppend}`;
+  }
+
+  return new ConfigurationError(errorMessageBuilder);
 }

@@ -453,7 +453,10 @@ function getCgroupCpuCountFromCpus(
 
   let cpuCount = 0;
   // Comma-separated numbers and ranges, for eg. 0-1,3
-  const cpusString = fs.readFileSync(cpusFile, "utf-8");
+  const cpusString = fs.readFileSync(cpusFile, "utf-8").trim();
+  if (cpusString.length === 0) {
+    return undefined;
+  }
   for (const token of cpusString.split(",")) {
     if (!token.includes("-")) {
       // Not a range

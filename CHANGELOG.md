@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## 3.24.2 - 15 Feb 2024
 
-No user facing changes.
+- Enable improved multi-threaded performance on larger runners for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#2141](https://github.com/github/codeql-action/pull/2141)
 
 ## 3.24.1 - 13 Feb 2024
 

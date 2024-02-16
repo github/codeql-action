@@ -440,7 +440,7 @@ function getCgroupCpuCountFromCpuMax(
 /**
  * Gets the number of available cores listed in the cgroup cpuset.cpus file at the given path.
  */
-function getCgroupCpuCountFromCpus(
+export function getCgroupCpuCountFromCpus(
   cpusFile: string,
   logger: Logger,
 ): number | undefined {

@@ -7,6 +7,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - Fix an issue where an existing, but empty, `/sys/fs/cgroup/cpuset.cpus` file always resulted in a single-threaded run. [#2151](https://github.com/github/codeql-action/pull/2151)
+- Update default CodeQL bundle version to 2.16.3. [#2156](https://github.com/github/codeql-action/pull/2156)
 
 ## 3.24.3 - 15 Feb 2024
 

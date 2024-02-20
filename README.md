@@ -18,7 +18,7 @@ You can also configure advanced setup for a repository to find security vulnerab
 
 ### Permissions
 
-All advanced setup Code Scanning workflows must have the `security-events: write` permission. Workflows in private repositories muse additionally have the `contents: read` permission. For more information, see [Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs).
+All advanced setup code scanning workflows must have the `security-events: write` permission. Workflows in private repositories muse additionally have the `contents: read` permission. For more information, see [Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs).
 
 ## Supported versions of the CodeQL Action
 

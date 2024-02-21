@@ -227,6 +227,7 @@ async function run() {
   );
 
   core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
+  core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
   try {
     await sendStatusReport(

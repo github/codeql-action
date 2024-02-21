@@ -79,7 +79,7 @@ test("createStatusReportBase_firstParty", async (t) => {
     t.is(
       (
         await createStatusReportBase(
-          "init",
+          "upload-sarif",
           "failure",
           new Date("May 19, 2023 05:19:00"),
           { numAvailableBytes: 100, numTotalBytes: 500 },
@@ -88,13 +88,27 @@ test("createStatusReportBase_firstParty", async (t) => {
         )
       ).first_party_analysis,
       false,
+    );
+
+    t.is(
+      (
+        await createStatusReportBase(
+          "autobuild",
+          "failure",
+          new Date("May 19, 2023 05:19:00"),
+          { numAvailableBytes: 100, numTotalBytes: 500 },
+          "failure cause",
+          "exception stack trace",
+        )
+      ).first_party_analysis,
+      true,
     );
 
     process.env["CODEQL_INIT_ACTION_HAS_RUN"] = "foobar";
     t.is(
       (
         await createStatusReportBase(
-          "init",
+          "upload-sarif",
           "failure",
           new Date("May 19, 2023 05:19:00"),
           { numAvailableBytes: 100, numTotalBytes: 500 },
@@ -105,11 +119,39 @@ test("createStatusReportBase_firstParty", async (t) => {
       false,
     );
 
-    process.env["CODEQL_INIT_ACTION_HAS_RUN"] = "true";
     t.is(
       (
         await createStatusReportBase(
           "init",
+          "failure",
+          new Date("May 19, 2023 05:19:00"),
+          { numAvailableBytes: 100, numTotalBytes: 500 },
+          "failure cause",
+          "exception stack trace",
+        )
+      ).first_party_analysis,
+      true,
+    );
+
+    process.env["CODEQL_INIT_ACTION_HAS_RUN"] = "true";
+    t.is(
+      (
+        await createStatusReportBase(
+          "upload-sarif",
+          "failure",
+          new Date("May 19, 2023 05:19:00"),
+          { numAvailableBytes: 100, numTotalBytes: 500 },
+          "failure cause",
+          "exception stack trace",
+        )
+      ).first_party_analysis,
+      true,
+    );
+
+    t.is(
+      (
+        await createStatusReportBase(
+          "finish",
           "failure",
           new Date("May 19, 2023 05:19:00"),
           { numAvailableBytes: 100, numTotalBytes: 500 },

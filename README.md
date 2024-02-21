@@ -16,6 +16,10 @@ We recommend using default setup to configure CodeQL analysis for your repositor
 
 You can also configure advanced setup for a repository to find security vulnerabilities in your code using a highly customizable code scanning configuration. For more information, see "[Configuring advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/configuring-advanced-setup-for-code-scanning)" and "[Customizing your advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning)."
 
+### Permissions
+
+All advanced setup code scanning workflows must have the `security-events: write` permission. Workflows in private repositories muse additionally have the `contents: read` permission. For more information, see [Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs).
+
 ## Supported versions of the CodeQL Action
 
 The following versions of the CodeQL Action are currently supported:

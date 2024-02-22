@@ -111,7 +111,7 @@ export async function determineAutobuildLanguages(
   return languages;
 }
 
-async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
+export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
   const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
   const featureName = "C++ automatic installation of dependencies";
   const envDoc =

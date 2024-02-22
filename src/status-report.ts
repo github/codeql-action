@@ -10,6 +10,8 @@ import {
   getWorkflowRunAttempt,
   getActionVersion,
   getRequiredInput,
+  isFirstPartyAnalysis,
+  ActionName,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
 import { EnvVar } from "./environment";
@@ -22,14 +24,6 @@ import {
   GITHUB_DOTCOM_URL,
   DiskUsage,
 } from "./util";
-
-export type ActionName =
-  | "autobuild"
-  | "finish"
-  | "init"
-  | "init-post"
-  | "resolve-environment"
-  | "upload-sarif";
 
 export type ActionStatus =
   | "aborted" // Only used in the init Action, if init failed before initializing the tracer due to something other than a configuration error.
@@ -69,6 +63,8 @@ export interface StatusReportBase {
   completed_at?: string;
   /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
+  /** Whether this is a first-party (CodeQL) run of the action. */
+  first_party_analysis: boolean;
   /** Job name from the workflow. */
   job_name: string;
   /**
@@ -227,6 +223,7 @@ export async function createStatusReportBase(
     action_version: getActionVersion(),
     analysis_key,
     commit_oid: commitOid,
+    first_party_analysis: isFirstPartyAnalysis(actionName),
     job_name: jobName,
     job_run_uuid: jobRunUUID,
     ref,

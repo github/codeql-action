@@ -449,3 +449,36 @@ for (const [
     versionStub.restore();
   });
 }
+
+test("getCgroupCpuCountFromCpus calculates the number of CPUs correctly", async (t) => {
+  await util.withTmpDir(async (tmpDir: string) => {
+    const testCpuFile = `${tmpDir}/cpus-file`;
+    fs.writeFileSync(testCpuFile, "1, 9-10\n", "utf-8");
+    t.deepEqual(
+      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      3,
+    );
+  });
+});
+
+test("getCgroupCpuCountFromCpus returns undefined if the CPU file doesn't exist", async (t) => {
+  await util.withTmpDir(async (tmpDir: string) => {
+    const testCpuFile = `${tmpDir}/cpus-file`;
+    t.false(fs.existsSync(testCpuFile));
+    t.deepEqual(
+      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      undefined,
+    );
+  });
+});
+
+test("getCgroupCpuCountFromCpus returns undefined if the CPU file exists but is empty", async (t) => {
+  await util.withTmpDir(async (tmpDir: string) => {
+    const testCpuFile = `${tmpDir}/cpus-file`;
+    fs.writeFileSync(testCpuFile, "\n", "utf-8");
+    t.deepEqual(
+      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      undefined,
+    );
+  });
+});

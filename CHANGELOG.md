@@ -4,9 +4,14 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
+## 3.24.5 - 23 Feb 2024
+
+No user facing changes.
+
 ## 3.24.4 - 21 Feb 2024
 
 - Fix an issue where an existing, but empty, `/sys/fs/cgroup/cpuset.cpus` file always resulted in a single-threaded run. [#2151](https://github.com/github/codeql-action/pull/2151)
+- Update default CodeQL bundle version to 2.16.3. [#2156](https://github.com/github/codeql-action/pull/2156)
 
 ## 3.24.3 - 15 Feb 2024
 

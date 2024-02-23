@@ -7,6 +7,7 @@ import { safeWhich } from "@chrisgavin/safe-which";
 import del from "del";
 import * as yaml from "js-yaml";
 
+import { setupCppAutobuild } from "./autobuild";
 import {
   CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
   CodeQL,
@@ -191,6 +192,12 @@ export async function runExtraction(
         config.buildMode &&
         (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))
       ) {
+        if (
+          language === Language.cpp &&
+          config.buildMode === BuildMode.Autobuild
+        ) {
+          await setupCppAutobuild(codeql, logger);
+        }
         await codeql.extractUsingBuildMode(config, language);
       } else {
         await codeql.extractScannedLanguage(config, language);

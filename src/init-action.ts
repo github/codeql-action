@@ -74,12 +74,6 @@ interface InitStatusReport extends StatusReportBase {
 interface InitWithConfigStatusReport extends InitStatusReport {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
-  /**
-   * Comma-separated list of languages that analysis was run for.
-   *
-   * This may be from the workflow file or may be calculated from repository contents
-   */
-  languages: string;
   /** Comma-separated list of paths, from the 'paths' config field. */
   paths: string;
   /** Comma-separated list of paths, from the 'paths-ignore' config field. */
@@ -118,6 +112,7 @@ async function sendCompletedStatusReport(
     "init",
     getActionsStatus(error),
     startedAt,
+    undefined,
     await checkDiskUsage(logger),
     error?.message,
     error?.stack,
@@ -197,7 +192,7 @@ async function run() {
   const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
 
-  let config: configUtils.Config;
+  let config: configUtils.Config | undefined;
   let codeql: CodeQL;
   let toolsDownloadDurationMs: number | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
@@ -235,6 +230,7 @@ async function run() {
         "init",
         "starting",
         startedAt,
+        undefined,
         await checkDiskUsage(logger),
       ),
     );
@@ -317,6 +313,7 @@ async function run() {
         "init",
         error instanceof ConfigurationError ? "user-error" : "aborted",
         startedAt,
+        config,
         await checkDiskUsage(),
         error.message,
         error.stack,

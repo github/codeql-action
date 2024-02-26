@@ -14,6 +14,7 @@ import {
   ActionName,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
+import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
   ConfigurationError,
@@ -79,6 +80,12 @@ export interface StatusReportBase {
    * telemetry tables.
    */
   job_run_uuid: string;
+  /**
+   * Comma-separated list of languages that analysis was run for.
+   *
+   * This may be from the workflow file or may be calculated from the contents of the repository.
+   */
+  languages?: string;
   /** Value of the matrix for this instantiation of the job. */
   matrix_vars?: string;
   /**
@@ -188,6 +195,7 @@ export async function createStatusReportBase(
   actionName: ActionName,
   status: ActionStatus,
   actionStartedAt: Date,
+  config: Config | undefined,
   diskInfo: DiskUsage | undefined,
   cause?: string,
   exception?: string,
@@ -235,6 +243,10 @@ export async function createStatusReportBase(
     workflow_run_attempt: workflowRunAttempt,
     workflow_run_id: workflowRunID,
   };
+
+  if (config) {
+    statusReport.languages = config.languages.join(" ");
+  }
 
   if (diskInfo) {
     statusReport.runner_available_disk_space_bytes = diskInfo.numAvailableBytes;

@@ -33,6 +33,7 @@ async function sendSuccessStatusReport(
     "upload-sarif",
     "success",
     startedAt,
+    undefined,
     await checkDiskUsage(),
   );
   const statusReport: UploadSarifStatusReport = {
@@ -55,6 +56,7 @@ async function run() {
       "upload-sarif",
       "starting",
       startedAt,
+      undefined,
       await checkDiskUsage(),
     ),
   );
@@ -90,6 +92,7 @@ async function run() {
         "upload-sarif",
         getActionsStatus(error),
         startedAt,
+        undefined,
         await checkDiskUsage(),
         message,
         error.stack,

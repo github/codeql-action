@@ -14,7 +14,7 @@ import {
   ActionName,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { Config } from "./config-utils";
+import { BuildMode, Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
   ConfigurationError,
@@ -54,6 +54,8 @@ export interface StatusReportBase {
   action_version: string;
   /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
+  /** Build mode, if specified. */
+  build_mode?: BuildMode;
   /** Cause of the failure (or undefined if status is not failure). */
   cause?: string;
   /** CodeQL CLI version (x.y.z from the CLI). */
@@ -230,6 +232,7 @@ export async function createStatusReportBase(
     action_started_at: actionStartedAt.toISOString(),
     action_version: getActionVersion(),
     analysis_key,
+    build_mode: config?.buildMode,
     commit_oid: commitOid,
     first_party_analysis: isFirstPartyAnalysis(actionName),
     job_name: jobName,

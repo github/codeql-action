@@ -50,6 +50,7 @@ async function sendCompletedStatusReport(
     startedAt,
     config,
     await checkDiskUsage(logger),
+    logger,
     cause?.message,
     cause?.stack,
   );
@@ -75,6 +76,7 @@ async function run() {
         startedAt,
         undefined,
         await checkDiskUsage(logger),
+        logger,
       ),
     );
 

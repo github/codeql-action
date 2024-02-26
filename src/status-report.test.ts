@@ -5,6 +5,7 @@ import * as actionsUtil from "./actions-util";
 import { BuildMode } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
+import { getRunnerLogger } from "./logging";
 import { createStatusReportBase } from "./status-report";
 import {
   setupTests,
@@ -19,6 +20,7 @@ function setupEnvironmentAndStub(tmpDir: string) {
   setupActionsVars(tmpDir, tmpDir);
 
   process.env["CODEQL_ACTION_ANALYSIS_KEY"] = "analysis-key";
+  process.env["GITHUB_EVENT_NAME"] = "dynamic";
   process.env["GITHUB_REF"] = "refs/heads/main";
   process.env["GITHUB_REPOSITORY"] = "octocat/HelloWorld";
   process.env["GITHUB_RUN_ATTEMPT"] = "2";
@@ -45,6 +47,7 @@ test("createStatusReportBase", async (t) => {
         languages: [Language.java, Language.swift],
       }),
       { numAvailableBytes: 100, numTotalBytes: 500 },
+      getRunnerLogger(false),
       "failure cause",
       "exception stack trace",
     );
@@ -56,6 +59,7 @@ test("createStatusReportBase", async (t) => {
       statusReport.action_started_at,
       new Date("May 19, 2023 05:19:00").toISOString(),
     );
+    t.is(statusReport.actions_event_name, "dynamic");
     t.is(statusReport.analysis_key, "analysis-key");
     t.is(statusReport.build_mode, BuildMode.None);
     t.is(statusReport.cause, "failure cause");
@@ -88,6 +92,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
+          getRunnerLogger(false),
           "failure cause",
           "exception stack trace",
         )
@@ -103,6 +108,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
+          getRunnerLogger(false),
           "failure cause",
           "exception stack trace",
         )
@@ -119,6 +125,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
+          getRunnerLogger(false),
           "failure cause",
           "exception stack trace",
         )
@@ -134,6 +141,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
+          getRunnerLogger(false),
           "failure cause",
           "exception stack trace",
         )
@@ -150,6 +158,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
+          getRunnerLogger(false),
           "failure cause",
           "exception stack trace",
         )
@@ -165,6 +174,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
+          getRunnerLogger(false),
           "failure cause",
           "exception stack trace",
         )

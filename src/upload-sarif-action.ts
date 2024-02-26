@@ -3,7 +3,7 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getActionVersion } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { getActionsLogger } from "./logging";
+import { Logger, getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   createStatusReportBase,
@@ -28,6 +28,7 @@ interface UploadSarifStatusReport
 async function sendSuccessStatusReport(
   startedAt: Date,
   uploadStats: upload_lib.UploadStatusReport,
+  logger: Logger,
 ) {
   const statusReportBase = await createStatusReportBase(
     "upload-sarif",
@@ -35,6 +36,7 @@ async function sendSuccessStatusReport(
     startedAt,
     undefined,
     await checkDiskUsage(),
+    logger,
   );
   const statusReport: UploadSarifStatusReport = {
     ...statusReportBase,
@@ -58,6 +60,7 @@ async function run() {
       startedAt,
       undefined,
       await checkDiskUsage(),
+      logger,
     ),
   );
 
@@ -81,7 +84,7 @@ async function run() {
         logger,
       );
     }
-    await sendSuccessStatusReport(startedAt, uploadResult.statusReport);
+    await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     const message = error.message;
@@ -94,6 +97,7 @@ async function run() {
         startedAt,
         undefined,
         await checkDiskUsage(),
+        logger,
         message,
         error.stack,
       ),

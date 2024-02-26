@@ -16,6 +16,7 @@ import {
 import { getAnalysisKey, getApiClient } from "./api-client";
 import { BuildMode, Config } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Logger } from "./logging";
 import {
   ConfigurationError,
   isHTTPError,
@@ -52,6 +53,8 @@ export interface StatusReportBase {
   action_started_at: string;
   /** Action version (x.y.z from package.json). */
   action_version: string;
+  /** The name of the Actions event that triggered the workflow. */
+  actions_event_name?: string;
   /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
   /** Build mode, if specified. */
@@ -199,6 +202,7 @@ export async function createStatusReportBase(
   actionStartedAt: Date,
   config: Config | undefined,
   diskInfo: DiskUsage | undefined,
+  logger: Logger,
   cause?: string,
   exception?: string,
 ): Promise<StatusReportBase> {
@@ -246,6 +250,12 @@ export async function createStatusReportBase(
     workflow_run_attempt: workflowRunAttempt,
     workflow_run_id: workflowRunID,
   };
+
+  try {
+    statusReport.actions_event_name = getWorkflowEventName();
+  } catch (e) {
+    logger.warning(`Could not determine the workflow event name: ${e}.`);
+  }
 
   if (config) {
     statusReport.languages = config.languages.join(" ");

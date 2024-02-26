@@ -40,7 +40,8 @@ async function run() {
         "starting",
         startedAt,
         undefined,
-        await checkDiskUsage(logger),
+        await checkDiskUsage(),
+        logger,
       ),
     );
 
@@ -86,6 +87,7 @@ async function run() {
           startedAt,
           config,
           await checkDiskUsage(),
+          logger,
           error.message,
           error.stack,
         ),
@@ -102,6 +104,7 @@ async function run() {
       startedAt,
       config,
       await checkDiskUsage(),
+      logger,
     ),
   );
 }

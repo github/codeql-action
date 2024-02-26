@@ -33,13 +33,13 @@ interface InitPostStatusReport
     initActionPostHelper.JobStatusReport {}
 
 async function runWrapper() {
+  const logger = getActionsLogger();
   const startedAt = new Date();
   let config: Config | undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
   try {
-    const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 
@@ -81,6 +81,7 @@ async function runWrapper() {
         startedAt,
         config,
         await checkDiskUsage(),
+        logger,
         error.message,
         error.stack,
       ),
@@ -93,6 +94,7 @@ async function runWrapper() {
     startedAt,
     config,
     await checkDiskUsage(),
+    logger,
   );
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,

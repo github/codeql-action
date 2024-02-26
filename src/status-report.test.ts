@@ -2,6 +2,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { BuildMode } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { createStatusReportBase } from "./status-report";
@@ -39,7 +40,10 @@ test("createStatusReportBase", async (t) => {
       "init",
       "failure",
       new Date("May 19, 2023 05:19:00"),
-      createTestConfig({ languages: [Language.java, Language.swift] }),
+      createTestConfig({
+        buildMode: BuildMode.None,
+        languages: [Language.java, Language.swift],
+      }),
       { numAvailableBytes: 100, numTotalBytes: 500 },
       "failure cause",
       "exception stack trace",
@@ -53,6 +57,7 @@ test("createStatusReportBase", async (t) => {
       new Date("May 19, 2023 05:19:00").toISOString(),
     );
     t.is(statusReport.analysis_key, "analysis-key");
+    t.is(statusReport.build_mode, BuildMode.None);
     t.is(statusReport.cause, "failure cause");
     t.is(statusReport.commit_oid, process.env["GITHUB_SHA"]!);
     t.is(statusReport.exception, "exception stack trace");

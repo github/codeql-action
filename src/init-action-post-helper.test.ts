@@ -8,7 +8,12 @@ import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { createFeatures, makeVersionInfo, setupTests } from "./testing-utils";
+import {
+  createFeatures,
+  createTestConfig,
+  makeVersionInfo,
+  setupTests,
+} from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 import * as workflow from "./workflow";
@@ -38,6 +43,7 @@ test("post: init action with debug mode off", async (t) => {
       uploadDatabaseBundleSpy,
       uploadLogsSpy,
       printDebugLogsSpy,
+      createTestConfig({ debugMode: false }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
       getRunnerLogger(true),
@@ -54,16 +60,6 @@ test("post: init action with debug mode on", async (t) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
 
-    const gitHubVersion: util.GitHubVersion = {
-      type: util.GitHubVariant.DOTCOM,
-    };
-    sinon.stub(configUtils, "getConfig").resolves({
-      debugMode: true,
-      gitHubVersion,
-      languages: [],
-      packs: [],
-    } as unknown as configUtils.Config);
-
     const uploadDatabaseBundleSpy = sinon.spy();
     const uploadLogsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
@@ -72,6 +68,7 @@ test("post: init action with debug mode on", async (t) => {
       uploadDatabaseBundleSpy,
       uploadLogsSpy,
       printDebugLogsSpy,
+      createTestConfig({ debugMode: true }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
       getRunnerLogger(true),

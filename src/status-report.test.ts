@@ -3,8 +3,13 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { EnvVar } from "./environment";
+import { Language } from "./languages";
 import { createStatusReportBase } from "./status-report";
-import { setupTests, setupActionsVars } from "./testing-utils";
+import {
+  setupTests,
+  setupActionsVars,
+  createTestConfig,
+} from "./testing-utils";
 import { withTmpDir } from "./util";
 
 setupTests(test);
@@ -34,6 +39,7 @@ test("createStatusReportBase", async (t) => {
       "init",
       "failure",
       new Date("May 19, 2023 05:19:00"),
+      createTestConfig({ languages: [Language.java, Language.swift] }),
       { numAvailableBytes: 100, numTotalBytes: 500 },
       "failure cause",
       "exception stack trace",
@@ -52,6 +58,7 @@ test("createStatusReportBase", async (t) => {
     t.is(statusReport.exception, "exception stack trace");
     t.is(statusReport.job_name, process.env["GITHUB_JOB"] || "");
     t.is(typeof statusReport.job_run_uuid, "string");
+    t.is(statusReport.languages, "java swift");
     t.is(statusReport.ref, process.env["GITHUB_REF"]!);
     t.is(statusReport.runner_available_disk_space_bytes, 100);
     t.is(statusReport.runner_image_version, process.env["ImageVersion"]);
@@ -74,6 +81,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "upload-sarif",
           "failure",
           new Date("May 19, 2023 05:19:00"),
+          createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
           "failure cause",
           "exception stack trace",
@@ -88,6 +96,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "autobuild",
           "failure",
           new Date("May 19, 2023 05:19:00"),
+          createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
           "failure cause",
           "exception stack trace",
@@ -103,6 +112,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "upload-sarif",
           "failure",
           new Date("May 19, 2023 05:19:00"),
+          createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
           "failure cause",
           "exception stack trace",
@@ -117,6 +127,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "init",
           "failure",
           new Date("May 19, 2023 05:19:00"),
+          createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
           "failure cause",
           "exception stack trace",
@@ -132,6 +143,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "upload-sarif",
           "failure",
           new Date("May 19, 2023 05:19:00"),
+          createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
           "failure cause",
           "exception stack trace",
@@ -146,6 +158,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "finish",
           "failure",
           new Date("May 19, 2023 05:19:00"),
+          createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
           "failure cause",
           "exception stack trace",

@@ -4,7 +4,7 @@ import * as github from "@actions/github";
 import * as actionsUtil from "./actions-util";
 import { getApiClient } from "./api-client";
 import { getCodeQL } from "./codeql";
-import { Config, getConfig } from "./config-utils";
+import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
@@ -165,18 +165,11 @@ export async function run(
   uploadDatabaseBundleDebugArtifact: Function,
   uploadLogsDebugArtifact: Function,
   printDebugLogs: Function,
+  config: Config,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,
 ) {
-  const config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
-  if (config === undefined) {
-    logger.warning(
-      "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
-    );
-    return;
-  }
-
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
     repositoryNwo,

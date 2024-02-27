@@ -11,6 +11,7 @@ import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
+import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
@@ -45,11 +46,18 @@ export async function initCodeQL(
 
 export async function initConfig(
   inputs: configUtils.InitConfigInputs,
+  codeql: CodeQL,
 ): Promise<configUtils.Config> {
   const logger = inputs.logger;
   logger.startGroup("Load language configuration");
   const config = await configUtils.initConfig(inputs);
-  printPathFiltersWarning(config, logger);
+  if (
+    !(await codeql.supportsFeature(
+      ToolsFeature.InformsAboutUnsupportedPathFilters,
+    ))
+  ) {
+    printPathFiltersWarning(config, logger);
+  }
   logger.endGroup();
   return config;
 }

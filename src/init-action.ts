@@ -169,7 +169,6 @@ async function sendCompletedStatusReport(
     const initWithConfigStatusReport: InitWithConfigStatusReport = {
       ...initStatusReport,
       disable_default_queries: disableDefaultQueries,
-      languages,
       paths,
       paths_ignore: pathsIgnore,
       queries: queries.join(","),

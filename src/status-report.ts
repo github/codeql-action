@@ -258,7 +258,7 @@ export async function createStatusReportBase(
   }
 
   if (config) {
-    statusReport.languages = config.languages.join(" ");
+    statusReport.languages = config.languages.join(",");
   }
 
   if (diskInfo) {

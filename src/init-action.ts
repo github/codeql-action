@@ -259,33 +259,38 @@ async function run() {
     }
     core.endGroup();
 
-    config = await initConfig({
-      languagesInput: getOptionalInput("languages"),
-      queriesInput: getOptionalInput("queries"),
-      packsInput: getOptionalInput("packs"),
-      buildModeInput: getOptionalInput("build-mode"),
-      configFile: getOptionalInput("config-file"),
-      dbLocation: getOptionalInput("db-location"),
-      configInput: getOptionalInput("config"),
-      trapCachingEnabled: getTrapCachingEnabled(),
-      // Debug mode is enabled if:
-      // - The `init` Action is passed `debug: true`.
-      // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
-      //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
-      debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
-      debugArtifactName:
-        getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
-      debugDatabaseName:
-        getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
-      repository: repositoryNwo,
-      tempDir: getTemporaryDirectory(),
+    config = await initConfig(
+      {
+        languagesInput: getOptionalInput("languages"),
+        queriesInput: getOptionalInput("queries"),
+        packsInput: getOptionalInput("packs"),
+        buildModeInput: getOptionalInput("build-mode"),
+        configFile: getOptionalInput("config-file"),
+        dbLocation: getOptionalInput("db-location"),
+        configInput: getOptionalInput("config"),
+        trapCachingEnabled: getTrapCachingEnabled(),
+        // Debug mode is enabled if:
+        // - The `init` Action is passed `debug: true`.
+        // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
+        //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
+        debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
+        debugArtifactName:
+          getOptionalInput("debug-artifact-name") ||
+          DEFAULT_DEBUG_ARTIFACT_NAME,
+        debugDatabaseName:
+          getOptionalInput("debug-database-name") ||
+          DEFAULT_DEBUG_DATABASE_NAME,
+        repository: repositoryNwo,
+        tempDir: getTemporaryDirectory(),
+        codeql,
+        workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+        githubVersion: gitHubVersion,
+        apiDetails,
+        features,
+        logger,
+      },
       codeql,
-      workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
-      githubVersion: gitHubVersion,
-      apiDetails,
-      features,
-      logger,
-    });
+    );
 
     await checkInstallPython311(config.languages, codeql);
 

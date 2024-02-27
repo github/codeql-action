@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/humanwhocodes/object-schema/compare/v2.0.1...v2.0.2) (2024-01-10)
+
+
+### Bug Fixes
+
+* WrapperError should be an actual error ([2523f01](https://github.com/humanwhocodes/object-schema/commit/2523f014168167e5a40bb63e0cc03231b2c0f1bf))
+
 ## [2.0.1](https://github.com/humanwhocodes/object-schema/compare/v2.0.0...v2.0.1) (2023-10-20)
 
 

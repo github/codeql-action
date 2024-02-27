@@ -8,7 +8,7 @@ import {
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CommandInvocationError } from "./cli-errors";
-import * as configUtils from "./config-utils";
+import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
 import {
@@ -31,13 +31,17 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
 
+  let config: Config | undefined;
+
   try {
     await sendStatusReport(
       await createStatusReportBase(
         ACTION_NAME,
         "starting",
         startedAt,
-        await checkDiskUsage(logger),
+        undefined,
+        await checkDiskUsage(),
+        logger,
       ),
     );
 
@@ -45,7 +49,7 @@ async function run() {
     checkGitHubVersionInRange(gitHubVersion, logger);
     checkActionVersion(getActionVersion(), gitHubVersion);
 
-    const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
+    config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
         "Config file could not be found at expected location. Has the 'init' action been called?",
@@ -81,7 +85,9 @@ async function run() {
           ACTION_NAME,
           getActionsStatus(error),
           startedAt,
+          config,
           await checkDiskUsage(),
+          logger,
           error.message,
           error.stack,
         ),
@@ -96,7 +102,9 @@ async function run() {
       ACTION_NAME,
       "success",
       startedAt,
+      config,
       await checkDiskUsage(),
+      logger,
     ),
   );
 }

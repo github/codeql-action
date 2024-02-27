@@ -14,7 +14,9 @@ import {
   ActionName,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
+import { BuildMode, Config } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Logger } from "./logging";
 import {
   ConfigurationError,
   isHTTPError,
@@ -51,8 +53,12 @@ export interface StatusReportBase {
   action_started_at: string;
   /** Action version (x.y.z from package.json). */
   action_version: string;
+  /** The name of the Actions event that triggered the workflow. */
+  actions_event_name?: string;
   /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
+  /** Build mode, if specified. */
+  build_mode?: BuildMode;
   /** Cause of the failure (or undefined if status is not failure). */
   cause?: string;
   /** CodeQL CLI version (x.y.z from the CLI). */
@@ -79,6 +85,12 @@ export interface StatusReportBase {
    * telemetry tables.
    */
   job_run_uuid: string;
+  /**
+   * Comma-separated list of languages that analysis was run for.
+   *
+   * This may be from the workflow file or may be calculated from the contents of the repository.
+   */
+  languages?: string;
   /** Value of the matrix for this instantiation of the job. */
   matrix_vars?: string;
   /**
@@ -188,7 +200,9 @@ export async function createStatusReportBase(
   actionName: ActionName,
   status: ActionStatus,
   actionStartedAt: Date,
+  config: Config | undefined,
   diskInfo: DiskUsage | undefined,
+  logger: Logger,
   cause?: string,
   exception?: string,
 ): Promise<StatusReportBase> {
@@ -222,6 +236,7 @@ export async function createStatusReportBase(
     action_started_at: actionStartedAt.toISOString(),
     action_version: getActionVersion(),
     analysis_key,
+    build_mode: config?.buildMode,
     commit_oid: commitOid,
     first_party_analysis: isFirstPartyAnalysis(actionName),
     job_name: jobName,
@@ -235,6 +250,16 @@ export async function createStatusReportBase(
     workflow_run_attempt: workflowRunAttempt,
     workflow_run_id: workflowRunID,
   };
+
+  try {
+    statusReport.actions_event_name = getWorkflowEventName();
+  } catch (e) {
+    logger.warning(`Could not determine the workflow event name: ${e}.`);
+  }
+
+  if (config) {
+    statusReport.languages = config.languages.join(",");
+  }
 
   if (diskInfo) {
     statusReport.runner_available_disk_space_bytes = diskInfo.numAvailableBytes;

@@ -179,18 +179,17 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
  * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers
  * to.
  *
- * @param considerInvalidRequestConfigError Whether an invalid request, for example one with a
- *                                        `sarifPath` that does not exist, should be considered a
- *                                        user error.
+ * @param isThirdPartyUpload           Whether the SARIF to upload comes from a third party, or from
+ *                                     first-party CodeQL analysis. If it comes from a third party,
+ *                                     we classify certain errors as configuration errors for
+ *                                     telemetry purposes.
  */
 export async function uploadFromActions(
   sarifPath: string,
   checkoutPath: string,
   category: string | undefined,
   logger: Logger,
-  {
-    considerInvalidRequestConfigError: considerInvalidRequestConfigError,
-  }: { considerInvalidRequestConfigError: boolean },
+  { isThirdPartyUpload: isThirdPartyUpload }: { isThirdPartyUpload: boolean },
 ): Promise<UploadResult> {
   try {
     return await uploadFiles(
@@ -208,7 +207,7 @@ export async function uploadFromActions(
       logger,
     );
   } catch (e) {
-    if (e instanceof InvalidRequestError && considerInvalidRequestConfigError) {
+    if (e instanceof InvalidRequestError && isThirdPartyUpload) {
       throw new ConfigurationError(e.message);
     }
     throw e;

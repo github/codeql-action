@@ -179,18 +179,17 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
  * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers
  * to.
  *
- * @param considerInvalidRequestConfigError Whether an invalid request, for example one with a
- *                                        `sarifPath` that does not exist, should be considered a
- *                                        user error.
+ * @param isThirdPartyUpload           Whether the SARIF to upload comes from a third party, or from
+ *                                     first-party CodeQL analysis. If it comes from a third party,
+ *                                     we classify certain errors as configuration errors for
+ *                                     telemetry purposes.
  */
 export async function uploadFromActions(
   sarifPath: string,
   checkoutPath: string,
   category: string | undefined,
   logger: Logger,
-  {
-    considerInvalidRequestConfigError: considerInvalidRequestConfigError,
-  }: { considerInvalidRequestConfigError: boolean },
+  { isThirdPartyUpload: isThirdPartyUpload }: { isThirdPartyUpload: boolean },
 ): Promise<UploadResult> {
   try {
     return await uploadFiles(
@@ -208,7 +207,7 @@ export async function uploadFromActions(
       logger,
     );
   } catch (e) {
-    if (e instanceof InvalidRequestError && considerInvalidRequestConfigError) {
+    if (e instanceof InvalidRequestError && isThirdPartyUpload) {
       throw new ConfigurationError(e.message);
     }
     throw e;
@@ -237,14 +236,7 @@ function getSarifFilePaths(sarifPath: string) {
 // Counts the number of results in the given SARIF file
 function countResultsInSarif(sarif: string): number {
   let numResults = 0;
-  let parsedSarif;
-  try {
-    parsedSarif = JSON.parse(sarif);
-  } catch (e) {
-    throw new InvalidRequestError(
-      `Invalid SARIF. JSON syntax error: ${wrapError(e).message}`,
-    );
-  }
+  const parsedSarif = JSON.parse(sarif);
   if (!Array.isArray(parsedSarif.runs)) {
     throw new InvalidRequestError("Invalid SARIF. Missing 'runs' array.");
   }
@@ -263,7 +255,14 @@ function countResultsInSarif(sarif: string): number {
 // Validates that the given file path refers to a valid SARIF file.
 // Throws an error if the file is invalid.
 export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
-  const sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
+  let sarif;
+  try {
+    sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
+  } catch (e) {
+    throw new InvalidRequestError(
+      `Invalid SARIF. JSON syntax error: ${wrapError(e).message}`,
+    );
+  }
   const schema = require("../src/sarif-schema-2.1.0.json") as jsonschema.Schema;
 
   const result = new jsonschema.Validator().validate(sarif, schema);

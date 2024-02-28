@@ -207,7 +207,10 @@ export async function uploadFromActions(
       logger,
     );
   } catch (e) {
-    if (e instanceof InvalidRequestError && isThirdPartyUpload) {
+    if (
+      (e instanceof InvalidRequestError || e instanceof SyntaxError) &&
+      isThirdPartyUpload
+    ) {
       throw new ConfigurationError(e.message);
     }
     throw e;

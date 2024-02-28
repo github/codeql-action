@@ -70,7 +70,7 @@ async function run() {
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getOptionalInput("category"),
       logger,
-      { considerInvalidRequestConfigError: true },
+      { isThirdPartyUpload: true },
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
 

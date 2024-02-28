@@ -286,7 +286,7 @@ async function run() {
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
         logger,
-        { considerInvalidRequestConfigError: false },
+        { isThirdPartyUpload: false },
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {

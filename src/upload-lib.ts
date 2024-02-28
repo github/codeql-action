@@ -178,40 +178,27 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
 /**
  * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers
  * to.
- *
- * @param isThirdPartyUpload           Whether the SARIF to upload comes from a third party, or from
- *                                     first-party CodeQL analysis. If it comes from a third party,
- *                                     we classify certain errors as configuration errors for
- *                                     telemetry purposes.
  */
 export async function uploadFromActions(
   sarifPath: string,
   checkoutPath: string,
   category: string | undefined,
   logger: Logger,
-  { isThirdPartyUpload: isThirdPartyUpload }: { isThirdPartyUpload: boolean },
 ): Promise<UploadResult> {
-  try {
-    return await uploadFiles(
-      getSarifFilePaths(sarifPath),
-      parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-      await actionsUtil.getCommitOid(checkoutPath),
-      await actionsUtil.getRef(),
-      await api.getAnalysisKey(),
-      category,
-      util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-      actionsUtil.getWorkflowRunID(),
-      actionsUtil.getWorkflowRunAttempt(),
-      checkoutPath,
-      actionsUtil.getRequiredInput("matrix"),
-      logger,
-    );
-  } catch (e) {
-    if (e instanceof InvalidSarifUploadError && isThirdPartyUpload) {
-      throw new ConfigurationError(e.message);
-    }
-    throw e;
-  }
+  return await uploadFiles(
+    getSarifFilePaths(sarifPath),
+    parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
+    await actionsUtil.getCommitOid(checkoutPath),
+    await actionsUtil.getRef(),
+    await api.getAnalysisKey(),
+    category,
+    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
+    actionsUtil.getWorkflowRunID(),
+    actionsUtil.getWorkflowRunAttempt(),
+    checkoutPath,
+    actionsUtil.getRequiredInput("matrix"),
+    logger,
+  );
 }
 
 function getSarifFilePaths(sarifPath: string) {
@@ -509,9 +496,12 @@ export async function waitForProcessing(
         break;
       } else if (status === "failed") {
         const message = `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`;
-        throw shouldConsiderConfigurationError(response.data.errors as string[])
+        const processingErrors = response.data.errors as string[];
+        throw shouldConsiderConfigurationError(processingErrors)
           ? new ConfigurationError(message)
-          : new InvalidSarifUploadError(message);
+          : shouldConsiderInvalidRequest(processingErrors)
+          ? new InvalidSarifUploadError(message)
+          : new Error(message);
       } else {
         util.assertNever(status);
       }
@@ -526,13 +516,23 @@ export async function waitForProcessing(
 }
 
 /**
- * Returns whether the provided processing errors should be considered a user error.
+ * Returns whether the provided processing errors are a configuration error.
  */
 function shouldConsiderConfigurationError(processingErrors: string[]): boolean {
   return (
     processingErrors.length === 1 &&
     processingErrors[0] ===
       "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled"
+  );
+}
+
+/**
+ * Returns whether the provided processing errors are the result of an invalid SARIF upload request.
+ */
+function shouldConsiderInvalidRequest(processingErrors: string[]): boolean {
+  return (
+    processingErrors.length === 1 &&
+    processingErrors[0].startsWith("rejecting SARIF,")
   );
 }
 
@@ -615,7 +615,7 @@ function sanitize(str?: string) {
 /**
  * An error that occurred due to an invalid SARIF upload request.
  */
-class InvalidSarifUploadError extends Error {
+export class InvalidSarifUploadError extends Error {
   constructor(message: string) {
     super(message);
   }

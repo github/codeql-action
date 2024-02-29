@@ -39,7 +39,7 @@ async function run() {
         ActionName.ResolveEnvironment,
         "starting",
         startedAt,
-        undefined,
+        config,
         await checkDiskUsage(),
         logger,
       ),

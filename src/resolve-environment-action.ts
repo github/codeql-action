@@ -15,6 +15,7 @@ import {
   sendStatusReport,
   createStatusReportBase,
   getActionsStatus,
+  ActionName,
 } from "./status-report";
 import {
   checkActionVersion,
@@ -24,7 +25,6 @@ import {
   wrapError,
 } from "./util";
 
-const ACTION_NAME = "resolve-environment";
 const ENVIRONMENT_OUTPUT_NAME = "environment";
 
 async function run() {
@@ -36,7 +36,7 @@ async function run() {
   try {
     await sendStatusReport(
       await createStatusReportBase(
-        ACTION_NAME,
+        ActionName.ResolveEnvironment,
         "starting",
         startedAt,
         undefined,
@@ -82,7 +82,7 @@ async function run() {
 
       await sendStatusReport(
         await createStatusReportBase(
-          ACTION_NAME,
+          ActionName.ResolveEnvironment,
           getActionsStatus(error),
           startedAt,
           config,
@@ -99,7 +99,7 @@ async function run() {
 
   await sendStatusReport(
     await createStatusReportBase(
-      ACTION_NAME,
+      ActionName.ResolveEnvironment,
       "success",
       startedAt,
       config,
@@ -113,7 +113,11 @@ async function runWrapper() {
   try {
     await run();
   } catch (error) {
-    core.setFailed(`${ACTION_NAME} action failed: ${wrapError(error).message}`);
+    core.setFailed(
+      `${ActionName.ResolveEnvironment} action failed: ${
+        wrapError(error).message
+      }`,
+    );
   }
   await checkForTimeout();
 }

@@ -6,7 +6,7 @@ import { BuildMode } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { createStatusReportBase } from "./status-report";
+import { ActionName, createStatusReportBase } from "./status-report";
 import {
   setupTests,
   setupActionsVars,
@@ -39,7 +39,7 @@ test("createStatusReportBase", async (t) => {
     setupEnvironmentAndStub(tmpDir);
 
     const statusReport = await createStatusReportBase(
-      "init",
+      ActionName.Init,
       "failure",
       new Date("May 19, 2023 05:19:00"),
       createTestConfig({
@@ -52,7 +52,7 @@ test("createStatusReportBase", async (t) => {
       "exception stack trace",
     );
 
-    t.is(statusReport.action_name, "init");
+    t.is(statusReport.action_name, ActionName.Init);
     t.is(statusReport.action_oid, "unknown");
     t.is(typeof statusReport.action_version, "string");
     t.is(
@@ -87,7 +87,7 @@ test("createStatusReportBase_firstParty", async (t) => {
     t.is(
       (
         await createStatusReportBase(
-          "upload-sarif",
+          ActionName.UploadSarif,
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
@@ -103,7 +103,7 @@ test("createStatusReportBase_firstParty", async (t) => {
     t.is(
       (
         await createStatusReportBase(
-          "autobuild",
+          ActionName.Autobuild,
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
@@ -120,7 +120,7 @@ test("createStatusReportBase_firstParty", async (t) => {
     t.is(
       (
         await createStatusReportBase(
-          "upload-sarif",
+          ActionName.UploadSarif,
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
@@ -136,7 +136,7 @@ test("createStatusReportBase_firstParty", async (t) => {
     t.is(
       (
         await createStatusReportBase(
-          "init",
+          ActionName.Init,
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
@@ -153,7 +153,7 @@ test("createStatusReportBase_firstParty", async (t) => {
     t.is(
       (
         await createStatusReportBase(
-          "upload-sarif",
+          ActionName.UploadSarif,
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
@@ -169,7 +169,7 @@ test("createStatusReportBase_firstParty", async (t) => {
     t.is(
       (
         await createStatusReportBase(
-          "finish",
+          ActionName.Analyze,
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),

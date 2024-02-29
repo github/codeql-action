@@ -33,6 +33,7 @@ import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
+  ActionName,
   StatusReportBase,
   createStatusReportBase,
   getActionsStatus,
@@ -74,12 +75,6 @@ interface InitStatusReport extends StatusReportBase {
 interface InitWithConfigStatusReport extends InitStatusReport {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
-  /**
-   * Comma-separated list of languages that analysis was run for.
-   *
-   * This may be from the workflow file or may be calculated from repository contents
-   */
-  languages: string;
   /** Comma-separated list of paths, from the 'paths' config field. */
   paths: string;
   /** Comma-separated list of paths, from the 'paths-ignore' config field. */
@@ -115,10 +110,12 @@ async function sendCompletedStatusReport(
   error?: Error,
 ) {
   const statusReportBase = await createStatusReportBase(
-    "init",
+    ActionName.Init,
     getActionsStatus(error),
     startedAt,
+    config,
     await checkDiskUsage(logger),
+    logger,
     error?.message,
     error?.stack,
   );
@@ -173,7 +170,6 @@ async function sendCompletedStatusReport(
     const initWithConfigStatusReport: InitWithConfigStatusReport = {
       ...initStatusReport,
       disable_default_queries: disableDefaultQueries,
-      languages,
       paths,
       paths_ignore: pathsIgnore,
       queries: queries.join(","),
@@ -197,7 +193,7 @@ async function run() {
   const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
 
-  let config: configUtils.Config;
+  let config: configUtils.Config | undefined;
   let codeql: CodeQL;
   let toolsDownloadDurationMs: number | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
@@ -232,10 +228,12 @@ async function run() {
   try {
     await sendStatusReport(
       await createStatusReportBase(
-        "init",
+        ActionName.Init,
         "starting",
         startedAt,
+        config,
         await checkDiskUsage(logger),
+        logger,
       ),
     );
 
@@ -262,33 +260,38 @@ async function run() {
     }
     core.endGroup();
 
-    config = await initConfig({
-      languagesInput: getOptionalInput("languages"),
-      queriesInput: getOptionalInput("queries"),
-      packsInput: getOptionalInput("packs"),
-      buildModeInput: getOptionalInput("build-mode"),
-      configFile: getOptionalInput("config-file"),
-      dbLocation: getOptionalInput("db-location"),
-      configInput: getOptionalInput("config"),
-      trapCachingEnabled: getTrapCachingEnabled(),
-      // Debug mode is enabled if:
-      // - The `init` Action is passed `debug: true`.
-      // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
-      //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
-      debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
-      debugArtifactName:
-        getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
-      debugDatabaseName:
-        getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
-      repository: repositoryNwo,
-      tempDir: getTemporaryDirectory(),
+    config = await initConfig(
+      {
+        languagesInput: getOptionalInput("languages"),
+        queriesInput: getOptionalInput("queries"),
+        packsInput: getOptionalInput("packs"),
+        buildModeInput: getOptionalInput("build-mode"),
+        configFile: getOptionalInput("config-file"),
+        dbLocation: getOptionalInput("db-location"),
+        configInput: getOptionalInput("config"),
+        trapCachingEnabled: getTrapCachingEnabled(),
+        // Debug mode is enabled if:
+        // - The `init` Action is passed `debug: true`.
+        // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
+        //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
+        debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
+        debugArtifactName:
+          getOptionalInput("debug-artifact-name") ||
+          DEFAULT_DEBUG_ARTIFACT_NAME,
+        debugDatabaseName:
+          getOptionalInput("debug-database-name") ||
+          DEFAULT_DEBUG_DATABASE_NAME,
+        repository: repositoryNwo,
+        tempDir: getTemporaryDirectory(),
+        codeql,
+        workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+        githubVersion: gitHubVersion,
+        apiDetails,
+        features,
+        logger,
+      },
       codeql,
-      workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
-      githubVersion: gitHubVersion,
-      apiDetails,
-      features,
-      logger,
-    });
+    );
 
     await checkInstallPython311(config.languages, codeql);
 
@@ -314,10 +317,12 @@ async function run() {
     core.setFailed(error.message);
     await sendStatusReport(
       await createStatusReportBase(
-        "init",
+        ActionName.Init,
         error instanceof ConfigurationError ? "user-error" : "aborted",
         startedAt,
+        config,
         await checkDiskUsage(),
+        logger,
         error.message,
         error.stack,
       ),

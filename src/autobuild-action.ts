@@ -8,7 +8,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
-import * as configUtils from "./config-utils";
+import { Config, getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger, getActionsLogger } from "./logging";
@@ -17,6 +17,7 @@ import {
   getActionsStatus,
   createStatusReportBase,
   sendStatusReport,
+  ActionName,
 } from "./status-report";
 import {
   checkActionVersion,
@@ -34,6 +35,7 @@ interface AutobuildStatusReport extends StatusReportBase {
 }
 
 async function sendCompletedStatusReport(
+  config: Config | undefined,
   logger: Logger,
   startedAt: Date,
   allLanguages: string[],
@@ -44,10 +46,12 @@ async function sendCompletedStatusReport(
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
-    "autobuild",
+    ActionName.Autobuild,
     status,
     startedAt,
+    config,
     await checkDiskUsage(logger),
+    logger,
     cause?.message,
     cause?.stack,
   );
@@ -62,15 +66,18 @@ async function sendCompletedStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  let currentLanguage: Language | undefined = undefined;
-  let languages: Language[] | undefined = undefined;
+  let config: Config | undefined;
+  let currentLanguage: Language | undefined;
+  let languages: Language[] | undefined;
   try {
     await sendStatusReport(
       await createStatusReportBase(
-        "autobuild",
+        ActionName.Autobuild,
         "starting",
         startedAt,
+        config,
         await checkDiskUsage(logger),
+        logger,
       ),
     );
 
@@ -78,7 +85,7 @@ async function run() {
     checkGitHubVersionInRange(gitHubVersion, logger);
     checkActionVersion(getActionVersion(), gitHubVersion);
 
-    const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
+    config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
         "Config file could not be found at expected location. Has the 'init' action been called?",
@@ -107,6 +114,7 @@ async function run() {
       `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps. ${error.message}`,
     );
     await sendCompletedStatusReport(
+      config,
       logger,
       startedAt,
       languages ?? [],
@@ -118,7 +126,7 @@ async function run() {
 
   core.exportVariable(EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY, "true");
 
-  await sendCompletedStatusReport(logger, startedAt, languages ?? []);
+  await sendCompletedStatusReport(config, logger, startedAt, languages ?? []);
 }
 
 async function runWrapper() {

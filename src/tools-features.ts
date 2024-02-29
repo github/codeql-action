@@ -3,6 +3,7 @@ import type { VersionInfo } from "./codeql";
 export enum ToolsFeature {
   BuildModeOption = "buildModeOption",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
+  InformsAboutUnsupportedPathFilters = "informsAboutUnsupportedPathFilters",
   SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",
   TraceCommandUseBuildMode = "traceCommandUseBuildMode",
 }

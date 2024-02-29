@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getActionVersion, isFirstPartyAnalysis } from "./actions-util";
+import { getActionVersion } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { Logger, getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -10,6 +10,8 @@ import {
   sendStatusReport,
   StatusReportBase,
   getActionsStatus,
+  ActionName,
+  isFirstPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
@@ -22,8 +24,6 @@ import {
   wrapError,
 } from "./util";
 
-const ACTION_NAME = "upload-sarif";
-
 interface UploadSarifStatusReport
   extends StatusReportBase,
     upload_lib.UploadStatusReport {}
@@ -34,7 +34,7 @@ async function sendSuccessStatusReport(
   logger: Logger,
 ) {
   const statusReportBase = await createStatusReportBase(
-    ACTION_NAME,
+    ActionName.UploadSarif,
     "success",
     startedAt,
     undefined,
@@ -58,7 +58,7 @@ async function run() {
 
   await sendStatusReport(
     await createStatusReportBase(
-      ACTION_NAME,
+      ActionName.UploadSarif,
       "starting",
       startedAt,
       undefined,
@@ -89,7 +89,7 @@ async function run() {
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
     const error =
-      !isFirstPartyAnalysis(ACTION_NAME) &&
+      !isFirstPartyAnalysis(ActionName.UploadSarif) &&
       unwrappedError instanceof upload_lib.InvalidSarifUploadError
         ? new ConfigurationError(unwrappedError.message)
         : wrapError(unwrappedError);
@@ -98,7 +98,7 @@ async function run() {
     console.log(error);
     await sendStatusReport(
       await createStatusReportBase(
-        ACTION_NAME,
+        ActionName.UploadSarif,
         getActionsStatus(error),
         startedAt,
         undefined,

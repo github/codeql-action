@@ -75,7 +75,7 @@ async function run() {
         ActionName.Autobuild,
         "starting",
         startedAt,
-        undefined,
+        config,
         await checkDiskUsage(logger),
         logger,
       ),

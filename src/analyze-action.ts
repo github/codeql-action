@@ -195,7 +195,7 @@ async function run() {
         ActionName.Analyze,
         "starting",
         startedAt,
-        undefined,
+        config,
         await util.checkDiskUsage(logger),
         logger,
       ),

@@ -26,6 +26,7 @@ import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
+  ActionName,
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
@@ -64,7 +65,7 @@ async function sendStatusReport(
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
   const statusReportBase = await createStatusReportBase(
-    "finish",
+    ActionName.Analyze,
     status,
     startedAt,
     config,
@@ -191,7 +192,7 @@ async function run() {
   try {
     await statusReport.sendStatusReport(
       await createStatusReportBase(
-        "finish",
+        ActionName.Analyze,
         "starting",
         startedAt,
         undefined,
@@ -286,7 +287,6 @@ async function run() {
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
         logger,
-        { isThirdPartyUpload: false },
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {

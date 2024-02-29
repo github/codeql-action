@@ -33,6 +33,7 @@ import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
+  ActionName,
   StatusReportBase,
   createStatusReportBase,
   getActionsStatus,
@@ -109,7 +110,7 @@ async function sendCompletedStatusReport(
   error?: Error,
 ) {
   const statusReportBase = await createStatusReportBase(
-    "init",
+    ActionName.Init,
     getActionsStatus(error),
     startedAt,
     undefined,
@@ -227,7 +228,7 @@ async function run() {
   try {
     await sendStatusReport(
       await createStatusReportBase(
-        "init",
+        ActionName.Init,
         "starting",
         startedAt,
         undefined,
@@ -316,7 +317,7 @@ async function run() {
     core.setFailed(error.message);
     await sendStatusReport(
       await createStatusReportBase(
-        "init",
+        ActionName.Init,
         error instanceof ConfigurationError ? "user-error" : "aborted",
         startedAt,
         config,

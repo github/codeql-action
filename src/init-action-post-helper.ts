@@ -107,7 +107,6 @@ async function maybeUploadFailedSarif(
     checkoutPath,
     category,
     logger,
-    { isThirdPartyUpload: false },
   );
   await uploadLib.waitForProcessing(
     repositoryNwo,

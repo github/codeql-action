@@ -19,6 +19,7 @@ import {
   sendStatusReport,
   createStatusReportBase,
   getActionsStatus,
+  ActionName,
 } from "./status-report";
 import {
   checkDiskUsage,
@@ -76,7 +77,7 @@ async function runWrapper() {
 
     await sendStatusReport(
       await createStatusReportBase(
-        "init-post",
+        ActionName.InitPost,
         getActionsStatus(error),
         startedAt,
         config,
@@ -89,7 +90,7 @@ async function runWrapper() {
     return;
   }
   const statusReportBase = await createStatusReportBase(
-    "init-post",
+    ActionName.InitPost,
     "success",
     startedAt,
     config,

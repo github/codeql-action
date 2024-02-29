@@ -8,7 +8,7 @@ For a list of recent changes, see the CodeQL Action's [changelog](CHANGELOG.md).
 
 This project is released under the [MIT License](LICENSE).
 
-The underlying CodeQL CLI, used in this action, is licensed under the [GitHub CodeQL Terms and Conditions](https://securitylab.github.com/tools/codeql/license). As such, this action may be used on open source projects hosted on GitHub, and on  private repositories that are owned by an organisation with GitHub Advanced Security enabled.
+The underlying CodeQL CLI, used in this action, is licensed under the [GitHub CodeQL Terms and Conditions](https://securitylab.github.com/tools/codeql/license). As such, this action may be used on open source projects hosted on GitHub, and on private repositories that are owned by an organisation with GitHub Advanced Security enabled.
 
 ## Usage
 
@@ -18,7 +18,7 @@ You can also configure advanced setup for a repository to find security vulnerab
 
 ### Permissions
 
-All advanced setup code scanning workflows must have the `security-events: write` permission. Workflows in private repositories muse additionally have the `contents: read` permission. For more information, see [Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs).
+All advanced setup code scanning workflows must have the `security-events: write` permission. Workflows in private repositories must additionally have the `contents: read` permission. For more information, see "[Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs)."
 
 ## Supported versions of the CodeQL Action
 
@@ -31,7 +31,7 @@ The only difference between CodeQL Action v2 and v3 is the version of Node.js on
 
 To provide the best experience to customers using older versions of GitHub Enterprise Server, we will continue to release CodeQL Action v2 so that these customers can continue to run the latest version of CodeQL as long as their version of GitHub Enterprise Server is supported. For example CodeQL Action v3.22.11 was the first release of CodeQL Action v3 and is functionally identical to v2.22.11. This approach provides an easy way to track exactly which features are included in different versions by looking at the minor and patch version numbers.
 
-For more information, see ["Code scanning: deprecation of CodeQL Action v2."](https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/).
+For more information, see "[Code scanning: deprecation of CodeQL Action v2](https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/)."
 
 ## Troubleshooting
 

@@ -17,6 +17,7 @@ import {
   getActionsStatus,
   createStatusReportBase,
   sendStatusReport,
+  ActionName,
 } from "./status-report";
 import {
   checkActionVersion,
@@ -45,7 +46,7 @@ async function sendCompletedStatusReport(
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
-    "autobuild",
+    ActionName.Autobuild,
     status,
     startedAt,
     config,
@@ -71,7 +72,7 @@ async function run() {
   try {
     await sendStatusReport(
       await createStatusReportBase(
-        "autobuild",
+        ActionName.Autobuild,
         "starting",
         startedAt,
         undefined,

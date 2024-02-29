@@ -10,9 +10,12 @@ import {
   sendStatusReport,
   StatusReportBase,
   getActionsStatus,
+  ActionName,
+  isFirstPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
+  ConfigurationError,
   checkActionVersion,
   checkDiskUsage,
   getRequiredEnvParam,
@@ -31,7 +34,7 @@ async function sendSuccessStatusReport(
   logger: Logger,
 ) {
   const statusReportBase = await createStatusReportBase(
-    "upload-sarif",
+    ActionName.UploadSarif,
     "success",
     startedAt,
     undefined,
@@ -55,7 +58,7 @@ async function run() {
 
   await sendStatusReport(
     await createStatusReportBase(
-      "upload-sarif",
+      ActionName.UploadSarif,
       "starting",
       startedAt,
       undefined,
@@ -70,7 +73,6 @@ async function run() {
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getOptionalInput("category"),
       logger,
-      { isThirdPartyUpload: true },
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
 
@@ -86,13 +88,17 @@ async function run() {
     }
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
-    const error = wrapError(unwrappedError);
+    const error =
+      !isFirstPartyAnalysis(ActionName.UploadSarif) &&
+      unwrappedError instanceof upload_lib.InvalidSarifUploadError
+        ? new ConfigurationError(unwrappedError.message)
+        : wrapError(unwrappedError);
     const message = error.message;
     core.setFailed(message);
     console.log(error);
     await sendStatusReport(
       await createStatusReportBase(
-        "upload-sarif",
+        ActionName.UploadSarif,
         getActionsStatus(error),
         startedAt,
         undefined,

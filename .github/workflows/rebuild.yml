@@ -3,6 +3,7 @@ name: Rebuild Action
 on:
   pull_request:
     types: [labeled]
+  workflow_dispatch:
 
 jobs:
   rebuild:

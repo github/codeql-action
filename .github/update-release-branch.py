@@ -374,6 +374,7 @@ def main():
 
     # Migrate the package version number from a vLatest version number to a vOlder version number
     print(f'Setting version number to {version}')
+    input()
     subprocess.check_output(['npm', 'version', version, '--no-git-tag-version'])
     run_git('add', 'package.json', 'package-lock.json')
 

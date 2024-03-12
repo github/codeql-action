@@ -50,9 +50,11 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
+        env: 
+          # Forces a failure in this step.
+          CODEQL_ACTION_EXTRA_OPTIONS: '{ "database": { "finalize": ["--invalid-option"] } }'
         with:
           expect-error: true
-          ram: 1
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts

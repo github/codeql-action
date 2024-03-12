@@ -81,7 +81,6 @@ function createCancellationToken(args) {
   } else {
     return {
       isCancellationRequested: () => pipeExists(cancellationPipeName),
-      // TODO: GH#18217
       setRequest: (_requestId) => void 0,
       resetRequest: (_requestId) => void 0
     };

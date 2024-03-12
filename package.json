@@ -60,7 +60,7 @@
     "@types/node": "20.9.0",
     "@types/semver": "^7.5.8",
     "@types/sinon": "^17.0.3",
-    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
     "@typescript-eslint/parser": "^7.1.1",
     "ava": "^5.3.1",
     "eslint": "^8.57.0",
@@ -73,7 +73,7 @@
     "nock": "^13.5.4",
     "removeNPMAbsolutePaths": "3.0.1",
     "sinon": "^17.0.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.4.2"
   },
   "overrides": {
     "@actions/tool-cache": {

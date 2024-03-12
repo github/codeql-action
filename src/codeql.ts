@@ -335,6 +335,11 @@ export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
 export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
 
 /**
+ * Versions 2.15.2+ of the CodeQL CLI support the `--sarif-include-query-help` option.
+ */
+const CODEQL_VERSION_INCLUDE_QUERY_HELP = "2.15.2";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -855,9 +860,9 @@ export async function getCodeQLForCmd(
         "--print-diagnostics-summary",
         "--print-metrics-summary",
         "--sarif-add-baseline-file-info",
-        "--sarif-add-query-help",
-        "--sarif-group-rules-by-pack",
         ...(await getCodeScanningConfigExportArguments(config, this)),
+        "--sarif-group-rules-by-pack",
+        ...(await getCodeScanningQueryHelpArguments(this)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (automationDetailsId !== undefined) {
@@ -1388,4 +1393,15 @@ async function isSublanguageFileCoverageEnabled(
       CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
     ))
   );
+}
+
+async function getCodeScanningQueryHelpArguments(
+  codeql: CodeQL,
+): Promise<string[]> {
+  if (
+    await util.codeQlVersionAbove(codeql, CODEQL_VERSION_INCLUDE_QUERY_HELP)
+  ) {
+    return ["--sarif-include-query-help=always"];
+  }
+  return ["--sarif-add-query-help"];
 }

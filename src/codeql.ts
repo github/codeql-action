@@ -279,6 +279,9 @@ const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.7";
  */
 const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-11-08";
 
+/** The CLI verbosity level to use for extraction in debug mode. */
+const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
+
 /*
  * Deprecated in favor of ToolsFeature.
  *
@@ -682,6 +685,9 @@ export async function getCodeQLForCmd(
         "trace-command",
         "--index-traceless-dbs",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+        ...(config.debugMode
+          ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
+          : []),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
         util.getCodeQLDatabasePath(config, language),
       ]);
@@ -692,6 +698,9 @@ export async function getCodeQLForCmd(
         "trace-command",
         "--use-build-mode",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+        ...(config.debugMode
+          ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
+          : []),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
         util.getCodeQLDatabasePath(config, language),
       ]);

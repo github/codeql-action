@@ -82,7 +82,7 @@ export interface CodeQL {
   /**
    * Runs the autobuilder for the given language.
    */
-  runAutobuild(language: Language): Promise<void>;
+  runAutobuild(language: Language, enableDebugLogging: boolean): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
@@ -637,7 +637,7 @@ export async function getCodeQLForCmd(
         throw e;
       }
     },
-    async runAutobuild(language: Language) {
+    async runAutobuild(language: Language, enableDebugLogging: boolean) {
       const autobuildCmd = path.join(
         await this.resolveExtractor(language),
         "tools",
@@ -655,6 +655,12 @@ export async function getCodeQLForCmd(
         "-Dhttp.keepAlive=false",
         "-Dmaven.wagon.http.pool=false",
       ].join(" ");
+
+      // Bump the verbosity of the autobuild command if we're in debug mode
+      if (enableDebugLogging) {
+        process.env[EnvVar.CLI_VERBOSITY] =
+          process.env[EnvVar.CLI_VERBOSITY] || EXTRACTION_DEBUG_MODE_VERBOSITY;
+      }
 
       // On macOS, System Integrity Protection (SIP) typically interferes with
       // CodeQL build tracing of protected binaries.

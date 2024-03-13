@@ -162,7 +162,7 @@ export async function runAutobuild(
   if (language === Language.cpp) {
     await setupCppAutobuild(codeQL, logger);
   }
-  await codeQL.runAutobuild(language);
+  await codeQL.runAutobuild(language, config.debugMode);
   if (language === Language.go) {
     core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
   }

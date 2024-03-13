@@ -692,9 +692,7 @@ export async function getCodeQLForCmd(
         "trace-command",
         "--index-traceless-dbs",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
-        ...(config.debugMode
-          ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
-          : []),
+        ...getExtractionVerbosityArguments(config.debugMode),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
         util.getCodeQLDatabasePath(config, language),
       ]);
@@ -705,9 +703,7 @@ export async function getCodeQLForCmd(
         "trace-command",
         "--use-build-mode",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
-        ...(config.debugMode
-          ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
-          : []),
+        ...getExtractionVerbosityArguments(config.debugMode),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
         util.getCodeQLDatabasePath(config, language),
       ]);
@@ -724,9 +720,7 @@ export async function getCodeQLForCmd(
         "--finalize-dataset",
         threadsFlag,
         memoryFlag,
-        ...(enableDebugLogging
-          ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
-          : []),
+        ...getExtractionVerbosityArguments(enableDebugLogging),
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
@@ -1424,4 +1418,12 @@ async function getCodeScanningQueryHelpArguments(
     return ["--sarif-include-query-help=always"];
   }
   return ["--sarif-add-query-help"];
+}
+
+function getExtractionVerbosityArguments(
+  enableDebugLogging: boolean,
+): string[] {
+  return enableDebugLogging
+    ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
+    : [];
 }

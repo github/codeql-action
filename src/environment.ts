@@ -11,6 +11,12 @@ export enum EnvVar {
   /** Whether the `autobuild` Action completes successfully. */
   AUTOBUILD_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_AUTOBUILD_DID_COMPLETE_SUCCESSFULLY",
 
+  /**
+   * The verbosity level of the CLI. One of the following: `errors`, `warnings`, `progress`,
+   * `progress+`, `progress++`, `progress+++`.
+   */
+  CLI_VERBOSITY = "CODEQL_VERBOSITY",
+
   /** Whether the CodeQL Action has invoked the Go autobuilder. */
   DID_AUTOBUILD_GOLANG = "CODEQL_ACTION_DID_AUTOBUILD_GOLANG",
 

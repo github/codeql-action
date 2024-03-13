@@ -873,7 +873,7 @@ test("database finalize recognises JavaScript no code found error on CodeQL 2.11
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    async () => await codeqlObject.finalizeDatabase("", "", "", false),
     {
       instanceOf: util.ConfigurationError,
       message: new RegExp(
@@ -892,7 +892,7 @@ test("database finalize overrides no code found error on CodeQL 2.11.6", async (
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.finalizeDatabase("", "", ""),
+    async () => await codeqlObject.finalizeDatabase("", "", "", false),
     {
       instanceOf: util.ConfigurationError,
       message: new RegExp(
@@ -915,7 +915,12 @@ test("database finalize does not override no code found error on CodeQL 2.12.4",
 
   await t.throwsAsync(
     async () =>
-      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+      await codeqlObject.finalizeDatabase(
+        "db",
+        "--threads=2",
+        "--ram=2048",
+        false,
+      ),
     {
       message:
         'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
@@ -940,7 +945,12 @@ test("runTool summarizes several fatal errors", async (t) => {
 
   await t.throwsAsync(
     async () =>
-      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+      await codeqlObject.finalizeDatabase(
+        "db",
+        "--threads=2",
+        "--ram=2048",
+        false,
+      ),
     {
       instanceOf: util.ConfigurationError,
       message: new RegExp(
@@ -967,7 +977,12 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
 
   await t.throwsAsync(
     async () =>
-      await codeqlObject.finalizeDatabase("db", "--threads=2", "--ram=2048"),
+      await codeqlObject.finalizeDatabase(
+        "db",
+        "--threads=2",
+        "--ram=2048",
+        false,
+      ),
     {
       instanceOf: util.ConfigurationError,
       message: new RegExp(

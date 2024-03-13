@@ -263,6 +263,7 @@ async function finalizeDatabaseCreation(
         util.getCodeQLDatabasePath(config, language),
         threadsFlag,
         memoryFlag,
+        config.debugMode,
       );
       logger.endGroup();
     }

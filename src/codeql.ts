@@ -100,6 +100,7 @@ export interface CodeQL {
     databasePath: string,
     threadsFlag: string,
     memoryFlag: string,
+    enableDebugLogging: boolean,
   ): Promise<void>;
   /**
    * Run 'codeql resolve languages'.
@@ -715,6 +716,7 @@ export async function getCodeQLForCmd(
       databasePath: string,
       threadsFlag: string,
       memoryFlag: string,
+      enableDebugLogging: boolean,
     ) {
       const args = [
         "database",
@@ -722,6 +724,9 @@ export async function getCodeQLForCmd(
         "--finalize-dataset",
         threadsFlag,
         memoryFlag,
+        ...(enableDebugLogging
+          ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
+          : []),
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];

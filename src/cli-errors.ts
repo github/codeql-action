@@ -124,6 +124,7 @@ export enum CliConfigErrorCategory {
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
   InvalidSourceRoot = "InvalidSourceRoot",
+  MavenBuildFailed = "MavenBuildFailed",
   NoBuildCommandAutodetected = "NoBuildCommandAutodetected",
   NoBuildMethodAutodetected = "NoBuildMethodAutodetected",
   NoSourceCodeSeen = "NoSourceCodeSeen",
@@ -163,6 +164,11 @@ export const cliErrorsConfig: Record<
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
     cliErrorMessageCandidates: [new RegExp("Invalid source root")],
+  },
+  [CliConfigErrorCategory.MavenBuildFailed]: {
+    cliErrorMessageCandidates: [
+      new RegExp("[autobuild] [ERROR] Failed to execute goal"),
+    ],
   },
   [CliConfigErrorCategory.NoBuildCommandAutodetected]: {
     cliErrorMessageCandidates: [

@@ -20,20 +20,31 @@ export class CommandInvocationError extends Error {
       .join(" ");
 
     const fatalErrors = extractFatalErrors(stderr);
-    const lastLine = stderr.trim().split("\n").pop()?.trim();
-    let error = fatalErrors
-      ? ` and error was: ${fatalErrors.trim()}`
-      : lastLine
-      ? ` and last log line was: ${lastLine}`
-      : "";
-    if (error[error.length - 1] !== ".") {
-      error += ".";
+    const autobuildErrors = extractAutobuildErrors(stderr);
+    let message: string;
+
+    if (fatalErrors) {
+      message =
+        `Encountered a fatal error while running "${prettyCommand}". ` +
+        `Exit code was ${exitCode} and error was: ${fatalErrors.trim()} See the logs for more details.`;
+    } else if (autobuildErrors) {
+      const autobuildHelpLink =
+        "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed";
+      message =
+        "We were unable to automatically build your code. Please provide manual build steps. " +
+        `For more information, see ${autobuildHelpLink}. ` +
+        `Encountered the following error: ${autobuildErrors}`;
+    } else {
+      let lastLine = stderr.trim().split("\n").pop()?.trim() || "";
+      if (lastLine[lastLine.length - 1] !== ".") {
+        lastLine += ".";
+      }
+      message =
+        `Encountered a fatal error while running "${prettyCommand}". ` +
+        `Exit code was ${exitCode} and last log line was: ${lastLine} See the logs for more details.`;
     }
 
-    super(
-      `Encountered a fatal error while running "${prettyCommand}". ` +
-        `Exit code was ${exitCode}${error} See the logs for more details.`,
-    );
+    super(message);
   }
 }
 
@@ -94,6 +105,14 @@ function extractFatalErrors(error: string): string | undefined {
     ].join(isOneLiner ? " " : "\n");
   }
   return undefined;
+}
+
+function extractAutobuildErrors(error: string): string | undefined {
+  const pattern = /.*\[autobuild\] \[ERROR\] (.*)/gi;
+  return (
+    [...error.matchAll(pattern)].map((match) => match[1]).join("\n") ||
+    undefined
+  );
 }
 
 function ensureEndsInPeriod(text: string): string {

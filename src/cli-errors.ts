@@ -20,20 +20,31 @@ export class CommandInvocationError extends Error {
       .join(" ");
 
     const fatalErrors = extractFatalErrors(stderr);
-    const lastLine = stderr.trim().split("\n").pop()?.trim();
-    let error = fatalErrors
-      ? ` and error was: ${fatalErrors.trim()}`
-      : lastLine
-      ? ` and last log line was: ${lastLine}`
-      : "";
-    if (error[error.length - 1] !== ".") {
-      error += ".";
+    const autobuildErrors = extractAutobuildErrors(stderr);
+    let message: string;
+
+    if (fatalErrors) {
+      message =
+        `Encountered a fatal error while running "${prettyCommand}". ` +
+        `Exit code was ${exitCode} and error was: ${fatalErrors.trim()} See the logs for more details.`;
+    } else if (autobuildErrors) {
+      const autobuildHelpLink =
+        "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed";
+      message =
+        "We were unable to automatically build your code. Please provide manual build steps. " +
+        `For more information, see ${autobuildHelpLink}. ` +
+        `Encountered the following error: ${autobuildErrors}`;
+    } else {
+      let lastLine = stderr.trim().split("\n").pop()?.trim() || "";
+      if (lastLine[lastLine.length - 1] !== ".") {
+        lastLine += ".";
+      }
+      message =
+        `Encountered a fatal error while running "${prettyCommand}". ` +
+        `Exit code was ${exitCode} and last log line was: ${lastLine} See the logs for more details.`;
     }
 
-    super(
-      `Encountered a fatal error while running "${prettyCommand}". ` +
-        `Exit code was ${exitCode}${error} See the logs for more details.`,
-    );
+    super(message);
   }
 }
 
@@ -96,20 +107,34 @@ function extractFatalErrors(error: string): string | undefined {
   return undefined;
 }
 
+function extractAutobuildErrors(error: string): string | undefined {
+  const pattern = /.*\[autobuild\] \[ERROR\] (.*)/gi;
+  let errorLines = [...error.matchAll(pattern)].map((match) => match[1]);
+  // Truncate if there are more than 10 matching lines.
+  if (errorLines.length > 10) {
+    errorLines = errorLines.slice(0, 10);
+    errorLines.push("(truncated)");
+  }
+  return errorLines.join("\n") || undefined;
+}
+
 function ensureEndsInPeriod(text: string): string {
   return text[text.length - 1] === "." ? text : `${text}.`;
 }
 
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
+  GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
   InvalidSourceRoot = "InvalidSourceRoot",
+  MavenBuildFailed = "MavenBuildFailed",
   NoBuildCommandAutodetected = "NoBuildCommandAutodetected",
   NoBuildMethodAutodetected = "NoBuildMethodAutodetected",
   NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  SwiftBuildFailed = "SwiftBuildFailed",
 }
 
 type CliErrorConfiguration = {
@@ -127,6 +152,11 @@ export const cliErrorsConfig: Record<
   CliConfigErrorCategory,
   CliErrorConfiguration
 > = {
+  [CliConfigErrorCategory.GradleBuildFailed]: {
+    cliErrorMessageCandidates: [
+      new RegExp("[autobuild] FAILURE: Build failed with an exception."),
+    ],
+  },
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
   [CliConfigErrorCategory.IncompatibleWithActionVersion]: {
     cliErrorMessageCandidates: [
@@ -144,6 +174,11 @@ export const cliErrorsConfig: Record<
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
     cliErrorMessageCandidates: [new RegExp("Invalid source root")],
+  },
+  [CliConfigErrorCategory.MavenBuildFailed]: {
+    cliErrorMessageCandidates: [
+      new RegExp("\\[autobuild\\] \\[ERROR\\] Failed to execute goal"),
+    ],
   },
   [CliConfigErrorCategory.NoBuildCommandAutodetected]: {
     cliErrorMessageCandidates: [
@@ -188,6 +223,13 @@ export const cliErrorsConfig: Record<
   [CliConfigErrorCategory.NoSupportedBuildSystemDetected]: {
     cliErrorMessageCandidates: [
       new RegExp("No supported build system detected"),
+    ],
+  },
+  [CliConfigErrorCategory.SwiftBuildFailed]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "\\[autobuilder/build\\] \\[build-command-failed\\] `autobuild` failed to run the build command",
+      ),
     ],
   },
 };

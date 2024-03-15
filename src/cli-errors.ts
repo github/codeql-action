@@ -134,6 +134,7 @@ export enum CliConfigErrorCategory {
   NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  SwiftBuildFailed = "SwiftBuildFailed",
 }
 
 type CliErrorConfiguration = {
@@ -176,7 +177,7 @@ export const cliErrorsConfig: Record<
   },
   [CliConfigErrorCategory.MavenBuildFailed]: {
     cliErrorMessageCandidates: [
-      new RegExp("[autobuild] [ERROR] Failed to execute goal"),
+      new RegExp("\\[autobuild\\] \\[ERROR\\] Failed to execute goal"),
     ],
   },
   [CliConfigErrorCategory.NoBuildCommandAutodetected]: {
@@ -222,6 +223,13 @@ export const cliErrorsConfig: Record<
   [CliConfigErrorCategory.NoSupportedBuildSystemDetected]: {
     cliErrorMessageCandidates: [
       new RegExp("No supported build system detected"),
+    ],
+  },
+  [CliConfigErrorCategory.SwiftBuildFailed]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "\\[autobuilder/build\\] \\[build-command-failed\\] `autobuild` failed to run the build command",
+      ),
     ],
   },
 };

@@ -1002,6 +1002,34 @@ test("runTool summarizes autobuilder errors", async (t) => {
   );
 });
 
+test("runTool truncates long autobuilder errors", async (t) => {
+  const stderr = Array.from(
+    { length: 20 },
+    (_, i) => `[2019-09-18 12:00:00] [autobuild] [ERROR] line${i + 1}`,
+  ).join("\n");
+  stubToolRunnerConstructor(1, stderr);
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
+  sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  await t.throwsAsync(
+    async () => await codeqlObject.runAutobuild(Language.java, false),
+    {
+      instanceOf: CommandInvocationError,
+      message:
+        "We were unable to automatically build your code. Please provide manual build steps. " +
+        "For more information, see " +
+        "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed. " +
+        "Encountered the following error: " +
+        `${Array.from({ length: 10 }, (_, i) => `line${i + 1}`).join(
+          "\n",
+        )}\n(truncated)`,
+    },
+  );
+});
+
 test("runTool outputs last line of stderr if fatal error could not be found", async (t) => {
   const cliStderr = "line1\nline2\nline3\nline4\nline5";
   stubToolRunnerConstructor(32, cliStderr);

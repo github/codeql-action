@@ -50,6 +50,10 @@ interface ExtraOptions {
     extractor?: Options;
     queries?: Options;
   };
+  github?: {
+    "*"?: Options;
+    "merge-results"?: Options;
+  };
 }
 
 export interface CodeQL {
@@ -191,6 +195,14 @@ export interface CodeQL {
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
+  /**
+   * Run 'codeql github merge-results'.
+   */
+  mergeResults(
+    sarifFiles: string[],
+    outputFile: string,
+    mergeRunsFromEqualCategory?: boolean,
+  ): Promise<void>;
 }
 
 export interface VersionInfo {
@@ -489,6 +501,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
     resolveExtractor: resolveFunction(partialCodeql, "resolveExtractor"),
+    mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
   return cachedCodeQL;
 }
@@ -1076,6 +1089,29 @@ export async function getCodeQLForCmd(
         },
       ).exec();
       return JSON.parse(extractorPath);
+    },
+    async mergeResults(
+      sarifFiles: string[],
+      outputFile: string,
+      mergeRunsFromEqualCategory = false,
+    ): Promise<void> {
+      const args = [
+        "github",
+        "merge-results",
+        "--output",
+        outputFile,
+        ...getExtraOptionsFromEnv(["github", "merge-results"]),
+      ];
+
+      for (const sarifFile of sarifFiles) {
+        args.push("--sarif", sarifFile);
+      }
+
+      if (mergeRunsFromEqualCategory) {
+        args.push("--sarif-merge-runs-from-equal-category");
+      }
+
+      await new toolrunner.ToolRunner(cmd, args).exec();
     },
   };
   // To ensure that status reports include the CodeQL CLI version wherever

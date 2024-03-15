@@ -109,10 +109,13 @@ function extractFatalErrors(error: string): string | undefined {
 
 function extractAutobuildErrors(error: string): string | undefined {
   const pattern = /.*\[autobuild\] \[ERROR\] (.*)/gi;
-  return (
-    [...error.matchAll(pattern)].map((match) => match[1]).join("\n") ||
-    undefined
-  );
+  let errorLines = [...error.matchAll(pattern)].map((match) => match[1]);
+  // Truncate if there are more than 10 matching lines.
+  if (errorLines.length > 10) {
+    errorLines = errorLines.slice(0, 10);
+    errorLines.push("(truncated)");
+  }
+  return errorLines.join("\n") || undefined;
 }
 
 function ensureEndsInPeriod(text: string): string {

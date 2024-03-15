@@ -124,6 +124,7 @@ function ensureEndsInPeriod(text: string): string {
 
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
+  GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
   InvalidSourceRoot = "InvalidSourceRoot",
@@ -150,6 +151,11 @@ export const cliErrorsConfig: Record<
   CliConfigErrorCategory,
   CliErrorConfiguration
 > = {
+  [CliConfigErrorCategory.GradleBuildFailed]: {
+    cliErrorMessageCandidates: [
+      new RegExp("[autobuild] FAILURE: Build failed with an exception."),
+    ],
+  },
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
   [CliConfigErrorCategory.IncompatibleWithActionVersion]: {
     cliErrorMessageCandidates: [

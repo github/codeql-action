@@ -23,6 +23,7 @@ import {
   isInTestMode,
   GITHUB_DOTCOM_URL,
   DiskUsage,
+  assertNever,
 } from "./util";
 
 export enum ActionName {
@@ -168,6 +169,21 @@ export function getActionsStatus(
     return error instanceof ConfigurationError ? "user-error" : "failure";
   } else {
     return "success";
+  }
+}
+
+export function getJobStatusDisplayName(status: JobStatus): string {
+  switch (status) {
+    case JobStatus.SuccessStatus:
+      return "success";
+    case JobStatus.FailureStatus:
+      return "failure";
+    case JobStatus.ConfigErrorStatus:
+      return "configuration error";
+    case JobStatus.UnknownStatus:
+      return "unknown";
+    default:
+      assertNever(status);
   }
 }
 

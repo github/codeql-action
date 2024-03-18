@@ -519,11 +519,26 @@ export async function waitForProcessing(
  * Returns whether the provided processing errors are a configuration error.
  */
 function shouldConsiderConfigurationError(processingErrors: string[]): boolean {
-  return (
-    processingErrors.length === 1 &&
-    processingErrors[0] ===
-      "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled"
-  );
+  // TODO add a new case here handling...
+  //    Advanced setup is not enabled for this repository
+  if (processingErrors.length !== 1) {
+    return true;
+  }
+  return true;
+  // if (
+  //   processingErrors[0] ===
+  //   "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled"
+  // ) {
+  //   return true;
+  // }
+  // if (
+  //   processingErrors[0].includes(
+  //     "Advanced setup is not enabled for this repository",
+  //   )
+  // ) {
+  //   return true;
+  // }
+  // return false;
 }
 
 /**

@@ -36,7 +36,6 @@ import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
-import { ConfigurationError } from "./util";
 
 interface AnalysisStatusReport
   extends uploadLib.UploadStatusReport,
@@ -285,7 +284,7 @@ async function run() {
 
     // check if env var GITHUB_ACTION is set to any value
     if (process.env.GITHUB_ACTION) {
-      throw new ConfigurationError("deliberately exit early");
+      throw new Error("deliberately exit early");
     }
 
     if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {

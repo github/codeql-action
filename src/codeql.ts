@@ -82,7 +82,7 @@ export interface CodeQL {
   /**
    * Runs the autobuilder for the given language.
    */
-  runAutobuild(language: Language): Promise<void>;
+  runAutobuild(language: Language, enableDebugLogging: boolean): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
@@ -100,6 +100,7 @@ export interface CodeQL {
     databasePath: string,
     threadsFlag: string,
     memoryFlag: string,
+    enableDebugLogging: boolean,
   ): Promise<void>;
   /**
    * Run 'codeql resolve languages'.
@@ -278,6 +279,9 @@ const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.7";
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
 const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-11-08";
+
+/** The CLI verbosity level to use for extraction in debug mode. */
+const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
 
 /*
  * Deprecated in favor of ToolsFeature.
@@ -634,7 +638,7 @@ export async function getCodeQLForCmd(
         throw e;
       }
     },
-    async runAutobuild(language: Language) {
+    async runAutobuild(language: Language, enableDebugLogging: boolean) {
       const autobuildCmd = path.join(
         await this.resolveExtractor(language),
         "tools",
@@ -652,6 +656,12 @@ export async function getCodeQLForCmd(
         "-Dhttp.keepAlive=false",
         "-Dmaven.wagon.http.pool=false",
       ].join(" ");
+
+      // Bump the verbosity of the autobuild command if we're in debug mode
+      if (enableDebugLogging) {
+        process.env[EnvVar.CLI_VERBOSITY] =
+          process.env[EnvVar.CLI_VERBOSITY] || EXTRACTION_DEBUG_MODE_VERBOSITY;
+      }
 
       // On macOS, System Integrity Protection (SIP) typically interferes with
       // CodeQL build tracing of protected binaries.
@@ -682,6 +692,7 @@ export async function getCodeQLForCmd(
         "trace-command",
         "--index-traceless-dbs",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+        ...getExtractionVerbosityArguments(config.debugMode),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
         util.getCodeQLDatabasePath(config, language),
       ]);
@@ -692,6 +703,7 @@ export async function getCodeQLForCmd(
         "trace-command",
         "--use-build-mode",
         ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+        ...getExtractionVerbosityArguments(config.debugMode),
         ...getExtraOptionsFromEnv(["database", "trace-command"]),
         util.getCodeQLDatabasePath(config, language),
       ]);
@@ -700,6 +712,7 @@ export async function getCodeQLForCmd(
       databasePath: string,
       threadsFlag: string,
       memoryFlag: string,
+      enableDebugLogging: boolean,
     ) {
       const args = [
         "database",
@@ -707,6 +720,7 @@ export async function getCodeQLForCmd(
         "--finalize-dataset",
         threadsFlag,
         memoryFlag,
+        ...getExtractionVerbosityArguments(enableDebugLogging),
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
@@ -1404,4 +1418,12 @@ async function getCodeScanningQueryHelpArguments(
     return ["--sarif-include-query-help=always"];
   }
   return ["--sarif-add-query-help"];
+}
+
+function getExtractionVerbosityArguments(
+  enableDebugLogging: boolean,
+): string[] {
+  return enableDebugLogging
+    ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
+    : [];
 }

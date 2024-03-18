@@ -20,6 +20,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   ActionName,
+  getJobStatusDisplayName,
 } from "./status-report";
 import {
   checkDiskUsage,
@@ -89,6 +90,9 @@ async function runWrapper() {
     );
     return;
   }
+  const jobStatus = initActionPostHelper.getFinalJobStatus();
+  logger.info(`CodeQL job status was ${getJobStatusDisplayName(jobStatus)}.`);
+
   const statusReportBase = await createStatusReportBase(
     ActionName.InitPost,
     "success",

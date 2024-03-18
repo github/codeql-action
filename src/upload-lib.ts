@@ -8,11 +8,7 @@ import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
 
 import * as actionsUtil from "./actions-util";
-import {
-  getOptionalInput,
-  getRequiredInput,
-  getTemporaryDirectory,
-} from "./actions-util";
+import { getOptionalInput, getRequiredInput } from "./actions-util";
 import * as api from "./api-client";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
@@ -104,9 +100,9 @@ async function combineSarifFilesUsingCLI(
   // Initialize CodeQL, either by using the config file from the 'init' step,
   // or by initializing it here.
   let codeQL: CodeQL;
-  let tempDir: string;
+  let tempDir: string = actionsUtil.getTemporaryDirectory();
 
-  const config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
+  const config = await getConfig(tempDir, logger);
   if (config !== undefined) {
     codeQL = await getCodeQL(config.codeQLCmd);
     tempDir = config.tempDir;
@@ -129,17 +125,20 @@ async function combineSarifFilesUsingCLI(
     const initCodeQLResult = await initCodeQL(
       undefined, // There is no tools input on the upload action
       apiDetails,
-      getTemporaryDirectory(),
+      tempDir,
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       logger,
     );
 
     codeQL = initCodeQLResult.codeql;
-    tempDir = getTemporaryDirectory();
   }
 
-  const outputFile = path.resolve(tempDir, "combined-sarif.sarif");
+  const baseTempDir = path.resolve(tempDir, "combined-sarif");
+  fs.mkdirSync(baseTempDir, { recursive: true });
+  const outputDirectory = fs.mkdtempSync(path.resolve(baseTempDir, "output-"));
+
+  const outputFile = path.resolve(outputDirectory, "combined-sarif.sarif");
 
   await codeQL.mergeResults(sarifFiles, outputFile, true);
 

@@ -616,27 +616,20 @@ export async function getCodeQLForCmd(
         extraArgs.push("--no-sublanguage-file-coverage");
       }
 
-      try {
-        await runTool(
-          cmd,
-          [
-            "database",
-            "init",
-            "--db-cluster",
-            config.dbLocation,
-            `--source-root=${sourceRoot}`,
-            ...(await getLanguageAliasingArguments(this)),
-            ...extraArgs,
-            ...getExtraOptionsFromEnv(["database", "init"]),
-          ],
-          { stdin: externalRepositoryToken },
-        );
-      } catch (e) {
-        if (e instanceof Error) {
-          throw wrapCliConfigurationError(e);
-        }
-        throw e;
-      }
+      await runTool(
+        cmd,
+        [
+          "database",
+          "init",
+          "--db-cluster",
+          config.dbLocation,
+          `--source-root=${sourceRoot}`,
+          ...(await getLanguageAliasingArguments(this)),
+          ...extraArgs,
+          ...getExtraOptionsFromEnv(["database", "init"]),
+        ],
+        { stdin: externalRepositoryToken },
+      );
     },
     async runAutobuild(language: Language, enableDebugLogging: boolean) {
       const autobuildCmd = path.join(
@@ -677,14 +670,7 @@ export async function getCodeQLForCmd(
       // When `DYLD_INSERT_LIBRARIES` is set in the environment for a step,
       // the Actions runtime introduces its own workaround for SIP
       // (https://github.com/actions/runner/pull/416).
-      try {
-        await runTool(autobuildCmd);
-      } catch (e) {
-        if (e instanceof Error) {
-          throw wrapCliConfigurationError(e);
-        }
-        throw e;
-      }
+      await runTool(autobuildCmd);
     },
     async extractScannedLanguage(config: Config, language: Language) {
       await runTool(cmd, [
@@ -724,14 +710,7 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
-      try {
-        await runTool(cmd, args);
-      } catch (e) {
-        if (e instanceof Error) {
-          throw wrapCliConfigurationError(e);
-        }
-        throw e;
-      }
+      await runTool(cmd, args);
     },
     async resolveLanguages() {
       const codeqlArgs = [
@@ -1215,14 +1194,14 @@ async function runTool(
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},
 ) {
-  let output = "";
-  let error = "";
+  let stdout = "";
+  let stderr = "";
   process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
     ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
-        output += data.toString("utf8");
+        stdout += data.toString("utf8");
         if (!opts.noStreamStdout) {
           process.stdout.write(data);
         }
@@ -1234,7 +1213,7 @@ async function runTool(
           // Eg: if we have 20,000 the start index should be 2.
           readStartIndex = data.length - maxErrorSize + 1;
         }
-        error += data.toString("utf8", readStartIndex);
+        stderr += data.toString("utf8", readStartIndex);
         // Mimic the standard behavior of the toolrunner by writing stderr to stdout
         process.stdout.write(data);
       },
@@ -1243,9 +1222,10 @@ async function runTool(
     ...(opts.stdin ? { input: Buffer.from(opts.stdin || "") } : {}),
   }).exec();
   if (exitCode !== 0) {
-    throw new CommandInvocationError(cmd, args, exitCode, error, output);
+    const e = new CommandInvocationError(cmd, args, exitCode, stderr, stdout);
+    throw wrapCliConfigurationError(e);
   }
-  return output;
+  return stdout;
 }
 
 /**

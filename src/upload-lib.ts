@@ -530,9 +530,15 @@ function shouldConsiderConfigurationError(processingErrors: string[]): boolean {
  * Returns whether the provided processing errors are the result of an invalid SARIF upload request.
  */
 function shouldConsiderInvalidRequest(processingErrors: string[]): boolean {
-  return (
-    processingErrors.length === 1 &&
-    processingErrors[0].startsWith("rejecting SARIF,")
+  return processingErrors.every(
+    (error) =>
+      error.startsWith("rejecting SARIF") ||
+      error.startsWith(
+        "could not convert rules: invalid security severity value, is not a number",
+      ) ||
+      /^SARIF URI scheme [^\s]* did not match the checkout URI scheme [^\s]*/.test(
+        error,
+      ),
   );
 }
 

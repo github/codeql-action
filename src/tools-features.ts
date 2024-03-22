@@ -6,6 +6,7 @@ export enum ToolsFeature {
   InformsAboutUnsupportedPathFilters = "informsAboutUnsupportedPathFilters",
   SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",
   TraceCommandUseBuildMode = "traceCommandUseBuildMode",
+  SarifMergeRunsFromEqualCategory = "sarifMergeRunsFromEqualCategory",
 }
 
 /**

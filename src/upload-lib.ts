@@ -19,13 +19,14 @@ import * as fingerprints from "./fingerprints";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
+import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import {
-  SarifFile,
   ConfigurationError,
-  wrapError,
   getRequiredEnvParam,
   GitHubVersion,
+  SarifFile,
+  wrapError,
 } from "./util";
 
 const GENERIC_403_MSG =
@@ -132,6 +133,18 @@ async function combineSarifFilesUsingCLI(
     );
 
     codeQL = initCodeQLResult.codeql;
+  }
+
+  if (
+    !(await codeQL.supportsFeature(
+      ToolsFeature.SarifMergeRunsFromEqualCategory,
+    ))
+  ) {
+    logger.warning(
+      "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
+    );
+
+    return combineSarifFiles(sarifFiles);
   }
 
   const baseTempDir = path.resolve(tempDir, "combined-sarif");

@@ -61,8 +61,7 @@ export const featureConfig: Record<
 > = {
   [Feature.CliSarifMerge]: {
     envVar: "CODEQL_ACTION_CLI_SARIF_MERGE",
-    // This feature is only supported in 2.17.0, but we'll want to test this feature
-    // with nightly builds before that. We'll update this to 2.17.0 once it's released.
+    // This is guarded by a `supportsFeature` check rather than by a version check.
     minimumVersion: undefined,
     defaultValue: false,
   },

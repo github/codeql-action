@@ -20,7 +20,7 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
+import { Feature, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -291,6 +291,35 @@ async function run() {
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {
       logger.info("Not uploading results");
+
+      // TODO: Do not merge this code
+
+      const sarifFiles = uploadLib.getSarifFilePaths(outputDir);
+
+      // Merge the SARIF files into a single file. This will tell us whether the
+      // merge works.
+      const sarif = (await features.getValue(Feature.CliSarifMerge))
+        ? await uploadLib.combineSarifFilesUsingCLI(
+            sarifFiles,
+            gitHubVersion,
+            features,
+            logger,
+          )
+        : uploadLib.combineSarifFiles(sarifFiles);
+
+      // Write the combined SARIF file to disk
+      fs.writeFileSync(
+        path.join(outputDir, "combined-sarif.sarif"),
+        JSON.stringify(sarif, null, 2),
+        "utf-8",
+      );
+
+      logger.info(
+        `Combined SARIF file written to ${path.join(
+          outputDir,
+          "combined-sarif.sarif",
+        )} with ${sarif.runs.length} runs`,
+      );
     }
 
     // Possibly upload the database bundles for remote queries

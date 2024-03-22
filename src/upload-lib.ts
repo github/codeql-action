@@ -36,7 +36,7 @@ const GENERIC_404_MSG =
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
-function combineSarifFiles(sarifFiles: string[]): SarifFile {
+export function combineSarifFiles(sarifFiles: string[]): SarifFile {
   const combinedSarif: SarifFile = {
     version: null,
     runs: [],
@@ -81,7 +81,7 @@ function areAllRunsProducedByCodeQL(sarifFiles: string[]): boolean {
 // CLI `github merge-results` command when all SARIF files are produced by
 // CodeQL. Otherwise, it will fall back to combining the files in the action.
 // Returns the contents of the combined sarif file.
-async function combineSarifFilesUsingCLI(
+export async function combineSarifFilesUsingCLI(
   sarifFiles: string[],
   gitHubVersion: GitHubVersion,
   features: Features,
@@ -315,7 +315,7 @@ export async function uploadFromActions(
   );
 }
 
-function getSarifFilePaths(sarifPath: string) {
+export function getSarifFilePaths(sarifPath: string) {
   if (!fs.existsSync(sarifPath)) {
     throw new InvalidSarifUploadError(`Path does not exist: ${sarifPath}`);
   }

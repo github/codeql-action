@@ -98,7 +98,7 @@ async function combineSarifFilesUsingCLI(
   }
 
   if (!areAllRunsProducedByCodeQL(sarifFiles)) {
-    logger.warning(
+    logger.debug(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );
 
@@ -116,7 +116,7 @@ async function combineSarifFilesUsingCLI(
     codeQL = await getCodeQL(config.codeQLCmd);
     tempDir = config.tempDir;
   } else {
-    logger.warning(
+    logger.info(
       "Initializing CodeQL since the 'init' Action was not called before this step.",
     );
 

@@ -201,7 +201,7 @@ export interface CodeQL {
   mergeResults(
     sarifFiles: string[],
     outputFile: string,
-    mergeRunsFromEqualCategory?: boolean,
+    options: { mergeRunsFromEqualCategory?: boolean },
   ): Promise<void>;
 }
 
@@ -1093,7 +1093,9 @@ export async function getCodeQLForCmd(
     async mergeResults(
       sarifFiles: string[],
       outputFile: string,
-      mergeRunsFromEqualCategory = false,
+      {
+        mergeRunsFromEqualCategory = false,
+      }: { mergeRunsFromEqualCategory?: boolean },
     ): Promise<void> {
       const args = [
         "github",

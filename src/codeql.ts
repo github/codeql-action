@@ -1113,7 +1113,7 @@ export async function getCodeQLForCmd(
         args.push("--sarif-merge-runs-from-equal-category");
       }
 
-      await new toolrunner.ToolRunner(cmd, args).exec();
+      await runTool(cmd, args);
     },
   };
   // To ensure that status reports include the CodeQL CLI version wherever

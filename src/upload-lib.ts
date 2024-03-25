@@ -153,7 +153,9 @@ async function combineSarifFilesUsingCLI(
 
   const outputFile = path.resolve(outputDirectory, "combined-sarif.sarif");
 
-  await codeQL.mergeResults(sarifFiles, outputFile, true);
+  await codeQL.mergeResults(sarifFiles, outputFile, {
+    mergeRunsFromEqualCategory: true,
+  });
 
   return JSON.parse(fs.readFileSync(outputFile, "utf8")) as SarifFile;
 }

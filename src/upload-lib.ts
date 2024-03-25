@@ -93,6 +93,10 @@ async function combineSarifFilesUsingCLI(
   features: Features,
   logger: Logger,
 ): Promise<SarifFile> {
+  if (sarifFiles.length === 1) {
+    return JSON.parse(fs.readFileSync(sarifFiles[0], "utf8")) as SarifFile;
+  }
+
   if (!areAllRunsProducedByCodeQL(sarifFiles)) {
     logger.warning(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",

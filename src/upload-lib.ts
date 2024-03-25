@@ -61,19 +61,11 @@ function combineSarifFiles(sarifFiles: string[]): SarifFile {
   return combinedSarif;
 }
 
-// Takes a list of paths to sarif files and combines them together using the
-// CLI `github merge-results` command when all SARIF files are produced by
-// CodeQL. Otherwise, it will fall back to combining the files in the action.
-// Returns the contents of the combined sarif file.
-async function combineSarifFilesUsingCLI(
-  sarifFiles: string[],
-  gitHubVersion: GitHubVersion,
-  features: Features,
-  logger: Logger,
-): Promise<SarifFile> {
-  // First check if all files are produced by CodeQL.
-  let allCodeQL = true;
-
+/**
+ * Checks whether all the runs in the given SARIF files were produced by CodeQL.
+ * @param sarifFiles The list of SARIF files to check.
+ */
+function areAllRunsProducedByCodeQL(sarifFiles: string[]): boolean {
   for (const sarifFile of sarifFiles) {
     const sarifObject = JSON.parse(
       fs.readFileSync(sarifFile, "utf8"),
@@ -84,12 +76,24 @@ async function combineSarifFilesUsingCLI(
     );
 
     if (!allRunsCodeQL) {
-      allCodeQL = false;
-      break;
+      return false;
     }
   }
 
-  if (!allCodeQL) {
+  return true;
+}
+
+// Takes a list of paths to sarif files and combines them together using the
+// CLI `github merge-results` command when all SARIF files are produced by
+// CodeQL. Otherwise, it will fall back to combining the files in the action.
+// Returns the contents of the combined sarif file.
+async function combineSarifFilesUsingCLI(
+  sarifFiles: string[],
+  gitHubVersion: GitHubVersion,
+  features: Features,
+  logger: Logger,
+): Promise<SarifFile> {
+  if (!areAllRunsProducedByCodeQL(sarifFiles)) {
     logger.warning(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );

@@ -66,21 +66,15 @@ function combineSarifFiles(sarifFiles: string[]): SarifFile {
  * @param sarifFiles The list of SARIF files to check.
  */
 function areAllRunsProducedByCodeQL(sarifFiles: string[]): boolean {
-  for (const sarifFile of sarifFiles) {
+  return sarifFiles.every((sarifFile) => {
     const sarifObject = JSON.parse(
       fs.readFileSync(sarifFile, "utf8"),
     ) as SarifFile;
 
-    const allRunsCodeQL = sarifObject.runs?.every(
+    return sarifObject.runs?.every(
       (run) => run.tool?.driver?.name === "CodeQL",
     );
-
-    if (!allRunsCodeQL) {
-      return false;
-    }
-  }
-
-  return true;
+  });
 }
 
 // Takes a list of paths to sarif files and combines them together using the

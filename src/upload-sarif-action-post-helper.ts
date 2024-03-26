@@ -14,13 +14,10 @@ export async function run(
 ) {
   const tempDir = actionsUtil.getTemporaryDirectory();
 
-  // Upload Actions SARIF artifacts for debugging
-  if (
-    core.isDebug() &&
-    process.env["CODEQL_ACTION_DEBUG_COMBINED_SARIF"] === "true"
-  ) {
+  // Upload Actions SARIF artifacts for debugging when environment variable is set
+  if (process.env["CODEQL_ACTION_DEBUG_COMBINED_SARIF"] === "true") {
     core.info(
-      "Debug mode is on. Uploading available combined SARIF files as Actions debugging artifact...",
+      "Uploading available combined SARIF files as Actions debugging artifact...",
     );
 
     const baseTempDir = path.resolve(tempDir, "combined-sarif");

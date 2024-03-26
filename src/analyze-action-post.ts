@@ -16,7 +16,9 @@ async function runWrapper() {
 
     // Also run the upload-sarif post action since we're potentially running
     // the same steps in the analyze action.
-    await uploadSarifActionPostHelper.run(debugArtifacts.uploadDebugArtifacts);
+    await uploadSarifActionPostHelper.uploadArtifacts(
+      debugArtifacts.uploadDebugArtifacts,
+    );
   } catch (error) {
     core.setFailed(
       `analyze post-action step failed: ${wrapError(error).message}`,

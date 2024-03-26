@@ -11,7 +11,9 @@ import { wrapError } from "./util";
 
 async function runWrapper() {
   try {
-    await uploadSarifActionPostHelper.run(debugArtifacts.uploadDebugArtifacts);
+    await uploadSarifActionPostHelper.uploadArtifacts(
+      debugArtifacts.uploadDebugArtifacts,
+    );
   } catch (error) {
     core.setFailed(
       `upload-sarif post-action step failed: ${wrapError(error).message}`,

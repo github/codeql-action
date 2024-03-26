@@ -5,7 +5,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 
-export async function run(
+export async function uploadArtifacts(
   uploadDebugArtifacts: (
     toUpload: string[],
     rootDir: string,

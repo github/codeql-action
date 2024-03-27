@@ -44,6 +44,7 @@ export interface FeatureEnablement {
  * Each value of this enum should end with `_enabled`.
  */
 export enum Feature {
+  CliSarifMerge = "cli_sarif_merge_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
@@ -58,6 +59,12 @@ export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
+  [Feature.CliSarifMerge]: {
+    envVar: "CODEQL_ACTION_CLI_SARIF_MERGE",
+    // This is guarded by a `supportsFeature` check rather than by a version check.
+    minimumVersion: undefined,
+    defaultValue: false,
+  },
   [Feature.CppDependencyInstallation]: {
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     minimumVersion: "2.15.0",

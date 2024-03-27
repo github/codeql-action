@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Users of GHES 3.9+ and GHEC will no longer need to include `actions: read` permissions to use `upload-sarif` in private repositories.
 
 ## 3.24.9 - 22 Mar 2024
 

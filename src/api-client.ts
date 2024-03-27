@@ -119,6 +119,18 @@ export async function getGitHubVersion(): Promise<GitHubVersion> {
  * Get the path of the currently executing workflow relative to the repository root.
  */
 export async function getWorkflowRelativePath(): Promise<string> {
+  const workflow_ref = process.env["GITHUB_WORKFLOW_REF"];
+  // When GHES 3.8 support is removed, this if guard and its corresponding
+  // fallback code can be removed.
+  if (workflow_ref !== undefined) {
+    const workflowRegExp = new RegExp("^[^/]+/[^/]+/(.*?)@.*");
+    const match = workflow_ref.match(workflowRegExp);
+    if (match) {
+      return new Promise((resolve) => {
+        resolve(match[1]);
+      });
+    }
+  }
   const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
   const owner = repo_nwo[0];
   const repo = repo_nwo[1];

@@ -1,0 +1,80 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
+# to regenerate this file.
+
+name: PR Check - Swift analysis using autobuild
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
+on:
+  push:
+    branches:
+    - main
+    - releases/v2
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - ready_for_review
+  workflow_dispatch: {}
+jobs:
+  swift-autobuild:
+    strategy:
+      matrix:
+        include:
+        - os: macos-latest
+          version: nightly-latest
+    name: Swift analysis using autobuild
+    permissions:
+      contents: read
+      security-events: write
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+    - name: Prepare test
+      id: prepare-test
+      uses: ./.github/actions/prepare-test
+      with:
+        version: ${{ matrix.version }}
+        use-all-platform-bundle: 'false'
+    - name: Set environment variable for Swift enablement
+      if: >-
+        runner.os != 'Windows' && (
+            matrix.version == '20220908' ||
+            matrix.version == '20221211'
+        )
+      shell: bash
+      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+    - uses: ./../action/init
+      id: init
+      with:
+        languages: swift
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+    - uses: ./../action/.github/actions/setup-swift
+      with:
+        codeql-path: ${{steps.init.outputs.codeql-path}}
+    - name: Check working directory
+      shell: bash
+      run: pwd
+    - uses: ./../action/autobuild
+      timeout-minutes: 10
+    - uses: ./../action/analyze
+      id: analysis
+      with:
+        upload-database: false
+    - name: Check database
+      shell: bash
+      run: |
+        SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+        if [[ ! -d "$SWIFT_DB" ]]; then
+          echo "Did not create a database for Swift."
+          exit 1
+        fi
+    env:
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
+      CODEQL_ACTION_TEST_MODE: true

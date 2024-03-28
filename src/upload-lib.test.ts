@@ -320,7 +320,7 @@ test("accept results with invalid artifactLocation.uri value", (t) => {
   t.deepEqual(loggedMessages.length, 1);
   t.deepEqual(
     loggedMessages[0],
-    "Warning: 'not a valid URI' is not a valid URI in 'instance.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri'.",
+    "Warning: 'not a valid URI' is not a valid UR in 'instance.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri'.",
   );
 });
 

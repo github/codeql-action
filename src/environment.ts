@@ -1,6 +1,21 @@
+/**
+ * Environment variables used by the CodeQL Action.
+ *
+ * We recommend prefixing environment variables with `CODEQL_ACTION_`
+ * to reduce the risk that they are overwritten by other steps.
+ */
 export enum EnvVar {
   /** Whether the `analyze` Action completes successfully. */
   ANALYZE_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY",
+
+  /** Whether the `autobuild` Action completes successfully. */
+  AUTOBUILD_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_AUTOBUILD_DID_COMPLETE_SUCCESSFULLY",
+
+  /**
+   * The verbosity level of the CLI. One of the following: `errors`, `warnings`, `progress`,
+   * `progress+`, `progress++`, `progress+++`.
+   */
+  CLI_VERBOSITY = "CODEQL_VERBOSITY",
 
   /** Whether the CodeQL Action has invoked the Go autobuilder. */
   DID_AUTOBUILD_GOLANG = "CODEQL_ACTION_DID_AUTOBUILD_GOLANG",
@@ -32,8 +47,14 @@ export enum EnvVar {
   /** Whether the CodeQL Action has already warned the user about low disk space. */
   HAS_WARNED_ABOUT_DISK_SPACE = "CODEQL_ACTION_HAS_WARNED_ABOUT_DISK_SPACE",
 
+  /** Whether the init action has been run. */
+  INIT_ACTION_HAS_RUN = "CODEQL_ACTION_INIT_HAS_RUN",
+
   /** UUID representing the current job run. */
   JOB_RUN_UUID = "JOB_RUN_UUID",
+
+  /** Status for the entire job, submitted to the status report in `init-post` */
+  JOB_STATUS = "CODEQL_ACTION_JOB_STATUS",
 
   ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 
@@ -64,9 +85,8 @@ export enum EnvVar {
   WORKFLOW_STARTED_AT = "CODEQL_WORKFLOW_STARTED_AT",
 
   /**
-   * The path where we initially discovered the Go binary in the system path
-   * before replacing it with a wrapper script. We check this later to ensure
-   * that it hasn't been tampered with by a late e.g. `setup-go` step.
+   * The path where we initially discovered the Go binary in the system path.
+   * We check this later to ensure that it hasn't been tampered with by a late e.g. `setup-go` step.
    */
   GO_BINARY_LOCATION = "CODEQL_ACTION_GO_BINARY",
 }

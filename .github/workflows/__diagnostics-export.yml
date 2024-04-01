@@ -11,7 +11,7 @@ on:
   push:
     branches:
     - main
-    - releases/v2
+    - releases/v*
   pull_request:
     types:
     - opened
@@ -49,6 +49,20 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
+    - name: Setup Python on MacOS
+      uses: actions/setup-python@v5
+      if: >-
+        matrix.os == 'macos-latest' && (
+
+        matrix.version == 'stable-20221211' ||
+
+        matrix.version == 'stable-20230418' ||
+
+        matrix.version == 'stable-v2.13.5' ||
+
+        matrix.version == 'stable-v2.14.6')
+      with:
+        python-version: '3.11'
     - name: Check out repository
       uses: actions/checkout@v4
     - name: Prepare test
@@ -59,11 +73,7 @@ jobs:
         use-all-platform-bundle: 'false'
         setup-kotlin: true
     - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
+      if: runner.os != 'Windows' && matrix.version == '20221211'
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
     - uses: ./../action/init
@@ -98,7 +108,7 @@ jobs:
         path: ${{ runner.temp }}/results/javascript.sarif
         retention-days: 7
     - name: Check diagnostics appear in SARIF
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       env:
         SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
       with:
@@ -126,7 +136,7 @@ jobs:
             core.setFailed(
               'Expected exactly one status page reporting descriptor for this diagnostic in the ' +
                 `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
-                `${statusPageNotifications.length}. All notification reporting descriptors: ` + 
+                `${statusPageNotifications.length}. All notification reporting descriptors: ` +
                 `${JSON.stringify(toolExecutionNotifications)}.`
             );
           }

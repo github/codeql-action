@@ -19,20 +19,10 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
 
 /**
- * Versions 2.14.0+ of the CodeQL CLI support intra-layer parallelism (aka fine-grained parallelism) options, but we
- * limit to 2.14.6 onwards, since that's the version that has mitigations against OOM failures.
+ * Evaluator fine-grained parallelism (aka intra-layer parallelism) is only safe to enable in 2.15.1 onwards.
+ * (Some earlier versions recognize the command-line flag, but they contain a bug which makes it unsafe to use).
  */
-export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.6";
-
-/**
- * Versions 2.15.0+ of the CodeQL CLI support new analysis summaries.
- */
-export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
-
-/**
- * Versions 2.15.0+ of the CodeQL CLI support sub-language file coverage information.
- */
-export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
+export const CODEQL_VERSION_FINE_GRAINED_PARALLELISM = "2.15.1";
 
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
@@ -54,31 +44,25 @@ export interface FeatureEnablement {
  * Each value of this enum should end with `_enabled`.
  */
 export enum Feature {
-  AnalysisSummaryV2Enabled = "analysis_summary_v2_enabled",
-  CliConfigFileEnabled = "cli_config_file_enabled",
-  CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
+  CliSarifMerge = "cli_sarif_merge_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  CppTrapCachingEnabled = "cpp_trap_caching_enabled",
+  DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
-  EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
+  PythonDefaultIsToSkipDependencyInstallationEnabled = "python_default_is_to_skip_dependency_installation_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  SublanguageFileCoverageEnabled = "sublanguage_file_coverage_enabled",
-  UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
 export const featureConfig: Record<
   Feature,
   { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
 > = {
-  [Feature.AnalysisSummaryV2Enabled]: {
-    envVar: "CODEQL_ACTION_ANALYSIS_SUMMARY_V2",
-    minimumVersion: CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
-    defaultValue: false,
-  },
-  [Feature.CodeqlJavaLombokEnabled]: {
-    envVar: "CODEQL_JAVA_LOMBOK",
-    minimumVersion: "2.14.0",
+  [Feature.CliSarifMerge]: {
+    envVar: "CODEQL_ACTION_CLI_SARIF_MERGE",
+    // This is guarded by a `supportsFeature` check rather than by a version check.
+    minimumVersion: undefined,
     defaultValue: false,
   },
   [Feature.CppDependencyInstallation]: {
@@ -86,19 +70,19 @@ export const featureConfig: Record<
     minimumVersion: "2.15.0",
     defaultValue: false,
   },
-  [Feature.DisableKotlinAnalysisEnabled]: {
-    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
+  [Feature.CppTrapCachingEnabled]: {
+    envVar: "CODEQL_CPP_TRAP_CACHING",
+    minimumVersion: "2.16.1",
+    defaultValue: false,
+  },
+  [Feature.DisableJavaBuildlessEnabled]: {
+    envVar: "CODEQL_ACTION_DISABLE_JAVA_BUILDLESS",
     minimumVersion: undefined,
     defaultValue: false,
   },
-  [Feature.CliConfigFileEnabled]: {
-    envVar: "CODEQL_PASS_CONFIG_TO_CLI",
-    minimumVersion: "2.11.6",
-    defaultValue: true,
-  },
-  [Feature.EvaluatorIntraLayerParallelismEnabled]: {
-    envVar: "CODEQL_EVALUATOR_INTRA_LAYER_PARALLELISM",
-    minimumVersion: CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
+  [Feature.DisableKotlinAnalysisEnabled]: {
+    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
+    minimumVersion: undefined,
     defaultValue: false,
   },
   [Feature.ExportDiagnosticsEnabled]: {
@@ -111,16 +95,6 @@ export const featureConfig: Record<
     minimumVersion: undefined,
     defaultValue: false,
   },
-  [Feature.SublanguageFileCoverageEnabled]: {
-    envVar: "CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE",
-    minimumVersion: CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
-    defaultValue: false,
-  },
-  [Feature.UploadFailedSarifEnabled]: {
-    envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
-    minimumVersion: "2.11.3",
-    defaultValue: true,
-  },
   [Feature.DisablePythonDependencyInstallationEnabled]: {
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
     // Although the python extractor only started supporting not extracting installed
@@ -130,6 +104,15 @@ export const featureConfig: Record<
     // packages available with current python3 installation might get extracted.
     minimumVersion: undefined,
     defaultValue: false,
+  },
+  [Feature.PythonDefaultIsToSkipDependencyInstallationEnabled]: {
+    // we can reuse the same environment variable as above. If someone has set it to
+    // `true` in their workflow this means dependencies are not installed, setting it to
+    // `false` means dependencies _will_ be installed. The same semantics are applied
+    // here!
+    envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
+    minimumVersion: "2.16.0",
+    defaultValue: true,
   },
 };
 
@@ -476,29 +459,18 @@ class GitHubFeatureFlags {
   }
 }
 
-/**
- * @returns Whether the Action should generate a code scanning config file
- * that gets passed to the CLI.
- */
-export async function useCodeScanningConfigInCli(
+export async function isPythonDependencyInstallationDisabled(
   codeql: CodeQL,
   features: FeatureEnablement,
 ): Promise<boolean> {
-  return await features.getValue(Feature.CliConfigFileEnabled, codeql);
-}
-
-export async function logCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger,
-) {
-  if (await useCodeScanningConfigInCli(codeql, features)) {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql CLI.",
-    );
-  } else {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql-action.",
-    );
-  }
+  return (
+    (await features.getValue(
+      Feature.DisablePythonDependencyInstallationEnabled,
+      codeql,
+    )) ||
+    (await features.getValue(
+      Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
+      codeql,
+    ))
+  );
 }

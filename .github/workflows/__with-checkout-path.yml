@@ -11,7 +11,7 @@ on:
   push:
     branches:
     - main
-    - releases/v2
+    - releases/v*
   pull_request:
     types:
     - opened
@@ -25,53 +25,11 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          version: stable-20220908
-        - os: macos-latest
-          version: stable-20220908
-        - os: windows-latest
-          version: stable-20220908
-        - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: windows-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: stable-20230418
-        - os: macos-latest
-          version: stable-20230418
-        - os: windows-latest
-          version: stable-20230418
-        - os: ubuntu-latest
-          version: stable-v2.13.5
-        - os: macos-latest
-          version: stable-v2.13.5
-        - os: windows-latest
-          version: stable-v2.13.5
-        - os: ubuntu-latest
-          version: stable-v2.14.6
-        - os: macos-latest
-          version: stable-v2.14.6
-        - os: windows-latest
-          version: stable-v2.14.6
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: windows-latest
-          version: default
-        - os: ubuntu-latest
           version: latest
         - os: macos-latest
           version: latest
         - os: windows-latest
           version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
-        - os: windows-latest
-          version: nightly-latest
     name: Use a custom `checkout_path`
     permissions:
       contents: read
@@ -79,6 +37,20 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
+    - name: Setup Python on MacOS
+      uses: actions/setup-python@v5
+      if: >-
+        matrix.os == 'macos-latest' && (
+
+        matrix.version == 'stable-20221211' ||
+
+        matrix.version == 'stable-20230418' ||
+
+        matrix.version == 'stable-v2.13.5' ||
+
+        matrix.version == 'stable-v2.14.6')
+      with:
+        python-version: '3.11'
     - name: Check out repository
       uses: actions/checkout@v4
     - name: Prepare test
@@ -89,34 +61,36 @@ jobs:
         use-all-platform-bundle: 'false'
         setup-kotlin: true
     - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
+      if: runner.os != 'Windows' && matrix.version == '20221211'
       shell: bash
       run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+    - name: Delete original checkout
+      shell: bash
+      run: |
+        # delete the original checkout so we don't accidentally use it.
+        # Actions does not support deleting the current working directory, so we
+        # delete the contents of the directory instead.
+        rm -rf ./* .github .git
+  # Check out the actions repo again, but at a different location.
+  # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
     - uses: actions/checkout@v4
       with:
         ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
         path: x/y/z/some-path
+
     - uses: ./../action/init
       with:
         tools: ${{ steps.prepare-test.outputs.tools-url }}
       # it's enough to test one compiled language and one interpreted language
         languages: csharp,javascript
-        source-path: x/y/z/some-path/tests/multi-language-repo
-        debug: true
-    - name: Build code (non-windows)
+        source-root: x/y/z/some-path/tests/multi-language-repo
+
+    - name: Build code
       shell: bash
-      if: ${{ runner.os != 'Windows' }}
+      working-directory: x/y/z/some-path/tests/multi-language-repo
       run: |
-        $CODEQL_RUNNER x/y/z/some-path/tests/multi-language-repo/build.sh
-    - name: Build code (windows)
-      shell: bash
-      if: ${{ runner.os == 'Windows' }}
-      run: |
-        x/y/z/some-path/tests/multi-language-repo/build.sh
+        ./build.sh
+
     - uses: ./../action/analyze
       with:
         checkout_path: x/y/z/some-path/tests/multi-language-repo

@@ -1,13 +1,13 @@
+#!/usr/bin/env python
+
 import ruamel.yaml
 from ruamel.yaml.scalarstring import FoldedScalarString
-import os
+import pathlib
 import textwrap
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
-    # The oldest supported CodeQL version: 2.10.5. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-20220908",
-    # The last CodeQL release in the 2.11 series: 2.11.6.
+    # The oldest supported CodeQL version: 2.11.6. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
     "stable-20221211",
     # The last CodeQL release in the 2.12 series: 2.12.7.
     "stable-20230418",
@@ -47,9 +47,11 @@ def writeHeader(checkStream):
 yaml = ruamel.yaml.YAML()
 yaml.Representer = NonAliasingRTRepresenter
 
+this_dir = pathlib.Path(__file__).resolve().parent
+
 allJobs = {}
-for file in os.listdir('checks'):
-    with open(f"checks/{file}", 'r') as checkStream:
+for file in (this_dir / 'checks').glob('*.yml'):
+    with open(file, 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
 
     matrix = []
@@ -71,6 +73,22 @@ for file in os.listdir('checks'):
 
     steps = [
         {
+            'name': 'Setup Python on MacOS',
+            'uses': 'actions/setup-python@v5',
+            # Ensure that this is serialized as a folded (`>`) string to preserve the readability
+            # of the generated workflow.
+            'if': FoldedScalarString(textwrap.dedent('''
+                    matrix.os == 'macos-latest' && (
+                    matrix.version == 'stable-20221211' ||
+                    matrix.version == 'stable-20230418' ||
+                    matrix.version == 'stable-v2.13.5' ||
+                    matrix.version == 'stable-v2.14.6')
+            ''').strip()),
+            'with': {
+                'python-version': '3.11'
+            }
+        },
+        {
             'name': 'Check out repository',
             'uses': 'actions/checkout@v4'
         },
@@ -89,14 +107,7 @@ for file in os.listdir('checks'):
         # We don't support Swift on Windows or prior versions of the CLI.
         {
             'name': 'Set environment variable for Swift enablement',
-            # Ensure that this is serialized as a folded (`>`) string to preserve the readability
-            # of the generated workflow.
-            'if': FoldedScalarString(textwrap.dedent('''
-                runner.os != 'Windows' && (
-                    matrix.version == '20220908' ||
-                    matrix.version == '20221211'
-                )
-            ''').strip()),
+            'if': "runner.os != 'Windows' && matrix.version == '20221211'",
             'shell': 'bash',
             'run': 'echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV'
         },
@@ -129,9 +140,9 @@ for file in os.listdir('checks'):
     checkJob['env'] = checkJob.get('env', {})
     if 'CODEQL_ACTION_TEST_MODE' not in checkJob['env']:
         checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
-    checkName = file[:len(file) - 4]
+    checkName = file.stem
 
-    with open(f"../.github/workflows/__{checkName}.yml", 'w') as output_stream:
+    with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w') as output_stream:
         writeHeader(output_stream)
         yaml.dump({
             'name': f"PR Check - {checkSpecification['name']}",
@@ -141,7 +152,7 @@ for file in os.listdir('checks'):
             },
             'on': {
                 'push': {
-                    'branches': ['main', 'releases/v2']
+                    'branches': ['main', 'releases/v*']
                 },
                 'pull_request': {
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]

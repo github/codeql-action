@@ -7,7 +7,7 @@ on:
   push:
     branches:
     - main
-    - releases/v2
+    - releases/v*
   pull_request:
     types:
     - opened
@@ -17,15 +17,12 @@ on:
   workflow_dispatch: {}
 jobs:
   upload-artifacts:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
     name: Upload debug artifacts after failure in analyze
     continue-on-error: true
     env:
       CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Dump GitHub event
         run: cat "${GITHUB_EVENT_PATH}"
@@ -36,7 +33,7 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: latest
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ^1.13.1
       - uses: ./../action/init
@@ -50,9 +47,11 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
+        env: 
+          # Forces a failure in this step.
+          CODEQL_ACTION_EXTRA_OPTIONS: '{ "database": { "finalize": ["--invalid-option"] } }'
         with:
           expect-error: true
-          ram: 1
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts
@@ -64,27 +63,23 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          OPERATING_SYSTEMS="ubuntu-latest macos-latest"
           LANGUAGES="cpp csharp go java javascript python"
-          for os in $OPERATING_SYSTEMS; do
-            pushd "./my-debug-artifacts-$os"
-            echo "Artifacts from run on $os:"
-            for language in $LANGUAGES; do
-              echo "- Checking $language"
-              if [[ ! -f "my-db-$language-partial.zip" ]] ; then
-                echo "Missing a partial database bundle for $language"
-                exit 1
-              fi
-              if [[ ! -d "log" ]] ; then
-                echo "Missing database initialization logs"
-                exit 1
-              fi
-              if [[ ! "$language" == "go" ]] && [[ ! -d "$language/log" ]] ; then
-                echo "Missing logs for $language"
-                exit 1
-              fi
-            done
-            popd
+          cd "./my-debug-artifacts"
+          echo "Artifacts from run:"
+          for language in $LANGUAGES; do
+            echo "- Checking $language"
+            if [[ ! -f "my-db-$language-partial.zip" ]] ; then
+              echo "Missing a partial database bundle for $language"
+              exit 1
+            fi
+            if [[ ! -d "log" ]] ; then
+              echo "Missing database initialization logs"
+              exit 1
+            fi
+            if [[ ! "$language" == "go" ]] && [[ ! -d "$language/log" ]] ; then
+              echo "Missing logs for $language"
+              exit 1
+            fi
           done
         env:
           GO111MODULE: auto

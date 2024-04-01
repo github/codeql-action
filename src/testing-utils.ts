@@ -8,14 +8,21 @@ import * as sinon from "sinon";
 
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
-import * as CodeQL from "./codeql";
+import * as codeql from "./codeql";
+import { Config } from "./config-utils";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
-import { HTTPError } from "./util";
+import {
+  DEFAULT_DEBUG_ARTIFACT_NAME,
+  DEFAULT_DEBUG_DATABASE_NAME,
+  GitHubVariant,
+  GitHubVersion,
+  HTTPError,
+} from "./util";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
   auth: "token",
@@ -73,7 +80,7 @@ export function setupTests(test: TestFn<any>) {
   typedTest.beforeEach((t) => {
     // Set an empty CodeQL object so that all method calls will fail
     // unless the test explicitly sets one up.
-    CodeQL.setCodeQL({});
+    codeql.setCodeQL({});
 
     // Replace stdout and stderr so we can record output during tests
     t.context.testOutput = "";
@@ -211,16 +218,23 @@ export function mockLanguagesInRepo(languages: string[]) {
 /**
  * Constructs a `VersionInfo` object for testing purposes only.
  */
-export const makeVersionInfo = (version: string): CodeQL.VersionInfo => ({
+export const makeVersionInfo = (
+  version: string,
+  features?: { [name: string]: boolean },
+): codeql.VersionInfo => ({
   version,
+  features,
 });
 
-export function mockCodeQLVersion(version: string) {
-  return {
+export function mockCodeQLVersion(
+  version: string,
+  features?: { [name: string]: boolean },
+) {
+  return codeql.setCodeQL({
     async getVersion() {
-      return makeVersionInfo(version);
+      return makeVersionInfo(version, features);
     },
-  } as CodeQL.CodeQL;
+  });
 }
 
 /**
@@ -283,4 +297,31 @@ export function mockBundleDownloadApi({
     );
 
   return `${baseUrl}${relativeUrl}`;
+}
+
+export function createTestConfig(overrides: Partial<Config>): Config {
+  return Object.assign(
+    {},
+    {
+      languages: [],
+      buildMode: undefined,
+      originalUserInput: {},
+      tempDir: "",
+      codeQLCmd: "",
+      gitHubVersion: {
+        type: GitHubVariant.DOTCOM,
+      } as GitHubVersion,
+      dbLocation: "",
+      debugMode: false,
+      debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
+      debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
+      augmentationProperties: {
+        packsInputCombines: false,
+        queriesInputCombines: false,
+      },
+      trapCaches: {},
+      trapCacheDownloadTime: 0,
+    },
+    overrides,
+  );
 }

@@ -19,7 +19,7 @@ class ActionDeclaration extends File {
     getRelativePath().matches("%/action.yml")
   }
 
-  YAMLDocument getRootNode() {
+  YamlDocument getRootNode() {
     result.getFile() = this
   }
 
@@ -27,7 +27,7 @@ class ActionDeclaration extends File {
    * The name of any input to this action.
    */
   string getAnInput() {
-    result = getRootNode().(YAMLMapping).lookup("inputs").(YAMLMapping).getKey(_).(YAMLString).getValue()
+    result = getRootNode().(YamlMapping).lookup("inputs").(YamlMapping).getKey(_).(YamlString).getValue()
   }
 
   /**
@@ -35,21 +35,10 @@ class ActionDeclaration extends File {
    * or because it has a default value.
    */
   predicate inputAlwaysHasValue(string input) {
-    exists(YAMLMapping value |
-      value = getRootNode().(YAMLMapping).lookup("inputs").(YAMLMapping).lookup(input) and
+    exists(YamlMapping value |
+      value = getRootNode().(YamlMapping).lookup("inputs").(YamlMapping).lookup(input) and
       (exists(value.lookup("default")) or
-       value.lookup("required").(YAMLBool).getBoolValue() = true))
-  }
-
-  /**
-   * The function that is the entrypoint to this action.
-   */
-  FunctionDeclStmt getEntrypoint() {
-    result.getFile().getRelativePath() = getRootNode().
-      (YAMLMapping).lookup("runs").
-      (YAMLMapping).lookup("main").
-      (YAMLString).getValue().regexpReplaceAll("\\.\\./lib/(.*)\\.js", "src/$1.ts") and
-    result.getName() = "run"
+       value.lookup("required").(YamlBool).getBoolValue() = true))
   }
 }
 

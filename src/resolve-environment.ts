@@ -27,7 +27,9 @@ export async function runResolveBuildEnvironment(
   ) {
     const parsedLanguage = parseLanguage(languageInput)?.toString();
     if (parsedLanguage === undefined) {
-      throw new Error(`Did not recognize the language '${languageInput}'.`);
+      throw new util.ConfigurationError(
+        `Did not recognize the language '${languageInput}'.`,
+      );
     }
     language = parsedLanguage;
   }

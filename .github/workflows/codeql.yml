@@ -2,15 +2,16 @@ name: "CodeQL action"
 
 on:
   push:
-    branches: [main, releases/v2]
+    branches: [main, releases/v*]
   pull_request:
-    branches: [main, releases/v2]
+    branches: [main, releases/v*]
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
   schedule:
     # Weekly on Sunday.
     - cron: '30 1 * * 0'
+  workflow_dispatch:
 
 env:
   CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks

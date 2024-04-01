@@ -8,7 +8,12 @@ import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { createFeatures, setupTests } from "./testing-utils";
+import {
+  createFeatures,
+  createTestConfig,
+  makeVersionInfo,
+  setupTests,
+} from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 import * as workflow from "./workflow";
@@ -38,6 +43,7 @@ test("post: init action with debug mode off", async (t) => {
       uploadDatabaseBundleSpy,
       uploadLogsSpy,
       printDebugLogsSpy,
+      createTestConfig({ debugMode: false }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
       getRunnerLogger(true),
@@ -54,16 +60,6 @@ test("post: init action with debug mode on", async (t) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
 
-    const gitHubVersion: util.GitHubVersion = {
-      type: util.GitHubVariant.DOTCOM,
-    };
-    sinon.stub(configUtils, "getConfig").resolves({
-      debugMode: true,
-      gitHubVersion,
-      languages: [],
-      packs: [],
-    } as unknown as configUtils.Config);
-
     const uploadDatabaseBundleSpy = sinon.spy();
     const uploadLogsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
@@ -72,6 +68,7 @@ test("post: init action with debug mode on", async (t) => {
       uploadDatabaseBundleSpy,
       uploadLogsSpy,
       printDebugLogsSpy,
+      createTestConfig({ debugMode: true }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
       getRunnerLogger(true),
@@ -91,14 +88,14 @@ test("uploads failed SARIF run with `diagnostics export` if feature flag is off"
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         category: "my-category",
       },
@@ -115,14 +112,14 @@ test("uploads failed SARIF run with `diagnostics export` if the database doesn't
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         category: "my-category",
       },
@@ -142,14 +139,14 @@ test("uploads failed SARIF run with database export-diagnostics if the database 
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         category: "my-category",
       },
@@ -199,14 +196,14 @@ for (const { uploadInput, shouldUpload } of UPLOAD_INPUT_TEST_CASES) {
       },
       {
         name: "Initialize CodeQL",
-        uses: "github/codeql-action/init@v2",
+        uses: "github/codeql-action/init@v3",
         with: {
           languages: "javascript",
         },
       },
       {
         name: "Perform CodeQL Analysis",
-        uses: "github/codeql-action/analyze@v2",
+        uses: "github/codeql-action/analyze@v3",
         with: {
           category: "my-category",
           upload: uploadInput,
@@ -234,14 +231,14 @@ test("uploading failed SARIF run succeeds when workflow uses an input with a mat
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         category: "/language:${{ matrix.language }}",
       },
@@ -261,14 +258,14 @@ test("uploading failed SARIF run fails when workflow uses a complex upload input
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v2",
+      uses: "github/codeql-action/init@v3",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v2",
+      uses: "github/codeql-action/analyze@v3",
       with: {
         upload: "${{ matrix.language != 'csharp' }}",
       },
@@ -362,6 +359,7 @@ async function testFailedSarifUpload(
 
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.0"));
   const databaseExportDiagnosticsStub = sinon.stub(
     codeqlObject,
     "databaseExportDiagnostics",
@@ -377,7 +375,7 @@ async function testFailedSarifUpload(
   } as uploadLib.UploadResult);
   const waitForProcessing = sinon.stub(uploadLib, "waitForProcessing");
 
-  const features = [Feature.UploadFailedSarifEnabled];
+  const features = [] as Feature[];
   if (exportDiagnosticsEnabled) {
     features.push(Feature.ExportDiagnosticsEnabled);
   }
@@ -390,6 +388,7 @@ async function testFailedSarifUpload(
   );
   if (expectUpload) {
     t.deepEqual(result, {
+      sarifID: "42",
       raw_upload_size_bytes: 20,
       zipped_upload_size_bytes: 10,
     });

@@ -2,7 +2,7 @@ name: Test Python Package Installation
 
 on:
   push:
-    branches: [main, releases/v2]
+    branches: [main, releases/v*]
   pull_request:
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.
@@ -139,7 +139,7 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python_version }}
 

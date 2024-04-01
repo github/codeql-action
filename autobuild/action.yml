@@ -3,6 +3,8 @@ description: 'Attempt to automatically build code'
 author: 'GitHub'
 inputs:
   token:
+    description: "GitHub token to use for authenticating with this instance of GitHub. The token needs the `security-events: write` permission."
+    required: false
     default: ${{ github.token }}
   matrix:
     default: ${{ toJson(matrix) }}
@@ -13,5 +15,5 @@ inputs:
       $GITHUB_WORKSPACE as its working directory.
     required: false
 runs:
-  using: 'node16'
+  using: node20
   main: '../lib/autobuild-action.js'

@@ -3,13 +3,12 @@
 name: Code-Scanning config CLI tests
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  CODEQL_PASS_CONFIG_TO_CLI: true
 
 on:
   push:
     branches:
     - main
-    - releases/v2
+    - releases/v*
   pull_request:
     types:
     - opened
@@ -200,18 +199,6 @@ jobs:
             "paths-ignore": ["xxx"],
             "paths": ["yyy"]
           }
-        languages: javascript
-        packs: + codeql/javascript-queries
-        config-file-test: .github/codeql/other-config-properties.yml
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-
-    - name: Config not generated when env var is not set
-      if: success() || failure()
-      env:
-        CODEQL_PASS_CONFIG_TO_CLI: false
-      uses: ./../action/.github/actions/check-codescanning-config
-      with:
-        expected-config-file-contents: ""
         languages: javascript
         packs: + codeql/javascript-queries
         config-file-test: .github/codeql/other-config-properties.yml

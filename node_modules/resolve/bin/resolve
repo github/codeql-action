@@ -11,7 +11,7 @@ if (
         !process.argv
         || process.argv.length < 2
         || (process.argv[1] !== __filename && fs.statSync(process.argv[1]).ino !== fs.statSync(__filename).ino)
-        || (process.env._ && path.resolve(process.env._) !== __filename)
+        || (process.env.npm_lifecycle_event !== 'npx' && process.env._ && fs.realpathSync(path.resolve(process.env._)) !== __filename)
     )
 ) {
     console.error('Error: `resolve` must be run directly as an executable');

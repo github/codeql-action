@@ -16,10 +16,14 @@ module.exports = {
         const elementType = getElementType(context, node)
         if (elementType !== 'svg') return
 
-        // Check if there is a nested title element that is the first child of the `<svg>`
+        // Check if there is a nested title element that is the first non-whitespace child of the `<svg>`
+        const childrenWithoutWhitespace = node.parent.children?.filter(({type, value}) =>
+          type === 'JSXText' ? value.trim() !== '' : type !== 'JSXText',
+        )
+
         const hasNestedTitleAsFirstChild =
-          node.parent.children?.[0]?.type === 'JSXElement' &&
-          node.parent.children?.[0]?.openingElement?.name?.name === 'title'
+          childrenWithoutWhitespace?.[0]?.type === 'JSXElement' &&
+          childrenWithoutWhitespace?.[0]?.openingElement?.name?.name === 'title'
 
         // Check if `aria-label` or `aria-labelledby` is set
         const hasAccessibleName = hasProp(node.attributes, 'aria-label') || hasProp(node.attributes, 'aria-labelledby')

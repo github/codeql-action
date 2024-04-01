@@ -8,6 +8,7 @@ import * as core from "@actions/core";
 
 import { getTemporaryDirectory, printDebugLogs } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
+import { Config, getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
 import { Features } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -18,6 +19,8 @@ import {
   sendStatusReport,
   createStatusReportBase,
   getActionsStatus,
+  ActionName,
+  getJobStatusDisplayName,
 } from "./status-report";
 import {
   checkDiskUsage,
@@ -28,15 +31,17 @@ import {
 
 interface InitPostStatusReport
   extends StatusReportBase,
-    initActionPostHelper.UploadFailedSarifResult {}
+    initActionPostHelper.UploadFailedSarifResult,
+    initActionPostHelper.JobStatusReport {}
 
 async function runWrapper() {
+  const logger = getActionsLogger();
   const startedAt = new Date();
+  let config: Config | undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
   try {
-    const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 
@@ -50,10 +55,19 @@ async function runWrapper() {
       logger,
     );
 
+    config = await getConfig(getTemporaryDirectory(), logger);
+    if (config === undefined) {
+      logger.warning(
+        "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
+      );
+      return;
+    }
+
     uploadFailedSarifResult = await initActionPostHelper.run(
       debugArtifacts.uploadDatabaseBundleDebugArtifact,
       debugArtifacts.uploadLogsDebugArtifact,
       printDebugLogs,
+      config,
       repositoryNwo,
       features,
       logger,
@@ -64,25 +78,33 @@ async function runWrapper() {
 
     await sendStatusReport(
       await createStatusReportBase(
-        "init-post",
+        ActionName.InitPost,
         getActionsStatus(error),
         startedAt,
+        config,
         await checkDiskUsage(),
+        logger,
         error.message,
         error.stack,
       ),
     );
     return;
   }
+  const jobStatus = initActionPostHelper.getFinalJobStatus();
+  logger.info(`CodeQL job status was ${getJobStatusDisplayName(jobStatus)}.`);
+
   const statusReportBase = await createStatusReportBase(
-    "init-post",
+    ActionName.InitPost,
     "success",
     startedAt,
+    config,
     await checkDiskUsage(),
+    logger,
   );
   const statusReport: InitPostStatusReport = {
     ...statusReportBase,
     ...uploadFailedSarifResult,
+    job_status: initActionPostHelper.getFinalJobStatus(),
   };
   await sendStatusReport(statusReport);
 }

@@ -85,16 +85,6 @@ test("getGitHubVersion for GHES", async (t) => {
   );
 });
 
-test("getGitHubVersion for GHAE", async (t) => {
-  mockGetMetaVersionHeader("GitHub AE");
-  const ghae = await api.getGitHubVersionFromApi(api.getApiClient(), {
-    auth: "",
-    url: "https://example.githubenterprise.com",
-    apiURL: undefined,
-  });
-  t.deepEqual({ type: util.GitHubVariant.GHAE }, ghae);
-});
-
 test("getGitHubVersion for different domain", async (t) => {
   mockGetMetaVersionHeader(undefined);
   const v3 = await api.getGitHubVersionFromApi(api.getApiClient(), {

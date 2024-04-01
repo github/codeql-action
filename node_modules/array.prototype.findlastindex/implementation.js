@@ -3,13 +3,13 @@
 var GetIntrinsic = require('get-intrinsic');
 var $TypeError = GetIntrinsic('%TypeError%');
 
-var Call = require('es-abstract/2022/Call');
-var Get = require('es-abstract/2022/Get');
-var IsCallable = require('es-abstract/2022/IsCallable');
-var LengthOfArrayLike = require('es-abstract/2022/LengthOfArrayLike');
-var ToBoolean = require('es-abstract/2022/ToBoolean');
-var ToObject = require('es-abstract/2022/ToObject');
-var ToString = require('es-abstract/2022/ToString');
+var Call = require('es-abstract/2023/Call');
+var Get = require('es-abstract/2023/Get');
+var IsCallable = require('es-abstract/2023/IsCallable');
+var LengthOfArrayLike = require('es-abstract/2023/LengthOfArrayLike');
+var ToBoolean = require('es-abstract/2023/ToBoolean');
+var ToObject = require('es-abstract/2023/ToObject');
+var ToString = require('es-abstract/2023/ToString');
 
 module.exports = function findLastIndex(predicate) {
 	var O = ToObject(this);

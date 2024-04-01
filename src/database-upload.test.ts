@@ -8,19 +8,18 @@ import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
 import { setCodeQL } from "./codeql";
-import { Config, defaultAugmentationProperties } from "./config-utils";
+import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { Language } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
+  createTestConfig,
   getRecordingLogger,
   LoggedMessage,
   setupActionsVars,
   setupTests,
 } from "./testing-utils";
 import {
-  DEFAULT_DEBUG_ARTIFACT_NAME,
-  DEFAULT_DEBUG_DATABASE_NAME,
   GitHubVariant,
   HTTPError,
   initializeEnvironment,
@@ -41,24 +40,10 @@ const testApiDetails: GitHubApiDetails = {
 };
 
 function getTestConfig(tmpDir: string): Config {
-  return {
+  return createTestConfig({
     languages: [Language.javascript],
-    queries: {},
-    pathsIgnore: [],
-    paths: [],
-    originalUserInput: {},
-    tempDir: tmpDir,
-    codeQLCmd: "foo",
-    gitHubVersion: { type: GitHubVariant.DOTCOM },
     dbLocation: tmpDir,
-    packs: {},
-    debugMode: false,
-    debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
-    debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: defaultAugmentationProperties,
-    trapCaches: {},
-    trapCacheDownloadTime: 0,
-  };
+  });
 }
 
 async function mockHttpRequests(databaseUploadStatusCode: number) {
@@ -68,7 +53,7 @@ async function mockHttpRequests(databaseUploadStatusCode: number) {
   const requestSpy = sinon.stub(client, "request");
 
   const url =
-    "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name";
+    "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid";
   const databaseUploadSpy = requestSpy.withArgs(url);
   if (databaseUploadStatusCode < 300) {
     databaseUploadSpy.resolves(undefined);
@@ -119,35 +104,6 @@ test("Abort database upload if running against GHES", async (t) => {
 
     const config = getTestConfig(tmpDir);
     config.gitHubVersion = { type: GitHubVariant.GHES, version: "3.0" };
-
-    const loggedMessages = [];
-    await uploadDatabases(
-      testRepoName,
-      config,
-      testApiDetails,
-      getRecordingLogger(loggedMessages),
-    );
-    t.assert(
-      loggedMessages.find(
-        (v: LoggedMessage) =>
-          v.type === "debug" &&
-          v.message === "Not running against github.com. Skipping upload.",
-      ) !== undefined,
-    );
-  });
-});
-
-test("Abort database upload if running against GHAE", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    sinon
-      .stub(actionsUtil, "getRequiredInput")
-      .withArgs("upload-database")
-      .returns("true");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
-
-    const config = getTestConfig(tmpDir);
-    config.gitHubVersion = { type: GitHubVariant.GHAE };
 
     const loggedMessages = [];
     await uploadDatabases(

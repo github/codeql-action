@@ -32,45 +32,32 @@ test.beforeEach(() => {
 
 const testRepositoryNwo = parseRepositoryNwo("github/example");
 
-const ALL_FEATURES_DISABLED_VARIANTS: Array<{
-  description: string;
-  gitHubVersion: util.GitHubVersion;
-}> = [
-  {
-    description: "GHES",
-    gitHubVersion: { type: GitHubVariant.GHES, version: "3.0.0" },
-  },
-  { description: "GHAE", gitHubVersion: { type: GitHubVariant.GHAE } },
-];
+test(`All features are disabled if running against GHES`, async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const loggedMessages = [];
+    const features = setUpFeatureFlagTests(
+      tmpDir,
+      getRecordingLogger(loggedMessages),
+      { type: GitHubVariant.GHES, version: "3.0.0" },
+    );
 
-for (const variant of ALL_FEATURES_DISABLED_VARIANTS) {
-  test(`All features are disabled if running against ${variant.description}`, async (t) => {
-    await withTmpDir(async (tmpDir) => {
-      const loggedMessages = [];
-      const features = setUpFeatureFlagTests(
-        tmpDir,
-        getRecordingLogger(loggedMessages),
-        variant.gitHubVersion,
+    for (const feature of Object.values(Feature)) {
+      t.deepEqual(
+        await features.getValue(feature, includeCodeQlIfRequired(feature)),
+        featureConfig[feature].defaultValue,
       );
+    }
 
-      for (const feature of Object.values(Feature)) {
-        t.deepEqual(
-          await features.getValue(feature, includeCodeQlIfRequired(feature)),
-          featureConfig[feature].defaultValue,
-        );
-      }
-
-      t.assert(
-        loggedMessages.find(
-          (v: LoggedMessage) =>
-            v.type === "debug" &&
-            v.message ===
-              "Not running against github.com. Disabling all toggleable features.",
-        ) !== undefined,
-      );
-    });
+    t.assert(
+      loggedMessages.find(
+        (v: LoggedMessage) =>
+          v.type === "debug" &&
+          v.message ===
+            "Not running against github.com. Disabling all toggleable features.",
+      ) !== undefined,
+    );
   });
-}
+});
 
 test("API response missing and features use default value", async (t) => {
   await withTmpDir(async (tmpDir) => {
@@ -291,8 +278,8 @@ test("Feature flags are saved to disk", async (t) => {
 
     t.true(
       await features.getValue(
-        Feature.CliConfigFileEnabled,
-        includeCodeQlIfRequired(Feature.CliConfigFileEnabled),
+        Feature.QaTelemetryEnabled,
+        includeCodeQlIfRequired(Feature.QaTelemetryEnabled),
       ),
       "Feature flag should be enabled initially",
     );
@@ -308,7 +295,7 @@ test("Feature flags are saved to disk", async (t) => {
     t.deepEqual(actualFeatureEnablement, expectedFeatureEnablement);
 
     // now test that we actually use the feature flag cache instead of the server
-    actualFeatureEnablement[Feature.CliConfigFileEnabled] = false;
+    actualFeatureEnablement[Feature.QaTelemetryEnabled] = false;
     fs.writeFileSync(
       cachedFeatureFlags,
       JSON.stringify(actualFeatureEnablement),
@@ -319,8 +306,8 @@ test("Feature flags are saved to disk", async (t) => {
 
     t.false(
       await features.getValue(
-        Feature.CliConfigFileEnabled,
-        includeCodeQlIfRequired(Feature.CliConfigFileEnabled),
+        Feature.QaTelemetryEnabled,
+        includeCodeQlIfRequired(Feature.QaTelemetryEnabled),
       ),
       "Feature flag should be enabled after reading from cached file",
     );
@@ -336,8 +323,8 @@ test("Environment variable can override feature flag cache", async (t) => {
     const cachedFeatureFlags = path.join(tmpDir, FEATURE_FLAGS_FILE_NAME);
     t.true(
       await features.getValue(
-        Feature.CliConfigFileEnabled,
-        includeCodeQlIfRequired(Feature.CliConfigFileEnabled),
+        Feature.QaTelemetryEnabled,
+        includeCodeQlIfRequired(Feature.QaTelemetryEnabled),
       ),
       "Feature flag should be enabled initially",
     );
@@ -346,31 +333,31 @@ test("Environment variable can override feature flag cache", async (t) => {
       fs.existsSync(cachedFeatureFlags),
       "Feature flag cached file should exist after getting feature flags",
     );
-    process.env.CODEQL_PASS_CONFIG_TO_CLI = "false";
+    process.env.CODEQL_ACTION_QA_TELEMETRY = "false";
 
     t.false(
       await features.getValue(
-        Feature.CliConfigFileEnabled,
-        includeCodeQlIfRequired(Feature.CliConfigFileEnabled),
+        Feature.QaTelemetryEnabled,
+        includeCodeQlIfRequired(Feature.QaTelemetryEnabled),
       ),
       "Feature flag should be disabled after setting env var",
     );
   });
 });
 
-for (const variant of [GitHubVariant.GHAE, GitHubVariant.GHES]) {
-  test(`selects CLI from defaults.json on ${GitHubVariant[variant]}`, async (t) => {
-    await withTmpDir(async (tmpDir) => {
-      const features = setUpFeatureFlagTests(tmpDir);
+test(`selects CLI from defaults.json on GHES`, async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const features = setUpFeatureFlagTests(tmpDir);
 
-      const defaultCliVersion = await features.getDefaultCliVersion(variant);
-      t.deepEqual(defaultCliVersion, {
-        cliVersion: defaults.cliVersion,
-        tagName: defaults.bundleVersion,
-      });
+    const defaultCliVersion = await features.getDefaultCliVersion(
+      GitHubVariant.GHES,
+    );
+    t.deepEqual(defaultCliVersion, {
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
     });
   });
-}
+});
 
 test("selects CLI v2.20.1 on Dotcom when feature flags enable v2.20.0 and v2.20.1", async (t) => {
   await withTmpDir(async (tmpDir) => {

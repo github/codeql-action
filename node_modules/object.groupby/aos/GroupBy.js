@@ -3,16 +3,17 @@
 var GetIntrinsic = require('get-intrinsic');
 
 var AddValueToKeyedGroup = require('./AddValueToKeyedGroup');
-var Call = require('es-abstract/2022/Call');
-var GetIterator = require('es-abstract/2022/GetIterator');
-var IsCallable = require('es-abstract/2022/IsCallable');
-var IteratorClose = require('./IteratorClose');
-var IteratorStep = require('./IteratorStep');
-var IteratorValue = require('es-abstract/2022/IteratorValue');
+var Call = require('es-abstract/2023/Call');
+var GetIterator = require('es-abstract/2023/GetIterator');
+var IsCallable = require('es-abstract/2023/IsCallable');
+var IteratorClose = require('es-abstract/2023/IteratorClose');
+var IteratorStep = require('es-abstract/2023/IteratorStep');
+var IteratorValue = require('es-abstract/2023/IteratorValue');
+var RequireObjectCoercible = require('es-abstract/2023/RequireObjectCoercible');
+var ThrowCompletion = require('es-abstract/2023/ThrowCompletion');
+var ToPropertyKey = require('es-abstract/2023/ToPropertyKey');
+
 var maxSafeInteger = require('es-abstract/helpers/maxSafeInteger');
-var RequireObjectCoercible = require('es-abstract/2022/RequireObjectCoercible');
-var ThrowCompletion = require('es-abstract/2022/ThrowCompletion');
-var ToPropertyKey = require('es-abstract/2022/ToPropertyKey');
 
 var $TypeError = GetIntrinsic('%TypeError%');
 
@@ -29,12 +30,7 @@ module.exports = function GroupBy(items, callbackfn, coercion) {
 
 	var groups = []; // step 3
 
-	var iterator = GetIterator(items); // step 4
-	var iteratorRecord = { // TODO: remove this once GetIterator is on ES2023+
-		'[[Iterator]]': iterator,
-		'[[NextMethod]]': iterator.next,
-		'[[Done]]': false // eslint-disable-line sort-keys
-	};
+	var iteratorRecord = GetIterator(items, 'sync'); // step 4
 
 	var k = 0; // step 5
 

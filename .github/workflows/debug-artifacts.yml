@@ -6,7 +6,7 @@ on:
   push:
     branches:
     - main
-    - releases/v2
+    - releases/v*
   pull_request:
     types:
     - opened
@@ -18,11 +18,7 @@ jobs:
   upload-artifacts:
     strategy:
       matrix:
-        os:
-        - ubuntu-latest
-        - macos-latest
         version:
-        - stable-20220908
         - stable-20221211
         - stable-20230418
         - stable-v2.13.5
@@ -34,7 +30,7 @@ jobs:
     env:
       CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -43,7 +39,7 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ^1.13.1
       - uses: ./../action/init
@@ -72,29 +68,27 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20220908 stable-20221211 stable-20230418 stable-v2.13.5 stable-v2.14.6 default latest nightly-latest"
+          VERSIONS="stable-20221211 stable-20230418 stable-v2.13.5 stable-v2.14.6 default latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
-            for os in ubuntu-latest macos-latest; do
-              pushd "./my-debug-artifacts-$os-${version//./}"
-              echo "Artifacts from version $version on $os:"
-              for language in $LANGUAGES; do
-                echo "- Checking $language"
-                if [[ ! -f "$language.sarif" ]] ; then
-                  echo "Missing a SARIF file for $language"
-                  exit 1
-                fi
-                if [[ ! -f "my-db-$language.zip" ]] ; then
-                  echo "Missing a database bundle for $language"
-                  exit 1
-                fi
-                if [[ ! -d "$language/log" ]] ; then
-                  echo "Missing logs for $language"
-                  exit 1
-                fi
-              done
-              popd
+            pushd "./my-debug-artifacts-${version//./}"
+            echo "Artifacts from version $version:"
+            for language in $LANGUAGES; do
+              echo "- Checking $language"
+              if [[ ! -f "$language.sarif" ]] ; then
+                echo "Missing a SARIF file for $language"
+                exit 1
+              fi
+              if [[ ! -f "my-db-$language.zip" ]] ; then
+                echo "Missing a database bundle for $language"
+                exit 1
+              fi
+              if [[ ! -d "$language/log" ]] ; then
+                echo "Missing logs for $language"
+                exit 1
+              fi
             done
+            popd
           done
         env:
           GO111MODULE: auto

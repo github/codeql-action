@@ -4,19 +4,14 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
-import * as analysisPaths from "./analysis-paths";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import {
-  CodeQLDefaultVersionInfo,
-  FeatureEnablement,
-  useCodeScanningConfigInCli,
-} from "./feature-flags";
-import { Language } from "./languages";
+import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
-import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
+import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
@@ -50,49 +45,19 @@ export async function initCodeQL(
 }
 
 export async function initConfig(
-  languagesInput: string | undefined,
-  queriesInput: string | undefined,
-  packsInput: string | undefined,
-  registriesInput: string | undefined,
-  configFile: string | undefined,
-  dbLocation: string | undefined,
-  configInput: string | undefined,
-  trapCachingEnabled: boolean,
-  debugMode: boolean,
-  debugArtifactName: string,
-  debugDatabaseName: string,
-  repository: RepositoryNwo,
-  tempDir: string,
-  codeQL: CodeQL,
-  workspacePath: string,
-  gitHubVersion: util.GitHubVersion,
-  apiDetails: GitHubApiCombinedDetails,
-  features: FeatureEnablement,
-  logger: Logger,
+  inputs: configUtils.InitConfigInputs,
+  codeql: CodeQL,
 ): Promise<configUtils.Config> {
+  const logger = inputs.logger;
   logger.startGroup("Load language configuration");
-  const config = await configUtils.initConfig(
-    languagesInput,
-    queriesInput,
-    packsInput,
-    registriesInput,
-    configFile,
-    dbLocation,
-    configInput,
-    trapCachingEnabled,
-    debugMode,
-    debugArtifactName,
-    debugDatabaseName,
-    repository,
-    tempDir,
-    codeQL,
-    workspacePath,
-    gitHubVersion,
-    apiDetails,
-    features,
-    logger,
-  );
-  analysisPaths.printPathFiltersWarning(config, logger);
+  const config = await configUtils.initConfig(inputs);
+  if (
+    !(await codeql.supportsFeature(
+      ToolsFeature.InformsAboutUnsupportedPathFilters,
+    ))
+  ) {
+    printPathFiltersWarning(config, logger);
+  }
   logger.endGroup();
   return config;
 }
@@ -103,83 +68,51 @@ export async function runInit(
   sourceRoot: string,
   processName: string | undefined,
   registriesInput: string | undefined,
-  features: FeatureEnablement,
   apiDetails: GitHubApiCombinedDetails,
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
-  try {
-    // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.
-    // So, create it now.
-    // If we are parsing the config file in the Action, then the qlconfig file was already created
-    // before the `pack download` command was invoked. It is not required for the init command.
-    let registriesAuthTokens: string | undefined;
-    let qlconfigFile: string | undefined;
-    if (await useCodeScanningConfigInCli(codeql, features)) {
-      ({ registriesAuthTokens, qlconfigFile } =
-        await configUtils.generateRegistries(
-          registriesInput,
-          config.tempDir,
-          logger,
-        ));
-    }
-    await configUtils.wrapEnvironment(
-      {
-        GITHUB_TOKEN: apiDetails.auth,
-        CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-      },
 
-      // Init a database cluster
-      async () =>
-        await codeql.databaseInitCluster(
-          config,
-          sourceRoot,
-          processName,
-          features,
-          qlconfigFile,
-          logger,
-        ),
+  const { registriesAuthTokens, qlconfigFile } =
+    await configUtils.generateRegistries(
+      registriesInput,
+      config.tempDir,
+      logger,
     );
-  } catch (e) {
-    throw processError(e);
-  }
-  return await getCombinedTracerConfig(config);
+  await configUtils.wrapEnvironment(
+    {
+      GITHUB_TOKEN: apiDetails.auth,
+      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+    },
+
+    // Init a database cluster
+    async () =>
+      await codeql.databaseInitCluster(
+        config,
+        sourceRoot,
+        processName,
+        qlconfigFile,
+        logger,
+      ),
+  );
+  return await getCombinedTracerConfig(codeql, config);
 }
 
-/**
- * Possibly convert this error into a UserError in order to avoid
- * counting this error towards our internal error budget.
- *
- * @param e The error to possibly convert to a UserError.
- *
- * @returns A UserError if the error is a known error that can be
- *         attributed to the user, otherwise the original error.
- */
-function processError(e: any): Error {
-  if (!(e instanceof Error)) {
-    return e;
-  }
-
+export function printPathFiltersWarning(
+  config: configUtils.Config,
+  logger: Logger,
+) {
+  // Index include/exclude/filters only work in javascript/python/ruby.
+  // If any other languages are detected/configured then show a warning.
   if (
-    // Init action called twice
-    e.message?.includes("Refusing to create databases") &&
-    e.message?.includes("exists and is not an empty directory.")
+    (config.originalUserInput.paths?.length ||
+      config.originalUserInput["paths-ignore"]?.length) &&
+    !config.languages.every(isScannedLanguage)
   ) {
-    return new util.UserError(
-      `Is the "init" action called twice in the same job? ${e.message}`,
+    logger.warning(
+      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby',
     );
   }
-
-  if (
-    // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
-    e.message?.includes("is not compatible with this CodeQL CLI") ||
-    // Expected source location for database creation does not exist
-    e.message?.includes("Invalid source root")
-  ) {
-    return new util.UserError(e.message);
-  }
-
-  return e;
 }
 
 /**

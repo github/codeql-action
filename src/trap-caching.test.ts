@@ -12,9 +12,9 @@ import {
   getTrapCachingExtractorConfigArgsForLang,
 } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Config } from "./config-utils";
 import { Language } from "./languages";
 import {
+  createTestConfig,
   getRecordingLogger,
   makeVersionInfo,
   setupTests,
@@ -69,57 +69,23 @@ const stubCodeql = setCodeQL({
   },
 });
 
-const testConfigWithoutTmpDir: Config = {
+const testConfigWithoutTmpDir = createTestConfig({
   languages: [Language.javascript, Language.cpp],
-  queries: {},
-  pathsIgnore: [],
-  paths: [],
-  originalUserInput: {},
-  tempDir: "",
-  codeQLCmd: "",
-  gitHubVersion: {
-    type: util.GitHubVariant.DOTCOM,
-  } as util.GitHubVersion,
-  dbLocation: "",
-  packs: {},
-  debugMode: false,
-  debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-  debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-  augmentationProperties: {
-    packsInputCombines: false,
-    queriesInputCombines: false,
-  },
   trapCaches: {
     javascript: "/some/cache/dir",
   },
-  trapCacheDownloadTime: 0,
-};
+});
 
-function getTestConfigWithTempDir(tmpDir: string): configUtils.Config {
-  return {
+function getTestConfigWithTempDir(tempDir: string): configUtils.Config {
+  return createTestConfig({
     languages: [Language.javascript, Language.ruby],
-    queries: {},
-    pathsIgnore: [],
-    paths: [],
-    originalUserInput: {},
-    tempDir: tmpDir,
-    codeQLCmd: "",
-    gitHubVersion: { type: util.GitHubVariant.DOTCOM } as util.GitHubVersion,
-    dbLocation: path.resolve(tmpDir, "codeql_databases"),
-    packs: {},
-    debugMode: false,
-    debugArtifactName: util.DEFAULT_DEBUG_ARTIFACT_NAME,
-    debugDatabaseName: util.DEFAULT_DEBUG_DATABASE_NAME,
-    augmentationProperties: {
-      packsInputCombines: false,
-      queriesInputCombines: false,
-    },
+    tempDir,
+    dbLocation: path.resolve(tempDir, "codeql_databases"),
     trapCaches: {
-      javascript: path.resolve(tmpDir, "jsCache"),
-      ruby: path.resolve(tmpDir, "rubyCache"),
+      javascript: path.resolve(tempDir, "jsCache"),
+      ruby: path.resolve(tempDir, "rubyCache"),
     },
-    trapCacheDownloadTime: 0,
-  };
+  });
 }
 
 test("check flags for JS, analyzing default branch", async (t) => {

@@ -3,7 +3,6 @@ import path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
-import { safeWhich } from "@chrisgavin/safe-which";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -13,13 +12,13 @@ import {
   runCleanup,
   runFinalize,
   runQueries,
+  warnIfGoInstalledAfterInit,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
@@ -27,6 +26,7 @@ import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
+  ActionName,
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
@@ -36,7 +36,6 @@ import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
-import { checkForTimeout, wrapError } from "./util";
 
 interface AnalysisStatusReport
   extends uploadLib.UploadStatusReport,
@@ -66,10 +65,12 @@ async function sendStatusReport(
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
   const statusReportBase = await createStatusReportBase(
-    "finish",
+    ActionName.Analyze,
     status,
     startedAt,
+    config,
     await util.checkDiskUsage(),
+    logger,
     error?.message,
     error?.stack,
   );
@@ -141,6 +142,12 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
+  if (config.buildMode) {
+    logger.debug(
+      "Skipping legacy Go autobuild since a build mode has been specified.",
+    );
+    return;
+  }
   if (process.env[EnvVar.DID_AUTOBUILD_GOLANG] === "true") {
     logger.debug("Won't run Go autobuild since it has already been run.");
     return;
@@ -183,18 +190,17 @@ async function run() {
 
   const logger = getActionsLogger();
   try {
-    if (
-      !(await statusReport.sendStatusReport(
-        await createStatusReportBase(
-          "finish",
-          "starting",
-          startedAt,
-          await util.checkDiskUsage(logger),
-        ),
-      ))
-    ) {
-      return;
-    }
+    await statusReport.sendStatusReport(
+      await createStatusReportBase(
+        ActionName.Analyze,
+        "starting",
+        startedAt,
+        config,
+        await util.checkDiskUsage(logger),
+        logger,
+      ),
+    );
+
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
@@ -203,7 +209,7 @@ async function run() {
     }
 
     if (hasBadExpectErrorInput()) {
-      throw new util.UserError(
+      throw new util.ConfigurationError(
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork.",
       );
     }
@@ -221,6 +227,8 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion();
 
+    util.checkActionVersion(actionsUtil.getActionVersion(), gitHubVersion);
+
     const features = new Features(
       gitHubVersion,
       repositoryNwo,
@@ -233,44 +241,7 @@ async function run() {
       logger,
     );
 
-    // Check that `which go` still points at the wrapper script we installed in the `init` Action,
-    // if the corresponding environment variable is set. This is to ensure that there isn't a step
-    // in the workflow after the `init` step which installs a different version of Go and takes
-    // precedence in the PATH, thus potentially circumventing our workaround that allows tracing to work.
-    const goWrapperPath = process.env[EnvVar.GO_BINARY_LOCATION];
-
-    if (
-      process.env[EnvVar.DID_AUTOBUILD_GOLANG] !== "true" &&
-      goWrapperPath !== undefined
-    ) {
-      const goBinaryPath = await safeWhich("go");
-
-      if (goWrapperPath !== goBinaryPath) {
-        core.warning(
-          `Expected \`which go\` to return ${goWrapperPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
-        );
-
-        addDiagnostic(
-          config,
-          Language.go,
-          makeDiagnostic(
-            "go/workflow/go-installed-after-codeql-init",
-            "Go was installed after the `codeql-action/init` Action was run",
-            {
-              markdownMessage:
-                "To avoid interfering with the CodeQL analysis, perform all installation steps before calling the `github/codeql-action/init` Action.",
-              visibility: {
-                statusPage: true,
-                telemetry: true,
-                cliSummaryTable: true,
-              },
-              severity: "warning",
-            },
-          ),
-        );
-      }
-    }
-
+    await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 
     dbCreationTimings = await runFinalize(
@@ -316,7 +287,6 @@ async function run() {
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
         logger,
-        { considerInvalidRequestUserError: false },
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {
@@ -334,7 +304,7 @@ async function run() {
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
-      core.debug("In test mode. Waiting for processing is disabled.");
+      logger.debug("In test mode. Waiting for processing is disabled.");
     } else if (
       uploadResult !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
@@ -353,7 +323,7 @@ async function run() {
     }
     core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
-    const error = wrapError(unwrappedError);
+    const error = util.wrapError(unwrappedError);
     if (
       actionsUtil.getOptionalInput("expect-error") !== "true" ||
       hasBadExpectErrorInput()
@@ -434,9 +404,9 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    core.setFailed(`analyze action failed: ${wrapError(error).message}`);
+    core.setFailed(`analyze action failed: ${util.wrapError(error).message}`);
   }
-  await checkForTimeout();
+  await util.checkForTimeout();
 }
 
 void runWrapper();

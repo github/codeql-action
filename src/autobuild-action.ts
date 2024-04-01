@@ -7,7 +7,9 @@ import {
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
-import * as configUtils from "./config-utils";
+import { getCodeQL } from "./codeql";
+import { Config, getConfig } from "./config-utils";
+import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger, getActionsLogger } from "./logging";
 import {
@@ -15,8 +17,10 @@ import {
   getActionsStatus,
   createStatusReportBase,
   sendStatusReport,
+  ActionName,
 } from "./status-report";
 import {
+  checkActionVersion,
   checkDiskUsage,
   checkGitHubVersionInRange,
   initializeEnvironment,
@@ -31,6 +35,7 @@ interface AutobuildStatusReport extends StatusReportBase {
 }
 
 async function sendCompletedStatusReport(
+  config: Config | undefined,
   logger: Logger,
   startedAt: Date,
   allLanguages: string[],
@@ -41,10 +46,12 @@ async function sendCompletedStatusReport(
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
-    "autobuild",
+    ActionName.Autobuild,
     status,
     startedAt,
+    config,
     await checkDiskUsage(logger),
+    logger,
     cause?.message,
     cause?.stack,
   );
@@ -59,33 +66,35 @@ async function sendCompletedStatusReport(
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
-  let currentLanguage: Language | undefined = undefined;
-  let languages: Language[] | undefined = undefined;
+  let config: Config | undefined;
+  let currentLanguage: Language | undefined;
+  let languages: Language[] | undefined;
   try {
-    if (
-      !(await sendStatusReport(
-        await createStatusReportBase(
-          "autobuild",
-          "starting",
-          startedAt,
-          await checkDiskUsage(logger),
-        ),
-      ))
-    ) {
-      return;
-    }
+    await sendStatusReport(
+      await createStatusReportBase(
+        ActionName.Autobuild,
+        "starting",
+        startedAt,
+        config,
+        await checkDiskUsage(logger),
+        logger,
+      ),
+    );
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
+    checkActionVersion(getActionVersion(), gitHubVersion);
 
-    const config = await configUtils.getConfig(getTemporaryDirectory(), logger);
+    config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
         "Config file could not be found at expected location. Has the 'init' action been called?",
       );
     }
 
-    languages = await determineAutobuildLanguages(config, logger);
+    const codeql = await getCodeQL(config.codeQLCmd);
+
+    languages = await determineAutobuildLanguages(codeql, config, logger);
     if (languages !== undefined) {
       const workingDirectory = getOptionalInput("working-directory");
       if (workingDirectory) {
@@ -105,6 +114,7 @@ async function run() {
       `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps. ${error.message}`,
     );
     await sendCompletedStatusReport(
+      config,
       logger,
       startedAt,
       languages ?? [],
@@ -114,7 +124,9 @@ async function run() {
     return;
   }
 
-  await sendCompletedStatusReport(logger, startedAt, languages ?? []);
+  core.exportVariable(EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY, "true");
+
+  await sendCompletedStatusReport(config, logger, startedAt, languages ?? []);
 }
 
 async function runWrapper() {

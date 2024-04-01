@@ -11,7 +11,7 @@ import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
   getRequiredEnvParam,
-  UserError,
+  ConfigurationError,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -26,7 +26,7 @@ const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
 export const getRequiredInput = function (name: string): string {
   const value = core.getInput(name);
   if (!value) {
-    throw new UserError(`Input required and not supplied: ${name}`);
+    throw new ConfigurationError(`Input required and not supplied: ${name}`);
   }
   return value;
 };
@@ -187,7 +187,7 @@ export async function getRef(): Promise<string> {
   const hasShaInput = !!shaInput;
   // If one of 'ref' or 'sha' are provided, both are required
   if ((hasRefInput || hasShaInput) && !(hasRefInput && hasShaInput)) {
-    throw new Error(
+    throw new ConfigurationError(
       "Both 'ref' and 'sha' are required if one of them is provided.",
     );
   }

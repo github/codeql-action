@@ -16,7 +16,11 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import {
+  Feature,
+  Features,
+  isPythonDependencyInstallationDisabled,
+} from "./feature-flags";
 import {
   checkInstallPython311,
   initCodeQL,
@@ -29,12 +33,13 @@ import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
+  ActionName,
   StatusReportBase,
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
-import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
+import { ToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkDiskUsage,
@@ -48,8 +53,9 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
-  UserError,
+  ConfigurationError,
   wrapError,
+  checkActionVersion,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -69,12 +75,6 @@ interface InitStatusReport extends StatusReportBase {
 interface InitWithConfigStatusReport extends InitStatusReport {
   /** Comma-separated list of languages where the default queries are disabled. */
   disable_default_queries: string;
-  /**
-   * Comma-separated list of languages that analysis was run for.
-   *
-   * This may be from the workflow file or may be calculated from repository contents
-   */
-  languages: string;
   /** Comma-separated list of paths, from the 'paths' config field. */
   paths: string;
   /** Comma-separated list of paths, from the 'paths-ignore' config field. */
@@ -110,10 +110,12 @@ async function sendCompletedStatusReport(
   error?: Error,
 ) {
   const statusReportBase = await createStatusReportBase(
-    "init",
+    ActionName.Init,
     getActionsStatus(error),
     startedAt,
+    config,
     await checkDiskUsage(logger),
+    logger,
     error?.message,
     error?.stack,
   );
@@ -168,7 +170,6 @@ async function sendCompletedStatusReport(
     const initWithConfigStatusReport: InitWithConfigStatusReport = {
       ...initStatusReport,
       disable_default_queries: disableDefaultQueries,
-      languages,
       paths,
       paths_ignore: pathsIgnore,
       queries: queries.join(","),
@@ -192,7 +193,7 @@ async function run() {
   const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
 
-  let config: configUtils.Config;
+  let config: configUtils.Config | undefined;
   let codeql: CodeQL;
   let toolsDownloadDurationMs: number | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
@@ -208,12 +209,11 @@ async function run() {
 
   const gitHubVersion = await getGitHubVersion();
   checkGitHubVersionInRange(gitHubVersion, logger);
+  checkActionVersion(getActionVersion(), gitHubVersion);
 
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY"),
   );
-
-  const registriesInput = getOptionalInput("registries");
 
   const features = new Features(
     gitHubVersion,
@@ -223,20 +223,19 @@ async function run() {
   );
 
   core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
+  core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
   try {
-    if (
-      !(await sendStatusReport(
-        await createStatusReportBase(
-          "init",
-          "starting",
-          startedAt,
-          await checkDiskUsage(logger),
-        ),
-      ))
-    ) {
-      return;
-    }
+    await sendStatusReport(
+      await createStatusReportBase(
+        ActionName.Init,
+        "starting",
+        startedAt,
+        config,
+        await checkDiskUsage(logger),
+        logger,
+      ),
+    );
 
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
@@ -255,32 +254,43 @@ async function run() {
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
 
-    await validateWorkflow(codeql, logger);
+    core.startGroup("Validating workflow");
+    if ((await validateWorkflow(codeql, logger)) === undefined) {
+      logger.info("Detected no issues with the code scanning workflow.");
+    }
+    core.endGroup();
 
     config = await initConfig(
-      getOptionalInput("languages"),
-      getOptionalInput("queries"),
-      getOptionalInput("packs"),
-      registriesInput,
-      getOptionalInput("config-file"),
-      getOptionalInput("db-location"),
-      getOptionalInput("config"),
-      getTrapCachingEnabled(),
-      // Debug mode is enabled if:
-      // - The `init` Action is passed `debug: true`.
-      // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
-      //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
-      getOptionalInput("debug") === "true" || core.isDebug(),
-      getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
-      getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
-      repositoryNwo,
-      getTemporaryDirectory(),
+      {
+        languagesInput: getOptionalInput("languages"),
+        queriesInput: getOptionalInput("queries"),
+        packsInput: getOptionalInput("packs"),
+        buildModeInput: getOptionalInput("build-mode"),
+        configFile: getOptionalInput("config-file"),
+        dbLocation: getOptionalInput("db-location"),
+        configInput: getOptionalInput("config"),
+        trapCachingEnabled: getTrapCachingEnabled(),
+        // Debug mode is enabled if:
+        // - The `init` Action is passed `debug: true`.
+        // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
+        //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
+        debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
+        debugArtifactName:
+          getOptionalInput("debug-artifact-name") ||
+          DEFAULT_DEBUG_ARTIFACT_NAME,
+        debugDatabaseName:
+          getOptionalInput("debug-database-name") ||
+          DEFAULT_DEBUG_DATABASE_NAME,
+        repository: repositoryNwo,
+        tempDir: getTemporaryDirectory(),
+        codeql,
+        workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+        githubVersion: gitHubVersion,
+        apiDetails,
+        features,
+        logger,
+      },
       codeql,
-      getRequiredEnvParam("GITHUB_WORKSPACE"),
-      gitHubVersion,
-      apiDetails,
-      features,
-      logger,
     );
 
     await checkInstallPython311(config.languages, codeql);
@@ -289,12 +299,7 @@ async function run() {
       config.languages.includes(Language.python) &&
       getRequiredInput("setup-python-dependencies") === "true"
     ) {
-      if (
-        await features.getValue(
-          Feature.DisablePythonDependencyInstallationEnabled,
-          codeql,
-        )
-      ) {
+      if (await isPythonDependencyInstallationDisabled(codeql, features)) {
         logger.info("Skipping python dependency installation");
       } else {
         try {
@@ -312,10 +317,12 @@ async function run() {
     core.setFailed(error.message);
     await sendStatusReport(
       await createStatusReportBase(
-        "init",
-        error instanceof UserError ? "user-error" : "aborted",
+        ActionName.Init,
+        error instanceof ConfigurationError ? "user-error" : "aborted",
         startedAt,
+        config,
         await checkDiskUsage(),
+        logger,
         error.message,
         error.stack,
       ),
@@ -324,9 +331,6 @@ async function run() {
   }
 
   try {
-    // Query CLI for supported features
-    const versionInfo = await codeql.getVersion();
-
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {
@@ -336,49 +340,60 @@ async function run() {
       );
     }
 
-    // Go 1.21 and above ships with statically linked binaries on Linux. CodeQL cannot currently trace custom builds
-    // where the entry point is a statically linked binary. Until that is fixed, we work around the problem by
-    // replacing the `go` binary with a shell script that invokes the actual `go` binary. Since the shell is typically
-    // dynamically linked, this provides a suitable entry point for the CodeQL tracer.
     if (
       config.languages.includes(Language.go) &&
-      process.platform === "linux" &&
-      !isSupportedToolsFeature(
-        versionInfo,
-        ToolsFeature.IndirectTracingSupportsStaticBinaries,
-      )
+      process.platform === "linux"
     ) {
       try {
         const goBinaryPath = await safeWhich("go");
         const fileOutput = await getFileType(goBinaryPath);
 
-        if (fileOutput.includes("statically linked")) {
-          logger.debug(`Applying static binary workaround for Go`);
+        // Go 1.21 and above ships with statically linked binaries on Linux. CodeQL cannot currently trace custom builds
+        // where the entry point is a statically linked binary. Until that is fixed, we work around the problem by
+        // replacing the `go` binary with a shell script that invokes the actual `go` binary. Since the shell is
+        // typically dynamically linked, this provides a suitable entry point for the CodeQL tracer.
+        if (
+          fileOutput.includes("statically linked") &&
+          !(await codeql.supportsFeature(
+            ToolsFeature.IndirectTracingSupportsStaticBinaries,
+          ))
+        ) {
+          try {
+            logger.debug(`Applying static binary workaround for Go`);
 
-          // Create a directory that we can add to the system PATH.
-          const tempBinPath = path.resolve(
-            getTemporaryDirectory(),
-            "codeql-action-go-tracing",
-            "bin",
-          );
-          fs.mkdirSync(tempBinPath, { recursive: true });
-          core.addPath(tempBinPath);
+            // Create a directory that we can add to the system PATH.
+            const tempBinPath = path.resolve(
+              getTemporaryDirectory(),
+              "codeql-action-go-tracing",
+              "bin",
+            );
+            fs.mkdirSync(tempBinPath, { recursive: true });
+            core.addPath(tempBinPath);
 
-          // Write the wrapper script to the directory we just added to the PATH.
-          const goWrapperPath = path.resolve(tempBinPath, "go");
-          fs.writeFileSync(
-            goWrapperPath,
-            `#!/bin/bash\n\nexec ${goBinaryPath} "$@"`,
-          );
-          fs.chmodSync(goWrapperPath, "755");
+            // Write the wrapper script to the directory we just added to the PATH.
+            const goWrapperPath = path.resolve(tempBinPath, "go");
+            fs.writeFileSync(
+              goWrapperPath,
+              `#!/bin/bash\n\nexec ${goBinaryPath} "$@"`,
+            );
+            fs.chmodSync(goWrapperPath, "755");
 
-          // Store the original location of our wrapper script somewhere where we can
-          // later retrieve it from and cross-check that it hasn't been changed.
-          core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
+            // Store the original location of our wrapper script somewhere where we can
+            // later retrieve it from and cross-check that it hasn't been changed.
+            core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
+          } catch (e) {
+            logger.warning(
+              `Analyzing Go on Linux, but failed to install wrapper script. Tracing custom builds may fail: ${e}`,
+            );
+          }
+        } else {
+          // Store the location of the original Go binary, so we can check that no setup tasks were performed after the
+          // `init` Action ran.
+          core.exportVariable(EnvVar.GO_BINARY_LOCATION, goBinaryPath);
         }
       } catch (e) {
         logger.warning(
-          `Analyzing Go on Linux, but failed to install wrapper script. Tracing custom builds may fail: ${e}`,
+          `Failed to determine the location of the Go binary: ${e}`,
         );
       }
     }
@@ -412,32 +427,52 @@ async function run() {
       core.exportVariable(kotlinLimitVar, "1.9.20");
     }
 
-    if (config.languages.includes(Language.java)) {
+    if (
+      config.languages.includes(Language.java) &&
+      // Java Lombok support is enabled by default for >= 2.14.4
+      (await codeQlVersionAbove(codeql, "2.14.0")) &&
+      !(await codeQlVersionAbove(codeql, "2.14.4"))
+    ) {
       const envVar = "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS";
       if (process.env[envVar]) {
         logger.info(
           `Environment variable ${envVar} already set. Not en/disabling CodeQL Java Lombok support`,
         );
-      } else if (
-        await features.getValue(Feature.CodeqlJavaLombokEnabled, codeql)
-      ) {
+      } else {
         logger.info("Enabling CodeQL Java Lombok support");
         core.exportVariable(envVar, "true");
+      }
+    }
+
+    if (config.languages.includes(Language.cpp)) {
+      const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
+      if (process.env[envVar]) {
+        logger.info(
+          `Environment variable ${envVar} already set. Not en/disabling CodeQL C++ TRAP caching support`,
+        );
+      } else if (
+        getTrapCachingEnabled() &&
+        (await features.getValue(Feature.CppTrapCachingEnabled, codeql))
+      ) {
+        logger.info("Enabling CodeQL C++ TRAP caching support");
+        core.exportVariable(envVar, "true");
       } else {
-        logger.info("Disabling CodeQL Java Lombok support");
+        logger.info("Disabling CodeQL C++ TRAP caching support");
         core.exportVariable(envVar, "false");
       }
     }
 
     // Disable Python dependency extraction if feature flag set
-    if (
-      await features.getValue(
-        Feature.DisablePythonDependencyInstallationEnabled,
-        codeql,
-      )
-    ) {
+    if (await isPythonDependencyInstallationDisabled(codeql, features)) {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
+        "true",
+      );
+    } else {
+      // From 2.16.0 the default for the python extractor is to not perform any library
+      // extraction, so we need to set this flag to enable it.
+      core.exportVariable(
+        "CODEQL_EXTRACTOR_PYTHON_FORCE_ENABLE_LIBRARY_EXTRACTION_UNTIL_2_17_0",
         "true",
       );
     }
@@ -452,8 +487,7 @@ async function run() {
       config,
       sourceRoot,
       "Runner.Worker.exe",
-      registriesInput,
-      features,
+      getOptionalInput("registries"),
       apiDetails,
       logger,
     );

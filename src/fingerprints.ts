@@ -259,6 +259,7 @@ export async function addFingerprints(
   sourceRoot: string,
   logger: Logger,
 ): Promise<SarifFile> {
+  logger.info(`Adding fingerprints to SARIF file`);
   // Gather together results for the same file and construct
   // callbacks to accept hashes for that file and update the location
   const callbacksByFile: { [filename: string]: hashCallback[] } = {};

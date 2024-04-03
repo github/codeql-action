@@ -36,7 +36,8 @@ const GENERIC_404_MSG =
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
-function combineSarifFiles(sarifFiles: string[]): SarifFile {
+function combineSarifFiles(sarifFiles: string[], logger: Logger): SarifFile {
+  logger.info(`Combining sarif files`);
   const combinedSarif: SarifFile = {
     version: null,
     runs: [],
@@ -87,6 +88,7 @@ async function combineSarifFilesUsingCLI(
   features: Features,
   logger: Logger,
 ): Promise<SarifFile> {
+  logger.info(`Combining sarif files using CLI`);
   if (sarifFiles.length === 1) {
     return JSON.parse(fs.readFileSync(sarifFiles[0], "utf8")) as SarifFile;
   }
@@ -97,7 +99,7 @@ async function combineSarifFilesUsingCLI(
     );
 
     // If not, use the naive method of combining the files.
-    return combineSarifFiles(sarifFiles);
+    return combineSarifFiles(sarifFiles, logger);
   }
 
   // Initialize CodeQL, either by using the config file from the 'init' step,
@@ -146,7 +148,7 @@ async function combineSarifFilesUsingCLI(
       "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
     );
 
-    return combineSarifFiles(sarifFiles);
+    return combineSarifFiles(sarifFiles, logger);
   }
 
   const baseTempDir = path.resolve(tempDir, "combined-sarif");
@@ -356,6 +358,7 @@ function countResultsInSarif(sarif: string): number {
 // Validates that the given file path refers to a valid SARIF file.
 // Throws an error if the file is invalid.
 export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
+  logger.info(`Validating ${sarifFilePath}`);
   let sarif;
   try {
     sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
@@ -415,7 +418,9 @@ export function buildPayload(
   environment: string | undefined,
   toolNames: string[],
   mergeBaseCommitOid: string | undefined,
+  logger: Logger,
 ) {
+  logger.info(`Combining sarif files using CLI`);
   const payloadObj = {
     commit_oid: commitOid,
     ref,
@@ -497,7 +502,7 @@ async function uploadFiles(
         features,
         logger,
       )
-    : combineSarifFiles(sarifFiles);
+    : combineSarifFiles(sarifFiles, logger);
   sarif = await fingerprints.addFingerprints(sarif, sourceRoot, logger);
 
   sarif = populateRunAutomationDetails(
@@ -509,8 +514,11 @@ async function uploadFiles(
 
   const toolNames = util.getToolNames(sarif);
 
+  logger.debug(`Validating unique category in sarif`);
   validateUniqueCategory(sarif);
+  logger.debug(`Stringifying sarif for upload`);
   const sarifPayload = JSON.stringify(sarif);
+  logger.debug(`Compressing sarif payload`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = fileUrl(sourceRoot);
 
@@ -526,6 +534,7 @@ async function uploadFiles(
     environment,
     toolNames,
     await actionsUtil.determineMergeBaseCommitOid(),
+    logger,
   );
 
   // Log some useful debug info about the info

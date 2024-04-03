@@ -890,20 +890,16 @@ export async function getCodeQLForCmd(
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
       if (
-        // Analysis summary v2 links to the status page, so check the GHES version we're running on
-        // supports the status page.
-        (config.gitHubVersion.type !== util.GitHubVariant.GHES ||
-          semver.gte(config.gitHubVersion.version, "3.9.0")) &&
         (await util.codeQlVersionAbove(
           this,
           CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
-        ))
+        )) &&
+        !isSupportedToolsFeature(
+          await this.getVersion(),
+          ToolsFeature.AnalysisSummaryV2IsDefault,
+        )
       ) {
         codeqlArgs.push("--new-analysis-summary");
-      } else if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_ANALYSIS_SUMMARY_V2)
-      ) {
-        codeqlArgs.push("--no-new-analysis-summary");
       }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {

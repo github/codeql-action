@@ -88,7 +88,7 @@ async function combineSarifFilesUsingCLI(
   features: Features,
   logger: Logger,
 ): Promise<SarifFile> {
-  logger.info(`Combining sarif files using CLI`);
+  logger.info("Combining SARIF files using the CodeQL CLI");
   if (sarifFiles.length === 1) {
     return JSON.parse(fs.readFileSync(sarifFiles[0], "utf8")) as SarifFile;
   }
@@ -420,7 +420,7 @@ export function buildPayload(
   mergeBaseCommitOid: string | undefined,
   logger: Logger,
 ) {
-  logger.info(`Combining sarif files using CLI`);
+  logger.info(`Combining SARIF files using CLI`);
   const payloadObj = {
     commit_oid: commitOid,
     ref,
@@ -514,11 +514,11 @@ async function uploadFiles(
 
   const toolNames = util.getToolNames(sarif);
 
-  logger.debug(`Validating unique category in sarif`);
+  logger.debug(`Validating that each SARIF run has a unique category`);
   validateUniqueCategory(sarif);
-  logger.debug(`Stringifying sarif for upload`);
+  logger.debug(`Serializing SARIF for upload`);
   const sarifPayload = JSON.stringify(sarif);
-  logger.debug(`Compressing sarif payload`);
+  logger.debug(`Compressing serialized SARIF`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = fileUrl(sourceRoot);
 

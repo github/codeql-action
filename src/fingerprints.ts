@@ -259,7 +259,7 @@ export async function addFingerprints(
   sourceRoot: string,
   logger: Logger,
 ): Promise<SarifFile> {
-  logger.info(`Adding fingerprints to SARIF file`);
+  logger.info("Adding fingerprints to SARIF file. For more information, see https://docs.github.com/en/enterprise-cloud@latest/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning#providing-data-to-track-code-scanning-alerts-across-runs");
   // Gather together results for the same file and construct
   // callbacks to accept hashes for that file and update the location
   const callbacksByFile: { [filename: string]: hashCallback[] } = {};

@@ -37,13 +37,14 @@ const GENERIC_404_MSG =
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
 function combineSarifFiles(sarifFiles: string[], logger: Logger): SarifFile {
-  logger.info(`Combining sarif files`);
+  logger.info(`Loading SARIF file(s)`);
   const combinedSarif: SarifFile = {
     version: null,
     runs: [],
   };
 
   for (const sarifFile of sarifFiles) {
+    logger.debug(`Loading SARIF file: ${sarifFile}`);
     const sarifObject = JSON.parse(
       fs.readFileSync(sarifFile, "utf8"),
     ) as SarifFile;

@@ -42,6 +42,7 @@ test("validate correct payload used for push, PR merge commit, and PR head", asy
     undefined,
     ["CodeQL", "eslint"],
     "mergeBaseCommit",
+    getRunnerLogger(true),
   );
   // Not triggered by a pull request
   t.falsy(pushPayload.base_ref);
@@ -65,6 +66,7 @@ test("validate correct payload used for push, PR merge commit, and PR head", asy
     undefined,
     ["CodeQL", "eslint"],
     "mergeBaseCommit",
+    getRunnerLogger(true),
   );
   // Uploads for a merge commit use the merge base
   t.deepEqual(prMergePayload.base_ref, "refs/heads/master");
@@ -82,6 +84,7 @@ test("validate correct payload used for push, PR merge commit, and PR head", asy
     undefined,
     ["CodeQL", "eslint"],
     "mergeBaseCommit",
+    getRunnerLogger(true),
   );
   // Uploads for the head use the PR base
   t.deepEqual(prHeadPayload.base_ref, "refs/heads/master");

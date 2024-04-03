@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import ruamel.yaml
-from ruamel.yaml.scalarstring import FoldedScalarString
+from ruamel.yaml.scalarstring import FoldedScalarString, SingleQuotedScalarString
 import pathlib
 import textwrap
 
@@ -157,6 +157,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
                 'pull_request': {
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]
                 },
+                'schedule': [{'cron': SingleQuotedScalarString('0 5 * * *')}],
                 'workflow_dispatch': {}
             },
             'jobs': {

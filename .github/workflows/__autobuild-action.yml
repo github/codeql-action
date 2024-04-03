@@ -19,6 +19,8 @@ on:
     - synchronize
     - reopened
     - ready_for_review
+  schedule:
+  - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   autobuild-action:

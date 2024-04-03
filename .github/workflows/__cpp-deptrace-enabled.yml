@@ -11,28 +11,28 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   schedule:
-  - cron: '0 5 * * *'
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   cpp-deptrace-enabled:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
-        - os: ubuntu-latest
-          version: default
-        - os: ubuntu-latest
-          version: nightly-latest
+          - os: ubuntu-latest
+            version: latest
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
     name: 'C/C++: autoinstalling dependencies (Linux)'
     permissions:
       contents: read
@@ -40,51 +40,51 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          matrix.os == 'macos-latest' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20221211' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-20230418' ||
 
-        matrix.version == 'stable-v2.13.5' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - name: Test setup
-      shell: bash
-      run: |
-        cp -a ../action/tests/cpp-autobuild autobuild-dir
-    - uses: ./../action/init
-      with:
-        languages: cpp
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/autobuild
-      with:
-        working-directory: autobuild-dir
-      env:
-        CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
-    - shell: bash
-      run: |
-        if ! ls /usr/bin/errno; then
-          echo "Did not autoinstall errno"
-          exit 1
-        fi
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - name: Set environment variable for Swift enablement
+        if: runner.os != 'Windows' && matrix.version == '20221211'
+        shell: bash
+        run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+      - name: Test setup
+        shell: bash
+        run: |
+          cp -a ../action/tests/cpp-autobuild autobuild-dir
+      - uses: ./../action/init
+        with:
+          languages: cpp
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
+        env:
+          CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
+      - shell: bash
+        run: |
+          if ! ls /usr/bin/errno; then
+            echo "Did not autoinstall errno"
+            exit 1
+          fi
     env:
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       CODEQL_ACTION_TEST_MODE: true

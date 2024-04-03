@@ -11,50 +11,50 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   schedule:
-  - cron: '0 5 * * *'
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   go-tracing-autobuilder:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: stable-20230418
-        - os: macos-latest
-          version: stable-20230418
-        - os: ubuntu-latest
-          version: stable-v2.13.5
-        - os: macos-latest
-          version: stable-v2.13.5
-        - os: ubuntu-latest
-          version: stable-v2.14.6
-        - os: macos-latest
-          version: stable-v2.14.6
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
+          - os: ubuntu-latest
+            version: stable-20221211
+          - os: macos-latest
+            version: stable-20221211
+          - os: ubuntu-latest
+            version: stable-20230418
+          - os: macos-latest
+            version: stable-20230418
+          - os: ubuntu-latest
+            version: stable-v2.13.5
+          - os: macos-latest
+            version: stable-v2.13.5
+          - os: ubuntu-latest
+            version: stable-v2.14.6
+          - os: macos-latest
+            version: stable-v2.14.6
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest
+            version: default
+          - os: ubuntu-latest
+            version: latest
+          - os: macos-latest
+            version: latest
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
     name: 'Go: tracing with autobuilder step'
     permissions:
       contents: read
@@ -62,58 +62,58 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          matrix.os == 'macos-latest' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20221211' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-20230418' ||
 
-        matrix.version == 'stable-v2.13.5' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: actions/setup-go@v5
-      with:
-        go-version: ~1.22.0
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - name: Set environment variable for Swift enablement
+        if: runner.os != 'Windows' && matrix.version == '20221211'
+        shell: bash
+        run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ~1.22.0
       # to avoid potentially misleading autobuilder results where we expect it to download
       # dependencies successfully, but they actually come from a warm cache
-        cache: false
-    - uses: ./../action/init
-      with:
-        languages: go
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/autobuild
-    - uses: ./../action/analyze
-      with:
-        upload-database: false
-    - shell: bash
-      run: |
-        if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
-          echo "Expected the Go autobuilder to be run, but the" \
-            "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
-          exit 1
-        fi
-        cd "$RUNNER_TEMP/codeql_databases"
-        if [[ ! -d go ]]; then
-          echo "Did not find a Go database"
-          exit 1
-        fi
+          cache: false
+      - uses: ./../action/init
+        with:
+          languages: go
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+      - uses: ./../action/analyze
+        with:
+          upload-database: false
+      - shell: bash
+        run: |
+          if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
+            echo "Expected the Go autobuilder to be run, but the" \
+              "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+            exit 1
+          fi
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d go ]]; then
+            echo "Did not find a Go database"
+            exit 1
+          fi
     env:
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       CODEQL_ACTION_TEST_MODE: true

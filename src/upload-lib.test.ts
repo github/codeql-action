@@ -320,9 +320,9 @@ test("accept results with invalid artifactLocation.uri value", (t) => {
   const sarifFile = `${__dirname}/../src/testdata/with-invalid-uri.sarif`;
   uploadLib.validateSarifFileSchema(sarifFile, mockLogger);
 
-  t.deepEqual(loggedMessages.length, 1);
+  t.deepEqual(loggedMessages.length, 2);
   t.deepEqual(
-    loggedMessages[0],
+    loggedMessages[1],
     "Warning: 'not a valid URI' is not a valid URI in 'instance.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri'.",
   );
 });

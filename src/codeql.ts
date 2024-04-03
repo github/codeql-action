@@ -280,17 +280,17 @@ const CODEQL_MINIMUM_VERSION = "2.11.6";
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.11.6";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.12.6";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.7";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.8";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2023-11-08";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2024-03-26";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
@@ -890,20 +890,16 @@ export async function getCodeQLForCmd(
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
       if (
-        // Analysis summary v2 links to the status page, so check the GHES version we're running on
-        // supports the status page.
-        (config.gitHubVersion.type !== util.GitHubVariant.GHES ||
-          semver.gte(config.gitHubVersion.version, "3.9.0")) &&
         (await util.codeQlVersionAbove(
           this,
           CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
-        ))
+        )) &&
+        !isSupportedToolsFeature(
+          await this.getVersion(),
+          ToolsFeature.AnalysisSummaryV2IsDefault,
+        )
       ) {
         codeqlArgs.push("--new-analysis-summary");
-      } else if (
-        await util.codeQlVersionAbove(this, CODEQL_VERSION_ANALYSIS_SUMMARY_V2)
-      ) {
-        codeqlArgs.push("--no-new-analysis-summary");
       }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {
@@ -1148,8 +1144,9 @@ export async function getCodeQLForCmd(
         "version of the CLI using the 'tools' input to the 'init' Action, you can remove this " +
         "input to use the default version.\n\n" +
         "Alternatively, if you want to continue using CodeQL CLI version " +
-        `${result.version}, you can replace 'github/codeql-action/*@v3' by ` +
-        `'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
+        `${result.version}, you can replace 'github/codeql-action/*@v${
+          getActionVersion().split(".")[0]
+        }' by 'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );
     core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");

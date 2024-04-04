@@ -17,10 +17,7 @@ import * as configUtils from "./config-utils";
 import { BuildMode } from "./config-utils";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
-import {
-  FeatureEnablement,
-  Feature,
-} from "./feature-flags";
+import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
@@ -120,9 +117,7 @@ export interface QueriesStatusReport {
   event_reports?: EventReport[];
 }
 
-async function setupPythonExtractor(
-  logger: Logger,
-) {
+async function setupPythonExtractor(logger: Logger) {
   const codeqlPython = process.env["CODEQL_PYTHON"];
   if (codeqlPython === undefined || codeqlPython.length === 0) {
     // If CODEQL_PYTHON is not set, no dependencies were installed, so we don't need to do anything

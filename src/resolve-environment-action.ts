@@ -34,16 +34,17 @@ async function run() {
   let config: Config | undefined;
 
   try {
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.ResolveEnvironment,
-        "starting",
-        startedAt,
-        config,
-        await checkDiskUsage(),
-        logger,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.ResolveEnvironment,
+      "starting",
+      startedAt,
+      config,
+      await checkDiskUsage(),
+      logger,
     );
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
@@ -80,33 +81,35 @@ async function run() {
         `Failed to resolve a build environment suitable for automatically building your code. ${error.message}`,
       );
 
-      await sendStatusReport(
-        await createStatusReportBase(
-          ActionName.ResolveEnvironment,
-          getActionsStatus(error),
-          startedAt,
-          config,
-          await checkDiskUsage(),
-          logger,
-          error.message,
-          error.stack,
-        ),
+      const statusReportBase = await createStatusReportBase(
+        ActionName.ResolveEnvironment,
+        getActionsStatus(error),
+        startedAt,
+        config,
+        await checkDiskUsage(),
+        logger,
+        error.message,
+        error.stack,
       );
+      if (statusReportBase !== undefined) {
+        await sendStatusReport(statusReportBase);
+      }
     }
 
     return;
   }
 
-  await sendStatusReport(
-    await createStatusReportBase(
-      ActionName.ResolveEnvironment,
-      "success",
-      startedAt,
-      config,
-      await checkDiskUsage(),
-      logger,
-    ),
+  const statusReportBase = await createStatusReportBase(
+    ActionName.ResolveEnvironment,
+    "success",
+    startedAt,
+    config,
+    await checkDiskUsage(),
+    logger,
   );
+  if (statusReportBase !== undefined) {
+    await sendStatusReport(statusReportBase);
+  }
 }
 
 async function runWrapper() {

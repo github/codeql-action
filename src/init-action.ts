@@ -120,6 +120,10 @@ async function sendCompletedStatusReport(
     error?.stack,
   );
 
+  if (statusReportBase === undefined) {
+    return;
+  }
+
   const workflowLanguages = getOptionalInput("languages");
 
   const initStatusReport: InitStatusReport = {
@@ -226,17 +230,17 @@ async function run() {
   core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
   try {
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.Init,
-        "starting",
-        startedAt,
-        config,
-        await checkDiskUsage(logger),
-        logger,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Init,
+      "starting",
+      startedAt,
+      config,
+      await checkDiskUsage(logger),
+      logger,
     );
-
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );
@@ -315,18 +319,19 @@ async function run() {
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.Init,
-        error instanceof ConfigurationError ? "user-error" : "aborted",
-        startedAt,
-        config,
-        await checkDiskUsage(),
-        logger,
-        error.message,
-        error.stack,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Init,
+      error instanceof ConfigurationError ? "user-error" : "aborted",
+      startedAt,
+      config,
+      await checkDiskUsage(),
+      logger,
+      error.message,
+      error.stack,
     );
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
     return;
   }
 

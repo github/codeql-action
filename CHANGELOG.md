@@ -7,6 +7,9 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.17.0. [#2219](https://github.com/github/codeql-action/pull/2219)
+- Add a deprecation warning for customers using CodeQL version 2.12.5 and earlier. These versions of CodeQL were discontinued on 26 March 2024 alongside GitHub Enterprise Server 3.8, and will be unsupported by CodeQL Action versions 3.25.0 and later and versions 2.25.0 and later. [#2220](https://github.com/github/codeql-action/pull/2220)
+  - If you are using one of these versions, please update to CodeQL CLI version 2.12.6 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
+  - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.11.6 and 2.12.5, you can replace `github/codeql-action/*@v3` by `github/codeql-action/*@v3.24.10` and `github/codeql-action/*@v2` by `github/codeql-action/*@v2.24.10` in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
 
 ## 3.24.9 - 22 Mar 2024
 

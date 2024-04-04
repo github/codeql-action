@@ -11,26 +11,28 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   submit-sarif-failure:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
-        - os: ubuntu-latest
-          version: default
-        - os: ubuntu-latest
-          version: nightly-latest
+          - os: ubuntu-latest
+            version: latest
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
     name: Submit SARIF after failure
     permissions:
       contents: read
@@ -38,49 +40,49 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          matrix.os == 'macos-latest' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20221211' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-20230418' ||
 
-        matrix.version == 'stable-v2.13.5' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: actions/checkout@v4
-    - uses: ./init
-      with:
-        languages: javascript
-    - name: Fail
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - name: Set environment variable for Swift enablement
+        if: runner.os != 'Windows' && matrix.version == '20221211'
+        shell: bash
+        run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+      - uses: ./init
+        with:
+          languages: javascript
+      - name: Fail
     # We want this job to pass if the Action correctly uploads the SARIF file for
     # the failed run.
     # Setting this step to continue on error means that it is marked as completing
     # successfully, so will not fail the job.
-      continue-on-error: true
-      run: exit 1
-    - uses: ./analyze
+        continue-on-error: true
+        run: exit 1
+      - uses: ./analyze
     # In a real workflow, this step wouldn't run. Since we used `continue-on-error`
     # above, we manually disable it with an `if` condition.
-      if: false
-      with:
-        category: /test-codeql-version:${{ matrix.version }}
+        if: false
+        with:
+          category: /test-codeql-version:${{ matrix.version }}
     env:
   # Internal-only environment variable used to indicate that the post-init Action
   # should expect to upload a SARIF file for the failed run.

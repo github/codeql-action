@@ -16,16 +16,8 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
-import {
-  Feature,
-  Features,
-} from "./feature-flags";
-import {
-  checkInstallPython311,
-  initCodeQL,
-  initConfig,
-  runInit,
-} from "./init";
+import { Feature, Features } from "./feature-flags";
+import { checkInstallPython311, initCodeQL, initConfig, runInit } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";

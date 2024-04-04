@@ -76,18 +76,19 @@ async function runWrapper() {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
 
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.InitPost,
-        getActionsStatus(error),
-        startedAt,
-        config,
-        await checkDiskUsage(),
-        logger,
-        error.message,
-        error.stack,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.InitPost,
+      getActionsStatus(error),
+      startedAt,
+      config,
+      await checkDiskUsage(),
+      logger,
+      error.message,
+      error.stack,
     );
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
     return;
   }
   const jobStatus = initActionPostHelper.getFinalJobStatus();
@@ -101,12 +102,14 @@ async function runWrapper() {
     await checkDiskUsage(),
     logger,
   );
-  const statusReport: InitPostStatusReport = {
-    ...statusReportBase,
-    ...uploadFailedSarifResult,
-    job_status: initActionPostHelper.getFinalJobStatus(),
-  };
-  await sendStatusReport(statusReport);
+  if (statusReportBase !== undefined) {
+    const statusReport: InitPostStatusReport = {
+      ...statusReportBase,
+      ...uploadFailedSarifResult,
+      job_status: initActionPostHelper.getFinalJobStatus(),
+    };
+    await sendStatusReport(statusReport);
+  }
 }
 
 void runWrapper();

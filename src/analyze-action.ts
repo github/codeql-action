@@ -74,22 +74,24 @@ async function sendStatusReport(
     error?.message,
     error?.stack,
   );
-  const report: FinishStatusReport = {
-    ...statusReportBase,
-    ...(stats || {}),
-    ...(dbCreationTimings || {}),
-  };
-  if (config && didUploadTrapCaches) {
-    const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
-      ...report,
-      trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
-      trap_cache_upload_size_bytes: Math.round(
-        await getTotalCacheSize(config.trapCaches, logger),
-      ),
+  if (statusReportBase !== undefined) {
+    const report: FinishStatusReport = {
+      ...statusReportBase,
+      ...(stats || {}),
+      ...(dbCreationTimings || {}),
     };
-    await statusReport.sendStatusReport(trapCacheUploadStatusReport);
-  } else {
-    await statusReport.sendStatusReport(report);
+    if (config && didUploadTrapCaches) {
+      const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
+        ...report,
+        trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
+        trap_cache_upload_size_bytes: Math.round(
+          await getTotalCacheSize(config.trapCaches, logger),
+        ),
+      };
+      await statusReport.sendStatusReport(trapCacheUploadStatusReport);
+    } else {
+      await statusReport.sendStatusReport(report);
+    }
   }
 }
 
@@ -190,16 +192,17 @@ async function run() {
 
   const logger = getActionsLogger();
   try {
-    await statusReport.sendStatusReport(
-      await createStatusReportBase(
-        ActionName.Analyze,
-        "starting",
-        startedAt,
-        config,
-        await util.checkDiskUsage(logger),
-        logger,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Analyze,
+      "starting",
+      startedAt,
+      config,
+      await util.checkDiskUsage(logger),
+      logger,
     );
+    if (statusReportBase !== undefined) {
+      await statusReport.sendStatusReport(statusReportBase);
+    }
 
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {

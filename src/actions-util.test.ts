@@ -286,14 +286,17 @@ test("determineMergeBaseCommitOid no error", async (t) => {
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
-  await actionsUtil.determineMergeBaseCommitOid(path.join(__dirname, "../.."));
+
+  await withTmpDir(async (tmpDir) => {
+    await actionsUtil.determineMergeBaseCommitOid(tmpDir);
+  });
+
   t.deepEqual(1, infoStub.callCount);
   t.assert(
     infoStub.firstCall.args[0].startsWith(
       "The checkout path provided to the action does not appear to be a git repository.",
     ),
   );
-
   infoStub.restore();
 });
 

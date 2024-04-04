@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
-import * as toolrunner from "@actions/exec/lib/toolrunner";
 import { safeWhich } from "@chrisgavin/safe-which";
 import del from "del";
 import * as yaml from "js-yaml";
@@ -135,7 +134,6 @@ export async function runExtraction(
   codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
-  features: FeatureEnablement,
 ) {
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
@@ -224,12 +222,11 @@ async function finalizeDatabaseCreation(
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
-  features: FeatureEnablement,
 ): Promise<DatabaseCreationTimings> {
   const codeql = await getCodeQL(config.codeQLCmd);
 
   const extractionStart = performance.now();
-  await runExtraction(codeql, config, logger, features);
+  await runExtraction(codeql, config, logger);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -405,7 +402,6 @@ export async function runFinalize(
   memoryFlag: string,
   config: configUtils.Config,
   logger: Logger,
-  features: FeatureEnablement,
 ): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });
@@ -421,7 +417,6 @@ export async function runFinalize(
     threadsFlag,
     memoryFlag,
     logger,
-    features,
   );
 
   // WARNING: This does not _really_ end tracing, as the tracer will restore its

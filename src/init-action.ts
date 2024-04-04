@@ -19,13 +19,11 @@ import { EnvVar } from "./environment";
 import {
   Feature,
   Features,
-  isPythonDependencyInstallationDisabled,
 } from "./feature-flags";
 import {
   checkInstallPython311,
   initCodeQL,
   initConfig,
-  installPythonDeps,
   runInit,
 } from "./init";
 import { Language } from "./languages";
@@ -294,24 +292,6 @@ async function run() {
     );
 
     await checkInstallPython311(config.languages, codeql);
-
-    if (
-      config.languages.includes(Language.python) &&
-      getRequiredInput("setup-python-dependencies") === "true"
-    ) {
-      if (await isPythonDependencyInstallationDisabled(codeql, features)) {
-        logger.info("Skipping python dependency installation");
-      } else {
-        try {
-          await installPythonDeps(codeql, logger);
-        } catch (unwrappedError) {
-          const error = wrapError(unwrappedError);
-          logger.warning(
-            `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`,
-          );
-        }
-      }
-    }
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
@@ -462,18 +442,21 @@ async function run() {
       }
     }
 
-    // Disable Python dependency extraction if feature flag set
-    if (await isPythonDependencyInstallationDisabled(codeql, features)) {
+    // Disable Python dependency extraction if feature flag set From 2.16.0 the default
+    // for the python extractor is to not perform any library extraction. For versions
+    // before that, you needed to set this flag to enable this behavior (supported since
+    // 2.13.1). Since dependency installation is no longer supported in the action, we
+
+    if (await codeQlVersionAbove(codeql, "2.16.0")) {
+      // do nothing
+    } else if (await codeQlVersionAbove(codeql, "2.13.1")) {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
       );
     } else {
-      // From 2.16.0 the default for the python extractor is to not perform any library
-      // extraction, so we need to set this flag to enable it.
-      core.exportVariable(
-        "CODEQL_EXTRACTOR_PYTHON_FORCE_ENABLE_LIBRARY_EXTRACTION_UNTIL_2_17_0",
-        "true",
+      logger.warning(
+        "codeql-action no longer installs Python dependencies. We recommend upgrading to at least CodeQL 2.16.0 to avoid any potential problems due to this.",
       );
     }
 

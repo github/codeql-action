@@ -20,7 +20,6 @@ import { EnvVar } from "./environment";
 import {
   FeatureEnablement,
   Feature,
-  isPythonDependencyInstallationDisabled,
 } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -123,8 +122,6 @@ export interface QueriesStatusReport {
 
 async function setupPythonExtractor(
   logger: Logger,
-  features: FeatureEnablement,
-  codeql: CodeQL,
 ) {
   const codeqlPython = process.env["CODEQL_PYTHON"];
   if (codeqlPython === undefined || codeqlPython.length === 0) {
@@ -132,41 +129,11 @@ async function setupPythonExtractor(
     return;
   }
 
-  if (await isPythonDependencyInstallationDisabled(codeql, features)) {
-    logger.warning(
-      "We recommend that you remove the CODEQL_PYTHON environment variable from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
-        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'.",
-    );
-    return;
-  }
-
-  const scriptsFolder = path.resolve(__dirname, "../python-setup");
-
-  let output = "";
-  const options = {
-    listeners: {
-      stdout: (data: Buffer) => {
-        output += data.toString();
-      },
-    },
-  };
-
-  await new toolrunner.ToolRunner(
-    codeqlPython,
-    [path.join(scriptsFolder, "find_site_packages.py")],
-    options,
-  ).exec();
-  logger.info(`Setting LGTM_INDEX_IMPORT_PATH=${output}`);
-  process.env["LGTM_INDEX_IMPORT_PATH"] = output;
-
-  output = "";
-  await new toolrunner.ToolRunner(
-    codeqlPython,
-    ["-c", "import sys; print(sys.version_info[0])"],
-    options,
-  ).exec();
-  logger.info(`Setting LGTM_PYTHON_SETUP_VERSION=${output}`);
-  process.env["LGTM_PYTHON_SETUP_VERSION"] = output;
+  logger.warning(
+    "CODEQL_PYTHON environment variable is no longer supported. Please remove it from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
+      "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'.",
+  );
+  return;
 }
 
 export async function runExtraction(
@@ -186,7 +153,7 @@ export async function runExtraction(
     if (shouldExtractLanguage(config, language)) {
       logger.startGroup(`Extracting ${language}`);
       if (language === Language.python) {
-        await setupPythonExtractor(logger, features, codeql);
+        await setupPythonExtractor(logger);
       }
       if (
         config.buildMode &&

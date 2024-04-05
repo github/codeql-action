@@ -29,6 +29,7 @@ import {
   makeVersionInfo,
   createTestConfig,
 } from "./testing-utils";
+import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import { initializeEnvironment } from "./util";
 
@@ -772,7 +773,17 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
 
 const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
   {
-    codeqlVersion: "2.15.0",
+    codeqlVersion: makeVersionInfo("2.15.0", {
+      [ToolsFeature.AnalysisSummaryV2IsDefault]: true,
+    }),
+    githubVersion: {
+      type: util.GitHubVariant.DOTCOM,
+    },
+    flagPassed: false,
+    negativeFlagPassed: false,
+  },
+  {
+    codeqlVersion: makeVersionInfo("2.15.0"),
     githubVersion: {
       type: util.GitHubVariant.DOTCOM,
     },
@@ -780,7 +791,7 @@ const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
     negativeFlagPassed: false,
   },
   {
-    codeqlVersion: "2.15.0",
+    codeqlVersion: makeVersionInfo("2.15.0"),
     githubVersion: {
       type: util.GitHubVariant.GHES,
       version: "3.9.0",
@@ -789,16 +800,7 @@ const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
     negativeFlagPassed: false,
   },
   {
-    codeqlVersion: "2.15.0",
-    githubVersion: {
-      type: util.GitHubVariant.GHES,
-      version: "3.8.6",
-    },
-    flagPassed: false,
-    negativeFlagPassed: true,
-  },
-  {
-    codeqlVersion: "2.14.6",
+    codeqlVersion: makeVersionInfo("2.14.6"),
     githubVersion: {
       type: util.GitHubVariant.DOTCOM,
     },
@@ -819,14 +821,12 @@ for (const {
       : negativeFlagPassed
       ? "--no-new-analysis-summary"
       : "nothing"
-  } for CodeQL CLI v${codeqlVersion} and ${
+  } for CodeQL version ${JSON.stringify(codeqlVersion)} and ${
     util.GitHubVariant[githubVersion.type]
   } ${githubVersion.version ? ` ${githubVersion.version}` : ""}`, async (t) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon
-      .stub(codeqlObject, "getVersion")
-      .resolves(makeVersionInfo(codeqlVersion));
+    sinon.stub(codeqlObject, "getVersion").resolves(codeqlVersion);
     // safeWhich throws because of the test CodeQL object.
     sinon.stub(safeWhich, "safeWhich").resolves("");
     await codeqlObject.databaseInterpretResults(

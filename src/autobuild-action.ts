@@ -55,12 +55,14 @@ async function sendCompletedStatusReport(
     cause?.message,
     cause?.stack,
   );
-  const statusReport: AutobuildStatusReport = {
-    ...statusReportBase,
-    autobuild_languages: allLanguages.join(","),
-    autobuild_failure: failingLanguage,
-  };
-  await sendStatusReport(statusReport);
+  if (statusReportBase !== undefined) {
+    const statusReport: AutobuildStatusReport = {
+      ...statusReportBase,
+      autobuild_languages: allLanguages.join(","),
+      autobuild_failure: failingLanguage,
+    };
+    await sendStatusReport(statusReport);
+  }
 }
 
 async function run() {
@@ -70,16 +72,17 @@ async function run() {
   let currentLanguage: Language | undefined;
   let languages: Language[] | undefined;
   try {
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.Autobuild,
-        "starting",
-        startedAt,
-        config,
-        await checkDiskUsage(logger),
-        logger,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Autobuild,
+      "starting",
+      startedAt,
+      config,
+      await checkDiskUsage(logger),
+      logger,
     );
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);

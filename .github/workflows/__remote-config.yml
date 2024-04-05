@@ -11,62 +11,64 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   remote-config:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: windows-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: stable-20230418
-        - os: macos-latest
-          version: stable-20230418
-        - os: windows-latest
-          version: stable-20230418
-        - os: ubuntu-latest
-          version: stable-v2.13.5
-        - os: macos-latest
-          version: stable-v2.13.5
-        - os: windows-latest
-          version: stable-v2.13.5
-        - os: ubuntu-latest
-          version: stable-v2.14.6
-        - os: macos-latest
-          version: stable-v2.14.6
-        - os: windows-latest
-          version: stable-v2.14.6
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: windows-latest
-          version: default
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: windows-latest
-          version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
-        - os: windows-latest
-          version: nightly-latest
+          - os: ubuntu-latest
+            version: stable-20221211
+          - os: macos-latest
+            version: stable-20221211
+          - os: windows-latest
+            version: stable-20221211
+          - os: ubuntu-latest
+            version: stable-20230418
+          - os: macos-latest
+            version: stable-20230418
+          - os: windows-latest
+            version: stable-20230418
+          - os: ubuntu-latest
+            version: stable-v2.13.5
+          - os: macos-latest
+            version: stable-v2.13.5
+          - os: windows-latest
+            version: stable-v2.13.5
+          - os: ubuntu-latest
+            version: stable-v2.14.6
+          - os: macos-latest
+            version: stable-v2.14.6
+          - os: windows-latest
+            version: stable-v2.14.6
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest
+            version: default
+          - os: windows-latest
+            version: default
+          - os: ubuntu-latest
+            version: latest
+          - os: macos-latest
+            version: latest
+          - os: windows-latest
+            version: latest
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+          - os: windows-latest
+            version: nightly-latest
     name: Remote config file
     permissions:
       contents: read
@@ -74,41 +76,41 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          matrix.os == 'macos-latest' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20221211' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-20230418' ||
 
-        matrix.version == 'stable-v2.13.5' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      with:
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-        languages: cpp,csharp,java,javascript,python
-        config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
-          github.sha }}
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - name: Set environment variable for Swift enablement
+        if: runner.os != 'Windows' && matrix.version == '20221211'
+        shell: bash
+        run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: cpp,csharp,java,javascript,python
+          config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
+            github.sha }}
+      - name: Build code
+        shell: bash
+        run: ./build.sh
+      - uses: ./../action/analyze
     env:
       CODEQL_ACTION_TEST_MODE: true

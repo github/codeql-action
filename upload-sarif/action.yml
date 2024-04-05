@@ -38,3 +38,4 @@ outputs:
 runs:
   using: node16
   main: '../lib/upload-sarif-action.js'
+  post: '../lib/upload-sarif-action-post.js'

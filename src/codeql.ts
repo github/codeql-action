@@ -634,6 +634,7 @@ export async function getCodeQLForCmd(
         [
           "database",
           "init",
+          "--overwrite",
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,

@@ -8,13 +8,26 @@ import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
 
 import * as actionsUtil from "./actions-util";
+import { getOptionalInput, getRequiredInput } from "./actions-util";
 import * as api from "./api-client";
+import { getGitHubVersion } from "./api-client";
+import { CodeQL, getCodeQL } from "./codeql";
+import { getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Feature, Features } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
+import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
+import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
-import { SarifFile, ConfigurationError, wrapError } from "./util";
+import {
+  ConfigurationError,
+  getRequiredEnvParam,
+  GitHubVersion,
+  SarifFile,
+  wrapError,
+} from "./util";
 
 const GENERIC_403_MSG =
   "The repo on which this action is running has not opted-in to CodeQL code scanning.";
@@ -23,13 +36,15 @@ const GENERIC_404_MSG =
 
 // Takes a list of paths to sarif files and combines them together,
 // returning the contents of the combined sarif file.
-function combineSarifFiles(sarifFiles: string[]): SarifFile {
+function combineSarifFiles(sarifFiles: string[], logger: Logger): SarifFile {
+  logger.info(`Loading SARIF file(s)`);
   const combinedSarif: SarifFile = {
     version: null,
     runs: [],
   };
 
   for (const sarifFile of sarifFiles) {
+    logger.debug(`Loading SARIF file: ${sarifFile}`);
     const sarifObject = JSON.parse(
       fs.readFileSync(sarifFile, "utf8"),
     ) as SarifFile;
@@ -46,6 +61,108 @@ function combineSarifFiles(sarifFiles: string[]): SarifFile {
   }
 
   return combinedSarif;
+}
+
+/**
+ * Checks whether all the runs in the given SARIF files were produced by CodeQL.
+ * @param sarifFiles The list of SARIF files to check.
+ */
+function areAllRunsProducedByCodeQL(sarifFiles: string[]): boolean {
+  return sarifFiles.every((sarifFile) => {
+    const sarifObject = JSON.parse(
+      fs.readFileSync(sarifFile, "utf8"),
+    ) as SarifFile;
+
+    return sarifObject.runs?.every(
+      (run) => run.tool?.driver?.name === "CodeQL",
+    );
+  });
+}
+
+// Takes a list of paths to sarif files and combines them together using the
+// CLI `github merge-results` command when all SARIF files are produced by
+// CodeQL. Otherwise, it will fall back to combining the files in the action.
+// Returns the contents of the combined sarif file.
+async function combineSarifFilesUsingCLI(
+  sarifFiles: string[],
+  gitHubVersion: GitHubVersion,
+  features: Features,
+  logger: Logger,
+): Promise<SarifFile> {
+  logger.info("Combining SARIF files using the CodeQL CLI");
+  if (sarifFiles.length === 1) {
+    return JSON.parse(fs.readFileSync(sarifFiles[0], "utf8")) as SarifFile;
+  }
+
+  if (!areAllRunsProducedByCodeQL(sarifFiles)) {
+    logger.debug(
+      "Not all SARIF files were produced by CodeQL. Merging files in the action.",
+    );
+
+    // If not, use the naive method of combining the files.
+    return combineSarifFiles(sarifFiles, logger);
+  }
+
+  // Initialize CodeQL, either by using the config file from the 'init' step,
+  // or by initializing it here.
+  let codeQL: CodeQL;
+  let tempDir: string = actionsUtil.getTemporaryDirectory();
+
+  const config = await getConfig(tempDir, logger);
+  if (config !== undefined) {
+    codeQL = await getCodeQL(config.codeQLCmd);
+    tempDir = config.tempDir;
+  } else {
+    logger.info(
+      "Initializing CodeQL since the 'init' Action was not called before this step.",
+    );
+
+    const apiDetails = {
+      auth: getRequiredInput("token"),
+      externalRepoAuth: getOptionalInput("external-repository-token"),
+      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+    };
+
+    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
+      gitHubVersion.type,
+    );
+
+    const initCodeQLResult = await initCodeQL(
+      undefined, // There is no tools input on the upload action
+      apiDetails,
+      tempDir,
+      gitHubVersion.type,
+      codeQLDefaultVersionInfo,
+      logger,
+    );
+
+    codeQL = initCodeQLResult.codeql;
+  }
+
+  if (
+    !(await codeQL.supportsFeature(
+      ToolsFeature.SarifMergeRunsFromEqualCategory,
+    ))
+  ) {
+    logger.warning(
+      "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
+    );
+
+    return combineSarifFiles(sarifFiles, logger);
+  }
+
+  const baseTempDir = path.resolve(tempDir, "combined-sarif");
+  fs.mkdirSync(baseTempDir, { recursive: true });
+  const outputDirectory = fs.mkdtempSync(path.resolve(baseTempDir, "output-"));
+
+  const outputFile = path.resolve(outputDirectory, "combined-sarif.sarif");
+
+  await codeQL.mergeResults(sarifFiles, outputFile, {
+    mergeRunsFromEqualCategory: true,
+  });
+
+  return JSON.parse(fs.readFileSync(outputFile, "utf8")) as SarifFile;
 }
 
 // Populates the run.automationDetails.id field using the analysis_key and environment
@@ -242,6 +359,7 @@ function countResultsInSarif(sarif: string): number {
 // Validates that the given file path refers to a valid SARIF file.
 // Throws an error if the file is invalid.
 export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
+  logger.info(`Validating ${sarifFilePath}`);
   let sarif;
   try {
     sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
@@ -301,7 +419,9 @@ export function buildPayload(
   environment: string | undefined,
   toolNames: string[],
   mergeBaseCommitOid: string | undefined,
+  logger: Logger,
 ) {
+  logger.info(`Combining SARIF files using CLI`);
   const payloadObj = {
     commit_oid: commitOid,
     ref,
@@ -363,12 +483,27 @@ async function uploadFiles(
   logger.startGroup("Uploading results");
   logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
 
+  const gitHubVersion = await getGitHubVersion();
+  const features = new Features(
+    gitHubVersion,
+    repositoryNwo,
+    actionsUtil.getTemporaryDirectory(),
+    logger,
+  );
+
   // Validate that the files we were asked to upload are all valid SARIF files
   for (const file of sarifFiles) {
     validateSarifFileSchema(file, logger);
   }
 
-  let sarif = combineSarifFiles(sarifFiles);
+  let sarif = (await features.getValue(Feature.CliSarifMerge))
+    ? await combineSarifFilesUsingCLI(
+        sarifFiles,
+        gitHubVersion,
+        features,
+        logger,
+      )
+    : combineSarifFiles(sarifFiles, logger);
   sarif = await fingerprints.addFingerprints(sarif, sourceRoot, logger);
 
   sarif = populateRunAutomationDetails(
@@ -380,8 +515,11 @@ async function uploadFiles(
 
   const toolNames = util.getToolNames(sarif);
 
+  logger.debug(`Validating that each SARIF run has a unique category`);
   validateUniqueCategory(sarif);
+  logger.debug(`Serializing SARIF for upload`);
   const sarifPayload = JSON.stringify(sarif);
+  logger.debug(`Compressing serialized SARIF`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = fileUrl(sourceRoot);
 
@@ -397,6 +535,7 @@ async function uploadFiles(
     environment,
     toolNames,
     await actionsUtil.determineMergeBaseCommitOid(),
+    logger,
   );
 
   // Log some useful debug info about the info

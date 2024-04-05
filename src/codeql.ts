@@ -1144,14 +1144,9 @@ export async function getCodeQLForCmd(
         "version of the CLI using the 'tools' input to the 'init' Action, you can remove this " +
         "input to use the default version.\n\n" +
         "Alternatively, if you want to continue using CodeQL CLI version " +
-<<<<<<< HEAD
-        `${result.version}, you can replace 'github/codeql-action/*@v2' by ` +
-        `'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
-=======
         `${result.version}, you can replace 'github/codeql-action/*@v${
           getActionVersion().split(".")[0]
         }' by 'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
->>>>>>> origin/releases/v3
         "continue using this version of the CodeQL Action.",
     );
     core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");

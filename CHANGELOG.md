@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+* Removed the deprecated option for opting into Python analysis to extract dependencies when environment variable was set (as highlighted we would do in the release notes for 3.23.0).
 
 ## 3.24.10 - 05 Apr 2024
 

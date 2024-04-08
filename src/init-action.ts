@@ -439,10 +439,9 @@ async function run() {
       }
     }
 
-    // Disable Python dependency extraction if feature flag set From 2.16.0 the default
-    // for the python extractor is to not perform any library extraction. For versions
-    // before that, you needed to set this flag to enable this behavior (supported since
-    // 2.13.1). Since dependency installation is no longer supported in the action, we
+    // From 2.16.0 the default for the python extractor is to not perform any
+    // dependency extraction. For versions before that, you needed to set this flag to
+    // enable this behavior (supported since 2.13.1).
 
     if (await codeQlVersionAbove(codeql, "2.17.1")) {
       // disabled by default, no warning

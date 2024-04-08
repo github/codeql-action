@@ -11,22 +11,24 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   test-proxy:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
+          - os: ubuntu-latest
+            version: latest
     name: Proxy test
     permissions:
       contents: read
@@ -34,39 +36,39 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          matrix.os == 'macos-latest' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20221211' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-20230418' ||
 
-        matrix.version == 'stable-v2.13.5' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      with:
-        languages: javascript
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/analyze
-      with:
-        upload-database: false
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - name: Set environment variable for Swift enablement
+        if: runner.os != 'Windows' && matrix.version == '20221211'
+        shell: bash
+        run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
+      - uses: ./../action/init
+        with:
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        with:
+          upload-database: false
     env:
       https_proxy: http://squid-proxy:3128
       CODEQL_ACTION_TEST_MODE: true
@@ -77,4 +79,4 @@ jobs:
       squid-proxy:
         image: ubuntu/squid:latest
         ports:
-        - 3128:3128
+          - 3128:3128

@@ -459,7 +459,7 @@ async function run() {
       );
     } else {
       logger.warning(
-        "codeql-action no longer installs Python dependencies. We recommend upgrading to at least CodeQL 2.16.0 to avoid any potential problems due to this.",
+        `CodeQL Action versions 3.25.0 and later, and versions 2.25.0 and later no longer install Python dependencies. We recommend upgrading to at least CodeQL Bundle 2.16.0 to avoid any potential problems due to this (you are currently using ${(await codeql.getVersion()).version}). Alternatively, we recommend downgrading the CodeQL Action to version 3.24.10 (for customers using GitHub.com or GitHub Enterprise Server v3.12 or later) or 2.24.10 (for customers using GitHub Enterprise Server v3.11 or earlier).`,
       );
     }
 

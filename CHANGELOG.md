@@ -6,7 +6,12 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-* Removed the deprecated option for opting into Python analysis to extract dependencies when environment variable was set (as highlighted we would do in the release notes for 3.23.0).
+- The deprecated feature for extracting dependencies for a Python analysis has been removed. For more information, see the release notes for CodeQL Action v3.23.0 and v2.23.0. As a result, the following inputs and environment variables are now ignored:
+
+  - The `setup-python-dependencies` input to the `init` Action
+  - The `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION` environment variable
+  
+  We recommend removing any references to these from your workflows.
 
 ## 3.24.10 - 05 Apr 2024
 

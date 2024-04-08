@@ -444,8 +444,14 @@ async function run() {
     // before that, you needed to set this flag to enable this behavior (supported since
     // 2.13.1). Since dependency installation is no longer supported in the action, we
 
-    if (await codeQlVersionAbove(codeql, "2.16.0")) {
-      // do nothing
+    if (await codeQlVersionAbove(codeql, "2.17.1")) {
+      // disabled by default, no warning
+    } else if (await codeQlVersionAbove(codeql, "2.16.0")) {
+      // disabled by default, prints warning if environment variable is not set
+      core.exportVariable(
+        "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
+        "true",
+      );
     } else if (await codeQlVersionAbove(codeql, "2.13.1")) {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",

@@ -145,9 +145,7 @@ jobs:
           fi
 
       - name: Check language autodetect for Swift
-        if: >-
-          env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true' ||
-              (runner.os != 'Windows' && matrix.version == 'nightly-latest')
+        if: runner.os != 'Windows' && matrix.version != 'stable-20230403'
         shell: bash
         run: |
           SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

@@ -24,10 +24,11 @@ jobs:
     strategy:
       matrix:
         version:
-        - stable-20221211
-        - stable-20230418
+        - stable-20230403
         - stable-v2.13.5
         - stable-v2.14.6
+        - stable-v2.15.5
+        - stable-v2.16.6
         - default
         - latest
         - nightly-latest
@@ -73,7 +74,7 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20221211 stable-20230418 stable-v2.13.5 stable-v2.14.6 default latest nightly-latest"
+          VERSIONS="stable-20230403 stable-v2.13.5 stable-v2.14.6 stable-v2.15.5 stable-v2.16.6 default latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             pushd "./my-debug-artifacts-${version//./}"

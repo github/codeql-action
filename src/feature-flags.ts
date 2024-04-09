@@ -87,7 +87,7 @@ export const featureConfig: Record<
   },
   [Feature.ExportDiagnosticsEnabled]: {
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
-    minimumVersion: "2.12.4",
+    minimumVersion: undefined,
     defaultValue: true,
   },
   [Feature.QaTelemetryEnabled]: {

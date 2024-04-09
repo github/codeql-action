@@ -734,15 +734,6 @@ export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
 }
 
-/**
- * Checks whether the CodeQL CLI supports the `--expect-discarded-cache` command-line flag.
- */
-export async function supportExpectDiscardedCache(
-  codeQL: CodeQL,
-): Promise<boolean> {
-  return codeQlVersionAbove(codeQL, "2.12.1");
-}
-
 /*
  * Returns whether we are in test mode.
  *

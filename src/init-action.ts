@@ -16,18 +16,8 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
-import {
-  Feature,
-  Features,
-  isPythonDependencyInstallationDisabled,
-} from "./feature-flags";
-import {
-  checkInstallPython311,
-  initCodeQL,
-  initConfig,
-  installPythonDeps,
-  runInit,
-} from "./init";
+import { Feature, Features } from "./feature-flags";
+import { checkInstallPython311, initCodeQL, initConfig, runInit } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -298,24 +288,6 @@ async function run() {
     );
 
     await checkInstallPython311(config.languages, codeql);
-
-    if (
-      config.languages.includes(Language.python) &&
-      getRequiredInput("setup-python-dependencies") === "true"
-    ) {
-      if (await isPythonDependencyInstallationDisabled(codeql, features)) {
-        logger.info("Skipping python dependency installation");
-      } else {
-        try {
-          await installPythonDeps(codeql, logger);
-        } catch (unwrappedError) {
-          const error = wrapError(unwrappedError);
-          logger.warning(
-            `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`,
-          );
-        }
-      }
-    }
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
@@ -467,18 +439,43 @@ async function run() {
       }
     }
 
-    // Disable Python dependency extraction if feature flag set
-    if (await isPythonDependencyInstallationDisabled(codeql, features)) {
+    // From 2.16.0 the default for the python extractor is to not perform any
+    // dependency extraction. For versions before that, you needed to set this flag to
+    // enable this behavior (supported since 2.13.1).
+
+    if (await codeQlVersionAbove(codeql, "2.17.1")) {
+      // disabled by default, no warning
+    } else if (await codeQlVersionAbove(codeql, "2.16.0")) {
+      // disabled by default, prints warning if environment variable is not set
+      core.exportVariable(
+        "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
+        "true",
+      );
+    } else if (await codeQlVersionAbove(codeql, "2.13.1")) {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
       );
     } else {
-      // From 2.16.0 the default for the python extractor is to not perform any library
-      // extraction, so we need to set this flag to enable it.
-      core.exportVariable(
-        "CODEQL_EXTRACTOR_PYTHON_FORCE_ENABLE_LIBRARY_EXTRACTION_UNTIL_2_17_0",
-        "true",
+      logger.warning(
+        `CodeQL Action versions 3.25.0 and later, and versions 2.25.0 and later no longer install Python dependencies. We recommend upgrading to at least CodeQL Bundle 2.16.0 to avoid any potential problems due to this (you are currently using ${
+          (await codeql.getVersion()).version
+        }). Alternatively, we recommend downgrading the CodeQL Action to version 3.24.10 (for customers using GitHub.com or GitHub Enterprise Server v3.12 or later) or 2.24.10 (for customers using GitHub Enterprise Server v3.11 or earlier).`,
+      );
+    }
+
+    if (getOptionalInput("setup-python-dependencies") !== undefined) {
+      logger.warning(
+        "The setup-python-dependencies input is deprecated and no longer has any effect. We recommend removing any references from your workflows. See https://github.blog/changelog/2024-01-23-codeql-2-16-python-dependency-installation-disabled-new-queries-and-bug-fixes/ for more information.",
+      );
+    }
+
+    if (
+      process.env["CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION"] !==
+      undefined
+    ) {
+      logger.warning(
+        "The CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION environment variable is deprecated and no longer has any effect. We recommend removing any references from your workflows. See https://github.blog/changelog/2024-01-23-codeql-2-16-python-dependency-installation-disabled-new-queries-and-bug-fixes/ for more information.",
       );
     }
 

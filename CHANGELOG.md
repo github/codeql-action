@@ -6,6 +6,14 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
+- The deprecated feature for extracting dependencies for a Python analysis has been removed. [#2224](https://github.com/github/codeql-action/pull/2224)
+
+  As a result, the following inputs and environment variables are now ignored:
+
+  - The `setup-python-dependencies` input to the `init` Action
+  - The `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION` environment variable
+  
+  We recommend removing any references to these from your workflows. For more information, see the release notes for CodeQL Action v3.23.0 and v2.23.0.
 - Automatically overwrite an existing database if found on the filesystem. [#2229](https://github.com/github/codeql-action/pull/2229)
 - Bump the minimum CodeQL bundle version to 2.12.6. [#2232](https://github.com/github/codeql-action/pull/2232)
 

@@ -49,8 +49,6 @@ export enum Feature {
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
-  DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
-  PythonDefaultIsToSkipDependencyInstallationEnabled = "python_default_is_to_skip_dependency_installation_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
 }
@@ -94,25 +92,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     minimumVersion: undefined,
     defaultValue: false,
-  },
-  [Feature.DisablePythonDependencyInstallationEnabled]: {
-    envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
-    // Although the python extractor only started supporting not extracting installed
-    // dependencies in 2.13.1, the init-action can still benefit from not installing
-    // dependencies no matter what codeql version we are using, so therefore the
-    // minimumVersion is set to 'undefined'. This means that with an old CodeQL version,
-    // packages available with current python3 installation might get extracted.
-    minimumVersion: undefined,
-    defaultValue: false,
-  },
-  [Feature.PythonDefaultIsToSkipDependencyInstallationEnabled]: {
-    // we can reuse the same environment variable as above. If someone has set it to
-    // `true` in their workflow this means dependencies are not installed, setting it to
-    // `false` means dependencies _will_ be installed. The same semantics are applied
-    // here!
-    envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
-    minimumVersion: "2.16.0",
-    defaultValue: true,
   },
 };
 
@@ -457,20 +436,4 @@ class GitHubFeatureFlags {
       }
     }
   }
-}
-
-export async function isPythonDependencyInstallationDisabled(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-): Promise<boolean> {
-  return (
-    (await features.getValue(
-      Feature.DisablePythonDependencyInstallationEnabled,
-      codeql,
-    )) ||
-    (await features.getValue(
-      Feature.PythonDefaultIsToSkipDependencyInstallationEnabled,
-      codeql,
-    ))
-  );
 }

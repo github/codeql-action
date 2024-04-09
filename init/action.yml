@@ -89,7 +89,7 @@ inputs:
     description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.
     required: false
   setup-python-dependencies:
-    description: DEPRECATED. CodeQL Action no longer install Python dependencies (from 3.25.0+/2.25.0+)
+    description: DEPRECATED. This option is ignored since CodeQL Action no longer installs Python dependencies as of versions 3.25.0 and 2.25.0.
     required: false
   source-root:
     description: Path of the root source code directory, relative to $GITHUB_WORKSPACE.

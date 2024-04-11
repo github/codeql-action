@@ -635,17 +635,7 @@ export async function getCodeQLForCmd(
         process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh",
       );
 
-      // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
-      // This is because of an issue with Azure pipelines timing out connections after 4 minutes
-      // and Maven not properly handling closed connections
-      // Otherwise long build processes will timeout when pulling down Java packages
-      // https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
-      const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
-      process.env["JAVA_TOOL_OPTIONS"] = [
-        ...javaToolOptions.split(/\s+/),
-        "-Dhttp.keepAlive=false",
-        "-Dmaven.wagon.http.pool=false",
-      ].join(" ");
+      applyAutobuildAzurePipelinesTimeoutFix();
 
       // Bump the verbosity of the autobuild command if we're in debug mode
       if (enableDebugLogging) {
@@ -681,6 +671,9 @@ export async function getCodeQLForCmd(
       ]);
     },
     async extractUsingBuildMode(config: Config, language: Language) {
+      if (config.buildMode === BuildMode.Autobuild) {
+        applyAutobuildAzurePipelinesTimeoutFix();
+      }
       try {
         await runTool(cmd, [
           "database",
@@ -1421,4 +1414,20 @@ function getExtractionVerbosityArguments(
   return enableDebugLogging
     ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
     : [];
+}
+
+/**
+ * Updates the `JAVA_TOOL_OPTIONS` environment variable to resolve an issue with Azure Pipelines
+ * timing out connections after 4 minutes and Maven not properly handling closed connections.
+ *
+ * Without the fix, long build processes will timeout when pulling down Java packages
+ * https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
+ */
+function applyAutobuildAzurePipelinesTimeoutFix() {
+  const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
+  process.env["JAVA_TOOL_OPTIONS"] = [
+    ...javaToolOptions.split(/\s+/),
+    "-Dhttp.keepAlive=false",
+    "-Dmaven.wagon.http.pool=false",
+  ].join(" ");
 }

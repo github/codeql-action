@@ -426,6 +426,14 @@ export function getWorkflowRunAttempt(): number {
   return workflowRunAttempt;
 }
 
+export class FileCmdNotFoundError extends Error {
+  constructor(msg: string) {
+    super(msg);
+
+    this.name = "FileCmdNotFoundError";
+  }
+}
+
 /**
  * Tries to obtain the output of the `file` command for the file at the specified path.
  * The output will vary depending on the type of `file`, which operating system we are running on, etc.
@@ -442,7 +450,9 @@ export const getFileType = async (filePath: string): Promise<string> => {
     core.info(
       "The `file` program is required, but does not appear to be installed. Please install it.",
     );
-    throw e;
+    throw new FileCmdNotFoundError(
+      `The \`file\` program is not installed: ${e}`,
+    );
   }
 
   try {

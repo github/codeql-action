@@ -6,6 +6,7 @@ import { safeWhich } from "@chrisgavin/safe-which";
 import { v4 as uuidV4 } from "uuid";
 
 import {
+  FileCmdNotFoundError,
   getActionVersion,
   getFileType,
   getOptionalInput,
@@ -15,6 +16,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import { checkInstallPython311, initCodeQL, initConfig, runInit } from "./init";
@@ -372,6 +374,27 @@ async function run() {
         logger.warning(
           `Failed to determine the location of the Go binary: ${e}`,
         );
+
+        if (e instanceof FileCmdNotFoundError) {
+          addDiagnostic(
+            config,
+            Language.go,
+            makeDiagnostic(
+              "go/workflow/file-program-unavailable",
+              "The `file` program is required, but does not appear to be installed",
+              {
+                markdownMessage:
+                  "CodeQL was unable to find the `file` program on this system. Ensure that the `file` program is installed on the runner and accessible.",
+                visibility: {
+                  statusPage: true,
+                  telemetry: true,
+                  cliSummaryTable: true,
+                },
+                severity: "warning",
+              },
+            ),
+          );
+        }
       }
     }
 

@@ -158,26 +158,7 @@ export async function runExtraction(
         ) {
           await setupCppAutobuild(codeql, logger);
         }
-        try {
-          await codeql.extractUsingBuildMode(config, language);
-        } catch (e) {
-          if (config.buildMode === BuildMode.Autobuild) {
-            const prefix =
-              "We were unable to automatically build your code. " +
-              "Please change the build mode for this language to manual and specify build steps " +
-              "for your project. For more information, see " +
-              "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed.";
-            const ErrorConstructor =
-              e instanceof util.ConfigurationError
-                ? util.ConfigurationError
-                : Error;
-            throw new ErrorConstructor(
-              `${prefix} ${util.wrapError(e).message}`,
-            );
-          } else {
-            throw e;
-          }
-        }
+        await codeql.extractUsingBuildMode(config, language);
       } else {
         await codeql.extractScannedLanguage(config, language);
       }

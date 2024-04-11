@@ -10,8 +10,10 @@ import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger, getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
 import {
   StatusReportBase,
   getActionsStatus,
@@ -23,6 +25,7 @@ import {
   checkActionVersion,
   checkDiskUsage,
   checkGitHubVersionInRange,
+  getRequiredEnvParam,
   initializeEnvironment,
   wrapError,
 } from "./util";
@@ -88,6 +91,17 @@ async function run() {
     checkGitHubVersionInRange(gitHubVersion, logger);
     checkActionVersion(getActionVersion(), gitHubVersion);
 
+    const repositoryNwo = parseRepositoryNwo(
+      getRequiredEnvParam("GITHUB_REPOSITORY"),
+    );
+
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger,
+    );
+
     config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
@@ -108,7 +122,7 @@ async function run() {
       }
       for (const language of languages) {
         currentLanguage = language;
-        await runAutobuild(language, config, logger);
+        await runAutobuild(language, config, features, logger);
       }
     }
   } catch (unwrappedError) {

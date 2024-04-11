@@ -13,7 +13,6 @@ import {
   getCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
-import { BuildMode } from "./config-utils";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
@@ -24,6 +23,7 @@ import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
 import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
+import { BuildMode } from "./util";
 
 export class CodeQLAnalysisError extends Error {
   queriesStatusReport: QueriesStatusReport;

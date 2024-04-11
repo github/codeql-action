@@ -16,7 +16,7 @@ import {
   CommandInvocationError,
   wrapCliConfigurationError,
 } from "./cli-errors";
-import type { Config } from "./config-utils";
+import { type Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
   CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
@@ -24,10 +24,11 @@ import {
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
-import { isTracedLanguage, Language } from "./languages";
+import { Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
+import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
 import { wrapError } from "./util";
 
@@ -81,6 +82,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
+    features: FeatureEnablement,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -556,12 +558,13 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
+      features: FeatureEnablement,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`,
       );
-      if (config.languages.filter((l) => isTracedLanguage(l)).length > 0) {
+      if (await shouldEnableIndirectTracing(codeql, config, features)) {
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
         extraArgs.push(`--trace-process-name=${processName}`);

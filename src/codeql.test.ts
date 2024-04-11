@@ -910,7 +910,12 @@ test("runTool summarizes autobuilder errors", async (t) => {
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(Language.java, false),
+    async () =>
+      await codeqlObject.runAutobuild(
+        stubConfig,
+        Language.java,
+        createFeatures([]),
+      ),
     {
       instanceOf: CommandInvocationError,
       message:
@@ -938,7 +943,12 @@ test("runTool truncates long autobuilder errors", async (t) => {
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(Language.java, false),
+    async () =>
+      await codeqlObject.runAutobuild(
+        stubConfig,
+        Language.java,
+        createFeatures([]),
+      ),
     {
       instanceOf: CommandInvocationError,
       message:

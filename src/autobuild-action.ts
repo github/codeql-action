@@ -122,7 +122,7 @@ async function run() {
       }
       for (const language of languages) {
         currentLanguage = language;
-        await runAutobuild(language, config, features, logger);
+        await runAutobuild(config, language, features, logger);
       }
     }
   } catch (unwrappedError) {

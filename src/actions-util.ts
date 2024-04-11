@@ -433,25 +433,33 @@ export function getWorkflowRunAttempt(): number {
 export const getFileType = async (filePath: string): Promise<string> => {
   let stderr = "";
   let stdout = "";
+
+  let fileCmdPath: string;
+
+  try {
+    fileCmdPath = await safeWhich.safeWhich("file");
+  } catch (e) {
+    core.info(
+      "The `file` program is required, but does not appear to be installed. Please install it.",
+    );
+    throw e;
+  }
+
   try {
     // The `file` command will output information about the type of file pointed at by `filePath`.
     // For binary files, this may include e.g. whether they are static of dynamic binaries.
     // The `-L` switch instructs the command to follow symbolic links.
-    await new toolrunner.ToolRunner(
-      await safeWhich.safeWhich("file"),
-      ["-L", filePath],
-      {
-        silent: true,
-        listeners: {
-          stdout: (data) => {
-            stdout += data.toString();
-          },
-          stderr: (data) => {
-            stderr += data.toString();
-          },
+    await new toolrunner.ToolRunner(fileCmdPath, ["-L", filePath], {
+      silent: true,
+      listeners: {
+        stdout: (data) => {
+          stdout += data.toString();
+        },
+        stderr: (data) => {
+          stderr += data.toString();
         },
       },
-    ).exec();
+    }).exec();
     return stdout.trim();
   } catch (e) {
     core.info(

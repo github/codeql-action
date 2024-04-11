@@ -181,7 +181,7 @@ async function runAutobuildIfLegacyGoWorkflow(
   logger.debug(
     "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
   );
-  await runAutobuild(Language.go, config, features, logger);
+  await runAutobuild(config, Language.go, features, logger);
 }
 
 async function run() {

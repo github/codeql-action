@@ -88,7 +88,11 @@ export interface CodeQL {
   /**
    * Runs the autobuilder for the given language.
    */
-  runAutobuild(language: Language, enableDebugLogging: boolean): Promise<void>;
+  runAutobuild(
+    config: Config,
+    language: Language,
+    features: FeatureEnablement,
+  ): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
@@ -628,17 +632,35 @@ export async function getCodeQLForCmd(
         { stdin: externalRepositoryToken },
       );
     },
-    async runAutobuild(language: Language, enableDebugLogging: boolean) {
+    async runAutobuild(
+      config: Config,
+      language: Language,
+      features: FeatureEnablement,
+    ) {
+      applyAutobuildAzurePipelinesTimeoutFix();
+
+      if (
+        await features.getValue(Feature.AutobuildDirectTracingEnabled, this)
+      ) {
+        await runTool(cmd, [
+          "database",
+          "trace-command",
+          ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+          ...getExtractionVerbosityArguments(config.debugMode),
+          ...getExtraOptionsFromEnv(["database", "trace-command"]),
+          util.getCodeQLDatabasePath(config, language),
+        ]);
+        return;
+      }
+
       const autobuildCmd = path.join(
         await this.resolveExtractor(language),
         "tools",
         process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh",
       );
 
-      applyAutobuildAzurePipelinesTimeoutFix();
-
       // Bump the verbosity of the autobuild command if we're in debug mode
-      if (enableDebugLogging) {
+      if (config.debugMode) {
         process.env[EnvVar.CLI_VERBOSITY] =
           process.env[EnvVar.CLI_VERBOSITY] || EXTRACTION_DEBUG_MODE_VERBOSITY;
       }

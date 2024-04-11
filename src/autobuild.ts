@@ -157,8 +157,8 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
 }
 
 export async function runAutobuild(
-  language: Language,
   config: configUtils.Config,
+  language: Language,
   features: FeatureEnablement,
   logger: Logger,
 ) {
@@ -173,7 +173,7 @@ export async function runAutobuild(
   ) {
     await codeQL.extractUsingBuildMode(config, language);
   } else {
-    await codeQL.runAutobuild(language, config.debugMode);
+    await codeQL.runAutobuild(config, language, features);
   }
   if (language === Language.go) {
     core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");

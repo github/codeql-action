@@ -4,14 +4,13 @@ import { getTemporaryDirectory, getWorkflowEventName } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { BuildMode } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, featureConfig, Features } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
-import { getRequiredEnvParam } from "./util";
+import { BuildMode, getRequiredEnvParam } from "./util";
 
 export async function determineAutobuildLanguages(
   codeql: CodeQL,

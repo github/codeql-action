@@ -12,7 +12,7 @@ import {
   getRequiredInput,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { BuildMode, Config } from "./config-utils";
+import { type Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import {
@@ -24,6 +24,7 @@ import {
   GITHUB_DOTCOM_URL,
   DiskUsage,
   assertNever,
+  BuildMode,
 } from "./util";
 
 export enum ActionName {

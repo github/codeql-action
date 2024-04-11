@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
 
 import { Config } from "./config-utils";
@@ -87,23 +87,31 @@ export function addDiagnostic(
   diagnostic: DiagnosticMessage,
 ) {
   const logger = getActionsLogger();
+  const databasePath = getCodeQLDatabasePath(config, language);
   const diagnosticsPath = path.resolve(
-    getCodeQLDatabasePath(config, language),
+    databasePath,
     "diagnostic",
     "codeql-action",
   );
 
-  try {
-    // Create the directory if it doesn't exist yet.
-    mkdirSync(diagnosticsPath, { recursive: true });
+  // Check that the database exists before writing to it.
+  if (existsSync(databasePath)) {
+    try {
+      // Create the directory if it doesn't exist yet.
+      mkdirSync(diagnosticsPath, { recursive: true });
 
-    const jsonPath = path.resolve(
-      diagnosticsPath,
-      `codeql-action-${diagnostic.timestamp}.json`,
+      const jsonPath = path.resolve(
+        diagnosticsPath,
+        `codeql-action-${diagnostic.timestamp}.json`,
+      );
+
+      writeFileSync(jsonPath, JSON.stringify(diagnostic));
+    } catch (err) {
+      logger.warning(`Unable to write diagnostic message to database: ${err}`);
+    }
+  } else {
+    logger.info(
+      `Writing a diagnostic for ${language}, but the database at ${databasePath} does not exist yet.`,
     );
-
-    writeFileSync(jsonPath, JSON.stringify(diagnostic));
-  } catch (err) {
-    logger.warning(`Unable to write diagnostic message to database: ${err}`);
   }
 }

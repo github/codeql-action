@@ -55,6 +55,17 @@ export interface DiagnosticMessage {
   attributes?: { [key: string]: any };
 }
 
+/** Represents a diagnostic message that has not yet been written to the database. */
+interface UnwrittenDiagnostic {
+  /** The diagnostic message that has not yet been written. */
+  diagnostic: DiagnosticMessage;
+  /** The language the diagnostic is for. */
+  language: Language;
+}
+
+/** A list of diagnostics which have not yet been written to disk. */
+let unwrittenDiagnostics: UnwrittenDiagnostic[] = [];
+
 /**
  * Constructs a new diagnostic message with the specified id and name, as well as optional additional data.
  *
@@ -76,9 +87,11 @@ export function makeDiagnostic(
 }
 
 /**
- * Writes the given diagnostic to the database.
+ * Adds the given diagnostic to the database. If the database does not yet exist,
+ * the diagnostic will be written to it once it has been created.
  *
  * @param config The configuration that tells us where to store the diagnostic.
+ * @param language The language which the diagnostic is for.
  * @param diagnostic The diagnostic message to add to the database.
  */
 export function addDiagnostic(
@@ -88,30 +101,65 @@ export function addDiagnostic(
 ) {
   const logger = getActionsLogger();
   const databasePath = getCodeQLDatabasePath(config, language);
-  const diagnosticsPath = path.resolve(
-    databasePath,
-    "diagnostic",
-    "codeql-action",
-  );
 
-  // Check that the database exists before writing to it.
+  // Check that the database exists before writing to it. If the database does not yet exist,
+  // store the diagnostic in memory and write it later.
   if (existsSync(databasePath)) {
-    try {
-      // Create the directory if it doesn't exist yet.
-      mkdirSync(diagnosticsPath, { recursive: true });
-
-      const jsonPath = path.resolve(
-        diagnosticsPath,
-        `codeql-action-${diagnostic.timestamp}.json`,
-      );
-
-      writeFileSync(jsonPath, JSON.stringify(diagnostic));
-    } catch (err) {
-      logger.warning(`Unable to write diagnostic message to database: ${err}`);
-    }
+    writeDiagnostic(config, language, diagnostic);
   } else {
     logger.info(
       `Writing a diagnostic for ${language}, but the database at ${databasePath} does not exist yet.`,
     );
+
+    unwrittenDiagnostics.push({ diagnostic, language });
   }
+}
+
+/**
+ * Writes the given diagnostic to the database.
+ *
+ * @param config The configuration that tells us where to store the diagnostic.
+ * @param language The language which the diagnostic is for.
+ * @param diagnostic The diagnostic message to add to the database.
+ */
+function writeDiagnostic(
+  config: Config,
+  language: Language,
+  diagnostic: DiagnosticMessage,
+) {
+  const logger = getActionsLogger();
+  const diagnosticsPath = path.resolve(
+    getCodeQLDatabasePath(config, language),
+    "diagnostic",
+    "codeql-action",
+  );
+
+  try {
+    // Create the directory if it doesn't exist yet.
+    mkdirSync(diagnosticsPath, { recursive: true });
+
+    const jsonPath = path.resolve(
+      diagnosticsPath,
+      `codeql-action-${diagnostic.timestamp}.json`,
+    );
+
+    writeFileSync(jsonPath, JSON.stringify(diagnostic));
+  } catch (err) {
+    logger.warning(`Unable to write diagnostic message to database: ${err}`);
+  }
+}
+
+/** Writes all unwritten diagnostics to disk. */
+export function flushDiagnostics(config: Config) {
+  const logger = getActionsLogger();
+  logger.info(
+    `Writing ${unwrittenDiagnostics.length} diagnostic(s) to database.`,
+  );
+
+  for (const unwritten of unwrittenDiagnostics) {
+    writeDiagnostic(config, unwritten.language, unwritten.diagnostic);
+  }
+
+  // Reset the unwritten diagnostics array.
+  unwrittenDiagnostics = [];
 }

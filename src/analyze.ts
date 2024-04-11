@@ -218,13 +218,12 @@ export function dbIsFinalized(
 }
 
 async function finalizeDatabaseCreation(
+  codeql: CodeQL,
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
-  const codeql = await getCodeQL(config.codeQLCmd);
-
   const extractionStart = performance.now();
   await runExtraction(codeql, config, logger);
   const extractionTime = performance.now() - extractionStart;
@@ -400,7 +399,9 @@ export async function runFinalize(
   outputDir: string,
   threadsFlag: string,
   memoryFlag: string,
+  codeql: CodeQL,
   config: configUtils.Config,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   try {
@@ -413,6 +414,7 @@ export async function runFinalize(
   await fs.promises.mkdir(outputDir, { recursive: true });
 
   const timings = await finalizeDatabaseCreation(
+    codeql,
     config,
     threadsFlag,
     memoryFlag,
@@ -425,7 +427,7 @@ export async function runFinalize(
   // However, it will stop tracing for all steps past the codeql-action/analyze
   // step.
   // Delete variables as specified by the end-tracing script
-  await endTracingForCluster(config);
+  await endTracingForCluster(codeql, config, features);
   return timings;
 }
 

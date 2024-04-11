@@ -211,6 +211,8 @@ async function run() {
       );
     }
 
+    const codeql = await getCodeQL(config.codeQLCmd);
+
     if (hasBadExpectErrorInput()) {
       throw new util.ConfigurationError(
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork.",
@@ -251,7 +253,9 @@ async function run() {
       outputDir,
       threads,
       memory,
+      codeql,
       config,
+      features,
       logger,
     );
 
@@ -300,7 +304,6 @@ async function run() {
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();
-    const codeql = await getCodeQL(config.codeQLCmd);
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 

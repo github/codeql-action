@@ -107,7 +107,7 @@ export function addDiagnostic(
   if (existsSync(databasePath)) {
     writeDiagnostic(config, language, diagnostic);
   } else {
-    logger.info(
+    logger.debug(
       `Writing a diagnostic for ${language}, but the database at ${databasePath} does not exist yet.`,
     );
 
@@ -146,6 +146,7 @@ function writeDiagnostic(
     writeFileSync(jsonPath, JSON.stringify(diagnostic));
   } catch (err) {
     logger.warning(`Unable to write diagnostic message to database: ${err}`);
+    logger.debug(JSON.stringify(diagnostic));
   }
 }
 
@@ -167,7 +168,7 @@ export function logUnwrittenDiagnostics() {
 /** Writes all unwritten diagnostics to disk. */
 export function flushDiagnostics(config: Config) {
   const logger = getActionsLogger();
-  logger.info(
+  logger.debug(
     `Writing ${unwrittenDiagnostics.length} diagnostic(s) to database.`,
   );
 

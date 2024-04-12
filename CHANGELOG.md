@@ -16,6 +16,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
   We recommend removing any references to these from your workflows. For more information, see the release notes for CodeQL Action v3.23.0 and v2.23.0.
 - Automatically overwrite an existing database if found on the filesystem. [#2229](https://github.com/github/codeql-action/pull/2229)
 - Bump the minimum CodeQL bundle version to 2.12.6. [#2232](https://github.com/github/codeql-action/pull/2232)
+- We are rolling out a feature in April 2024 that improves the reliability and performance of analyzing code when using the `autobuild` build mode. This feature uses direct tracing to trace the build when the `autobuild` build mode is specified using the `build-mode` input to the `init` Action. [#2335](https://github.com/github/codeql-action/pull/2335)
 
 ## 3.24.10 - 05 Apr 2024
 

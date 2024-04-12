@@ -5,10 +5,12 @@ import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
 import {
+  ConfigurationError,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
   GitHubVariant,
   GitHubVersion,
+  isHTTPError,
   parseGitHubUrl,
   parseMatrixInput,
 } from "./util";
@@ -191,4 +193,16 @@ export function computeAutomationID(
   }
 
   return automationID;
+}
+
+export function wrapApiConfigurationError(e: unknown) {
+  if (isHTTPError(e)) {
+    if (
+      e.message.includes("API rate limit exceeded for site ID installation") ||
+      /^ref .* not found in this repository$/.test(e.message)
+    ) {
+      return new ConfigurationError(e.message);
+    }
+  }
+  return e;
 }

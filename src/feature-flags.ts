@@ -8,6 +8,7 @@ import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 
 const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
@@ -44,6 +45,7 @@ export interface FeatureEnablement {
  * Each value of this enum should end with `_enabled`.
  */
 export enum Feature {
+  AutobuildDirectTracingEnabled = "autobuild_direct_tracing_enabled",
   CliSarifMerge = "cli_sarif_merge_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
@@ -55,8 +57,34 @@ export enum Feature {
 
 export const featureConfig: Record<
   Feature,
-  { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
+  {
+    /**
+     * Environment variable for explicitly enabling or disabling the feature.
+     *
+     * This overrides enablement status from the feature flags API.
+     */
+    envVar: string;
+    /**
+     * Minimum version of the CLI, if applicable.
+     *
+     * Prefer using `ToolsFeature`s for future flags.
+     */
+    minimumVersion: string | undefined;
+    /** Required tools feature, if applicable. */
+    toolsFeature?: ToolsFeature;
+    /**
+     * Default value in environments where the feature flags API is not available,
+     * such as GitHub Enterprise Server.
+     */
+    defaultValue: boolean;
+  }
 > = {
+  [Feature.AutobuildDirectTracingEnabled]: {
+    envVar: "CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.TraceCommandUseBuildMode,
+    defaultValue: false,
+  },
   [Feature.CliSarifMerge]: {
     envVar: "CODEQL_ACTION_CLI_SARIF_MERGE",
     // This is guarded by a `supportsFeature` check rather than by a version check.
@@ -151,6 +179,11 @@ export class Features implements FeatureEnablement {
         `Internal error: A minimum version is specified for feature ${feature}, but no instance of CodeQL was provided.`,
       );
     }
+    if (!codeql && featureConfig[feature].toolsFeature) {
+      throw new Error(
+        `Internal error: A required tools feature is specified for feature ${feature}, but no instance of CodeQL was provided.`,
+      );
+    }
 
     const envVar = (
       process.env[featureConfig[feature].envVar] || ""
@@ -179,6 +212,22 @@ export class Features implements FeatureEnablement {
             (await codeql.getVersion()).version
           } is newer than the minimum ` +
             `version ${minimumVersion} for feature ${feature}.`,
+        );
+      }
+    }
+    const toolsFeature = featureConfig[feature].toolsFeature;
+    if (codeql && toolsFeature) {
+      if (!(await codeql.supportsFeature(toolsFeature))) {
+        this.logger.debug(
+          `Feature ${feature} is disabled because the CodeQL CLI version does not support the ` +
+            `required tools feature ${toolsFeature}.`,
+        );
+        return false;
+      } else {
+        this.logger.debug(
+          `CodeQL CLI version ${
+            (await codeql.getVersion()).version
+          } supports the required tools feature ${toolsFeature} for feature ${feature}.`,
         );
       }
     }

@@ -447,11 +447,8 @@ export const getFileType = async (filePath: string): Promise<string> => {
   try {
     fileCmdPath = await safeWhich.safeWhich("file");
   } catch (e) {
-    core.info(
-      "The `file` program is required, but does not appear to be installed. Please install it.",
-    );
     throw new FileCmdNotFoundError(
-      `The \`file\` program is not installed: ${e}`,
+      `The \`file\` program is required, but does not appear to be installed. Please install it: ${e}`,
     );
   }
 

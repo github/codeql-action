@@ -386,10 +386,10 @@ async function run() {
             Language.go,
             makeDiagnostic(
               "go/workflow/file-program-unavailable",
-              "The `file` program is required, but does not appear to be installed",
+              "The `file` program is required on Linux, but does not appear to be installed",
               {
                 markdownMessage:
-                  "CodeQL was unable to find the `file` program on this system. Ensure that the `file` program is installed on the runner and accessible.",
+                  "CodeQL was unable to find the `file` program on this system. Ensure that the `file` program is installed on Linux runners and accessible.",
                 visibility: {
                   statusPage: true,
                   telemetry: true,

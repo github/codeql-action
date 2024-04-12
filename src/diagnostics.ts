@@ -149,6 +149,21 @@ function writeDiagnostic(
   }
 }
 
+/** Report if there are unwritten diagnostics and write them to the log. */
+export function logUnwrittenDiagnostics() {
+  const logger = getActionsLogger();
+  const num = unwrittenDiagnostics.length;
+  if (num > 0) {
+    logger.warning(
+      `${num} diagnostic(s) could not be written to the database and will not appear on the Tool Status Page.`,
+    );
+
+    for (const unwritten of unwrittenDiagnostics) {
+      logger.debug(JSON.stringify(unwritten.diagnostic));
+    }
+  }
+}
+
 /** Writes all unwritten diagnostics to disk. */
 export function flushDiagnostics(config: Config) {
   const logger = getActionsLogger();

@@ -16,7 +16,12 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { addDiagnostic, flushDiagnostics, makeDiagnostic } from "./diagnostics";
+import {
+  addDiagnostic,
+  flushDiagnostics,
+  logUnwrittenDiagnostics,
+  makeDiagnostic,
+} from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import { checkInstallPython311, initCodeQL, initConfig, runInit } from "./init";
@@ -541,6 +546,8 @@ async function run() {
       error,
     );
     return;
+  } finally {
+    logUnwrittenDiagnostics();
   }
   await sendCompletedStatusReport(
     startedAt,

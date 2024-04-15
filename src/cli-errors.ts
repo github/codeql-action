@@ -132,6 +132,7 @@ export enum CliConfigErrorCategory {
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
   SwiftBuildFailed = "SwiftBuildFailed",
+  UnsupportedBuildMode = "UnsupportedBuildMode",
 }
 
 type CliErrorConfiguration = {
@@ -217,6 +218,13 @@ export const cliErrorsConfig: Record<
     cliErrorMessageCandidates: [
       new RegExp(
         "\\[autobuilder/build\\] \\[build-command-failed\\] `autobuild` failed to run the build command",
+      ),
+    ],
+  },
+  [CliConfigErrorCategory.UnsupportedBuildMode]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "does not support the .* build mode. Please try using one of the following build modes instead",
       ),
     ],
   },

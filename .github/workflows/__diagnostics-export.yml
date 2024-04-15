@@ -28,11 +28,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-20230317
+            version: stable-20230403
           - os: macos-latest
-            version: stable-20230317
+            version: stable-20230403
           - os: windows-latest
-            version: stable-20230317
+            version: stable-20230403
           - os: ubuntu-latest
             version: latest
           - os: macos-latest
@@ -57,9 +57,7 @@ jobs:
         if: >-
           matrix.os == 'macos-latest' && (
 
-          matrix.version == 'stable-20221211' ||
-
-          matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-20230403' ||
 
           matrix.version == 'stable-v2.13.5' ||
 
@@ -74,10 +72,6 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-      - name: Set environment variable for Swift enablement
-        if: runner.os != 'Windows' && matrix.version == '20221211'
-        shell: bash
-        run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
       - uses: ./../action/init
         id: init
         with:
@@ -89,7 +83,7 @@ jobs:
           CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
         run: |
           for i in {1..2}; do
-            # Use the same location twice to test the workaround for the bug in CodeQL CLI 2.12.5 that
+            # Use the same location twice to test the workaround for the bug in CodeQL CLI 2.12.6 that
             # produces an invalid diagnostic with multiple identical location objects.
             "$CODEQL_PATH" database add-diagnostic \
               "$RUNNER_TEMP/codeql_databases/javascript" \

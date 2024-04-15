@@ -10,7 +10,7 @@ import * as jsonschema from "jsonschema";
 import * as actionsUtil from "./actions-util";
 import { getOptionalInput, getRequiredInput } from "./actions-util";
 import * as api from "./api-client";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
@@ -256,7 +256,7 @@ async function uploadPayload(
           break;
       }
     }
-    throw e;
+    throw wrapApiConfigurationError(e);
   }
 }
 

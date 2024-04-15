@@ -426,6 +426,14 @@ export function getWorkflowRunAttempt(): number {
   return workflowRunAttempt;
 }
 
+export class FileCmdNotFoundError extends Error {
+  constructor(msg: string) {
+    super(msg);
+
+    this.name = "FileCmdNotFoundError";
+  }
+}
+
 /**
  * Tries to obtain the output of the `file` command for the file at the specified path.
  * The output will vary depending on the type of `file`, which operating system we are running on, etc.
@@ -433,25 +441,32 @@ export function getWorkflowRunAttempt(): number {
 export const getFileType = async (filePath: string): Promise<string> => {
   let stderr = "";
   let stdout = "";
+
+  let fileCmdPath: string;
+
+  try {
+    fileCmdPath = await safeWhich.safeWhich("file");
+  } catch (e) {
+    throw new FileCmdNotFoundError(
+      `The \`file\` program is required, but does not appear to be installed. Please install it: ${e}`,
+    );
+  }
+
   try {
     // The `file` command will output information about the type of file pointed at by `filePath`.
     // For binary files, this may include e.g. whether they are static of dynamic binaries.
     // The `-L` switch instructs the command to follow symbolic links.
-    await new toolrunner.ToolRunner(
-      await safeWhich.safeWhich("file"),
-      ["-L", filePath],
-      {
-        silent: true,
-        listeners: {
-          stdout: (data) => {
-            stdout += data.toString();
-          },
-          stderr: (data) => {
-            stderr += data.toString();
-          },
+    await new toolrunner.ToolRunner(fileCmdPath, ["-L", filePath], {
+      silent: true,
+      listeners: {
+        stdout: (data) => {
+          stdout += data.toString();
+        },
+        stderr: (data) => {
+          stderr += data.toString();
         },
       },
-    ).exec();
+    }).exec();
     return stdout.trim();
   } catch (e) {
     core.info(

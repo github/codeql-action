@@ -10,9 +10,6 @@ env:
   CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
-    branches:
-      - main
-      - releases/v*
   pull_request:
     types:
       - opened
@@ -30,6 +27,10 @@ jobs:
           - os: ubuntu-latest
             version: latest
           - os: ubuntu-latest
+            version: nightly-latest
+          - os: windows-latest
+            version: latest
+          - os: windows-latest
             version: nightly-latest
     name: Autobuild direct tracing
     permissions:

@@ -16,6 +16,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
   We recommend removing any references to these from your workflows. For more information, see the release notes for CodeQL Action v3.23.0 and v2.23.0.
 - Automatically overwrite an existing database if found on the filesystem. [#2229](https://github.com/github/codeql-action/pull/2229)
 - Bump the minimum CodeQL bundle version to 2.12.6. [#2232](https://github.com/github/codeql-action/pull/2232)
+- A more relevant log message and a diagnostic are now emitted when the `file` program is not installed on a Linux runner, but is required for Go tracing to succeed. [#2234](https://github.com/github/codeql-action/pull/2234)
 
 ## 3.24.10 - 05 Apr 2024
 

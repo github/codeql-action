@@ -320,14 +320,16 @@ export async function uploadFromActions(
 
 function getSarifFilePaths(sarifPath: string) {
   if (!fs.existsSync(sarifPath)) {
-    throw new InvalidSarifUploadError(`Path does not exist: ${sarifPath}`);
+    // This is always a configuration error, even for first-party runs.
+    throw new ConfigurationError(`Path does not exist: ${sarifPath}`);
   }
 
   let sarifFiles: string[];
   if (fs.lstatSync(sarifPath).isDirectory()) {
     sarifFiles = findSarifFilesInDir(sarifPath);
     if (sarifFiles.length === 0) {
-      throw new InvalidSarifUploadError(
+      // This is always a configuration error, even for first-party runs.
+      throw new ConfigurationError(
         `No SARIF files found to upload in "${sarifPath}".`,
       );
     }
@@ -733,7 +735,8 @@ export function validateUniqueCategory(sarif: SarifFile): void {
   for (const [category, { id, tool }] of Object.entries(categories)) {
     const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
     if (process.env[sentinelEnvVar]) {
-      throw new InvalidSarifUploadError(
+      // This is always a configuration error, even for first-party runs.
+      throw new ConfigurationError(
         "Aborting upload: only one run of the codeql/analyze or codeql/upload-sarif actions is allowed per job per tool/category. " +
           "The easiest fix is to specify a unique value for the `category` input. If .runs[].automationDetails.id is specified " +
           "in the sarif file, that will take precedence over your configured `category`. " +

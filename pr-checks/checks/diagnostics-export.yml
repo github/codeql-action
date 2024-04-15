@@ -1,8 +1,8 @@
 name: "Diagnostic export"
 description: "Tests that manually added diagnostics are correctly exported to SARIF."
-# Test on 2.12.5 (which requires a workaround in the Action), the latest release, and the latest
+# Test on 2.12.6 (which requires a workaround in the Action), the latest release, and the latest
 # nightly.
-versions: ["stable-20230317", "latest", "nightly-latest"]
+versions: ["stable-20230403", "latest", "nightly-latest"]
 env:
   CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
 steps:
@@ -17,7 +17,7 @@ steps:
       CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
     run: |
       for i in {1..2}; do
-        # Use the same location twice to test the workaround for the bug in CodeQL CLI 2.12.5 that
+        # Use the same location twice to test the workaround for the bug in CodeQL CLI 2.12.6 that
         # produces an invalid diagnostic with multiple identical location objects.
         "$CODEQL_PATH" database add-diagnostic \
           "$RUNNER_TEMP/codeql_databases/javascript" \

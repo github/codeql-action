@@ -1,8 +1,5 @@
 import { ConfigurationError } from "./util";
 
-const NO_SOURCE_CODE_SEEN_DOCS_LINK =
-  "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build";
-
 /**
  * A class of Error that we can classify as an error stemming from a CLI
  * invocation, with associated exit code, stderr,etc.
@@ -135,6 +132,7 @@ export enum CliConfigErrorCategory {
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
   SwiftBuildFailed = "SwiftBuildFailed",
+  UnsupportedBuildMode = "UnsupportedBuildMode",
 }
 
 type CliErrorConfiguration = {
@@ -203,15 +201,6 @@ export const cliErrorsConfig: Record<
       new RegExp(
         "CodeQL did not detect any code written in languages supported by CodeQL",
       ),
-      /**
-       * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
-       * source code was found. This means that we don't get the no code found error from
-       * `codeql database finalize`. To ensure users get a good error message, we detect this manually
-       * here, and upon detection override the error message.
-       *
-       * This can be removed once support for CodeQL 2.11.6 is removed.
-       */
-      new RegExp("No JavaScript or TypeScript code found"),
     ],
   },
 
@@ -229,6 +218,13 @@ export const cliErrorsConfig: Record<
     cliErrorMessageCandidates: [
       new RegExp(
         "\\[autobuilder/build\\] \\[build-command-failed\\] `autobuild` failed to run the build command",
+      ),
+    ],
+  },
+  [CliConfigErrorCategory.UnsupportedBuildMode]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "does not support the .* build mode. Please try using one of the following build modes instead",
       ),
     ],
   },
@@ -263,18 +259,6 @@ export function getCliConfigCategoryIfExists(
 }
 
 /**
- * Prepend a clearer error message with the docs link if the error message does not already
- * include it. Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs
- * should already include the doc link.
- */
-function prependDocsLinkIfApplicable(cliErrorMessage: string): string {
-  if (!cliErrorMessage.includes(NO_SOURCE_CODE_SEEN_DOCS_LINK)) {
-    return `No code found during the build. Please see: ${NO_SOURCE_CODE_SEEN_DOCS_LINK}. Detailed error: ${cliErrorMessage}`;
-  }
-  return cliErrorMessage;
-}
-
-/**
  * Changes an error received from the CLI to a ConfigurationError with optionally an extra
  * error message appended, if it exists in a known set of configuration errors. Otherwise,
  * simply returns the original error.
@@ -290,12 +274,6 @@ export function wrapCliConfigurationError(cliError: Error): Error {
   }
 
   let errorMessageBuilder = cliError.message;
-
-  // Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs should
-  // already include the doc link.
-  if (cliConfigErrorCategory === CliConfigErrorCategory.NoSourceCodeSeen) {
-    errorMessageBuilder = prependDocsLinkIfApplicable(errorMessageBuilder);
-  }
 
   const additionalErrorMessageToAppend =
     cliErrorsConfig[cliConfigErrorCategory].additionalErrorMessageToAppend;

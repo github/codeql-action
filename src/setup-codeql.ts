@@ -304,7 +304,7 @@ export async function getCodeQLSource(
     );
   }
 
-  /** CLI version number, for example 2.12.1. */
+  /** CLI version number, for example 2.12.6. */
   let cliVersion: string | undefined;
   /** Tag name of the CodeQL bundle, for example `codeql-bundle-20230120`. */
   let tagName: string | undefined;

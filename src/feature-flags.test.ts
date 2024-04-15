@@ -21,6 +21,7 @@ import {
   setupActionsVars,
   setupTests,
 } from "./testing-utils";
+import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
@@ -197,7 +198,10 @@ for (const feature of Object.keys(featureConfig)) {
     });
   });
 
-  if (featureConfig[feature].minimumVersion !== undefined) {
+  if (
+    featureConfig[feature].minimumVersion !== undefined ||
+    featureConfig[feature].toolsFeature !== undefined
+  ) {
     test(`Getting feature '${feature} should throw if no codeql is provided`, async (t) => {
       await withTmpDir(async (tmpDir) => {
         const features = setUpFeatureFlagTests(tmpDir);
@@ -206,7 +210,11 @@ for (const feature of Object.keys(featureConfig)) {
         mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
         await t.throwsAsync(async () => features.getValue(feature as Feature), {
-          message: `Internal error: A minimum version is specified for feature ${feature}, but no instance of CodeQL was provided.`,
+          message: `Internal error: A ${
+            featureConfig[feature].minimumVersion !== undefined
+              ? "minimum version"
+              : "required tools feature"
+          } is specified for feature ${feature}, but no instance of CodeQL was provided.`,
         });
       });
     });
@@ -243,17 +251,55 @@ for (const feature of Object.keys(featureConfig)) {
       });
     });
   }
+
+  if (featureConfig[feature].toolsFeature !== undefined) {
+    test(`Feature '${feature}' is disabled if the required tools feature is not enabled`, async (t) => {
+      await withTmpDir(async (tmpDir) => {
+        const features = setUpFeatureFlagTests(tmpDir);
+
+        const expectedFeatureEnablement = initializeFeatures(true);
+        mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
+
+        // feature should be disabled when the required tools feature is not enabled
+        let codeql = mockCodeQLVersion("2.0.0");
+        t.assert(!(await features.getValue(feature as Feature, codeql)));
+
+        // even setting the env var to true should not enable the feature if
+        // the required tools feature is not enabled
+        process.env[featureConfig[feature].envVar] = "true";
+        t.assert(!(await features.getValue(feature as Feature, codeql)));
+
+        // feature should be enabled when the required tools feature is enabled
+        // and env var is not set
+        process.env[featureConfig[feature].envVar] = "";
+        codeql = mockCodeQLVersion("2.0.0", {
+          [featureConfig[feature].toolsFeature]: true,
+        });
+        t.assert(await features.getValue(feature as Feature, codeql));
+
+        // set env var to false and check that the feature is now disabled
+        process.env[featureConfig[feature].envVar] = "false";
+        t.assert(!(await features.getValue(feature as Feature, codeql)));
+      });
+    });
+  }
 }
 
 // If we ever run into a situation where we no longer have any features that
-// specify a minimum version, then we will have a bunch of code no longer being
-// tested. This is unlikely, and this test will fail if that happens.
+// specify a minimum version or required tools feature, then we will have a
+// bunch of code no longer being tested. This is unlikely, and this test will
+// fail if that happens.
 // If we do end up in that situation, then we should consider adding a synthetic
 // feature with a minimum version that is only used for tests.
 test("At least one feature has a minimum version specified", (t) => {
   t.assert(
     Object.values(featureConfig).some((f) => f.minimumVersion !== undefined),
     "At least one feature should have a minimum version specified",
+  );
+
+  t.assert(
+    Object.values(featureConfig).some((f) => f.toolsFeature !== undefined),
+    "At least one feature should have a required tools feature specified",
   );
 
   // An even less likely scenario is that we no longer have any features.
@@ -512,8 +558,16 @@ function setUpFeatureFlagTests(
   return new Features(gitHubVersion, testRepositoryNwo, tmpDir, logger);
 }
 
+/**
+ * Returns an argument to pass to `getValue` that if required includes a CodeQL object meeting the
+ * minimum version or tool feature requirements specified by the feature.
+ */
 function includeCodeQlIfRequired(feature: string) {
-  return featureConfig[feature].minimumVersion !== undefined
-    ? mockCodeQLVersion("9.9.9")
+  return featureConfig[feature].minimumVersion !== undefined ||
+    featureConfig[feature].toolsFeature !== undefined
+    ? mockCodeQLVersion(
+        "9.9.9",
+        Object.fromEntries(Object.values(ToolsFeature).map((v) => [v, true])),
+      )
     : undefined;
 }

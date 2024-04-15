@@ -7,14 +7,16 @@ import textwrap
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
-    # The oldest supported CodeQL version: 2.11.6. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-20221211",
-    # The last CodeQL release in the 2.12 series: 2.12.7.
-    "stable-20230418",
+    # The oldest supported CodeQL version: 2.12.6. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
+    "stable-20230403",
     # The last CodeQL release in the 2.13 series: 2.13.5.
     "stable-v2.13.5",
     # The last CodeQL release in the 2.14 series: 2.14.6.
     "stable-v2.14.6",
+    # The last CodeQL release in the 2.15 series: 2.15.5.
+    "stable-v2.15.5",
+    # The last CodeQL release in the 2.16 series: 2.16.6.
+    "stable-v2.16.6",
     # The default version of CodeQL for Dotcom, as determined by feature flags.
     "default",
     # The version of CodeQL shipped with the Action in `defaults.json`. During the release process
@@ -80,8 +82,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
             # of the generated workflow.
             'if': FoldedScalarString(textwrap.dedent('''
                     matrix.os == 'macos-latest' && (
-                    matrix.version == 'stable-20221211' ||
-                    matrix.version == 'stable-20230418' ||
+                    matrix.version == 'stable-20230403' ||
                     matrix.version == 'stable-v2.13.5' ||
                     matrix.version == 'stable-v2.14.6')
             ''').strip()),
@@ -101,13 +102,6 @@ for file in (this_dir / 'checks').glob('*.yml'):
                 'version': '${{ matrix.version }}',
                 'use-all-platform-bundle': useAllPlatformBundle
             }
-        },
-        # We don't support Swift on Windows or prior versions of the CLI.
-        {
-            'name': 'Set environment variable for Swift enablement',
-            'if': "runner.os != 'Windows' && matrix.version == '20221211'",
-            'shell': 'bash',
-            'run': 'echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV'
         },
     ]
 

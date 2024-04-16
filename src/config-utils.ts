@@ -17,6 +17,7 @@ import {
   GitHubVersion,
   prettyPrintPack,
   ConfigurationError,
+  BuildMode,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -71,12 +72,6 @@ interface ExcludeQueryFilter {
 
 interface IncludeQueryFilter {
   include: Record<string, string[] | string>;
-}
-
-export enum BuildMode {
-  None = "none",
-  Autobuild = "autobuild",
-  Manual = "manual",
 }
 
 /**

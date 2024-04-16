@@ -1082,3 +1082,18 @@ export function checkActionVersion(
     }
   }
 }
+
+/**
+ * Supported build modes.
+ *
+ * These specify whether the CodeQL database should be created by tracing a build, and if so, how
+ * this build will be invoked.
+ */
+export enum BuildMode {
+  /** The database will be created without building the source root. */
+  None = "none",
+  /** The database will be created by attempting to automatically build the source root. */
+  Autobuild = "autobuild",
+  /** The database will be created by building the source root using manually specified build steps. */
+  Manual = "manual",
+}

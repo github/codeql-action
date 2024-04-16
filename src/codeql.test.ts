@@ -989,6 +989,42 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
   );
 });
 
+test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OPTIONS", async (t) => {
+  const runnerConstructorStub = stubToolRunnerConstructor();
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  process.env["CODEQL_ACTION_EXTRA_OPTIONS"] =
+    '{ "database": { "init": ["--overwrite"] } }';
+
+  await codeqlObject.databaseInitCluster(
+    stubConfig,
+    "sourceRoot",
+    undefined,
+    undefined,
+    createFeatures([]),
+    getRunnerLogger(false),
+  );
+
+  t.true(runnerConstructorStub.calledOnce);
+  const args = runnerConstructorStub.firstCall.args[1] as string[];
+  t.is(
+    args.filter((option: string) => option === "--overwrite").length,
+    1,
+    "--overwrite should only be passed once",
+  );
+
+  // Clean up
+  const configArg = args.find((arg: string) =>
+    arg.startsWith("--codescanning-config="),
+  );
+  t.truthy(configArg, "Should have injected a codescanning config");
+  const configFile = configArg!.split("=")[1];
+  await del(configFile, { force: true });
+});
+
 export function stubToolRunnerConstructor(
   exitCode: number = 0,
   stderr?: string,

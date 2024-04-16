@@ -89,7 +89,7 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_CLI_SARIF_MERGE",
     // This is guarded by a `supportsFeature` check rather than by a version check.
     minimumVersion: undefined,
-    defaultValue: true,
+    defaultValue: false,
   },
   [Feature.CppDependencyInstallation]: {
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",

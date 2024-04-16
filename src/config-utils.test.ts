@@ -14,7 +14,6 @@ import {
   setCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
-import { BuildMode } from "./config-utils";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -32,6 +31,7 @@ import {
   prettyPrintPack,
   ConfigurationError,
   withTmpDir,
+  BuildMode,
 } from "./util";
 
 setupTests(test);

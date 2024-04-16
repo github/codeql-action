@@ -186,8 +186,8 @@ def process_changelog_for_backports(source_branch_major_version, target_branch_m
   with open('CHANGELOG.md', 'r') as f:
 
     # until we find the first section, just duplicate all lines
-    while True:
-      found_first_section = False
+    found_first_section = False
+    while not found_first_section:
       line = f.readline()
       if not line:
         raise Exception('Could not find any change sections in CHANGELOG.md') # EOF
@@ -197,9 +197,6 @@ def process_changelog_for_backports(source_branch_major_version, target_branch_m
         found_first_section = True
 
       output += line
-      if found_first_section:
-        # we now handle things differently
-        break
 
     # found_content tracks whether we hit two headings in a row
     found_content = False

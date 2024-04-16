@@ -7,7 +7,7 @@ import * as safeWhich from "@chrisgavin/safe-which";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -69,6 +69,7 @@ export async function runInit(
   processName: string | undefined,
   registriesInput: string | undefined,
   apiDetails: GitHubApiCombinedDetails,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
@@ -92,10 +93,11 @@ export async function runInit(
         sourceRoot,
         processName,
         qlconfigFile,
+        features,
         logger,
       ),
   );
-  return await getCombinedTracerConfig(codeql, config);
+  return await getCombinedTracerConfig(codeql, config, features);
 }
 
 export function printPathFiltersWarning(

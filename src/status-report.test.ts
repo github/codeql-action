@@ -2,7 +2,6 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import { BuildMode } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -12,7 +11,7 @@ import {
   setupActionsVars,
   createTestConfig,
 } from "./testing-utils";
-import { withTmpDir } from "./util";
+import { BuildMode, withTmpDir } from "./util";
 
 setupTests(test);
 

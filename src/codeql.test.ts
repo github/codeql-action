@@ -482,6 +482,7 @@ const injectedConfigMacro = test.macro({
         "",
         undefined,
         undefined,
+        createFeatures([]),
         getRunnerLogger(true),
       );
 
@@ -695,6 +696,7 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
       "",
       undefined,
       "/path/to/qlconfig.yml",
+      createFeatures([]),
       getRunnerLogger(true),
     );
 
@@ -724,6 +726,7 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
       "",
       undefined,
       undefined, // undefined qlconfigFile
+      createFeatures([]),
       getRunnerLogger(true),
     );
 
@@ -907,7 +910,12 @@ test("runTool summarizes autobuilder errors", async (t) => {
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(Language.java, false),
+    async () =>
+      await codeqlObject.runAutobuild(
+        stubConfig,
+        Language.java,
+        createFeatures([]),
+      ),
     {
       instanceOf: CommandInvocationError,
       message:
@@ -935,7 +943,12 @@ test("runTool truncates long autobuilder errors", async (t) => {
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(Language.java, false),
+    async () =>
+      await codeqlObject.runAutobuild(
+        stubConfig,
+        Language.java,
+        createFeatures([]),
+      ),
     {
       instanceOf: CommandInvocationError,
       message:

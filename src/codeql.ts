@@ -620,7 +620,9 @@ export async function getCodeQLForCmd(
           `--source-root=${sourceRoot}`,
           ...(await getLanguageAliasingArguments(this)),
           ...extraArgs,
-          ...getExtraOptionsFromEnv(["database", "init"]),
+          ...getExtraOptionsFromEnv(["database", "init"], {
+            ignoringOptions: ["--overwrite"],
+          }),
         ],
         { stdin: externalRepositoryToken },
       );
@@ -800,7 +802,9 @@ export async function getCodeQLForCmd(
         "--expect-discarded-cache",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
-        ...getExtraOptionsFromEnv(["database", "run-queries"]),
+        ...getExtraOptionsFromEnv(["database", "run-queries"], {
+          ignoringOptions: ["--expect-discarded-cache"],
+        }),
       ];
       if (
         await util.codeQlVersionAbove(
@@ -1139,10 +1143,18 @@ export async function getCodeQLForCmd(
 
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
+ *
+ * @param ignoringOptions Options that should be ignored, for example because they have already
+ *                        been passed and it is an error to pass them more than once.
  */
-function getExtraOptionsFromEnv(paths: string[]) {
+function getExtraOptionsFromEnv(
+  paths: string[],
+  { ignoringOptions }: { ignoringOptions?: string[] } = {},
+) {
   const options: ExtraOptions = util.getExtraOptionsEnvParam();
-  return getExtraOptions(options, paths, []);
+  return getExtraOptions(options, paths, []).filter(
+    (option) => !ignoringOptions?.includes(option),
+  );
 }
 
 /**

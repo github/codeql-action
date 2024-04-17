@@ -421,9 +421,7 @@ export function buildPayload(
   environment: string | undefined,
   toolNames: string[],
   mergeBaseCommitOid: string | undefined,
-  logger: Logger,
 ) {
-  logger.info(`Combining SARIF files using CLI`);
   const payloadObj = {
     commit_oid: commitOid,
     ref,
@@ -537,7 +535,6 @@ async function uploadFiles(
     environment,
     toolNames,
     await actionsUtil.determineMergeBaseCommitOid(),
-    logger,
   );
 
   // Log some useful debug info about the info

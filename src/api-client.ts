@@ -199,6 +199,7 @@ export function wrapApiConfigurationError(e: unknown) {
   if (isHTTPError(e)) {
     if (
       e.message.includes("API rate limit exceeded for site ID installation") ||
+      e.message.includes("commit not found") ||
       /^ref .* not found in this repository$/.test(e.message)
     ) {
       return new ConfigurationError(e.message);

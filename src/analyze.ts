@@ -13,7 +13,6 @@ import {
   getCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
-import { BuildMode } from "./config-utils";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
@@ -24,6 +23,7 @@ import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
 import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
+import { BuildMode } from "./util";
 
 export class CodeQLAnalysisError extends Error {
   queriesStatusReport: QueriesStatusReport;
@@ -158,26 +158,7 @@ export async function runExtraction(
         ) {
           await setupCppAutobuild(codeql, logger);
         }
-        try {
-          await codeql.extractUsingBuildMode(config, language);
-        } catch (e) {
-          if (config.buildMode === BuildMode.Autobuild) {
-            const prefix =
-              "We were unable to automatically build your code. " +
-              "Please change the build mode for this language to manual and specify build steps " +
-              "for your project. For more information, see " +
-              "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed.";
-            const ErrorConstructor =
-              e instanceof util.ConfigurationError
-                ? util.ConfigurationError
-                : Error;
-            throw new ErrorConstructor(
-              `${prefix} ${util.wrapError(e).message}`,
-            );
-          } else {
-            throw e;
-          }
-        }
+        await codeql.extractUsingBuildMode(config, language);
       } else {
         await codeql.extractScannedLanguage(config, language);
       }
@@ -218,13 +199,12 @@ export function dbIsFinalized(
 }
 
 async function finalizeDatabaseCreation(
+  codeql: CodeQL,
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
-  const codeql = await getCodeQL(config.codeQLCmd);
-
   const extractionStart = performance.now();
   await runExtraction(codeql, config, logger);
   const extractionTime = performance.now() - extractionStart;
@@ -400,7 +380,9 @@ export async function runFinalize(
   outputDir: string,
   threadsFlag: string,
   memoryFlag: string,
+  codeql: CodeQL,
   config: configUtils.Config,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   try {
@@ -413,6 +395,7 @@ export async function runFinalize(
   await fs.promises.mkdir(outputDir, { recursive: true });
 
   const timings = await finalizeDatabaseCreation(
+    codeql,
     config,
     threadsFlag,
     memoryFlag,
@@ -425,7 +408,7 @@ export async function runFinalize(
   // However, it will stop tracing for all steps past the codeql-action/analyze
   // step.
   // Delete variables as specified by the end-tracing script
-  await endTracingForCluster(config);
+  await endTracingForCluster(codeql, config, features);
   return timings;
 }
 

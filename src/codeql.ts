@@ -16,7 +16,7 @@ import {
   CommandInvocationError,
   wrapCliConfigurationError,
 } from "./cli-errors";
-import type { Config } from "./config-utils";
+import { type Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import {
   CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
@@ -24,12 +24,13 @@ import {
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
-import { isTracedLanguage, Language } from "./languages";
+import { Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
+import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { wrapError } from "./util";
+import { BuildMode, wrapError } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -81,12 +82,17 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
+    features: FeatureEnablement,
     logger: Logger,
   ): Promise<void>;
   /**
    * Runs the autobuilder for the given language.
    */
-  runAutobuild(language: Language, enableDebugLogging: boolean): Promise<void>;
+  runAutobuild(
+    config: Config,
+    language: Language,
+    features: FeatureEnablement,
+  ): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
@@ -556,12 +562,13 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
+      features: FeatureEnablement,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`,
       );
-      if (config.languages.filter((l) => isTracedLanguage(l)).length > 0) {
+      if (await shouldEnableIndirectTracing(codeql, config, features)) {
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
         extraArgs.push(`--trace-process-name=${processName}`);
@@ -620,32 +627,42 @@ export async function getCodeQLForCmd(
           `--source-root=${sourceRoot}`,
           ...(await getLanguageAliasingArguments(this)),
           ...extraArgs,
-          ...getExtraOptionsFromEnv(["database", "init"]),
+          ...getExtraOptionsFromEnv(["database", "init"], {
+            ignoringOptions: ["--overwrite"],
+          }),
         ],
         { stdin: externalRepositoryToken },
       );
     },
-    async runAutobuild(language: Language, enableDebugLogging: boolean) {
+    async runAutobuild(
+      config: Config,
+      language: Language,
+      features: FeatureEnablement,
+    ) {
+      applyAutobuildAzurePipelinesTimeoutFix();
+
+      if (
+        await features.getValue(Feature.AutobuildDirectTracingEnabled, this)
+      ) {
+        await runTool(cmd, [
+          "database",
+          "trace-command",
+          ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+          ...getExtractionVerbosityArguments(config.debugMode),
+          ...getExtraOptionsFromEnv(["database", "trace-command"]),
+          util.getCodeQLDatabasePath(config, language),
+        ]);
+        return;
+      }
+
       const autobuildCmd = path.join(
         await this.resolveExtractor(language),
         "tools",
         process.platform === "win32" ? "autobuild.cmd" : "autobuild.sh",
       );
 
-      // Update JAVA_TOOL_OPTIONS to contain '-Dhttp.keepAlive=false'
-      // This is because of an issue with Azure pipelines timing out connections after 4 minutes
-      // and Maven not properly handling closed connections
-      // Otherwise long build processes will timeout when pulling down Java packages
-      // https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
-      const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
-      process.env["JAVA_TOOL_OPTIONS"] = [
-        ...javaToolOptions.split(/\s+/),
-        "-Dhttp.keepAlive=false",
-        "-Dmaven.wagon.http.pool=false",
-      ].join(" ");
-
       // Bump the verbosity of the autobuild command if we're in debug mode
-      if (enableDebugLogging) {
+      if (config.debugMode) {
         process.env[EnvVar.CLI_VERBOSITY] =
           process.env[EnvVar.CLI_VERBOSITY] || EXTRACTION_DEBUG_MODE_VERBOSITY;
       }
@@ -678,15 +695,35 @@ export async function getCodeQLForCmd(
       ]);
     },
     async extractUsingBuildMode(config: Config, language: Language) {
-      await runTool(cmd, [
-        "database",
-        "trace-command",
-        "--use-build-mode",
-        ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
-        ...getExtractionVerbosityArguments(config.debugMode),
-        ...getExtraOptionsFromEnv(["database", "trace-command"]),
-        util.getCodeQLDatabasePath(config, language),
-      ]);
+      if (config.buildMode === BuildMode.Autobuild) {
+        applyAutobuildAzurePipelinesTimeoutFix();
+      }
+      try {
+        await runTool(cmd, [
+          "database",
+          "trace-command",
+          "--use-build-mode",
+          ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
+          ...getExtractionVerbosityArguments(config.debugMode),
+          ...getExtraOptionsFromEnv(["database", "trace-command"]),
+          util.getCodeQLDatabasePath(config, language),
+        ]);
+      } catch (e) {
+        if (config.buildMode === BuildMode.Autobuild) {
+          const prefix =
+            "We were unable to automatically build your code. " +
+            "Please change the build mode for this language to manual and specify build steps " +
+            "for your project. For more information, see " +
+            "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed.";
+          const ErrorConstructor =
+            e instanceof util.ConfigurationError
+              ? util.ConfigurationError
+              : Error;
+          throw new ErrorConstructor(`${prefix} ${util.wrapError(e).message}`);
+        } else {
+          throw e;
+        }
+      }
     },
     async finalizeDatabase(
       databasePath: string,
@@ -800,7 +837,9 @@ export async function getCodeQLForCmd(
         "--expect-discarded-cache",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
-        ...getExtraOptionsFromEnv(["database", "run-queries"]),
+        ...getExtraOptionsFromEnv(["database", "run-queries"], {
+          ignoringOptions: ["--expect-discarded-cache"],
+        }),
       ];
       if (
         await util.codeQlVersionAbove(
@@ -1139,10 +1178,18 @@ export async function getCodeQLForCmd(
 
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
+ *
+ * @param ignoringOptions Options that should be ignored, for example because they have already
+ *                        been passed and it is an error to pass them more than once.
  */
-function getExtraOptionsFromEnv(paths: string[]) {
+function getExtraOptionsFromEnv(
+  paths: string[],
+  { ignoringOptions }: { ignoringOptions?: string[] } = {},
+) {
   const options: ExtraOptions = util.getExtraOptionsEnvParam();
-  return getExtraOptions(options, paths, []);
+  return getExtraOptions(options, paths, []).filter(
+    (option) => !ignoringOptions?.includes(option),
+  );
 }
 
 /**
@@ -1401,4 +1448,20 @@ function getExtractionVerbosityArguments(
   return enableDebugLogging
     ? [`--verbosity=${EXTRACTION_DEBUG_MODE_VERBOSITY}`]
     : [];
+}
+
+/**
+ * Updates the `JAVA_TOOL_OPTIONS` environment variable to resolve an issue with Azure Pipelines
+ * timing out connections after 4 minutes and Maven not properly handling closed connections.
+ *
+ * Without the fix, long build processes will timeout when pulling down Java packages
+ * https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
+ */
+function applyAutobuildAzurePipelinesTimeoutFix() {
+  const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
+  process.env["JAVA_TOOL_OPTIONS"] = [
+    ...javaToolOptions.split(/\s+/),
+    "-Dhttp.keepAlive=false",
+    "-Dmaven.wagon.http.pool=false",
+  ].join(" ");
 }

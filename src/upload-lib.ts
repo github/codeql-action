@@ -26,6 +26,7 @@ import {
   getRequiredEnvParam,
   GitHubVersion,
   SarifFile,
+  SarifRun,
   wrapError,
 } from "./util";
 
@@ -65,18 +66,58 @@ function combineSarifFiles(sarifFiles: string[], logger: Logger): SarifFile {
 
 /**
  * Checks whether all the runs in the given SARIF files were produced by CodeQL.
- * @param sarifFiles The list of SARIF files to check.
+ * @param sarifObjects The list of SARIF objects to check.
  */
-function areAllRunsProducedByCodeQL(sarifFiles: string[]): boolean {
-  return sarifFiles.every((sarifFile) => {
-    const sarifObject = JSON.parse(
-      fs.readFileSync(sarifFile, "utf8"),
-    ) as SarifFile;
-
+function areAllRunsProducedByCodeQL(sarifObjects: SarifFile[]): boolean {
+  return sarifObjects.every((sarifObject) => {
     return sarifObject.runs?.every(
       (run) => run.tool?.driver?.name === "CodeQL",
     );
   });
+}
+
+type SarifRunKey = {
+  name: string | undefined;
+  fullName: string | undefined;
+  version: string | undefined;
+  semanticVersion: string | undefined;
+  guid: string | undefined;
+  automationId: string | undefined;
+};
+
+function createRunKey(run: SarifRun): SarifRunKey {
+  return {
+    name: run.tool?.driver?.name,
+    fullName: run.tool?.driver?.fullName,
+    version: run.tool?.driver?.version,
+    semanticVersion: run.tool?.driver?.semanticVersion,
+    guid: run.tool?.driver?.guid,
+    automationId: run?.automationDetails?.id,
+  };
+}
+
+/**
+ * Checks whether all runs in the given SARIF files are unique (based on the
+ * criteria used by Code Scanning to determine analysis categories).
+ * @param sarifObjects The list of SARIF objects to check.
+ */
+function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
+  const keys = new Set<string>();
+
+  for (const sarifObject of sarifObjects) {
+    for (const run of sarifObject.runs) {
+      const key = JSON.stringify(createRunKey(run));
+
+      // If the key already exists, the runs are not unique.
+      if (keys.has(key)) {
+        return false;
+      }
+
+      keys.add(key);
+    }
+  }
+
+  return true;
 }
 
 // Takes a list of paths to sarif files and combines them together using the
@@ -94,10 +135,25 @@ async function combineSarifFilesUsingCLI(
     return JSON.parse(fs.readFileSync(sarifFiles[0], "utf8")) as SarifFile;
   }
 
-  if (!areAllRunsProducedByCodeQL(sarifFiles)) {
+  const sarifObjects = sarifFiles.map((sarifFile): SarifFile => {
+    return JSON.parse(fs.readFileSync(sarifFile, "utf8")) as SarifFile;
+  });
+
+  if (!areAllRunsProducedByCodeQL(sarifObjects)) {
     logger.debug(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );
+
+    // Only give a deprecation warning when not all runs are unique
+    if (
+      !areAllRunsUnique(sarifObjects) &&
+      !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
+    ) {
+      logger.warning(
+        "Uploading multiple SARIF runs with the same category is deprecated and will be removed on June 4, 2025. Please update your workflow to upload a single run per category. For more information, see https://github.blog/changelog/TODO",
+      );
+      core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
+    }
 
     // If not, use the naive method of combining the files.
     return combineSarifFiles(sarifFiles, logger);
@@ -148,6 +204,16 @@ async function combineSarifFilesUsingCLI(
     logger.warning(
       "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
     );
+
+    if (
+      !areAllRunsUnique(sarifObjects) &&
+      !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
+    ) {
+      logger.warning(
+        "Uploading multiple CodeQL runs with the same category is deprecated and will be removed on June 4, 2025. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. For more information, see https://github.blog/changelog/TODO",
+      );
+      core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
+    }
 
     return combineSarifFiles(sarifFiles, logger);
   }

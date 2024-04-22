@@ -121,6 +121,7 @@ function ensureEndsInPeriod(text: string): string {
 
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
+  ExternalRepositoryCloneFailed = "ExternalRepositoryCloneFailed",
   GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
@@ -150,6 +151,11 @@ export const cliErrorsConfig: Record<
   CliConfigErrorCategory,
   CliErrorConfiguration
 > = {
+  [CliConfigErrorCategory.ExternalRepositoryCloneFailed]: {
+    cliErrorMessageCandidates: [
+      new RegExp("Failed to clone external Git repository"),
+    ],
+  },
   [CliConfigErrorCategory.GradleBuildFailed]: {
     cliErrorMessageCandidates: [
       new RegExp("[autobuild] FAILURE: Build failed with an exception."),

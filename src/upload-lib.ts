@@ -64,18 +64,6 @@ function combineSarifFiles(sarifFiles: string[], logger: Logger): SarifFile {
   return combinedSarif;
 }
 
-/**
- * Checks whether all the runs in the given SARIF files were produced by CodeQL.
- * @param sarifObjects The list of SARIF objects to check.
- */
-function areAllRunsProducedByCodeQL(sarifObjects: SarifFile[]): boolean {
-  return sarifObjects.every((sarifObject) => {
-    return sarifObject.runs?.every(
-      (run) => run.tool?.driver?.name === "CodeQL",
-    );
-  });
-}
-
 type SarifRunKey = {
   name: string | undefined;
   fullName: string | undefined;
@@ -139,16 +127,12 @@ async function combineSarifFilesUsingCLI(
     return JSON.parse(fs.readFileSync(sarifFile, "utf8")) as SarifFile;
   });
 
-  if (!areAllRunsProducedByCodeQL(sarifObjects)) {
+  if (1 === 1) {
     logger.debug(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );
 
-    // Only give a deprecation warning when not all runs are unique
-    if (
-      !areAllRunsUnique(sarifObjects) &&
-      !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
-    ) {
+    if (true && !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING) {
       logger.warning(
         "Uploading multiple SARIF runs with the same analysis key is deprecated and will be removed on June 4, 2025. Please update your workflow to upload a single run per analysis key. For more information, see https://github.blog/changelog/TODO",
       );

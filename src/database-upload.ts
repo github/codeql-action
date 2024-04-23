@@ -7,7 +7,7 @@ import { Config } from "./config-utils";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
-import { bundleDb } from "./util";
+import { bundleDb, parseGitHubUrl } from "./util";
 
 export async function uploadDatabases(
   repositoryNwo: RepositoryNwo,
@@ -21,8 +21,11 @@ export async function uploadDatabases(
   }
 
   // Do nothing when not running against github.com
-  if (config.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
-    logger.debug("Not running against github.com. Skipping upload.");
+  if (
+    config.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
+    config.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
+  ) {
+    logger.debug("Not running against github.com or GHEC-DR. Skipping upload.");
     return;
   }
 
@@ -34,6 +37,9 @@ export async function uploadDatabases(
 
   const client = getApiClient();
   const codeql = await getCodeQL(config.codeQLCmd);
+
+  const uploadsUrl = new URL(parseGitHubUrl(apiDetails.url));
+  uploadsUrl.hostname = `uploads.${uploadsUrl.hostname}`;
 
   for (const language of config.languages) {
     try {
@@ -49,8 +55,9 @@ export async function uploadDatabases(
       );
       try {
         await client.request(
-          `POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
+          `POST /repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
           {
+            baseUrl: uploadsUrl.toString(),
             owner: repositoryNwo.owner,
             repo: repositoryNwo.repo,
             language,

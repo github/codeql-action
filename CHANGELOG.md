@@ -8,6 +8,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 3.25.2 - 22 Apr 2024
+
+No user facing changes.
+
 ## 3.25.1 - 17 Apr 2024
 
 - We are rolling out a feature in April/May 2024 that improves the reliability and performance of analyzing code when analyzing a compiled language with the `autobuild` [build mode](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#codeql-build-modes). [#2235](https://github.com/github/codeql-action/pull/2235)

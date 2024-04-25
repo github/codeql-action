@@ -200,7 +200,7 @@ export class Features implements FeatureEnablement {
     // Never use this feature if the CLI version explicitly can't support it.
     const minimumVersion = featureConfig[feature].minimumVersion;
     if (codeql && minimumVersion) {
-      if (!(await util.codeQlVersionAbove(codeql, minimumVersion))) {
+      if (!(await util.codeQlVersionAtLeast(codeql, minimumVersion))) {
         this.logger.debug(
           `Feature ${feature} is disabled because the CodeQL CLI version is older than the minimum ` +
             `version ${minimumVersion}.`,

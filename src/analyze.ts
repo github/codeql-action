@@ -303,7 +303,7 @@ export async function runQueries(
       }
 
       if (
-        !(await util.codeQlVersionAbove(
+        !(await util.codeQlVersionAtLeast(
           codeql,
           CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
         ))

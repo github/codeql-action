@@ -13,7 +13,7 @@ import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
 import {
-  codeQlVersionAbove,
+  codeQlVersionAtLeast,
   GitHubVersion,
   prettyPrintPack,
   ConfigurationError,
@@ -359,7 +359,7 @@ export async function getLanguages(
 export async function getLanguageAliases(
   codeql: CodeQL,
 ): Promise<{ [alias: string]: string } | undefined> {
-  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
+  if (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
     return (await codeql.betterResolveLanguages()).aliases;
   }
   return undefined;

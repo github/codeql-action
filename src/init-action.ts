@@ -24,7 +24,13 @@ import {
 } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
-import { checkInstallPython311, initCodeQL, initConfig, runInit } from "./init";
+import {
+  checkInstallPython311,
+  initCodeQL,
+  initConfig,
+  isSipEnabled,
+  runInit,
+} from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -42,7 +48,7 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
-  codeQlVersionAbove,
+  codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMemoryFlagValue,
@@ -426,8 +432,8 @@ async function run() {
     const kotlinLimitVar =
       "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
     if (
-      (await codeQlVersionAbove(codeql, "2.13.4")) &&
-      !(await codeQlVersionAbove(codeql, "2.14.4"))
+      (await codeQlVersionAtLeast(codeql, "2.13.4")) &&
+      !(await codeQlVersionAtLeast(codeql, "2.14.4"))
     ) {
       core.exportVariable(kotlinLimitVar, "1.9.20");
     }
@@ -435,8 +441,8 @@ async function run() {
     if (
       config.languages.includes(Language.java) &&
       // Java Lombok support is enabled by default for >= 2.14.4
-      (await codeQlVersionAbove(codeql, "2.14.0")) &&
-      !(await codeQlVersionAbove(codeql, "2.14.4"))
+      (await codeQlVersionAtLeast(codeql, "2.14.0")) &&
+      !(await codeQlVersionAtLeast(codeql, "2.14.4"))
     ) {
       const envVar = "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS";
       if (process.env[envVar]) {
@@ -467,19 +473,32 @@ async function run() {
       }
     }
 
+    // For CLI versions <2.15.1, build tracing caused errors in MacOS ARM machines with
+    // System Integrity Protection (SIP) disabled.
+    if (
+      !(await codeQlVersionAtLeast(codeql, "2.15.1")) &&
+      process.platform === "darwin" &&
+      (process.arch === "arm" || process.arch === "arm64") &&
+      !(await isSipEnabled(logger))
+    ) {
+      logger.warning(
+        "CodeQL versions 2.15.0 and lower are not supported on MacOS ARM machines with System Integrity Protection (SIP) disabled.",
+      );
+    }
+
     // From 2.16.0 the default for the python extractor is to not perform any
     // dependency extraction. For versions before that, you needed to set this flag to
     // enable this behavior (supported since 2.13.1).
 
-    if (await codeQlVersionAbove(codeql, "2.17.1")) {
+    if (await codeQlVersionAtLeast(codeql, "2.17.1")) {
       // disabled by default, no warning
-    } else if (await codeQlVersionAbove(codeql, "2.16.0")) {
+    } else if (await codeQlVersionAtLeast(codeql, "2.16.0")) {
       // disabled by default, prints warning if environment variable is not set
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
       );
-    } else if (await codeQlVersionAbove(codeql, "2.13.1")) {
+    } else if (await codeQlVersionAtLeast(codeql, "2.13.1")) {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",

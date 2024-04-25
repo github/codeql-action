@@ -23,7 +23,7 @@ export async function runResolveBuildEnvironment(
   // If the CodeQL CLI version in use supports language aliasing, give the CLI the raw language
   // input. Otherwise, parse the language input and give the CLI the parsed language.
   if (
-    !(await util.codeQlVersionAbove(codeql, CODEQL_VERSION_LANGUAGE_ALIASING))
+    !(await util.codeQlVersionAtLeast(codeql, CODEQL_VERSION_LANGUAGE_ALIASING))
   ) {
     const parsedLanguage = parseLanguage(languageInput)?.toString();
     if (parsedLanguage === undefined) {
@@ -39,7 +39,10 @@ export async function runResolveBuildEnvironment(
   // If the CodeQL version in use does not support the `resolve build-environment`
   // command, just return an empty configuration. Otherwise invoke the CLI.
   if (
-    !(await util.codeQlVersionAbove(codeql, CODEQL_VERSION_RESOLVE_ENVIRONMENT))
+    !(await util.codeQlVersionAtLeast(
+      codeql,
+      CODEQL_VERSION_RESOLVE_ENVIRONMENT,
+    ))
   ) {
     logger.warning(
       "Unsupported CodeQL CLI version for `resolve build-environment` command, " +

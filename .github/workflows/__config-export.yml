@@ -49,7 +49,7 @@ jobs:
       - name: Setup Python on MacOS
         uses: actions/setup-python@v5
         if: >-
-          matrix.os == 'macos-latest' && (
+          runner.os == 'macOS' && (
 
           matrix.version == 'stable-20230403' ||
 

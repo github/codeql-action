@@ -59,6 +59,7 @@ jobs:
             version: nightly-latest
           - os: macos-latest
             version: nightly-latest
+      fail-fast: false
     name: Scaling reserved RAM
     permissions:
       contents: read

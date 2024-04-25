@@ -35,6 +35,7 @@ jobs:
             version: nightly-latest
           - os: windows-latest
             version: nightly-latest
+      fail-fast: false
     name: Autobuild direct tracing
     permissions:
       contents: read

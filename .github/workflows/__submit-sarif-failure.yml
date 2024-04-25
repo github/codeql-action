@@ -33,6 +33,7 @@ jobs:
             version: default
           - os: ubuntu-latest
             version: nightly-latest
+      fail-fast: false
     name: Submit SARIF after failure
     permissions:
       contents: read

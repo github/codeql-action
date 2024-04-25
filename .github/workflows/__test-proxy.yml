@@ -29,6 +29,7 @@ jobs:
         include:
           - os: ubuntu-latest
             version: latest
+      fail-fast: false
     name: Proxy test
     permissions:
       contents: read

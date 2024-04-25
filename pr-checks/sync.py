@@ -120,8 +120,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
         'strategy': {
             'matrix': {
                 'include': matrix
-            },
-            'fail-fast': False,
+            }
         },
         'name': checkSpecification['name'],
         'permissions': {

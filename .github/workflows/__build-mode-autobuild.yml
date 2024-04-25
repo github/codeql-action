@@ -29,7 +29,6 @@ jobs:
         include:
           - os: ubuntu-latest
             version: nightly-latest
-      fail-fast: false
     name: Build mode autobuild
     permissions:
       contents: read

@@ -33,7 +33,6 @@ jobs:
             version: default
           - os: ubuntu-latest
             version: nightly-latest
-      fail-fast: false
     name: 'C/C++: disabling autoinstalling dependencies (Linux)'
     permissions:
       contents: read

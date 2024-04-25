@@ -45,7 +45,6 @@ jobs:
             version: nightly-latest
           - os: windows-latest
             version: nightly-latest
-      fail-fast: false
     name: 'Packaging: Config and input'
     permissions:
       contents: read

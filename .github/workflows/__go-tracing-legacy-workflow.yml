@@ -59,7 +59,7 @@ jobs:
             version: nightly-latest
           - os: macos-latest
             version: nightly-latest
-    fail-fast: false
+      fail-fast: false
     name: 'Go: tracing with legacy workflow'
     permissions:
       contents: read
@@ -70,7 +70,9 @@ jobs:
       - name: Setup Python on MacOS
         uses: actions/setup-python@v5
         if: >-
-          matrix.os == 'macos-latest' && (
+          (matrix.os == 'macos-latest' || 
+
+          matrix.os == 'macos-12) && (
 
           matrix.version == 'stable-20230403' ||
 

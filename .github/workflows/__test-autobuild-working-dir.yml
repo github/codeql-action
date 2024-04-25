@@ -29,7 +29,6 @@ jobs:
         include:
           - os: ubuntu-latest
             version: latest
-      fail-fast: false
     name: Autobuild working directory
     permissions:
       contents: read

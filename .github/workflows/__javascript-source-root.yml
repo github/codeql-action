@@ -33,7 +33,6 @@ jobs:
             version: default
           - os: ubuntu-latest
             version: nightly-latest
-      fail-fast: false
     name: Custom source root
     permissions:
       contents: read

@@ -33,7 +33,6 @@ jobs:
             version: latest
           - os: windows-latest
             version: latest
-      fail-fast: false
     name: autobuild-action
     permissions:
       contents: read

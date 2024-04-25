@@ -33,7 +33,6 @@ jobs:
             version: default
           - os: windows-latest
             version: default
-      fail-fast: false
     name: "Analyze: 'ref' and 'sha' from inputs"
     permissions:
       contents: read

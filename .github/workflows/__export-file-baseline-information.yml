@@ -33,7 +33,6 @@ jobs:
             version: nightly-latest
           - os: windows-latest
             version: nightly-latest
-      fail-fast: false
     name: Export file baseline information
     permissions:
       contents: read

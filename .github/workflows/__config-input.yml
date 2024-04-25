@@ -29,7 +29,6 @@ jobs:
         include:
           - os: ubuntu-latest
             version: latest
-      fail-fast: false
     name: Config input
     permissions:
       contents: read

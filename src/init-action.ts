@@ -24,7 +24,13 @@ import {
 } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
-import { checkInstallPython311, initCodeQL, initConfig, runInit } from "./init";
+import {
+  checkInstallPython311,
+  initCodeQL,
+  initConfig,
+  isSipEnabled,
+  runInit,
+} from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -465,6 +471,18 @@ async function run() {
         logger.info("Disabling CodeQL C++ TRAP caching support");
         core.exportVariable(envVar, "false");
       }
+    }
+
+    // For CLI versions <2.15.1, build tracing caused errors in MacOS ARM machines with
+    // System Integrity Protection (SIP) disabled.
+    if (
+      !(await codeQlVersionAbove(codeql, "2.15.1")) &&
+      process.platform === "darwin" &&
+      !(await isSipEnabled(logger))
+    ) {
+      logger.warning(
+        "CodeQL versions 2.15.0 and lower are not supported on MacOS ARM machines with System Integrity Protection (SIP) disabled.",
+      );
     }
 
     // From 2.16.0 the default for the python extractor is to not perform any

@@ -29,7 +29,7 @@ jobs:
         include:
           - os: ubuntu-latest
             version: stable-20230403
-          - os: macos-latest
+          - os: macos-12
             version: stable-20230403
           - os: windows-latest
             version: stable-20230403

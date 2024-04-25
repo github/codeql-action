@@ -29,6 +29,7 @@ jobs:
         include:
           - os: ubuntu-latest
             version: latest
+      fail-fast: false
     name: Language aliases
     permissions:
       contents: read

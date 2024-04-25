@@ -75,6 +75,7 @@ jobs:
             version: nightly-latest
           - os: windows-latest
             version: nightly-latest
+      fail-fast: false
     name: Remote config file
     permissions:
       contents: read

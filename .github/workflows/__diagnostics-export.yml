@@ -29,7 +29,7 @@ jobs:
         include:
           - os: ubuntu-latest
             version: stable-20230403
-          - os: macos-latest
+          - os: macos-12
             version: stable-20230403
           - os: windows-latest
             version: stable-20230403
@@ -55,7 +55,7 @@ jobs:
       - name: Setup Python on MacOS
         uses: actions/setup-python@v5
         if: >-
-          matrix.os == 'macos-latest' && (
+          runner.os == 'macOS' && (
 
           matrix.version == 'stable-20230403' ||
 

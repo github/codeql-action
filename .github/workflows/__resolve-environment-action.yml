@@ -51,6 +51,7 @@ jobs:
             version: nightly-latest
           - os: windows-latest
             version: nightly-latest
+    fail-fast: false
     name: Resolve environment
     permissions:
       contents: read

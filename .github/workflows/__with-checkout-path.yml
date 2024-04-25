@@ -33,6 +33,7 @@ jobs:
             version: latest
           - os: windows-latest
             version: latest
+    fail-fast: false
     name: Use a custom `checkout_path`
     permissions:
       contents: read

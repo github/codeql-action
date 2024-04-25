@@ -29,6 +29,7 @@ jobs:
         include:
           - os: ubuntu-latest
             version: default
+    fail-fast: false
     name: RuboCop multi-language
     permissions:
       contents: read

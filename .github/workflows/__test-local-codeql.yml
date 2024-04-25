@@ -29,6 +29,7 @@ jobs:
         include:
           - os: ubuntu-latest
             version: nightly-latest
+    fail-fast: false
     name: Local CodeQL bundle
     permissions:
       contents: read

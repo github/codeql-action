@@ -43,6 +43,7 @@ jobs:
             version: latest
           - os: ubuntu-latest
             version: nightly-latest
+    fail-fast: false
     name: Test unsetting environment variables
     permissions:
       contents: read

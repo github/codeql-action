@@ -33,6 +33,7 @@ jobs:
             version: default
           - os: windows-latest
             version: default
+    fail-fast: false
     name: "Upload-sarif: 'ref' and 'sha' from inputs"
     permissions:
       contents: read

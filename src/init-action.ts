@@ -477,7 +477,7 @@ async function run() {
     // System Integrity Protection (SIP) disabled.
     if (
       !(await codeQlVersionAbove(codeql, "2.15.1")) &&
-      process.platform === "darwin" &&
+      (process.arch === "arm" || process.arch === "arm64") &&
       !(await isSipEnabled(logger))
     ) {
       logger.warning(

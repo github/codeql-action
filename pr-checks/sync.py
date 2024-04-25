@@ -89,8 +89,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
             # Ensure that this is serialized as a folded (`>`) string to preserve the readability
             # of the generated workflow.
             'if': FoldedScalarString(textwrap.dedent('''
-                    (matrix.os == 'macos-latest' || 
-                    matrix.os == 'macos-12') && (
+                    runner.os == 'macOS' && (
                     matrix.version == 'stable-20230403' ||
                     matrix.version == 'stable-v2.13.5' ||
                     matrix.version == 'stable-v2.14.6')

@@ -90,7 +90,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
             # of the generated workflow.
             'if': FoldedScalarString(textwrap.dedent('''
                     (matrix.os == 'macos-latest' || 
-                    matrix.os == 'macos-12) && (
+                    matrix.os == 'macos-12') && (
                     matrix.version == 'stable-20230403' ||
                     matrix.version == 'stable-v2.13.5' ||
                     matrix.version == 'stable-v2.14.6')

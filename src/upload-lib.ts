@@ -150,7 +150,7 @@ async function combineSarifFilesUsingCLI(
       !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
     ) {
       logger.warning(
-        "Uploading multiple SARIF runs with the same category is deprecated and will be removed on June 4, 2025. Please update your workflow to upload a single run per category. For more information, see https://github.blog/changelog/TODO",
+        "Uploading multiple SARIF runs with the same category is deprecated and will be removed on June 4, 2025. Please update your workflow to upload a single run per category. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice",
       );
       core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
     }
@@ -210,7 +210,7 @@ async function combineSarifFilesUsingCLI(
       !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
     ) {
       logger.warning(
-        "Uploading multiple CodeQL runs with the same category is deprecated and will be removed on June 4, 2025. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. For more information, see https://github.blog/changelog/TODO",
+        "Uploading multiple CodeQL runs with the same category is deprecated and will be removed on June 4, 2025. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice",
       );
       core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
     }

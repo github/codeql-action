@@ -165,6 +165,11 @@ async function combineSarifFilesUsingCLI(
     return JSON.parse(fs.readFileSync(sarifFile, "utf8")) as SarifFile;
   });
 
+  const deprecationWarningMessage =
+    gitHubVersion.type === GitHubVariant.GHES
+      ? "and will be removed in GitHub Enterprise Server 3.18"
+      : "and will be removed on June 4, 2025";
+
   if (!areAllRunsProducedByCodeQL(sarifObjects)) {
     logger.debug(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
@@ -178,7 +183,7 @@ async function combineSarifFilesUsingCLI(
       )
     ) {
       logger.warning(
-        "Uploading multiple SARIF runs with the same category is deprecated and will be removed on June 4, 2025. Please update your workflow to upload a single run per category. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice",
+        `Uploading multiple SARIF runs with the same category is deprecated ${deprecationWarningMessage}. Please update your workflow to upload a single run per category. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice`,
       );
       core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
     }
@@ -241,7 +246,7 @@ async function combineSarifFilesUsingCLI(
       )
     ) {
       logger.warning(
-        "Uploading multiple CodeQL runs with the same category is deprecated and will be removed on June 4, 2025. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice",
+        `Uploading multiple CodeQL runs with the same category is deprecated ${deprecationWarningMessage}. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice`,
       );
       core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
     }

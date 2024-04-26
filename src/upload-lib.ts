@@ -120,9 +120,14 @@ function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
   return true;
 }
 
-function showCombineSarifFilesDeprecationWarning(
+async function showCombineSarifFilesDeprecationWarning(
   sarifObjects: util.SarifFile[],
+  features: Features,
 ) {
+  if (!(await features.getValue(Feature.CombineSarifFilesDeprecationWarning))) {
+    return false;
+  }
+
   // Only give a deprecation warning when not all runs are unique
   return (
     !areAllRunsUnique(sarifObjects) &&
@@ -154,7 +159,7 @@ async function combineSarifFilesUsingCLI(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );
 
-    if (showCombineSarifFilesDeprecationWarning(sarifObjects)) {
+    if (await showCombineSarifFilesDeprecationWarning(sarifObjects, features)) {
       logger.warning(
         "Uploading multiple SARIF runs with the same category is deprecated and will be removed on June 4, 2025. Please update your workflow to upload a single run per category. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice",
       );
@@ -211,7 +216,7 @@ async function combineSarifFilesUsingCLI(
       "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
     );
 
-    if (showCombineSarifFilesDeprecationWarning(sarifObjects)) {
+    if (await showCombineSarifFilesDeprecationWarning(sarifObjects, features)) {
       logger.warning(
         "Uploading multiple CodeQL runs with the same category is deprecated and will be removed on June 4, 2025. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice",
       );

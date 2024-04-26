@@ -120,6 +120,16 @@ function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
   return true;
 }
 
+function showCombineSarifFilesDeprecationWarning(
+  sarifObjects: util.SarifFile[],
+) {
+  // Only give a deprecation warning when not all runs are unique
+  return (
+    !areAllRunsUnique(sarifObjects) &&
+    !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
+  );
+}
+
 // Takes a list of paths to sarif files and combines them together using the
 // CLI `github merge-results` command when all SARIF files are produced by
 // CodeQL. Otherwise, it will fall back to combining the files in the action.
@@ -144,11 +154,7 @@ async function combineSarifFilesUsingCLI(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );
 
-    // Only give a deprecation warning when not all runs are unique
-    if (
-      !areAllRunsUnique(sarifObjects) &&
-      !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
-    ) {
+    if (showCombineSarifFilesDeprecationWarning(sarifObjects)) {
       logger.warning(
         "Uploading multiple SARIF runs with the same category is deprecated and will be removed on June 4, 2025. Please update your workflow to upload a single run per category. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice",
       );
@@ -205,10 +211,7 @@ async function combineSarifFilesUsingCLI(
       "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
     );
 
-    if (
-      !areAllRunsUnique(sarifObjects) &&
-      !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
-    ) {
+    if (showCombineSarifFilesDeprecationWarning(sarifObjects)) {
       logger.warning(
         "Uploading multiple CodeQL runs with the same category is deprecated and will be removed on June 4, 2025. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice",
       );

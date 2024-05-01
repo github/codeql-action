@@ -178,7 +178,7 @@ def replace_version_package_json(prev_version, new_version):
   prev_line_is_codeql = False
   for line in fileinput.input('package.json', inplace = True, encoding='utf-8'):
     if prev_line_is_codeql and f'\"version\": \"{prev_version}\"' in line:
-      print(f'  \"version\": \"{new_version}\",')
+      print(line.replace(prev_version, new_version), end='')
     else:
       prev_line_is_codeql = False
       print(line, end='') 

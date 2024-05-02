@@ -250,7 +250,7 @@ async function combineSarifFilesUsingCLI(
       )
     ) {
       logger.warning(
-        `Uploading multiple CodeQL runs with the same category is deprecated ${deprecationWarningMessage}. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. ${deprecationMoreInformationMessage}`,
+        `Uploading multiple CodeQL runs with the same category is deprecated ${deprecationWarningMessage} for CodeQL CLI 2.16.6 and earlier. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. ${deprecationMoreInformationMessage}`,
       );
       core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
     }

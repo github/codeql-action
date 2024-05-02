@@ -94,7 +94,7 @@ function createRunKey(run: SarifRun): SarifRunKey {
     version: run.tool?.driver?.version,
     semanticVersion: run.tool?.driver?.semanticVersion,
     guid: run.tool?.driver?.guid,
-    automationId: run?.automationDetails?.id,
+    automationId: run.automationDetails?.id,
   };
 }
 

@@ -15,7 +15,7 @@ import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Feature, FeatureEnablement, Features } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
@@ -122,9 +122,10 @@ function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
   return true;
 }
 
-async function shouldShowCombineSarifFilesDeprecationWarning(
+// Checks whether the deprecation warning for combining SARIF files should be shown.
+export async function shouldShowCombineSarifFilesDeprecationWarning(
   sarifObjects: util.SarifFile[],
-  features: Features,
+  features: FeatureEnablement,
   githubVersion: GitHubVersion,
 ) {
   if (!(await features.getValue(Feature.CombineSarifFilesDeprecationWarning))) {
@@ -153,7 +154,7 @@ async function shouldShowCombineSarifFilesDeprecationWarning(
 async function combineSarifFilesUsingCLI(
   sarifFiles: string[],
   gitHubVersion: GitHubVersion,
-  features: Features,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<SarifFile> {
   logger.info("Combining SARIF files using the CodeQL CLI");

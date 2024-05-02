@@ -140,7 +140,8 @@ export async function shouldShowCombineSarifFilesDeprecationWarning(
     return false;
   }
 
-  // Only give a deprecation warning when not all runs are unique
+  // Only give a deprecation warning when not all runs are unique and
+  // we haven't already shown the warning.
   return (
     !areAllRunsUnique(sarifObjects) &&
     !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING

@@ -122,7 +122,7 @@ function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
   return true;
 }
 
-async function showCombineSarifFilesDeprecationWarning(
+async function shouldShowCombineSarifFilesDeprecationWarning(
   sarifObjects: util.SarifFile[],
   features: Features,
   githubVersion: GitHubVersion,
@@ -178,7 +178,7 @@ async function combineSarifFilesUsingCLI(
     );
 
     if (
-      await showCombineSarifFilesDeprecationWarning(
+      await shouldShowCombineSarifFilesDeprecationWarning(
         sarifObjects,
         features,
         gitHubVersion,
@@ -241,7 +241,7 @@ async function combineSarifFilesUsingCLI(
     );
 
     if (
-      await showCombineSarifFilesDeprecationWarning(
+      await shouldShowCombineSarifFilesDeprecationWarning(
         sarifObjects,
         features,
         gitHubVersion,

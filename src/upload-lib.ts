@@ -602,14 +602,12 @@ async function uploadFiles(
     validateSarifFileSchema(file, logger);
   }
 
-  let sarif = (await features.getValue(Feature.CliSarifMerge))
-    ? await combineSarifFilesUsingCLI(
-        sarifFiles,
-        gitHubVersion,
-        features,
-        logger,
-      )
-    : combineSarifFiles(sarifFiles, logger);
+  let sarif = await combineSarifFilesUsingCLI(
+    sarifFiles,
+    gitHubVersion,
+    features,
+    logger,
+  );
   sarif = await fingerprints.addFingerprints(sarif, sourceRoot, logger);
 
   sarif = populateRunAutomationDetails(

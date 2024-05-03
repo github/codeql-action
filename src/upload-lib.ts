@@ -6,6 +6,7 @@ import * as core from "@actions/core";
 import { OctokitResponse } from "@octokit/types";
 import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
+import * as semver from "semver";
 
 import * as actionsUtil from "./actions-util";
 import { getOptionalInput, getRequiredInput } from "./actions-util";
@@ -14,7 +15,7 @@ import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Feature, FeatureEnablement, Features } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
@@ -24,8 +25,10 @@ import * as util from "./util";
 import {
   ConfigurationError,
   getRequiredEnvParam,
+  GitHubVariant,
   GitHubVersion,
   SarifFile,
+  SarifRun,
   wrapError,
 } from "./util";
 
@@ -65,18 +68,84 @@ function combineSarifFiles(sarifFiles: string[], logger: Logger): SarifFile {
 
 /**
  * Checks whether all the runs in the given SARIF files were produced by CodeQL.
- * @param sarifFiles The list of SARIF files to check.
+ * @param sarifObjects The list of SARIF objects to check.
  */
-function areAllRunsProducedByCodeQL(sarifFiles: string[]): boolean {
-  return sarifFiles.every((sarifFile) => {
-    const sarifObject = JSON.parse(
-      fs.readFileSync(sarifFile, "utf8"),
-    ) as SarifFile;
-
+function areAllRunsProducedByCodeQL(sarifObjects: SarifFile[]): boolean {
+  return sarifObjects.every((sarifObject) => {
     return sarifObject.runs?.every(
       (run) => run.tool?.driver?.name === "CodeQL",
     );
   });
+}
+
+type SarifRunKey = {
+  name: string | undefined;
+  fullName: string | undefined;
+  version: string | undefined;
+  semanticVersion: string | undefined;
+  guid: string | undefined;
+  automationId: string | undefined;
+};
+
+function createRunKey(run: SarifRun): SarifRunKey {
+  return {
+    name: run.tool?.driver?.name,
+    fullName: run.tool?.driver?.fullName,
+    version: run.tool?.driver?.version,
+    semanticVersion: run.tool?.driver?.semanticVersion,
+    guid: run.tool?.driver?.guid,
+    automationId: run.automationDetails?.id,
+  };
+}
+
+/**
+ * Checks whether all runs in the given SARIF files are unique (based on the
+ * criteria used by Code Scanning to determine analysis categories).
+ * @param sarifObjects The list of SARIF objects to check.
+ */
+function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
+  const keys = new Set<string>();
+
+  for (const sarifObject of sarifObjects) {
+    for (const run of sarifObject.runs) {
+      const key = JSON.stringify(createRunKey(run));
+
+      // If the key already exists, the runs are not unique.
+      if (keys.has(key)) {
+        return false;
+      }
+
+      keys.add(key);
+    }
+  }
+
+  return true;
+}
+
+// Checks whether the deprecation warning for combining SARIF files should be shown.
+export async function shouldShowCombineSarifFilesDeprecationWarning(
+  sarifObjects: util.SarifFile[],
+  features: FeatureEnablement,
+  githubVersion: GitHubVersion,
+) {
+  if (!(await features.getValue(Feature.CombineSarifFilesDeprecationWarning))) {
+    return false;
+  }
+
+  // Do not show this warning on GHES versions before 3.14.0
+  if (
+    githubVersion.type === GitHubVariant.GHES &&
+    semver.lt(githubVersion.version, "3.14.0")
+  ) {
+    return false;
+  }
+
+  // Only give a deprecation warning when not all runs are unique and
+  // we haven't already shown the warning.
+  return (
+    !areAllRunsUnique(sarifObjects) &&
+    !process.env.CODEQL_MERGE_SARIF_DEPRECATION_WARNING
+  );
 }
 
 // Takes a list of paths to sarif files and combines them together using the
@@ -86,7 +155,7 @@ function areAllRunsProducedByCodeQL(sarifFiles: string[]): boolean {
 async function combineSarifFilesUsingCLI(
   sarifFiles: string[],
   gitHubVersion: GitHubVersion,
-  features: Features,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<SarifFile> {
   logger.info("Combining SARIF files using the CodeQL CLI");
@@ -94,10 +163,34 @@ async function combineSarifFilesUsingCLI(
     return JSON.parse(fs.readFileSync(sarifFiles[0], "utf8")) as SarifFile;
   }
 
-  if (!areAllRunsProducedByCodeQL(sarifFiles)) {
+  const sarifObjects = sarifFiles.map((sarifFile): SarifFile => {
+    return JSON.parse(fs.readFileSync(sarifFile, "utf8")) as SarifFile;
+  });
+
+  const deprecationWarningMessage =
+    gitHubVersion.type === GitHubVariant.GHES
+      ? "and will be removed in GitHub Enterprise Server 3.18"
+      : "and will be removed on June 4, 2025";
+  const deprecationMoreInformationMessage =
+    "For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice";
+
+  if (!areAllRunsProducedByCodeQL(sarifObjects)) {
     logger.debug(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );
+
+    if (
+      await shouldShowCombineSarifFilesDeprecationWarning(
+        sarifObjects,
+        features,
+        gitHubVersion,
+      )
+    ) {
+      logger.warning(
+        `Uploading multiple SARIF runs with the same category is deprecated ${deprecationWarningMessage}. Please update your workflow to upload a single run per category. ${deprecationMoreInformationMessage}`,
+      );
+      core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
+    }
 
     // If not, use the naive method of combining the files.
     return combineSarifFiles(sarifFiles, logger);
@@ -148,6 +241,19 @@ async function combineSarifFilesUsingCLI(
     logger.warning(
       "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
     );
+
+    if (
+      await shouldShowCombineSarifFilesDeprecationWarning(
+        sarifObjects,
+        features,
+        gitHubVersion,
+      )
+    ) {
+      logger.warning(
+        `Uploading multiple CodeQL runs with the same category is deprecated ${deprecationWarningMessage} for CodeQL CLI 2.16.6 and earlier. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. ${deprecationMoreInformationMessage}`,
+      );
+      core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
+    }
 
     return combineSarifFiles(sarifFiles, logger);
   }

@@ -3,6 +3,7 @@
 [fork]: https://github.com/github/codeql-action/fork
 [pr]: https://github.com/github/codeql-action/compare
 [code-of-conduct]: CODE_OF_CONDUCT.md
+[readme]: README.md#supported-versions-of-the-codeql-cli-and-github-enterprise-server
 
 Hi there! We're thrilled that you'd like to contribute to this project. Your help is essential for keeping it great.
 
@@ -84,6 +85,7 @@ We typically deprecate a version of CodeQL when the GitHub Enterprise Server (GH
 1. Notify users using the old version of CodeQL about the deprecation.
     - Update `CODEQL_NEXT_MINIMUM_VERSION`, `GHES_VERSION_MOST_RECENTLY_DEPRECATED`, and `GHES_MOST_RECENT_DEPRECATION_DATE` in `src/codeql.ts` to reflect the new minimum version of CodeQL and the GHES version that has just been deprecated.
     - Add a changelog note announcing the deprecation.
+    - Update the CLI version referenced in the [readme] by adding a new row to the compatibility table.
     - Example PR: https://github.com/github/codeql-action/pull/1884
 1. Release the Action, or wait for the next scheduled release of the Action, then wait at least a week so users have time to see and act on the deprecation warning.
 1. Remove support for the old version of CodeQL.

@@ -33,6 +33,22 @@ To provide the best experience to customers using older versions of GitHub Enter
 
 For more information, see "[Code scanning: deprecation of CodeQL Action v2](https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/)."
 
+## Supported versions of the CodeQL CLI and GitHub Enterprise Server
+
+We typically release new minor versions of the CodeQL Action and CLI when a new minor version of GitHub Enterprise Server (GHES) is released. When a version of GHES is deprecated, the CodeQL Action and CLI releases that shipped with it are deprecated as well.
+
+| Recommended CodeQL Action | Recommended CodeQL CLI Version | GitHub Environment |
+|---------|----------|--------------|
+| `v3`    | `latest` | `github.com` |
+| `v3.25` | `v2.17`  | `v3.12`      |
+| `v3.24` | `v2.16`  | `v3.11`      |
+| `v3.22` | `v2.15`  | `v3.10`      |
+| `v3.21` | `v2.14`  | `v3.9`       |
+
+CodeQL Action `v2` will stop receiving updates when GHES 3.11 is deprecated.
+
+See the full list of GHES release and deprecation dates at [GitHub Enterprise Server releases](https://docs.github.com/en/enterprise-server/admin/all-releases#releases-of-github-enterprise-server).
+
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning).

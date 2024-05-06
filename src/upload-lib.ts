@@ -172,7 +172,7 @@ async function combineSarifFilesUsingCLI(
       ? "and will be removed in GitHub Enterprise Server 3.18"
       : "and will be removed on June 4, 2025";
   const deprecationMoreInformationMessage =
-    "For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-deprecation-notice";
+    "For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-from-a-single-upload";
 
   if (!areAllRunsProducedByCodeQL(sarifObjects)) {
     logger.debug(

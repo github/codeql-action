@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import fileinput
 import re
 from github import Github
 import json
@@ -170,6 +171,19 @@ def get_merger_of_pr(repo, pr):
 def get_current_version():
   with open('package.json', 'r') as f:
     return json.load(f)['version']
+
+# `npm version` doesn't always work because of merge conflicts, so we
+# replace the version in package.json textually.
+def replace_version_package_json(prev_version, new_version):
+  prev_line_is_codeql = False
+  for line in fileinput.input('package.json', inplace = True, encoding='utf-8'):
+    if prev_line_is_codeql and f'\"version\": \"{prev_version}\"' in line:
+      print(line.replace(prev_version, new_version), end='')
+    else:
+      prev_line_is_codeql = False
+      print(line, end='') 
+    if '\"name\": \"codeql\",' in line:
+        prev_line_is_codeql = True 
 
 def get_today_string():
   today = datetime.datetime.today()
@@ -374,9 +388,9 @@ def main():
       run_git('commit', '--no-edit')
 
     # Migrate the package version number from a vLatest version number to a vOlder version number
-    print(f'Setting version number to {version}')
-    subprocess.check_output(['npm', 'version', version, '--no-git-tag-version'])
-    run_git('add', 'package.json', 'package-lock.json')
+    print(f'Setting version number to {version} in package.json')
+    replace_version_package_json(get_current_version(), version) # We rely on the `Update dependencies` workflow to update package-lock.json
+    run_git('add', 'package.json')
 
     # Migrate the changelog notes from vLatest version numbers to vOlder version numbers
     print(f'Migrating changelog notes from v{source_branch_major_version} to v{target_branch_major_version}')

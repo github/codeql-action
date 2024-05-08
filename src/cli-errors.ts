@@ -132,6 +132,7 @@ export enum CliConfigErrorCategory {
   NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  PackCannotBeFound = "PackCannotBeFound",
   SwiftBuildFailed = "SwiftBuildFailed",
   UnsupportedBuildMode = "UnsupportedBuildMode",
 }
@@ -218,6 +219,13 @@ export const cliErrorsConfig: Record<
   [CliConfigErrorCategory.NoSupportedBuildSystemDetected]: {
     cliErrorMessageCandidates: [
       new RegExp("No supported build system detected"),
+    ],
+  },
+  [CliConfigErrorCategory.PackCannotBeFound]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "Query pack .* cannot be found\\. Check the spelling of the pack\\.",
+      ),
     ],
   },
   [CliConfigErrorCategory.SwiftBuildFailed]: {

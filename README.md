@@ -39,11 +39,11 @@ We typically release new minor versions of the CodeQL Action and CLI when a new 
 
 | Recommended CodeQL Action | Recommended CodeQL CLI Version | GitHub Environment |
 |---------|----------|--------------|
-| `v3`    | `latest` | `github.com` |
-| `v3.25` | `v2.17`  | `v3.12`      |
-| `v3.24` | `v2.16`  | `v3.11`      |
-| `v3.22` | `v2.15`  | `v3.10`      |
-| `v3.21` | `v2.14`  | `v3.9`       |
+| `v3` | default (do not pass a `tools` input) | GitHub.com |
+| `3.22.12` | `2.15.5` | Enterprise Server 3.12 |
+| `2.22.1` | `2.14.6` | Enterprise Server 3.11 |
+| `2.20.3` | `2.13.5` | Enterprise Server 3.10 |
+| `2.2.9` | `2.12.5` | Enterprise Server 3.9 |
 
 CodeQL Action `v2` will stop receiving updates when GHES 3.11 is deprecated.
 

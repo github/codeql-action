@@ -46,7 +46,7 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   AutobuildDirectTracingEnabled = "autobuild_direct_tracing_enabled",
-  CliSarifMerge = "cli_sarif_merge_enabled",
+  CombineSarifFilesDeprecationWarning = "combine_sarif_files_deprecation_warning_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
@@ -85,9 +85,9 @@ export const featureConfig: Record<
     toolsFeature: ToolsFeature.TraceCommandUseBuildMode,
     defaultValue: false,
   },
-  [Feature.CliSarifMerge]: {
-    envVar: "CODEQL_ACTION_CLI_SARIF_MERGE",
-    // This is guarded by a `supportsFeature` check rather than by a version check.
+  [Feature.CombineSarifFilesDeprecationWarning]: {
+    envVar: "CODEQL_ACTION_COMBINE_SARIF_FILES_DEPRECATION_WARNING",
+    // Independent of the CLI version.
     minimumVersion: undefined,
     defaultValue: false,
   },

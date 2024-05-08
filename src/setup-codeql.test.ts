@@ -7,8 +7,10 @@ import * as actionsUtil from "./actions-util";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import {
+  LINKED_CLI_VERSION,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
+  getRecordingLogger,
   mockBundleDownloadApi,
   setupActionsVars,
   setupTests,
@@ -91,5 +93,43 @@ test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) =>
 
     t.is(source.sourceType, "download");
     t.is(source["cliVersion"], "1.2.3");
+  });
+});
+
+test("getCodeQLSource correctly returns bundled CLI version when tools == linked", async (t) => {
+  const loggedMessages = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    const source = await setupCodeql.getCodeQLSource(
+      "linked",
+      SAMPLE_DEFAULT_CLI_VERSION,
+      SAMPLE_DOTCOM_API_DETAILS,
+      GitHubVariant.DOTCOM,
+      logger,
+    );
+
+    t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
+    t.is(source.sourceType, "download");
+  });
+});
+
+test("getCodeQLSource correctly returns bundled CLI version when tools == latest", async (t) => {
+  const loggedMessages = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    const source = await setupCodeql.getCodeQLSource(
+      "latest",
+      SAMPLE_DEFAULT_CLI_VERSION,
+      SAMPLE_DOTCOM_API_DETAILS,
+      GitHubVariant.DOTCOM,
+      logger,
+    );
+
+    t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
+    t.is(source.sourceType, "download");
   });
 });

@@ -692,6 +692,8 @@ export async function setupCodeQLBundle(
     logger,
   );
 
+  logger.info("Using CodeQL CLI version " + source.toolsVersion + " from " + source.sourceType + ".");
+
   let codeqlFolder: string;
   let toolsVersion = source.toolsVersion;
   let toolsDownloadDurationMs: number | undefined;

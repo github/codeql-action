@@ -8,6 +8,7 @@ import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import {
   LINKED_CLI_VERSION,
+  LoggedMessage,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
   getRecordingLogger,
@@ -97,7 +98,7 @@ test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) =>
 });
 
 test("getCodeQLSource correctly returns bundled CLI version when tools == linked", async (t) => {
-  const loggedMessages = [];
+  const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
 
   await withTmpDir(async (tmpDir) => {
@@ -110,8 +111,22 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == linked
       logger,
     );
 
+    // Assert first that we got the right version of the CodeQL CLI,
+    // and that we're sourcing it using the correct method for that.
     t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
     t.is(source.sourceType, "download");
+
+    // Ensure that we're adequately notifying the user of the version we're using.
+    const expected_message: LoggedMessage = {
+      type: "info",
+      message: `Using CodeQL CLI version: ${LINKED_CLI_VERSION.cliVersion} from download.`,
+    };
+
+    loggedMessages.forEach((msg) => {
+      console.log(msg.message);
+    });
+
+    t.assert(loggedMessages.includes(expected_message));
   });
 });
 

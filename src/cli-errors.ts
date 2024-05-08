@@ -122,6 +122,7 @@ function ensureEndsInPeriod(text: string): string {
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
   ExternalRepositoryCloneFailed = "ExternalRepositoryCloneFailed",
+  GracefulOutOfMemory = "GracefulOutOfMemory",
   GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
@@ -156,6 +157,9 @@ export const cliErrorsConfig: Record<
     cliErrorMessageCandidates: [
       new RegExp("Failed to clone external Git repository"),
     ],
+  },
+  [CliConfigErrorCategory.GracefulOutOfMemory]: {
+    cliErrorMessageCandidates: [new RegExp("CodeQL is out of memory.")],
   },
   [CliConfigErrorCategory.GradleBuildFailed]: {
     cliErrorMessageCandidates: [

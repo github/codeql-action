@@ -32,6 +32,8 @@ export enum ToolsSource {
 
 export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
+const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
+
 function getCodeQLBundleName(): string {
   let platform: string;
   if (process.platform === "win32") {
@@ -281,7 +283,11 @@ export async function getCodeQLSource(
   variant: util.GitHubVariant,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
-  if (toolsInput && toolsInput !== "latest" && !toolsInput.startsWith("http")) {
+  if (
+    toolsInput &&
+    !CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput) &&
+    !toolsInput.startsWith("http")
+  ) {
     return {
       codeqlTarPath: toolsInput,
       sourceType: "local",
@@ -292,15 +298,20 @@ export async function getCodeQLSource(
   /**
    * Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced.
    *
-   * We use the special value of 'latest' to prioritize the version in `defaults.json` over the
+   * We use the special value of 'linked' to prioritize the version in `defaults.json` over the
    * version specified by the feature flags on Dotcom and over any pinned cached version on
    * Enterprise Server.
+   *
+   * Previously we have been using 'latest' to force the shipped tools, but this was not clear
+   * enough for the users, so it has been changed to `linked`. We're keeping around `latest` for
+   * backwards compatibility.
    */
-  const forceShippedTools = toolsInput === "latest";
+  const forceShippedTools =
+    toolsInput && CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput);
   if (forceShippedTools) {
     logger.info(
       "Overriding the version of the CodeQL tools by the version shipped with the Action since " +
-        `"tools: latest" was requested.`,
+        `"tools: linked" or "tools: latest" was requested.`,
     );
   }
 

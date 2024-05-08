@@ -643,6 +643,44 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
   );
 });
 
+test("getWorkflowErrors() should not report a warning if there is a workflow_call trigger", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+    name: "CodeQL"
+    on:
+      workflow_call:
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(...errorCodes(errors, []));
+});
+
+test("getWorkflowErrors() should not report a warning if there is a workflow_call trigger as a string", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+    name: "CodeQL"
+    on: workflow_call
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(...errorCodes(errors, []));
+});
+
+test("getWorkflowErrors() should not report a warning if there is a workflow_call trigger as an array", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+    name: "CodeQL"
+    on:
+      - workflow_call
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(...errorCodes(errors, []));
+});
+
 test("getCategoryInputOrThrow returns category for simple workflow with category", (t) => {
   process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   t.is(

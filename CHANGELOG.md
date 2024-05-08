@@ -11,6 +11,7 @@ No user facing changes.
 ## 3.25.4 - 08 May 2024
 
 - Update default CodeQL bundle version to 2.17.2. [#2270](https://github.com/github/codeql-action/pull/2270)
+- Avoid printing out a warning for a missing `on.push` trigger when the CodeQL Action is triggered via a `workflow_call` event. [#2274](https://github.com/github/codeql-action/pull/2274)
 
 ## 3.25.3 - 25 Apr 2024
 
@@ -34,7 +35,7 @@ No user facing changes.
 
   - The `setup-python-dependencies` input to the `init` Action
   - The `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION` environment variable
-  
+
   We recommend removing any references to these from your workflows. For more information, see the release notes for CodeQL Action v3.23.0 and v2.23.0.
 - Automatically overwrite an existing database if found on the filesystem. [#2229](https://github.com/github/codeql-action/pull/2229)
 - Bump the minimum CodeQL bundle version to 2.12.6. [#2232](https://github.com/github/codeql-action/pull/2232)

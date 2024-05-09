@@ -477,11 +477,15 @@ class GitHubFeatureFlags {
           features: featuresToRequest,
         },
       );
-      const remoteFlags = response.data;
+      const remoteFlags = response.data as GitHubFeatureFlagsApiResponse;
       this.logger.debug(
-        "Loaded the following default values for the feature flags from the Code Scanning API: " +
-          `${JSON.stringify(remoteFlags)}`,
+        "Loaded the following default values for the feature flags from the Code Scanning API:",
       );
+      for (const [feature, value] of Object.entries(remoteFlags).sort(
+        ([nameA], [nameB]) => nameA.localeCompare(nameB),
+      )) {
+        this.logger.debug(`  ${feature}: ${value}`);
+      }
       this.hasAccessedRemoteFeatureFlags = true;
       return remoteFlags;
     } catch (e) {

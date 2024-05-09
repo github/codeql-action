@@ -641,9 +641,7 @@ export async function getCodeQLForCmd(
     ) {
       applyAutobuildAzurePipelinesTimeoutFix();
 
-      if (
-        await features.getValue(Feature.AutobuildDirectTracingEnabled, this)
-      ) {
+      if (await features.getValue(Feature.AutobuildDirectTracing, this)) {
         await runTool(cmd, [
           "database",
           "trace-command",

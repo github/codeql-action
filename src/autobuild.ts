@@ -169,7 +169,7 @@ export async function runAutobuild(
   }
   if (
     config.buildMode &&
-    (await features.getValue(Feature.AutobuildDirectTracingEnabled, codeQL))
+    (await features.getValue(Feature.AutobuildDirectTracing, codeQL))
   ) {
     await codeQL.extractUsingBuildMode(config, language);
   } else {

@@ -42,10 +42,10 @@ export interface FeatureEnablement {
 /**
  * Feature enablement as returned by the GitHub API endpoint.
  *
- * Each value of this enum should end with `_enabled`.
+ * Legacy features should end with `_enabled`.
  */
 export enum Feature {
-  AutobuildDirectTracingEnabled = "autobuild_direct_tracing_enabled",
+  AutobuildDirectTracing = "autobuild_direct_tracing",
   CombineSarifFilesDeprecationWarning = "combine_sarif_files_deprecation_warning_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
@@ -86,7 +86,7 @@ export const featureConfig: Record<
     toolsFeature?: ToolsFeature;
   }
 > = {
-  [Feature.AutobuildDirectTracingEnabled]: {
+  [Feature.AutobuildDirectTracing]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING",
     minimumVersion: undefined,

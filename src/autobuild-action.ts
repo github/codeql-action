@@ -21,6 +21,7 @@ import {
   sendStatusReport,
   ActionName,
 } from "./status-report";
+import { endTracingForCluster } from "./tracer-config";
 import {
   checkActionVersion,
   checkDiskUsage,
@@ -125,6 +126,10 @@ async function run() {
         await runAutobuild(config, language, features, logger);
       }
     }
+
+    // End tracing early to avoid tracing analyze. This improves the performance and reliability of
+    // the analyze step.
+    await endTracingForCluster(codeql, config, logger, features);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(

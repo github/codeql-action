@@ -311,7 +311,8 @@ export async function getCodeQLSource(
   if (forceShippedTools) {
     logger.info(
       "Overriding the version of the CodeQL tools by the version shipped with the Action since " +
-        `"tools: linked" or "tools: latest" was requested.`,
+        `"tools: linked" or "tools: latest" was requested. The version shipped with the Action is ` +
+        `${defaultCliVersion.cliVersion}.`,
     );
   }
 

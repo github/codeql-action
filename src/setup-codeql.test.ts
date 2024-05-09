@@ -98,9 +98,6 @@ test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) =>
 });
 
 test("getCodeQLSource correctly returns bundled CLI version when tools == linked", async (t) => {
-  const loggedMessages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(loggedMessages);
-
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     const source = await setupCodeql.getCodeQLSource(
@@ -108,32 +105,15 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == linked
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
-      logger,
+      getRunnerLogger(true),
     );
 
-    // Assert first that we got the right version of the CodeQL CLI,
-    // and that we're sourcing it using the correct method for that.
     t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
     t.is(source.sourceType, "download");
-
-    // Ensure that we're adequately notifying the user of the version we're using.
-    const expected_message: LoggedMessage = {
-      type: "info",
-      message: `Using CodeQL CLI version: ${LINKED_CLI_VERSION.cliVersion} from download.`,
-    };
-
-    loggedMessages.forEach((msg) => {
-      console.log(msg.message);
-    });
-
-    t.assert(loggedMessages.includes(expected_message));
   });
 });
 
 test("getCodeQLSource correctly returns bundled CLI version when tools == latest", async (t) => {
-  const loggedMessages = [];
-  const logger = getRecordingLogger(loggedMessages);
-
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     const source = await setupCodeql.getCodeQLSource(
@@ -141,10 +121,49 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == latest
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
-      logger,
+      getRunnerLogger(true),
     );
 
     t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
     t.is(source.sourceType, "download");
+  });
+});
+
+test("setupCodeQLBundle logs the CodeQL CLI version being used", async (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  // Stub the downloadCodeQL function to prevent downloading artefacts
+  // during testing from being called.
+  sinon.stub(setupCodeql, "downloadCodeQL").resolves({
+    toolsVersion: LINKED_CLI_VERSION.cliVersion,
+    codeqlFolder: "codeql",
+    toolsDownloadDurationMs: 200,
+  });
+
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    const result = await setupCodeql.setupCodeQLBundle(
+      "linked",
+      SAMPLE_DOTCOM_API_DETAILS,
+      "tmp/codeql_action_test/",
+      GitHubVariant.DOTCOM,
+      SAMPLE_DEFAULT_CLI_VERSION,
+      logger,
+    );
+
+    // Basic sanity check that the version we got back is indeed
+    // the linked (default) CLI version.
+    t.is(result.toolsVersion, LINKED_CLI_VERSION.cliVersion);
+
+    const expected_message: LoggedMessage = {
+      type: "info",
+      message: `Using CodeQL CLI version ${LINKED_CLI_VERSION.cliVersion} from download.`,
+    };
+
+    // Ensure message logging CodeQL CLI version was present in user logs.
+    t.assert(
+      loggedMessages.some((msg) => msg.message === expected_message.message),
+    );
   });
 });

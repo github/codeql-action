@@ -493,7 +493,7 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
-export async function downloadCodeQL(
+export const downloadCodeQL = async function (
   codeqlURL: string,
   maybeBundleVersion: string | undefined,
   maybeCliVersion: string | undefined,
@@ -614,7 +614,7 @@ export async function downloadCodeQL(
     codeqlFolder: toolcachedBundlePath,
     toolsDownloadDurationMs,
   };
-}
+};
 
 export function getCodeQLURLVersion(url: string): string {
   const match = url.match(/\/codeql-bundle-(.*)\//);
@@ -692,7 +692,9 @@ export async function setupCodeQLBundle(
     logger,
   );
 
-  logger.info("Using CodeQL CLI version " + source.toolsVersion + " from " + source.sourceType + ".");
+  logger.info(
+    `Using CodeQL CLI version ${source.toolsVersion} from ${source.sourceType}.`,
+  );
 
   let codeqlFolder: string;
   let toolsVersion = source.toolsVersion;

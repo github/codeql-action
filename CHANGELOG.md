@@ -12,6 +12,7 @@ No user facing changes.
 
 - Add a compatibility matrix of supported CodeQL Action, CodeQL CLI, and GitHub Enterprise Server versions to the [README.md](README.md). [#2273](https://github.com/github/codeql-action/pull/2273)
 - Avoid printing out a warning for a missing `on.push` trigger when the CodeQL Action is triggered via a `workflow_call` event. [#2274](https://github.com/github/codeql-action/pull/2274)
+- Add `tools: linked` option for input of `init` action. [#2281](https://github.com/github/codeql-action/pull/2281)
 
 ## 3.25.4 - 08 May 2024
 

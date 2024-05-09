@@ -59,11 +59,23 @@ export const featureConfig: Record<
   Feature,
   {
     /**
+     * Default value in environments where the feature flags API is not available,
+     * such as GitHub Enterprise Server.
+     */
+    defaultValue: boolean;
+    /**
      * Environment variable for explicitly enabling or disabling the feature.
      *
      * This overrides enablement status from the feature flags API.
      */
     envVar: string;
+    /**
+     * Whether the feature flag is part of the legacy feature flags API.
+     *
+     * These feature flags are included by default in the API response and do not need to be
+     * explicitly requested.
+     */
+    legacyApi?: boolean;
     /**
      * Minimum version of the CLI, if applicable.
      *
@@ -72,54 +84,56 @@ export const featureConfig: Record<
     minimumVersion: string | undefined;
     /** Required tools feature, if applicable. */
     toolsFeature?: ToolsFeature;
-    /**
-     * Default value in environments where the feature flags API is not available,
-     * such as GitHub Enterprise Server.
-     */
-    defaultValue: boolean;
   }
 > = {
   [Feature.AutobuildDirectTracingEnabled]: {
+    defaultValue: false,
     envVar: "CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.TraceCommandUseBuildMode,
-    defaultValue: false,
   },
   [Feature.CombineSarifFilesDeprecationWarning]: {
+    defaultValue: false,
     envVar: "CODEQL_ACTION_COMBINE_SARIF_FILES_DEPRECATION_WARNING",
+    legacyApi: true,
     // Independent of the CLI version.
     minimumVersion: undefined,
-    defaultValue: false,
   },
   [Feature.CppDependencyInstallation]: {
-    envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
-    minimumVersion: "2.15.0",
     defaultValue: false,
+    envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
+    legacyApi: true,
+    minimumVersion: "2.15.0",
   },
   [Feature.CppTrapCachingEnabled]: {
-    envVar: "CODEQL_CPP_TRAP_CACHING",
-    minimumVersion: "2.16.1",
     defaultValue: false,
+    envVar: "CODEQL_CPP_TRAP_CACHING",
+    legacyApi: true,
+    minimumVersion: "2.16.1",
   },
   [Feature.DisableJavaBuildlessEnabled]: {
-    envVar: "CODEQL_ACTION_DISABLE_JAVA_BUILDLESS",
-    minimumVersion: undefined,
     defaultValue: false,
+    envVar: "CODEQL_ACTION_DISABLE_JAVA_BUILDLESS",
+    legacyApi: true,
+    minimumVersion: undefined,
   },
   [Feature.DisableKotlinAnalysisEnabled]: {
-    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
-    minimumVersion: undefined,
     defaultValue: false,
+    envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
+    legacyApi: true,
+    minimumVersion: undefined,
   },
   [Feature.ExportDiagnosticsEnabled]: {
-    envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
-    minimumVersion: undefined,
     defaultValue: true,
+    envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
+    legacyApi: true,
+    minimumVersion: undefined,
   },
   [Feature.QaTelemetryEnabled]: {
-    envVar: "CODEQL_ACTION_QA_TELEMETRY",
-    minimumVersion: undefined,
     defaultValue: false,
+    envVar: "CODEQL_ACTION_QA_TELEMETRY",
+    legacyApi: true,
+    minimumVersion: undefined,
   },
 };
 
@@ -450,11 +464,17 @@ class GitHubFeatureFlags {
       return {};
     }
     try {
+      const featuresToRequest = Object.entries(featureConfig)
+        .filter(([, config]) => !config.legacyApi)
+        .map(([f]) => f)
+        .join(",");
+
       const response = await getApiClient().request(
         "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
         {
           owner: this.repositoryNwo.owner,
           repo: this.repositoryNwo.repo,
+          features: featuresToRequest,
         },
       );
       const remoteFlags = response.data;

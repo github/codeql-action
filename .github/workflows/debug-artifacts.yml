@@ -22,6 +22,7 @@ on:
 jobs:
   upload-artifacts:
     strategy:
+      fail-fast: false
       matrix:
         version:
         - stable-20230403

@@ -117,6 +117,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
     checkJob = {
         'strategy': {
+            'fail-fast': False,
             'matrix': {
                 'include': matrix
             }

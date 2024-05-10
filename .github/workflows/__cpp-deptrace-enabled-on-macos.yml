@@ -25,6 +25,7 @@ on:
 jobs:
   cpp-deptrace-enabled-on-macos:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest

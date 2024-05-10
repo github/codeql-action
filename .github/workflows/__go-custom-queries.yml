@@ -25,6 +25,7 @@ on:
 jobs:
   go-custom-queries:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

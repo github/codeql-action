@@ -25,6 +25,7 @@ on:
 jobs:
   autobuild-action:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

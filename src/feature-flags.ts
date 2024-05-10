@@ -70,7 +70,7 @@ export const featureConfig: Record<
      */
     envVar: string;
     /**
-     * Whether the feature flag is part of the legacy feature flags API.
+     * Whether the feature flag is part of the legacy feature flags API (defaults to false).
      *
      * These feature flags are included by default in the API response and do not need to be
      * explicitly requested.

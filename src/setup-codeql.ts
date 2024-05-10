@@ -288,6 +288,7 @@ export async function getCodeQLSource(
     !CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput) &&
     !toolsInput.startsWith("http")
   ) {
+    logger.info("Using CodeQL CLI from local path $path");
     return {
       codeqlTarPath: toolsInput,
       sourceType: "local",
@@ -310,10 +311,15 @@ export async function getCodeQLSource(
     toolsInput && CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput);
   if (forceShippedTools) {
     logger.info(
-      "Overriding the version of the CodeQL tools by the version shipped with the Action since " +
-        `"tools: linked" or "tools: latest" was requested. The version shipped with the Action is ` +
-        `${defaultCliVersion.cliVersion}.`,
+      `Overriding the version of the CodeQL tools by ${defaultCliVersion.cliVersion}, the version shipped with the Action since ` +
+        `tools: ${toolsInput} was requested.`,
     );
+
+    if (toolsInput === "latest") {
+      logger.warning(
+        "The 'latest' alias for the CodeQL tools has been deprecated. Please use 'linked' instead.",
+      );
+    }
   }
 
   /** CLI version number, for example 2.12.6. */
@@ -436,10 +442,14 @@ export async function getCodeQLSource(
   }
 
   if (codeqlFolder) {
+    const version = cliVersion ?? humanReadableVersion;
+    logger.info(
+      `Using CodeQL CLI version ${version} from toolcache at ${codeqlFolder}`,
+    );
     return {
       codeqlFolder,
       sourceType: "toolcache",
-      toolsVersion: cliVersion ?? humanReadableVersion,
+      toolsVersion: version,
     };
   }
 
@@ -464,12 +474,16 @@ export async function getCodeQLSource(
     url = await getCodeQLBundleDownloadURL(tagName!, apiDetails, logger);
   }
 
+  const toolsVersion = cliVersion ?? humanReadableVersion;
+  logger.info(
+    `Using CodeQL CLI version ${toolsVersion} downloaded from ${url}.`,
+  );
   return {
     bundleVersion: tagName && tryGetBundleVersionFromTagName(tagName, logger),
     cliVersion,
     codeqlURL: url,
     sourceType: "download",
-    toolsVersion: cliVersion ?? humanReadableVersion,
+    toolsVersion,
   };
 }
 
@@ -494,6 +508,8 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
+// Exported using `export const` for testing purposes. Specifically, we want to
+// be able to stub this function and have other functions in this file use that stub.
 export const downloadCodeQL = async function (
   codeqlURL: string,
   maybeBundleVersion: string | undefined,
@@ -691,10 +707,6 @@ export async function setupCodeQLBundle(
     apiDetails,
     variant,
     logger,
-  );
-
-  logger.info(
-    `Using CodeQL CLI version ${source.toolsVersion} from ${source.sourceType}.`,
   );
 
   let codeqlFolder: string;

@@ -21,10 +21,7 @@ export async function shouldEnableIndirectTracing(
   return (
     (!config.buildMode ||
       config.buildMode === BuildMode.Manual ||
-      !(await features.getValue(
-        Feature.AutobuildDirectTracingEnabled,
-        codeql,
-      ))) &&
+      !(await features.getValue(Feature.AutobuildDirectTracing, codeql))) &&
     config.languages.some((l) => isTracedLanguage(l))
   );
 }

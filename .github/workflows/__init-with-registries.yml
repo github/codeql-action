@@ -25,6 +25,7 @@ on:
 jobs:
   init-with-registries:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

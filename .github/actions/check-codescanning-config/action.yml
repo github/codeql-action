@@ -29,7 +29,15 @@ inputs:
   tools:
     required: true
     description: |
-      The url of codeql to use.
+      The version of the CodeQL tools to use. This can be any of the following:
+
+      - A local path to a tarball containing the CodeQL tools, or
+      - A URL to a GitHub release assets containing the CodeQL tools, or
+      - A special value `linked` which is forcing the use of the CodeQL tools
+        that the action has been bundled with.
+
+      If not specified, the Action will check in several places until it finds
+      the CodeQL tools.
 
 runs:
   using: composite

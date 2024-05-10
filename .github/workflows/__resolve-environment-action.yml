@@ -25,6 +25,7 @@ on:
 jobs:
   resolve-environment-action:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

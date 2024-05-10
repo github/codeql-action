@@ -25,6 +25,7 @@ on:
 jobs:
   scaling-reserved-ram:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

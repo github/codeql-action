@@ -173,7 +173,7 @@ export async function runAutobuild(
   ) {
     await codeQL.extractUsingBuildMode(config, language);
   } else {
-    await codeQL.runAutobuild(config, language, features);
+    await codeQL.runAutobuild(config, language);
   }
   if (language === Language.go) {
     core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");

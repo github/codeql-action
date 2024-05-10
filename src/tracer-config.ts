@@ -5,6 +5,7 @@ import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage } from "./languages";
+import { Logger } from "./logging";
 import { ToolsFeature } from "./tools-features";
 import { BuildMode } from "./util";
 
@@ -25,12 +26,26 @@ export async function shouldEnableIndirectTracing(
   );
 }
 
+/**
+ * Delete variables as specified by the end-tracing script
+ *
+ * WARNING: This does not _really_ end tracing, as the tracer will restore its
+ * critical environment variables and it'll still be active for all processes
+ * launched from this build step.
+ *
+ * However, it will stop tracing for all steps past the current build step.
+ */
 export async function endTracingForCluster(
   codeql: CodeQL,
   config: Config,
+  logger: Logger,
   features: FeatureEnablement,
 ): Promise<void> {
   if (!(await shouldEnableIndirectTracing(codeql, config, features))) return;
+
+  logger.info(
+    "Unsetting build tracing environment variables. Subsequent steps of this job will not be traced.",
+  );
 
   const envVariablesFile = path.resolve(
     config.dbLocation,

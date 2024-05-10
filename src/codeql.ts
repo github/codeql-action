@@ -88,11 +88,7 @@ export interface CodeQL {
   /**
    * Runs the autobuilder for the given language.
    */
-  runAutobuild(
-    config: Config,
-    language: Language,
-    features: FeatureEnablement,
-  ): Promise<void>;
+  runAutobuild(config: Config, language: Language): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
@@ -634,24 +630,8 @@ export async function getCodeQLForCmd(
         { stdin: externalRepositoryToken },
       );
     },
-    async runAutobuild(
-      config: Config,
-      language: Language,
-      features: FeatureEnablement,
-    ) {
+    async runAutobuild(config: Config, language: Language) {
       applyAutobuildAzurePipelinesTimeoutFix();
-
-      if (await features.getValue(Feature.AutobuildDirectTracing, this)) {
-        await runTool(cmd, [
-          "database",
-          "trace-command",
-          ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
-          ...getExtractionVerbosityArguments(config.debugMode),
-          ...getExtraOptionsFromEnv(["database", "trace-command"]),
-          util.getCodeQLDatabasePath(config, language),
-        ]);
-        return;
-      }
 
       const autobuildCmd = path.join(
         await this.resolveExtractor(language),

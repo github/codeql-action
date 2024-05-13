@@ -53,7 +53,7 @@ async function mockHttpRequests(databaseUploadStatusCode: number) {
   const requestSpy = sinon.stub(client, "request");
 
   const url =
-    "POST https://uploads.github.com/repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid";
+    "POST /repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid";
   const databaseUploadSpy = requestSpy.withArgs(url);
   if (databaseUploadStatusCode < 300) {
     databaseUploadSpy.resolves(undefined);
@@ -64,6 +64,8 @@ async function mockHttpRequests(databaseUploadStatusCode: number) {
   }
 
   sinon.stub(apiClient, "getApiClient").value(() => client);
+
+  return databaseUploadSpy;
 }
 
 test("Abort database upload if 'upload-database' input set to false", async (t) => {
@@ -116,7 +118,8 @@ test("Abort database upload if running against GHES", async (t) => {
       loggedMessages.find(
         (v: LoggedMessage) =>
           v.type === "debug" &&
-          v.message === "Not running against github.com. Skipping upload.",
+          v.message ===
+            "Not running against github.com or GHEC-DR. Skipping upload.",
       ) !== undefined,
     );
   });
@@ -184,7 +187,7 @@ test("Don't crash if uploading a database fails", async (t) => {
   });
 });
 
-test("Successfully uploading a database to api.github.com", async (t) => {
+test("Successfully uploading a database to github.com", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     sinon
@@ -218,7 +221,7 @@ test("Successfully uploading a database to api.github.com", async (t) => {
   });
 });
 
-test("Successfully uploading a database to uploads.github.com", async (t) => {
+test("Successfully uploading a database to GHEC-DR", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     sinon
@@ -227,7 +230,7 @@ test("Successfully uploading a database to uploads.github.com", async (t) => {
       .returns("true");
     sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
 
-    await mockHttpRequests(201);
+    const databaseUploadSpy = await mockHttpRequests(201);
 
     setCodeQL({
       async databaseBundle(_: string, outputFilePath: string) {
@@ -239,7 +242,11 @@ test("Successfully uploading a database to uploads.github.com", async (t) => {
     await uploadDatabases(
       testRepoName,
       getTestConfig(tmpDir),
-      testApiDetails,
+      {
+        auth: "1234",
+        url: "https://tenant.ghe.com",
+        apiURL: undefined,
+      },
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -248,6 +255,12 @@ test("Successfully uploading a database to uploads.github.com", async (t) => {
           v.type === "debug" &&
           v.message === "Successfully uploaded database for javascript",
       ) !== undefined,
+    );
+    t.assert(
+      databaseUploadSpy.calledOnceWith(
+        sinon.match.string,
+        sinon.match.has("baseUrl", "https://uploads.tenant.ghe.com/"),
+      ),
     );
   });
 });

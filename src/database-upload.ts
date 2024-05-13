@@ -55,7 +55,7 @@ export async function uploadDatabases(
       );
       try {
         await client.request(
-          `POST /repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
+          `POST repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
           {
             baseUrl: uploadsUrl.toString(),
             owner: repositoryNwo.owner,

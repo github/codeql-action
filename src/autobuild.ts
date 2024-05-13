@@ -159,7 +159,7 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
 export async function runAutobuild(
   config: configUtils.Config,
   language: Language,
-  features: FeatureEnablement,
+  _features: FeatureEnablement,
   logger: Logger,
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
@@ -167,10 +167,7 @@ export async function runAutobuild(
   if (language === Language.cpp) {
     await setupCppAutobuild(codeQL, logger);
   }
-  if (
-    config.buildMode &&
-    (await features.getValue(Feature.AutobuildDirectTracing, codeQL))
-  ) {
+  if (config.buildMode) {
     await codeQL.extractUsingBuildMode(config, language);
   } else {
     await codeQL.runAutobuild(config, language);

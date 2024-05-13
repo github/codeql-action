@@ -3,7 +3,7 @@ import * as path from "path";
 
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsFeature } from "./tools-features";
@@ -14,14 +14,13 @@ export type TracerConfig = {
 };
 
 export async function shouldEnableIndirectTracing(
-  codeql: CodeQL,
+  _codeql: CodeQL,
   config: Config,
-  features: FeatureEnablement,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _features: FeatureEnablement,
 ): Promise<boolean> {
   return (
-    (!config.buildMode ||
-      config.buildMode === BuildMode.Manual ||
-      !(await features.getValue(Feature.AutobuildDirectTracing, codeql))) &&
+    (!config.buildMode || config.buildMode === BuildMode.Manual) &&
     config.languages.some((l) => isTracedLanguage(l))
   );
 }

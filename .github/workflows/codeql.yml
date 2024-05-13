@@ -73,6 +73,7 @@ jobs:
   build:
     needs: [check-codeql-versions]
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-20.04,ubuntu-22.04,windows-2019,windows-2022,macos-11,macos-12,macos-13]
         tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}

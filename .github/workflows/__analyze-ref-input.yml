@@ -25,6 +25,7 @@ on:
 jobs:
   analyze-ref-input:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

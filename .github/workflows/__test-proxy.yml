@@ -25,6 +25,7 @@ on:
 jobs:
   test-proxy:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

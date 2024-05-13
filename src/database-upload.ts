@@ -41,6 +41,13 @@ export async function uploadDatabases(
   const uploadsUrl = new URL(parseGitHubUrl(apiDetails.url));
   uploadsUrl.hostname = `uploads.${uploadsUrl.hostname}`;
 
+  // Octokit expects the baseUrl to not have a trailing slash,
+  // but it is included by default in a URL.
+  let uploadsBaseUrl = uploadsUrl.toString();
+  if (uploadsBaseUrl.endsWith("/")) {
+    uploadsBaseUrl = uploadsBaseUrl.slice(0, -1);
+  }
+
   for (const language of config.languages) {
     try {
       // Upload the database bundle.
@@ -57,7 +64,7 @@ export async function uploadDatabases(
         await client.request(
           `POST /repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
           {
-            baseUrl: uploadsUrl.toString(),
+            baseUrl: uploadsBaseUrl,
             owner: repositoryNwo.owner,
             repo: repositoryNwo.repo,
             language,

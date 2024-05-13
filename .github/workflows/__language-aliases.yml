@@ -25,6 +25,7 @@ on:
 jobs:
   language-aliases:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

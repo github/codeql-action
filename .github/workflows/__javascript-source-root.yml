@@ -25,6 +25,7 @@ on:
 jobs:
   javascript-source-root:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

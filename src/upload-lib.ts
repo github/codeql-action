@@ -775,6 +775,8 @@ function shouldConsiderInvalidRequest(processingErrors: string[]): boolean {
   return processingErrors.every(
     (error) =>
       error.startsWith("rejecting SARIF") ||
+      error.startsWith("an invalid URI was provided as a SARIF location") ||
+      error.startsWith("locationFromSarifResult: expected artifact location") ||
       error.startsWith(
         "could not convert rules: invalid security severity value, is not a number",
       ) ||

@@ -25,6 +25,7 @@ on:
 jobs:
   extractor-ram-threads:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

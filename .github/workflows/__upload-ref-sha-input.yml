@@ -25,6 +25,7 @@ on:
 jobs:
   upload-ref-sha-input:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

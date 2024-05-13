@@ -516,12 +516,25 @@ test("ignores invalid version numbers in default version feature flags", async (
   });
 });
 
-test("feature flags should end with _enabled", async (t) => {
-  for (const feature of Object.values(Feature)) {
-    t.assert(
-      feature.endsWith("_enabled"),
-      `${feature} should end with '_enabled'`,
-    );
+test("legacy feature flags should end with _enabled", async (t) => {
+  for (const [feature, config] of Object.entries(featureConfig)) {
+    if (config.legacyApi) {
+      t.assert(
+        feature.endsWith("_enabled"),
+        `legacy feature ${feature} should end with '_enabled'`,
+      );
+    }
+  }
+});
+
+test("non-legacy feature flags should not end with _enabled", async (t) => {
+  for (const [feature, config] of Object.entries(featureConfig)) {
+    if (!config.legacyApi) {
+      t.false(
+        feature.endsWith("_enabled"),
+        `non-legacy feature ${feature} should not end with '_enabled'`,
+      );
+    }
   }
 });
 

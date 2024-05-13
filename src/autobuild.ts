@@ -169,11 +169,11 @@ export async function runAutobuild(
   }
   if (
     config.buildMode &&
-    (await features.getValue(Feature.AutobuildDirectTracingEnabled, codeQL))
+    (await features.getValue(Feature.AutobuildDirectTracing, codeQL))
   ) {
     await codeQL.extractUsingBuildMode(config, language);
   } else {
-    await codeQL.runAutobuild(config, language, features);
+    await codeQL.runAutobuild(config, language);
   }
   if (language === Language.go) {
     core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");

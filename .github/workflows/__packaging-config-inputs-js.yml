@@ -25,6 +25,7 @@ on:
 jobs:
   packaging-config-inputs-js:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

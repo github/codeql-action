@@ -122,6 +122,7 @@ function ensureEndsInPeriod(text: string): string {
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
   ExternalRepositoryCloneFailed = "ExternalRepositoryCloneFailed",
+  GracefulOutOfMemory = "GracefulOutOfMemory",
   GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
@@ -132,6 +133,7 @@ export enum CliConfigErrorCategory {
   NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  PackCannotBeFound = "PackCannotBeFound",
   SwiftBuildFailed = "SwiftBuildFailed",
   UnsupportedBuildMode = "UnsupportedBuildMode",
 }
@@ -155,6 +157,9 @@ export const cliErrorsConfig: Record<
     cliErrorMessageCandidates: [
       new RegExp("Failed to clone external Git repository"),
     ],
+  },
+  [CliConfigErrorCategory.GracefulOutOfMemory]: {
+    cliErrorMessageCandidates: [new RegExp("CodeQL is out of memory.")],
   },
   [CliConfigErrorCategory.GradleBuildFailed]: {
     cliErrorMessageCandidates: [
@@ -218,6 +223,13 @@ export const cliErrorsConfig: Record<
   [CliConfigErrorCategory.NoSupportedBuildSystemDetected]: {
     cliErrorMessageCandidates: [
       new RegExp("No supported build system detected"),
+    ],
+  },
+  [CliConfigErrorCategory.PackCannotBeFound]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "Query pack .* cannot be found\\. Check the spelling of the pack\\.",
+      ),
     ],
   },
   [CliConfigErrorCategory.SwiftBuildFailed]: {

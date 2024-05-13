@@ -134,7 +134,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == latest
 
     // Afterwards, ensure that we see the deprecation message in the log.
     const expected_message: string =
-      "The 'latest' alias for the CodeQL tools has been deprecated. Please use 'linked' instead.";
+      "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported for now. No action is required.";
     t.assert(
       loggedMessages.some(
         (msg) =>
@@ -216,7 +216,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
     t.is(result.toolsVersion, expectedVersion);
 
     // Ensure message logging CodeQL CLI version was present in user logs.
-    const expected_message: string = `Using CodeQL CLI version 2.16.0 downloaded from ${bundleUrl}.`;
+    const expected_message: string = `Using CodeQL CLI version 2.16.0 sourced from ${bundleUrl}.`;
     t.assert(
       loggedMessages.some(
         (msg) =>

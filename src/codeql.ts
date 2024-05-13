@@ -88,11 +88,7 @@ export interface CodeQL {
   /**
    * Runs the autobuilder for the given language.
    */
-  runAutobuild(
-    config: Config,
-    language: Language,
-    features: FeatureEnablement,
-  ): Promise<void>;
+  runAutobuild(config: Config, language: Language): Promise<void>;
   /**
    * Extract code for a scanned language using 'codeql database trace-command'
    * and running the language extractor.
@@ -597,7 +593,7 @@ export async function getCodeQLForCmd(
       }
 
       if (
-        await util.codeQlVersionAbove(
+        await util.codeQlVersionAtLeast(
           this,
           CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
         )
@@ -608,7 +604,7 @@ export async function getCodeQLForCmd(
       if (await isSublanguageFileCoverageEnabled(config, this)) {
         extraArgs.push("--sublanguage-file-coverage");
       } else if (
-        await util.codeQlVersionAbove(
+        await util.codeQlVersionAtLeast(
           this,
           CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
         )
@@ -634,26 +630,8 @@ export async function getCodeQLForCmd(
         { stdin: externalRepositoryToken },
       );
     },
-    async runAutobuild(
-      config: Config,
-      language: Language,
-      features: FeatureEnablement,
-    ) {
+    async runAutobuild(config: Config, language: Language) {
       applyAutobuildAzurePipelinesTimeoutFix();
-
-      if (
-        await features.getValue(Feature.AutobuildDirectTracingEnabled, this)
-      ) {
-        await runTool(cmd, [
-          "database",
-          "trace-command",
-          ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
-          ...getExtractionVerbosityArguments(config.debugMode),
-          ...getExtraOptionsFromEnv(["database", "trace-command"]),
-          util.getCodeQLDatabasePath(config, language),
-        ]);
-        return;
-      }
 
       const autobuildCmd = path.join(
         await this.resolveExtractor(language),
@@ -842,7 +820,7 @@ export async function getCodeQLForCmd(
         }),
       ];
       if (
-        await util.codeQlVersionAbove(
+        await util.codeQlVersionAtLeast(
           this,
           CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
         )
@@ -897,7 +875,7 @@ export async function getCodeQLForCmd(
       if (await isSublanguageFileCoverageEnabled(config, this)) {
         codeqlArgs.push("--sublanguage-file-coverage");
       } else if (
-        await util.codeQlVersionAbove(
+        await util.codeQlVersionAtLeast(
           this,
           CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
         )
@@ -910,7 +888,7 @@ export async function getCodeQLForCmd(
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
       if (
-        (await util.codeQlVersionAbove(
+        (await util.codeQlVersionAtLeast(
           this,
           CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
         )) &&
@@ -1144,7 +1122,7 @@ export async function getCodeQLForCmd(
   // CodeQL object is created.
   if (
     checkVersion &&
-    !(await util.codeQlVersionAbove(codeql, CODEQL_MINIMUM_VERSION))
+    !(await util.codeQlVersionAtLeast(codeql, CODEQL_MINIMUM_VERSION))
   ) {
     throw new util.ConfigurationError(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
@@ -1154,7 +1132,7 @@ export async function getCodeQLForCmd(
   } else if (
     checkVersion &&
     process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
-    !(await util.codeQlVersionAbove(codeql, CODEQL_NEXT_MINIMUM_VERSION))
+    !(await util.codeQlVersionAtLeast(codeql, CODEQL_NEXT_MINIMUM_VERSION))
   ) {
     const result = await codeql.getVersion();
     core.warning(
@@ -1403,14 +1381,16 @@ export function getGeneratedCodeScanningConfigPath(config: Config): string {
 async function isDiagnosticsExportInvalidSarifFixed(
   codeql: CodeQL,
 ): Promise<boolean> {
-  return await util.codeQlVersionAbove(
+  return await util.codeQlVersionAtLeast(
     codeql,
     CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED,
   );
 }
 
 async function getLanguageAliasingArguments(codeql: CodeQL): Promise<string[]> {
-  if (await util.codeQlVersionAbove(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
+  if (
+    await util.codeQlVersionAtLeast(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)
+  ) {
     return ["--extractor-include-aliases"];
   }
   return [];
@@ -1424,7 +1404,7 @@ async function isSublanguageFileCoverageEnabled(
     // Sub-language file coverage is first supported in GHES 3.12.
     (config.gitHubVersion.type !== util.GitHubVariant.GHES ||
       semver.gte(config.gitHubVersion.version, "3.12.0")) &&
-    (await util.codeQlVersionAbove(
+    (await util.codeQlVersionAtLeast(
       codeql,
       CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
     ))
@@ -1435,7 +1415,7 @@ async function getCodeScanningQueryHelpArguments(
   codeql: CodeQL,
 ): Promise<string[]> {
   if (
-    await util.codeQlVersionAbove(codeql, CODEQL_VERSION_INCLUDE_QUERY_HELP)
+    await util.codeQlVersionAtLeast(codeql, CODEQL_VERSION_INCLUDE_QUERY_HELP)
   ) {
     return ["--sarif-include-query-help=always"];
   }

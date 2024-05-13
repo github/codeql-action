@@ -25,19 +25,20 @@ on:
 jobs:
   go-tracing-autobuilder:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             version: stable-20230403
-          - os: macos-latest
+          - os: macos-12
             version: stable-20230403
           - os: ubuntu-latest
             version: stable-v2.13.5
-          - os: macos-latest
+          - os: macos-12
             version: stable-v2.13.5
           - os: ubuntu-latest
             version: stable-v2.14.6
-          - os: macos-latest
+          - os: macos-12
             version: stable-v2.14.6
           - os: ubuntu-latest
             version: stable-v2.15.5
@@ -69,7 +70,7 @@ jobs:
       - name: Setup Python on MacOS
         uses: actions/setup-python@v5
         if: >-
-          matrix.os == 'macos-latest' && (
+          runner.os == 'macOS' && (
 
           matrix.version == 'stable-20230403' ||
 

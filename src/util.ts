@@ -56,8 +56,11 @@ export interface SarifFile {
 export interface SarifRun {
   tool?: {
     driver?: {
+      guid?: string;
       name?: string;
+      fullName?: string;
       semanticVersion?: string;
+      version?: string;
     };
   };
   automationDetails?: {
@@ -682,7 +685,7 @@ export function getCachedCodeQlVersion(): undefined | VersionInfo {
   return cachedCodeQlVersion;
 }
 
-export async function codeQlVersionAbove(
+export async function codeQlVersionAtLeast(
   codeql: CodeQL,
   requiredVersion: string,
 ): Promise<boolean> {

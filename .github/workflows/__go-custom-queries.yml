@@ -25,23 +25,24 @@ on:
 jobs:
   go-custom-queries:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             version: stable-20230403
-          - os: macos-latest
+          - os: macos-12
             version: stable-20230403
           - os: windows-latest
             version: stable-20230403
           - os: ubuntu-latest
             version: stable-v2.13.5
-          - os: macos-latest
+          - os: macos-12
             version: stable-v2.13.5
           - os: windows-latest
             version: stable-v2.13.5
           - os: ubuntu-latest
             version: stable-v2.14.6
-          - os: macos-latest
+          - os: macos-12
             version: stable-v2.14.6
           - os: windows-latest
             version: stable-v2.14.6
@@ -85,7 +86,7 @@ jobs:
       - name: Setup Python on MacOS
         uses: actions/setup-python@v5
         if: >-
-          matrix.os == 'macos-latest' && (
+          runner.os == 'macOS' && (
 
           matrix.version == 'stable-20230403' ||
 
@@ -102,6 +103,9 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.21.0'
       - uses: ./../action/init
         with:
           languages: go

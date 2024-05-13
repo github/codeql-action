@@ -303,7 +303,7 @@ export async function runQueries(
       }
 
       if (
-        !(await util.codeQlVersionAbove(
+        !(await util.codeQlVersionAtLeast(
           codeql,
           CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
         ))
@@ -402,13 +402,10 @@ export async function runFinalize(
     logger,
   );
 
-  // WARNING: This does not _really_ end tracing, as the tracer will restore its
-  // critical environment variables and it'll still be active for all processes
-  // launched from this build step.
-  // However, it will stop tracing for all steps past the codeql-action/analyze
-  // step.
-  // Delete variables as specified by the end-tracing script
-  await endTracingForCluster(codeql, config, features);
+  // If we didn't already end tracing in the autobuild Action, end it now.
+  if (process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") {
+    await endTracingForCluster(codeql, config, logger, features);
+  }
   return timings;
 }
 

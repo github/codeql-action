@@ -12,6 +12,9 @@ inputs:
       - The URL of a CodeQL Bundle tarball GitHub release asset, or
       - A special value `linked` which uses the version of the CodeQL tools
         that the Action has been bundled with.
+
+      If not specified, the Action will check in several places until it finds
+      the CodeQL tools.
     required: false
   languages:
     description: >-

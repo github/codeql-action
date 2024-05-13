@@ -259,7 +259,7 @@ test("Successfully uploading a database to GHEC-DR", async (t) => {
     t.assert(
       databaseUploadSpy.calledOnceWith(
         sinon.match.string,
-        sinon.match.has("baseUrl", "https://uploads.tenant.ghe.com/"),
+        sinon.match.has("baseUrl", "https://uploads.tenant.ghe.com"),
       ),
     );
   });

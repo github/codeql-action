@@ -10,6 +10,7 @@ import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
+import * as defaults from "./defaults.json";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -33,6 +34,11 @@ export const SAMPLE_DOTCOM_API_DETAILS = {
 export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
   cliVersion: "2.20.0",
   tagName: "codeql-bundle-v2.20.0",
+};
+
+export const LINKED_CLI_VERSION = {
+  cliVersion: defaults.cliVersion,
+  tagName: defaults.bundleVersion,
 };
 
 type TestContext = {

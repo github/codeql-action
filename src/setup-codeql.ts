@@ -288,7 +288,7 @@ export async function getCodeQLSource(
     !CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput) &&
     !toolsInput.startsWith("http")
   ) {
-    logger.info("Using CodeQL CLI from local path $path");
+    logger.info(`Using CodeQL CLI from local path ${toolsInput}`);
     return {
       codeqlTarPath: toolsInput,
       sourceType: "local",
@@ -317,7 +317,7 @@ export async function getCodeQLSource(
 
     if (toolsInput === "latest") {
       logger.warning(
-        "The 'latest' alias for the CodeQL tools has been deprecated. Please use 'linked' instead.",
+        "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported for now. No action is required.",
       );
     }
   }
@@ -442,14 +442,17 @@ export async function getCodeQLSource(
   }
 
   if (codeqlFolder) {
-    const version = cliVersion ?? humanReadableVersion;
-    logger.info(
-      `Using CodeQL CLI version ${version} from toolcache at ${codeqlFolder}`,
-    );
+    if (cliVersion) {
+      logger.info(
+        `Using CodeQL CLI version ${cliVersion} from toolcache at ${codeqlFolder}`,
+      );
+    } else {
+      logger.info(`Using CodeQL CLI from toolcache at ${codeqlFolder}`);
+    }
     return {
       codeqlFolder,
       sourceType: "toolcache",
-      toolsVersion: version,
+      toolsVersion: cliVersion ?? humanReadableVersion,
     };
   }
 
@@ -474,16 +477,17 @@ export async function getCodeQLSource(
     url = await getCodeQLBundleDownloadURL(tagName!, apiDetails, logger);
   }
 
-  const toolsVersion = cliVersion ?? humanReadableVersion;
-  logger.info(
-    `Using CodeQL CLI version ${toolsVersion} downloaded from ${url}.`,
-  );
+  if (cliVersion) {
+    logger.info(`Using CodeQL CLI version ${cliVersion} sourced from ${url}.`);
+  } else {
+    logger.info(`Using CodeQL CLI sourced from ${url}.`);
+  }
   return {
     bundleVersion: tagName && tryGetBundleVersionFromTagName(tagName, logger),
     cliVersion,
     codeqlURL: url,
     sourceType: "download",
-    toolsVersion,
+    toolsVersion: cliVersion ?? humanReadableVersion,
   };
 }
 

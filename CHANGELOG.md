@@ -6,6 +6,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 3.25.5 - 13 May 2024
+
 - Add a compatibility matrix of supported CodeQL Action, CodeQL CLI, and GitHub Enterprise Server versions to the [README.md](README.md). [#2273](https://github.com/github/codeql-action/pull/2273)
 - Avoid printing out a warning for a missing `on.push` trigger when the CodeQL Action is triggered via a `workflow_call` event. [#2274](https://github.com/github/codeql-action/pull/2274)
 

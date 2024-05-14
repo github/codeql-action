@@ -15,7 +15,7 @@ import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, FeatureEnablement, Features } from "./feature-flags";
+import { FeatureEnablement, Features } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
@@ -125,13 +125,8 @@ function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
 // Checks whether the deprecation warning for combining SARIF files should be shown.
 export async function shouldShowCombineSarifFilesDeprecationWarning(
   sarifObjects: util.SarifFile[],
-  features: FeatureEnablement,
   githubVersion: GitHubVersion,
 ) {
-  if (!(await features.getValue(Feature.CombineSarifFilesDeprecationWarning))) {
-    return false;
-  }
-
   // Do not show this warning on GHES versions before 3.14.0
   if (
     githubVersion.type === GitHubVariant.GHES &&
@@ -182,7 +177,6 @@ async function combineSarifFilesUsingCLI(
     if (
       await shouldShowCombineSarifFilesDeprecationWarning(
         sarifObjects,
-        features,
         gitHubVersion,
       )
     ) {
@@ -245,7 +239,6 @@ async function combineSarifFilesUsingCLI(
     if (
       await shouldShowCombineSarifFilesDeprecationWarning(
         sarifObjects,
-        features,
         gitHubVersion,
       )
     ) {

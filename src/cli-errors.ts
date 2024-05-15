@@ -122,10 +122,10 @@ function ensureEndsInPeriod(text: string): string {
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
   ExternalRepositoryCloneFailed = "ExternalRepositoryCloneFailed",
-  GracefulOutOfMemory = "GracefulOutOfMemory",
   GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
+  InvalidConfigFile = "InvalidConfigFile",
   InvalidSourceRoot = "InvalidSourceRoot",
   MavenBuildFailed = "MavenBuildFailed",
   NoBuildCommandAutodetected = "NoBuildCommandAutodetected",
@@ -133,6 +133,7 @@ export enum CliConfigErrorCategory {
   NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  OutOfMemoryOrDisk = "OutOfMemoryOrDisk",
   PackCannotBeFound = "PackCannotBeFound",
   SwiftBuildFailed = "SwiftBuildFailed",
   UnsupportedBuildMode = "UnsupportedBuildMode",
@@ -158,9 +159,6 @@ export const cliErrorsConfig: Record<
       new RegExp("Failed to clone external Git repository"),
     ],
   },
-  [CliConfigErrorCategory.GracefulOutOfMemory]: {
-    cliErrorMessageCandidates: [new RegExp("CodeQL is out of memory.")],
-  },
   [CliConfigErrorCategory.GradleBuildFailed]: {
     cliErrorMessageCandidates: [
       new RegExp("[autobuild] FAILURE: Build failed with an exception."),
@@ -179,6 +177,12 @@ export const cliErrorsConfig: Record<
       ),
     ],
     additionalErrorMessageToAppend: `Is the "init" action called twice in the same job?`,
+  },
+  [CliConfigErrorCategory.InvalidConfigFile]: {
+    cliErrorMessageCandidates: [
+      new RegExp("Config file .* is not valid"),
+      new RegExp("The supplied config file is empty"),
+    ],
   },
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
@@ -214,7 +218,6 @@ export const cliErrorsConfig: Record<
       ),
     ],
   },
-
   [CliConfigErrorCategory.NoSupportedBuildCommandSucceeded]: {
     cliErrorMessageCandidates: [
       new RegExp("No supported build command succeeded"),
@@ -224,6 +227,15 @@ export const cliErrorsConfig: Record<
     cliErrorMessageCandidates: [
       new RegExp("No supported build system detected"),
     ],
+  },
+  [CliConfigErrorCategory.OutOfMemoryOrDisk]: {
+    cliErrorMessageCandidates: [
+      new RegExp("CodeQL is out of memory."),
+      new RegExp("out of disk"),
+      new RegExp("No space left on device"),
+    ],
+    additionalErrorMessageToAppend:
+      "For more information, see https://gh.io/troubleshooting-code-scanning/out-of-disk-or-memory",
   },
   [CliConfigErrorCategory.PackCannotBeFound]: {
     cliErrorMessageCandidates: [

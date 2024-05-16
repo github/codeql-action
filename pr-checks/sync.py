@@ -59,7 +59,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
     matrix = []
     for version in checkSpecification.get('versions', defaultTestVersions):
-        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
+        runnerImages = ["ubuntu-20.04", "macos-latest", "windows-latest"]
         if checkSpecification.get('operatingSystems', None):
             runnerImages = [image for image in runnerImages for operatingSystem in checkSpecification['operatingSystems']
                             if image.startswith(operatingSystem)]
@@ -72,7 +72,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
                     'os': "macos-12",
                     'version': version
                 })
-            else:     
+            else:
                 matrix.append({
                     'os': runnerImage,
                     'version': version

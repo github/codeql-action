@@ -28,19 +28,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: latest
           - os: macos-latest
             version: latest
           - os: windows-latest
             version: latest
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: default
           - os: macos-latest
             version: default
           - os: windows-latest
             version: default
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: nightly-latest
           - os: macos-latest
             version: nightly-latest

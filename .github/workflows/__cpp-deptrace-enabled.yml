@@ -28,11 +28,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: latest
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: default
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: nightly-latest
     name: 'C/C++: autoinstalling dependencies (Linux)'
     permissions:

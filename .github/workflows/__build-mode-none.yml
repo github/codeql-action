@@ -28,9 +28,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: latest
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: nightly-latest
     name: Build mode none
     permissions:

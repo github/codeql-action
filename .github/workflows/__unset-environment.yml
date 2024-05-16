@@ -28,21 +28,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: stable-20230403
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: stable-v2.13.5
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: stable-v2.14.6
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: stable-v2.15.5
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: stable-v2.16.6
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: default
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: latest
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             version: nightly-latest
     name: Test unsetting environment variables
     permissions:

@@ -28,21 +28,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: macos-12
             version: stable-20230403
-          - os: ubuntu-latest
+          - os: macos-12
             version: stable-v2.13.5
-          - os: ubuntu-latest
+          - os: macos-12
             version: stable-v2.14.6
-          - os: ubuntu-latest
+          - os: macos-latest
             version: stable-v2.15.5
-          - os: ubuntu-latest
+          - os: macos-latest
             version: stable-v2.16.6
-          - os: ubuntu-latest
+          - os: macos-latest
             version: default
-          - os: ubuntu-latest
+          - os: macos-latest
             version: latest
-          - os: ubuntu-latest
+          - os: macos-latest
             version: nightly-latest
     name: Test unsetting environment variables
     permissions:

@@ -1,6 +1,6 @@
 name: "Test unsetting environment variables"
 description: "An end-to-end integration test that unsets some environment variables"
-operatingSystems: ["ubuntu"]
+operatingSystems: ["macos"] # TODO: Switch back to ubuntu for `nightly-latest` and `latest` once CLI v2.17.4 is available.
 steps:
   - uses: ./../action/init
     id: init

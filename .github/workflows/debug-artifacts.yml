@@ -37,7 +37,7 @@ jobs:
     env:
       CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
-    runs-on: ubuntu-latest
+    runs-on: macos-latest # TODO: Switch back to ubuntu for `nightly-latest` and `latest` once CLI v2.17.4 is available.
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

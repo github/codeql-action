@@ -46,7 +46,6 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   AutobuildDirectTracing = "autobuild_direct_tracing",
-  CombineSarifFilesDeprecationWarning = "combine_sarif_files_deprecation_warning_enabled",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
@@ -91,13 +90,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.TraceCommandUseBuildMode,
-  },
-  [Feature.CombineSarifFilesDeprecationWarning]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_COMBINE_SARIF_FILES_DEPRECATION_WARNING",
-    legacyApi: true,
-    // Independent of the CLI version.
-    minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {
     defaultValue: false,

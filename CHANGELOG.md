@@ -4,10 +4,15 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
+## 2.25.6 - 20 May 2024
+
+- Update default CodeQL bundle version to 2.17.3. [#2295](https://github.com/github/codeql-action/pull/2295)
+
 ## 2.25.5 - 13 May 2024
 
 - Add a compatibility matrix of supported CodeQL Action, CodeQL CLI, and GitHub Enterprise Server versions to the [README.md](README.md). [#2273](https://github.com/github/codeql-action/pull/2273)
 - Avoid printing out a warning for a missing `on.push` trigger when the CodeQL Action is triggered via a `workflow_call` event. [#2274](https://github.com/github/codeql-action/pull/2274)
+- The `tools: latest` input to the `init` Action has been renamed to `tools: linked`. This option specifies that the Action should use the tools shipped at the same time as the Action. The old name will continue to work for backwards compatibility, but we recommend that new workflows use the new name. [#2281](https://github.com/github/codeql-action/pull/2281)
 
 ## 2.25.4 - 08 May 2024
 

@@ -4,7 +4,6 @@
 /**
  * Returns a function that will invoke the supplied function and print a
  * deprecation warning to the console each time it is called.
- *
  * @param  {Function} func
  * @param  {string} msg
  * @returns {Function}
@@ -23,7 +22,6 @@ exports.wrap = function (func, msg) {
 /**
  * Returns a string which can be supplied to `wrap()` to notify the user that a
  * particular part of the sinon API has been deprecated.
- *
  * @param  {string} packageName
  * @param  {string} funcName
  * @returns {string}
@@ -34,7 +32,6 @@ exports.defaultMsg = function (packageName, funcName) {
 
 /**
  * Prints a warning on the console, when it exists
- *
  * @param  {string} msg
  * @returns {undefined}
  */

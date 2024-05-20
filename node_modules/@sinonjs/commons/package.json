@@ -1,6 +1,6 @@
 {
   "name": "@sinonjs/commons",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Simple functions shared among the sinon end user libraries",
   "main": "lib/index.js",
   "types": "./types/index.d.ts",

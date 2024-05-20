@@ -1,6 +1,7 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
-operatingSystems: ["ubuntu", "macos"]
+# TODO: Add ubuntu back for `nightly-latest` and `latest` once CLI v2.17.4 is available.
+operatingSystems: ["macos"] 
 steps:
   - uses: actions/setup-go@v5
     with:

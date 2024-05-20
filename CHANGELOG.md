@@ -8,6 +8,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 3.25.6 - 20 May 2024
+
+- Update default CodeQL bundle version to 2.17.3. [#2295](https://github.com/github/codeql-action/pull/2295)
+
 ## 3.25.5 - 13 May 2024
 
 - Add a compatibility matrix of supported CodeQL Action, CodeQL CLI, and GitHub Enterprise Server versions to the [README.md](README.md). [#2273](https://github.com/github/codeql-action/pull/2273)

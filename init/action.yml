@@ -36,10 +36,7 @@ inputs:
       - `none`:      The database will be created without building the source code.
                      Available for all interpreted languages and some compiled languages.
       - `autobuild`: The database will be created by attempting to automatically build the source
-                     code.
-                     To use this build mode, ensure that your workflow calls the `autobuild` action
-                     between the `init` and `analyze` steps.
-                     Available for all compiled languages.
+                     code. Available for all compiled languages.
       - `manual`:   The database will be created by building the source code using a manually
                      specified build command. To use this build mode, specify manual build steps in
                      your workflow between the `init` and `analyze` steps. Available for all

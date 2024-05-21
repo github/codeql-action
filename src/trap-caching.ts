@@ -167,7 +167,7 @@ export async function cleanupTrapCaches(config: Config, logger: Logger) {
   try {
     for (const language of config.languages) {
       if (config.trapCaches[language]) {
-        const matchingCaches = await getTrapCachesForLanguage(language);
+        const matchingCaches = await getTrapCachesForLanguage(language, logger);
         for (const cache of matchingCaches) {
           logger.info(`Matched Actions cache ${JSON.stringify(cache)}`);
         }
@@ -180,10 +180,12 @@ export async function cleanupTrapCaches(config: Config, logger: Logger) {
 
 async function getTrapCachesForLanguage(
   language: Language,
+  logger: Logger,
 ): Promise<apiClient.ActionsCacheItem[]> {
   const allCaches = await apiClient.listActionsCaches(
     CODEQL_TRAP_CACHE_PREFIX,
     await actionsUtil.getRef(),
+    logger,
   );
 
   return allCaches.filter((cache) => {

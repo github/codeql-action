@@ -4,6 +4,7 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
+import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   ConfigurationError,
@@ -204,10 +205,13 @@ export interface ActionsCacheItem {
 export async function listActionsCaches(
   key: string,
   ref: string,
+  logger: Logger,
 ): Promise<ActionsCacheItem[]> {
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY"),
   );
+
+  logger.debug(`Retrieving Actions caches for key ${key} and ref ${ref}`);
 
   const apiClient = getApiClient();
   return await apiClient.paginate(

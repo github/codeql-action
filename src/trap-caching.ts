@@ -161,25 +161,35 @@ export async function uploadTrapCaches(
   return true;
 }
 
-export async function cleanupTrapCaches(logger: Logger) {
+export async function cleanupTrapCaches(language: Language, logger: Logger) {
+  try {
+    const matchingCaches = await getTrapCachesForLanguage(language);
+    for (const cache of matchingCaches) {
+      logger.info(`Matched Actions cache ${JSON.stringify(cache)}`);
+    }
+  } catch (e) {
+    logger.info(`Failed to cleanup trap caches, continuing. Details: ${e}`);
+  }
+}
+
+async function getTrapCachesForLanguage(
+  language: Language,
+): Promise<apiClient.ActionsCacheItem[]> {
   const event = actionsUtil.getWorkflowEvent();
   const defaultBranch = event?.repository?.default_branch as string | undefined;
 
   if (!defaultBranch) {
-    logger.info(
-      "Could not determine default branch, skipping TRAP cache cleanup",
-    );
-    return;
+    throw new Error("Could not determine default branch");
   }
 
-  const matchingCaches = await apiClient.listActionsCaches(
+  const allCaches = await apiClient.listActionsCaches(
     CODEQL_TRAP_CACHE_PREFIX,
     defaultBranch,
   );
 
-  for (const cache of matchingCaches) {
-    logger.info(`Matched Actions cache ${JSON.stringify(cache)}`);
-  }
+  return allCaches.filter((cache) => {
+    return cache.key?.includes(`-${language}-`);
+  });
 }
 
 export async function getLanguagesSupportingCaching(

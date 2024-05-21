@@ -161,11 +161,17 @@ export async function uploadTrapCaches(
   return true;
 }
 
-export async function cleanupTrapCaches(language: Language, logger: Logger) {
+export async function cleanupTrapCaches(config: Config, logger: Logger) {
+  if (!(await actionsUtil.isAnalyzingDefaultBranch())) return;
+
   try {
-    const matchingCaches = await getTrapCachesForLanguage(language);
-    for (const cache of matchingCaches) {
-      logger.info(`Matched Actions cache ${JSON.stringify(cache)}`);
+    for (const language of config.languages) {
+      if (config.trapCaches[language]) {
+        const matchingCaches = await getTrapCachesForLanguage(language);
+        for (const cache of matchingCaches) {
+          logger.info(`Matched Actions cache ${JSON.stringify(cache)}`);
+        }
+      }
     }
   } catch (e) {
     logger.info(`Failed to cleanup trap caches, continuing. Details: ${e}`);

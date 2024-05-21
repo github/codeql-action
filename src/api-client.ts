@@ -196,8 +196,15 @@ export function computeAutomationID(
   return automationID;
 }
 
+export interface ActionsCacheItem {
+  key?: string | undefined;
+}
+
 /** List all Actions cache entries matching the provided key and ref. */
-export async function listActionsCaches(key: string, ref: string) {
+export async function listActionsCaches(
+  key: string,
+  ref: string,
+): Promise<ActionsCacheItem[]> {
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY"),
   );

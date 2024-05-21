@@ -1,9 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as cache from "@actions/cache";
+import * as actionsCache from "@actions/cache";
 
 import * as actionsUtil from "./actions-util";
+import * as apiClient from "./api-client";
 import { CodeQL } from "./codeql";
 import type { Config } from "./config-utils";
 import { Language } from "./languages";
@@ -16,6 +17,8 @@ import { tryGetFolderBytes, withTimeout } from "./util";
 // this for CLI/extractor changes, since the CLI version also
 // goes into the cache key.
 const CACHE_VERSION = 1;
+
+const CODEQL_TRAP_CACHE_PREFIX = "codeql-trap";
 
 // This constant sets the minimum size in megabytes of a TRAP
 // cache for us to consider it worth uploading.
@@ -87,7 +90,7 @@ export async function downloadTrapCaches(
     );
     const found = await withTimeout(
       MAX_CACHE_OPERATION_MS,
-      cache.restoreCache([cacheDir], preferredKey, [
+      actionsCache.restoreCache([cacheDir], preferredKey, [
         // Fall back to any cache with the right key prefix
         await cachePrefix(codeql, language),
       ]),
@@ -147,7 +150,7 @@ export async function uploadTrapCaches(
     logger.info(`Uploading TRAP cache to Actions cache with key ${key}`);
     await withTimeout(
       MAX_CACHE_OPERATION_MS,
-      cache.saveCache([cacheDir], key),
+      actionsCache.saveCache([cacheDir], key),
       () => {
         logger.info(
           `Timed out waiting for TRAP cache for ${language} to upload, will continue without uploading`,
@@ -156,6 +159,27 @@ export async function uploadTrapCaches(
     );
   }
   return true;
+}
+
+export async function cleanupTrapCaches(logger: Logger) {
+  const event = actionsUtil.getWorkflowEvent();
+  const defaultBranch = event?.repository?.default_branch as string | undefined;
+
+  if (!defaultBranch) {
+    logger.info(
+      "Could not determine default branch, skipping TRAP cache cleanup",
+    );
+    return;
+  }
+
+  const matchingCaches = await apiClient.listActionsCaches(
+    CODEQL_TRAP_CACHE_PREFIX,
+    defaultBranch,
+  );
+
+  for (const cache of matchingCaches) {
+    logger.info(`Matched Actions cache ${JSON.stringify(cache)}`);
+  }
 }
 
 export async function getLanguagesSupportingCaching(
@@ -225,7 +249,7 @@ async function cachePrefix(
   codeql: CodeQL,
   language: Language,
 ): Promise<string> {
-  return `codeql-trap-${CACHE_VERSION}-${
+  return `${CODEQL_TRAP_CACHE_PREFIX}-${CACHE_VERSION}-${
     (await codeql.getVersion()).version
   }-${language}-`;
 }

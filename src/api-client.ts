@@ -4,6 +4,7 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
+import { parseRepositoryNwo } from "./repository";
 import {
   ConfigurationError,
   getRequiredEnvParam,
@@ -193,6 +194,20 @@ export function computeAutomationID(
   }
 
   return automationID;
+}
+
+/** List all Actions cache entries matching the provided key and ref. */
+export async function listActionsCaches(key: string, ref: string) {
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+
+  const apiClient = getApiClient();
+  return await apiClient.paginate(
+    "GET /repos/{owner}/{repo}/actions/caches",
+    { owner: repositoryNwo.owner, repo: repositoryNwo.repo, key, ref },
+    (response) => response.data.actions_caches,
+  );
 }
 
 export function wrapApiConfigurationError(e: unknown) {

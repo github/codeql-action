@@ -214,11 +214,12 @@ export async function listActionsCaches(
   logger.debug(`Retrieving Actions caches for key ${key} and ref ${ref}`);
 
   const apiClient = getApiClient();
-  return await apiClient.paginate(
-    "GET /repos/{owner}/{repo}/actions/caches",
-    { owner: repositoryNwo.owner, repo: repositoryNwo.repo, key, ref },
-    (response) => response.data.actions_caches,
-  );
+  return await apiClient.paginate("GET /repos/{owner}/{repo}/actions/caches", {
+    owner: repositoryNwo.owner,
+    repo: repositoryNwo.repo,
+    key,
+    ref,
+  });
 }
 
 export function wrapApiConfigurationError(e: unknown) {

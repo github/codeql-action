@@ -7,6 +7,7 @@ import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
 import { CodeQL } from "./codeql";
 import type { Config } from "./config-utils";
+import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { tryGetFolderBytes, withTimeout } from "./util";
@@ -167,10 +168,45 @@ export async function cleanupTrapCaches(config: Config, logger: Logger) {
   try {
     for (const language of config.languages) {
       if (config.trapCaches[language]) {
-        const matchingCaches = await getTrapCachesForLanguage(language, logger);
-        for (const cache of matchingCaches) {
-          logger.info(`Matched Actions cache ${JSON.stringify(cache)}`);
+        const cachesToRemove = await getTrapCachesForLanguage(language, logger);
+        // Dates returned by the API are in ISO 8601 format, so we can sort them lexicographically
+        cachesToRemove.sort((a, b) => b.created_at.localeCompare(a.created_at));
+        // Keep the most recent cache
+        logger.debug(
+          `Keeping newest TRAP cache (${JSON.stringify(cachesToRemove[0])})`,
+        );
+        cachesToRemove.pop();
+        for (const cache of cachesToRemove) {
+          logger.debug(`Deleting old TRAP cache (${JSON.stringify(cache)})`);
+          await apiClient.deleteActionsCache(cache.id);
         }
+        const totalBytesCleanedUp = cachesToRemove.reduce(
+          (acc, item) => acc + item.size_in_bytes,
+          0,
+        );
+        const totalMegabytesCleanedUp = (
+          totalBytesCleanedUp /
+          (1024 * 1024)
+        ).toFixed(2);
+        const message = `Cleaned up ${totalMegabytesCleanedUp} MiB of old TRAP caches for ${language}.`;
+        logger.info(message);
+        addDiagnostic(
+          config,
+          language,
+          makeDiagnostic(
+            "codeql-action/trap-caching/cleanup",
+            "TRAP caching cleanup statistics",
+            {
+              attributes: {
+                totalBytesCleanedUp,
+              },
+              plaintextMessage: message,
+              visibility: {
+                telemetry: true,
+              },
+            },
+          ),
+        );
       }
     }
   } catch (e) {
@@ -181,16 +217,25 @@ export async function cleanupTrapCaches(config: Config, logger: Logger) {
 async function getTrapCachesForLanguage(
   language: Language,
   logger: Logger,
-): Promise<apiClient.ActionsCacheItem[]> {
+): Promise<Array<Required<apiClient.ActionsCacheItem>>> {
+  logger.debug(`Listing TRAP caches for ${language}`);
   const allCaches = await apiClient.listActionsCaches(
     CODEQL_TRAP_CACHE_PREFIX,
     await actionsUtil.getRef(),
-    logger,
   );
+
+  for (const cache of allCaches) {
+    if (!cache.created_at || !cache.id || !cache.key || !cache.size_in_bytes) {
+      throw new Error(
+        "An unexpected cache item was returned from the API that was missing one or " +
+          `more required fields: ${JSON.stringify(cache)}`,
+      );
+    }
+  }
 
   return allCaches.filter((cache) => {
     return cache.key?.includes(`-${language}-`);
-  });
+  }) as Array<Required<apiClient.ActionsCacheItem>>;
 }
 
 export async function getLanguagesSupportingCaching(

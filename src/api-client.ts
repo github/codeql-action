@@ -4,7 +4,6 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   ConfigurationError,
@@ -198,27 +197,42 @@ export function computeAutomationID(
 }
 
 export interface ActionsCacheItem {
-  key?: string | undefined;
+  created_at?: string;
+  id?: number;
+  key?: string;
+  size_in_bytes?: number;
 }
 
 /** List all Actions cache entries matching the provided key and ref. */
 export async function listActionsCaches(
   key: string,
   ref: string,
-  logger: Logger,
 ): Promise<ActionsCacheItem[]> {
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY"),
   );
 
-  logger.debug(`Retrieving Actions caches for key ${key} and ref ${ref}`);
+  return await getApiClient().paginate(
+    "GET /repos/{owner}/{repo}/actions/caches",
+    {
+      owner: repositoryNwo.owner,
+      repo: repositoryNwo.repo,
+      key,
+      ref,
+    },
+  );
+}
 
-  const apiClient = getApiClient();
-  return await apiClient.paginate("GET /repos/{owner}/{repo}/actions/caches", {
+/** Delete an Actions cache item by its ID. */
+export async function deleteActionsCache(id: number) {
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+
+  await getApiClient().rest.actions.deleteActionsCacheById({
     owner: repositoryNwo.owner,
     repo: repositoryNwo.repo,
-    key,
-    ref,
+    cache_id: id,
   });
 }
 

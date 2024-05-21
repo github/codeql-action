@@ -32,7 +32,11 @@ import {
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
-import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
+import {
+  cleanupTrapCaches,
+  getTotalCacheSize,
+  uploadTrapCaches,
+} from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
@@ -310,6 +314,9 @@ async function run() {
     const trapCacheUploadStartTime = performance.now();
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
+
+    // Clean up TRAP caches
+    await cleanupTrapCaches(config, logger);
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {

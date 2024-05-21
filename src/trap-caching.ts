@@ -175,16 +175,9 @@ export async function cleanupTrapCaches(language: Language, logger: Logger) {
 async function getTrapCachesForLanguage(
   language: Language,
 ): Promise<apiClient.ActionsCacheItem[]> {
-  const event = actionsUtil.getWorkflowEvent();
-  const defaultBranch = event?.repository?.default_branch as string | undefined;
-
-  if (!defaultBranch) {
-    throw new Error("Could not determine default branch");
-  }
-
   const allCaches = await apiClient.listActionsCaches(
     CODEQL_TRAP_CACHE_PREFIX,
-    defaultBranch,
+    await actionsUtil.getRef(),
   );
 
   return allCaches.filter((cache) => {

@@ -143,6 +143,8 @@ export interface StatusReportBase {
   started_at: string;
   /** State this action is currently in. */
   status: ActionStatus;
+  /** Whether this run is part of a steady-state, and not new, default setup run. */
+  steady_state_default_setup: boolean;
   /**
    * Testing environment: Set if non-production environment.
    * The server accepts one of the following values:
@@ -270,6 +272,8 @@ export async function createStatusReportBase(
     if (testingEnvironment !== "") {
       core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
     }
+    const isSteadyStateDefaultSetupRun =
+      process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";
 
     const statusReport: StatusReportBase = {
       action_name: actionName,
@@ -287,6 +291,7 @@ export async function createStatusReportBase(
       runner_os: runnerOs,
       started_at: workflowStartedAt,
       status,
+      steady_state_default_setup: isSteadyStateDefaultSetupRun,
       testing_environment: testingEnvironment,
       workflow_name: workflowName,
       workflow_run_attempt: workflowRunAttempt,

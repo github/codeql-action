@@ -9,7 +9,7 @@ import { CodeQL } from "./codeql";
 import type { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { isHTTPError, tryGetFolderBytes, withTimeout } from "./util";
+import { isHTTPError, tryGetFolderBytes, withTimeout, wrapError } from "./util";
 
 // This constant should be bumped if we make a breaking change
 // to how the CodeQL Action stores or retrieves the TRAP cache,
@@ -161,10 +161,24 @@ export async function uploadTrapCaches(
   return true;
 }
 
-export async function cleanupTrapCaches(config: Config, logger: Logger) {
-  if (!(await actionsUtil.isAnalyzingDefaultBranch())) return;
+export interface TrapCacheCleanupStatusReport {
+  trap_cache_cleanup_error?: string;
+  trap_cache_cleanup_size_bytes?: number;
+  trap_cache_cleanup_skipped_because?: string;
+}
+
+export async function cleanupTrapCaches(
+  config: Config,
+  logger: Logger,
+): Promise<TrapCacheCleanupStatusReport> {
+  if (!(await actionsUtil.isAnalyzingDefaultBranch())) {
+    return {
+      trap_cache_cleanup_skipped_because: "not analyzing default branch",
+    };
+  }
 
   try {
+    let totalBytesCleanedUp = 0;
     for (const language of config.languages) {
       if (config.trapCaches[language]) {
         const cachesToRemove = await getTrapCachesForLanguage(language, logger);
@@ -179,19 +193,18 @@ export async function cleanupTrapCaches(config: Config, logger: Logger) {
           logger.debug(`Deleting old TRAP cache (${JSON.stringify(cache)})`);
           await apiClient.deleteActionsCache(cache.id);
         }
-        const totalBytesCleanedUp = cachesToRemove.reduce(
+        const bytesCleanedUp = cachesToRemove.reduce(
           (acc, item) => acc + item.size_in_bytes,
           0,
         );
-        const totalMegabytesCleanedUp = (
-          totalBytesCleanedUp /
-          (1024 * 1024)
-        ).toFixed(2);
+        totalBytesCleanedUp += bytesCleanedUp;
+        const megabytesCleanedUp = (bytesCleanedUp / (1024 * 1024)).toFixed(2);
         logger.info(
-          `Cleaned up ${totalMegabytesCleanedUp} MiB of old TRAP caches for ${language}.`,
+          `Cleaned up ${megabytesCleanedUp} MiB of old TRAP caches for ${language}.`,
         );
       }
     }
+    return { trap_cache_cleanup_size_bytes: totalBytesCleanedUp };
   } catch (e) {
     if (isHTTPError(e) && e.status === 403) {
       logger.warning(
@@ -202,6 +215,7 @@ export async function cleanupTrapCaches(config: Config, logger: Logger) {
     } else {
       logger.info(`Failed to cleanup TRAP caches, continuing. Details: ${e}`);
     }
+    return { trap_cache_cleanup_error: wrapError(e).message };
   }
 }
 

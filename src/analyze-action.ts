@@ -35,6 +35,7 @@ import {
 import {
   cleanupTrapCaches,
   getTotalCacheSize,
+  TrapCacheCleanupStatusReport,
   uploadTrapCaches,
 } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
@@ -65,6 +66,7 @@ async function sendStatusReport(
   trapCacheUploadTime: number | undefined,
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
+  trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   logger: Logger,
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
@@ -83,6 +85,7 @@ async function sendStatusReport(
       ...statusReportBase,
       ...(stats || {}),
       ...(dbCreationTimings || {}),
+      ...(trapCacheCleanup || {}),
     };
     if (config && didUploadTrapCaches) {
       const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
@@ -193,6 +196,8 @@ async function run() {
   let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
+    undefined;
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
@@ -316,7 +321,7 @@ async function run() {
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 
     // Clean up TRAP caches
-    await cleanupTrapCaches(config, logger);
+    trapCacheCleanupTelemetry = await cleanupTrapCaches(config, logger);
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
@@ -357,6 +362,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
+        trapCacheCleanupTelemetry,
         logger,
       );
     } else {
@@ -368,6 +374,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
+        trapCacheCleanupTelemetry,
         logger,
       );
     }
@@ -387,6 +394,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   } else if (runStats) {
@@ -398,6 +406,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   } else {
@@ -409,6 +418,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   }

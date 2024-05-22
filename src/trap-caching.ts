@@ -7,10 +7,9 @@ import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
 import { CodeQL } from "./codeql";
 import type { Config } from "./config-utils";
-import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { tryGetFolderBytes, withTimeout } from "./util";
+import { isHTTPError, tryGetFolderBytes, withTimeout } from "./util";
 
 // This constant should be bumped if we make a breaking change
 // to how the CodeQL Action stores or retrieves the TRAP cache,
@@ -170,12 +169,12 @@ export async function cleanupTrapCaches(config: Config, logger: Logger) {
       if (config.trapCaches[language]) {
         const cachesToRemove = await getTrapCachesForLanguage(language, logger);
         // Dates returned by the API are in ISO 8601 format, so we can sort them lexicographically
-        cachesToRemove.sort((a, b) => b.created_at.localeCompare(a.created_at));
+        cachesToRemove.sort((a, b) => a.created_at.localeCompare(b.created_at));
         // Keep the most recent cache
+        const mostRecentCache = cachesToRemove.pop();
         logger.debug(
-          `Keeping newest TRAP cache (${JSON.stringify(cachesToRemove[0])})`,
+          `Keeping most recent TRAP cache (${JSON.stringify(mostRecentCache)})`,
         );
-        cachesToRemove.pop();
         for (const cache of cachesToRemove) {
           logger.debug(`Deleting old TRAP cache (${JSON.stringify(cache)})`);
           await apiClient.deleteActionsCache(cache.id);
@@ -188,29 +187,21 @@ export async function cleanupTrapCaches(config: Config, logger: Logger) {
           totalBytesCleanedUp /
           (1024 * 1024)
         ).toFixed(2);
-        const message = `Cleaned up ${totalMegabytesCleanedUp} MiB of old TRAP caches for ${language}.`;
-        logger.info(message);
-        addDiagnostic(
-          config,
-          language,
-          makeDiagnostic(
-            "codeql-action/trap-caching/cleanup",
-            "TRAP caching cleanup statistics",
-            {
-              attributes: {
-                totalBytesCleanedUp,
-              },
-              plaintextMessage: message,
-              visibility: {
-                telemetry: true,
-              },
-            },
-          ),
+        logger.info(
+          `Cleaned up ${totalMegabytesCleanedUp} MiB of old TRAP caches for ${language}.`,
         );
       }
     }
   } catch (e) {
-    logger.info(`Failed to cleanup trap caches, continuing. Details: ${e}`);
+    if (isHTTPError(e) && e.status === 403) {
+      logger.warning(
+        "Could not cleanup TRAP caches as the token did not have the required permissions. " +
+          'To clean up TRAP caches, ensure the token has the "actions:write" permission. ' +
+          "For more information, see https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs",
+      );
+    } else {
+      logger.info(`Failed to cleanup TRAP caches, continuing. Details: ${e}`);
+    }
   }
 }
 

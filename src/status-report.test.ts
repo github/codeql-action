@@ -75,6 +75,7 @@ test("createStatusReportBase", async (t) => {
       t.is(statusReport.runner_os, process.env["RUNNER_OS"]!);
       t.is(statusReport.started_at, process.env[EnvVar.WORKFLOW_STARTED_AT]!);
       t.is(statusReport.status, "failure");
+      t.is(statusReport.steady_state_default_setup, false);
       t.is(statusReport.workflow_name, process.env["GITHUB_WORKFLOW"] || "");
       t.is(statusReport.workflow_run_attempt, 2);
       t.is(statusReport.workflow_run_id, 100);

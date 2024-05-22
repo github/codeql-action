@@ -321,7 +321,11 @@ async function run() {
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 
     // Clean up TRAP caches
-    trapCacheCleanupTelemetry = await cleanupTrapCaches(config, logger);
+    trapCacheCleanupTelemetry = await cleanupTrapCaches(
+      config,
+      features,
+      logger,
+    );
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {

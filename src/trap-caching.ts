@@ -7,6 +7,7 @@ import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
 import { CodeQL } from "./codeql";
 import type { Config } from "./config-utils";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { isHTTPError, tryGetFolderBytes, withTimeout, wrapError } from "./util";
@@ -169,8 +170,14 @@ export interface TrapCacheCleanupStatusReport {
 
 export async function cleanupTrapCaches(
   config: Config,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<TrapCacheCleanupStatusReport> {
+  if (!(await features.getValue(Feature.CleanupTrapCaches))) {
+    return {
+      trap_cache_cleanup_skipped_because: "feature disabled",
+    };
+  }
   if (!(await actionsUtil.isAnalyzingDefaultBranch())) {
     return {
       trap_cache_cleanup_skipped_because: "not analyzing default branch",

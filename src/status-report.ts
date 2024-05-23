@@ -373,6 +373,7 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
 ): Promise<void> {
+  core.debug("Inside of sendsStatusReport");
   setJobStatusIfUnsuccessful(statusReport.status);
 
   const statusReportJSON = JSON.stringify(statusReport);
@@ -383,9 +384,13 @@ export async function sendStatusReport<S extends StatusReportBase>(
     return;
   }
 
+  core.debug("FOTIS WAS HERE");
+
   const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
   const [owner, repo] = nwo.split("/");
   const client = getApiClient();
+
+  core.debug("FOTIS WAS HERE 2");
 
   try {
     core.debug("Sending status report to code scanning endpoint.");

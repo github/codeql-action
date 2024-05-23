@@ -206,8 +206,14 @@ export async function cleanupTrapCaches(
         logger.debug(
           `Keeping most recent TRAP cache (${JSON.stringify(mostRecentCache)})`,
         );
+
+        if (cachesToRemove.length === 0) {
+          logger.info(`No TRAP caches to clean up for ${language}.`);
+          continue;
+        }
+
         for (const cache of cachesToRemove) {
-          logger.debug(`Deleting old TRAP cache (${JSON.stringify(cache)})`);
+          logger.debug(`Cleaning up TRAP cache (${JSON.stringify(cache)})`);
           await apiClient.deleteActionsCache(cache.id);
         }
         const bytesCleanedUp = cachesToRemove.reduce(

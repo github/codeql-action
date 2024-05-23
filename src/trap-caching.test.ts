@@ -6,20 +6,25 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import * as apiClient from "./api-client";
 import {
   setCodeQL,
   getTrapCachingExtractorConfigArgs,
   getTrapCachingExtractorConfigArgsForLang,
 } from "./codeql";
 import * as configUtils from "./config-utils";
+import { Feature } from "./feature-flags";
 import { Language } from "./languages";
+import { getRunnerLogger } from "./logging";
 import {
+  createFeatures,
   createTestConfig,
   getRecordingLogger,
   makeVersionInfo,
   setupTests,
 } from "./testing-utils";
 import {
+  cleanupTrapCaches,
   downloadTrapCaches,
   getLanguagesSupportingCaching,
   uploadTrapCaches,
@@ -187,5 +192,77 @@ test("download cache looks for the right key and creates dir", async (t) => {
       ),
     );
     t.assert(fs.existsSync(path.resolve(tmpDir, "trapCaches", "javascript")));
+  });
+});
+
+test("cleanup removes only old CodeQL TRAP caches", async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    const config = getTestConfigWithTempDir(tmpDir);
+
+    sinon.stub(actionsUtil, "getRef").resolves("refs/heads/main");
+    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+    const listStub = sinon.stub(apiClient, "listActionsCaches").resolves([
+      {
+        id: 1,
+        key: "some-other-key",
+        created_at: "2024-05-23T14:25:00Z",
+        size_in_bytes: 100 * 1024 * 1024,
+      },
+      {
+        id: 2,
+        key: "codeql-trap-1-2.0.0-javascript-newest",
+        created_at: "2024-04-23T14:25:00Z",
+        size_in_bytes: 50 * 1024 * 1024,
+      },
+      {
+        id: 3,
+        key: "codeql-trap-1-2.0.0-javascript-older",
+        created_at: "2024-03-22T14:25:00Z",
+        size_in_bytes: 200 * 1024 * 1024,
+      },
+      {
+        id: 4,
+        key: "codeql-trap-1-2.0.0-javascript-oldest",
+        created_at: "2024-02-21T14:25:00Z",
+        size_in_bytes: 300 * 1024 * 1024,
+      },
+      {
+        id: 5,
+        key: "codeql-trap-1-2.0.0-ruby-newest",
+        created_at: "2024-02-20T14:25:00Z",
+        size_in_bytes: 300 * 1024 * 1024,
+      },
+      {
+        id: 6,
+        key: "codeql-trap-1-2.0.0-swift-newest",
+        created_at: "2024-02-22T14:25:00Z",
+        size_in_bytes: 300 * 1024 * 1024,
+      },
+      {
+        id: 7,
+        key: "codeql-trap-1-2.0.0-swift-older",
+        created_at: "2024-02-21T14:25:00Z",
+        size_in_bytes: 300 * 1024 * 1024,
+      },
+    ]);
+
+    const deleteStub = sinon.stub(apiClient, "deleteActionsCache").resolves();
+
+    const statusReport = await cleanupTrapCaches(
+      config,
+      createFeatures([Feature.CleanupTrapCaches]),
+      getRunnerLogger(true),
+    );
+
+    t.is(listStub.callCount, 1);
+    t.assert(listStub.calledWithExactly("codeql-trap", "refs/heads/main"));
+
+    t.deepEqual(statusReport, {
+      trap_cache_cleanup_size_bytes: 500 * 1024 * 1024,
+    });
+
+    t.is(deleteStub.callCount, 2);
+    t.assert(deleteStub.calledWithExactly(3));
+    t.assert(deleteStub.calledWithExactly(4));
   });
 });

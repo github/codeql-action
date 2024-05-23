@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- We are rolling out a feature in May/June 2024 that will reduce the Actions cache usage of the Action by keeping only the newest TRAP cache for each language. [#2306](https://github.com/github/codeql-action/pull/2306)
 
 ## 3.25.6 - 20 May 2024
 

@@ -186,9 +186,19 @@ export async function cleanupTrapCaches(
 
   try {
     let totalBytesCleanedUp = 0;
+
+    const allCaches = await apiClient.listActionsCaches(
+      CODEQL_TRAP_CACHE_PREFIX,
+      await actionsUtil.getRef(),
+    );
+
     for (const language of config.languages) {
       if (config.trapCaches[language]) {
-        const cachesToRemove = await getTrapCachesForLanguage(language, logger);
+        const cachesToRemove = await getTrapCachesForLanguage(
+          allCaches,
+          language,
+          logger,
+        );
         // Dates returned by the API are in ISO 8601 format, so we can sort them lexicographically
         cachesToRemove.sort((a, b) => a.created_at.localeCompare(b.created_at));
         // Keep the most recent cache
@@ -227,14 +237,11 @@ export async function cleanupTrapCaches(
 }
 
 async function getTrapCachesForLanguage(
+  allCaches: apiClient.ActionsCacheItem[],
   language: Language,
   logger: Logger,
 ): Promise<Array<Required<apiClient.ActionsCacheItem>>> {
   logger.debug(`Listing TRAP caches for ${language}`);
-  const allCaches = await apiClient.listActionsCaches(
-    CODEQL_TRAP_CACHE_PREFIX,
-    await actionsUtil.getRef(),
-  );
 
   for (const cache of allCaches) {
     if (!cache.created_at || !cache.id || !cache.key || !cache.size_in_bytes) {

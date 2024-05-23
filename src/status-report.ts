@@ -388,6 +388,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
   const client = getApiClient();
 
   try {
+    core.debug("Sending status report to code scanning endpoint.");
     await client.request(
       "PUT /repos/:owner/:repo/code-scanning/analysis/status",
       {
@@ -396,7 +397,9 @@ export async function sendStatusReport<S extends StatusReportBase>(
         data: statusReportJSON,
       },
     );
+    core.debug("Successfully completed sending of report to code scanning endpoint.");
   } catch (e) {
+    core.debug("Failed to send status report to code scanning endpoint.");
     console.log(e);
     if (isHTTPError(e)) {
       switch (e.status) {

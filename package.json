@@ -69,7 +69,7 @@
     "eslint-plugin-github": "^4.10.2",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "micromatch": "4.0.5",
+    "micromatch": "4.0.7",
     "nock": "^13.5.4",
     "removeNPMAbsolutePaths": "3.0.1",
     "sinon": "^18.0.0",

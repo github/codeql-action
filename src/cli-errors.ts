@@ -135,6 +135,7 @@ export enum CliConfigErrorCategory {
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
   OutOfMemoryOrDisk = "OutOfMemoryOrDisk",
   PackCannotBeFound = "PackCannotBeFound",
+  PackMissingAuth = "PackMissingAuth",
   SwiftBuildFailed = "SwiftBuildFailed",
   UnsupportedBuildMode = "UnsupportedBuildMode",
 }
@@ -241,6 +242,14 @@ export const cliErrorsConfig: Record<
     cliErrorMessageCandidates: [
       new RegExp(
         "Query pack .* cannot be found\\. Check the spelling of the pack\\.",
+      ),
+    ],
+  },
+  [CliConfigErrorCategory.PackMissingAuth]: {
+    cliErrorMessageCandidates: [
+      new RegExp("GitHub Container registry .* 403 Forbidden"),
+      new RegExp(
+        "Do you need to specify a token to authenticate to the registry?",
       ),
     ],
   },

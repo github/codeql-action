@@ -1,7 +1,7 @@
 name: "Autobuild direct tracing"
 description: "An end-to-end integration test of a Java repository built using 'build-mode: autobuild', with direct tracing enabled"
 operatingSystems: ["ubuntu", "windows"]
-versions: ["latest", "nightly-latest"]
+versions: ["linked", "nightly-latest"]
 env:
   CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING: true
 steps:

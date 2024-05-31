@@ -32,13 +32,13 @@ jobs:
         - stable-v2.15.5
         - stable-v2.16.6
         - default
-        - latest
+        - linked
         - nightly-latest
     name: Upload debug artifacts
     env:
       CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
-    runs-on: macos-latest # TODO: Switch back to ubuntu for `nightly-latest` and `latest` once CLI v2.17.4 is available.
+    runs-on: macos-latest # TODO: Switch back to ubuntu for `nightly-latest` and `linked` once CLI v2.17.4 is available.
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-v2.15.5 stable-v2.16.6 default latest nightly-latest"
+          VERSIONS="stable-v2.15.5 stable-v2.16.6 default linked nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             pushd "./my-debug-artifacts-${version//./}"

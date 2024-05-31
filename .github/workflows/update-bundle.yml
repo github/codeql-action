@@ -54,7 +54,7 @@ jobs:
           cli_version=$(jq -r '.cliVersion' src/defaults.json)
           pr_url=$(gh pr create \
             --title "Update default bundle to $cli_version" \
-            --body "This pull request updates the default CodeQL bundle, as used with \`tools: latest\` and on GHES, to $cli_version." \
+            --body "This pull request updates the default CodeQL bundle, as used with \`tools: linked\` and on GHES, to $cli_version." \
             --assignee "$GITHUB_ACTOR" \
             --draft \
           )

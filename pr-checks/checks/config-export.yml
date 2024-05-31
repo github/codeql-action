@@ -1,6 +1,6 @@
 name: "Config export"
 description: "Tests that the code scanning configuration file is exported to SARIF correctly."
-versions: ["latest", "nightly-latest"]
+versions: ["linked", "nightly-latest"]
 steps:
   - uses: ./../action/init
     with:

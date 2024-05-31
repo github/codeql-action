@@ -1,6 +1,6 @@
 name: "Language aliases"
 description: "Tests that language aliases are resolved correctly"
-versions: ["latest"]
+versions: ["linked"]
 operatingSystems: ["ubuntu"]
 steps:
   - uses: ./../action/init

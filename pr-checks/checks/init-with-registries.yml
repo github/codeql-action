@@ -7,7 +7,7 @@ description: "Checks that specifying a registries block and associated auth work
 versions: [
     # This feature is not compatible with older CLIs
     "default",
-    "latest",
+    "linked",
     "nightly-latest",
 ]
 

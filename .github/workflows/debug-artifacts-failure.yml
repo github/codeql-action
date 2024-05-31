@@ -37,7 +37,7 @@ jobs:
         id: prepare-test
         uses: ./.github/actions/prepare-test
         with:
-          version: latest
+          version: linked
       - uses: actions/setup-go@v5
         with:
           go-version: ^1.13.1

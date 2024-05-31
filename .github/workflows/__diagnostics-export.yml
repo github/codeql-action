@@ -35,11 +35,11 @@ jobs:
           - os: windows-latest
             version: stable-20230403
           - os: ubuntu-latest
-            version: latest
+            version: linked
           - os: macos-latest
-            version: latest
+            version: linked
           - os: windows-latest
-            version: latest
+            version: linked
           - os: ubuntu-latest
             version: nightly-latest
           - os: macos-latest

@@ -1,6 +1,6 @@
 name: "Swift analysis using a custom build command"
 description: "Tests creation of a Swift database using custom build"
-versions: ["latest", "default", "nightly-latest"]
+versions: ["linked", "default", "nightly-latest"]
 # TODO: Add ubuntu back for `nightly-latest` and `latest` once CLI v2.17.4 is available.
 operatingSystems: ["macos"] 
 env:

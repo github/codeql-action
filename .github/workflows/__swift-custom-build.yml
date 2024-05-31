@@ -29,7 +29,7 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            version: latest
+            version: linked
           - os: macos-latest
             version: default
           - os: macos-latest

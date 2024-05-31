@@ -25,9 +25,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-        - stable-20230403
-        - stable-v2.13.5
-        - stable-v2.14.6
+        # TODO: Once CLI v2.17.4 is available and the platform is switched back to ubuntu,
+        #       stable-20230403, stable-v2.13.5, and stable-v2.14.6 can be added back to this matrix,
+        #       and the VERSIONS variable in the bash script below. 
+        #       Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.
         - stable-v2.15.5
         - stable-v2.16.6
         - default
@@ -37,7 +38,7 @@ jobs:
     env:
       CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
-    runs-on: ubuntu-latest
+    runs-on: macos-latest # TODO: Switch back to ubuntu for `nightly-latest` and `latest` once CLI v2.17.4 is available.
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -75,7 +76,7 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20230403 stable-v2.13.5 stable-v2.14.6 stable-v2.15.5 stable-v2.16.6 default latest nightly-latest"
+          VERSIONS="stable-v2.15.5 stable-v2.16.6 default latest nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             pushd "./my-debug-artifacts-${version//./}"

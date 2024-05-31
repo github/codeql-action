@@ -46,6 +46,7 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   AutobuildDirectTracing = "autobuild_direct_tracing",
+  CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
@@ -90,6 +91,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.TraceCommandUseBuildMode,
+  },
+  [Feature.CleanupTrapCaches]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
+    minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {
     defaultValue: false,

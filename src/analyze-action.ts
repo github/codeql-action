@@ -32,7 +32,12 @@ import {
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
-import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
+import {
+  cleanupTrapCaches,
+  getTotalCacheSize,
+  TrapCacheCleanupStatusReport,
+  uploadTrapCaches,
+} from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
@@ -61,6 +66,7 @@ async function sendStatusReport(
   trapCacheUploadTime: number | undefined,
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
+  trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   logger: Logger,
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
@@ -79,6 +85,7 @@ async function sendStatusReport(
       ...statusReportBase,
       ...(stats || {}),
       ...(dbCreationTimings || {}),
+      ...(trapCacheCleanup || {}),
     };
     if (config && didUploadTrapCaches) {
       const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
@@ -189,6 +196,8 @@ async function run() {
   let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
+    undefined;
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
@@ -311,6 +320,13 @@ async function run() {
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 
+    // Clean up TRAP caches
+    trapCacheCleanupTelemetry = await cleanupTrapCaches(
+      config,
+      features,
+      logger,
+    );
+
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
       logger.debug("In test mode. Waiting for processing is disabled.");
@@ -350,6 +366,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
+        trapCacheCleanupTelemetry,
         logger,
       );
     } else {
@@ -361,6 +378,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
+        trapCacheCleanupTelemetry,
         logger,
       );
     }
@@ -380,6 +398,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   } else if (runStats) {
@@ -391,6 +410,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   } else {
@@ -402,6 +422,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   }

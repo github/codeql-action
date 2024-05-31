@@ -291,7 +291,7 @@ export function getRelativeScriptPath(): string {
 }
 
 /** Returns the contents of `GITHUB_EVENT_PATH` as a JSON object. */
-function getWorkflowEvent(): any {
+export function getWorkflowEvent(): any {
   const eventJsonFile = getRequiredEnvParam("GITHUB_EVENT_PATH");
   try {
     return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));

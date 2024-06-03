@@ -53,9 +53,9 @@ jobs:
           - os: macos-latest
             version: default
           - os: ubuntu-latest
-            version: latest
+            version: linked
           - os: macos-latest
-            version: latest
+            version: linked
           - os: ubuntu-latest
             version: nightly-latest
           - os: macos-latest

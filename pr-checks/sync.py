@@ -22,7 +22,7 @@ defaultTestVersions = [
     # The version of CodeQL shipped with the Action in `defaults.json`. During the release process
     # for a new CodeQL release, there will be a period of time during which this will be newer than
     # the default version on Dotcom.
-    "latest",
+    "linked",
     # A nightly build directly from the our private repo, built in the last 24 hours.
     "nightly-latest"
 ]

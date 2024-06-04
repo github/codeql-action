@@ -32,7 +32,7 @@ jobs:
     - name: Initialize CodeQL
       uses: ./../action/init
       with:
-        tools: latest
+        tools: linked
         languages: python
 
     - name: Analyze

@@ -27,7 +27,7 @@ jobs:
       id: prepare-test
       uses: ./.github/actions/prepare-test
       with:
-        version: latest
+        version: linked
 
     - name: Check SARIF for default queries with Single include, Single exclude
       uses: ./../action/.github/actions/query-filter-test

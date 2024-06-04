@@ -1,7 +1,7 @@
 name: "Split workflow"
 description: "Tests a split-up workflow in which we first build a database and later analyze it"
 operatingSystems: ["ubuntu", "macos"]
-versions: ["latest", "default", "nightly-latest"] # This feature is not compatible with old CLIs
+versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
 steps:
   - uses: ./../action/init
     with:

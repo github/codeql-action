@@ -7,6 +7,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - Avoid failing database creation if the database folder already exists and contains some unexpected files. [#2330](https://github.com/github/codeql-action/pull/2330)
+- The init Action will attempt to clean up the database cluster directory before creating a new database. This will help to avoid issues where the database cluster directory is left in an inconsistent state. [#2332](https://github.com/github/codeql-action/pull/2332)
 
 ## 3.25.8 - 04 Jun 2024
 

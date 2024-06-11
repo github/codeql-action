@@ -615,7 +615,9 @@ export async function getCodeQLForCmd(
       const overwriteFlag = isSupportedToolsFeature(
         await this.getVersion(),
         ToolsFeature.ForceOverwite,
-      ) ? "--force-overwrite" : "--overwrite";
+      )
+        ? "--force-overwrite"
+        : "--overwrite";
 
       await runTool(
         cmd,

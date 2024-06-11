@@ -1,7 +1,7 @@
 name: "Config input"
 description: "Tests specifying configuration using the config input"
 operatingSystems: ["ubuntu"]
-versions: ["latest"]
+versions: ["linked"]
 steps:
   - name: Copy queries into workspace
     run: |

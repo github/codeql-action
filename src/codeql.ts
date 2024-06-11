@@ -681,6 +681,8 @@ export async function getCodeQLForCmd(
           "database",
           "trace-command",
           "--use-build-mode",
+          "--working-dir",
+          process.cwd(),
           ...(await getTrapCachingExtractorConfigArgsForLang(config, language)),
           ...getExtractionVerbosityArguments(config.debugMode),
           ...getExtraOptionsFromEnv(["database", "trace-command"]),

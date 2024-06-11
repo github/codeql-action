@@ -49,6 +49,7 @@ export enum Feature {
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",
+  DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
@@ -108,6 +109,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_CPP_TRAP_CACHING",
     legacyApi: true,
     minimumVersion: "2.16.1",
+  },
+  [Feature.DisableCsharpBuildless]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_DISABLE_CSHARP_BUILDLESS",
+    minimumVersion: undefined,
   },
   [Feature.DisableJavaBuildlessEnabled]: {
     defaultValue: false,

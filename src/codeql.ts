@@ -612,12 +612,19 @@ export async function getCodeQLForCmd(
         extraArgs.push("--no-sublanguage-file-coverage");
       }
 
+      const overwriteFlag = isSupportedToolsFeature(
+        await this.getVersion(),
+        ToolsFeature.ForceOverwrite,
+      )
+        ? "--force-overwrite"
+        : "--overwrite";
+
       await runTool(
         cmd,
         [
           "database",
           "init",
-          "--overwrite",
+          overwriteFlag,
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,

@@ -1,3 +1,6 @@
+#!/bin/bash
+set -eu
+
 if [ "$1" != "update" && "$1" != "check-only" ]; then
     >&2 echo "Failed: Invalid argument. Must be 'update' or 'check-only'"
     exit 1

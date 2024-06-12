@@ -8,6 +8,7 @@ export enum ToolsFeature {
   SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",
   TraceCommandUseBuildMode = "traceCommandUseBuildMode",
   SarifMergeRunsFromEqualCategory = "sarifMergeRunsFromEqualCategory",
+  ForceOverwrite = "forceOverwrite",
 }
 
 /**

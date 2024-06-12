@@ -42,5 +42,13 @@ module.exports = {
         fieldset: ['radiogroup', 'presentation'],
       },
     ],
+    'jsx-a11y/no-redundant-roles': [
+      'error',
+      {
+        nav: ['navigation'], // default in eslint-plugin-jsx-a11y
+        tbody: ['rowgroup'],
+        thead: ['rowgroup'],
+      },
+    ],
   },
 }

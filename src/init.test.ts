@@ -108,6 +108,8 @@ for (const { runnerEnv, ErrorConstructor, message } of [
       );
       fs.writeFileSync(fileToCleanUp, "");
 
+      const rmSyncError = `Failed to clean up file ${fileToCleanUp}`;
+
       const messages: LoggedMessage[] = [];
       t.throws(
         () =>
@@ -115,10 +117,13 @@ for (const { runnerEnv, ErrorConstructor, message } of [
             createTestConfig({ dbLocation }),
             getRecordingLogger(messages),
             () => {
-              throw new Error("Failed to clean up");
+              throw new Error(rmSyncError);
             },
           ),
-        { instanceOf: ErrorConstructor, message: message(dbLocation) },
+        {
+          instanceOf: ErrorConstructor,
+          message: `${message(dbLocation)} Details: ${rmSyncError}`,
+        },
       );
 
       t.is(messages.length, 1);

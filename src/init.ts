@@ -210,13 +210,17 @@ export function cleanupDatabaseClusterDirectory(
       if (isSelfHostedRunner()) {
         throw new util.ConfigurationError(
           `${blurb} This can happen if another process is using the directory or the directory is owned by a different user. ` +
-            "Please clean up the directory manually and rerun the job.",
+            `Please clean up the directory manually and rerun the job. Details: ${
+              util.wrapError(e).message
+            }`,
         );
       } else {
         throw new Error(
           `${blurb} This shouldn't typically happen on hosted runners. ` +
             "If you are using an advanced setup, please check your workflow, otherwise we " +
-            "recommend rerunning the job.",
+            `recommend rerunning the job. Details: ${
+              util.wrapError(e).message
+            }`,
         );
       }
     }

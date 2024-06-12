@@ -26,6 +26,7 @@ import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import {
   checkInstallPython311,
+  cleanupDatabaseClusterDirectory,
   initCodeQL,
   initConfig,
   isSipEnabled,
@@ -321,6 +322,8 @@ async function run() {
   }
 
   try {
+    cleanupDatabaseClusterDirectory(config, logger);
+
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {

@@ -1,0 +1,25 @@
+name: "Clean up database cluster directory"
+description: "The database cluster directory is cleaned up if it is not empty."
+operatingSystems: ["ubuntu"]
+versions: ["linked"]
+steps:
+  - name: Add a file to the database cluster directory
+    run: |
+      mkdir -p "${{ runner.temp }}/customDbLocation/javascript"
+      touch "${{ runner.temp }}/customDbLocation/javascript/a-file-to-clean-up.txt"
+
+  - uses: ./../action/init
+    id: init
+    with:
+      build-mode: none
+      db-location: "${{ runner.temp }}/customDbLocation"
+      languages: javascript
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: Validate file cleaned up
+    run: |
+      if [[ -f "${{ runner.temp }}/customDbLocation/javascript/a-file-to-clean-up.txt" ]]; then
+        echo "File was not cleaned up"
+        exit 1
+      fi
+      echo "File was cleaned up"

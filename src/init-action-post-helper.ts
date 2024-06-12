@@ -219,16 +219,25 @@ export async function run(
     await printDebugLogs(config);
   }
 
-  try {
-    fs.rmSync(config.dbLocation, {
-      recursive: true,
-      force: true,
-      maxRetries: 3,
-    });
-    logger.info(`Cleaned up database cluster directory ${config.dbLocation}.`);
-  } catch (e) {
-    logger.warning(
-      `Failed to clean up database cluster directory ${config.dbLocation}. Details: ${e}`,
+  if (actionsUtil.isSelfHostedRunner()) {
+    try {
+      fs.rmSync(config.dbLocation, {
+        recursive: true,
+        force: true,
+        maxRetries: 3,
+      });
+      logger.info(
+        `Cleaned up database cluster directory ${config.dbLocation}.`,
+      );
+    } catch (e) {
+      logger.warning(
+        `Failed to clean up database cluster directory ${config.dbLocation}. Details: ${e}`,
+      );
+    }
+  } else {
+    logger.debug(
+      "Skipping cleanup of database cluster directory since we are running on a GitHub-hosted " +
+        "runner which will be automatically cleaned up.",
     );
   }
 

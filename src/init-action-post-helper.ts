@@ -1,3 +1,5 @@
+import * as fs from "fs";
+
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 
@@ -215,6 +217,19 @@ export async function run(
     await uploadLogsDebugArtifact(config);
 
     await printDebugLogs(config);
+  }
+
+  try {
+    fs.rmSync(config.dbLocation, {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+    });
+    logger.info(`Cleaned up database cluster directory ${config.dbLocation}.`);
+  } catch (e) {
+    logger.warning(
+      `Failed to clean up database cluster directory ${config.dbLocation}. Details: ${e}`,
+    );
   }
 
   return uploadFailedSarifResult;

@@ -5,6 +5,7 @@ import * as exec from "@actions/exec/lib/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
+import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
@@ -169,5 +170,59 @@ export async function isSipEnabled(logger): Promise<boolean | undefined> {
       `Failed to determine if System Integrity Protection was enabled: ${e}`,
     );
     return undefined;
+  }
+}
+
+export function cleanupDatabaseClusterDirectory(
+  config: configUtils.Config,
+  logger: Logger,
+  // We can't stub the fs module in tests, so we allow the caller to override the rmSync function
+  // for testing.
+  rmSync = fs.rmSync,
+): void {
+  if (
+    fs.existsSync(config.dbLocation) &&
+    (fs.statSync(config.dbLocation).isFile() ||
+      fs.readdirSync(config.dbLocation).length)
+  ) {
+    logger.warning(
+      `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,
+    );
+    try {
+      rmSync(config.dbLocation, {
+        force: true,
+        maxRetries: 3,
+        recursive: true,
+      });
+
+      logger.info(
+        `Cleaned up database cluster directory ${config.dbLocation}.`,
+      );
+    } catch (e) {
+      const blurb = `The CodeQL Action requires an empty database cluster directory. ${
+        getOptionalInput("db-location")
+          ? `This is currently configured to be ${config.dbLocation}. `
+          : `By default, this is located at ${config.dbLocation}. ` +
+            "You can customize it using the 'db-location' input to the init Action. "
+      }An attempt was made to clean up the directory, but this failed.`;
+
+      // Hosted runners are automatically cleaned up, so this error should not occur for hosted runners.
+      if (isSelfHostedRunner()) {
+        throw new util.ConfigurationError(
+          `${blurb} This can happen if another process is using the directory or the directory is owned by a different user. ` +
+            `Please clean up the directory manually and rerun the job. Details: ${
+              util.wrapError(e).message
+            }`,
+        );
+      } else {
+        throw new Error(
+          `${blurb} This shouldn't typically happen on hosted runners. ` +
+            "If you are using an advanced setup, please check your workflow, otherwise we " +
+            `recommend rerunning the job. Details: ${
+              util.wrapError(e).message
+            }`,
+        );
+      }
+    }
   }
 }

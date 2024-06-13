@@ -47,37 +47,6 @@ export interface Workflow {
   on?: string | string[] | WorkflowTriggers;
 }
 
-const GLOB_PATTERN = new RegExp("(\\*\\*?)");
-
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-}
-
-function patternToRegExp(value) {
-  return new RegExp(
-    `^${value
-      .toString()
-      .split(GLOB_PATTERN)
-      .reduce(function (arr, cur) {
-        if (cur === "**") {
-          arr.push(".*?");
-        } else if (cur === "*") {
-          arr.push("[^/]*?");
-        } else if (cur) {
-          arr.push(escapeRegExp(cur));
-        }
-        return arr;
-      }, [])
-      .join("")}$`,
-  );
-}
-
-// this function should return true if patternA is a superset of patternB
-// e.g: * is a superset of main-* but main-* is not a superset of *.
-export function patternIsSuperset(patternA: string, patternB: string): boolean {
-  return patternToRegExp(patternA).test(patternB);
-}
-
 export interface CodedError {
   message: string;
   code: string;

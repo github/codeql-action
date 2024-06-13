@@ -145,7 +145,9 @@ export async function checkInstallPython311(
 
 // For MacOS runners: runs `csrutil status` to determine whether System
 // Integrity Protection is enabled.
-export async function isSipEnabled(logger): Promise<boolean | undefined> {
+export async function isSipEnabled(
+  logger: Logger,
+): Promise<boolean | undefined> {
   try {
     const sipStatusOutput = await exec.getExecOutput("csrutil status");
     if (sipStatusOutput.exitCode === 0) {

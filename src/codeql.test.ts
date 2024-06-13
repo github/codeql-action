@@ -700,7 +700,7 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
       getRunnerLogger(true),
     );
 
-    const args = runnerConstructorStub.firstCall.args[1];
+    const args = runnerConstructorStub.firstCall.args[1] as string[];
     // should have used a config file
     const hasCodeScanningConfigArg = args.some((arg: string) =>
       arg.startsWith("--codescanning-config="),
@@ -808,17 +808,14 @@ for (const {
       createFeatures([]),
       getRunnerLogger(true),
     );
+    const actualArgs = runnerConstructorStub.firstCall.args[1] as string[];
     t.is(
-      runnerConstructorStub.firstCall.args[1].includes(
-        "--new-analysis-summary",
-      ),
+      actualArgs.includes("--new-analysis-summary"),
       flagPassed,
       `--new-analysis-summary should${flagPassed ? "" : "n't"} be passed`,
     );
     t.is(
-      runnerConstructorStub.firstCall.args[1].includes(
-        "--no-new-analysis-summary",
-      ),
+      actualArgs.includes("--no-new-analysis-summary"),
       negativeFlagPassed,
       `--no-new-analysis-summary should${
         negativeFlagPassed ? "" : "n't"

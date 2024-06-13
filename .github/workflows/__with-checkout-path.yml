@@ -93,14 +93,6 @@ jobs:
           checkout_path: x/y/z/some-path/tests/multi-language-repo
           ref: v1.1.0
           sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
-          upload: never
-          upload-database: false
-
-      - uses: ./../action/upload-sarif
-        with:
-          ref: v1.1.0
-          sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
-          checkout_path: x/y/z/some-path/tests/multi-language-repo
 
       - name: Verify SARIF after upload
         shell: bash

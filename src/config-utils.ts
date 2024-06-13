@@ -1109,6 +1109,16 @@ export async function parseBuildModeInput(
   }
 
   if (
+    languages.includes(Language.csharp) &&
+    (await features.getValue(Feature.DisableCsharpBuildless))
+  ) {
+    logger.warning(
+      "Scanning C# code without a build is temporarily unavailable. Falling back to 'autobuild' build mode.",
+    );
+    return BuildMode.Autobuild;
+  }
+
+  if (
     languages.includes(Language.java) &&
     (await features.getValue(Feature.DisableJavaBuildlessEnabled))
   ) {

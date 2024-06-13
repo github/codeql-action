@@ -20,6 +20,11 @@ export async function uploadDatabases(
     return;
   }
 
+  if (util.isInTestMode()) {
+    logger.debug("In test mode. Skipping database upload.");
+    return;
+  }
+
   // Do nothing when not running against github.com
   if (
     config.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&

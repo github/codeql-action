@@ -1065,7 +1065,7 @@ function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
  */
 export async function wrapEnvironment(
   env: Record<string, string | undefined>,
-  operation: Function,
+  operation: () => Promise<void>,
 ) {
   // Remember the original env
   const oldEnv = { ...process.env };

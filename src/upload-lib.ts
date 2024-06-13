@@ -792,6 +792,7 @@ function handleProcessingResultForUnsuccessfulExecution(
     status === "failed" &&
     Array.isArray(response.data.errors) &&
     response.data.errors.length === 1 &&
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     response.data.errors[0].toString().startsWith("unsuccessful execution")
   ) {
     logger.debug(

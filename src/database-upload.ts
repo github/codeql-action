@@ -88,7 +88,6 @@ export async function uploadDatabases(
         bundledDbReadStream.close();
       }
     } catch (e) {
-      console.log(e);
       // Log a warning but don't fail the workflow
       logger.warning(`Failed to upload database for ${language}: ${e}`);
     }

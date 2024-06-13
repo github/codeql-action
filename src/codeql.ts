@@ -233,14 +233,14 @@ export interface BetterResolveLanguagesOutput {
 export interface ResolveQueriesOutput {
   byLanguage: {
     [language: string]: {
-      [queryPath: string]: {};
+      [queryPath: string]: object;
     };
   };
   noDeclaredLanguage: {
-    [queryPath: string]: {};
+    [queryPath: string]: object;
   };
   multipleDeclaredLanguages: {
-    [queryPath: string]: {};
+    [queryPath: string]: object;
   };
 }
 

@@ -1,10 +1,15 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getConfig } from "./config-utils";
+import { Config, getConfig } from "./config-utils";
 import { getActionsLogger } from "./logging";
 
-export async function run(uploadSarifDebugArtifact: Function) {
+export async function run(
+  uploadSarifDebugArtifact: (
+    config: Config,
+    outputDir: string,
+  ) => Promise<void>,
+) {
   const logger = getActionsLogger();
 
   const config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);

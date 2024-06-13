@@ -163,9 +163,12 @@ export async function tryUploadSarifIfRunFailed(
 }
 
 export async function run(
-  uploadDatabaseBundleDebugArtifact: Function,
-  uploadLogsDebugArtifact: Function,
-  printDebugLogs: Function,
+  uploadDatabaseBundleDebugArtifact: (
+    config: Config,
+    logger: Logger,
+  ) => Promise<void>,
+  uploadLogsDebugArtifact: (config: Config) => Promise<void>,
+  printDebugLogs: (config: Config) => Promise<void>,
   config: Config,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,

@@ -141,7 +141,7 @@ export async function getWorkflowRelativePath(): Promise<string> {
 
   const workflowResponse = await apiClient.request(`GET ${workflowUrl}`);
 
-  return workflowResponse.data.path;
+  return workflowResponse.data.path as string;
 }
 
 /**

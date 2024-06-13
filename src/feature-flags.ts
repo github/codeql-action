@@ -435,7 +435,9 @@ class GitHubFeatureFlags {
         this.logger.debug(
           `Loading feature flags from ${this.featureFlagsFile}`,
         );
-        return JSON.parse(fs.readFileSync(this.featureFlagsFile, "utf8"));
+        return JSON.parse(
+          fs.readFileSync(this.featureFlagsFile, "utf8"),
+        ) as GitHubFeatureFlagsApiResponse;
       }
     } catch (e) {
       this.logger.warning(

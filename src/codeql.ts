@@ -422,9 +422,9 @@ function resolveFunction<T>(
     const dummyMethod = () => {
       throw new Error(`CodeQL ${methodName} method not correctly defined`);
     };
-    return dummyMethod as any;
+    return dummyMethod as T;
   }
-  return partialCodeql[methodName];
+  return partialCodeql[methodName] as T;
 }
 
 /**
@@ -740,7 +740,7 @@ export async function getCodeQLForCmd(
       const output = await runTool(cmd, codeqlArgs);
 
       try {
-        return JSON.parse(output);
+        return JSON.parse(output) as ResolveLanguagesOutput;
       } catch (e) {
         throw new Error(
           `Unexpected output from codeql resolve languages: ${e}`,
@@ -759,7 +759,7 @@ export async function getCodeQLForCmd(
       const output = await runTool(cmd, codeqlArgs);
 
       try {
-        return JSON.parse(output);
+        return JSON.parse(output) as BetterResolveLanguagesOutput;
       } catch (e) {
         throw new Error(
           `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,
@@ -783,7 +783,7 @@ export async function getCodeQLForCmd(
       const output = await runTool(cmd, codeqlArgs);
 
       try {
-        return JSON.parse(output);
+        return JSON.parse(output) as ResolveQueriesOutput;
       } catch (e) {
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
       }
@@ -805,7 +805,7 @@ export async function getCodeQLForCmd(
       const output = await runTool(cmd, codeqlArgs);
 
       try {
-        return JSON.parse(output);
+        return JSON.parse(output) as ResolveBuildEnvironmentOutput;
       } catch (e) {
         throw new Error(
           `Unexpected output from codeql resolve build-environment: ${e} in\n${output}`,
@@ -1093,7 +1093,7 @@ export async function getCodeQLForCmd(
           },
         },
       ).exec();
-      return JSON.parse(extractorPath);
+      return JSON.parse(extractorPath) as string;
     },
     async mergeResults(
       sarifFiles: string[],
@@ -1347,7 +1347,7 @@ async function generateCodeScanningConfig(
 }
 
 function cloneObject<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
+  return JSON.parse(JSON.stringify(obj)) as T;
 }
 
 // This constant sets the size of each TRAP cache in megabytes.

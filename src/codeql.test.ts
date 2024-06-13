@@ -1017,7 +1017,10 @@ export function stubToolRunnerConstructor(
   stderr?: string,
 ): sinon.SinonStub<any[], toolrunner.ToolRunner> {
   const runnerObjectStub = sinon.createStubInstance(toolrunner.ToolRunner);
-  const runnerConstructorStub = sinon.stub(toolrunner, "ToolRunner");
+  const runnerConstructorStub = sinon.stub(
+    toolrunner,
+    "ToolRunner",
+  ) as sinon.SinonStub<any[], toolrunner.ToolRunner>;
   let stderrListener: ((data: Buffer) => void) | undefined = undefined;
   runnerConstructorStub.callsFake((_cmd, _args, options: ExecOptions) => {
     stderrListener = options.listeners?.stderr;

@@ -17,8 +17,6 @@ steps:
     shell: bash
     run: go build main.go
   - uses: ./../action/analyze
-    with:
-      upload-database: false
   - shell: bash
     run: |
       if [[ -z "${CODEQL_ACTION_GO_BINARY}" ]]; then

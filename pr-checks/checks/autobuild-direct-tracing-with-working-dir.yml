@@ -1,0 +1,34 @@
+name: "Autobuild direct tracing (custom working directory)"
+description: >
+  An end-to-end integration test of a Java repository built using 'build-mode: autobuild',
+  with direct tracing enabled and a custom working directory specified as the input to the
+  autobuild Action.
+operatingSystems: ["ubuntu", "windows"]
+versions: ["linked", "nightly-latest"]
+env:
+  CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING: true
+steps:
+  - name: Test setup
+    shell: bash
+    run: |
+      # Make sure that Gradle build succeeds in autobuild-dir ...
+      cp -a ../action/tests/java-repo autobuild-dir
+      # ... and fails if attempted in the current directory
+      echo > build.gradle
+  - uses: ./../action/init
+    with:
+      build-mode: autobuild
+      languages: java
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Check that indirect tracing is disabled
+    shell: bash
+    run: |
+      if [[ ! -z "${CODEQL_RUNNER}" ]]; then
+        echo "Expected indirect tracing to be disabled, but the" \
+          "CODEQL_RUNNER environment variable is set."
+        exit 1
+      fi
+  - uses: ./../action/autobuild
+    with:
+      working-directory: autobuild-dir
+  - uses: ./../action/analyze

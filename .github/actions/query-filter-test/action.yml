@@ -48,7 +48,6 @@ runs:
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
-        upload-database: false
         upload: never
       env:
         CODEQL_ACTION_TEST_MODE: "true"

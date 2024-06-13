@@ -62,8 +62,7 @@
             "@typescript-eslint/prefer-regexp-exec": "off",
             "@typescript-eslint/require-await": "off",
             "@typescript-eslint/restrict-template-expressions": "off",
-            "func-style": "off",
-            "sort-imports": "off"
+            "func-style": "off"
         }
     }],
     "settings": {

@@ -476,3 +476,7 @@ export const getFileType = async (filePath: string): Promise<string> => {
     throw e;
   }
 };
+
+export function isSelfHostedRunner() {
+  return process.env.RUNNER_ENVIRONMENT === "self-hosted";
+}

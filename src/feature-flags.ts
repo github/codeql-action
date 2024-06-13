@@ -45,7 +45,7 @@ export interface FeatureEnablement {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
-  AutobuildDirectTracing = "autobuild_direct_tracing",
+  AutobuildDirectTracing = "autobuild_direct_tracing_v2",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CppTrapCachingEnabled = "cpp_trap_caching_enabled",

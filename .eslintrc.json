@@ -41,7 +41,6 @@
             "ignoreTemplateLiterals": true
         }],
         "no-async-foreach/no-async-foreach": "error",
-        "no-console": "off",
         "no-sequences": "error",
         "no-shadow": "off",
         "@typescript-eslint/no-shadow": "error",

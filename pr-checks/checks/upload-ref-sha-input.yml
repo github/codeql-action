@@ -10,9 +10,9 @@ steps:
   - name: Build code
     shell: bash
     run: ./build.sh
+  # Generate some SARIF we can upload with the upload-sarif step
   - uses: ./../action/analyze
     with:
-      upload-database: false
       ref: 'refs/heads/main'
       sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
       upload: never

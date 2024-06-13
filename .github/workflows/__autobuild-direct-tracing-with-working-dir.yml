@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: 'PR Check - Go: tracing with autobuilder step'
+name: PR Check - Autobuild direct tracing (custom working directory)
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -23,44 +23,20 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
-  go-tracing-autobuilder:
+  autobuild-direct-tracing-with-working-dir:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-20230403
-          - os: macos-12
-            version: stable-20230403
-          - os: ubuntu-latest
-            version: stable-v2.13.5
-          - os: macos-12
-            version: stable-v2.13.5
-          - os: ubuntu-latest
-            version: stable-v2.14.6
-          - os: macos-12
-            version: stable-v2.14.6
-          - os: ubuntu-latest
-            version: stable-v2.15.5
-          - os: macos-latest
-            version: stable-v2.15.5
-          - os: ubuntu-latest
-            version: stable-v2.16.6
-          - os: macos-latest
-            version: stable-v2.16.6
-          - os: ubuntu-latest
-            version: default
-          - os: macos-latest
-            version: default
-          - os: ubuntu-latest
             version: linked
-          - os: macos-latest
+          - os: windows-latest
             version: linked
           - os: ubuntu-latest
             version: nightly-latest
-          - os: macos-latest
+          - os: windows-latest
             version: nightly-latest
-    name: 'Go: tracing with autobuilder step'
+    name: Autobuild direct tracing (custom working directory)
     permissions:
       contents: read
       security-events: write
@@ -87,30 +63,30 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ~1.22.0
-      # to avoid potentially misleading autobuilder results where we expect it to download
-      # dependencies successfully, but they actually come from a warm cache
-          cache: false
+      - name: Test setup
+        shell: bash
+        run: |
+          # Make sure that Gradle build succeeds in autobuild-dir ...
+          cp -a ../action/tests/java-repo autobuild-dir
+          # ... and fails if attempted in the current directory
+          echo > build.gradle
       - uses: ./../action/init
         with:
-          languages: go
+          build-mode: autobuild
+          languages: java
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - uses: ./../action/autobuild
-      - uses: ./../action/analyze
-      - shell: bash
+      - name: Check that indirect tracing is disabled
+        shell: bash
         run: |
-          if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
-            echo "Expected the Go autobuilder to be run, but the" \
-              "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+          if [[ ! -z "${CODEQL_RUNNER}" ]]; then
+            echo "Expected indirect tracing to be disabled, but the" \
+              "CODEQL_RUNNER environment variable is set."
             exit 1
           fi
-          cd "$RUNNER_TEMP/codeql_databases"
-          if [[ ! -d go ]]; then
-            echo "Did not find a Go database"
-            exit 1
-          fi
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
+      - uses: ./../action/analyze
     env:
-      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING: true
       CODEQL_ACTION_TEST_MODE: true

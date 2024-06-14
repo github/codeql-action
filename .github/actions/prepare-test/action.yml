@@ -64,6 +64,6 @@ runs:
         fi
 
     - uses: fwilhe2/setup-kotlin@9c245a6425255f5e98ba1ce6c15d31fce7eca9da
-      if: ${{ inputs.setup-kotlin }} == "true"
+      if: ${{ inputs.setup-kotlin == 'true' }}
       with:
         version: 1.8.21

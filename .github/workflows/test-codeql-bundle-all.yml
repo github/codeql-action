@@ -13,10 +13,13 @@ on:
     - synchronize
     - reopened
     - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   test-codeql-bundle-all:
     strategy:
+      fail-fast: false
       matrix:
         include:
         - os: ubuntu-latest
@@ -47,7 +50,5 @@ jobs:
       shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
-      with:
-        upload-database: false
     env:
       CODEQL_ACTION_TEST_MODE: true

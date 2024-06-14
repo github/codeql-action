@@ -14,6 +14,8 @@ on:
 
 jobs:
   test-setup-python-scripts:
+    env:
+      CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
     runs-on: windows-latest
 
@@ -32,11 +34,8 @@ jobs:
     - name: Initialize CodeQL
       uses: ./../action/init
       with:
-        tools: latest
+        tools: linked
         languages: python
 
     - name: Analyze
       uses: ./../action/analyze
-      with:
-        upload: false
-        upload-database: false

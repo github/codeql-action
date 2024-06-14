@@ -10,22 +10,25 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   test-autobuild-working-dir:
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
+          - os: ubuntu-latest
+            version: linked
     name: Autobuild working directory
     permissions:
       contents: read
@@ -33,57 +36,49 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          runner.os == 'macOS' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20230403' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.13.5' ||
-
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-        setup-kotlin: true
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - name: Test setup
-      shell: bash
-      run: |
-        # Make sure that Gradle build succeeds in autobuild-dir ...
-        cp -a ../action/tests/java-repo autobuild-dir
-        # ... and fails if attempted in the current directory
-        echo > build.gradle
-    - uses: ./../action/init
-      with:
-        languages: java
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/autobuild
-      with:
-        working-directory: autobuild-dir
-    - uses: ./../action/analyze
-      with:
-        upload-database: false
-    - name: Check database
-      shell: bash
-      run: |
-        cd "$RUNNER_TEMP/codeql_databases"
-        if [[ ! -d java ]]; then
-          echo "Did not find a Java database"
-          exit 1
-        fi
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: true
+      - name: Test setup
+        shell: bash
+        run: |
+          # Make sure that Gradle build succeeds in autobuild-dir ...
+          cp -a ../action/tests/java-repo autobuild-dir
+          # ... and fails if attempted in the current directory
+          echo > build.gradle
+      - uses: ./../action/init
+        with:
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
+      - uses: ./../action/analyze
+      - name: Check database
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d java ]]; then
+            echo "Did not find a Java database"
+            exit 1
+          fi
     env:
       CODEQL_ACTION_TEST_MODE: true

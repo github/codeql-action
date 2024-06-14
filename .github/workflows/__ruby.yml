@@ -10,32 +10,35 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   ruby:
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
     name: Ruby analysis
     permissions:
       contents: read
@@ -43,48 +46,42 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          runner.os == 'macOS' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20230403' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.13.5' ||
-
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-        setup-kotlin: true
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      with:
-        languages: ruby
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/analyze
-      id: analysis
-      with:
-        upload-database: false
-    - name: Check database
-      shell: bash
-      run: |
-        RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
-        if [[ ! -d "$RUBY_DB" ]]; then
-          echo "Did not create a database for Ruby."
-          exit 1
-        fi
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: true
+      - uses: ./../action/init
+        with:
+          languages: ruby
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - name: Check database
+        shell: bash
+        run: |
+          RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
+          if [[ ! -d "$RUBY_DB" ]]; then
+            echo "Did not create a database for Ruby."
+            exit 1
+          fi
     env:
       CODEQL_ACTION_TEST_MODE: true

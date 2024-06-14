@@ -4,11 +4,14 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
+import { parseRepositoryNwo } from "./repository";
 import {
+  ConfigurationError,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
   GitHubVariant,
   GitHubVersion,
+  isHTTPError,
   parseGitHubUrl,
   parseMatrixInput,
 } from "./util";
@@ -82,6 +85,7 @@ export async function getGitHubVersionFromApi(
 
   // Doesn't strictly have to be the meta endpoint as we're only
   // using the response headers which are available on every request.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   const response = await apiClient.rest.meta.get();
 
   // This happens on dotcom, although we expect to have already returned in that
@@ -137,7 +141,7 @@ export async function getWorkflowRelativePath(): Promise<string> {
 
   const workflowResponse = await apiClient.request(`GET ${workflowUrl}`);
 
-  return workflowResponse.data.path;
+  return workflowResponse.data.path as string;
 }
 
 /**
@@ -191,4 +195,57 @@ export function computeAutomationID(
   }
 
   return automationID;
+}
+
+export interface ActionsCacheItem {
+  created_at?: string;
+  id?: number;
+  key?: string;
+  size_in_bytes?: number;
+}
+
+/** List all Actions cache entries matching the provided key and ref. */
+export async function listActionsCaches(
+  key: string,
+  ref: string,
+): Promise<ActionsCacheItem[]> {
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+
+  return await getApiClient().paginate(
+    "GET /repos/{owner}/{repo}/actions/caches",
+    {
+      owner: repositoryNwo.owner,
+      repo: repositoryNwo.repo,
+      key,
+      ref,
+    },
+  );
+}
+
+/** Delete an Actions cache item by its ID. */
+export async function deleteActionsCache(id: number) {
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+
+  await getApiClient().rest.actions.deleteActionsCacheById({
+    owner: repositoryNwo.owner,
+    repo: repositoryNwo.repo,
+    cache_id: id,
+  });
+}
+
+export function wrapApiConfigurationError(e: unknown) {
+  if (isHTTPError(e)) {
+    if (
+      e.message.includes("API rate limit exceeded for site ID installation") ||
+      e.message.includes("commit not found") ||
+      /^ref .* not found in this repository$/.test(e.message)
+    ) {
+      return new ConfigurationError(e.message);
+    }
+  }
+  return e;
 }

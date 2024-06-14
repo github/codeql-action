@@ -10,8 +10,10 @@ import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger, getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
 import {
   StatusReportBase,
   getActionsStatus,
@@ -19,10 +21,12 @@ import {
   sendStatusReport,
   ActionName,
 } from "./status-report";
+import { endTracingForCluster } from "./tracer-config";
 import {
   checkActionVersion,
   checkDiskUsage,
   checkGitHubVersionInRange,
+  getRequiredEnvParam,
   initializeEnvironment,
   wrapError,
 } from "./util";
@@ -55,12 +59,14 @@ async function sendCompletedStatusReport(
     cause?.message,
     cause?.stack,
   );
-  const statusReport: AutobuildStatusReport = {
-    ...statusReportBase,
-    autobuild_languages: allLanguages.join(","),
-    autobuild_failure: failingLanguage,
-  };
-  await sendStatusReport(statusReport);
+  if (statusReportBase !== undefined) {
+    const statusReport: AutobuildStatusReport = {
+      ...statusReportBase,
+      autobuild_languages: allLanguages.join(","),
+      autobuild_failure: failingLanguage,
+    };
+    await sendStatusReport(statusReport);
+  }
 }
 
 async function run() {
@@ -70,20 +76,32 @@ async function run() {
   let currentLanguage: Language | undefined;
   let languages: Language[] | undefined;
   try {
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.Autobuild,
-        "starting",
-        startedAt,
-        config,
-        await checkDiskUsage(logger),
-        logger,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Autobuild,
+      "starting",
+      startedAt,
+      config,
+      await checkDiskUsage(logger),
+      logger,
     );
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
     checkActionVersion(getActionVersion(), gitHubVersion);
+
+    const repositoryNwo = parseRepositoryNwo(
+      getRequiredEnvParam("GITHUB_REPOSITORY"),
+    );
+
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger,
+    );
 
     config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
@@ -105,9 +123,13 @@ async function run() {
       }
       for (const language of languages) {
         currentLanguage = language;
-        await runAutobuild(language, config, logger);
+        await runAutobuild(config, language, features, logger);
       }
     }
+
+    // End tracing early to avoid tracing analyze. This improves the performance and reliability of
+    // the analyze step.
+    await endTracingForCluster(codeql, config, logger, features);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(

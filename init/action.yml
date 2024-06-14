@@ -3,9 +3,19 @@ description: 'Set up CodeQL'
 author: 'GitHub'
 inputs:
   tools:
-    description: URL of CodeQL tools
+    description: >-
+      By default, the Action will use the recommended version of the CodeQL
+      Bundle to analyze your project. You can override this choice using this
+      input. One of:
+
+      - A local path to a CodeQL Bundle tarball, or
+      - The URL of a CodeQL Bundle tarball GitHub release asset, or
+      - A special value `linked` which uses the version of the CodeQL tools
+        that the Action has been bundled with.
+
+      If not specified, the Action will check in several places until it finds
+      the CodeQL tools.
     required: false
-    # If not specified the Action will check in several places until it finds the CodeQL tools.
   languages:
     description: >-
       A comma-separated list of CodeQL languages to analyze.
@@ -21,15 +31,12 @@ inputs:
       The build mode that will be used to analyze the language. This input is only available when
       analyzing a single CodeQL language per job, for example using a matrix.
 
-      Available build modes will differ based on the language being analyzed. One of: 
+      Available build modes will differ based on the language being analyzed. One of:
 
       - `none`:      The database will be created without building the source code.
                      Available for all interpreted languages and some compiled languages.
       - `autobuild`: The database will be created by attempting to automatically build the source
-                     code.
-                     To use this build mode, ensure that your workflow calls the `autobuild` action
-                     between the `init` and `analyze` steps.
-                     Available for all compiled languages.
+                     code. Available for all compiled languages.
       - `manual`:   The database will be created by building the source code using a manually
                      specified build command. To use this build mode, specify manual build steps in
                      your workflow between the `init` and `analyze` steps. Available for all
@@ -89,9 +96,8 @@ inputs:
     description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.
     required: false
   setup-python-dependencies:
-    description: Try to auto-install your python dependencies
-    required: true
-    default: 'true'
+    description: DEPRECATED. This option is ignored since CodeQL Action no longer installs Python dependencies as of versions 3.25.0 and 2.25.0.
+    required: false
   source-root:
     description: Path of the root source code directory, relative to $GITHUB_WORKSPACE.
     required: false

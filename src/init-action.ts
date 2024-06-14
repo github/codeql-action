@@ -6,6 +6,7 @@ import { safeWhich } from "@chrisgavin/safe-which";
 import { v4 as uuidV4 } from "uuid";
 
 import {
+  FileCmdNotFoundError,
   getActionVersion,
   getFileType,
   getOptionalInput,
@@ -15,17 +16,20 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { EnvVar } from "./environment";
 import {
-  Feature,
-  Features,
-  isPythonDependencyInstallationDisabled,
-} from "./feature-flags";
+  addDiagnostic,
+  flushDiagnostics,
+  logUnwrittenDiagnostics,
+  makeDiagnostic,
+} from "./diagnostics";
+import { EnvVar } from "./environment";
+import { Feature, Features } from "./feature-flags";
 import {
   checkInstallPython311,
+  cleanupDatabaseClusterDirectory,
   initCodeQL,
   initConfig,
-  installPythonDeps,
+  isSipEnabled,
   runInit,
 } from "./init";
 import { Language } from "./languages";
@@ -45,7 +49,7 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
-  codeQlVersionAbove,
+  codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getMemoryFlagValue,
@@ -119,6 +123,10 @@ async function sendCompletedStatusReport(
     error?.message,
     error?.stack,
   );
+
+  if (statusReportBase === undefined) {
+    return;
+  }
 
   const workflowLanguages = getOptionalInput("languages");
 
@@ -226,17 +234,17 @@ async function run() {
   core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
   try {
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.Init,
-        "starting",
-        startedAt,
-        config,
-        await checkDiskUsage(logger),
-        logger,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Init,
+      "starting",
+      startedAt,
+      config,
+      await checkDiskUsage(logger),
+      logger,
     );
-
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );
@@ -294,43 +302,28 @@ async function run() {
     );
 
     await checkInstallPython311(config.languages, codeql);
-
-    if (
-      config.languages.includes(Language.python) &&
-      getRequiredInput("setup-python-dependencies") === "true"
-    ) {
-      if (await isPythonDependencyInstallationDisabled(codeql, features)) {
-        logger.info("Skipping python dependency installation");
-      } else {
-        try {
-          await installPythonDeps(codeql, logger);
-        } catch (unwrappedError) {
-          const error = wrapError(unwrappedError);
-          logger.warning(
-            `${error.message} You can call this action with 'setup-python-dependencies: false' to disable this process`,
-          );
-        }
-      }
-    }
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.Init,
-        error instanceof ConfigurationError ? "user-error" : "aborted",
-        startedAt,
-        config,
-        await checkDiskUsage(),
-        logger,
-        error.message,
-        error.stack,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Init,
+      error instanceof ConfigurationError ? "user-error" : "aborted",
+      startedAt,
+      config,
+      await checkDiskUsage(),
+      logger,
+      error.message,
+      error.stack,
     );
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
     return;
   }
 
   try {
+    cleanupDatabaseClusterDirectory(config, logger);
+
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {
@@ -395,6 +388,27 @@ async function run() {
         logger.warning(
           `Failed to determine the location of the Go binary: ${e}`,
         );
+
+        if (e instanceof FileCmdNotFoundError) {
+          addDiagnostic(
+            config,
+            Language.go,
+            makeDiagnostic(
+              "go/workflow/file-program-unavailable",
+              "The `file` program is required on Linux, but does not appear to be installed",
+              {
+                markdownMessage:
+                  "CodeQL was unable to find the `file` program on this system. Ensure that the `file` program is installed on Linux runners and accessible.",
+                visibility: {
+                  statusPage: true,
+                  telemetry: true,
+                  cliSummaryTable: true,
+                },
+                severity: "warning",
+              },
+            ),
+          );
+        }
       }
     }
 
@@ -421,8 +435,8 @@ async function run() {
     const kotlinLimitVar =
       "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
     if (
-      (await codeQlVersionAbove(codeql, "2.13.4")) &&
-      !(await codeQlVersionAbove(codeql, "2.14.4"))
+      (await codeQlVersionAtLeast(codeql, "2.13.4")) &&
+      !(await codeQlVersionAtLeast(codeql, "2.14.4"))
     ) {
       core.exportVariable(kotlinLimitVar, "1.9.20");
     }
@@ -430,8 +444,8 @@ async function run() {
     if (
       config.languages.includes(Language.java) &&
       // Java Lombok support is enabled by default for >= 2.14.4
-      (await codeQlVersionAbove(codeql, "2.14.0")) &&
-      !(await codeQlVersionAbove(codeql, "2.14.4"))
+      (await codeQlVersionAtLeast(codeql, "2.14.0")) &&
+      !(await codeQlVersionAtLeast(codeql, "2.14.4"))
     ) {
       const envVar = "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS";
       if (process.env[envVar]) {
@@ -462,18 +476,56 @@ async function run() {
       }
     }
 
-    // Disable Python dependency extraction if feature flag set
-    if (await isPythonDependencyInstallationDisabled(codeql, features)) {
+    // For CLI versions <2.15.1, build tracing caused errors in MacOS ARM machines with
+    // System Integrity Protection (SIP) disabled.
+    if (
+      !(await codeQlVersionAtLeast(codeql, "2.15.1")) &&
+      process.platform === "darwin" &&
+      (process.arch === "arm" || process.arch === "arm64") &&
+      !(await isSipEnabled(logger))
+    ) {
+      logger.warning(
+        "CodeQL versions 2.15.0 and lower are not supported on MacOS ARM machines with System Integrity Protection (SIP) disabled.",
+      );
+    }
+
+    // From 2.16.0 the default for the python extractor is to not perform any
+    // dependency extraction. For versions before that, you needed to set this flag to
+    // enable this behavior (supported since 2.13.1).
+
+    if (await codeQlVersionAtLeast(codeql, "2.17.1")) {
+      // disabled by default, no warning
+    } else if (await codeQlVersionAtLeast(codeql, "2.16.0")) {
+      // disabled by default, prints warning if environment variable is not set
+      core.exportVariable(
+        "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
+        "true",
+      );
+    } else if (await codeQlVersionAtLeast(codeql, "2.13.1")) {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
       );
     } else {
-      // From 2.16.0 the default for the python extractor is to not perform any library
-      // extraction, so we need to set this flag to enable it.
-      core.exportVariable(
-        "CODEQL_EXTRACTOR_PYTHON_FORCE_ENABLE_LIBRARY_EXTRACTION_UNTIL_2_17_0",
-        "true",
+      logger.warning(
+        `CodeQL Action versions 3.25.0 and later, and versions 2.25.0 and later no longer install Python dependencies. We recommend upgrading to at least CodeQL Bundle 2.16.0 to avoid any potential problems due to this (you are currently using ${
+          (await codeql.getVersion()).version
+        }). Alternatively, we recommend downgrading the CodeQL Action to version 3.24.10 (for customers using GitHub.com or GitHub Enterprise Server v3.12 or later) or 2.24.10 (for customers using GitHub Enterprise Server v3.11 or earlier).`,
+      );
+    }
+
+    if (getOptionalInput("setup-python-dependencies") !== undefined) {
+      logger.warning(
+        "The setup-python-dependencies input is deprecated and no longer has any effect. We recommend removing any references from your workflows. See https://github.blog/changelog/2024-01-23-codeql-2-16-python-dependency-installation-disabled-new-queries-and-bug-fixes/ for more information.",
+      );
+    }
+
+    if (
+      process.env["CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION"] !==
+      undefined
+    ) {
+      logger.warning(
+        "The CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION environment variable is deprecated and no longer has any effect. We recommend removing any references from your workflows. See https://github.blog/changelog/2024-01-23-codeql-2-16-python-dependency-installation-disabled-new-queries-and-bug-fixes/ for more information.",
       );
     }
 
@@ -489,6 +541,7 @@ async function run() {
       "Runner.Worker.exe",
       getOptionalInput("registries"),
       apiDetails,
+      features,
       logger,
     );
     if (tracerConfig !== undefined) {
@@ -496,6 +549,10 @@ async function run() {
         core.exportVariable(key, value);
       }
     }
+
+    // Write diagnostics to the database that we previously stored in memory because the database
+    // did not exist until now.
+    flushDiagnostics(config);
 
     core.setOutput("codeql-path", config.codeQLCmd);
   } catch (unwrappedError) {
@@ -512,6 +569,8 @@ async function run() {
       error,
     );
     return;
+  } finally {
+    logUnwrittenDiagnostics();
   }
   await sendCompletedStatusReport(
     startedAt,

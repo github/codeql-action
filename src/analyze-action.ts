@@ -20,7 +20,7 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
+import { FeatureEnablement, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -32,7 +32,12 @@ import {
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
-import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
+import {
+  cleanupTrapCaches,
+  getTotalCacheSize,
+  TrapCacheCleanupStatusReport,
+  uploadTrapCaches,
+} from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
@@ -61,6 +66,7 @@ async function sendStatusReport(
   trapCacheUploadTime: number | undefined,
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
+  trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   logger: Logger,
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
@@ -74,22 +80,25 @@ async function sendStatusReport(
     error?.message,
     error?.stack,
   );
-  const report: FinishStatusReport = {
-    ...statusReportBase,
-    ...(stats || {}),
-    ...(dbCreationTimings || {}),
-  };
-  if (config && didUploadTrapCaches) {
-    const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
-      ...report,
-      trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
-      trap_cache_upload_size_bytes: Math.round(
-        await getTotalCacheSize(config.trapCaches, logger),
-      ),
+  if (statusReportBase !== undefined) {
+    const report: FinishStatusReport = {
+      ...statusReportBase,
+      ...(stats || {}),
+      ...(dbCreationTimings || {}),
+      ...(trapCacheCleanup || {}),
     };
-    await statusReport.sendStatusReport(trapCacheUploadStatusReport);
-  } else {
-    await statusReport.sendStatusReport(report);
+    if (config && didUploadTrapCaches) {
+      const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
+        ...report,
+        trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
+        trap_cache_upload_size_bytes: Math.round(
+          await getTotalCacheSize(config.trapCaches, logger),
+        ),
+      };
+      await statusReport.sendStatusReport(trapCacheUploadStatusReport);
+    } else {
+      await statusReport.sendStatusReport(report);
+    }
   }
 }
 
@@ -138,7 +147,11 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * - We approximate whether manual build steps are present by looking at
  * whether any extraction output already exists for Go.
  */
-async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
+async function runAutobuildIfLegacyGoWorkflow(
+  config: Config,
+  features: FeatureEnablement,
+  logger: Logger,
+) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
@@ -175,7 +188,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   logger.debug(
     "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
   );
-  await runAutobuild(Language.go, config, logger);
+  await runAutobuild(config, Language.go, features, logger);
 }
 
 async function run() {
@@ -183,6 +196,8 @@ async function run() {
   let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
+    undefined;
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
@@ -190,16 +205,17 @@ async function run() {
 
   const logger = getActionsLogger();
   try {
-    await statusReport.sendStatusReport(
-      await createStatusReportBase(
-        ActionName.Analyze,
-        "starting",
-        startedAt,
-        config,
-        await util.checkDiskUsage(logger),
-        logger,
-      ),
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Analyze,
+      "starting",
+      startedAt,
+      config,
+      await util.checkDiskUsage(logger),
+      logger,
     );
+    if (statusReportBase !== undefined) {
+      await statusReport.sendStatusReport(statusReportBase);
+    }
 
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
@@ -207,6 +223,8 @@ async function run() {
         "Config file could not be found at expected location. Has the 'init' action been called?",
       );
     }
+
+    const codeql = await getCodeQL(config.codeQLCmd);
 
     if (hasBadExpectErrorInput()) {
       throw new util.ConfigurationError(
@@ -242,15 +260,16 @@ async function run() {
     );
 
     await warnIfGoInstalledAfterInit(config, logger);
-    await runAutobuildIfLegacyGoWorkflow(config, logger);
+    await runAutobuildIfLegacyGoWorkflow(config, features, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,
       threads,
       memory,
+      codeql,
       config,
-      logger,
       features,
+      logger,
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
@@ -298,9 +317,15 @@ async function run() {
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();
-    const codeql = await getCodeQL(config.codeQLCmd);
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
+
+    // Clean up TRAP caches
+    trapCacheCleanupTelemetry = await cleanupTrapCaches(
+      config,
+      features,
+      logger,
+    );
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
@@ -341,6 +366,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
+        trapCacheCleanupTelemetry,
         logger,
       );
     } else {
@@ -352,6 +378,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
+        trapCacheCleanupTelemetry,
         logger,
       );
     }
@@ -371,6 +398,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   } else if (runStats) {
@@ -382,6 +410,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   } else {
@@ -393,6 +422,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   }

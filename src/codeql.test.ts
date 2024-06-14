@@ -29,6 +29,7 @@ import {
   makeVersionInfo,
   createTestConfig,
 } from "./testing-utils";
+import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import { initializeEnvironment } from "./util";
 
@@ -384,7 +385,7 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
     mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
     const releasesApiMock = mockReleaseApi({
-      assetNames: ["cli-version-2.12.2.txt"],
+      assetNames: ["cli-version-2.12.6.txt"],
       tagName: "codeql-bundle-20230203",
     });
     mockBundleDownloadApi({
@@ -481,6 +482,7 @@ const injectedConfigMacro = test.macro({
         "",
         undefined,
         undefined,
+        createFeatures([]),
         getRunnerLogger(true),
       );
 
@@ -687,19 +689,18 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon
-      .stub(codeqlObject, "getVersion")
-      .resolves(makeVersionInfo(codeql.CODEQL_VERSION_INIT_WITH_QLCONFIG));
+    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
       "",
       undefined,
       "/path/to/qlconfig.yml",
+      createFeatures([]),
       getRunnerLogger(true),
     );
 
-    const args = runnerConstructorStub.firstCall.args[1];
+    const args = runnerConstructorStub.firstCall.args[1] as string[];
     // should have used a config file
     const hasCodeScanningConfigArg = args.some((arg: string) =>
       arg.startsWith("--codescanning-config="),
@@ -714,51 +715,18 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
   });
 });
 
-test("passes a code scanning config BUT NOT a qlconfig to the CLI for CodeQL v2.12.2", async (t: ExecutionContext<unknown>) => {
-  await util.withTmpDir(async (tempDir) => {
-    const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.2"));
-
-    await codeqlObject.databaseInitCluster(
-      { ...stubConfig, tempDir },
-      "",
-      undefined,
-      "/path/to/qlconfig.yml",
-      getRunnerLogger(true),
-    );
-
-    const args = runnerConstructorStub.firstCall.args[1] as any[];
-    // should have used a config file
-    const hasCodeScanningConfigArg = args.some((arg: string) =>
-      arg.startsWith("--codescanning-config="),
-    );
-    t.true(
-      hasCodeScanningConfigArg,
-      "Should have injected a codescanning config",
-    );
-
-    // should not have passed a qlconfig file
-    const hasQlconfigArg = args.some((arg: string) =>
-      arg.startsWith("--qlconfig-file="),
-    );
-    t.false(hasQlconfigArg, "should NOT have injected a qlconfig");
-  });
-});
-
 test("does not pass a qlconfig to the CLI when it is undefined", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon
-      .stub(codeqlObject, "getVersion")
-      .resolves(makeVersionInfo(codeql.CODEQL_VERSION_INIT_WITH_QLCONFIG));
+    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
       "",
       undefined,
       undefined, // undefined qlconfigFile
+      createFeatures([]),
       getRunnerLogger(true),
     );
 
@@ -772,7 +740,17 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
 
 const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
   {
-    codeqlVersion: "2.15.0",
+    codeqlVersion: makeVersionInfo("2.15.0", {
+      [ToolsFeature.AnalysisSummaryV2IsDefault]: true,
+    }),
+    githubVersion: {
+      type: util.GitHubVariant.DOTCOM,
+    },
+    flagPassed: false,
+    negativeFlagPassed: false,
+  },
+  {
+    codeqlVersion: makeVersionInfo("2.15.0"),
     githubVersion: {
       type: util.GitHubVariant.DOTCOM,
     },
@@ -780,7 +758,7 @@ const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
     negativeFlagPassed: false,
   },
   {
-    codeqlVersion: "2.15.0",
+    codeqlVersion: makeVersionInfo("2.15.0"),
     githubVersion: {
       type: util.GitHubVariant.GHES,
       version: "3.9.0",
@@ -789,16 +767,7 @@ const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
     negativeFlagPassed: false,
   },
   {
-    codeqlVersion: "2.15.0",
-    githubVersion: {
-      type: util.GitHubVariant.GHES,
-      version: "3.8.6",
-    },
-    flagPassed: false,
-    negativeFlagPassed: true,
-  },
-  {
-    codeqlVersion: "2.14.6",
+    codeqlVersion: makeVersionInfo("2.14.6"),
     githubVersion: {
       type: util.GitHubVariant.DOTCOM,
     },
@@ -819,14 +788,12 @@ for (const {
       : negativeFlagPassed
       ? "--no-new-analysis-summary"
       : "nothing"
-  } for CodeQL CLI v${codeqlVersion} and ${
+  } for CodeQL version ${JSON.stringify(codeqlVersion)} and ${
     util.GitHubVariant[githubVersion.type]
   } ${githubVersion.version ? ` ${githubVersion.version}` : ""}`, async (t) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon
-      .stub(codeqlObject, "getVersion")
-      .resolves(makeVersionInfo(codeqlVersion));
+    sinon.stub(codeqlObject, "getVersion").resolves(codeqlVersion);
     // safeWhich throws because of the test CodeQL object.
     sinon.stub(safeWhich, "safeWhich").resolves("");
     await codeqlObject.databaseInterpretResults(
@@ -841,17 +808,14 @@ for (const {
       createFeatures([]),
       getRunnerLogger(true),
     );
+    const actualArgs = runnerConstructorStub.firstCall.args[1] as string[];
     t.is(
-      runnerConstructorStub.firstCall.args[1].includes(
-        "--new-analysis-summary",
-      ),
+      actualArgs.includes("--new-analysis-summary"),
       flagPassed,
       `--new-analysis-summary should${flagPassed ? "" : "n't"} be passed`,
     );
     t.is(
-      runnerConstructorStub.firstCall.args[1].includes(
-        "--no-new-analysis-summary",
-      ),
+      actualArgs.includes("--no-new-analysis-summary"),
       negativeFlagPassed,
       `--no-new-analysis-summary should${
         negativeFlagPassed ? "" : "n't"
@@ -860,57 +824,13 @@ for (const {
   });
 }
 
-test("database finalize recognises JavaScript no code found error on CodeQL 2.11.6", async (t) => {
-  stubToolRunnerConstructor(
-    1,
-    `2020-09-07T17:39:53.9050522Z [2020-09-07 17:39:53] [build] Done extracting /opt/hostedtoolcache/CodeQL/0.0.0-20200630/x64/codeql/javascript/tools/data/externs/web/ie_vml.js (3 ms)
-    2020-09-07T17:39:53.9051849Z [2020-09-07 17:39:53] [build-err] No JavaScript or TypeScript code found.
-    2020-09-07T17:39:53.9052444Z [2020-09-07 17:39:53] [build-err] No JavaScript or TypeScript code found.
-    2020-09-07T17:39:53.9251124Z [2020-09-07 17:39:53] [ERROR] Spawned process exited abnormally (code 255; tried to run: [/opt/hostedtoolcache/CodeQL/0.0.0-20200630/x64/codeql/javascript/tools/autobuild.sh])`,
-  );
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.11.6"));
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-
-  await t.throwsAsync(
-    async () => await codeqlObject.finalizeDatabase("", "", "", false),
-    {
-      instanceOf: util.ConfigurationError,
-      message: new RegExp(
-        "No code found during the build\\. Please see: " +
-          "https://gh\\.io/troubleshooting-code-scanning/no-source-code-seen-during-build\\.",
-      ),
-    },
-  );
-});
-
-test("database finalize overrides no code found error on CodeQL 2.11.6", async (t) => {
-  stubToolRunnerConstructor(32);
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.11.6"));
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-
-  await t.throwsAsync(
-    async () => await codeqlObject.finalizeDatabase("", "", "", false),
-    {
-      instanceOf: util.ConfigurationError,
-      message: new RegExp(
-        "No code found during the build\\. Please see: " +
-          "https://gh\\.io/troubleshooting-code-scanning/no-source-code-seen-during-build\\.",
-      ),
-    },
-  );
-});
-
-test("database finalize does not override no code found error on CodeQL 2.12.4", async (t) => {
+test("database finalize does not override no code found error on CodeQL 2.12.6", async (t) => {
   const cliMessage =
     "CodeQL did not detect any code written in languages supported by CodeQL. Review our troubleshooting guide at " +
     "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.";
   stubToolRunnerConstructor(32, cliMessage);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -940,7 +860,7 @@ test("runTool summarizes several fatal errors", async (t) => {
     `${heapError}\n${datasetImportError}.`;
   stubToolRunnerConstructor(32, cliStderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -981,13 +901,13 @@ test("runTool summarizes autobuilder errors", async (t) => {
   `;
   stubToolRunnerConstructor(1, stderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(Language.java, false),
+    async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
     {
       instanceOf: CommandInvocationError,
       message:
@@ -1009,13 +929,13 @@ test("runTool truncates long autobuilder errors", async (t) => {
   ).join("\n");
   stubToolRunnerConstructor(1, stderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(Language.java, false),
+    async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
     {
       instanceOf: CommandInvocationError,
       message:
@@ -1034,7 +954,7 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
   const cliStderr = "line1\nline2\nline3\nline4\nline5";
   stubToolRunnerConstructor(32, cliStderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.4"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -1056,12 +976,51 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
   );
 });
 
+test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OPTIONS", async (t) => {
+  const runnerConstructorStub = stubToolRunnerConstructor();
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  // safeWhich throws because of the test CodeQL object.
+  sinon.stub(safeWhich, "safeWhich").resolves("");
+
+  process.env["CODEQL_ACTION_EXTRA_OPTIONS"] =
+    '{ "database": { "init": ["--overwrite"] } }';
+
+  await codeqlObject.databaseInitCluster(
+    stubConfig,
+    "sourceRoot",
+    undefined,
+    undefined,
+    createFeatures([]),
+    getRunnerLogger(false),
+  );
+
+  t.true(runnerConstructorStub.calledOnce);
+  const args = runnerConstructorStub.firstCall.args[1] as string[];
+  t.is(
+    args.filter((option: string) => option === "--overwrite").length,
+    1,
+    "--overwrite should only be passed once",
+  );
+
+  // Clean up
+  const configArg = args.find((arg: string) =>
+    arg.startsWith("--codescanning-config="),
+  );
+  t.truthy(configArg, "Should have injected a codescanning config");
+  const configFile = configArg!.split("=")[1];
+  await del(configFile, { force: true });
+});
+
 export function stubToolRunnerConstructor(
   exitCode: number = 0,
   stderr?: string,
 ): sinon.SinonStub<any[], toolrunner.ToolRunner> {
   const runnerObjectStub = sinon.createStubInstance(toolrunner.ToolRunner);
-  const runnerConstructorStub = sinon.stub(toolrunner, "ToolRunner");
+  const runnerConstructorStub = sinon.stub(
+    toolrunner,
+    "ToolRunner",
+  ) as sinon.SinonStub<any[], toolrunner.ToolRunner>;
   let stderrListener: ((data: Buffer) => void) | undefined = undefined;
   runnerConstructorStub.callsFake((_cmd, _args, options: ExecOptions) => {
     stderrListener = options.listeners?.stderr;

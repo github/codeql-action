@@ -2,7 +2,7 @@ name: "Prepare test"
 description: Performs some preparation to run tests
 inputs:
   version:
-    description: "The version of the CodeQL CLI to use. Can be 'latest', 'default', 'nightly-latest', 'nightly-YYYY-MM-DD', or 'stable-YYYY-MM-DD'."
+    description: "The version of the CodeQL CLI to use. Can be 'linked', 'default', 'nightly-latest', 'nightly-YYYY-MM-DD', or 'stable-YYYY-MM-DD'."
     required: true
   use-all-platform-bundle:
     description: "If true, we output a tools URL with codeql-bundle.tar.gz file rather than platform-specific URL"
@@ -54,8 +54,8 @@ runs:
         elif [[ ${{ inputs.version }} == *"stable"* ]]; then
           version=`echo ${{ inputs.version }} | sed -e 's/^.*\-//'`
           echo "tools-url=https://github.com/github/codeql-action/releases/download/codeql-bundle-$version/$artifact_name" >> $GITHUB_OUTPUT
-        elif [[ ${{ inputs.version }} == "latest" ]]; then
-          echo "tools-url=latest" >> $GITHUB_OUTPUT
+        elif [[ ${{ inputs.version }} == "linked" ]]; then
+          echo "tools-url=linked" >> $GITHUB_OUTPUT
         elif [[ ${{ inputs.version }} == "default" ]]; then
           echo "tools-url=" >> $GITHUB_OUTPUT
         else

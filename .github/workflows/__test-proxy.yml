@@ -56,7 +56,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-          setup-kotlin: false
+          setup-kotlin: 'false'
       - uses: ./../action/init
         with:
           languages: javascript

@@ -60,7 +60,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-          setup-kotlin: true
+          setup-kotlin: 'true'
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}

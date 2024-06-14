@@ -73,7 +73,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-          setup-kotlin: true
+          setup-kotlin: 'true'
       - name: Init with registries
         uses: ./../action/init
         with:

@@ -56,7 +56,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-          setup-kotlin: true
+          setup-kotlin: 'true'
       - name: Add a file to the database cluster directory
         run: |
           mkdir -p "${{ runner.temp }}/customDbLocation/javascript"

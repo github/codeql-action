@@ -85,6 +85,7 @@ export async function getGitHubVersionFromApi(
 
   // Doesn't strictly have to be the meta endpoint as we're only
   // using the response headers which are available on every request.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   const response = await apiClient.rest.meta.get();
 
   // This happens on dotcom, although we expect to have already returned in that
@@ -140,7 +141,7 @@ export async function getWorkflowRelativePath(): Promise<string> {
 
   const workflowResponse = await apiClient.request(`GET ${workflowUrl}`);
 
-  return workflowResponse.data.path;
+  return workflowResponse.data.path as string;
 }
 
 /**

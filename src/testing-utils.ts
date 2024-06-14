@@ -151,18 +151,22 @@ export function getRecordingLogger(messages: LoggedMessage[]): Logger {
   return {
     debug: (message: string) => {
       messages.push({ type: "debug", message });
+      // eslint-disable-next-line no-console
       console.debug(message);
     },
     info: (message: string) => {
       messages.push({ type: "info", message });
+      // eslint-disable-next-line no-console
       console.info(message);
     },
     warning: (message: string | Error) => {
       messages.push({ type: "warning", message });
+      // eslint-disable-next-line no-console
       console.warn(message);
     },
     error: (message: string | Error) => {
       messages.push({ type: "error", message });
+      // eslint-disable-next-line no-console
       console.error(message);
     },
     isDebug: () => true,

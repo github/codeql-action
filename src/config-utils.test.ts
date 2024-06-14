@@ -81,7 +81,7 @@ function createConfigFile(inputFileContents: string, tmpDir: string): string {
   return configFilePath;
 }
 
-type GetContentsResponse = { content?: string } | Array<{}>;
+type GetContentsResponse = { content?: string } | object[];
 
 function mockGetContents(
   content: GetContentsResponse,

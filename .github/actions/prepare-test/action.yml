@@ -63,7 +63,7 @@ runs:
           exit 1
         fi
 
-    - uses: fwilhe2/setup-kotlin@fa932efcc943c56bfd69ddace2e61129eb495d58
+    - uses: fwilhe2/setup-kotlin@9c245a6425255f5e98ba1ce6c15d31fce7eca9da
       if: ${{ inputs.setup-kotlin }} == "true"
       with:
-        version: 1.7.21
+        version: 1.8.21

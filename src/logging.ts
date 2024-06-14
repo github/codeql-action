@@ -18,9 +18,13 @@ export function getActionsLogger(): Logger {
 
 export function getRunnerLogger(debugMode: boolean): Logger {
   return {
+    // eslint-disable-next-line no-console
     debug: debugMode ? console.debug : () => undefined,
+    // eslint-disable-next-line no-console
     info: console.info,
+    // eslint-disable-next-line no-console
     warning: console.warn,
+    // eslint-disable-next-line no-console
     error: console.error,
     isDebug: () => debugMode,
     startGroup: () => undefined,

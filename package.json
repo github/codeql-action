@@ -55,6 +55,7 @@
   "devDependencies": {
     "@ava/typescript": "4.1.0",
     "@types/adm-zip": "^0.5.5",
+    "@types/console-log-level": "^1.4.5",
     "@types/get-folder-size": "^2.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "20.9.0",

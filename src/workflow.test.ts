@@ -10,7 +10,6 @@ import {
   formatWorkflowErrors,
   getCategoryInputOrThrow,
   getWorkflowErrors,
-  patternIsSuperset,
   Workflow,
   WorkflowErrors,
 } from "./workflow";
@@ -442,31 +441,6 @@ test("formatWorkflowCause()", (t) => {
   t.deepEqual(formatWorkflowCause([]), undefined);
 });
 
-test("patternIsSuperset()", (t) => {
-  t.false(patternIsSuperset("main-*", "main"));
-  t.true(patternIsSuperset("*", "*"));
-  t.true(patternIsSuperset("*", "main-*"));
-  t.false(patternIsSuperset("main-*", "*"));
-  t.false(patternIsSuperset("main-*", "main"));
-  t.true(patternIsSuperset("main", "main"));
-  t.false(patternIsSuperset("*", "feature/*"));
-  t.true(patternIsSuperset("**", "feature/*"));
-  t.false(patternIsSuperset("feature-*", "**"));
-  t.false(patternIsSuperset("a/**/c", "a/**/d"));
-  t.false(patternIsSuperset("a/**/c", "a/**"));
-  t.true(patternIsSuperset("a/**", "a/**/c"));
-  t.true(patternIsSuperset("a/**/c", "a/main-**/c"));
-  t.false(patternIsSuperset("a/**/b/**/c", "a/**/d/**/c"));
-  t.true(patternIsSuperset("a/**/b/**/c", "a/**/b/c/**/c"));
-  t.true(patternIsSuperset("a/**/b/**/c", "a/**/b/d/**/c"));
-  t.false(patternIsSuperset("a/**/c/d/**/c", "a/**/b/**/c"));
-  t.false(patternIsSuperset("a/main-**/c", "a/**/c"));
-  t.true(patternIsSuperset("/robin/*/release/*", "/robin/moose/release/goose"));
-  t.false(
-    patternIsSuperset("/robin/moose/release/goose", "/robin/*/release/*"),
-  );
-});
-
 test("getWorkflowErrors() when branches contain dots", async (t) => {
   const errors = await getWorkflowErrors(
     yaml.load(`
@@ -641,6 +615,44 @@ test("getWorkflowErrors() should not report an error if PRs are totally unconfig
       [],
     ),
   );
+});
+
+test("getWorkflowErrors() should not report a warning if there is a workflow_call trigger", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+    name: "CodeQL"
+    on:
+      workflow_call:
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(...errorCodes(errors, []));
+});
+
+test("getWorkflowErrors() should not report a warning if there is a workflow_call trigger as a string", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+    name: "CodeQL"
+    on: workflow_call
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(...errorCodes(errors, []));
+});
+
+test("getWorkflowErrors() should not report a warning if there is a workflow_call trigger as an array", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+    name: "CodeQL"
+    on:
+      - workflow_call
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(...errorCodes(errors, []));
 });
 
 test("getCategoryInputOrThrow returns category for simple workflow with category", (t) => {

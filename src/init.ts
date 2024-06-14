@@ -1,13 +1,15 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as exec from "@actions/exec/lib/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
+import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -69,6 +71,7 @@ export async function runInit(
   processName: string | undefined,
   registriesInput: string | undefined,
   apiDetails: GitHubApiCombinedDetails,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
@@ -92,10 +95,11 @@ export async function runInit(
         sourceRoot,
         processName,
         qlconfigFile,
+        features,
         logger,
       ),
   );
-  return await getCombinedTracerConfig(codeql, config);
+  return await getCombinedTracerConfig(codeql, config, features);
 }
 
 export function printPathFiltersWarning(
@@ -139,45 +143,88 @@ export async function checkInstallPython311(
   }
 }
 
-export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
-  logger.startGroup("Setup Python dependencies");
-
-  const scriptsFolder = path.resolve(__dirname, "../python-setup");
-
+// For MacOS runners: runs `csrutil status` to determine whether System
+// Integrity Protection is enabled.
+export async function isSipEnabled(
+  logger: Logger,
+): Promise<boolean | undefined> {
   try {
-    if (process.platform === "win32") {
-      await new toolrunner.ToolRunner(await safeWhich.safeWhich("powershell"), [
-        path.join(scriptsFolder, "install_tools.ps1"),
-      ]).exec();
-    } else {
-      await new toolrunner.ToolRunner(
-        path.join(scriptsFolder, "install_tools.sh"),
-      ).exec();
+    const sipStatusOutput = await exec.getExecOutput("csrutil status");
+    if (sipStatusOutput.exitCode === 0) {
+      if (
+        sipStatusOutput.stdout.includes(
+          "System Integrity Protection status: enabled.",
+        )
+      ) {
+        return true;
+      }
+      if (
+        sipStatusOutput.stdout.includes(
+          "System Integrity Protection status: disabled.",
+        )
+      ) {
+        return false;
+      }
     }
-    const script = "auto_install_packages.py";
-    if (process.platform === "win32") {
-      await new toolrunner.ToolRunner(await safeWhich.safeWhich("py"), [
-        "-3",
-        "-B",
-        path.join(scriptsFolder, script),
-        path.dirname(codeql.getPath()),
-      ]).exec();
-    } else {
-      await new toolrunner.ToolRunner(await safeWhich.safeWhich("python3"), [
-        "-B",
-        path.join(scriptsFolder, script),
-        path.dirname(codeql.getPath()),
-      ]).exec();
-    }
+    return undefined;
   } catch (e) {
-    logger.endGroup();
     logger.warning(
-      `An error occurred while trying to automatically install Python dependencies: ${e}\n` +
-        "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
-        "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
-        "dependency installation and avoid this warning.",
+      `Failed to determine if System Integrity Protection was enabled: ${e}`,
     );
-    return;
+    return undefined;
   }
-  logger.endGroup();
+}
+
+export function cleanupDatabaseClusterDirectory(
+  config: configUtils.Config,
+  logger: Logger,
+  // We can't stub the fs module in tests, so we allow the caller to override the rmSync function
+  // for testing.
+  rmSync = fs.rmSync,
+): void {
+  if (
+    fs.existsSync(config.dbLocation) &&
+    (fs.statSync(config.dbLocation).isFile() ||
+      fs.readdirSync(config.dbLocation).length)
+  ) {
+    logger.warning(
+      `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,
+    );
+    try {
+      rmSync(config.dbLocation, {
+        force: true,
+        maxRetries: 3,
+        recursive: true,
+      });
+
+      logger.info(
+        `Cleaned up database cluster directory ${config.dbLocation}.`,
+      );
+    } catch (e) {
+      const blurb = `The CodeQL Action requires an empty database cluster directory. ${
+        getOptionalInput("db-location")
+          ? `This is currently configured to be ${config.dbLocation}. `
+          : `By default, this is located at ${config.dbLocation}. ` +
+            "You can customize it using the 'db-location' input to the init Action. "
+      }An attempt was made to clean up the directory, but this failed.`;
+
+      // Hosted runners are automatically cleaned up, so this error should not occur for hosted runners.
+      if (isSelfHostedRunner()) {
+        throw new util.ConfigurationError(
+          `${blurb} This can happen if another process is using the directory or the directory is owned by a different user. ` +
+            `Please clean up the directory manually and rerun the job. Details: ${
+              util.wrapError(e).message
+            }`,
+        );
+      } else {
+        throw new Error(
+          `${blurb} This shouldn't typically happen on hosted runners. ` +
+            "If you are using an advanced setup, please check your workflow, otherwise we " +
+            `recommend rerunning the job. Details: ${
+              util.wrapError(e).message
+            }`,
+        );
+      }
+    }
+  }
 }

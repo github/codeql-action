@@ -4,14 +4,18 @@ import { getTemporaryDirectory, getWorkflowEventName } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { BuildMode } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, featureConfig, Features } from "./feature-flags";
+import {
+  Feature,
+  featureConfig,
+  FeatureEnablement,
+  Features,
+} from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
-import { getRequiredEnvParam } from "./util";
+import { BuildMode, getRequiredEnvParam } from "./util";
 
 export async function determineAutobuildLanguages(
   codeql: CodeQL,
@@ -153,8 +157,9 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
 }
 
 export async function runAutobuild(
-  language: Language,
   config: configUtils.Config,
+  language: Language,
+  features: FeatureEnablement,
   logger: Logger,
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
@@ -162,7 +167,14 @@ export async function runAutobuild(
   if (language === Language.cpp) {
     await setupCppAutobuild(codeQL, logger);
   }
-  await codeQL.runAutobuild(language, config.debugMode);
+  if (
+    config.buildMode &&
+    (await features.getValue(Feature.AutobuildDirectTracing, codeQL))
+  ) {
+    await codeQL.extractUsingBuildMode(config, language);
+  } else {
+    await codeQL.runAutobuild(config, language);
+  }
   if (language === Language.go) {
     core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
   }

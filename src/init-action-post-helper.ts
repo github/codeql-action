@@ -1,3 +1,5 @@
+import * as fs from "fs";
+
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 
@@ -161,9 +163,12 @@ export async function tryUploadSarifIfRunFailed(
 }
 
 export async function run(
-  uploadDatabaseBundleDebugArtifact: Function,
-  uploadLogsDebugArtifact: Function,
-  printDebugLogs: Function,
+  uploadDatabaseBundleDebugArtifact: (
+    config: Config,
+    logger: Logger,
+  ) => Promise<void>,
+  uploadLogsDebugArtifact: (config: Config) => Promise<void>,
+  printDebugLogs: (config: Config) => Promise<void>,
   config: Config,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
@@ -215,6 +220,28 @@ export async function run(
     await uploadLogsDebugArtifact(config);
 
     await printDebugLogs(config);
+  }
+
+  if (actionsUtil.isSelfHostedRunner()) {
+    try {
+      fs.rmSync(config.dbLocation, {
+        recursive: true,
+        force: true,
+        maxRetries: 3,
+      });
+      logger.info(
+        `Cleaned up database cluster directory ${config.dbLocation}.`,
+      );
+    } catch (e) {
+      logger.warning(
+        `Failed to clean up database cluster directory ${config.dbLocation}. Details: ${e}`,
+      );
+    }
+  } else {
+    logger.debug(
+      "Skipping cleanup of database cluster directory since we are running on a GitHub-hosted " +
+        "runner which will be automatically cleaned up.",
+    );
   }
 
   return uploadFailedSarifResult;

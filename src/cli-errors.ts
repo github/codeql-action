@@ -1,8 +1,5 @@
 import { ConfigurationError } from "./util";
 
-const NO_SOURCE_CODE_SEEN_DOCS_LINK =
-  "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build";
-
 /**
  * A class of Error that we can classify as an error stemming from a CLI
  * invocation, with associated exit code, stderr,etc.
@@ -124,9 +121,11 @@ function ensureEndsInPeriod(text: string): string {
 
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
+  ExternalRepositoryCloneFailed = "ExternalRepositoryCloneFailed",
   GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
+  InvalidConfigFile = "InvalidConfigFile",
   InvalidSourceRoot = "InvalidSourceRoot",
   MavenBuildFailed = "MavenBuildFailed",
   NoBuildCommandAutodetected = "NoBuildCommandAutodetected",
@@ -134,7 +133,11 @@ export enum CliConfigErrorCategory {
   NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  OutOfMemoryOrDisk = "OutOfMemoryOrDisk",
+  PackCannotBeFound = "PackCannotBeFound",
+  PackMissingAuth = "PackMissingAuth",
   SwiftBuildFailed = "SwiftBuildFailed",
+  UnsupportedBuildMode = "UnsupportedBuildMode",
 }
 
 type CliErrorConfiguration = {
@@ -152,6 +155,11 @@ export const cliErrorsConfig: Record<
   CliConfigErrorCategory,
   CliErrorConfiguration
 > = {
+  [CliConfigErrorCategory.ExternalRepositoryCloneFailed]: {
+    cliErrorMessageCandidates: [
+      new RegExp("Failed to clone external Git repository"),
+    ],
+  },
   [CliConfigErrorCategory.GradleBuildFailed]: {
     cliErrorMessageCandidates: [
       new RegExp("[autobuild] FAILURE: Build failed with an exception."),
@@ -170,6 +178,12 @@ export const cliErrorsConfig: Record<
       ),
     ],
     additionalErrorMessageToAppend: `Is the "init" action called twice in the same job?`,
+  },
+  [CliConfigErrorCategory.InvalidConfigFile]: {
+    cliErrorMessageCandidates: [
+      new RegExp("Config file .* is not valid"),
+      new RegExp("The supplied config file is empty"),
+    ],
   },
   // Expected source location for database creation does not exist
   [CliConfigErrorCategory.InvalidSourceRoot]: {
@@ -203,18 +217,8 @@ export const cliErrorsConfig: Record<
       new RegExp(
         "CodeQL did not detect any code written in languages supported by CodeQL",
       ),
-      /**
-       * Earlier versions of the JavaScript extractor (pre-CodeQL 2.12.0) extract externs even if no
-       * source code was found. This means that we don't get the no code found error from
-       * `codeql database finalize`. To ensure users get a good error message, we detect this manually
-       * here, and upon detection override the error message.
-       *
-       * This can be removed once support for CodeQL 2.11.6 is removed.
-       */
-      new RegExp("No JavaScript or TypeScript code found"),
     ],
   },
-
   [CliConfigErrorCategory.NoSupportedBuildCommandSucceeded]: {
     cliErrorMessageCandidates: [
       new RegExp("No supported build command succeeded"),
@@ -225,10 +229,41 @@ export const cliErrorsConfig: Record<
       new RegExp("No supported build system detected"),
     ],
   },
+  [CliConfigErrorCategory.OutOfMemoryOrDisk]: {
+    cliErrorMessageCandidates: [
+      new RegExp("CodeQL is out of memory."),
+      new RegExp("out of disk"),
+      new RegExp("No space left on device"),
+    ],
+    additionalErrorMessageToAppend:
+      "For more information, see https://gh.io/troubleshooting-code-scanning/out-of-disk-or-memory",
+  },
+  [CliConfigErrorCategory.PackCannotBeFound]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "Query pack .* cannot be found\\. Check the spelling of the pack\\.",
+      ),
+    ],
+  },
+  [CliConfigErrorCategory.PackMissingAuth]: {
+    cliErrorMessageCandidates: [
+      new RegExp("GitHub Container registry .* 403 Forbidden"),
+      new RegExp(
+        "Do you need to specify a token to authenticate to the registry?",
+      ),
+    ],
+  },
   [CliConfigErrorCategory.SwiftBuildFailed]: {
     cliErrorMessageCandidates: [
       new RegExp(
         "\\[autobuilder/build\\] \\[build-command-failed\\] `autobuild` failed to run the build command",
+      ),
+    ],
+  },
+  [CliConfigErrorCategory.UnsupportedBuildMode]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "does not support the .* build mode. Please try using one of the following build modes instead",
       ),
     ],
   },
@@ -263,18 +298,6 @@ export function getCliConfigCategoryIfExists(
 }
 
 /**
- * Prepend a clearer error message with the docs link if the error message does not already
- * include it. Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs
- * should already include the doc link.
- */
-function prependDocsLinkIfApplicable(cliErrorMessage: string): string {
-  if (!cliErrorMessage.includes(NO_SOURCE_CODE_SEEN_DOCS_LINK)) {
-    return `No code found during the build. Please see: ${NO_SOURCE_CODE_SEEN_DOCS_LINK}. Detailed error: ${cliErrorMessage}`;
-  }
-  return cliErrorMessage;
-}
-
-/**
  * Changes an error received from the CLI to a ConfigurationError with optionally an extra
  * error message appended, if it exists in a known set of configuration errors. Otherwise,
  * simply returns the original error.
@@ -290,12 +313,6 @@ export function wrapCliConfigurationError(cliError: Error): Error {
   }
 
   let errorMessageBuilder = cliError.message;
-
-  // Can be removed once support for CodeQL 2.11.6 is removed; at that point, all runs should
-  // already include the doc link.
-  if (cliConfigErrorCategory === CliConfigErrorCategory.NoSourceCodeSeen) {
-    errorMessageBuilder = prependDocsLinkIfApplicable(errorMessageBuilder);
-  }
 
   const additionalErrorMessageToAppend =
     cliErrorsConfig[cliConfigErrorCategory].additionalErrorMessageToAppend;

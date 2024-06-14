@@ -32,6 +32,8 @@ export enum ToolsSource {
 
 export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
+const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
+
 function getCodeQLBundleName(): string {
   let platform: string;
   if (process.platform === "win32") {
@@ -64,7 +66,7 @@ function tryGetCodeQLCliVersionForRelease(
   release,
   logger: Logger,
 ): string | undefined {
-  const cliVersionsFromMarkerFiles = release.assets
+  const cliVersionsFromMarkerFiles = (release.assets as Array<{ name: string }>)
     .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
     .filter((v) => v)
     .map((v) => v as string);
@@ -281,7 +283,12 @@ export async function getCodeQLSource(
   variant: util.GitHubVariant,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
-  if (toolsInput && toolsInput !== "latest" && !toolsInput.startsWith("http")) {
+  if (
+    toolsInput &&
+    !CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput) &&
+    !toolsInput.startsWith("http")
+  ) {
+    logger.info(`Using CodeQL CLI from local path ${toolsInput}`);
     return {
       codeqlTarPath: toolsInput,
       sourceType: "local",
@@ -292,19 +299,30 @@ export async function getCodeQLSource(
   /**
    * Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced.
    *
-   * We use the special value of 'latest' to prioritize the version in `defaults.json` over the
+   * We use the special value of 'linked' to prioritize the version in `defaults.json` over the
    * version specified by the feature flags on Dotcom and over any pinned cached version on
    * Enterprise Server.
+   *
+   * Previously we have been using 'latest' to force the shipped tools, but this was not clear
+   * enough for the users, so it has been changed to `linked`. We're keeping around `latest` for
+   * backwards compatibility.
    */
-  const forceShippedTools = toolsInput === "latest";
+  const forceShippedTools =
+    toolsInput && CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput);
   if (forceShippedTools) {
     logger.info(
-      "Overriding the version of the CodeQL tools by the version shipped with the Action since " +
-        `"tools: latest" was requested.`,
+      `Overriding the version of the CodeQL tools by ${defaultCliVersion.cliVersion}, the version shipped with the Action since ` +
+        `tools: ${toolsInput} was requested.`,
     );
+
+    if (toolsInput === "latest") {
+      logger.warning(
+        "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported for now. No action is required.",
+      );
+    }
   }
 
-  /** CLI version number, for example 2.12.1. */
+  /** CLI version number, for example 2.12.6. */
   let cliVersion: string | undefined;
   /** Tag name of the CodeQL bundle, for example `codeql-bundle-20230120`. */
   let tagName: string | undefined;
@@ -424,6 +442,13 @@ export async function getCodeQLSource(
   }
 
   if (codeqlFolder) {
+    if (cliVersion) {
+      logger.info(
+        `Using CodeQL CLI version ${cliVersion} from toolcache at ${codeqlFolder}`,
+      );
+    } else {
+      logger.info(`Using CodeQL CLI from toolcache at ${codeqlFolder}`);
+    }
     return {
       codeqlFolder,
       sourceType: "toolcache",
@@ -452,6 +477,11 @@ export async function getCodeQLSource(
     url = await getCodeQLBundleDownloadURL(tagName!, apiDetails, logger);
   }
 
+  if (cliVersion) {
+    logger.info(`Using CodeQL CLI version ${cliVersion} sourced from ${url}.`);
+  } else {
+    logger.info(`Using CodeQL CLI sourced from ${url}.`);
+  }
   return {
     bundleVersion: tagName && tryGetBundleVersionFromTagName(tagName, logger),
     cliVersion,
@@ -482,7 +512,9 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
-export async function downloadCodeQL(
+// Exported using `export const` for testing purposes. Specifically, we want to
+// be able to stub this function and have other functions in this file use that stub.
+export const downloadCodeQL = async function (
   codeqlURL: string,
   maybeBundleVersion: string | undefined,
   maybeCliVersion: string | undefined,
@@ -603,7 +635,7 @@ export async function downloadCodeQL(
     codeqlFolder: toolcachedBundlePath,
     toolsDownloadDurationMs,
   };
-}
+};
 
 export function getCodeQLURLVersion(url: string): string {
   const match = url.match(/\/codeql-bundle-(.*)\//);

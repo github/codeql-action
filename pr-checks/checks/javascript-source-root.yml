@@ -1,6 +1,6 @@
 name: "Custom source root"
 description: "Checks that the argument specifying a non-default source root works"
-versions: ["latest", "default", "nightly-latest"] # This feature is not compatible with old CLIs
+versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
 operatingSystems: ["ubuntu"]
 steps:
   - name: Move codeql-action
@@ -15,9 +15,7 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/analyze
     with:
-      upload-database: false
       skip-queries: true
-      upload: never
   - name: Assert database exists
     shell: bash
     run: |

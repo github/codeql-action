@@ -1,6 +1,6 @@
 name: "Ruby analysis"
 description: "Tests creation of a Ruby database"
-versions: ["latest", "default", "nightly-latest"]
+versions: ["linked", "default", "nightly-latest"]
 operatingSystems: ["ubuntu", "macos"]
 steps:
   - uses: ./../action/init

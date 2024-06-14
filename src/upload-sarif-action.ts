@@ -41,11 +41,13 @@ async function sendSuccessStatusReport(
     await checkDiskUsage(),
     logger,
   );
-  const statusReport: UploadSarifStatusReport = {
-    ...statusReportBase,
-    ...uploadStats,
-  };
-  await sendStatusReport(statusReport);
+  if (statusReportBase !== undefined) {
+    const statusReport: UploadSarifStatusReport = {
+      ...statusReportBase,
+      ...uploadStats,
+    };
+    await sendStatusReport(statusReport);
+  }
 }
 
 async function run() {
@@ -56,16 +58,17 @@ async function run() {
   const gitHubVersion = await getGitHubVersion();
   checkActionVersion(getActionVersion(), gitHubVersion);
 
-  await sendStatusReport(
-    await createStatusReportBase(
-      ActionName.UploadSarif,
-      "starting",
-      startedAt,
-      undefined,
-      await checkDiskUsage(),
-      logger,
-    ),
+  const startingStatusReportBase = await createStatusReportBase(
+    ActionName.UploadSarif,
+    "starting",
+    startedAt,
+    undefined,
+    await checkDiskUsage(),
+    logger,
   );
+  if (startingStatusReportBase !== undefined) {
+    await sendStatusReport(startingStatusReportBase);
+  }
 
   try {
     const uploadResult = await upload_lib.uploadFromActions(
@@ -95,19 +98,20 @@ async function run() {
         : wrapError(unwrappedError);
     const message = error.message;
     core.setFailed(message);
-    console.log(error);
-    await sendStatusReport(
-      await createStatusReportBase(
-        ActionName.UploadSarif,
-        getActionsStatus(error),
-        startedAt,
-        undefined,
-        await checkDiskUsage(),
-        logger,
-        message,
-        error.stack,
-      ),
+
+    const errorStatusReportBase = await createStatusReportBase(
+      ActionName.UploadSarif,
+      getActionsStatus(error),
+      startedAt,
+      undefined,
+      await checkDiskUsage(),
+      logger,
+      message,
+      error.stack,
     );
+    if (errorStatusReportBase !== undefined) {
+      await sendStatusReport(errorStatusReportBase);
+    }
     return;
   }
 }

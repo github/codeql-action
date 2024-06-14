@@ -1,6 +1,8 @@
 name: "Test unsetting environment variables"
 description: "An end-to-end integration test that unsets some environment variables"
-operatingSystems: ["ubuntu"]
+# TODO: Switch back to all versions once CLI v2.17.4 is available and running on ubuntu again.
+versions: ["stable-v2.14.6", "stable-v2.15.5", "stable-v2.16.6", "linked", "default", "nightly-latest"] 
+operatingSystems: ["macos"] # TODO: Switch back to ubuntu for `nightly-latest` and `latest` once CLI v2.17.4 is available.
 steps:
   - uses: ./../action/init
     id: init
@@ -10,6 +12,9 @@ steps:
   - uses: ./../action/.github/actions/setup-swift
     with:
       codeql-path: ${{ steps.init.outputs.codeql-path }}
+  - uses: actions/setup-go@v5
+    with:
+      go-version: '>=1.21.0'
   - name: Build code
     shell: bash
     run: env -i PATH="$PATH" HOME="$HOME" ./build.sh

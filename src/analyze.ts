@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
-import * as toolrunner from "@actions/exec/lib/toolrunner";
 import { safeWhich } from "@chrisgavin/safe-which";
 import del from "del";
 import * as yaml from "js-yaml";
@@ -14,14 +13,9 @@ import {
   getCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
-import { BuildMode } from "./config-utils";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
-import {
-  FeatureEnablement,
-  Feature,
-  isPythonDependencyInstallationDisabled,
-} from "./feature-flags";
+import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
@@ -29,6 +23,7 @@ import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
 import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
+import { BuildMode } from "./util";
 
 export class CodeQLAnalysisError extends Error {
   queriesStatusReport: QueriesStatusReport;
@@ -121,59 +116,24 @@ export interface QueriesStatusReport {
   event_reports?: EventReport[];
 }
 
-async function setupPythonExtractor(
-  logger: Logger,
-  features: FeatureEnablement,
-  codeql: CodeQL,
-) {
+async function setupPythonExtractor(logger: Logger) {
   const codeqlPython = process.env["CODEQL_PYTHON"];
   if (codeqlPython === undefined || codeqlPython.length === 0) {
     // If CODEQL_PYTHON is not set, no dependencies were installed, so we don't need to do anything
     return;
   }
 
-  if (await isPythonDependencyInstallationDisabled(codeql, features)) {
-    logger.warning(
-      "We recommend that you remove the CODEQL_PYTHON environment variable from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
-        "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'.",
-    );
-    return;
-  }
-
-  const scriptsFolder = path.resolve(__dirname, "../python-setup");
-
-  let output = "";
-  const options = {
-    listeners: {
-      stdout: (data: Buffer) => {
-        output += data.toString();
-      },
-    },
-  };
-
-  await new toolrunner.ToolRunner(
-    codeqlPython,
-    [path.join(scriptsFolder, "find_site_packages.py")],
-    options,
-  ).exec();
-  logger.info(`Setting LGTM_INDEX_IMPORT_PATH=${output}`);
-  process.env["LGTM_INDEX_IMPORT_PATH"] = output;
-
-  output = "";
-  await new toolrunner.ToolRunner(
-    codeqlPython,
-    ["-c", "import sys; print(sys.version_info[0])"],
-    options,
-  ).exec();
-  logger.info(`Setting LGTM_PYTHON_SETUP_VERSION=${output}`);
-  process.env["LGTM_PYTHON_SETUP_VERSION"] = output;
+  logger.warning(
+    "The CODEQL_PYTHON environment variable is no longer supported. Please remove it from your workflow. This environment variable was originally used to specify a Python executable that included the dependencies of your Python code, however Python analysis no longer uses these dependencies." +
+      "\nIf you used CODEQL_PYTHON to force the version of Python to analyze as, please use CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION instead, such as 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=2.7' or 'CODEQL_EXTRACTOR_PYTHON_ANALYSIS_VERSION=3.11'.",
+  );
+  return;
 }
 
 export async function runExtraction(
   codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
-  features: FeatureEnablement,
 ) {
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
@@ -186,7 +146,7 @@ export async function runExtraction(
     if (shouldExtractLanguage(config, language)) {
       logger.startGroup(`Extracting ${language}`);
       if (language === Language.python) {
-        await setupPythonExtractor(logger, features, codeql);
+        await setupPythonExtractor(logger);
       }
       if (
         config.buildMode &&
@@ -198,26 +158,7 @@ export async function runExtraction(
         ) {
           await setupCppAutobuild(codeql, logger);
         }
-        try {
-          await codeql.extractUsingBuildMode(config, language);
-        } catch (e) {
-          if (config.buildMode === BuildMode.Autobuild) {
-            const prefix =
-              "We were unable to automatically build your code. " +
-              "Please change the build mode for this language to manual and specify build steps " +
-              "for your project. For more information, see " +
-              "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed.";
-            const ErrorConstructor =
-              e instanceof util.ConfigurationError
-                ? util.ConfigurationError
-                : Error;
-            throw new ErrorConstructor(
-              `${prefix} ${util.wrapError(e).message}`,
-            );
-          } else {
-            throw e;
-          }
-        }
+        await codeql.extractUsingBuildMode(config, language);
       } else {
         await codeql.extractScannedLanguage(config, language);
       }
@@ -258,16 +199,14 @@ export function dbIsFinalized(
 }
 
 async function finalizeDatabaseCreation(
+  codeql: CodeQL,
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
-  features: FeatureEnablement,
 ): Promise<DatabaseCreationTimings> {
-  const codeql = await getCodeQL(config.codeQLCmd);
-
   const extractionStart = performance.now();
-  await runExtraction(codeql, config, logger, features);
+  await runExtraction(codeql, config, logger);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -364,7 +303,7 @@ export async function runQueries(
       }
 
       if (
-        !(await util.codeQlVersionAbove(
+        !(await util.codeQlVersionAtLeast(
           codeql,
           CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
         ))
@@ -441,9 +380,10 @@ export async function runFinalize(
   outputDir: string,
   threadsFlag: string,
   memoryFlag: string,
+  codeql: CodeQL,
   config: configUtils.Config,
-  logger: Logger,
   features: FeatureEnablement,
+  logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   try {
     await del(outputDir, { force: true });
@@ -455,20 +395,17 @@ export async function runFinalize(
   await fs.promises.mkdir(outputDir, { recursive: true });
 
   const timings = await finalizeDatabaseCreation(
+    codeql,
     config,
     threadsFlag,
     memoryFlag,
     logger,
-    features,
   );
 
-  // WARNING: This does not _really_ end tracing, as the tracer will restore its
-  // critical environment variables and it'll still be active for all processes
-  // launched from this build step.
-  // However, it will stop tracing for all steps past the codeql-action/analyze
-  // step.
-  // Delete variables as specified by the end-tracing script
-  await endTracingForCluster(config);
+  // If we didn't already end tracing in the autobuild Action, end it now.
+  if (process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") {
+    await endTracingForCluster(codeql, config, logger, features);
+  }
   return timings;
 }
 

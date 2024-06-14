@@ -1,7 +1,7 @@
-import { mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
 
-import { Config } from "./config-utils";
+import type { Config } from "./config-utils";
 import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { getCodeQLDatabasePath } from "./util";
@@ -55,6 +55,17 @@ export interface DiagnosticMessage {
   attributes?: { [key: string]: any };
 }
 
+/** Represents a diagnostic message that has not yet been written to the database. */
+interface UnwrittenDiagnostic {
+  /** The diagnostic message that has not yet been written. */
+  diagnostic: DiagnosticMessage;
+  /** The language the diagnostic is for. */
+  language: Language;
+}
+
+/** A list of diagnostics which have not yet been written to disk. */
+let unwrittenDiagnostics: UnwrittenDiagnostic[] = [];
+
 /**
  * Constructs a new diagnostic message with the specified id and name, as well as optional additional data.
  *
@@ -76,12 +87,42 @@ export function makeDiagnostic(
 }
 
 /**
- * Writes the given diagnostic to the database.
+ * Adds the given diagnostic to the database. If the database does not yet exist,
+ * the diagnostic will be written to it once it has been created.
  *
  * @param config The configuration that tells us where to store the diagnostic.
+ * @param language The language which the diagnostic is for.
  * @param diagnostic The diagnostic message to add to the database.
  */
 export function addDiagnostic(
+  config: Config,
+  language: Language,
+  diagnostic: DiagnosticMessage,
+) {
+  const logger = getActionsLogger();
+  const databasePath = getCodeQLDatabasePath(config, language);
+
+  // Check that the database exists before writing to it. If the database does not yet exist,
+  // store the diagnostic in memory and write it later.
+  if (existsSync(databasePath)) {
+    writeDiagnostic(config, language, diagnostic);
+  } else {
+    logger.debug(
+      `Writing a diagnostic for ${language}, but the database at ${databasePath} does not exist yet.`,
+    );
+
+    unwrittenDiagnostics.push({ diagnostic, language });
+  }
+}
+
+/**
+ * Writes the given diagnostic to the database.
+ *
+ * @param config The configuration that tells us where to store the diagnostic.
+ * @param language The language which the diagnostic is for.
+ * @param diagnostic The diagnostic message to add to the database.
+ */
+function writeDiagnostic(
   config: Config,
   language: Language,
   diagnostic: DiagnosticMessage,
@@ -105,5 +146,36 @@ export function addDiagnostic(
     writeFileSync(jsonPath, JSON.stringify(diagnostic));
   } catch (err) {
     logger.warning(`Unable to write diagnostic message to database: ${err}`);
+    logger.debug(JSON.stringify(diagnostic));
   }
+}
+
+/** Report if there are unwritten diagnostics and write them to the log. */
+export function logUnwrittenDiagnostics() {
+  const logger = getActionsLogger();
+  const num = unwrittenDiagnostics.length;
+  if (num > 0) {
+    logger.warning(
+      `${num} diagnostic(s) could not be written to the database and will not appear on the Tool Status Page.`,
+    );
+
+    for (const unwritten of unwrittenDiagnostics) {
+      logger.debug(JSON.stringify(unwritten.diagnostic));
+    }
+  }
+}
+
+/** Writes all unwritten diagnostics to disk. */
+export function flushDiagnostics(config: Config) {
+  const logger = getActionsLogger();
+  logger.debug(
+    `Writing ${unwrittenDiagnostics.length} diagnostic(s) to database.`,
+  );
+
+  for (const unwritten of unwrittenDiagnostics) {
+    writeDiagnostic(config, unwritten.language, unwritten.diagnostic);
+  }
+
+  // Reset the unwritten diagnostics array.
+  unwrittenDiagnostics = [];
 }

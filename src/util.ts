@@ -56,8 +56,11 @@ export interface SarifFile {
 export interface SarifRun {
   tool?: {
     driver?: {
+      guid?: string;
       name?: string;
+      fullName?: string;
       semanticVersion?: string;
+      version?: string;
     };
   };
   automationDetails?: {
@@ -117,7 +120,7 @@ export function getExtraOptionsEnvParam(): object {
     return {};
   }
   try {
-    return JSON.parse(raw);
+    return JSON.parse(raw) as object;
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     throw new ConfigurationError(
@@ -682,7 +685,7 @@ export function getCachedCodeQlVersion(): undefined | VersionInfo {
   return cachedCodeQlVersion;
 }
 
-export async function codeQlVersionAbove(
+export async function codeQlVersionAtLeast(
   codeql: CodeQL,
   requiredVersion: string,
 ): Promise<boolean> {
@@ -732,15 +735,6 @@ export async function delay(
 
 export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
-}
-
-/**
- * Checks whether the CodeQL CLI supports the `--expect-discarded-cache` command-line flag.
- */
-export async function supportExpectDiscardedCache(
-  codeQL: CodeQL,
-): Promise<boolean> {
-  return codeQlVersionAbove(codeQL, "2.12.1");
 }
 
 /*
@@ -894,7 +888,7 @@ export function parseMatrixInput(
   if (matrixInput === undefined || matrixInput === "null") {
     return undefined;
   }
-  return JSON.parse(matrixInput);
+  return JSON.parse(matrixInput) as { [key: string]: string };
 }
 
 function removeDuplicateLocations(locations: SarifLocation[]): SarifLocation[] {
@@ -1090,4 +1084,19 @@ export function checkActionVersion(
       core.exportVariable("CODEQL_V2_DEPRECATION_WARNING", "true");
     }
   }
+}
+
+/**
+ * Supported build modes.
+ *
+ * These specify whether the CodeQL database should be created by tracing a build, and if so, how
+ * this build will be invoked.
+ */
+export enum BuildMode {
+  /** The database will be created without building the source root. */
+  None = "none",
+  /** The database will be created by attempting to automatically build the source root. */
+  Autobuild = "autobuild",
+  /** The database will be created by building the source root using manually specified build steps. */
+  Manual = "manual",
 }

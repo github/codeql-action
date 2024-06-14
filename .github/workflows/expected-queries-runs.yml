@@ -11,6 +11,8 @@ on:
     - synchronize
     - reopened
     - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -27,7 +29,7 @@ jobs:
       id: prepare-test
       uses: ./.github/actions/prepare-test
       with:
-        version: latest
+        version: linked
     - uses: ./../action/init
       with:
         languages: javascript
@@ -35,8 +37,6 @@ jobs:
     - uses: ./../action/analyze
       with:
         output: ${{ runner.temp }}/results
-        upload-database: false
-        upload: never
 
     - name: Check Sarif
       uses: ./../action/.github/actions/check-sarif

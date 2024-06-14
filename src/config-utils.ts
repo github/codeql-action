@@ -13,10 +13,11 @@ import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
 import {
-  codeQlVersionAbove,
+  codeQlVersionAtLeast,
   GitHubVersion,
   prettyPrintPack,
   ConfigurationError,
+  BuildMode,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -71,12 +72,6 @@ interface ExcludeQueryFilter {
 
 interface IncludeQueryFilter {
   include: Record<string, string[] | string>;
-}
-
-export enum BuildMode {
-  None = "none",
-  Autobuild = "autobuild",
-  Manual = "manual",
 }
 
 /**
@@ -364,7 +359,7 @@ export async function getLanguages(
 export async function getLanguageAliases(
   codeql: CodeQL,
 ): Promise<{ [alias: string]: string } | undefined> {
-  if (await codeQlVersionAbove(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
+  if (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
     return (await codeql.betterResolveLanguages()).aliases;
   }
   return undefined;
@@ -981,7 +976,7 @@ export async function getConfig(
   const configString = fs.readFileSync(configFile, "utf8");
   logger.debug("Loaded config:");
   logger.debug(configString);
-  return JSON.parse(configString);
+  return JSON.parse(configString) as Config;
 }
 
 /**
@@ -1070,7 +1065,7 @@ function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
  */
 export async function wrapEnvironment(
   env: Record<string, string | undefined>,
-  operation: Function,
+  operation: () => Promise<void>,
 ) {
   // Remember the original env
   const oldEnv = { ...process.env };
@@ -1111,6 +1106,16 @@ export async function parseBuildModeInput(
         BuildMode,
       ).join(", ")}.`,
     );
+  }
+
+  if (
+    languages.includes(Language.csharp) &&
+    (await features.getValue(Feature.DisableCsharpBuildless))
+  ) {
+    logger.warning(
+      "Scanning C# code without a build is temporarily unavailable. Falling back to 'autobuild' build mode.",
+    );
+    return BuildMode.Autobuild;
   }
 
   if (

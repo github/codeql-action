@@ -10,44 +10,47 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   resolve-environment-action:
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          version: stable-v2.13.4
-        - os: macos-latest
-          version: stable-v2.13.4
-        - os: windows-latest
-          version: stable-v2.13.4
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: windows-latest
-          version: default
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: windows-latest
-          version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
-        - os: windows-latest
-          version: nightly-latest
+          - os: ubuntu-latest
+            version: stable-v2.13.4
+          - os: macos-12
+            version: stable-v2.13.4
+          - os: windows-latest
+            version: stable-v2.13.4
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest
+            version: default
+          - os: windows-latest
+            version: default
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: windows-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+          - os: windows-latest
+            version: nightly-latest
     name: Resolve environment
     permissions:
       contents: read
@@ -55,59 +58,53 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          runner.os == 'macOS' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20230403' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.13.5' ||
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: true
+      - uses: ./../action/init
+        with:
+          languages: ${{ matrix.version == 'stable-v2.13.4' && 'go' || 'go,javascript-typescript'
+            }}
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-        setup-kotlin: true
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      with:
-        languages: ${{ matrix.version == 'stable-v2.13.4' && 'go' || 'go,javascript-typescript'
-          }}
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Resolve environment for Go
+        uses: ./../action/resolve-environment
+        id: resolve-environment-go
+        with:
+          language: go
 
-    - name: Resolve environment for Go
-      uses: ./../action/resolve-environment
-      id: resolve-environment-go
-      with:
-        language: go
+      - name: Fail if Go configuration missing
+        if: (!fromJSON(steps.resolve-environment-go.outputs.environment).configuration.go)
+        run: exit 1
 
-    - name: Fail if Go configuration missing
-      if: (!fromJSON(steps.resolve-environment-go.outputs.environment).configuration.go)
-      run: exit 1
+      - name: Resolve environment for JavaScript/TypeScript
+        if: matrix.version != 'stable-v2.13.4'
+        uses: ./../action/resolve-environment
+        id: resolve-environment-js
+        with:
+          language: javascript-typescript
 
-    - name: Resolve environment for JavaScript/TypeScript
-      if: matrix.version != 'stable-v2.13.4'
-      uses: ./../action/resolve-environment
-      id: resolve-environment-js
-      with:
-        language: javascript-typescript
-
-    - name: Fail if JavaScript/TypeScript configuration present
-      if: matrix.version != 'stable-v2.13.4' && 
-        fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
-      run: exit 1
+      - name: Fail if JavaScript/TypeScript configuration present
+        if: matrix.version != 'stable-v2.13.4' && 
+          fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
+        run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

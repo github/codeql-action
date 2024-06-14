@@ -10,22 +10,25 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   language-aliases:
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
+          - os: ubuntu-latest
+            version: linked
     name: Language aliases
     permissions:
       contents: read
@@ -33,47 +36,41 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python on MacOS
-      uses: actions/setup-python@v5
-      if: >-
-        matrix.os == 'macos-latest' && (
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          runner.os == 'macOS' && (
 
-        matrix.version == 'stable-20221211' ||
+          matrix.version == 'stable-20230403' ||
 
-        matrix.version == 'stable-20230418' ||
+          matrix.version == 'stable-v2.13.5' ||
 
-        matrix.version == 'stable-v2.13.5' ||
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: true
+      - uses: ./../action/init
+        with:
+          languages: C#,java-kotlin,swift,typescript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-        matrix.version == 'stable-v2.14.6')
-      with:
-        python-version: '3.11'
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-        setup-kotlin: true
-    - name: Set environment variable for Swift enablement
-      if: runner.os != 'Windows' && matrix.version == '20221211'
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      with:
-        languages: C#,java-kotlin,swift,typescript
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check languages
+        run: |
+          expected_languages="csharp,java,swift,javascript"
+          actual_languages=$(jq -r '.languages | join(",")' "$RUNNER_TEMP"/config)
 
-    - name: Check languages
-      run: |
-        expected_languages="csharp,java,swift,javascript"
-        actual_languages=$(jq -r '.languages | join(",")' "$RUNNER_TEMP"/config)
-
-        if [ "$expected_languages" != "$actual_languages" ]; then
-          echo "Resolved languages did not match expected list. " \
-            "Expected languages: $expected_languages. Actual languages: $actual_languages."
-          exit 1
-        fi
+          if [ "$expected_languages" != "$actual_languages" ]; then
+            echo "Resolved languages did not match expected list. " \
+              "Expected languages: $expected_languages. Actual languages: $actual_languages."
+            exit 1
+          fi
     env:
       CODEQL_ACTION_TEST_MODE: true

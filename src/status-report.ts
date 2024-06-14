@@ -12,7 +12,7 @@ import {
   getRequiredInput,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { BuildMode, Config } from "./config-utils";
+import { type Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import {
@@ -24,6 +24,8 @@ import {
   GITHUB_DOTCOM_URL,
   DiskUsage,
   assertNever,
+  BuildMode,
+  wrapError,
 } from "./util";
 
 export enum ActionName {
@@ -142,6 +144,8 @@ export interface StatusReportBase {
   started_at: string;
   /** State this action is currently in. */
   status: ActionStatus;
+  /** Whether this run is part of a steady-state, and not new, default setup run. */
+  steady_state_default_setup: boolean;
   /**
    * Testing environment: Set if non-production environment.
    * The server accepts one of the following values:
@@ -233,6 +237,7 @@ export interface EventReport {
  * @param startedAt The time this action started executing.
  * @param cause  Cause of failure (only supply if status is 'failure')
  * @param exception Exception (only supply if status is 'failure')
+ * @returns undefined if an exception was thrown.
  */
 export async function createStatusReportBase(
   actionName: ActionName,
@@ -243,103 +248,115 @@ export async function createStatusReportBase(
   logger: Logger,
   cause?: string,
   exception?: string,
-): Promise<StatusReportBase> {
-  const commitOid = getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
-  const ref = await getRef();
-  const jobRunUUID = process.env[EnvVar.JOB_RUN_UUID] || "";
-  const workflowRunID = getWorkflowRunID();
-  const workflowRunAttempt = getWorkflowRunAttempt();
-  const workflowName = process.env["GITHUB_WORKFLOW"] || "";
-  const jobName = process.env["GITHUB_JOB"] || "";
-  const analysis_key = await getAnalysisKey();
-  let workflowStartedAt = process.env[EnvVar.WORKFLOW_STARTED_AT];
-  if (workflowStartedAt === undefined) {
-    workflowStartedAt = actionStartedAt.toISOString();
-    core.exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
-  }
-  const runnerOs = getRequiredEnvParam("RUNNER_OS");
-  const codeQlCliVersion = getCachedCodeQlVersion();
-  const actionRef = process.env["GITHUB_ACTION_REF"];
-  const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
-  // re-export the testing environment variable so that it is available to subsequent steps,
-  // even if it was only set for this step
-  if (testingEnvironment !== "") {
-    core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
-  }
-
-  const statusReport: StatusReportBase = {
-    action_name: actionName,
-    action_oid: "unknown", // TODO decide if it's possible to fill this in
-    action_ref: actionRef,
-    action_started_at: actionStartedAt.toISOString(),
-    action_version: getActionVersion(),
-    analysis_key,
-    build_mode: config?.buildMode,
-    commit_oid: commitOid,
-    first_party_analysis: isFirstPartyAnalysis(actionName),
-    job_name: jobName,
-    job_run_uuid: jobRunUUID,
-    ref,
-    runner_os: runnerOs,
-    started_at: workflowStartedAt,
-    status,
-    testing_environment: testingEnvironment,
-    workflow_name: workflowName,
-    workflow_run_attempt: workflowRunAttempt,
-    workflow_run_id: workflowRunID,
-  };
-
+): Promise<StatusReportBase | undefined> {
   try {
-    statusReport.actions_event_name = getWorkflowEventName();
+    const commitOid =
+      getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
+    const ref = await getRef();
+    const jobRunUUID = process.env[EnvVar.JOB_RUN_UUID] || "";
+    const workflowRunID = getWorkflowRunID();
+    const workflowRunAttempt = getWorkflowRunAttempt();
+    const workflowName = process.env["GITHUB_WORKFLOW"] || "";
+    const jobName = process.env["GITHUB_JOB"] || "";
+    const analysis_key = await getAnalysisKey();
+    let workflowStartedAt = process.env[EnvVar.WORKFLOW_STARTED_AT];
+    if (workflowStartedAt === undefined) {
+      workflowStartedAt = actionStartedAt.toISOString();
+      core.exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
+    }
+    const runnerOs = getRequiredEnvParam("RUNNER_OS");
+    const codeQlCliVersion = getCachedCodeQlVersion();
+    const actionRef = process.env["GITHUB_ACTION_REF"] || "";
+    const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
+    // re-export the testing environment variable so that it is available to subsequent steps,
+    // even if it was only set for this step
+    if (testingEnvironment !== "") {
+      core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
+    }
+    const isSteadyStateDefaultSetupRun =
+      process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";
+
+    const statusReport: StatusReportBase = {
+      action_name: actionName,
+      action_oid: "unknown", // TODO decide if it's possible to fill this in
+      action_ref: actionRef,
+      action_started_at: actionStartedAt.toISOString(),
+      action_version: getActionVersion(),
+      analysis_key,
+      build_mode: config?.buildMode,
+      commit_oid: commitOid,
+      first_party_analysis: isFirstPartyAnalysis(actionName),
+      job_name: jobName,
+      job_run_uuid: jobRunUUID,
+      ref,
+      runner_os: runnerOs,
+      started_at: workflowStartedAt,
+      status,
+      steady_state_default_setup: isSteadyStateDefaultSetupRun,
+      testing_environment: testingEnvironment,
+      workflow_name: workflowName,
+      workflow_run_attempt: workflowRunAttempt,
+      workflow_run_id: workflowRunID,
+    };
+
+    try {
+      statusReport.actions_event_name = getWorkflowEventName();
+    } catch (e) {
+      logger.warning(`Could not determine the workflow event name: ${e}.`);
+    }
+
+    if (config) {
+      statusReport.languages = config.languages.join(",");
+    }
+
+    if (diskInfo) {
+      statusReport.runner_available_disk_space_bytes =
+        diskInfo.numAvailableBytes;
+      statusReport.runner_total_disk_space_bytes = diskInfo.numTotalBytes;
+    }
+
+    // Add optional parameters
+    if (cause) {
+      statusReport.cause = cause;
+    }
+    if (exception) {
+      statusReport.exception = exception;
+    }
+    if (
+      status === "success" ||
+      status === "failure" ||
+      status === "aborted" ||
+      status === "user-error"
+    ) {
+      statusReport.completed_at = new Date().toISOString();
+    }
+    const matrix = getRequiredInput("matrix");
+    if (matrix) {
+      statusReport.matrix_vars = matrix;
+    }
+    if ("RUNNER_ARCH" in process.env) {
+      // RUNNER_ARCH is available only in GHES 3.4 and later
+      // Values other than X86, X64, ARM, or ARM64 are discarded server side
+      statusReport.runner_arch = process.env["RUNNER_ARCH"];
+    }
+    if (runnerOs === "Windows" || runnerOs === "macOS") {
+      statusReport.runner_os_release = os.release();
+    }
+    if (codeQlCliVersion !== undefined) {
+      statusReport.codeql_version = codeQlCliVersion.version;
+    }
+    const imageVersion = process.env["ImageVersion"];
+    if (imageVersion) {
+      statusReport.runner_image_version = imageVersion;
+    }
+
+    return statusReport;
   } catch (e) {
-    logger.warning(`Could not determine the workflow event name: ${e}.`);
+    logger.warning(
+      `Caught an exception while gathering information for telemetry: ${e}. Will skip sending status report.`,
+    );
+    return undefined;
   }
-
-  if (config) {
-    statusReport.languages = config.languages.join(",");
-  }
-
-  if (diskInfo) {
-    statusReport.runner_available_disk_space_bytes = diskInfo.numAvailableBytes;
-    statusReport.runner_total_disk_space_bytes = diskInfo.numTotalBytes;
-  }
-
-  // Add optional parameters
-  if (cause) {
-    statusReport.cause = cause;
-  }
-  if (exception) {
-    statusReport.exception = exception;
-  }
-  if (
-    status === "success" ||
-    status === "failure" ||
-    status === "aborted" ||
-    status === "user-error"
-  ) {
-    statusReport.completed_at = new Date().toISOString();
-  }
-  const matrix = getRequiredInput("matrix");
-  if (matrix) {
-    statusReport.matrix_vars = matrix;
-  }
-  if ("RUNNER_ARCH" in process.env) {
-    // RUNNER_ARCH is available only in GHES 3.4 and later
-    // Values other than X86, X64, ARM, or ARM64 are discarded server side
-    statusReport.runner_arch = process.env["RUNNER_ARCH"];
-  }
-  if (runnerOs === "Windows" || runnerOs === "macOS") {
-    statusReport.runner_os_release = os.release();
-  }
-  if (codeQlCliVersion !== undefined) {
-    statusReport.codeql_version = codeQlCliVersion.version;
-  }
-  const imageVersion = process.env["ImageVersion"];
-  if (imageVersion) {
-    statusReport.runner_image_version = imageVersion;
-  }
-
-  return statusReport;
 }
 
 const OUT_OF_DATE_MSG =
@@ -386,7 +403,6 @@ export async function sendStatusReport<S extends StatusReportBase>(
       },
     );
   } catch (e) {
-    console.log(e);
     if (isHTTPError(e)) {
       switch (e.status) {
         case 403:
@@ -423,7 +439,9 @@ export async function sendStatusReport<S extends StatusReportBase>(
     // something else has gone wrong and the request/response will be logged by octokit
     // it's possible this is a transient error and we should continue scanning
     core.warning(
-      "An unexpected error occurred when sending code scanning status report.",
+      `An unexpected error occurred when sending code scanning status report: ${
+        wrapError(e).message
+      }`,
     );
   }
 }

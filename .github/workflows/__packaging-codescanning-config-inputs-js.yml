@@ -72,7 +72,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-          setup-kotlin: true
+          setup-kotlin: 'true'
       - uses: ./../action/init
         with:
           config-file: .github/codeql/codeql-config-packaging3.yml

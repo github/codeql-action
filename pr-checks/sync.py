@@ -72,7 +72,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
                     'os': "macos-12",
                     'version': version
                 })
-            else:     
+            else:
                 matrix.append({
                     'os': runnerImage,
                     'version': version
@@ -111,7 +111,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
                 'use-all-platform-bundle': useAllPlatformBundle,
                 # If the action is being run from a container, then do not setup kotlin.
                 # This is because the kotlin binaries cannot be downloaded from the container.
-                'setup-kotlin': not 'container' in checkSpecification,
+                'setup-kotlin': str(not 'container' in checkSpecification).lower(),
             }
         },
     ]

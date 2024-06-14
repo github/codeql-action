@@ -78,7 +78,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-          setup-kotlin: true
+          setup-kotlin: 'true'
       - uses: ./../action/init
         with:
           languages: ${{ matrix.version == 'stable-v2.13.4' && 'go' || 'go,javascript-typescript'

@@ -56,7 +56,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'true'
-          setup-kotlin: true
+          setup-kotlin: 'true'
       - id: init
         uses: ./../action/init
         with:

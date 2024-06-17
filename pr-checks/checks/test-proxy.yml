@@ -1,6 +1,6 @@
 name: "Proxy test"
 description: "Tests using a proxy specified by the https_proxy environment variable"
-versions: ["latest"]
+versions: ["linked"]
 operatingSystems: ["ubuntu"]
 container:
   image: ubuntu:22.04
@@ -18,5 +18,3 @@ steps:
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/analyze
-    with:
-      upload-database: false

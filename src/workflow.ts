@@ -47,41 +47,6 @@ export interface Workflow {
   on?: string | string[] | WorkflowTriggers;
 }
 
-function isObject(o: unknown): o is object {
-  return o !== null && typeof o === "object";
-}
-
-const GLOB_PATTERN = new RegExp("(\\*\\*?)");
-
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-}
-
-function patternToRegExp(value) {
-  return new RegExp(
-    `^${value
-      .toString()
-      .split(GLOB_PATTERN)
-      .reduce(function (arr, cur) {
-        if (cur === "**") {
-          arr.push(".*?");
-        } else if (cur === "*") {
-          arr.push("[^/]*?");
-        } else if (cur) {
-          arr.push(escapeRegExp(cur));
-        }
-        return arr;
-      }, [])
-      .join("")}$`,
-  );
-}
-
-// this function should return true if patternA is a superset of patternB
-// e.g: * is a superset of main-* but main-* is not a superset of *.
-export function patternIsSuperset(patternA: string, patternB: string): boolean {
-  return patternToRegExp(patternA).test(patternB);
-}
-
 export interface CodedError {
   message: string;
   code: string;
@@ -193,37 +158,35 @@ export async function getWorkflowErrors(
     }
   }
 
-  let missingPush = false;
+  // If there is no push trigger, we will not be able to analyze the default branch.
+  // So add a warning to the user to add a push trigger.
+  // If there is a workflow_call trigger, we don't need a push trigger since we assume
+  // that the workflow_call trigger is called from a workflow that has a push trigger.
+  const hasPushTrigger = hasWorkflowTrigger("push", doc);
+  const hasPullRequestTrigger = hasWorkflowTrigger("pull_request", doc);
+  const hasWorkflowCallTrigger = hasWorkflowTrigger("workflow_call", doc);
 
-  if (doc.on === undefined) {
-    // this is not a valid config
-  } else if (typeof doc.on === "string") {
-    if (doc.on === "pull_request") {
-      missingPush = true;
-    }
-  } else if (Array.isArray(doc.on)) {
-    const hasPush = doc.on.includes("push");
-    const hasPullRequest = doc.on.includes("pull_request");
-    if (hasPullRequest && !hasPush) {
-      missingPush = true;
-    }
-  } else if (isObject(doc.on)) {
-    const hasPush = Object.prototype.hasOwnProperty.call(doc.on, "push");
-    const hasPullRequest = Object.prototype.hasOwnProperty.call(
-      doc.on,
-      "pull_request",
-    );
-
-    if (!hasPush && hasPullRequest) {
-      missingPush = true;
-    }
-  }
-
-  if (missingPush) {
+  if (hasPullRequestTrigger && !hasPushTrigger && !hasWorkflowCallTrigger) {
     errors.push(WorkflowErrors.MissingPushHook);
   }
 
   return errors;
+}
+
+function hasWorkflowTrigger(triggerName: string, doc: Workflow): boolean {
+  if (!doc.on) {
+    return false;
+  }
+
+  if (typeof doc.on === "string") {
+    return doc.on === triggerName;
+  }
+
+  if (Array.isArray(doc.on)) {
+    return doc.on.includes(triggerName);
+  }
+
+  return Object.prototype.hasOwnProperty.call(doc.on, triggerName);
 }
 
 export async function validateWorkflow(

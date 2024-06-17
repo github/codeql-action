@@ -24,14 +24,16 @@ runs:
             VERSION="5.7.0"
           elif [ $VERSION = "5.8" ]; then
             VERSION="5.8.0"
-          # setup-swift does not yet support v5.8.1 Remove this when it does.
-          elif [ $VERSION = "5.8.1" ]; then
-            VERSION="5.8.0"
+          elif [ $VERSION = "5.9" ]; then
+            VERSION="5.9.0"
+          # setup-swift does not yet support v5.9.1 Remove this when it does.
+          elif [ $VERSION = "5.9.1" ]; then
+            VERSION="5.9.0"
           fi 
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
 
-    - uses: swift-actions/setup-swift@f51889efb55dccf13be0ee727e3d6c89a096fb4c # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
+    - uses: redsun82/setup-swift@b2b6f77ab14f6a9b136b520dc53ec8eca27d2b99 # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
       if: runner.os == 'Linux' && steps.get_swift_version.outputs.version != 'null'
       with:
         swift-version: "${{ steps.get_swift_version.outputs.version }}"

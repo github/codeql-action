@@ -1,0 +1,27 @@
+name: "Build mode none"
+description: "An end-to-end integration test of a Java repository built using 'build-mode: none'"
+operatingSystems: ["ubuntu"]
+versions: ["linked", "nightly-latest"]
+steps:
+  - uses: ./../action/init
+    id: init
+    with:
+      build-mode: none
+      db-location: "${{ runner.temp }}/customDbLocation"
+      languages: java
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: Validate database build mode
+    run: |
+      metadata_path="$RUNNER_TEMP/customDbLocation/java/codeql-database.yml"
+      build_mode=$(yq eval '.buildMode' "$metadata_path")
+      if [[ "$build_mode" != "none" ]]; then
+        echo "Expected build mode to be 'none' but was $build_mode"
+        exit 1
+      fi
+
+  # The latest nightly supports omitting the autobuild Action when the build mode is specified.
+  - uses: ./../action/autobuild
+    if: matrix.version != 'nightly-latest'
+
+  - uses: ./../action/analyze

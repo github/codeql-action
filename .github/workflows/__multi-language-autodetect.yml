@@ -11,52 +11,39 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v2
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   multi-language-autodetect:
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          version: stable-20220908
-        - os: macos-latest
-          version: stable-20220908
-        - os: ubuntu-latest
-          version: stable-20221211
-        - os: macos-latest
-          version: stable-20221211
-        - os: ubuntu-latest
-          version: stable-20230418
-        - os: macos-latest
-          version: stable-20230418
-        - os: ubuntu-latest
-          version: stable-v2.13.5
-        - os: macos-latest
-          version: stable-v2.13.5
-        - os: ubuntu-latest
-          version: stable-v2.14.6
-        - os: macos-latest
-          version: stable-v2.14.6
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
+          - os: macos-12
+            version: stable-20230403
+          - os: macos-12
+            version: stable-v2.13.5
+          - os: macos-12
+            version: stable-v2.14.6
+          - os: macos-latest
+            version: stable-v2.15.5
+          - os: macos-latest
+            version: stable-v2.16.6
+          - os: macos-latest
+            version: default
+          - os: macos-latest
+            version: linked
+          - os: macos-latest
+            version: nightly-latest
     name: Multi-language repository
     permissions:
       contents: read
@@ -64,90 +51,96 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      id: init
-      with:
-        db-location: ${{ runner.temp }}/customDbLocation
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          runner.os == 'macOS' && (
 
-    - uses: ./../action/.github/actions/setup-swift
-      with:
-        codeql-path: ${{ steps.init.outputs.codeql-path }}
+          matrix.version == 'stable-20230403' ||
 
-    - name: Build code
-      shell: bash
-      run: ./build.sh
+          matrix.version == 'stable-v2.13.5' ||
 
-    - uses: ./../action/analyze
-      id: analysis
-      with:
-        upload-database: false
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.21.0'
 
-    - name: Check language autodetect for all languages excluding Swift
-      shell: bash
-      run: |
-        CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
-        if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for CPP, or created it in the wrong location."
-          exit 1
-        fi
-        CSHARP_DB=${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
-        if [[ ! -d $CSHARP_DB ]] || [[ ! $CSHARP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for C Sharp, or created it in the wrong location."
-          exit 1
-        fi
-        GO_DB=${{ fromJson(steps.analysis.outputs.db-locations).go }}
-        if [[ ! -d $GO_DB ]] || [[ ! $GO_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Go, or created it in the wrong location."
-          exit 1
-        fi
-        JAVA_DB=${{ fromJson(steps.analysis.outputs.db-locations).java }}
-        if [[ ! -d $JAVA_DB ]] || [[ ! $JAVA_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Java, or created it in the wrong location."
-          exit 1
-        fi
-        JAVASCRIPT_DB=${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
-        if [[ ! -d $JAVASCRIPT_DB ]] || [[ ! $JAVASCRIPT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Javascript, or created it in the wrong location."
-          exit 1
-        fi
-        PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
-        if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Python, or created it in the wrong location."
-          exit 1
-        fi
-        RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
-        if [[ ! -d $RUBY_DB ]] || [[ ! $RUBY_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Ruby, or created it in the wrong location."
-          exit 1
-        fi
+      - uses: ./../action/init
+        id: init
+        with:
+          db-location: ${{ runner.temp }}/customDbLocation
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-    - name: Check language autodetect for Swift
-      if: >-
-        env.CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT == 'true' || 
-            (runner.os != 'Windows' && matrix.version == 'nightly-latest')
-      shell: bash
-      run: |
-        SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
-        if [[ ! -d $SWIFT_DB ]] || [[ ! $SWIFT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
-          echo "Did not create a database for Swift, or created it in the wrong location."
-          exit 1
-        fi
+      - uses: ./../action/.github/actions/setup-swift
+        with:
+          codeql-path: ${{ steps.init.outputs.codeql-path }}
+
+      - name: Build code
+        shell: bash
+        run: ./build.sh
+
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+
+      - name: Check language autodetect for all languages excluding Swift
+        shell: bash
+        run: |
+          CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
+          if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for CPP, or created it in the wrong location."
+            exit 1
+          fi
+          CSHARP_DB=${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
+          if [[ ! -d $CSHARP_DB ]] || [[ ! $CSHARP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for C Sharp, or created it in the wrong location."
+            exit 1
+          fi
+          GO_DB=${{ fromJson(steps.analysis.outputs.db-locations).go }}
+          if [[ ! -d $GO_DB ]] || [[ ! $GO_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Go, or created it in the wrong location."
+            exit 1
+          fi
+          JAVA_DB=${{ fromJson(steps.analysis.outputs.db-locations).java }}
+          if [[ ! -d $JAVA_DB ]] || [[ ! $JAVA_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Java, or created it in the wrong location."
+            exit 1
+          fi
+          JAVASCRIPT_DB=${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
+          if [[ ! -d $JAVASCRIPT_DB ]] || [[ ! $JAVASCRIPT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Javascript, or created it in the wrong location."
+            exit 1
+          fi
+          PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
+          if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Python, or created it in the wrong location."
+            exit 1
+          fi
+          RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
+          if [[ ! -d $RUBY_DB ]] || [[ ! $RUBY_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Ruby, or created it in the wrong location."
+            exit 1
+          fi
+
+      - name: Check language autodetect for Swift
+        if: runner.os != 'Windows' && matrix.version != 'stable-20230403'
+        shell: bash
+        run: |
+          SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
+          if [[ ! -d $SWIFT_DB ]] || [[ ! $SWIFT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Swift, or created it in the wrong location."
+            exit 1
+          fi
     env:
       CODEQL_ACTION_TEST_MODE: true

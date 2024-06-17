@@ -1,8 +1,6 @@
 name: "Config export"
 description: "Tests that the code scanning configuration file is exported to SARIF correctly."
-versions: ["latest", "nightly-latest"]
-env:
-  CODEQL_PASS_CONFIG_TO_CLI: true
+versions: ["linked", "nightly-latest"]
 steps:
   - uses: ./../action/init
     with:
@@ -20,7 +18,7 @@ steps:
       path: "${{ runner.temp }}/results/javascript.sarif"
       retention-days: 7
   - name: Check config properties appear in SARIF
-    uses: actions/github-script@v6
+    uses: actions/github-script@v7
     env:
       SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
     with:
@@ -35,13 +33,13 @@ steps:
           core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
         }
         if (configSummary.disableDefaultQueries !== false) {
-          core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' + 
+          core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' +
             `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
         }
         const expectedQueries = [{ type: 'builtinSuite', uses: 'security-extended' }];
         // Use JSON.stringify to deep-equal the arrays.
         if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
-          core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` + 
+          core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` +
             `${JSON.stringify(configSummary.queries)}.`);
         }
         core.info('Finished config export tests.');

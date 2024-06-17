@@ -3,12 +3,44 @@ description: 'Set up CodeQL'
 author: 'GitHub'
 inputs:
   tools:
-    description: URL of CodeQL tools
+    description: >-
+      By default, the Action will use the recommended version of the CodeQL
+      Bundle to analyze your project. You can override this choice using this
+      input. One of:
+
+      - A local path to a CodeQL Bundle tarball, or
+      - The URL of a CodeQL Bundle tarball GitHub release asset, or
+      - A special value `linked` which uses the version of the CodeQL tools
+        that the Action has been bundled with.
+
+      If not specified, the Action will check in several places until it finds
+      the CodeQL tools.
     required: false
-    # If not specified the Action will check in several places until it finds the CodeQL tools.
   languages:
-    description: |
-      A comma-separated value of the languages to be analysed e.g. python,javascript
+    description: >-
+      A comma-separated list of CodeQL languages to analyze.
+
+      Due to the performance benefit of parallelizing builds, we recommend specifying languages to
+      analyze using a matrix and providing `\$\{{ matrix.language }}` as this input.
+
+      For more information, see
+      https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning#changing-the-languages-that-are-analyzed.
+    required: false
+  build-mode:
+    description: >-
+      The build mode that will be used to analyze the language. This input is only available when
+      analyzing a single CodeQL language per job, for example using a matrix.
+
+      Available build modes will differ based on the language being analyzed. One of:
+
+      - `none`:      The database will be created without building the source code.
+                     Available for all interpreted languages and some compiled languages.
+      - `autobuild`: The database will be created by attempting to automatically build the source
+                     code. Available for all compiled languages.
+      - `manual`:   The database will be created by building the source code using a manually
+                     specified build command. To use this build mode, specify manual build steps in
+                     your workflow between the `init` and `analyze` steps. Available for all
+                     compiled languages.
     required: false
   token:
     description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
@@ -53,7 +85,7 @@ inputs:
     required: false
   packs:
     description: >-
-      [Experimental] Comma-separated list of packs to run. Reference a pack in the format `scope/name[@version]`. If `version` is not
+      Comma-separated list of packs to run. Reference a pack in the format `scope/name[@version]`. If `version` is not
       specified, then the latest version of the pack is used. By default, this overrides the same setting in a
       configuration file; prefix with "+" to use both sets of packs.
 
@@ -64,9 +96,8 @@ inputs:
     description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.
     required: false
   setup-python-dependencies:
-    description: Try to auto-install your python dependencies
-    required: true
-    default: 'true'
+    description: DEPRECATED. This option is ignored since CodeQL Action no longer installs Python dependencies as of versions 3.25.0 and 2.25.0.
+    required: false
   source-root:
     description: Path of the root source code directory, relative to $GITHUB_WORKSPACE.
     required: false
@@ -109,6 +140,6 @@ outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis
 runs:
-  using: 'node16'
+  using: node20
   main: '../lib/init-action.js'
   post: '../lib/init-action-post.js'

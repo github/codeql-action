@@ -5,16 +5,32 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, featureConfig, Features } from "./feature-flags";
+import {
+  Feature,
+  featureConfig,
+  FeatureEnablement,
+  Features,
+} from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { getRequiredEnvParam } from "./util";
+import { ToolsFeature } from "./tools-features";
+import { BuildMode, getRequiredEnvParam } from "./util";
 
 export async function determineAutobuildLanguages(
+  codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
 ): Promise<Language[] | undefined> {
+  if (
+    (config.buildMode === BuildMode.None &&
+      (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))) ||
+    config.buildMode === BuildMode.Manual
+  ) {
+    logger.info(`Using ${config.buildMode} build mode, nothing to autobuild.`);
+    return undefined;
+  }
+
   // Attempt to find a language to autobuild
   // We want pick the dominant language in the repo from the ones we're able to build
   // The languages are sorted in order specified by user or by lines of code if we got
@@ -38,11 +54,11 @@ export async function determineAutobuildLanguages(
    * For example, consider a user with the following workflow file:
    *
    * ```yml
-   * - uses: github/codeql-action/init@v2
+   * - uses: github/codeql-action/init@v3
    *   with:
    *     languages: go, java
-   * - uses: github/codeql-action/autobuild@v2
-   * - uses: github/codeql-action/analyze@v2
+   * - uses: github/codeql-action/autobuild@v3
+   * - uses: github/codeql-action/analyze@v3
    * ```
    *
    * - With Go extraction disabled, we will run the Java autobuilder in the
@@ -99,7 +115,7 @@ export async function determineAutobuildLanguages(
   return languages;
 }
 
-async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
+export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
   const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
   const featureName = "C++ automatic installation of dependencies";
   const envDoc =
@@ -141,8 +157,9 @@ async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
 }
 
 export async function runAutobuild(
-  language: Language,
   config: configUtils.Config,
+  language: Language,
+  features: FeatureEnablement,
   logger: Logger,
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
@@ -150,7 +167,14 @@ export async function runAutobuild(
   if (language === Language.cpp) {
     await setupCppAutobuild(codeQL, logger);
   }
-  await codeQL.runAutobuild(language);
+  if (
+    config.buildMode &&
+    (await features.getValue(Feature.AutobuildDirectTracing, codeQL))
+  ) {
+    await codeQL.extractUsingBuildMode(config, language);
+  } else {
+    await codeQL.runAutobuild(config, language);
+  }
   if (language === Language.go) {
     core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
   }

@@ -1,7 +1,14 @@
-import { VersionInfo } from "./codeql";
+import type { VersionInfo } from "./codeql";
 
 export enum ToolsFeature {
+  AnalysisSummaryV2IsDefault = "analysisSummaryV2Default",
+  BuildModeOption = "buildModeOption",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
+  InformsAboutUnsupportedPathFilters = "informsAboutUnsupportedPathFilters",
+  SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",
+  TraceCommandUseBuildMode = "traceCommandUseBuildMode",
+  SarifMergeRunsFromEqualCategory = "sarifMergeRunsFromEqualCategory",
+  ForceOverwrite = "forceOverwrite",
 }
 
 /**

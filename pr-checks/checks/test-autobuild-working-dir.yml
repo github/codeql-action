@@ -1,6 +1,6 @@
 name: "Autobuild working directory"
 description: "Tests working-directory input of autobuild action"
-versions: ["latest"]
+versions: ["linked"]
 operatingSystems: ["ubuntu"]
 steps:
   - name: Test setup
@@ -18,8 +18,6 @@ steps:
     with:
       working-directory: autobuild-dir
   - uses: ./../action/analyze
-    with:
-      upload-database: false
   - name: Check database
     shell: bash
     run: |

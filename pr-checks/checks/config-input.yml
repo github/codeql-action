@@ -1,0 +1,33 @@
+name: "Config input"
+description: "Tests specifying configuration using the config input"
+operatingSystems: ["ubuntu"]
+versions: ["linked"]
+steps:
+  - name: Copy queries into workspace
+    run: |
+      cp -a ../action/queries .
+
+  - uses: ./../action/init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+      languages: javascript
+      build-mode: none
+      config: |
+        disable-default-queries: true
+        queries:
+          - name: Run custom query
+            uses: ./queries/default-setup-environment-variables.ql
+        paths-ignore:
+          - tests
+          - lib
+
+  - uses: ./../action/analyze
+    with:
+      output: ${{ runner.temp }}/results
+
+  - name: Check SARIF
+    uses: ./../action/.github/actions/check-sarif
+    with:
+      sarif-file: ${{ runner.temp }}/results/javascript.sarif
+      queries-run: javascript/codeql-action/default-setup-env-vars
+      queries-not-run: javascript/codeql-action/default-setup-context-properties

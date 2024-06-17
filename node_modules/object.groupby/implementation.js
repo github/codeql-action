@@ -1,7 +1,7 @@
 'use strict';
 
-var CreateDataPropertyOrThrow = require('es-abstract/2022/CreateDataPropertyOrThrow');
-var OrdinaryObjectCreate = require('es-abstract/2022/OrdinaryObjectCreate');
+var CreateDataPropertyOrThrow = require('es-abstract/2023/CreateDataPropertyOrThrow');
+var OrdinaryObjectCreate = require('es-abstract/2023/OrdinaryObjectCreate');
 
 var forEach = require('es-abstract/helpers/forEach');
 

@@ -1,18 +1,51 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as configUtils from "./config-utils";
+import { type CodeQL } from "./codeql";
+import { type Config } from "./config-utils";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage } from "./languages";
+import { Logger } from "./logging";
+import { ToolsFeature } from "./tools-features";
+import { BuildMode } from "./util";
 
 export type TracerConfig = {
   env: { [key: string]: string };
 };
 
+export async function shouldEnableIndirectTracing(
+  codeql: CodeQL,
+  config: Config,
+  features: FeatureEnablement,
+): Promise<boolean> {
+  return (
+    (!config.buildMode ||
+      config.buildMode === BuildMode.Manual ||
+      !(await features.getValue(Feature.AutobuildDirectTracing, codeql))) &&
+    config.languages.some((l) => isTracedLanguage(l))
+  );
+}
+
+/**
+ * Delete variables as specified by the end-tracing script
+ *
+ * WARNING: This does not _really_ end tracing, as the tracer will restore its
+ * critical environment variables and it'll still be active for all processes
+ * launched from this build step.
+ *
+ * However, it will stop tracing for all steps past the current build step.
+ */
 export async function endTracingForCluster(
-  config: configUtils.Config,
+  codeql: CodeQL,
+  config: Config,
+  logger: Logger,
+  features: FeatureEnablement,
 ): Promise<void> {
-  // If there are no traced languages, we don't need to do anything.
-  if (!config.languages.some((l) => isTracedLanguage(l))) return;
+  if (!(await shouldEnableIndirectTracing(codeql, config, features))) return;
+
+  logger.info(
+    "Unsetting build tracing environment variables. Subsequent steps of this job will not be traced.",
+  );
 
   const envVariablesFile = path.resolve(
     config.dbLocation,
@@ -42,7 +75,7 @@ export async function endTracingForCluster(
 }
 
 export async function getTracerConfigForCluster(
-  config: configUtils.Config,
+  config: Config,
 ): Promise<TracerConfig> {
   const tracingEnvVariables = JSON.parse(
     fs.readFileSync(
@@ -59,27 +92,32 @@ export async function getTracerConfigForCluster(
 }
 
 export async function getCombinedTracerConfig(
-  config: configUtils.Config,
+  codeql: CodeQL,
+  config: Config,
+  features: FeatureEnablement,
 ): Promise<TracerConfig | undefined> {
-  // Abort if there are no traced languages as there's nothing to do
-  const tracedLanguages = config.languages.filter((l) => isTracedLanguage(l));
-  if (tracedLanguages.length === 0) {
+  if (!(await shouldEnableIndirectTracing(codeql, config, features)))
     return undefined;
-  }
 
   const mainTracerConfig = await getTracerConfigForCluster(config);
 
-  // On macos it's necessary to prefix the build command with the runner executable
-  // on order to trace when System Integrity Protection is enabled.
-  // The executable also exists and works for other platforms so we output this env
-  // var with a path to the runner regardless so it's always available.
-  const runnerExeName = process.platform === "win32" ? "runner.exe" : "runner";
-  mainTracerConfig.env["CODEQL_RUNNER"] = path.join(
-    mainTracerConfig.env["CODEQL_DIST"],
-    "tools",
-    mainTracerConfig.env["CODEQL_PLATFORM"],
-    runnerExeName,
-  );
+  // If the CLI doesn't yet support setting the CODEQL_RUNNER environment variable to
+  // the runner executable path, we set it here in the Action.
+  if (!(await codeql.supportsFeature(ToolsFeature.SetsCodeqlRunnerEnvVar))) {
+    // On MacOS when System Integrity Protection is enabled, it's necessary to prefix
+    // the build command with the runner executable for indirect tracing, so we expose
+    // it here via the CODEQL_RUNNER environment variable.
+    // The executable also exists and works for other platforms so we unconditionally
+    // set the environment variable.
+    const runnerExeName =
+      process.platform === "win32" ? "runner.exe" : "runner";
+    mainTracerConfig.env["CODEQL_RUNNER"] = path.join(
+      mainTracerConfig.env["CODEQL_DIST"],
+      "tools",
+      mainTracerConfig.env["CODEQL_PLATFORM"],
+      runnerExeName,
+    );
+  }
 
   return mainTracerConfig;
 }

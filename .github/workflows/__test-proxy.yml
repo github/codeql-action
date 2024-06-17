@@ -11,22 +11,25 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v2
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   test-proxy:
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
+          - os: ubuntu-latest
+            version: linked
     name: Proxy test
     permissions:
       contents: read
@@ -34,29 +37,31 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      with:
-        languages: javascript
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/analyze
-      with:
-        upload-database: false
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          runner.os == 'macOS' && (
+
+          matrix.version == 'stable-20230403' ||
+
+          matrix.version == 'stable-v2.13.5' ||
+
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - uses: ./../action/init
+        with:
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
     env:
       https_proxy: http://squid-proxy:3128
       CODEQL_ACTION_TEST_MODE: true
@@ -67,4 +72,4 @@ jobs:
       squid-proxy:
         image: ubuntu/squid:latest
         ports:
-        - 3128:3128
+          - 3128:3128

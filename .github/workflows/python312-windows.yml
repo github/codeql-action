@@ -2,7 +2,7 @@ name: Test that the workaround for python 3.12 on windows works
 
 on:
   push:
-    branches: [main, releases/v2]
+    branches: [main, releases/v*]
   pull_request:
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.
@@ -14,11 +14,13 @@ on:
 
 jobs:
   test-setup-python-scripts:
+    env:
+      CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
     runs-on: windows-latest
 
     steps:
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: 3.12
 
@@ -32,10 +34,8 @@ jobs:
     - name: Initialize CodeQL
       uses: ./../action/init
       with:
-        tools: latest
+        tools: linked
         languages: python
 
     - name: Analyze
       uses: ./../action/analyze
-      with:
-        upload-database: false

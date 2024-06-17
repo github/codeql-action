@@ -3,7 +3,6 @@ import path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
-import { safeWhich } from "@chrisgavin/safe-which";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -13,30 +12,35 @@ import {
   runCleanup,
   runFinalize,
   runQueries,
+  warnIfGoInstalledAfterInit,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
+import { FeatureEnablement, Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
+  ActionName,
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
-import { getTotalCacheSize, uploadTrapCaches } from "./trap-caching";
+import {
+  cleanupTrapCaches,
+  getTotalCacheSize,
+  TrapCacheCleanupStatusReport,
+  uploadTrapCaches,
+} from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import * as util from "./util";
-import { checkForTimeout, wrapError } from "./util";
 
 interface AnalysisStatusReport
   extends uploadLib.UploadStatusReport,
@@ -62,33 +66,39 @@ async function sendStatusReport(
   trapCacheUploadTime: number | undefined,
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
+  trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   logger: Logger,
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
   const statusReportBase = await createStatusReportBase(
-    "finish",
+    ActionName.Analyze,
     status,
     startedAt,
+    config,
     await util.checkDiskUsage(),
+    logger,
     error?.message,
     error?.stack,
   );
-  const report: FinishStatusReport = {
-    ...statusReportBase,
-    ...(stats || {}),
-    ...(dbCreationTimings || {}),
-  };
-  if (config && didUploadTrapCaches) {
-    const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
-      ...report,
-      trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
-      trap_cache_upload_size_bytes: Math.round(
-        await getTotalCacheSize(config.trapCaches, logger),
-      ),
+  if (statusReportBase !== undefined) {
+    const report: FinishStatusReport = {
+      ...statusReportBase,
+      ...(stats || {}),
+      ...(dbCreationTimings || {}),
+      ...(trapCacheCleanup || {}),
     };
-    await statusReport.sendStatusReport(trapCacheUploadStatusReport);
-  } else {
-    await statusReport.sendStatusReport(report);
+    if (config && didUploadTrapCaches) {
+      const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
+        ...report,
+        trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
+        trap_cache_upload_size_bytes: Math.round(
+          await getTotalCacheSize(config.trapCaches, logger),
+        ),
+      };
+      await statusReport.sendStatusReport(trapCacheUploadStatusReport);
+    } else {
+      await statusReport.sendStatusReport(report);
+    }
   }
 }
 
@@ -137,8 +147,18 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * - We approximate whether manual build steps are present by looking at
  * whether any extraction output already exists for Go.
  */
-async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
+async function runAutobuildIfLegacyGoWorkflow(
+  config: Config,
+  features: FeatureEnablement,
+  logger: Logger,
+) {
   if (!config.languages.includes(Language.go)) {
+    return;
+  }
+  if (config.buildMode) {
+    logger.debug(
+      "Skipping legacy Go autobuild since a build mode has been specified.",
+    );
     return;
   }
   if (process.env[EnvVar.DID_AUTOBUILD_GOLANG] === "true") {
@@ -168,7 +188,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   logger.debug(
     "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
   );
-  await runAutobuild(Language.go, config, logger);
+  await runAutobuild(config, Language.go, features, logger);
 }
 
 async function run() {
@@ -176,6 +196,8 @@ async function run() {
   let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
+    undefined;
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
@@ -183,18 +205,18 @@ async function run() {
 
   const logger = getActionsLogger();
   try {
-    if (
-      !(await statusReport.sendStatusReport(
-        await createStatusReportBase(
-          "finish",
-          "starting",
-          startedAt,
-          await util.checkDiskUsage(logger),
-        ),
-      ))
-    ) {
-      return;
+    const statusReportBase = await createStatusReportBase(
+      ActionName.Analyze,
+      "starting",
+      startedAt,
+      config,
+      await util.checkDiskUsage(logger),
+      logger,
+    );
+    if (statusReportBase !== undefined) {
+      await statusReport.sendStatusReport(statusReportBase);
     }
+
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
       throw new Error(
@@ -202,8 +224,10 @@ async function run() {
       );
     }
 
+    const codeql = await getCodeQL(config.codeQLCmd);
+
     if (hasBadExpectErrorInput()) {
-      throw new util.UserError(
+      throw new util.ConfigurationError(
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork.",
       );
     }
@@ -221,6 +245,8 @@ async function run() {
 
     const gitHubVersion = await getGitHubVersion();
 
+    util.checkActionVersion(actionsUtil.getActionVersion(), gitHubVersion);
+
     const features = new Features(
       gitHubVersion,
       repositoryNwo,
@@ -233,55 +259,17 @@ async function run() {
       logger,
     );
 
-    // Check that `which go` still points at the same path it did when the `init` Action ran to ensure that no steps
-    // in-between performed any setup. We encourage users to perform all setup tasks before initializing CodeQL so that
-    // the setup tasks do not interfere with our analysis.
-    // Furthermore, if we installed a wrapper script in the `init` Action, we need to ensure that there isn't a step
-    // in the workflow after the `init` step which installs a different version of Go and takes precedence in the PATH,
-    // thus potentially circumventing our workaround that allows tracing to work.
-    const goInitPath = process.env[EnvVar.GO_BINARY_LOCATION];
-
-    if (
-      process.env[EnvVar.DID_AUTOBUILD_GOLANG] !== "true" &&
-      goInitPath !== undefined
-    ) {
-      const goBinaryPath = await safeWhich("go");
-
-      if (goInitPath !== goBinaryPath) {
-        core.warning(
-          `Expected \`which go\` to return ${goInitPath}, but got ${goBinaryPath}: please ensure that the correct version of Go is installed before the \`codeql-action/init\` Action is used.`,
-        );
-
-        addDiagnostic(
-          config,
-          Language.go,
-          makeDiagnostic(
-            "go/workflow/go-installed-after-codeql-init",
-            "Go was installed after the `codeql-action/init` Action was run",
-            {
-              markdownMessage:
-                "To avoid interfering with the CodeQL analysis, perform all installation steps before calling the `github/codeql-action/init` Action.",
-              visibility: {
-                statusPage: true,
-                telemetry: true,
-                cliSummaryTable: true,
-              },
-              severity: "warning",
-            },
-          ),
-        );
-      }
-    }
-
-    await runAutobuildIfLegacyGoWorkflow(config, logger);
+    await warnIfGoInstalledAfterInit(config, logger);
+    await runAutobuildIfLegacyGoWorkflow(config, features, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,
       threads,
       memory,
+      codeql,
       config,
-      logger,
       features,
+      logger,
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
@@ -318,7 +306,6 @@ async function run() {
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
         logger,
-        { considerInvalidRequestUserError: false },
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
     } else {
@@ -330,13 +317,19 @@ async function run() {
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();
-    const codeql = await getCodeQL(config.codeQLCmd);
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 
+    // Clean up TRAP caches
+    trapCacheCleanupTelemetry = await cleanupTrapCaches(
+      config,
+      features,
+      logger,
+    );
+
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {
-      core.debug("In test mode. Waiting for processing is disabled.");
+      logger.debug("In test mode. Waiting for processing is disabled.");
     } else if (
       uploadResult !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
@@ -355,7 +348,7 @@ async function run() {
     }
     core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
-    const error = wrapError(unwrappedError);
+    const error = util.wrapError(unwrappedError);
     if (
       actionsUtil.getOptionalInput("expect-error") !== "true" ||
       hasBadExpectErrorInput()
@@ -373,6 +366,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
+        trapCacheCleanupTelemetry,
         logger,
       );
     } else {
@@ -384,6 +378,7 @@ async function run() {
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,
+        trapCacheCleanupTelemetry,
         logger,
       );
     }
@@ -403,6 +398,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   } else if (runStats) {
@@ -414,6 +410,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   } else {
@@ -425,6 +422,7 @@ async function run() {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
       logger,
     );
   }
@@ -436,9 +434,9 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    core.setFailed(`analyze action failed: ${wrapError(error).message}`);
+    core.setFailed(`analyze action failed: ${util.wrapError(error).message}`);
   }
-  await checkForTimeout();
+  await util.checkForTimeout();
 }
 
 void runWrapper();

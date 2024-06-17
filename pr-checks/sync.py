@@ -72,7 +72,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
                     'os': "macos-12",
                     'version': version
                 })
-            else:     
+            else:
                 matrix.append({
                     'os': runnerImage,
                     'version': version
@@ -108,7 +108,10 @@ for file in (this_dir / 'checks').glob('*.yml'):
             'uses': './.github/actions/prepare-test',
             'with': {
                 'version': '${{ matrix.version }}',
-                'use-all-platform-bundle': useAllPlatformBundle
+                'use-all-platform-bundle': useAllPlatformBundle,
+                # If the action is being run from a container, then do not setup kotlin.
+                # This is because the kotlin binaries cannot be downloaded from the container.
+                'setup-kotlin': str(not 'container' in checkSpecification).lower(),
             }
         },
     ]
@@ -149,10 +152,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
             'name': f"PR Check - {checkSpecification['name']}",
             'env': {
                 'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}',
-                'GO111MODULE': 'auto',
-                # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
-                # workaround for our PR checks.
-                'CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN': 'true',
+                'GO111MODULE': 'auto'
             },
             'on': {
                 'push': {

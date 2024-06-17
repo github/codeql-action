@@ -97,3 +97,5 @@ jobs:
       run: ${{steps.init.outputs.codeql-path}} version --format=json
     - name: Perform CodeQL Analysis
       uses: ./analyze
+      with:
+        category: "/language:javascript"

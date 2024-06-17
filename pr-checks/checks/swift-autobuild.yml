@@ -16,7 +16,7 @@ steps:
     shell: bash
     run: pwd
   - uses: ./../action/autobuild
-    timeout-minutes: 10
+    timeout-minutes: 30
   - uses: ./../action/analyze
     id: analysis
     with:

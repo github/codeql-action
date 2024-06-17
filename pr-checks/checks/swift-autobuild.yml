@@ -1,0 +1,34 @@
+name: "Swift analysis using autobuild"
+description: "Tests creation of a Swift database using autobuild"
+# versions: ["latest", "cached", "nightly-latest"]
+versions: ["nightly-latest"]
+# Swift autobuilder is only supported on MacOS for private beta
+operatingSystems: ["macos"]
+env:
+  CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: "true" # Remove when Swift is GA.
+steps:
+  - uses: ./../action/init
+    id: init
+    with:
+      languages: swift
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/.github/actions/setup-swift
+    with:
+      codeql-path: ${{steps.init.outputs.codeql-path}}
+  - name: Check working directory
+    shell: bash
+    run: pwd
+  - uses: ./../action/autobuild
+    timeout-minutes: 10
+  - uses: ./../action/analyze
+    id: analysis
+    with:
+      upload-database: false
+  - name: Check database
+    shell: bash
+    run: |
+      SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+      if [[ ! -d "$SWIFT_DB" ]]; then
+        echo "Did not create a database for Swift."
+        exit 1
+      fi

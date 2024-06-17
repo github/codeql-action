@@ -1,0 +1,26 @@
+name: "C/C++: autoinstalling dependencies (Linux)"
+description: "Checks that running C/C++ autobuild with autoinstalling dependencies works"
+operatingSystems: ["ubuntu"]
+versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with CLIs < 2.15.0
+env:
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+steps:
+  - name: Test setup
+    shell: bash
+    run: |
+      cp -a ../action/tests/cpp-autobuild autobuild-dir
+  - uses: ./../action/init
+    with:
+      languages: cpp
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/autobuild
+    with:
+      working-directory: autobuild-dir
+    env:
+      CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
+  - shell: bash
+    run: |
+      if ! ls /usr/bin/errno; then
+        echo "Did not autoinstall errno"
+        exit 1
+      fi

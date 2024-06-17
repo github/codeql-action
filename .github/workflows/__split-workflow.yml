@@ -11,32 +11,35 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v2
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   split-workflow:
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: ubuntu-latest
-          version: default
-        - os: macos-latest
-          version: default
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
     name: Split workflow
     permissions:
       contents: read
@@ -44,61 +47,65 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      with:
-        config-file: .github/codeql/codeql-config-packaging3.yml
-        packs: +codeql-testing/codeql-pack1@1.0.0
-        languages: javascript
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - name: Build code
-      shell: bash
-      run: ./build.sh
-    - uses: ./../action/analyze
-      with:
-        skip-queries: true
-        output: ${{ runner.temp }}/results
-        upload-database: false
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          runner.os == 'macOS' && (
 
-    - name: Assert No Results
-      shell: bash
-      run: |
-        if [ "$(ls -A $RUNNER_TEMP/results)" ]; then
-          echo "Expected results directory to be empty after skipping query execution!"
-          exit 1
-        fi
-    - uses: ./../action/analyze
-      with:
-        output: ${{ runner.temp }}/results
-        upload-database: false
-    - name: Assert Results
-      shell: bash
-      run: |
-        cd "$RUNNER_TEMP/results"
-        # We should have 4 hits from these rules
-        EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
+          matrix.version == 'stable-20230403' ||
 
-        # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-        RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n\r" " " | xargs)"
-        echo "Found matching rules '$RULES'"
-        if [ "$RULES" != "$EXPECTED_RULES" ]; then
-          echo "Did not match expected rules '$EXPECTED_RULES'."
-          exit 1
-        fi
+          matrix.version == 'stable-v2.13.5' ||
+
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - uses: ./../action/init
+        with:
+          config-file: .github/codeql/codeql-config-packaging3.yml
+          packs: +codeql-testing/codeql-pack1@1.0.0
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        shell: bash
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          skip-queries: true
+          output: ${{ runner.temp }}/results
+          upload-database: false
+
+      - name: Assert No Results
+        shell: bash
+        run: |
+          if [ "$(ls -A $RUNNER_TEMP/results)" ]; then
+            echo "Expected results directory to be empty after skipping query execution!"
+            exit 1
+          fi
+      - uses: ./../action/analyze
+        with:
+          output: ${{ runner.temp }}/results
+          upload-database: false
+      - name: Assert Results
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP/results"
+          # We should have 4 hits from these rules
+          EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
+
+          # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+          RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n\r" " " | xargs)"
+          echo "Found matching rules '$RULES'"
+          if [ "$RULES" != "$EXPECTED_RULES" ]; then
+            echo "Did not match expected rules '$EXPECTED_RULES'."
+            exit 1
+          fi
     env:
       CODEQL_ACTION_TEST_MODE: true

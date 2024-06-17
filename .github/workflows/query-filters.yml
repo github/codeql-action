@@ -4,13 +4,15 @@ on:
   push:
     branches:
     - main
-    - releases/v2
+    - releases/v*
   pull_request:
     types:
     - opened
     - synchronize
     - reopened
     - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -25,7 +27,7 @@ jobs:
       id: prepare-test
       uses: ./.github/actions/prepare-test
       with:
-        version: latest
+        version: linked
 
     - name: Check SARIF for default queries with Single include, Single exclude
       uses: ./../action/.github/actions/query-filter-test

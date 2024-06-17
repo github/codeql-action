@@ -16,15 +16,22 @@ function getElementType(context, node, lazyElementCheck = false) {
 
   // check if the node contains a polymorphic prop
   const polymorphicPropName = settings?.github?.polymorphicPropName ?? 'as'
+
+  const prop = getProp(node.attributes, polymorphicPropName)
+  const literalPropValue = getLiteralPropValue(getProp(node.attributes, polymorphicPropName))
+  let checkConditionalMap = true
+
+  // If the prop is not a literal and we cannot determine it, don't fall back to the conditional map value, if it exists
+  if (prop && !literalPropValue) {
+    checkConditionalMap = false
+  }
   const rawElement = getLiteralPropValue(getProp(node.attributes, polymorphicPropName)) ?? elementType(node)
 
   // if a component configuration does not exists, return the raw element
   if (!settings?.github?.components?.[rawElement]) return rawElement
 
-  const defaultComponent = settings.github.components[rawElement]
-
   // check if the default component is also defined in the configuration
-  return defaultComponent ? defaultComponent : defaultComponent
+  return checkConditionalMap ? settings.github.components[rawElement] : rawElement
 }
 
 module.exports = {getElementType}

@@ -1,0 +1,28 @@
+name: "C/C++: autoinstalling dependencies is skipped (macOS)"
+description: "Checks that running C/C++ autobuild with autoinstalling dependencies explicitly enabled is a no-op on macOS"
+operatingSystems: ["macos"]
+versions: ["nightly-latest"]  # This is not released yet, will come with 2.15.2
+env:
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+steps:
+  - name: Test setup
+    shell: bash
+    run: |
+      cp -a ../action/tests/cpp-autobuild autobuild-dir
+  - uses: ./../action/init
+    with:
+      languages: cpp
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/autobuild
+    with:
+      working-directory: autobuild-dir
+    env:
+      CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
+  - shell: bash
+    run: |
+      if ! ls /usr/bin/errno; then
+        echo "As expected, CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES is a no-op on macOS"
+      else
+        echo "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES should not have had any effect on macOS"
+        exit 1
+      fi

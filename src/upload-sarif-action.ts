@@ -2,16 +2,21 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionVersion } from "./actions-util";
-import { getActionsLogger } from "./logging";
+import { getGitHubVersion } from "./api-client";
+import { Logger, getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   createStatusReportBase,
   sendStatusReport,
   StatusReportBase,
   getActionsStatus,
+  ActionName,
+  isFirstPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
+  ConfigurationError,
+  checkActionVersion,
   checkDiskUsage,
   getRequiredEnvParam,
   initializeEnvironment,
@@ -26,35 +31,43 @@ interface UploadSarifStatusReport
 async function sendSuccessStatusReport(
   startedAt: Date,
   uploadStats: upload_lib.UploadStatusReport,
+  logger: Logger,
 ) {
   const statusReportBase = await createStatusReportBase(
-    "upload-sarif",
+    ActionName.UploadSarif,
     "success",
     startedAt,
+    undefined,
     await checkDiskUsage(),
+    logger,
   );
-  const statusReport: UploadSarifStatusReport = {
-    ...statusReportBase,
-    ...uploadStats,
-  };
-  await sendStatusReport(statusReport);
+  if (statusReportBase !== undefined) {
+    const statusReport: UploadSarifStatusReport = {
+      ...statusReportBase,
+      ...uploadStats,
+    };
+    await sendStatusReport(statusReport);
+  }
 }
 
 async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
-  if (
-    !(await sendStatusReport(
-      await createStatusReportBase(
-        "upload-sarif",
-        "starting",
-        startedAt,
-        await checkDiskUsage(),
-      ),
-    ))
-  ) {
-    return;
+
+  const gitHubVersion = await getGitHubVersion();
+  checkActionVersion(getActionVersion(), gitHubVersion);
+
+  const startingStatusReportBase = await createStatusReportBase(
+    ActionName.UploadSarif,
+    "starting",
+    startedAt,
+    undefined,
+    await checkDiskUsage(),
+    logger,
+  );
+  if (startingStatusReportBase !== undefined) {
+    await sendStatusReport(startingStatusReportBase);
   }
 
   try {
@@ -63,7 +76,6 @@ async function run() {
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getOptionalInput("category"),
       logger,
-      { considerInvalidRequestUserError: true },
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
 
@@ -77,22 +89,29 @@ async function run() {
         logger,
       );
     }
-    await sendSuccessStatusReport(startedAt, uploadResult.statusReport);
+    await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
-    const error = wrapError(unwrappedError);
+    const error =
+      !isFirstPartyAnalysis(ActionName.UploadSarif) &&
+      unwrappedError instanceof upload_lib.InvalidSarifUploadError
+        ? new ConfigurationError(unwrappedError.message)
+        : wrapError(unwrappedError);
     const message = error.message;
     core.setFailed(message);
-    console.log(error);
-    await sendStatusReport(
-      await createStatusReportBase(
-        "upload-sarif",
-        getActionsStatus(error),
-        startedAt,
-        await checkDiskUsage(),
-        message,
-        error.stack,
-      ),
+
+    const errorStatusReportBase = await createStatusReportBase(
+      ActionName.UploadSarif,
+      getActionsStatus(error),
+      startedAt,
+      undefined,
+      await checkDiskUsage(),
+      logger,
+      message,
+      error.stack,
     );
+    if (errorStatusReportBase !== undefined) {
+      await sendStatusReport(errorStatusReportBase);
+    }
     return;
   }
 }

@@ -1,6 +1,6 @@
 name: Submit SARIF after failure
 description: Check that a SARIF file is submitted for the workflow run if it fails
-versions: ["latest", "default", "nightly-latest"]
+versions: ["linked", "default", "nightly-latest"]
 operatingSystems: ["ubuntu"]
 
 env:

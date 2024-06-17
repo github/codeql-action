@@ -11,32 +11,35 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v2
+      - main
+      - releases/v*
   pull_request:
     types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
   config-export:
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          version: latest
-        - os: macos-latest
-          version: latest
-        - os: windows-latest
-          version: latest
-        - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
-          version: nightly-latest
-        - os: windows-latest
-          version: nightly-latest
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: windows-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+          - os: windows-latest
+            version: nightly-latest
     name: Config export
     permissions:
       contents: read
@@ -44,63 +47,66 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v4
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: ${{ matrix.version }}
-        use-all-platform-bundle: 'false'
-    - name: Set environment variable for Swift enablement
-      if: >-
-        runner.os != 'Windows' && (
-            matrix.version == '20220908' ||
-            matrix.version == '20221211'
-        )
-      shell: bash
-      run: echo "CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT=true" >> $GITHUB_ENV
-    - uses: ./../action/init
-      with:
-        languages: javascript
-        queries: security-extended
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/analyze
-      with:
-        output: ${{ runner.temp }}/results
-        upload-database: false
-    - name: Upload SARIF
-      uses: actions/upload-artifact@v3
-      with:
-        name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
-        path: ${{ runner.temp }}/results/javascript.sarif
-        retention-days: 7
-    - name: Check config properties appear in SARIF
-      uses: actions/github-script@v6
-      env:
-        SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
-      with:
-        script: |
-          const fs = require('fs');
+      - name: Setup Python on MacOS
+        uses: actions/setup-python@v5
+        if: >-
+          runner.os == 'macOS' && (
 
-          const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
-          const run = sarif.runs[0];
-          const configSummary = run.properties.codeqlConfigSummary;
+          matrix.version == 'stable-20230403' ||
 
-          if (configSummary === undefined) {
-            core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
-          }
-          if (configSummary.disableDefaultQueries !== false) {
-            core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' + 
-              `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
-          }
-          const expectedQueries = [{ type: 'builtinSuite', uses: 'security-extended' }];
-          // Use JSON.stringify to deep-equal the arrays.
-          if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
-            core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` + 
-              `${JSON.stringify(configSummary.queries)}.`);
-          }
-          core.info('Finished config export tests.');
+          matrix.version == 'stable-v2.13.5' ||
+
+          matrix.version == 'stable-v2.14.6')
+        with:
+          python-version: '3.11'
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+      - uses: ./../action/init
+        with:
+          languages: javascript
+          queries: security-extended
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        with:
+          output: ${{ runner.temp }}/results
+          upload-database: false
+      - name: Upload SARIF
+        uses: actions/upload-artifact@v3
+        with:
+          name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+          path: ${{ runner.temp }}/results/javascript.sarif
+          retention-days: 7
+      - name: Check config properties appear in SARIF
+        uses: actions/github-script@v7
+        env:
+          SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
+        with:
+          script: |
+            const fs = require('fs');
+
+            const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+            const run = sarif.runs[0];
+            const configSummary = run.properties.codeqlConfigSummary;
+
+            if (configSummary === undefined) {
+              core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
+            }
+            if (configSummary.disableDefaultQueries !== false) {
+              core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' +
+                `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
+            }
+            const expectedQueries = [{ type: 'builtinSuite', uses: 'security-extended' }];
+            // Use JSON.stringify to deep-equal the arrays.
+            if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
+              core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` +
+                `${JSON.stringify(configSummary.queries)}.`);
+            }
+            core.info('Finished config export tests.');
     env:
-      CODEQL_PASS_CONFIG_TO_CLI: true
       CODEQL_ACTION_TEST_MODE: true

@@ -1,9 +1,14 @@
 name: "Scaling reserved RAM"
 description: "An end-to-end integration test of a multi-language repository with the scaling_reserved_ram feature flag enabled"
-operatingSystems: ["ubuntu", "macos"]
+# TODO: Add ubuntu back for `nightly-latest` and `latest` once CLI v2.17.4 is available.
+operatingSystems: ["macos"]
 env:
   CODEQL_ACTION_SCALING_RESERVED_RAM: true
 steps:
+  - uses: actions/setup-go@v5
+    with:
+      go-version: ">=1.21.0"
+
   - uses: ./../action/init
     id: init
     with:

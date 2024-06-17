@@ -6,8 +6,7 @@ import test from "ava";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
-import { pruneInvalidResults } from "./upload-lib";
-import { initializeEnvironment, SarifFile, withTmpDir } from "./util";
+import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -307,59 +306,6 @@ test("validateUniqueCategory for multiple runs", (t) => {
   t.throws(() => uploadLib.validateUniqueCategory(sarif2));
 });
 
-test("pruneInvalidResults", (t) => {
-  const loggedMessages: string[] = [];
-  const mockLogger = {
-    info: (message: string) => {
-      loggedMessages.push(message);
-    },
-  } as Logger;
-
-  const sarif: SarifFile = {
-    runs: [
-      {
-        tool: otherTool,
-        results: [resultWithBadMessage1, resultWithGoodMessage],
-      },
-      {
-        tool: affectedCodeQLVersion,
-        results: [
-          resultWithOtherRuleId,
-          resultWithBadMessage1,
-          resultWithBadMessage2,
-          resultWithGoodMessage,
-        ],
-      },
-      {
-        tool: unaffectedCodeQLVersion,
-        results: [resultWithBadMessage1, resultWithGoodMessage],
-      },
-    ],
-  };
-  const result = pruneInvalidResults(sarif, mockLogger);
-
-  const expected: SarifFile = {
-    runs: [
-      {
-        tool: otherTool,
-        results: [resultWithBadMessage1, resultWithGoodMessage],
-      },
-      {
-        tool: affectedCodeQLVersion,
-        results: [resultWithOtherRuleId, resultWithGoodMessage],
-      },
-      {
-        tool: unaffectedCodeQLVersion,
-        results: [resultWithBadMessage1, resultWithGoodMessage],
-      },
-    ],
-  };
-
-  t.deepEqual(result, expected);
-  t.deepEqual(loggedMessages.length, 1);
-  t.assert(loggedMessages[0].includes("Pruned 2 results"));
-});
-
 test("accept results with invalid artifactLocation.uri value", (t) => {
   const loggedMessages: string[] = [];
   const mockLogger = {
@@ -371,68 +317,93 @@ test("accept results with invalid artifactLocation.uri value", (t) => {
   const sarifFile = `${__dirname}/../src/testdata/with-invalid-uri.sarif`;
   uploadLib.validateSarifFileSchema(sarifFile, mockLogger);
 
-  t.deepEqual(loggedMessages.length, 1);
+  t.deepEqual(loggedMessages.length, 2);
   t.deepEqual(
-    loggedMessages[0],
+    loggedMessages[1],
     "Warning: 'not a valid URI' is not a valid URI in 'instance.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri'.",
   );
 });
-const affectedCodeQLVersion = {
-  driver: {
-    name: "CodeQL",
-    semanticVersion: "2.11.2",
-  },
-};
 
-const unaffectedCodeQLVersion = {
-  driver: {
-    name: "CodeQL",
-    semanticVersion: "2.11.3",
-  },
-};
+test("shouldShowCombineSarifFilesDeprecationWarning when on dotcom", async (t) => {
+  t.true(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
 
-const otherTool = {
-  driver: {
-    name: "Some other tool",
-    semanticVersion: "2.11.2",
-  },
-};
+test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.13", async (t) => {
+  t.false(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.13.2",
+      },
+    ),
+  );
+});
 
-const resultWithOtherRuleId = {
-  ruleId: "doNotPrune",
-  message: {
-    text: "should not be pruned even though it says MD5 in it",
-  },
-  locations: [],
-  partialFingerprints: {},
-};
+test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.14", async (t) => {
+  t.true(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.14.0",
+      },
+    ),
+  );
+});
 
-const resultWithGoodMessage = {
-  ruleId: "rb/weak-cryptographic-algorithm",
-  message: {
-    text: "should not be pruned SHA128 is not a FP",
-  },
-  locations: [],
-  partialFingerprints: {},
-};
+test("shouldShowCombineSarifFilesDeprecationWarning with only 1 run", async (t) => {
+  t.false(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
 
-const resultWithBadMessage1 = {
-  ruleId: "rb/weak-cryptographic-algorithm",
-  message: {
-    text: "should be pruned MD5 is a FP",
-  },
-  locations: [],
-  partialFingerprints: {},
-};
+test("shouldShowCombineSarifFilesDeprecationWarning with distinct categories", async (t) => {
+  t.false(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "def"), createMockSarif("def", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
 
-const resultWithBadMessage2 = {
-  ruleId: "rb/weak-cryptographic-algorithm",
-  message: {
-    text: "should be pruned SHA1 is a FP",
-  },
-  locations: [],
-  partialFingerprints: {},
-};
+test("shouldShowCombineSarifFilesDeprecationWarning with distinct tools", async (t) => {
+  t.false(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "abc"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("shouldShowCombineSarifFilesDeprecationWarning when environment variable is already set", async (t) => {
+  process.env["CODEQL_MERGE_SARIF_DEPRECATION_WARNING"] = "true";
+
+  t.false(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
 
 function createMockSarif(id?: string, tool?: string) {
   return {

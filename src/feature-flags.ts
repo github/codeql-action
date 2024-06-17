@@ -8,6 +8,7 @@ import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
+import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 
 const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
@@ -19,20 +20,10 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
 
 /**
- * Versions 2.14.0+ of the CodeQL CLI support intra-layer parallelism (aka fine-grained parallelism) options, but we
- * limit to 2.14.6 onwards, since that's the version that has mitigations against OOM failures.
+ * Evaluator fine-grained parallelism (aka intra-layer parallelism) is only safe to enable in 2.15.1 onwards.
+ * (Some earlier versions recognize the command-line flag, but they contain a bug which makes it unsafe to use).
  */
-export const CODEQL_VERSION_INTRA_LAYER_PARALLELISM = "2.14.6";
-
-/**
- * Versions 2.15.0+ of the CodeQL CLI support new analysis summaries.
- */
-export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
-
-/**
- * Versions 2.15.0+ of the CodeQL CLI support sub-language file coverage information.
- */
-export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
+export const CODEQL_VERSION_FINE_GRAINED_PARALLELISM = "2.15.1";
 
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
@@ -51,85 +42,102 @@ export interface FeatureEnablement {
 /**
  * Feature enablement as returned by the GitHub API endpoint.
  *
- * Each value of this enum should end with `_enabled`.
+ * Legacy features should end with `_enabled`.
  */
 export enum Feature {
-  AnalysisSummaryV2Enabled = "analysis_summary_v2_enabled",
-  CliConfigFileEnabled = "cli_config_file_enabled",
-  CodeqlJavaLombokEnabled = "codeql_java_lombok_enabled",
+  AutobuildDirectTracing = "autobuild_direct_tracing_v2",
+  CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  CppTrapCachingEnabled = "cpp_trap_caching_enabled",
+  DisableCsharpBuildless = "disable_csharp_buildless",
+  DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
-  DisablePythonDependencyInstallationEnabled = "disable_python_dependency_installation_enabled",
-  EvaluatorIntraLayerParallelismEnabled = "evaluator_intra_layer_parallelism_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  SublanguageFileCoverageEnabled = "sublanguage_file_coverage_enabled",
-  UploadFailedSarifEnabled = "upload_failed_sarif_enabled",
 }
 
 export const featureConfig: Record<
   Feature,
-  { envVar: string; minimumVersion: string | undefined; defaultValue: boolean }
+  {
+    /**
+     * Default value in environments where the feature flags API is not available,
+     * such as GitHub Enterprise Server.
+     */
+    defaultValue: boolean;
+    /**
+     * Environment variable for explicitly enabling or disabling the feature.
+     *
+     * This overrides enablement status from the feature flags API.
+     */
+    envVar: string;
+    /**
+     * Whether the feature flag is part of the legacy feature flags API (defaults to false).
+     *
+     * These feature flags are included by default in the API response and do not need to be
+     * explicitly requested.
+     */
+    legacyApi?: boolean;
+    /**
+     * Minimum version of the CLI, if applicable.
+     *
+     * Prefer using `ToolsFeature`s for future flags.
+     */
+    minimumVersion: string | undefined;
+    /** Required tools feature, if applicable. */
+    toolsFeature?: ToolsFeature;
+  }
 > = {
-  [Feature.AnalysisSummaryV2Enabled]: {
-    envVar: "CODEQL_ACTION_ANALYSIS_SUMMARY_V2",
-    minimumVersion: CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
+  [Feature.AutobuildDirectTracing]: {
     defaultValue: false,
+    envVar: "CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.TraceCommandUseBuildMode,
   },
-  [Feature.CodeqlJavaLombokEnabled]: {
-    envVar: "CODEQL_JAVA_LOMBOK",
-    minimumVersion: "2.14.0",
+  [Feature.CleanupTrapCaches]: {
     defaultValue: false,
+    envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
+    minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {
-    envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
-    minimumVersion: "2.15.0",
     defaultValue: false,
+    envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
+    legacyApi: true,
+    minimumVersion: "2.15.0",
+  },
+  [Feature.CppTrapCachingEnabled]: {
+    defaultValue: false,
+    envVar: "CODEQL_CPP_TRAP_CACHING",
+    legacyApi: true,
+    minimumVersion: "2.16.1",
+  },
+  [Feature.DisableCsharpBuildless]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_DISABLE_CSHARP_BUILDLESS",
+    minimumVersion: undefined,
+  },
+  [Feature.DisableJavaBuildlessEnabled]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_DISABLE_JAVA_BUILDLESS",
+    legacyApi: true,
+    minimumVersion: undefined,
   },
   [Feature.DisableKotlinAnalysisEnabled]: {
+    defaultValue: false,
     envVar: "CODEQL_DISABLE_KOTLIN_ANALYSIS",
+    legacyApi: true,
     minimumVersion: undefined,
-    defaultValue: false,
-  },
-  [Feature.CliConfigFileEnabled]: {
-    envVar: "CODEQL_PASS_CONFIG_TO_CLI",
-    minimumVersion: "2.11.6",
-    defaultValue: true,
-  },
-  [Feature.EvaluatorIntraLayerParallelismEnabled]: {
-    envVar: "CODEQL_EVALUATOR_INTRA_LAYER_PARALLELISM",
-    minimumVersion: CODEQL_VERSION_INTRA_LAYER_PARALLELISM,
-    defaultValue: false,
   },
   [Feature.ExportDiagnosticsEnabled]: {
-    envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
-    minimumVersion: "2.12.4",
     defaultValue: true,
+    envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
+    legacyApi: true,
+    minimumVersion: undefined,
   },
   [Feature.QaTelemetryEnabled]: {
+    defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
+    legacyApi: true,
     minimumVersion: undefined,
-    defaultValue: false,
-  },
-  [Feature.SublanguageFileCoverageEnabled]: {
-    envVar: "CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE",
-    minimumVersion: CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
-    defaultValue: false,
-  },
-  [Feature.UploadFailedSarifEnabled]: {
-    envVar: "CODEQL_ACTION_UPLOAD_FAILED_SARIF",
-    minimumVersion: "2.11.3",
-    defaultValue: true,
-  },
-  [Feature.DisablePythonDependencyInstallationEnabled]: {
-    envVar: "CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION",
-    // Although the python extractor only started supporting not extracting installed
-    // dependencies in 2.13.1, the init-action can still benefit from not installing
-    // dependencies no matter what codeql version we are using, so therefore the
-    // minimumVersion is set to 'undefined'. This means that with an old CodeQL version,
-    // packages available with current python3 installation might get extracted.
-    minimumVersion: undefined,
-    defaultValue: false,
   },
 };
 
@@ -189,6 +197,11 @@ export class Features implements FeatureEnablement {
         `Internal error: A minimum version is specified for feature ${feature}, but no instance of CodeQL was provided.`,
       );
     }
+    if (!codeql && featureConfig[feature].toolsFeature) {
+      throw new Error(
+        `Internal error: A required tools feature is specified for feature ${feature}, but no instance of CodeQL was provided.`,
+      );
+    }
 
     const envVar = (
       process.env[featureConfig[feature].envVar] || ""
@@ -205,7 +218,7 @@ export class Features implements FeatureEnablement {
     // Never use this feature if the CLI version explicitly can't support it.
     const minimumVersion = featureConfig[feature].minimumVersion;
     if (codeql && minimumVersion) {
-      if (!(await util.codeQlVersionAbove(codeql, minimumVersion))) {
+      if (!(await util.codeQlVersionAtLeast(codeql, minimumVersion))) {
         this.logger.debug(
           `Feature ${feature} is disabled because the CodeQL CLI version is older than the minimum ` +
             `version ${minimumVersion}.`,
@@ -217,6 +230,22 @@ export class Features implements FeatureEnablement {
             (await codeql.getVersion()).version
           } is newer than the minimum ` +
             `version ${minimumVersion} for feature ${feature}.`,
+        );
+      }
+    }
+    const toolsFeature = featureConfig[feature].toolsFeature;
+    if (codeql && toolsFeature) {
+      if (!(await codeql.supportsFeature(toolsFeature))) {
+        this.logger.debug(
+          `Feature ${feature} is disabled because the CodeQL CLI version does not support the ` +
+            `required tools feature ${toolsFeature}.`,
+        );
+        return false;
+      } else {
+        this.logger.debug(
+          `CodeQL CLI version ${
+            (await codeql.getVersion()).version
+          } supports the required tools feature ${toolsFeature} for feature ${feature}.`,
         );
       }
     }
@@ -406,7 +435,9 @@ class GitHubFeatureFlags {
         this.logger.debug(
           `Loading feature flags from ${this.featureFlagsFile}`,
         );
-        return JSON.parse(fs.readFileSync(this.featureFlagsFile, "utf8"));
+        return JSON.parse(
+          fs.readFileSync(this.featureFlagsFile, "utf8"),
+        ) as GitHubFeatureFlagsApiResponse;
       }
     } catch (e) {
       this.logger.warning(
@@ -439,18 +470,28 @@ class GitHubFeatureFlags {
       return {};
     }
     try {
+      const featuresToRequest = Object.entries(featureConfig)
+        .filter(([, config]) => !config.legacyApi)
+        .map(([f]) => f)
+        .join(",");
+
       const response = await getApiClient().request(
         "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
         {
           owner: this.repositoryNwo.owner,
           repo: this.repositoryNwo.repo,
+          features: featuresToRequest,
         },
       );
-      const remoteFlags = response.data;
+      const remoteFlags = response.data as GitHubFeatureFlagsApiResponse;
       this.logger.debug(
-        "Loaded the following default values for the feature flags from the Code Scanning API: " +
-          `${JSON.stringify(remoteFlags)}`,
+        "Loaded the following default values for the feature flags from the Code Scanning API:",
       );
+      for (const [feature, value] of Object.entries(remoteFlags).sort(
+        ([nameA], [nameB]) => nameA.localeCompare(nameB),
+      )) {
+        this.logger.debug(`  ${feature}: ${value}`);
+      }
       this.hasAccessedRemoteFeatureFlags = true;
       return remoteFlags;
     } catch (e) {
@@ -473,32 +514,5 @@ class GitHubFeatureFlags {
         );
       }
     }
-  }
-}
-
-/**
- * @returns Whether the Action should generate a code scanning config file
- * that gets passed to the CLI.
- */
-export async function useCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-): Promise<boolean> {
-  return await features.getValue(Feature.CliConfigFileEnabled, codeql);
-}
-
-export async function logCodeScanningConfigInCli(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger,
-) {
-  if (await useCodeScanningConfigInCli(codeql, features)) {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql CLI.",
-    );
-  } else {
-    logger.info(
-      "Code Scanning configuration file being processed in the codeql-action.",
-    );
   }
 }

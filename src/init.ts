@@ -1,22 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as exec from "@actions/exec/lib/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
-import * as analysisPaths from "./analysis-paths";
+import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import {
-  CodeQLDefaultVersionInfo,
-  FeatureEnablement,
-  useCodeScanningConfigInCli,
-} from "./feature-flags";
-import { Language } from "./languages";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
-import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
+import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
@@ -50,49 +47,19 @@ export async function initCodeQL(
 }
 
 export async function initConfig(
-  languagesInput: string | undefined,
-  queriesInput: string | undefined,
-  packsInput: string | undefined,
-  registriesInput: string | undefined,
-  configFile: string | undefined,
-  dbLocation: string | undefined,
-  configInput: string | undefined,
-  trapCachingEnabled: boolean,
-  debugMode: boolean,
-  debugArtifactName: string,
-  debugDatabaseName: string,
-  repository: RepositoryNwo,
-  tempDir: string,
-  codeQL: CodeQL,
-  workspacePath: string,
-  gitHubVersion: util.GitHubVersion,
-  apiDetails: GitHubApiCombinedDetails,
-  features: FeatureEnablement,
-  logger: Logger,
+  inputs: configUtils.InitConfigInputs,
+  codeql: CodeQL,
 ): Promise<configUtils.Config> {
+  const logger = inputs.logger;
   logger.startGroup("Load language configuration");
-  const config = await configUtils.initConfig(
-    languagesInput,
-    queriesInput,
-    packsInput,
-    registriesInput,
-    configFile,
-    dbLocation,
-    configInput,
-    trapCachingEnabled,
-    debugMode,
-    debugArtifactName,
-    debugDatabaseName,
-    repository,
-    tempDir,
-    codeQL,
-    workspacePath,
-    gitHubVersion,
-    apiDetails,
-    features,
-    logger,
-  );
-  analysisPaths.printPathFiltersWarning(config, logger);
+  const config = await configUtils.initConfig(inputs);
+  if (
+    !(await codeql.supportsFeature(
+      ToolsFeature.InformsAboutUnsupportedPathFilters,
+    ))
+  ) {
+    printPathFiltersWarning(config, logger);
+  }
   logger.endGroup();
   return config;
 }
@@ -103,83 +70,53 @@ export async function runInit(
   sourceRoot: string,
   processName: string | undefined,
   registriesInput: string | undefined,
-  features: FeatureEnablement,
   apiDetails: GitHubApiCombinedDetails,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
-  try {
-    // When parsing the codeql config in the CLI, we have not yet created the qlconfig file.
-    // So, create it now.
-    // If we are parsing the config file in the Action, then the qlconfig file was already created
-    // before the `pack download` command was invoked. It is not required for the init command.
-    let registriesAuthTokens: string | undefined;
-    let qlconfigFile: string | undefined;
-    if (await useCodeScanningConfigInCli(codeql, features)) {
-      ({ registriesAuthTokens, qlconfigFile } =
-        await configUtils.generateRegistries(
-          registriesInput,
-          config.tempDir,
-          logger,
-        ));
-    }
-    await configUtils.wrapEnvironment(
-      {
-        GITHUB_TOKEN: apiDetails.auth,
-        CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-      },
 
-      // Init a database cluster
-      async () =>
-        await codeql.databaseInitCluster(
-          config,
-          sourceRoot,
-          processName,
-          features,
-          qlconfigFile,
-          logger,
-        ),
+  const { registriesAuthTokens, qlconfigFile } =
+    await configUtils.generateRegistries(
+      registriesInput,
+      config.tempDir,
+      logger,
     );
-  } catch (e) {
-    throw processError(e);
-  }
-  return await getCombinedTracerConfig(config);
+  await configUtils.wrapEnvironment(
+    {
+      GITHUB_TOKEN: apiDetails.auth,
+      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+    },
+
+    // Init a database cluster
+    async () =>
+      await codeql.databaseInitCluster(
+        config,
+        sourceRoot,
+        processName,
+        qlconfigFile,
+        features,
+        logger,
+      ),
+  );
+  return await getCombinedTracerConfig(codeql, config, features);
 }
 
-/**
- * Possibly convert this error into a UserError in order to avoid
- * counting this error towards our internal error budget.
- *
- * @param e The error to possibly convert to a UserError.
- *
- * @returns A UserError if the error is a known error that can be
- *         attributed to the user, otherwise the original error.
- */
-function processError(e: any): Error {
-  if (!(e instanceof Error)) {
-    return e;
-  }
-
+export function printPathFiltersWarning(
+  config: configUtils.Config,
+  logger: Logger,
+) {
+  // Index include/exclude/filters only work in javascript/python/ruby.
+  // If any other languages are detected/configured then show a warning.
   if (
-    // Init action called twice
-    e.message?.includes("Refusing to create databases") &&
-    e.message?.includes("exists and is not an empty directory.")
+    (config.originalUserInput.paths?.length ||
+      config.originalUserInput["paths-ignore"]?.length) &&
+    !config.languages.every(isScannedLanguage)
   ) {
-    return new util.UserError(
-      `Is the "init" action called twice in the same job? ${e.message}`,
+    logger.warning(
+      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby',
     );
   }
-
-  if (
-    // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
-    e.message?.includes("is not compatible with this CodeQL CLI") ||
-    // Expected source location for database creation does not exist
-    e.message?.includes("Invalid source root")
-  ) {
-    return new util.UserError(e.message);
-  }
-
-  return e;
 }
 
 /**
@@ -206,45 +143,88 @@ export async function checkInstallPython311(
   }
 }
 
-export async function installPythonDeps(codeql: CodeQL, logger: Logger) {
-  logger.startGroup("Setup Python dependencies");
-
-  const scriptsFolder = path.resolve(__dirname, "../python-setup");
-
+// For MacOS runners: runs `csrutil status` to determine whether System
+// Integrity Protection is enabled.
+export async function isSipEnabled(
+  logger: Logger,
+): Promise<boolean | undefined> {
   try {
-    if (process.platform === "win32") {
-      await new toolrunner.ToolRunner(await safeWhich.safeWhich("powershell"), [
-        path.join(scriptsFolder, "install_tools.ps1"),
-      ]).exec();
-    } else {
-      await new toolrunner.ToolRunner(
-        path.join(scriptsFolder, "install_tools.sh"),
-      ).exec();
+    const sipStatusOutput = await exec.getExecOutput("csrutil status");
+    if (sipStatusOutput.exitCode === 0) {
+      if (
+        sipStatusOutput.stdout.includes(
+          "System Integrity Protection status: enabled.",
+        )
+      ) {
+        return true;
+      }
+      if (
+        sipStatusOutput.stdout.includes(
+          "System Integrity Protection status: disabled.",
+        )
+      ) {
+        return false;
+      }
     }
-    const script = "auto_install_packages.py";
-    if (process.platform === "win32") {
-      await new toolrunner.ToolRunner(await safeWhich.safeWhich("py"), [
-        "-3",
-        "-B",
-        path.join(scriptsFolder, script),
-        path.dirname(codeql.getPath()),
-      ]).exec();
-    } else {
-      await new toolrunner.ToolRunner(await safeWhich.safeWhich("python3"), [
-        "-B",
-        path.join(scriptsFolder, script),
-        path.dirname(codeql.getPath()),
-      ]).exec();
-    }
+    return undefined;
   } catch (e) {
-    logger.endGroup();
     logger.warning(
-      `An error occurred while trying to automatically install Python dependencies: ${e}\n` +
-        "Please make sure any necessary dependencies are installed before calling the codeql-action/analyze " +
-        "step, and add a 'setup-python-dependencies: false' argument to this step to disable our automatic " +
-        "dependency installation and avoid this warning.",
+      `Failed to determine if System Integrity Protection was enabled: ${e}`,
     );
-    return;
+    return undefined;
   }
-  logger.endGroup();
+}
+
+export function cleanupDatabaseClusterDirectory(
+  config: configUtils.Config,
+  logger: Logger,
+  // We can't stub the fs module in tests, so we allow the caller to override the rmSync function
+  // for testing.
+  rmSync = fs.rmSync,
+): void {
+  if (
+    fs.existsSync(config.dbLocation) &&
+    (fs.statSync(config.dbLocation).isFile() ||
+      fs.readdirSync(config.dbLocation).length)
+  ) {
+    logger.warning(
+      `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,
+    );
+    try {
+      rmSync(config.dbLocation, {
+        force: true,
+        maxRetries: 3,
+        recursive: true,
+      });
+
+      logger.info(
+        `Cleaned up database cluster directory ${config.dbLocation}.`,
+      );
+    } catch (e) {
+      const blurb = `The CodeQL Action requires an empty database cluster directory. ${
+        getOptionalInput("db-location")
+          ? `This is currently configured to be ${config.dbLocation}. `
+          : `By default, this is located at ${config.dbLocation}. ` +
+            "You can customize it using the 'db-location' input to the init Action. "
+      }An attempt was made to clean up the directory, but this failed.`;
+
+      // Hosted runners are automatically cleaned up, so this error should not occur for hosted runners.
+      if (isSelfHostedRunner()) {
+        throw new util.ConfigurationError(
+          `${blurb} This can happen if another process is using the directory or the directory is owned by a different user. ` +
+            `Please clean up the directory manually and rerun the job. Details: ${
+              util.wrapError(e).message
+            }`,
+        );
+      } else {
+        throw new Error(
+          `${blurb} This shouldn't typically happen on hosted runners. ` +
+            "If you are using an advanced setup, please check your workflow, otherwise we " +
+            `recommend rerunning the job. Details: ${
+              util.wrapError(e).message
+            }`,
+        );
+      }
+    }
+  }
 }

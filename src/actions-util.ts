@@ -11,7 +11,7 @@ import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
   getRequiredEnvParam,
-  UserError,
+  ConfigurationError,
 } from "./util";
 
 // eslint-disable-next-line import/no-commonjs
@@ -26,7 +26,7 @@ const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
 export const getRequiredInput = function (name: string): string {
   const value = core.getInput(name);
   if (!value) {
-    throw new UserError(`Input required and not supplied: ${name}`);
+    throw new ConfigurationError(`Input required and not supplied: ${name}`);
   }
   return value;
 };
@@ -187,7 +187,7 @@ export async function getRef(): Promise<string> {
   const hasShaInput = !!shaInput;
   // If one of 'ref' or 'sha' are provided, both are required
   if ((hasRefInput || hasShaInput) && !(hasRefInput && hasShaInput)) {
-    throw new Error(
+    throw new ConfigurationError(
       "Both 'ref' and 'sha' are required if one of them is provided.",
     );
   }
@@ -291,7 +291,7 @@ export function getRelativeScriptPath(): string {
 }
 
 /** Returns the contents of `GITHUB_EVENT_PATH` as a JSON object. */
-function getWorkflowEvent(): any {
+export function getWorkflowEvent(): any {
   const eventJsonFile = getRequiredEnvParam("GITHUB_EVENT_PATH");
   try {
     return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));
@@ -426,6 +426,14 @@ export function getWorkflowRunAttempt(): number {
   return workflowRunAttempt;
 }
 
+export class FileCmdNotFoundError extends Error {
+  constructor(msg: string) {
+    super(msg);
+
+    this.name = "FileCmdNotFoundError";
+  }
+}
+
 /**
  * Tries to obtain the output of the `file` command for the file at the specified path.
  * The output will vary depending on the type of `file`, which operating system we are running on, etc.
@@ -433,25 +441,32 @@ export function getWorkflowRunAttempt(): number {
 export const getFileType = async (filePath: string): Promise<string> => {
   let stderr = "";
   let stdout = "";
+
+  let fileCmdPath: string;
+
+  try {
+    fileCmdPath = await safeWhich.safeWhich("file");
+  } catch (e) {
+    throw new FileCmdNotFoundError(
+      `The \`file\` program is required, but does not appear to be installed. Please install it: ${e}`,
+    );
+  }
+
   try {
     // The `file` command will output information about the type of file pointed at by `filePath`.
     // For binary files, this may include e.g. whether they are static of dynamic binaries.
     // The `-L` switch instructs the command to follow symbolic links.
-    await new toolrunner.ToolRunner(
-      await safeWhich.safeWhich("file"),
-      ["-L", filePath],
-      {
-        silent: true,
-        listeners: {
-          stdout: (data) => {
-            stdout += data.toString();
-          },
-          stderr: (data) => {
-            stderr += data.toString();
-          },
+    await new toolrunner.ToolRunner(fileCmdPath, ["-L", filePath], {
+      silent: true,
+      listeners: {
+        stdout: (data) => {
+          stdout += data.toString();
+        },
+        stderr: (data) => {
+          stderr += data.toString();
         },
       },
-    ).exec();
+    }).exec();
     return stdout.trim();
   } catch (e) {
     core.info(
@@ -461,3 +476,7 @@ export const getFileType = async (filePath: string): Promise<string> => {
     throw e;
   }
 };
+
+export function isSelfHostedRunner() {
+  return process.env.RUNNER_ENVIRONMENT === "self-hosted";
+}

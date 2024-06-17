@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.2](https://github.com/es-shims/Array.prototype.flatMap/compare/v1.3.1...v1.3.2) - 2023-09-06
+
+### Commits
+
+- [Deps] update `define-properties`, `es-abstract` [`1737863`](https://github.com/es-shims/Array.prototype.flatMap/commit/17378634d56fc4b75027764b54804d89c6f8d60f)
+- [Dev Deps] update `@es-shims/api`, `@ljharb/eslint-config`, `aud`, `object-inspect`, `tape` [`2337759`](https://github.com/es-shims/Array.prototype.flatMap/commit/23377597983440102805d36f701408505b433ccd)
+
 ## [v1.3.1](https://github.com/es-shims/Array.prototype.flatMap/compare/v1.3.0...v1.3.1) - 2022-11-02
 
 ### Commits

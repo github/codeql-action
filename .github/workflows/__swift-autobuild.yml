@@ -61,6 +61,7 @@ jobs:
         id: init
         with:
           languages: swift
+          build-mode: autobuild
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/.github/actions/setup-swift
         with:
@@ -69,7 +70,7 @@ jobs:
         shell: bash
         run: pwd
       - uses: ./../action/autobuild
-        timeout-minutes: 10
+        timeout-minutes: 30
       - uses: ./../action/analyze
         id: analysis
         with:
@@ -83,5 +84,4 @@ jobs:
             exit 1
           fi
     env:
-      CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: 'true' # Remove when Swift is GA.
       CODEQL_ACTION_TEST_MODE: true

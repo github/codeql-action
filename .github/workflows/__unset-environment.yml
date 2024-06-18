@@ -7,7 +7,6 @@ name: PR Check - Test unsetting environment variables
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
-  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
@@ -67,6 +66,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - uses: ./../action/init
         id: init
         with:
@@ -80,10 +80,7 @@ jobs:
           go-version: '>=1.21.0'
       - name: Build code
         shell: bash
-    # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
-    # workaround for our PR checks.
-        run: env -i CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN=true PATH="$PATH" HOME="$HOME"
-          ./build.sh
+        run: env -i PATH="$PATH" HOME="$HOME" ./build.sh
       - uses: ./../action/analyze
         id: analysis
         with:

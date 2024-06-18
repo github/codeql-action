@@ -2,9 +2,6 @@
 # when the analyze step fails.
 name: PR Check - Debug artifacts after failure
 env:
-  # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
-  # workaround for our PR checks.
-  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
   push:

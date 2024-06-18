@@ -7,7 +7,6 @@ name: PR Check - Resolve environment
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
-  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
@@ -79,6 +78,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - uses: ./../action/init
         with:
           languages: ${{ matrix.version == 'stable-v2.13.4' && 'go' || 'go,javascript-typescript'

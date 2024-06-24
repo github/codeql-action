@@ -27,6 +27,12 @@ defaultTestVersions = [
     "nightly-latest"
 ]
 
+def is_version_and_os_excluded(version, os, exclude_params):
+    for exclude_param in exclude_params:
+        if exclude_param[0] == os and exclude_param[1] == version:
+            return True
+    return False
+
 # When updating the ruamel.yaml version here, update the PR check in
 # `.github/workflows/pr-checks.yml` too.
 header = """# Warning: This file is generated automatically, and should not be modified.
@@ -56,27 +62,32 @@ allJobs = {}
 for file in (this_dir / 'checks').glob('*.yml'):
     with open(file, 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
-
     matrix = []
+    excludedVersionsAndOses = checkSpecification.get('excludeOsAndVersionCombination', [])
     for version in checkSpecification.get('versions', defaultTestVersions):
-        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
-        if checkSpecification.get('operatingSystems', None):
-            runnerImages = [image for image in runnerImages for operatingSystem in checkSpecification['operatingSystems']
-                            if image.startswith(operatingSystem)]
+        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]            
+        operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu", "macos", "windows"])
 
-        for runnerImage in runnerImages:
-            # Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.
-            # "macos-latest" is now an ARM runner, so we run tests on the old CLIs on Intel runners instead.
-            if version in ["stable-20230403", "stable-v2.13.4", "stable-v2.13.5", "stable-v2.14.6"] and runnerImage == "macos-latest":
-                matrix.append({
-                    'os': "macos-12",
-                    'version': version
-                })
-            else:
-                matrix.append({
-                    'os': runnerImage,
-                    'version': version
-                })
+        for operatingSystem in operatingSystems:
+            runnerImagesForOs = [image for image in runnerImages if image.startswith(operatingSystem)]
+
+            for runnerImage in runnerImagesForOs:
+                # Skip appending this combination to the matrix if it is explicitly excluded.
+                if is_version_and_os_excluded(version, operatingSystem, excludedVersionsAndOses):
+                    continue
+
+                # Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.
+                # "macos-latest" is now an ARM runner, so we run tests on the old CLIs on Intel runners instead.
+                if version in ["stable-20230403", "stable-v2.13.4", "stable-v2.13.5", "stable-v2.14.6"] and runnerImage == "macos-latest":
+                    matrix.append({
+                        'os': "macos-12",
+                        'version': version
+                    })
+                else:
+                    matrix.append({
+                        'os': runnerImage,
+                        'version': version
+                    })
 
         useAllPlatformBundle = "false" # Default to false
         if checkSpecification.get('useAllPlatformBundle'):

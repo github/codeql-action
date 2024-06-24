@@ -27,7 +27,7 @@ defaultTestVersions = [
     "nightly-latest"
 ]
 
-def is_os_and_version_excluded(version, os, exclude_params):
+def is_os_and_version_excluded(os, version, exclude_params):
     for exclude_param in exclude_params:
         if exclude_param[0] == os and exclude_param[1] == version:
             return True
@@ -73,7 +73,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
             for runnerImage in runnerImagesForOs:
                 # Skip appending this combination to the matrix if it is explicitly excluded.
-                if is_os_and_version_excluded(version, operatingSystem, excludedOsesAndVersions):
+                if is_os_and_version_excluded(operatingSystem, version, excludedOsesAndVersions):
                     continue
 
                 # Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.

@@ -1,7 +1,14 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
-# TODO: Add ubuntu back for `nightly-latest` and `latest` once CLI v2.17.4 is available.
-operatingSystems: ["macos"] 
+operatingSystems: ["macos", "ubuntu"]
+excludeOsAndVersionCombination: [ 
+  # Known failure for Swift on Linux before CLI v2.17.4.
+  [ "ubuntu", "stable-20230403" ], 
+  [ "ubuntu", "stable-v2.13.5" ], 
+  [ "ubuntu", "stable-v2.14.6" ], 
+  [ "ubuntu", "stable-v2.15.5" ],
+  [ "ubuntu", "stable-v2.16.6" ],
+]
 steps:
   - uses: actions/setup-go@v5
     with:

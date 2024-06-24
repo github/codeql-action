@@ -1,8 +1,15 @@
 name: "Test unsetting environment variables"
 description: "An end-to-end integration test that unsets some environment variables"
-# TODO: Switch back to all versions once CLI v2.17.4 is available and running on ubuntu again.
-versions: ["stable-v2.14.6", "stable-v2.15.5", "stable-v2.16.6", "linked", "default", "nightly-latest"] 
-operatingSystems: ["macos"] # TODO: Switch back to ubuntu for `nightly-latest` and `latest` once CLI v2.17.4 is available.
+operatingSystems: ["ubuntu"]
+excludeOsAndVersionCombination: [ 
+  # Known failure for Swift on Linux before CLI v2.17.4.
+  [ "ubuntu", "stable-20230403" ], 
+  [ "ubuntu", "stable-v2.13.5" ], 
+  [ "ubuntu", "stable-v2.14.6" ], 
+  [ "ubuntu", "stable-v2.15.5" ],
+  [ "ubuntu", "stable-v2.16.6" ],
+]
+
 steps:
   - uses: ./../action/init
     id: init

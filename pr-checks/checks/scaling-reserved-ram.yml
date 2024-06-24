@@ -1,7 +1,14 @@
 name: "Scaling reserved RAM"
 description: "An end-to-end integration test of a multi-language repository with the scaling_reserved_ram feature flag enabled"
-# TODO: Add ubuntu back for `nightly-latest` and `latest` once CLI v2.17.4 is available.
-operatingSystems: ["macos"]
+operatingSystems: ["macos", "ubuntu"]
+excludeOsAndVersionCombination: [ 
+  # Known failure for Swift on Linux before CLI v2.17.4.
+  [ "ubuntu", "stable-20230403" ], 
+  [ "ubuntu", "stable-v2.13.5" ], 
+  [ "ubuntu", "stable-v2.14.6" ], 
+  [ "ubuntu", "stable-v2.15.5" ],
+  [ "ubuntu", "stable-v2.16.6" ],
+]
 env:
   CODEQL_ACTION_SCALING_RESERVED_RAM: true
 steps:

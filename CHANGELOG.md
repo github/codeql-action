@@ -7,6 +7,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - Avoid failing the workflow run if there is an error while uploading debug artifacts. [#2349](https://github.com/github/codeql-action/pull/2349)
+- Update default CodeQL bundle version to 2.17.6. [#2352](https://github.com/github/codeql-action/pull/2352)
 
 ## 3.25.10 - 13 Jun 2024
 

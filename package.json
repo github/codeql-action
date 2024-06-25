@@ -32,7 +32,7 @@
     "@octokit/plugin-retry": "^5.0.2",
     "@octokit/types": "^13.5.0",
     "@schemastore/package": "0.0.10",
-    "@types/uuid": "^9.0.8",
+    "@types/uuid": "^10.0.0",
     "adm-zip": "^0.5.14",
     "check-disk-space": "^3.4.0",
     "console-log-level": "^1.4.1",
@@ -74,7 +74,7 @@
     "nock": "^13.5.4",
     "removeNPMAbsolutePaths": "3.0.1",
     "sinon": "^18.0.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.5.2"
   },
   "overrides": {
     "@actions/tool-cache": {

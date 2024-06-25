@@ -236,7 +236,7 @@ function getTotalMemoryBytes(logger: Logger): number {
       ]
         .map((file) => getCgroupMemoryLimitBytes(file, logger))
         .filter((limit) => limit !== undefined)
-        .map((limit) => limit as number),
+        .map((limit) => limit),
     );
   }
   const limit = Math.min(...limits);

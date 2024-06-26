@@ -6,6 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
+- Improve the reliability and performance of analyzing code when analyzing a compiled language with the `autobuild` [build mode](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#codeql-build-modes) on GitHub Enterprise Server. This feature is already available to GitHub.com users. [#2235](https://github.com/github/codeql-action/pull/2235)
 - Avoid failing the workflow run if there is an error while uploading debug artifacts. [#2349](https://github.com/github/codeql-action/pull/2349)
 
 ## 3.25.10 - 13 Jun 2024

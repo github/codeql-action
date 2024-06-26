@@ -20,7 +20,7 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { EnvVar } from "./environment";
-import { FeatureEnablement, Features } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -147,11 +147,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * - We approximate whether manual build steps are present by looking at
  * whether any extraction output already exists for Go.
  */
-async function runAutobuildIfLegacyGoWorkflow(
-  config: Config,
-  features: FeatureEnablement,
-  logger: Logger,
-) {
+async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   if (!config.languages.includes(Language.go)) {
     return;
   }
@@ -188,7 +184,7 @@ async function runAutobuildIfLegacyGoWorkflow(
   logger.debug(
     "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
   );
-  await runAutobuild(config, Language.go, features, logger);
+  await runAutobuild(config, Language.go, logger);
 }
 
 async function run() {
@@ -260,7 +256,7 @@ async function run() {
     );
 
     await warnIfGoInstalledAfterInit(config, logger);
-    await runAutobuildIfLegacyGoWorkflow(config, features, logger);
+    await runAutobuildIfLegacyGoWorkflow(config, logger);
 
     dbCreationTimings = await runFinalize(
       outputDir,
@@ -268,7 +264,6 @@ async function run() {
       memory,
       codeql,
       config,
-      features,
       logger,
     );
 

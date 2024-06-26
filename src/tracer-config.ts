@@ -3,7 +3,6 @@ import * as path from "path";
 
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
-import { Feature, FeatureEnablement } from "./feature-flags";
 import { isTracedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsFeature } from "./tools-features";
@@ -16,14 +15,23 @@ export type TracerConfig = {
 export async function shouldEnableIndirectTracing(
   codeql: CodeQL,
   config: Config,
-  features: FeatureEnablement,
 ): Promise<boolean> {
-  return (
-    (!config.buildMode ||
-      config.buildMode === BuildMode.Manual ||
-      !(await features.getValue(Feature.AutobuildDirectTracing, codeql))) &&
-    config.languages.some((l) => isTracedLanguage(l))
-  );
+  // We don't need to trace build mode none, or languages which unconditionally don't need tracing.
+  if (config.buildMode === BuildMode.None) {
+    return false;
+  }
+
+  // If the CLI supports `trace-command` with a `--build-mode`, we'll use direct tracing instead of
+  // indirect tracing.
+  if (
+    config.buildMode === BuildMode.Autobuild &&
+    (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))
+  ) {
+    return false;
+  }
+
+  // Otherwise, use direct tracing if any of the languages need to be traced.
+  return config.languages.some((l) => isTracedLanguage(l));
 }
 
 /**
@@ -39,9 +47,8 @@ export async function endTracingForCluster(
   codeql: CodeQL,
   config: Config,
   logger: Logger,
-  features: FeatureEnablement,
 ): Promise<void> {
-  if (!(await shouldEnableIndirectTracing(codeql, config, features))) return;
+  if (!(await shouldEnableIndirectTracing(codeql, config))) return;
 
   logger.info(
     "Unsetting build tracing environment variables. Subsequent steps of this job will not be traced.",
@@ -94,10 +101,10 @@ export async function getTracerConfigForCluster(
 export async function getCombinedTracerConfig(
   codeql: CodeQL,
   config: Config,
-  features: FeatureEnablement,
 ): Promise<TracerConfig | undefined> {
-  if (!(await shouldEnableIndirectTracing(codeql, config, features)))
+  if (!(await shouldEnableIndirectTracing(codeql, config))) {
     return undefined;
+  }
 
   const mainTracerConfig = await getTracerConfigForCluster(config);
 

@@ -909,8 +909,8 @@ test("runTool summarizes autobuilder errors", async (t) => {
       instanceOf: util.ConfigurationError,
       message:
         "We were unable to automatically build your code. Please provide manual build steps. " +
-        "For more information, see " +
-        "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed. " +
+        "See https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed " +
+        "for more information. " +
         "Encountered the following error: Start of the error message\n" +
         "  Some more context about the error message\n" +
         "  continued\n" +
@@ -937,8 +937,8 @@ test("runTool truncates long autobuilder errors", async (t) => {
       instanceOf: util.ConfigurationError,
       message:
         "We were unable to automatically build your code. Please provide manual build steps. " +
-        "For more information, see " +
-        "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed. " +
+        "See https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed " +
+        "for more information. " +
         "Encountered the following error: " +
         `${Array.from({ length: 10 }, (_, i) => `line${i + 1}`).join(
           "\n",

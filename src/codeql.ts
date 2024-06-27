@@ -698,8 +698,9 @@ export async function getCodeQLForCmd(
           const prefix =
             "We were unable to automatically build your code. " +
             "Please change the build mode for this language to manual and specify build steps " +
-            "for your project. For more information, see " +
-            "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed.";
+            "for your project. See " +
+            "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed" +
+            "for more information.";
           const ErrorConstructor =
             e instanceof util.ConfigurationError
               ? util.ConfigurationError

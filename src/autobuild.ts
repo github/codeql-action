@@ -5,12 +5,7 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { EnvVar } from "./environment";
-import {
-  Feature,
-  featureConfig,
-  FeatureEnablement,
-  Features,
-} from "./feature-flags";
+import { Feature, featureConfig, Features } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -159,7 +154,6 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
 export async function runAutobuild(
   config: configUtils.Config,
   language: Language,
-  features: FeatureEnablement,
   logger: Logger,
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
@@ -169,7 +163,7 @@ export async function runAutobuild(
   }
   if (
     config.buildMode &&
-    (await features.getValue(Feature.AutobuildDirectTracing, codeQL))
+    (await codeQL.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))
   ) {
     await codeQL.extractUsingBuildMode(config, language);
   } else {

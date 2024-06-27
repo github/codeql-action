@@ -382,7 +382,6 @@ export async function runFinalize(
   memoryFlag: string,
   codeql: CodeQL,
   config: configUtils.Config,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   try {
@@ -404,7 +403,7 @@ export async function runFinalize(
 
   // If we didn't already end tracing in the autobuild Action, end it now.
   if (process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") {
-    await endTracingForCluster(codeql, config, logger, features);
+    await endTracingForCluster(codeql, config, logger);
   }
   return timings;
 }

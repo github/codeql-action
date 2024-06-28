@@ -120,7 +120,7 @@ export function getExtraOptionsEnvParam(): object {
     return {};
   }
   try {
-    return JSON.parse(raw);
+    return JSON.parse(raw) as object;
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     throw new ConfigurationError(
@@ -236,7 +236,7 @@ function getTotalMemoryBytes(logger: Logger): number {
       ]
         .map((file) => getCgroupMemoryLimitBytes(file, logger))
         .filter((limit) => limit !== undefined)
-        .map((limit) => limit as number),
+        .map((limit) => limit),
     );
   }
   const limit = Math.min(...limits);
@@ -888,7 +888,7 @@ export function parseMatrixInput(
   if (matrixInput === undefined || matrixInput === "null") {
     return undefined;
   }
-  return JSON.parse(matrixInput);
+  return JSON.parse(matrixInput) as { [key: string]: string };
 }
 
 function removeDuplicateLocations(locations: SarifLocation[]): SarifLocation[] {

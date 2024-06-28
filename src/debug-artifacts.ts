@@ -45,16 +45,22 @@ export async function uploadDebugArtifacts(
       );
     }
   }
-  await artifact.create().uploadArtifact(
-    sanitizeArifactName(`${artifactName}${suffix}`),
-    toUpload.map((file) => path.normalize(file)),
-    path.normalize(rootDir),
-    {
-      continueOnError: true,
-      // ensure we don't keep the debug artifacts around for too long since they can be large.
-      retentionDays: 7,
-    },
-  );
+
+  try {
+    await artifact.create().uploadArtifact(
+      sanitizeArifactName(`${artifactName}${suffix}`),
+      toUpload.map((file) => path.normalize(file)),
+      path.normalize(rootDir),
+      {
+        continueOnError: true,
+        // ensure we don't keep the debug artifacts around for too long since they can be large.
+        retentionDays: 7,
+      },
+    );
+  } catch (e) {
+    // A failure to upload debug artifacts should not fail the entire action.
+    core.warning(`Failed to upload debug artifacts: ${e}`);
+  }
 }
 
 export async function uploadSarifDebugArtifact(

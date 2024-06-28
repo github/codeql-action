@@ -98,7 +98,6 @@ async function run() {
         : wrapError(unwrappedError);
     const message = error.message;
     core.setFailed(message);
-    console.log(error);
 
     const errorStatusReportBase = await createStatusReportBase(
       ActionName.UploadSarif,

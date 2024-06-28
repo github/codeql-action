@@ -27,6 +27,12 @@ defaultTestVersions = [
     "nightly-latest"
 ]
 
+def is_os_and_version_excluded(os, version, exclude_params):
+    for exclude_param in exclude_params:
+        if exclude_param[0] == os and exclude_param[1] == version:
+            return True
+    return False
+
 # When updating the ruamel.yaml version here, update the PR check in
 # `.github/workflows/pr-checks.yml` too.
 header = """# Warning: This file is generated automatically, and should not be modified.
@@ -56,27 +62,32 @@ allJobs = {}
 for file in (this_dir / 'checks').glob('*.yml'):
     with open(file, 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
-
     matrix = []
+    excludedOsesAndVersions = checkSpecification.get('excludeOsAndVersionCombination', [])
     for version in checkSpecification.get('versions', defaultTestVersions):
-        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
-        if checkSpecification.get('operatingSystems', None):
-            runnerImages = [image for image in runnerImages for operatingSystem in checkSpecification['operatingSystems']
-                            if image.startswith(operatingSystem)]
+        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]            
+        operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu", "macos", "windows"])
 
-        for runnerImage in runnerImages:
-            # Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.
-            # "macos-latest" is now an ARM runner, so we run tests on the old CLIs on Intel runners instead.
-            if version in ["stable-20230403", "stable-v2.13.4", "stable-v2.13.5", "stable-v2.14.6"] and runnerImage == "macos-latest":
-                matrix.append({
-                    'os': "macos-12",
-                    'version': version
-                })
-            else:     
-                matrix.append({
-                    'os': runnerImage,
-                    'version': version
-                })
+        for operatingSystem in operatingSystems:
+            runnerImagesForOs = [image for image in runnerImages if image.startswith(operatingSystem)]
+
+            for runnerImage in runnerImagesForOs:
+                # Skip appending this combination to the matrix if it is explicitly excluded.
+                if is_os_and_version_excluded(operatingSystem, version, excludedOsesAndVersions):
+                    continue
+
+                # Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.
+                # "macos-latest" is now an ARM runner, so we run tests on the old CLIs on Intel runners instead.
+                if version in ["stable-20230403", "stable-v2.13.4", "stable-v2.13.5", "stable-v2.14.6"] and runnerImage == "macos-latest":
+                    matrix.append({
+                        'os': "macos-12",
+                        'version': version
+                    })
+                else:
+                    matrix.append({
+                        'os': runnerImage,
+                        'version': version
+                    })
 
         useAllPlatformBundle = "false" # Default to false
         if checkSpecification.get('useAllPlatformBundle'):
@@ -108,7 +119,10 @@ for file in (this_dir / 'checks').glob('*.yml'):
             'uses': './.github/actions/prepare-test',
             'with': {
                 'version': '${{ matrix.version }}',
-                'use-all-platform-bundle': useAllPlatformBundle
+                'use-all-platform-bundle': useAllPlatformBundle,
+                # If the action is being run from a container, then do not setup kotlin.
+                # This is because the kotlin binaries cannot be downloaded from the container.
+                'setup-kotlin': str(not 'container' in checkSpecification).lower(),
             }
         },
     ]
@@ -149,10 +163,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
             'name': f"PR Check - {checkSpecification['name']}",
             'env': {
                 'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}',
-                'GO111MODULE': 'auto',
-                # Disable Kotlin analysis while it's incompatible with Kotlin 1.8, until we find a
-                # workaround for our PR checks.
-                'CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN': 'true',
+                'GO111MODULE': 'auto'
             },
             'on': {
                 'push': {

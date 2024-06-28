@@ -7,7 +7,6 @@ name: PR Check - Swift analysis using a custom build command
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
-  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
@@ -30,9 +29,15 @@ jobs:
         include:
           - os: macos-latest
             version: linked
+          - os: ubuntu-latest
+            version: linked
           - os: macos-latest
             version: default
+          - os: ubuntu-latest
+            version: default
           - os: macos-latest
+            version: nightly-latest
+          - os: ubuntu-latest
             version: nightly-latest
     name: Swift analysis using a custom build command
     permissions:
@@ -61,6 +66,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - uses: ./../action/init
         id: init
         with:

@@ -466,7 +466,7 @@ async function run() {
         );
       } else if (
         getTrapCachingEnabled() &&
-        (await features.getValue(Feature.CppTrapCachingEnabled, codeql))
+        (await codeQlVersionAtLeast(codeql, "2.17.5"))
       ) {
         logger.info("Enabling CodeQL C++ TRAP caching support");
         core.exportVariable(envVar, "true");

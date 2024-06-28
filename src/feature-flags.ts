@@ -48,7 +48,6 @@ export enum Feature {
   AutobuildDirectTracing = "autobuild_direct_tracing_v2",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
-  CppTrapCachingEnabled = "cpp_trap_caching_enabled",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
@@ -103,12 +102,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     legacyApi: true,
     minimumVersion: "2.15.0",
-  },
-  [Feature.CppTrapCachingEnabled]: {
-    defaultValue: false,
-    envVar: "CODEQL_CPP_TRAP_CACHING",
-    legacyApi: true,
-    minimumVersion: "2.16.1",
   },
   [Feature.DisableCsharpBuildless]: {
     defaultValue: false,
@@ -435,7 +428,9 @@ class GitHubFeatureFlags {
         this.logger.debug(
           `Loading feature flags from ${this.featureFlagsFile}`,
         );
-        return JSON.parse(fs.readFileSync(this.featureFlagsFile, "utf8"));
+        return JSON.parse(
+          fs.readFileSync(this.featureFlagsFile, "utf8"),
+        ) as GitHubFeatureFlagsApiResponse;
       }
     } catch (e) {
       this.logger.warning(

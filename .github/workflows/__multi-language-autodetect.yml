@@ -7,7 +7,6 @@ name: PR Check - Multi-language repository
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
-  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
@@ -40,9 +39,15 @@ jobs:
             version: stable-v2.16.6
           - os: macos-latest
             version: default
+          - os: ubuntu-latest
+            version: default
           - os: macos-latest
             version: linked
+          - os: ubuntu-latest
+            version: linked
           - os: macos-latest
+            version: nightly-latest
+          - os: ubuntu-latest
             version: nightly-latest
     name: Multi-language repository
     permissions:
@@ -71,6 +76,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - uses: actions/setup-go@v5
         with:
           go-version: '>=1.21.0'

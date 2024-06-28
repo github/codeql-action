@@ -7,7 +7,6 @@ name: 'PR Check - Go: diagnostic when Go is changed after init step'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
-  CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: 'true'
 on:
   push:
     branches:
@@ -57,6 +56,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - uses: actions/setup-go@v5
         with:
       # We need a Go version that ships with statically linked binaries on Linux

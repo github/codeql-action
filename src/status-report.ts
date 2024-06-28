@@ -25,6 +25,7 @@ import {
   DiskUsage,
   assertNever,
   BuildMode,
+  wrapError,
 } from "./util";
 
 export enum ActionName {
@@ -402,7 +403,6 @@ export async function sendStatusReport<S extends StatusReportBase>(
       },
     );
   } catch (e) {
-    console.log(e);
     if (isHTTPError(e)) {
       switch (e.status) {
         case 403:
@@ -439,7 +439,9 @@ export async function sendStatusReport<S extends StatusReportBase>(
     // something else has gone wrong and the request/response will be logged by octokit
     // it's possible this is a transient error and we should continue scanning
     core.warning(
-      "An unexpected error occurred when sending code scanning status report.",
+      `An unexpected error occurred when sending code scanning status report: ${
+        wrapError(e).message
+      }`,
     );
   }
 }

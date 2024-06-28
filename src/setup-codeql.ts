@@ -66,7 +66,7 @@ function tryGetCodeQLCliVersionForRelease(
   release,
   logger: Logger,
 ): string | undefined {
-  const cliVersionsFromMarkerFiles = release.assets
+  const cliVersionsFromMarkerFiles = (release.assets as Array<{ name: string }>)
     .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
     .filter((v) => v)
     .map((v) => v as string);

@@ -309,7 +309,7 @@ async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   logger: Logger,
-) {
+): Promise<string> {
   logger.info("Uploading results");
 
   // If in test mode we don't want to upload the results
@@ -323,7 +323,7 @@ async function uploadPayload(
     );
     logger.info(`Payload: ${JSON.stringify(payload, null, 2)}`);
     fs.writeFileSync(payloadSaveFile, JSON.stringify(payload, null, 2));
-    return;
+    return "test-mode-sarif-id";
   }
 
   const client = api.getApiClient();
@@ -340,7 +340,7 @@ async function uploadPayload(
 
     logger.debug(`response status: ${response.status}`);
     logger.info("Successfully uploaded results");
-    return response.data.id;
+    return response.data.id as string;
   } catch (e) {
     if (util.isHTTPError(e)) {
       switch (e.status) {
@@ -792,6 +792,7 @@ function handleProcessingResultForUnsuccessfulExecution(
     status === "failed" &&
     Array.isArray(response.data.errors) &&
     response.data.errors.length === 1 &&
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     response.data.errors[0].toString().startsWith("unsuccessful execution")
   ) {
     logger.debug(

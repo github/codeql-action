@@ -195,6 +195,7 @@ export function cleanupDatabaseClusterDirectory(
         force: true,
         maxRetries: 3,
         recursive: true,
+        retryDelay: 1000,
       });
 
       logger.info(

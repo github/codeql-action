@@ -104,7 +104,7 @@ async function maybeUploadFailedSarif(
   }
 
   logger.info(`Uploading failed SARIF file ${sarifFile}`);
-  const uploadResult = await uploadLib.uploadFromActions(
+  const uploadResult = await uploadLib.uploadFiles(
     sarifFile,
     checkoutPath,
     category,

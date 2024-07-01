@@ -391,32 +391,6 @@ export function findSarifFilesInDir(sarifPath: string): string[] {
   return sarifFiles;
 }
 
-/**
- * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers
- * to.
- */
-export async function uploadFromActions(
-  sarifPath: string,
-  checkoutPath: string,
-  category: string | undefined,
-  logger: Logger,
-): Promise<UploadResult> {
-  return await uploadFiles(
-    getSarifFilePaths(sarifPath),
-    parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    await actionsUtil.getCommitOid(checkoutPath),
-    await actionsUtil.getRef(),
-    await api.getAnalysisKey(),
-    category,
-    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-    actionsUtil.getWorkflowRunID(),
-    actionsUtil.getWorkflowRunAttempt(),
-    checkoutPath,
-    actionsUtil.getRequiredInput("matrix"),
-    logger,
-  );
-}
-
 function getSarifFilePaths(sarifPath: string) {
   if (!fs.existsSync(sarifPath)) {
     // This is always a configuration error, even for first-party runs.
@@ -563,22 +537,21 @@ export function buildPayload(
   return payloadObj;
 }
 
-// Uploads the given set of sarif files.
-// Returns true iff the upload occurred and succeeded
-async function uploadFiles(
-  sarifFiles: string[],
-  repositoryNwo: RepositoryNwo,
-  commitOid: string,
-  ref: string,
-  analysisKey: string,
+/**
+ * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers
+ * to.
+ */
+export async function uploadFiles(
+  sarifPath: string,
+  checkoutPath: string,
   category: string | undefined,
-  analysisName: string | undefined,
-  workflowRunID: number,
-  workflowRunAttempt: number,
-  sourceRoot: string,
-  environment: string | undefined,
   logger: Logger,
 ): Promise<UploadResult> {
+  const repositoryNwo = parseRepositoryNwo(
+    util.getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+  const sarifFiles = getSarifFilePaths(sarifPath);
+
   logger.startGroup("Uploading results");
   logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
 
@@ -601,8 +574,10 @@ async function uploadFiles(
     features,
     logger,
   );
-  sarif = await fingerprints.addFingerprints(sarif, sourceRoot, logger);
+  sarif = await fingerprints.addFingerprints(sarif, checkoutPath, logger);
 
+  const analysisKey = await api.getAnalysisKey();
+  const environment = actionsUtil.getRequiredInput("matrix");
   sarif = populateRunAutomationDetails(
     sarif,
     category,
@@ -618,16 +593,16 @@ async function uploadFiles(
   const sarifPayload = JSON.stringify(sarif);
   logger.debug(`Compressing serialized SARIF`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
-  const checkoutURI = fileUrl(sourceRoot);
+  const checkoutURI = fileUrl(checkoutPath);
 
   const payload = buildPayload(
-    commitOid,
-    ref,
+    await actionsUtil.getCommitOid(checkoutPath),
+    await actionsUtil.getRef(),
     analysisKey,
-    analysisName,
+    category,
     zippedSarif,
-    workflowRunID,
-    workflowRunAttempt,
+    actionsUtil.getWorkflowRunID(),
+    actionsUtil.getWorkflowRunAttempt(),
     checkoutURI,
     environment,
     toolNames,

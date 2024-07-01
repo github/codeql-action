@@ -71,7 +71,7 @@ async function run() {
   }
 
   try {
-    const uploadResult = await upload_lib.uploadFromActions(
+    const uploadResult = await upload_lib.uploadFiles(
       actionsUtil.getRequiredInput("sarif_file"),
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getOptionalInput("category"),

@@ -305,6 +305,7 @@ async function run() {
         outputDir,
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
+        features,
         logger,
       );
       core.setOutput("sarif-id", uploadResult.sarifID);

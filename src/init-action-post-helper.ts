@@ -108,6 +108,7 @@ async function maybeUploadFailedSarif(
     sarifFile,
     checkoutPath,
     category,
+    features,
     logger,
   );
   await uploadLib.waitForProcessing(

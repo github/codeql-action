@@ -15,7 +15,7 @@ import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
-import { FeatureEnablement, Features } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
@@ -545,23 +545,15 @@ export async function uploadFiles(
   sarifPath: string,
   checkoutPath: string,
   category: string | undefined,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadResult> {
-  const repositoryNwo = parseRepositoryNwo(
-    util.getRequiredEnvParam("GITHUB_REPOSITORY"),
-  );
   const sarifFiles = getSarifFilePaths(sarifPath);
 
   logger.startGroup("Uploading results");
   logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
 
   const gitHubVersion = await getGitHubVersion();
-  const features = new Features(
-    gitHubVersion,
-    repositoryNwo,
-    actionsUtil.getTemporaryDirectory(),
-    logger,
-  );
 
   // Validate that the files we were asked to upload are all valid SARIF files
   for (const file of sarifFiles) {
@@ -618,7 +610,11 @@ export async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  const sarifID = await uploadPayload(payload, repositoryNwo, logger);
+  const sarifID = await uploadPayload(
+    payload,
+    parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
+    logger,
+  );
 
   logger.endGroup();
 

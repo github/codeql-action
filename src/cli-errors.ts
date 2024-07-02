@@ -29,7 +29,7 @@ export class CommandInvocationError extends Error {
         "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed";
       message =
         "We were unable to automatically build your code. Please provide manual build steps. " +
-        `For more information, see ${autobuildHelpLink}. ` +
+        `See ${autobuildHelpLink} for more information. ` +
         `Encountered the following error: ${autobuildErrors}`;
     } else {
       let lastLine = stderr.trim().split("\n").pop()?.trim() || "";

@@ -356,33 +356,19 @@ async function run() {
       core.setFailed(error.message);
     }
 
-    if (error instanceof CodeQLAnalysisError) {
-      const stats = { ...error.queriesStatusReport };
-      await sendStatusReport(
-        startedAt,
-        config,
-        stats,
-        error.error, // use the underlying error in case it is a configuration error
-        trapCacheUploadTime,
-        dbCreationTimings,
-        didUploadTrapCaches,
-        trapCacheCleanupTelemetry,
-        logger,
-      );
-    } else {
-      await sendStatusReport(
-        startedAt,
-        config,
-        undefined,
-        error,
-        trapCacheUploadTime,
-        dbCreationTimings,
-        didUploadTrapCaches,
-        trapCacheCleanupTelemetry,
-        logger,
-      );
-    }
-
+    await sendStatusReport(
+      startedAt,
+      config,
+      error instanceof CodeQLAnalysisError
+        ? error.queriesStatusReport
+        : undefined,
+      error instanceof CodeQLAnalysisError ? error.error : error,
+      trapCacheUploadTime,
+      dbCreationTimings,
+      didUploadTrapCaches,
+      trapCacheCleanupTelemetry,
+      logger,
+    );
     return;
   }
 

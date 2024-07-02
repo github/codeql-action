@@ -26,13 +26,13 @@ import * as util from "./util";
 import { BuildMode } from "./util";
 
 export class CodeQLAnalysisError extends Error {
-  queriesStatusReport: QueriesStatusReport;
-
-  constructor(queriesStatusReport: QueriesStatusReport, message: string) {
+  constructor(
+    public queriesStatusReport: QueriesStatusReport,
+    public message: string,
+    public error: Error,
+  ) {
     super(message);
-
     this.name = "CodeQLAnalysisError";
-    this.queriesStatusReport = queriesStatusReport;
   }
 }
 
@@ -315,6 +315,7 @@ export async function runQueries(
       throw new CodeQLAnalysisError(
         statusReport,
         `Error running analysis for ${language}: ${util.wrapError(e).message}`,
+        util.wrapError(e),
       );
     }
   }

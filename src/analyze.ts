@@ -3,7 +3,6 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import { safeWhich } from "@chrisgavin/safe-which";
-import del from "del";
 import * as yaml from "js-yaml";
 
 import { setupCppAutobuild } from "./autobuild";
@@ -385,13 +384,7 @@ export async function runFinalize(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
-  try {
-    await del(outputDir, { force: true });
-  } catch (error: any) {
-    if (error?.code !== "ENOENT") {
-      throw error;
-    }
-  }
+  await fs.promises.rm(outputDir, { force: true, recursive: true });
   await fs.promises.mkdir(outputDir, { recursive: true });
 
   const timings = await finalizeDatabaseCreation(

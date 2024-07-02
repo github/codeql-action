@@ -4,7 +4,6 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
-import del from "del";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -580,7 +579,11 @@ export const downloadCodeQL = async function (
   logger.debug(
     `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionMs} ms).`,
   );
-  await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
+  await cleanUpFileOrDirectory(
+    archivedBundlePath,
+    "CodeQL bundle archive",
+    logger,
+  );
 
   const bundleVersion =
     maybeBundleVersion ?? tryGetBundleVersionFromUrl(codeqlURL, logger);
@@ -623,7 +626,7 @@ export const downloadCodeQL = async function (
 
   // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
   if (toolcachedBundlePath !== extractedBundlePath) {
-    await cleanUpGlob(
+    await cleanUpFileOrDirectory(
       extractedBundlePath,
       "CodeQL bundle from temporary directory",
       logger,
@@ -749,19 +752,15 @@ export async function setupCodeQLBundle(
   return { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion };
 }
 
-async function cleanUpGlob(glob: string, name: string, logger: Logger) {
+async function cleanUpFileOrDirectory(
+  file: string,
+  name: string,
+  logger: Logger,
+) {
   logger.debug(`Cleaning up ${name}.`);
   try {
-    const deletedPaths = await del(glob, { force: true });
-    if (deletedPaths.length === 0) {
-      logger.warning(
-        `Failed to clean up ${name}: no files found matching ${glob}.`,
-      );
-    } else if (deletedPaths.length === 1) {
-      logger.debug(`Cleaned up ${name}.`);
-    } else {
-      logger.debug(`Cleaned up ${name} (${deletedPaths.length} files).`);
-    }
+    await fs.promises.rm(file, { force: true, recursive: true });
+    logger.debug(`Cleaned up ${name}.`);
   } catch (e) {
     logger.warning(`Failed to clean up ${name}: ${e}.`);
   }

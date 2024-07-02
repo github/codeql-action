@@ -4,7 +4,6 @@ import * as path from "path";
 import * as artifact from "@actions/artifact";
 import * as core from "@actions/core";
 import AdmZip from "adm-zip";
-import del from "del";
 
 import { getRequiredInput } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
@@ -125,9 +124,7 @@ async function createPartialDatabaseBundle(
     `${config.debugDatabaseName}-${language} is not finalized. Uploading partial database bundle at ${databaseBundlePath}...`,
   );
   // See `bundleDb` for explanation behind deleting existing db bundle.
-  if (fs.existsSync(databaseBundlePath)) {
-    await del(databaseBundlePath, { force: true });
-  }
+  await fs.promises.rm(databaseBundlePath, { force: true });
   const zip = new AdmZip();
   zip.addLocalFolder(databasePath);
   zip.writeZip(databaseBundlePath);

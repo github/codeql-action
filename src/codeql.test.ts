@@ -5,7 +5,6 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import * as safeWhich from "@chrisgavin/safe-which";
 import test, { ExecutionContext } from "ava";
-import del from "del";
 import * as yaml from "js-yaml";
 import nock from "nock";
 import * as sinon from "sinon";
@@ -496,7 +495,7 @@ const injectedConfigMacro = test.macro({
       const augmentedConfig = yaml.load(fs.readFileSync(configFile, "utf8"));
       t.deepEqual(augmentedConfig, expectedConfig);
 
-      await del(configFile, { force: true });
+      await fs.promises.rm(configFile, { force: true });
     });
   },
 
@@ -1009,7 +1008,7 @@ test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OP
   );
   t.truthy(configArg, "Should have injected a codescanning config");
   const configFile = configArg!.split("=")[1];
-  await del(configFile, { force: true });
+  await fs.promises.rm(configFile, { force: true });
 });
 
 export function stubToolRunnerConstructor(

@@ -5,7 +5,6 @@ import { promisify } from "util";
 
 import * as core from "@actions/core";
 import checkDiskSpace from "check-disk-space";
-import del from "del";
 import getFolderSize from "get-folder-size";
 import * as semver from "semver";
 
@@ -155,7 +154,7 @@ export async function withTmpDir<T>(
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
   const result = await body(tmpDir);
-  await del(tmpDir, { force: true });
+  await fs.promises.rm(tmpDir, { force: true, recursive: true });
   return result;
 }
 
@@ -706,9 +705,7 @@ export async function bundleDb(
   // as part of this action step or a previous one, but it could also be
   // from somewhere else or someone trying to make the action upload a
   // non-database file.
-  if (fs.existsSync(databaseBundlePath)) {
-    await del(databaseBundlePath, { force: true });
-  }
+  await fs.promises.rm(databaseBundlePath, { force: true });
   await codeql.databaseBundle(databasePath, databaseBundlePath, dbName);
   return databaseBundlePath;
 }

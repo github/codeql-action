@@ -23,7 +23,9 @@ export class CommandInvocationError extends Error {
     if (fatalErrors) {
       message =
         `Encountered a fatal error while running "${prettyCommand}". ` +
-        `Exit code was ${exitCode} and error was: ${fatalErrors.trim()} See the logs for more details.`;
+        `Exit code was ${exitCode} and error was: ${ensureEndsInPeriod(
+          fatalErrors.trim(),
+        )} See the logs for more details.`;
     } else if (autobuildErrors) {
       const autobuildHelpLink =
         "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed";
@@ -32,10 +34,9 @@ export class CommandInvocationError extends Error {
         `For more information, see ${autobuildHelpLink}. ` +
         `Encountered the following error: ${autobuildErrors}`;
     } else {
-      let lastLine = stderr.trim().split("\n").pop()?.trim() || "";
-      if (lastLine[lastLine.length - 1] !== ".") {
-        lastLine += ".";
-      }
+      const lastLine = ensureEndsInPeriod(
+        stderr.trim().split("\n").pop()?.trim() || "n/a",
+      );
       message =
         `Encountered a fatal error while running "${prettyCommand}". ` +
         `Exit code was ${exitCode} and last log line was: ${lastLine} See the logs for more details.`;
@@ -75,7 +76,7 @@ export class CommandInvocationError extends Error {
  * the Actions UI.
  */
 function extractFatalErrors(error: string): string | undefined {
-  const fatalErrorRegex = /.*fatal error occurred:/gi;
+  const fatalErrorRegex = /.*fatal (internal )?error occurr?ed(. Details)?:/gi;
   let fatalErrors: string[] = [];
   let lastFatalErrorIndex: number | undefined;
   let match: RegExpMatchArray | null;

@@ -362,7 +362,7 @@ async function run() {
         startedAt,
         config,
         stats,
-        error,
+        error.error, // use the underlying error in case it is a configuration error
         trapCacheUploadTime,
         dbCreationTimings,
         didUploadTrapCaches,

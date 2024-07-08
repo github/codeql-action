@@ -1,8 +1,9 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getActionVersion } from "./actions-util";
+import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
+import { Features } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -58,6 +59,16 @@ async function run() {
   const gitHubVersion = await getGitHubVersion();
   checkActionVersion(getActionVersion(), gitHubVersion);
 
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+  const features = new Features(
+    gitHubVersion,
+    repositoryNwo,
+    getTemporaryDirectory(),
+    logger,
+  );
+
   const startingStatusReportBase = await createStatusReportBase(
     ActionName.UploadSarif,
     "starting",
@@ -71,10 +82,11 @@ async function run() {
   }
 
   try {
-    const uploadResult = await upload_lib.uploadFromActions(
+    const uploadResult = await upload_lib.uploadFiles(
       actionsUtil.getRequiredInput("sarif_file"),
       actionsUtil.getRequiredInput("checkout_path"),
       actionsUtil.getOptionalInput("category"),
+      features,
       logger,
     );
     core.setOutput("sarif-id", uploadResult.sarifID);

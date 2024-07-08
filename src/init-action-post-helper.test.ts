@@ -368,8 +368,8 @@ async function testFailedSarifUpload(
 
   sinon.stub(workflow, "getWorkflow").resolves(actionsWorkflow);
 
-  const uploadFromActions = sinon.stub(uploadLib, "uploadFromActions");
-  uploadFromActions.resolves({
+  const uploadFiles = sinon.stub(uploadLib, "uploadFiles");
+  uploadFiles.resolves({
     sarifID: "42",
     statusReport: { raw_upload_size_bytes: 20, zipped_upload_size_bytes: 10 },
   } as uploadLib.UploadResult);
@@ -414,13 +414,14 @@ async function testFailedSarifUpload(
       );
     }
     t.true(
-      uploadFromActions.calledOnceWith(
+      uploadFiles.calledOnceWith(
         sinon.match.string,
         sinon.match.string,
         category,
         sinon.match.any,
+        sinon.match.any,
       ),
-      `Actual args were: ${uploadFromActions.args}`,
+      `Actual args were: ${uploadFiles.args}`,
     );
     t.true(
       waitForProcessing.calledOnceWith(sinon.match.any, "42", sinon.match.any, {
@@ -429,7 +430,7 @@ async function testFailedSarifUpload(
     );
   } else {
     t.true(diagnosticsExportStub.notCalled);
-    t.true(uploadFromActions.notCalled);
+    t.true(uploadFiles.notCalled);
     t.true(waitForProcessing.notCalled);
   }
   return result;

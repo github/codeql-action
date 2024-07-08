@@ -139,6 +139,15 @@ export async function getWorkflowRelativePath(): Promise<string> {
   );
   const workflowUrl = runsResponse.data.workflow_url;
 
+  const requiredWorkflowRegex =
+    /\/repos\/[^/]+\/[^/]+\/actions\/required_workflows\/[^/]+/;
+  if (!workflowUrl || requiredWorkflowRegex.test(workflowUrl as string)) {
+    // For required workflows, the workflowUrl is invalid so we cannot fetch more informations
+    // about the workflow.
+    // However, the path is available in the original response.
+    return runsResponse.data.path as string;
+  }
+
   const workflowResponse = await apiClient.request(`GET ${workflowUrl}`);
 
   return workflowResponse.data.path as string;

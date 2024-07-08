@@ -591,7 +591,7 @@ export async function uploadFiles(
     await actionsUtil.getCommitOid(checkoutPath),
     await actionsUtil.getRef(),
     analysisKey,
-    category,
+    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
     zippedSarif,
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getWorkflowRunAttempt(),

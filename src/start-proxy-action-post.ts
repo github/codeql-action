@@ -3,6 +3,8 @@
  * It will run after the all steps in this job, in reverse order in relation to
  * other `post:` hooks.
  */
+import * as fs from "fs";
+
 import * as core from "@actions/core";
 
 import { wrapError } from "./util";
@@ -17,6 +19,13 @@ async function runWrapper() {
     core.setFailed(
       `start-proxy post-action step failed: ${wrapError(error).message}`,
     );
+  }
+  if (core.isDebug()) {
+    const logFilePath = core.getState("proxy-log-file");
+    if (logFilePath) {
+      const readStream = fs.createReadStream(logFilePath);
+      readStream.pipe(process.stdout, { end: true });
+    }
   }
 }
 

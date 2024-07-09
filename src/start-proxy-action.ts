@@ -90,6 +90,8 @@ async function runWrapper() {
   const credentials = JSON.parse(input) as Credential[];
   const ca = generateCertificateAuthority();
   const proxy_password = actionsUtil.getOptionalInput("proxy_password");
+  core.saveState("proxy-log-file", logFilePath);
+
   let proxy_auth: BasicAuthCredentials | undefined = undefined;
   if (proxy_password) {
     core.setSecret(proxy_password);

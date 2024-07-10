@@ -554,6 +554,7 @@ async function run() {
     flushDiagnostics(config);
 
     core.setOutput("codeql-path", config.codeQLCmd);
+    core.setOutput("codeql-version", (await codeql.getVersion()).version);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

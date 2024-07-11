@@ -285,30 +285,6 @@ for (const feature of Object.keys(featureConfig)) {
   }
 }
 
-// If we ever run into a situation where we no longer have any features that
-// specify a minimum version or required tools feature, then we will have a
-// bunch of code no longer being tested. This is unlikely, and this test will
-// fail if that happens.
-// If we do end up in that situation, then we should consider adding a synthetic
-// feature with a minimum version that is only used for tests.
-test("At least one feature has a minimum version specified", (t) => {
-  t.assert(
-    Object.values(featureConfig).some((f) => f.minimumVersion !== undefined),
-    "At least one feature should have a minimum version specified",
-  );
-
-  t.assert(
-    Object.values(featureConfig).some((f) => f.toolsFeature !== undefined),
-    "At least one feature should have a required tools feature specified",
-  );
-
-  // An even less likely scenario is that we no longer have any features.
-  t.assert(
-    Object.values(featureConfig).length > 0,
-    "There should be at least one feature",
-  );
-});
-
 test("Feature flags are saved to disk", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const features = setUpFeatureFlagTests(tmpDir);

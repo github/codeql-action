@@ -139,6 +139,8 @@ inputs:
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis
+  codeql-version:
+    description: The version of the CodeQL binary used for analysis
 runs:
   using: node20
   main: '../lib/init-action.js'

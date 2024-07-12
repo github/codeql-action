@@ -4,145 +4,142 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
-## 3.25.12 - 12 Jul 2024
+## 2.25.12 - 12 Jul 2024
 
 - Improve the reliability and performance of analyzing code when analyzing a compiled language with the `autobuild` [build mode](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#codeql-build-modes) on GitHub Enterprise Server. This feature is already available to GitHub.com users. [#2353](https://github.com/github/codeql-action/pull/2353)
 - Update default CodeQL bundle version to 2.18.0. [#2364](https://github.com/github/codeql-action/pull/2364)
 
-## 3.25.11 - 28 Jun 2024
+## 2.25.11 - 28 Jun 2024
 
 - Avoid failing the workflow run if there is an error while uploading debug artifacts. [#2349](https://github.com/github/codeql-action/pull/2349)
 - Update default CodeQL bundle version to 2.17.6. [#2352](https://github.com/github/codeql-action/pull/2352)
 
-## 3.25.10 - 13 Jun 2024
+## 2.25.10 - 13 Jun 2024
 
 - Update default CodeQL bundle version to 2.17.5. [#2327](https://github.com/github/codeql-action/pull/2327)
 
-## 3.25.9 - 12 Jun 2024
+## 2.25.9 - 12 Jun 2024
 
 - Avoid failing database creation if the database folder already exists and contains some unexpected files. Requires CodeQL 2.18.0 or higher. [#2330](https://github.com/github/codeql-action/pull/2330)
 - The init Action will attempt to clean up the database cluster directory before creating a new database and at the end of the job. This will help to avoid issues where the database cluster directory is left in an inconsistent state. [#2332](https://github.com/github/codeql-action/pull/2332)
 
-## 3.25.8 - 04 Jun 2024
+## 2.25.8 - 04 Jun 2024
 
 - Update default CodeQL bundle version to 2.17.4. [#2321](https://github.com/github/codeql-action/pull/2321)
 
-## 3.25.7 - 31 May 2024
+## 2.25.7 - 31 May 2024
 
 - We are rolling out a feature in May/June 2024 that will reduce the Actions cache usage of the Action by keeping only the newest TRAP cache for each language. [#2306](https://github.com/github/codeql-action/pull/2306)
 
-## 3.25.6 - 20 May 2024
+## 2.25.6 - 20 May 2024
 
 - Update default CodeQL bundle version to 2.17.3. [#2295](https://github.com/github/codeql-action/pull/2295)
 
-## 3.25.5 - 13 May 2024
+## 2.25.5 - 13 May 2024
 
 - Add a compatibility matrix of supported CodeQL Action, CodeQL CLI, and GitHub Enterprise Server versions to the [README.md](README.md). [#2273](https://github.com/github/codeql-action/pull/2273)
 - Avoid printing out a warning for a missing `on.push` trigger when the CodeQL Action is triggered via a `workflow_call` event. [#2274](https://github.com/github/codeql-action/pull/2274)
 - The `tools: latest` input to the `init` Action has been renamed to `tools: linked`. This option specifies that the Action should use the tools shipped at the same time as the Action. The old name will continue to work for backwards compatibility, but we recommend that new workflows use the new name. [#2281](https://github.com/github/codeql-action/pull/2281)
 
-## 3.25.4 - 08 May 2024
+## 2.25.4 - 08 May 2024
 
 - Update default CodeQL bundle version to 2.17.2. [#2270](https://github.com/github/codeql-action/pull/2270)
 
-## 3.25.3 - 25 Apr 2024
+## 2.25.3 - 25 Apr 2024
 
 - Update default CodeQL bundle version to 2.17.1. [#2247](https://github.com/github/codeql-action/pull/2247)
 - Workflows running on `macos-latest` using CodeQL CLI versions before v2.15.1 will need to either upgrade their CLI version to v2.15.1 or newer, or change the platform to an Intel MacOS runner, such as `macos-12`. ARM machines with SIP disabled, including the newest `macos-latest` image, are unsupported for CLI versions before 2.15.1. [#2261](https://github.com/github/codeql-action/pull/2261)
 
-## 3.25.2 - 22 Apr 2024
+## 2.25.2 - 22 Apr 2024
 
 No user facing changes.
 
-## 3.25.1 - 17 Apr 2024
+## 2.25.1 - 17 Apr 2024
 
 - We are rolling out a feature in April/May 2024 that improves the reliability and performance of analyzing code when analyzing a compiled language with the `autobuild` [build mode](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#codeql-build-modes). [#2235](https://github.com/github/codeql-action/pull/2235)
 - Fix a bug where the `init` Action would fail if `--overwrite` was specified in `CODEQL_ACTION_EXTRA_OPTIONS`. [#2245](https://github.com/github/codeql-action/pull/2245)
 
-## 3.25.0 - 15 Apr 2024
+## 2.25.0 - 15 Apr 2024
 
 - The deprecated feature for extracting dependencies for a Python analysis has been removed. [#2224](https://github.com/github/codeql-action/pull/2224)
-
   As a result, the following inputs and environment variables are now ignored:
-
   - The `setup-python-dependencies` input to the `init` Action
   - The `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION` environment variable
-
   We recommend removing any references to these from your workflows. For more information, see the release notes for CodeQL Action v3.23.0 and v2.23.0.
 - Automatically overwrite an existing database if found on the filesystem. [#2229](https://github.com/github/codeql-action/pull/2229)
 - Bump the minimum CodeQL bundle version to 2.12.6. [#2232](https://github.com/github/codeql-action/pull/2232)
 - A more relevant log message and a diagnostic are now emitted when the `file` program is not installed on a Linux runner, but is required for Go tracing to succeed. [#2234](https://github.com/github/codeql-action/pull/2234)
 
-## 3.24.10 - 05 Apr 2024
+## 2.24.10 - 05 Apr 2024
 
 - Update default CodeQL bundle version to 2.17.0. [#2219](https://github.com/github/codeql-action/pull/2219)
 - Add a deprecation warning for customers using CodeQL version 2.12.5 and earlier. These versions of CodeQL were discontinued on 26 March 2024 alongside GitHub Enterprise Server 3.8, and will be unsupported by CodeQL Action versions 3.25.0 and later and versions 2.25.0 and later. [#2220](https://github.com/github/codeql-action/pull/2220)
   - If you are using one of these versions, please update to CodeQL CLI version 2.12.6 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
   - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.11.6 and 2.12.5, you can replace `github/codeql-action/*@v3` by `github/codeql-action/*@v3.24.10` and `github/codeql-action/*@v2` by `github/codeql-action/*@v2.24.10` in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
 
-## 3.24.9 - 22 Mar 2024
+## 2.24.9 - 22 Mar 2024
 
 - Update default CodeQL bundle version to 2.16.5. [#2203](https://github.com/github/codeql-action/pull/2203)
 
-## 3.24.8 - 18 Mar 2024
+## 2.24.8 - 18 Mar 2024
 
 - Improve the ease of debugging extraction issues by increasing the verbosity of the extractor logs when running in debug mode. [#2195](https://github.com/github/codeql-action/pull/2195)
 
-## 3.24.7 - 12 Mar 2024
+## 2.24.7 - 12 Mar 2024
 
 - Update default CodeQL bundle version to 2.16.4. [#2185](https://github.com/github/codeql-action/pull/2185)
 
-## 3.24.6 - 29 Feb 2024
+## 2.24.6 - 29 Feb 2024
 
 No user facing changes.
 
-## 3.24.5 - 23 Feb 2024
+## 2.24.5 - 23 Feb 2024
 
 - Update default CodeQL bundle version to 2.16.3. [#2156](https://github.com/github/codeql-action/pull/2156)
 
-## 3.24.4 - 21 Feb 2024
+## 2.24.4 - 21 Feb 2024
 
 - Fix an issue where an existing, but empty, `/sys/fs/cgroup/cpuset.cpus` file always resulted in a single-threaded run. [#2151](https://github.com/github/codeql-action/pull/2151)
 
-## 3.24.3 - 15 Feb 2024
+## 2.24.3 - 15 Feb 2024
 
 - Fix an issue where the CodeQL Action would fail to load a configuration specified by the `config` input to the `init` Action. [#2147](https://github.com/github/codeql-action/pull/2147)
 
-## 3.24.2 - 15 Feb 2024
+## 2.24.2 - 15 Feb 2024
 
 - Enable improved multi-threaded performance on larger runners for GitHub Enterprise Server users. This feature is already available to GitHub.com users. [#2141](https://github.com/github/codeql-action/pull/2141)
 
-## 3.24.1 - 13 Feb 2024
+## 2.24.1 - 13 Feb 2024
 
 - Update default CodeQL bundle version to 2.16.2. [#2124](https://github.com/github/codeql-action/pull/2124)
 - The CodeQL action no longer fails if it can't write to the telemetry api endpoint. [#2121](https://github.com/github/codeql-action/pull/2121)
 
-## 3.24.0 - 02 Feb 2024
+## 2.24.0 - 02 Feb 2024
 
 - CodeQL Python analysis will no longer install dependencies on GitHub Enterprise Server, as is already the case for GitHub.com. See [release notes for 3.23.0](#3230---08-jan-2024) for more details. [#2106](https://github.com/github/codeql-action/pull/2106)
 
-## 3.23.2 - 26 Jan 2024
+## 2.23.2 - 26 Jan 2024
 
 - On Linux, the maximum possible value for the `--threads` option now respects the CPU count as specified in `cgroup` files to more accurately reflect the number of available cores when running in containers. [#2083](https://github.com/github/codeql-action/pull/2083)
 - Update default CodeQL bundle version to 2.16.1. [#2096](https://github.com/github/codeql-action/pull/2096)
 
-## 3.23.1 - 17 Jan 2024
+## 2.23.1 - 17 Jan 2024
 
 - Update default CodeQL bundle version to 2.16.0. [#2073](https://github.com/github/codeql-action/pull/2073)
 - Change the retention period for uploaded debug artifacts to 7 days. Previously, this was whatever the repository default was. [#2079](https://github.com/github/codeql-action/pull/2079)
 
-## 3.23.0 - 08 Jan 2024
+## 2.23.0 - 08 Jan 2024
 
 - We are rolling out a feature in January 2024 that will disable Python dependency installation by default for all users. This improves the speed of analysis while having only a very minor impact on results. You can override this behavior by setting `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION=false` in your workflow, however we plan to remove this ability in future versions of the CodeQL Action. [#2031](https://github.com/github/codeql-action/pull/2031)
 - The CodeQL Action now requires CodeQL version 2.11.6 or later. For more information, see [the corresponding changelog entry for CodeQL Action version 2.22.7](#2227---16-nov-2023). [#2009](https://github.com/github/codeql-action/pull/2009)
 
-## 3.22.12 - 22 Dec 2023
+## 2.22.12 - 22 Dec 2023
 
 - Update default CodeQL bundle version to 2.15.5. [#2047](https://github.com/github/codeql-action/pull/2047)
 
-## 3.22.11 - 13 Dec 2023
+## 2.22.11 - 13 Dec 2023
 
-- [v3+ only] The CodeQL Action now runs on Node.js v20. [#2006](https://github.com/github/codeql-action/pull/2006)
+No user facing changes.
 
 ## 2.22.10 - 12 Dec 2023
 

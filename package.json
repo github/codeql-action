@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.25.11",
+  "version": "2.25.12",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -61,8 +61,8 @@
     "@types/node": "16.11.22",
     "@types/semver": "^7.5.8",
     "@types/sinon": "^17.0.3",
-    "@typescript-eslint/eslint-plugin": "^7.13.1",
-    "@typescript-eslint/parser": "^7.13.1",
+    "@typescript-eslint/eslint-plugin": "^7.16.0",
+    "@typescript-eslint/parser": "^7.16.0",
     "ava": "^5.3.1",
     "eslint": "^8.57.0",
     "eslint-import-resolver-typescript": "^3.6.1",
@@ -74,7 +74,7 @@
     "nock": "^13.5.4",
     "removeNPMAbsolutePaths": "3.0.1",
     "sinon": "^18.0.0",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.3"
   },
   "overrides": {
     "@actions/tool-cache": {

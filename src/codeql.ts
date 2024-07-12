@@ -82,7 +82,6 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
-    features: FeatureEnablement,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -558,13 +557,12 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
-      features: FeatureEnablement,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`,
       );
-      if (await shouldEnableIndirectTracing(codeql, config, features)) {
+      if (await shouldEnableIndirectTracing(codeql, config)) {
         extraArgs.push("--begin-tracing");
         extraArgs.push(...(await getTrapCachingExtractorConfigArgs(config)));
         extraArgs.push(`--trace-process-name=${processName}`);

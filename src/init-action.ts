@@ -541,7 +541,6 @@ async function run() {
       "Runner.Worker.exe",
       getOptionalInput("registries"),
       apiDetails,
-      features,
       logger,
     );
     if (tracerConfig !== undefined) {

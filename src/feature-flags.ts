@@ -45,7 +45,6 @@ export interface FeatureEnablement {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
-  AutobuildDirectTracing = "autobuild_direct_tracing_v2",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableCsharpBuildless = "disable_csharp_buildless",
@@ -86,12 +85,6 @@ export const featureConfig: Record<
     toolsFeature?: ToolsFeature;
   }
 > = {
-  [Feature.AutobuildDirectTracing]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING",
-    minimumVersion: undefined,
-    toolsFeature: ToolsFeature.TraceCommandUseBuildMode,
-  },
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",

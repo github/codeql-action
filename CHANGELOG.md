@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
-## [UNRELEASED]
+## 3.25.13 - 19 Jul 2024
 
 - Add `codeql-version` to outputs. [#2368](https://github.com/github/codeql-action/pull/2368)
 - Add a deprecation warning for customers using CodeQL version 2.13.4 and earlier. These versions of CodeQL were discontinued on 9 July 2024 alongside GitHub Enterprise Server 3.9, and will be unsupported by CodeQL Action versions 3.26.0 and later and versions 2.26.0 and later. [#2375](https://github.com/github/codeql-action/pull/2375)

@@ -33,8 +33,8 @@ const __dirname = path.dirname(__filename);
 const compat = new FlatCompat({
     baseDirectory: __dirname,                  // optional; default: process.cwd()
     resolvePluginsRelativeTo: __dirname,       // optional
-    recommendedConfig: js.configs.recommended, // optional
-    allConfig: js.configs.all,                 // optional
+    recommendedConfig: js.configs.recommended, // optional unless you're using "eslint:recommended"
+    allConfig: js.configs.all,                 // optional unless you're using "eslint:all"
 });
 
 export default [
@@ -77,8 +77,8 @@ const js = require("@eslint/js");
 const compat = new FlatCompat({
     baseDirectory: __dirname,                  // optional; default: process.cwd()
     resolvePluginsRelativeTo: __dirname,       // optional
-    recommendedConfig: js.configs.recommended, // optional
-    allConfig: js.configs.all,                 // optional
+    recommendedConfig: js.configs.recommended, // optional unless using "eslint:recommended"
+    allConfig: js.configs.all,                 // optional unless using "eslint:all"
 });
 
 module.exports = [
@@ -109,6 +109,17 @@ module.exports = [
     })
 ];
 ```
+
+## Troubleshooting
+
+**TypeError: Missing parameter 'recommendedConfig' in FlatCompat constructor**
+
+The `recommendedConfig` option is required when any config uses `eslint:recommended`, including any config in an `extends` clause. To fix this, follow the example above using `@eslint/js` to provide the `eslint:recommended` config.
+
+**TypeError: Missing parameter 'allConfig' in FlatCompat constructor**
+
+The `allConfig` option is required when any config uses `eslint:all`, including any config in an `extends` clause. To fix this, follow the example above using `@eslint/js` to provide the `eslint:all` config.
+
 
 ## License
 

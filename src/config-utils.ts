@@ -136,6 +136,9 @@ export interface Config {
    * Time taken to download TRAP caches. Used for status reporting.
    */
   trapCacheDownloadTime: number;
+
+  /** A value indicating whether dependency caching is enabled. */
+  dependencyCachingEnabled: boolean;
 }
 
 /**
@@ -393,6 +396,7 @@ export interface InitConfigInputs {
   configInput: string | undefined;
   buildModeInput: string | undefined;
   trapCachingEnabled: boolean;
+  dependencyCachingEnabled: boolean;
   debugMode: boolean;
   debugArtifactName: string;
   debugDatabaseName: string;
@@ -425,6 +429,7 @@ export async function getDefaultConfig({
   buildModeInput,
   dbLocation,
   trapCachingEnabled,
+  dependencyCachingEnabled,
   debugMode,
   debugArtifactName,
   debugDatabaseName,
@@ -476,6 +481,7 @@ export async function getDefaultConfig({
     augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
+    dependencyCachingEnabled,
   };
 }
 
@@ -509,6 +515,7 @@ async function loadConfig({
   configFile,
   dbLocation,
   trapCachingEnabled,
+  dependencyCachingEnabled,
   debugMode,
   debugArtifactName,
   debugDatabaseName,
@@ -580,6 +587,7 @@ async function loadConfig({
     augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
+    dependencyCachingEnabled,
   };
 }
 

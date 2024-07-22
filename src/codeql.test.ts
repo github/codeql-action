@@ -906,7 +906,7 @@ test("runTool summarizes autobuilder errors", async (t) => {
   await t.throwsAsync(
     async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
     {
-      instanceOf: CommandInvocationError,
+      instanceOf: util.ConfigurationError,
       message:
         "We were unable to automatically build your code. Please provide manual build steps. " +
         "For more information, see " +
@@ -934,7 +934,7 @@ test("runTool truncates long autobuilder errors", async (t) => {
   await t.throwsAsync(
     async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
     {
-      instanceOf: CommandInvocationError,
+      instanceOf: util.ConfigurationError,
       message:
         "We were unable to automatically build your code. Please provide manual build steps. " +
         "For more information, see " +

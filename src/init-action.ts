@@ -339,6 +339,7 @@ async function run() {
         dbLocation: getOptionalInput("db-location"),
         configInput: getOptionalInput("config"),
         trapCachingEnabled: getTrapCachingEnabled(),
+        dependencyCachingEnabled: getDependencyCachingEnabled(),
         // Debug mode is enabled if:
         // - The `init` Action is passed `debug: true`.
         // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
@@ -714,6 +715,29 @@ async function recordZstdAvailability(
       },
     ),
   );
+}
+
+/** Determines whether we are running in default setup. */
+function isDefaultSetup(): boolean {
+  // This is set to something in default setup runs.
+  // TODO: replace with something better, if there's something.
+  return process.env["CODE_SCANNING_WORKFLOW_FILE"] !== undefined;
+}
+
+/** Determines whether dependency caching is enabled. */
+function getDependencyCachingEnabled(): boolean {
+  // If the workflow specified something always respect that
+  const dependencyCaching = getOptionalInput("dependency-caching");
+  if (dependencyCaching !== undefined) return dependencyCaching === "true";
+
+  // On self-hosted runners which may have dependencies installed centrally, disable caching by default
+  if (!isHostedRunner()) return false;
+
+  // Disable in advanced workflows by default.
+  if (!isDefaultSetup()) return false;
+
+  // On hosted runners, enable dependency caching by default
+  return true;
 }
 
 async function runWrapper() {

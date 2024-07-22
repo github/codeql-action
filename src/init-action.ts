@@ -17,6 +17,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { downloadDependencyCaches } from "./dependency-caching";
 import {
   addDiagnostic,
   flushDiagnostics,
@@ -555,6 +556,11 @@ async function run() {
         (await features.getValue(Feature.CppBuildModeNone, codeql));
       logger.info(`Setting C++ build-mode: none to ${value}`);
       core.exportVariable(bmnVar, value);
+    }
+
+    // Restore dependency cache(s), if they exist.
+    if (config.dependencyCachingEnabled) {
+      await downloadDependencyCaches(config.languages, logger);
     }
 
     // For CLI versions <2.15.1, build tracing caused errors in MacOS ARM machines with

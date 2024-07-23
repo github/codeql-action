@@ -415,7 +415,7 @@ export async function sendStatusReport<S extends StatusReportBase>(
               'Workflows triggered by Dependabot on the "push" event run with read-only access. ' +
                 "Uploading Code Scanning results requires write access. " +
                 'To use Code Scanning with Dependabot, please ensure you are using the "pull_request" event for this workflow and avoid triggering on the "push" event for Dependabot branches. ' +
-                `See ${DocUrl.SCANNING_ON_PUSH} for more information on how to configure these events."`,
+                `See ${DocUrl.SCANNING_ON_PUSH} for more information on how to configure these events.`,
             );
           } else {
             core.warning(e.message);

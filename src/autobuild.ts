@@ -103,7 +103,7 @@ export async function determineAutobuildLanguages(
         .join(
           " and ",
         )}, you must replace the autobuild step of your workflow with custom build steps. ` +
-        `For more information, see ${DocUrl.SPECIFY_BUILD_STEPS_MANUALLY}`
+        `See ${DocUrl.SPECIFY_BUILD_STEPS_MANUALLY} for more information.`
     );
   }
 
@@ -132,14 +132,14 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
       logger.info(
         `Disabling ${featureName} as we are on a self-hosted runner.${
           getWorkflowEventName() !== "dynamic"
-            ? ` To override this, set the ${envVar} environment variable to 'true' in your workflow (see ${DocUrl.DEFINE_ENV_VARIABLES} for more information).`
+            ? ` To override this, set the ${envVar} environment variable to 'true' in your workflow. See ${DocUrl.DEFINE_ENV_VARIABLES} for more information.`
             : ""
         }`,
       );
       core.exportVariable(envVar, "false");
     } else {
       logger.info(
-        `Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false' (see ${DocUrl.DEFINE_ENV_VARIABLES} for more information).`,
+        `Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false'. See ${DocUrl.DEFINE_ENV_VARIABLES} for more information.`,
       );
       core.exportVariable(envVar, "true");
     }

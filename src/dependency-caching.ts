@@ -45,6 +45,10 @@ const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
       "**/packages.lock.json",
     ],
   },
+  go: {
+    paths: [join(os.homedir(), "go", "pkg", "mod")],
+    hash: ["**/go.sum"],
+  },
 };
 
 /**

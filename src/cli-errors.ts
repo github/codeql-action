@@ -1,3 +1,4 @@
+import { DocUrl } from "./doc-url";
 import { ConfigurationError } from "./util";
 
 /**
@@ -27,11 +28,9 @@ export class CommandInvocationError extends Error {
           fatalErrors.trim(),
         )} See the logs for more details.`;
     } else if (autobuildErrors) {
-      const autobuildHelpLink =
-        "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed";
       message =
         "We were unable to automatically build your code. Please provide manual build steps. " +
-        `For more information, see ${autobuildHelpLink}. ` +
+        `See ${DocUrl.AUTOMATIC_BUILD_FAILED} for more information. ` +
         `Encountered the following error: ${autobuildErrors}`;
     } else {
       const lastLine = ensureEndsInPeriod(

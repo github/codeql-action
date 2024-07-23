@@ -3,6 +3,7 @@ import path from "path";
 
 import Long from "long";
 
+import { DocUrl } from "./doc-url";
 import { Logger } from "./logging";
 import { SarifFile, SarifResult } from "./util";
 
@@ -260,7 +261,7 @@ export async function addFingerprints(
   logger: Logger,
 ): Promise<SarifFile> {
   logger.info(
-    "Adding fingerprints to SARIF file. For more information, see https://docs.github.com/en/enterprise-cloud@latest/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning#providing-data-to-track-code-scanning-alerts-across-runs",
+    `Adding fingerprints to SARIF file. See ${DocUrl.TRACK_CODE_SCANNING_ALERTS_ACROSS_RUNS} for more information.`,
   );
   // Gather together results for the same file and construct
   // callbacks to accept hashes for that file and update the location

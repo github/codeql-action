@@ -103,7 +103,7 @@ export async function determineAutobuildLanguages(
         .join(
           " and ",
         )}, you must replace the autobuild step of your workflow with custom build steps. ` +
-        `See ${DocUrl.SPECIFY_BUILD_STEPS_MANUALLY} for more information.`
+        `See ${DocUrl.SPECIFY_BUILD_STEPS_MANUALLY} for more information.`,
     );
   }
 

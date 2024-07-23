@@ -4,6 +4,7 @@ import { getTemporaryDirectory, getWorkflowEventName } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { Feature, featureConfig, Features } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
@@ -102,8 +103,7 @@ export async function determineAutobuildLanguages(
         .join(
           " and ",
         )}, you must replace the autobuild step of your workflow with custom build steps. ` +
-        "For more information, see " +
-        "https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-the-codeql-workflow-for-compiled-languages#adding-build-steps-for-a-compiled-language",
+        `For more information, see ${DocUrl.SPECIFY_BUILD_STEPS_MANUALLY}`
     );
   }
 
@@ -113,8 +113,6 @@ export async function determineAutobuildLanguages(
 export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
   const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
   const featureName = "C++ automatic installation of dependencies";
-  const envDoc =
-    "https://docs.github.com/en/actions/learn-github-actions/variables#defining-environment-variables-for-a-single-workflow";
   const gitHubVersion = await getGitHubVersion();
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY"),
@@ -134,14 +132,14 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
       logger.info(
         `Disabling ${featureName} as we are on a self-hosted runner.${
           getWorkflowEventName() !== "dynamic"
-            ? ` To override this, set the ${envVar} environment variable to 'true' in your workflow (see ${envDoc} for more information).`
+            ? ` To override this, set the ${envVar} environment variable to 'true' in your workflow (see ${DocUrl.DEFINE_ENV_VARIABLES} for more information).`
             : ""
         }`,
       );
       core.exportVariable(envVar, "false");
     } else {
       logger.info(
-        `Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false' (see ${envDoc} for more information).`,
+        `Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false' (see ${DocUrl.DEFINE_ENV_VARIABLES} for more information).`,
       );
       core.exportVariable(envVar, "true");
     }

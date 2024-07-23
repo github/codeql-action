@@ -51,6 +51,10 @@ const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
   },
 };
 
+async function makeGlobber(files: string[]): Promise<glob.Globber> {
+  return glob.create(files.join("\n"));
+}
+
 /**
  * Attempts to restore dependency caches for the languages being analyzed.
  *
@@ -70,6 +74,17 @@ export async function downloadDependencyCaches(
     if (cacheConfig === undefined) {
       logger.info(
         `Skipping download of dependency cache for ${language} as we have no caching configuration for it.`,
+      );
+      continue;
+    }
+
+    // Check that we can find files to calculate the hash for the cache key from, so we don't end up
+    // with an empty string.
+    const globber = await makeGlobber(cacheConfig.hash);
+
+    if ((await globber.glob()).length === 0) {
+      logger.info(
+        `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
       );
       continue;
     }
@@ -115,9 +130,18 @@ export async function uploadDependencyCaches(config: Config, logger: Logger) {
       continue;
     }
 
-    const globber = await glob.create(cacheConfig.hash.join("\n"));
-    const size = await getTotalCacheSize(await globber.glob(), logger);
+    // Check that we can find files to calculate the hash for the cache key from, so we don't end up
+    // with an empty string.
+    const globber = await makeGlobber(cacheConfig.hash);
 
+    if ((await globber.glob()).length === 0) {
+      logger.info(
+        `Skipping upload of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
+      );
+      continue;
+    }
+
+    const size = await getTotalCacheSize(cacheConfig.paths, logger);
     const key = await cacheKey(language, cacheConfig);
 
     logger.info(

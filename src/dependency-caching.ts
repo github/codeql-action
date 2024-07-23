@@ -38,6 +38,13 @@ const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
       "**/versions.properties",
     ],
   },
+  csharp: {
+    paths: [join(os.homedir(), ".nuget", "packages")],
+    hash: [
+      // NuGet
+      "**/packages.lock.json",
+    ],
+  },
 };
 
 /**

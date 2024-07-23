@@ -16,6 +16,7 @@ import { CommandInvocationError } from "./cli-errors";
 import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
+import { DocUrl } from "./doc-url";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -909,8 +910,7 @@ test("runTool summarizes autobuilder errors", async (t) => {
       instanceOf: util.ConfigurationError,
       message:
         "We were unable to automatically build your code. Please provide manual build steps. " +
-        "See https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed " +
-        "for more information. " +
+        `See ${DocUrl.AUTOMATIC_BUILD_FAILED} for more information. ` +
         "Encountered the following error: Start of the error message\n" +
         "  Some more context about the error message\n" +
         "  continued\n" +
@@ -937,8 +937,7 @@ test("runTool truncates long autobuilder errors", async (t) => {
       instanceOf: util.ConfigurationError,
       message:
         "We were unable to automatically build your code. Please provide manual build steps. " +
-        "See https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed " +
-        "for more information. " +
+        `See ${DocUrl.AUTOMATIC_BUILD_FAILED} for more information. ` +
         "Encountered the following error: " +
         `${Array.from({ length: 10 }, (_, i) => `line${i + 1}`).join(
           "\n",

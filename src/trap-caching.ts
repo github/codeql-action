@@ -234,7 +234,7 @@ export async function cleanupTrapCaches(
       logger.warning(
         "Could not cleanup TRAP caches as the token did not have the required permissions. " +
           'To clean up TRAP caches, ensure the token has the "actions:write" permission. ' +
-          `For more information, see " + ${DocUrl.ASSIGNING_PERMISSIONS_TO_JOBS}`,
+          `See ${DocUrl.ASSIGNING_PERMISSIONS_TO_JOBS} for more information.`,
       );
     } else {
       logger.info(`Failed to cleanup TRAP caches, continuing. Details: ${e}`);

@@ -1,5 +1,5 @@
 name: "CodeQL: Start proxy"
-description: "Start HTTP proxy server"
+description: "[Experimental] Start HTTP proxy server"
 author: "GitHub"
 inputs:
   registry_secrets:

@@ -42,7 +42,7 @@ const CERT_SUBJECT = [
   },
   {
     name: "organizationName",
-    value: "GitHub ic.",
+    value: "GitHub inc.",
   },
   {
     shortName: "OU",
@@ -130,6 +130,7 @@ async function runWrapper() {
       });
       subprocess.on("exit", (code) => {
         if (code !== 0) {
+          // If the proxy failed to start, try a different port from the ephemeral range [49152, 65535]
           port = Math.floor(Math.random() * (65535 - 49152) + 49152);
           subprocess = undefined;
         }

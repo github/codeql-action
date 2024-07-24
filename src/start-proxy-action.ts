@@ -99,7 +99,6 @@ async function runWrapper() {
 
   let proxy_auth: BasicAuthCredentials | undefined = undefined;
   if (proxy_password) {
-    core.setSecret(proxy_password);
     proxy_auth = {
       username: PROXY_USER,
       password: proxy_password,

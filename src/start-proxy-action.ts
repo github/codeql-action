@@ -2,11 +2,16 @@ import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 
 import * as core from "@actions/core";
+import * as toolcache from "@actions/tool-cache";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import * as util from "./util";
 
+const UPDATEJOB_PROXY = "update-job-proxy";
+const UPDATEJOB_PROXY_VERSION = "v2.0.20240722180912";
+const UPDATEJOB_PROXY_URL =
+  "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.18.1/update-job-proxy.tar.gz";
 const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
@@ -106,7 +111,17 @@ async function runWrapper() {
     proxy_auth,
   };
   const host = "127.0.0.1";
-  const proxyBin = path.resolve(__dirname, "..", "bin", "update-job-proxy");
+  let proxyBin = toolcache.find(UPDATEJOB_PROXY, UPDATEJOB_PROXY_VERSION);
+  if (!proxyBin) {
+    const temp = await toolcache.downloadTool(UPDATEJOB_PROXY_URL);
+    const extracted = await toolcache.extractTar(temp);
+    proxyBin = await toolcache.cacheDir(
+      extracted,
+      UPDATEJOB_PROXY,
+      UPDATEJOB_PROXY_VERSION,
+    );
+  }
+  proxyBin = path.join(proxyBin, UPDATEJOB_PROXY);
   let port = 49152;
   try {
     let subprocess: ChildProcess | undefined = undefined;

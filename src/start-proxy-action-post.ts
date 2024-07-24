@@ -7,6 +7,8 @@ import * as fs from "fs";
 
 import * as core from "@actions/core";
 
+import * as actionsUtil from "./actions-util";
+import * as configUtils from "./config-utils";
 import { wrapError } from "./util";
 
 async function runWrapper() {
@@ -20,7 +22,12 @@ async function runWrapper() {
       `start-proxy post-action step failed: ${wrapError(error).message}`,
     );
   }
-  if (core.isDebug()) {
+  const config = await configUtils.getConfig(
+    actionsUtil.getTemporaryDirectory(),
+    core,
+  );
+
+  if ((config && config.debugMode) || core.isDebug()) {
     const logFilePath = core.getState("proxy-log-file");
     if (logFilePath) {
       const readStream = fs.createReadStream(logFilePath);

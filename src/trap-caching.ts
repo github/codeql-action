@@ -7,6 +7,7 @@ import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
 import { CodeQL } from "./codeql";
 import type { Config } from "./config-utils";
+import { DocUrl } from "./doc-url";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
@@ -233,7 +234,7 @@ export async function cleanupTrapCaches(
       logger.warning(
         "Could not cleanup TRAP caches as the token did not have the required permissions. " +
           'To clean up TRAP caches, ensure the token has the "actions:write" permission. ' +
-          "For more information, see https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs",
+          `See ${DocUrl.ASSIGNING_PERMISSIONS_TO_JOBS} for more information.`,
       );
     } else {
       logger.info(`Failed to cleanup TRAP caches, continuing. Details: ${e}`);

@@ -1,0 +1,22 @@
+name: "CodeQL: Start proxy"
+description: "[Experimental] Start HTTP proxy server"
+author: "GitHub"
+inputs:
+  registry_secrets:
+    description: The URLs and credentials of package registries
+    required: false
+    default: "[]"
+  proxy_password:
+    required: false
+    description: The password of the proxy
+outputs:
+  proxy_host:
+    description: The IP address of the proxy
+  proxy_port:
+    description: The port of the proxy
+  proxy_ca_certificate:
+    description: The proxy's internal CA certificate in PEM format
+runs:
+  using: node16
+  main: "../lib/start-proxy-action.js"
+  post: "../lib/start-proxy-action-post.js"

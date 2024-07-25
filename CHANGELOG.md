@@ -6,6 +6,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 3.25.14 - 25 Jul 2024
+
 - Experimental: add a new `start-proxy` action which starts the same HTTP proxy as used by [`github/dependabot-action`](https://github.com/github/dependabot-action). Do not use this in production as it is part of an internal experiment and subject to change at any time.
 
 ## 3.25.13 - 19 Jul 2024

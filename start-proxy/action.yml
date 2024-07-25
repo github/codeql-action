@@ -17,6 +17,6 @@ outputs:
   proxy_ca_certificate:
     description: The proxy's internal CA certificate in PEM format
 runs:
-  using: node20
+  using: node16
   main: "../lib/start-proxy-action.js"
   post: "../lib/start-proxy-action-post.js"

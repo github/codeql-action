@@ -8,6 +8,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 - Update default CodeQL bundle version to 2.18.1. [#2385](https://github.com/github/codeql-action/pull/2385)
 
+## 3.25.14 - 25 Jul 2024
+
+- Experimental: add a new `start-proxy` action which starts the same HTTP proxy as used by [`github/dependabot-action`](https://github.com/github/dependabot-action). Do not use this in production as it is part of an internal experiment and subject to change at any time.
+
 ## 3.25.13 - 19 Jul 2024
 
 - Add `codeql-version` to outputs. [#2368](https://github.com/github/codeql-action/pull/2368)

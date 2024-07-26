@@ -184,8 +184,7 @@ async function sendCompletedStatusReport(
     if ((config.augmentationProperties.packsInputCombines || !config.augmentationProperties.packsInput)
       && config.originalUserInput.packs
     ) {
-      // If it is an array, that single language analysis we assume
-      // there is only a single language being analyzed.
+      // If it is an array, then assume there is only a single language being analyzed.
       if (Array.isArray(config.originalUserInput.packs)) {
         packs[config.languages[0]] = config.originalUserInput.packs;
       } else {

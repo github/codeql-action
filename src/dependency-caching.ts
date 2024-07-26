@@ -10,14 +10,26 @@ import { Language } from "./languages";
 import { Logger } from "./logging";
 import { getRequiredEnvParam } from "./util";
 
+/**
+ * Caching configuration for a particular language.
+ */
 interface CacheConfig {
+  /** The paths of directories on the runner that should be included in the cache. */
   paths: string[];
+  /**
+   * Patterns for the paths of files whose contents affect which dependencies are used
+   * by a project. We find all files which match these patterns, calculate a hash for
+   * their contents, and use that hash as part of the cache key.
+   */
   hash: string[];
 }
 
 const CODEQL_DEPENDENCY_CACHE_PREFIX = "codeql-dependencies";
 const CODEQL_DEPENDENCY_CACHE_VERSION = 1;
 
+/**
+ * Default caching configurations per language.
+ */
 const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
   java: {
     paths: [

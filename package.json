@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "2.25.14",
+  "version": "3.25.14",
   "private": true,
   "description": "CodeQL action",
   "scripts": {

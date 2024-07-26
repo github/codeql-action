@@ -63,8 +63,8 @@ const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
   },
 };
 
-async function makeGlobber(files: string[]): Promise<glob.Globber> {
-  return glob.create(files.join("\n"));
+async function makeGlobber(patterns: string[]): Promise<glob.Globber> {
+  return glob.create(patterns.join("\n"));
 }
 
 /**

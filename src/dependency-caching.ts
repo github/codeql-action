@@ -154,6 +154,15 @@ export async function uploadDependencyCaches(config: Config, logger: Logger) {
     }
 
     const size = await getTotalCacheSize(cacheConfig.paths, logger);
+
+    // Skip uploading an empty cache.
+    if (size === 0) {
+      logger.info(
+        `Skipping upload of dependency cache for ${language} since it is empty.`,
+      );
+      continue;
+    }
+
     const key = await cacheKey(language, cacheConfig);
 
     logger.info(

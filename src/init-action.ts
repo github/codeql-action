@@ -85,6 +85,8 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   paths_ignore: string;
   /** Comma-separated list of queries sources, from the 'queries' config field or workflow input. */
   queries: string;
+  /** Stringified JSON object of packs, from the 'packs' config field or workflow input. */
+  packs: string;
   /** Comma-separated list of languages for which we are using TRAP caching. */
   trap_cache_languages: string;
   /** Size of TRAP caches that we downloaded, in bytes. */
@@ -174,6 +176,24 @@ async function sendCompletedStatusReport(
       queries.push(...queriesInput.split(","));
     }
 
+    let packs: Record<string, string[]> = {};
+    if ((config.augmentationProperties.packsInputCombines || !config.augmentationProperties.packsInput)
+      && config.originalUserInput.packs
+    ) {
+      // If it is an array, that single language analysis we assume
+      // there is only a single language being analyzed.
+      if (Array.isArray(config.originalUserInput.packs)) {
+        packs[config.languages[0]] = config.originalUserInput.packs;
+      } else {
+        packs = config.originalUserInput.packs;
+      }
+    }
+
+    if (config.augmentationProperties.packsInput) {
+      packs[config.languages[0]] ??= [];
+      packs[config.languages[0]].push(...config.augmentationProperties.packsInput);
+    }
+
     // Append fields that are dependent on `config`
     const initWithConfigStatusReport: InitWithConfigStatusReport = {
       ...initStatusReport,
@@ -181,6 +201,7 @@ async function sendCompletedStatusReport(
       paths,
       paths_ignore: pathsIgnore,
       queries: queries.join(","),
+      packs: JSON.stringify(packs),
       trap_cache_languages: Object.keys(config.trapCaches).join(","),
       trap_cache_download_size_bytes: Math.round(
         await getTotalCacheSize(config.trapCaches, logger),

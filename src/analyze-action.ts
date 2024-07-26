@@ -19,6 +19,7 @@ import { runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { uploadDependencyCaches } from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
@@ -327,6 +328,11 @@ async function run() {
       features,
       logger,
     );
+
+    // Store dependency cache(s) if dependency caching is enabled.
+    if (config.dependencyCachingEnabled) {
+      await uploadDependencyCaches(config, logger);
+    }
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {

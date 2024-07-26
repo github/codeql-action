@@ -93,6 +93,8 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   trap_cache_download_size_bytes: number;
   /** Time taken to download TRAP caches, in milliseconds. */
   trap_cache_download_duration_ms: number;
+  /** Stringified JSON object representing a query-filters, from the 'query-filters' config field. **/
+  query_filters: string;
 }
 
 /** Fields of the init status report populated when the tools source is `download`. */
@@ -207,6 +209,7 @@ async function sendCompletedStatusReport(
         await getTotalCacheSize(config.trapCaches, logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+      query_filters: JSON.stringify(config.originalUserInput["query-filters"]),
     };
     await sendStatusReport({
       ...initWithConfigStatusReport,

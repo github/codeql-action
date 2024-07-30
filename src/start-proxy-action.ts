@@ -89,38 +89,29 @@ function generateCertificateAuthority(): CertificateAuthority {
 }
 
 async function runWrapper() {
+  // Setup logging
   const tempDir = actionsUtil.getTemporaryDirectory();
   const logFilePath = path.resolve(tempDir, "proxy.log");
-  const input = actionsUtil.getOptionalInput("registry_secrets") || "[]";
-  const credentials = JSON.parse(input) as Credential[];
-  const ca = generateCertificateAuthority();
-  const proxy_password = actionsUtil.getOptionalInput("proxy_password");
   core.saveState("proxy-log-file", logFilePath);
 
-  let proxy_auth: BasicAuthCredentials | undefined = undefined;
-  if (proxy_password) {
-    proxy_auth = {
-      username: PROXY_USER,
-      password: proxy_password,
-    };
-  }
+  // Get the configuration options
+  const credentials = getCredentials();
+  const ca = generateCertificateAuthority();
+  const proxyAuth = getProxyAuth();
+
   const proxyConfig: ProxyConfig = {
     all_credentials: credentials,
     ca,
-    proxy_auth,
+    proxy_auth: proxyAuth,
   };
+
+  // Start the Proxy
+  const proxyBin = await getProxyBinaryPath();
+  await startProxy(proxyBin, proxyConfig, logFilePath);
+}
+
+async function startProxy(binPath: string, config: ProxyConfig, logFilePath: string) {
   const host = "127.0.0.1";
-  let proxyBin = toolcache.find(UPDATEJOB_PROXY, UPDATEJOB_PROXY_VERSION);
-  if (!proxyBin) {
-    const temp = await toolcache.downloadTool(UPDATEJOB_PROXY_URL);
-    const extracted = await toolcache.extractTar(temp);
-    proxyBin = await toolcache.cacheDir(
-      extracted,
-      UPDATEJOB_PROXY,
-      UPDATEJOB_PROXY_VERSION,
-    );
-  }
-  proxyBin = path.join(proxyBin, UPDATEJOB_PROXY);
   let port = 49152;
   try {
     let subprocess: ChildProcess | undefined = undefined;
@@ -128,7 +119,7 @@ async function runWrapper() {
     let subprocessError: Error | undefined = undefined;
     while (tries-- > 0 && !subprocess && !subprocessError) {
       subprocess = spawn(
-        proxyBin,
+        binPath,
         ["-addr", `${host}:${port}`, "-config", "-", "-logfile", logFilePath],
         {
           detached: true,
@@ -149,7 +140,7 @@ async function runWrapper() {
           subprocess = undefined;
         }
       });
-      subprocess.stdin?.write(JSON.stringify(proxyConfig));
+      subprocess.stdin?.write(JSON.stringify(config));
       subprocess.stdin?.end();
       // Wait a little to allow the proxy to start
       await util.delay(1000);
@@ -160,12 +151,55 @@ async function runWrapper() {
     core.info(`Proxy started on ${host}:${port}`);
     core.setOutput("proxy_host", host);
     core.setOutput("proxy_port", port.toString());
-    core.setOutput("proxy_ca_certificate", ca.cert);
+    core.setOutput("proxy_ca_certificate", config.ca.cert);
   } catch (error) {
     core.setFailed(
       `start-proxy action failed: ${util.wrapError(error).message}`,
     );
   }
+}
+
+// getCredentials returns registry credentials from action inputs.
+// It prefers `registries_credentials` over `registry_secrets`.
+// If neither is set, it returns an empty array.
+function getCredentials(): Credential[] {
+  const encodedCredentials = actionsUtil.getOptionalInput("registries_credentials");
+  if (encodedCredentials !== undefined) {
+    core.info(`Using encoded credentials.`);
+    const credentialsStr = Buffer.from(encodedCredentials, "base64").toString();
+    return JSON.parse(credentialsStr) as Credential[];
+  }
+  core.info(`Using structured credentials.`);
+  const registrySecrets = actionsUtil.getOptionalInput("registry_secrets") || "[]";
+  return JSON.parse(registrySecrets) as Credential[];
+}
+
+// getProxyAuth returns the authentication information for the proxy itself.
+function getProxyAuth(): BasicAuthCredentials | undefined{
+  const proxy_password = actionsUtil.getOptionalInput("proxy_password");
+  if (proxy_password) {
+    return {
+      username: PROXY_USER,
+      password: proxy_password,
+    };
+  }
+  return ;
+}
+
+
+async function getProxyBinaryPath(): Promise<string> {
+  let proxyBin = toolcache.find(UPDATEJOB_PROXY, UPDATEJOB_PROXY_VERSION);
+  if (!proxyBin) {
+    const temp = await toolcache.downloadTool(UPDATEJOB_PROXY_URL);
+    const extracted = await toolcache.extractTar(temp);
+    proxyBin = await toolcache.cacheDir(
+      extracted,
+      UPDATEJOB_PROXY,
+      UPDATEJOB_PROXY_VERSION,
+    );
+  }
+  proxyBin = path.join(proxyBin, UPDATEJOB_PROXY);
+  return proxyBin;
 }
 
 void runWrapper();

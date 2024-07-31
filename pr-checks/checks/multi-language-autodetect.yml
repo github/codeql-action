@@ -1,14 +1,6 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
 operatingSystems: ["macos", "ubuntu"]
-excludeOsAndVersionCombination: [ 
-  # Known failure for Swift on Linux before CLI v2.17.4.
-  [ "ubuntu", "stable-20230403" ], 
-  [ "ubuntu", "stable-v2.13.5" ], 
-  [ "ubuntu", "stable-v2.14.6" ], 
-  [ "ubuntu", "stable-v2.15.5" ],
-  [ "ubuntu", "stable-v2.16.6" ],
-]
 steps:
   - uses: actions/setup-go@v5
     with:
@@ -21,6 +13,7 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
   - uses: ./../action/.github/actions/setup-swift
+    if: runner.os == 'macOS'
     with:
       codeql-path: ${{ steps.init.outputs.codeql-path }}
 
@@ -72,8 +65,8 @@ steps:
         exit 1
       fi
 
-  - name: Check language autodetect for Swift
-    if: runner.os != 'Windows' && matrix.version != 'stable-20230403'
+  - name: Check language autodetect for Swift on MacOS
+    if: runner.os == 'macOS'
     shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

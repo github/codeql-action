@@ -29,13 +29,23 @@ jobs:
         include:
           - os: macos-12
             version: stable-20230403
+          - os: ubuntu-latest
+            version: stable-20230403
           - os: macos-12
+            version: stable-v2.13.5
+          - os: ubuntu-latest
             version: stable-v2.13.5
           - os: macos-12
             version: stable-v2.14.6
+          - os: ubuntu-latest
+            version: stable-v2.14.6
           - os: macos-latest
             version: stable-v2.15.5
+          - os: ubuntu-latest
+            version: stable-v2.15.5
           - os: macos-latest
+            version: stable-v2.16.6
+          - os: ubuntu-latest
             version: stable-v2.16.6
           - os: macos-latest
             version: default
@@ -88,6 +98,7 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
       - uses: ./../action/.github/actions/setup-swift
+        if: runner.os == 'macOS'
         with:
           codeql-path: ${{ steps.init.outputs.codeql-path }}
 
@@ -139,8 +150,8 @@ jobs:
             exit 1
           fi
 
-      - name: Check language autodetect for Swift
-        if: runner.os != 'Windows' && matrix.version != 'stable-20230403'
+      - name: Check language autodetect for Swift on MacOS
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

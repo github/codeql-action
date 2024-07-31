@@ -92,7 +92,16 @@ jobs:
           go-version: '>=1.21.0'
 
       - uses: ./../action/init
-        id: init
+        if: runner.os == 'Linux'
+        with:
+          db-location: ${{ runner.temp }}/customDbLocation
+      # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
+          languages: cpp,csharp,go,java,javascript,python,ruby
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - uses: ./../action/init
+        id: init-macos
+        if: runner.os == 'macOS'
         with:
           db-location: ${{ runner.temp }}/customDbLocation
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -100,7 +109,7 @@ jobs:
       - uses: ./../action/.github/actions/setup-swift
         if: runner.os == 'macOS'
         with:
-          codeql-path: ${{ steps.init.outputs.codeql-path }}
+          codeql-path: ${{ steps.init-macos.outputs.codeql-path }}
 
       - name: Build code
         shell: bash
@@ -151,7 +160,7 @@ jobs:
           fi
 
       - name: Check language autodetect for Swift on MacOS
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && matrix.version != 'stable-20230403'
         shell: bash
         run: |
           SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

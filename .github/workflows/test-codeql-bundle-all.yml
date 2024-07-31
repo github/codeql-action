@@ -42,6 +42,8 @@ jobs:
     - id: init
       uses: ./../action/init
       with:
+        # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
+        languages: cpp,csharp,go,java,javascript,python,ruby 
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - name: Build code
       shell: bash

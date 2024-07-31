@@ -881,11 +881,13 @@ function parseRegistries(
   }
 }
 
-export function parseRegistriesWithoutCredentials(registriesInput?: string) : RegistryConfigNoCredentials[] | undefined {
+export function parseRegistriesWithoutCredentials(
+  registriesInput?: string,
+): RegistryConfigNoCredentials[] | undefined {
   return parseRegistries(registriesInput)?.map((r) => {
-    const {token:_, ...registryWithoutCredentials} = r;
+    const { token: _, ...registryWithoutCredentials } = r;
     return registryWithoutCredentials;
-  })
+  });
 }
 
 function isLocal(configPath: string): boolean {

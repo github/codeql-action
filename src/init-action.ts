@@ -93,7 +93,8 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   trap_cache_download_size_bytes: number;
   /** Time taken to download TRAP caches, in milliseconds. */
   trap_cache_download_duration_ms: number;
-  /** Stringified JSON array of registry configuration objects, from the 'registries' config field or workflow input. **/
+  /** Stringified JSON array of registry configuration objects, from the 'registries' config field
+  or workflow input. **/
   registries: string;
   /** Stringified JSON object representing a query-filters, from the 'query-filters' config field. **/
   query_filters: string;
@@ -181,8 +182,10 @@ async function sendCompletedStatusReport(
     }
 
     let packs: Record<string, string[]> = {};
-    if ((config.augmentationProperties.packsInputCombines || !config.augmentationProperties.packsInput)
-      && config.originalUserInput.packs
+    if (
+      (config.augmentationProperties.packsInputCombines ||
+        !config.augmentationProperties.packsInput) &&
+      config.originalUserInput.packs
     ) {
       // If it is an array, then assume there is only a single language being analyzed.
       if (Array.isArray(config.originalUserInput.packs)) {
@@ -194,7 +197,9 @@ async function sendCompletedStatusReport(
 
     if (config.augmentationProperties.packsInput) {
       packs[config.languages[0]] ??= [];
-      packs[config.languages[0]].push(...config.augmentationProperties.packsInput);
+      packs[config.languages[0]].push(
+        ...config.augmentationProperties.packsInput,
+      );
     }
 
     // Append fields that are dependent on `config`
@@ -211,7 +216,11 @@ async function sendCompletedStatusReport(
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
       query_filters: JSON.stringify(config.originalUserInput["query-filters"]),
-      registries: JSON.stringify(configUtils.parseRegistriesWithoutCredentials(getOptionalInput("registries"))),
+      registries: JSON.stringify(
+        configUtils.parseRegistriesWithoutCredentials(
+          getOptionalInput("registries"),
+        ),
+      ),
     };
     await sendStatusReport({
       ...initWithConfigStatusReport,

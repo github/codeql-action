@@ -885,8 +885,8 @@ export function parseRegistriesWithoutCredentials(
   registriesInput?: string,
 ): RegistryConfigNoCredentials[] | undefined {
   return parseRegistries(registriesInput)?.map((r) => {
-    const { token: _, ...registryWithoutCredentials } = r;
-    return registryWithoutCredentials;
+    const { url, packages } = r;
+    return { url, packages };
   });
 }
 

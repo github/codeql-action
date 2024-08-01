@@ -60,6 +60,7 @@ import {
   ConfigurationError,
   wrapError,
   checkActionVersion,
+  cloneObject,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -187,11 +188,15 @@ async function sendCompletedStatusReport(
         !config.augmentationProperties.packsInput) &&
       config.originalUserInput.packs
     ) {
+      // Make a copy, because we might modify `packs`.
+      const copyPacksFromOriginalUserInput = cloneObject(
+        config.originalUserInput.packs,
+      );
       // If it is an array, then assume there is only a single language being analyzed.
-      if (Array.isArray(config.originalUserInput.packs)) {
-        packs[config.languages[0]] = config.originalUserInput.packs;
+      if (Array.isArray(copyPacksFromOriginalUserInput)) {
+        packs[config.languages[0]] = copyPacksFromOriginalUserInput;
       } else {
-        packs = config.originalUserInput.packs;
+        packs = copyPacksFromOriginalUserInput;
       }
     }
 

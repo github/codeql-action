@@ -480,3 +480,8 @@ export const getFileType = async (filePath: string): Promise<string> => {
 export function isSelfHostedRunner() {
   return process.env.RUNNER_ENVIRONMENT === "self-hosted";
 }
+
+/** Determines whether we are running in default setup. */
+export function isDefaultSetup(): boolean {
+  return getWorkflowEventName() === "dynamic";
+}

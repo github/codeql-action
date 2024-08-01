@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- _Deprecation:_ Analyzing databases on Swift support on Ubuntu runner images is no longer supported. Please migrate to a MacOS runner if this affects you.
 
 ## 3.25.15 - 26 Jul 2024
 
@@ -14,7 +14,7 @@ No user facing changes.
 
 ## 3.25.14 - 25 Jul 2024
 
-- Experimental: add a new `start-proxy` action which starts the same HTTP proxy as used by [`github/dependabot-action`](https://github.com/github/dependabot-action). Do not use this in production as it is part of an internal experiment and subject to change at any time.
+- Experimental: add a new `start-proxy` action which starts the same HTTP proxy as used by [`github/dependabot-action`](https://github.com/github/dependabot-action). Do not use this in production as it is part of an internal experiment and subject to change at any time. [#2376](https://github.com/github/codeql-action/pull/2376)
 
 ## 3.25.13 - 19 Jul 2024
 

@@ -220,11 +220,13 @@ async function sendCompletedStatusReport(
         await getTotalCacheSize(config.trapCaches, logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
-      query_filters: JSON.stringify(config.originalUserInput["query-filters"]),
+      query_filters: JSON.stringify(
+        config.originalUserInput["query-filters"] ?? [],
+      ),
       registries: JSON.stringify(
         configUtils.parseRegistriesWithoutCredentials(
           getOptionalInput("registries"),
-        ),
+        ) ?? [],
       ),
     };
     await sendStatusReport({

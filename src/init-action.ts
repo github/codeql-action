@@ -376,6 +376,15 @@ async function run() {
     }
 
     if (
+      config.languages.includes(Language.swift) &&
+      process.platform === "linux"
+    ) {
+      logger.warning(
+        `Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner if this affects you.`,
+      );
+    }
+
+    if (
       config.languages.includes(Language.go) &&
       process.platform === "linux"
     ) {

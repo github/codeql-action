@@ -42,10 +42,9 @@ jobs:
     - id: init
       uses: ./../action/init
       with:
+        # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
+        languages: cpp,csharp,go,java,javascript,python,ruby 
         tools: ${{ steps.prepare-test.outputs.tools-url }}
-    - uses: ./../action/.github/actions/setup-swift
-      with:
-        codeql-path: ${{ steps.init.outputs.codeql-path }}
     - name: Build code
       shell: bash
       run: ./build.sh

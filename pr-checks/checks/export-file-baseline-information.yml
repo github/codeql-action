@@ -29,7 +29,7 @@ steps:
     run: |
       cd "$RUNNER_TEMP/results"
       expected_baseline_languages="c csharp go java kotlin javascript python ruby"
-      if [[ $RUNNER_OS != "Windows" ]]; then
+      if [[ $RUNNER_OS == "macOS" ]]; then
         expected_baseline_languages+=" swift"
       fi
 

@@ -338,7 +338,7 @@ async function run() {
       process.platform === "linux"
     ) {
       logger.warning(
-        `Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a  acOS runner if this affects you.`,
+        `Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner if this affects you.`,
       );
     }
 

@@ -66,10 +66,9 @@ jobs:
       - id: init
         uses: ./../action/init
         with:
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+          languages: cpp,csharp,go,java,javascript,python,ruby
           tools: ./codeql-bundle-linux64.tar.gz
-      - uses: ./../action/.github/actions/setup-swift
-        with:
-          codeql-path: ${{ steps.init.outputs.codeql-path }}
       - name: Build code
         shell: bash
         run: ./build.sh

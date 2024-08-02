@@ -7,6 +7,7 @@ import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import * as util from "./util";
+import { getActionsLogger, Logger } from "./logging";
 
 const UPDATEJOB_PROXY = "update-job-proxy";
 const UPDATEJOB_PROXY_VERSION = "v2.0.20240722180912";
@@ -89,13 +90,17 @@ function generateCertificateAuthority(): CertificateAuthority {
 }
 
 async function runWrapper() {
-  // Setup logging
+  const logger = getActionsLogger();
+
+  // Setup logging for the proxy
   const tempDir = actionsUtil.getTemporaryDirectory();
-  const logFilePath = path.resolve(tempDir, "proxy.log");
-  core.saveState("proxy-log-file", logFilePath);
+  const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
+  core.saveState("proxy-log-file", proxyLogFilePath);
 
   // Get the configuration options
   const credentials = getCredentials();
+  logger.debug(`Credentials loaded for the following URLs:\n ${credentials.map(c => c.host).join("\n")}`)
+
   const ca = generateCertificateAuthority();
   const proxyAuth = getProxyAuth();
 
@@ -107,10 +112,10 @@ async function runWrapper() {
 
   // Start the Proxy
   const proxyBin = await getProxyBinaryPath();
-  await startProxy(proxyBin, proxyConfig, logFilePath);
+  await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
 }
 
-async function startProxy(binPath: string, config: ProxyConfig, logFilePath: string) {
+async function startProxy(binPath: string, config: ProxyConfig, logFilePath: string, logger: Logger) {
   const host = "127.0.0.1";
   let port = 49152;
   try {
@@ -148,7 +153,7 @@ async function startProxy(binPath: string, config: ProxyConfig, logFilePath: str
     if (subprocessError) {
       throw subprocessError;
     }
-    core.info(`Proxy started on ${host}:${port}`);
+    logger.info(`Proxy started on ${host}:${port}`);
     core.setOutput("proxy_host", host);
     core.setOutput("proxy_port", port.toString());
     core.setOutput("proxy_ca_certificate", config.ca.cert);
@@ -165,7 +170,6 @@ async function startProxy(binPath: string, config: ProxyConfig, logFilePath: str
 function getCredentials(): Credential[] {
   const encodedCredentials = actionsUtil.getOptionalInput("registries_credentials");
   if (encodedCredentials !== undefined) {
-    core.info(`Using encoded credentials.`);
     const credentialsStr = Buffer.from(encodedCredentials, "base64").toString();
     return JSON.parse(credentialsStr) as Credential[];
   }

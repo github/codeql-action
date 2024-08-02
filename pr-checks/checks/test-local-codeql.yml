@@ -12,6 +12,7 @@ steps:
   - id: init
     uses: ./../action/init
     with:
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
       languages: cpp,csharp,go,java,javascript,python,ruby
       tools: ./codeql-bundle-linux64.tar.gz
   - name: Build code

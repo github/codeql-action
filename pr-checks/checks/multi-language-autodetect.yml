@@ -7,24 +7,17 @@ steps:
       go-version: ">=1.21.0"
 
   - uses: ./../action/init
-    if: runner.os == 'Linux'
+    id: init
     with:
       db-location: "${{ runner.temp }}/customDbLocation"
-      # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
-      languages: cpp,csharp,go,java,javascript,python,ruby 
-      tools: ${{ steps.prepare-test.outputs.tools-url }}
-
-  - uses: ./../action/init
-    id: init-macos
-    if: runner.os == 'macOS'
-    with:
-      db-location: "${{ runner.temp }}/customDbLocation"
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+      languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
   - uses: ./../action/.github/actions/setup-swift
     if: runner.os == 'macOS'
     with:
-      codeql-path: ${{ steps.init-macos.outputs.codeql-path }}
+      codeql-path: ${{ steps.init.outputs.codeql-path }}
 
   - name: Build code
     shell: bash

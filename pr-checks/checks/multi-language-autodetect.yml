@@ -1,14 +1,6 @@
 name: "Multi-language repository"
-description: "An end-to-end integration test of a multi-language repository using automatic language detection"
+description: "An end-to-end integration test of a multi-language repository using automatic language detection for MacOS"
 operatingSystems: ["macos", "ubuntu"]
-excludeOsAndVersionCombination: [ 
-  # Known failure for Swift on Linux before CLI v2.17.4.
-  [ "ubuntu", "stable-20230403" ], 
-  [ "ubuntu", "stable-v2.13.5" ], 
-  [ "ubuntu", "stable-v2.14.6" ], 
-  [ "ubuntu", "stable-v2.15.5" ],
-  [ "ubuntu", "stable-v2.16.6" ],
-]
 steps:
   - uses: actions/setup-go@v5
     with:
@@ -18,9 +10,12 @@ steps:
     id: init
     with:
       db-location: "${{ runner.temp }}/customDbLocation"
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+      languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
   - uses: ./../action/.github/actions/setup-swift
+    if: runner.os == 'macOS'
     with:
       codeql-path: ${{ steps.init.outputs.codeql-path }}
 
@@ -72,8 +67,8 @@ steps:
         exit 1
       fi
 
-  - name: Check language autodetect for Swift
-    if: runner.os != 'Windows' && matrix.version != 'stable-20230403'
+  - name: Check language autodetect for Swift on MacOS
+    if: runner.os == 'macOS' && matrix.version != 'stable-20230403'
     shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

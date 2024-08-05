@@ -15,10 +15,7 @@ import * as api from "./api-client";
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
 // these dependents.
 import * as defaults from "./defaults.json";
-import {
-  CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED,
-  CodeQLDefaultVersionInfo,
-} from "./feature-flags";
+import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Logger } from "./logging";
 import * as util from "./util";
 import { isGoodVersion, wrapError } from "./util";
@@ -669,14 +666,9 @@ function getCanonicalToolcacheVersion(
   if (!cliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)) {
     return convertToSemVer(bundleVersion, logger);
   }
-  // If the bundle is semantically versioned, it can be looked up based on just the CLI version
-  // number, so version it in the toolcache using just the CLI version number.
-  if (semver.gte(cliVersion, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)) {
-    return cliVersion;
-  }
-  // Include both the CLI version and the bundle version in the toolcache version number. That way
-  // we can find the bundle in the toolcache based on either the CLI version or the bundle version.
-  return `${cliVersion}-${bundleVersion}`;
+  // Bundles are now semantically versioned and can be looked up based on just the CLI version
+  // number, so we can version them in the toolcache using just the CLI version number.
+  return cliVersion;
 }
 
 /**

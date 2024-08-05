@@ -76,7 +76,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
                 # Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.
                 # "macos-latest" is now an ARM runner, so we run tests on the old CLIs on Intel runners instead.
-                if version in ["stable-v2.13.4", "stable-v2.13.5", "stable-v2.14.6"] and runnerImage == "macos-latest":
+                if version in ["stable-v2.13.5", "stable-v2.14.6"] and runnerImage == "macos-latest":
                     matrix.append({
                         'os': "macos-12",
                         'version': version

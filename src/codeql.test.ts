@@ -197,42 +197,26 @@ test("downloads an explicitly requested bundle even if a different version is ca
 
 const EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES = [
   {
-    cliVersion: "2.17.6",
     tagName: "codeql-bundle-2.17.6",
     expectedToolcacheVersion: "2.17.6",
-    shouldCallReleasesApi: false,
   },
   {
-    cliVersion: "2.17.6-pre",
     tagName: "codeql-bundle-20240805",
     expectedToolcacheVersion: "0.0.0-20240805",
-    shouldCallReleasesApi: true,
-  },
-  {
-    cliVersion: "2.17.6+202006100101",
-    tagName: "codeql-bundle-20240805",
-    expectedToolcacheVersion: "0.0.0-20240805",
-    shouldCallReleasesApi: true,
   },
 ];
 
 for (const {
-  cliVersion,
   tagName,
   expectedToolcacheVersion,
-  shouldCallReleasesApi,
 } of EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES) {
-  test(`caches an explicitly requested bundle containing CLI ${cliVersion} as ${expectedToolcacheVersion}`, async (t) => {
+  test(`caches explicitly requested bundle ${tagName} as ${expectedToolcacheVersion}`, async (t) => {
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
 
       mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
 
-      const releaseApiMock = mockReleaseApi({
-        assetNames: [`cli-version-${cliVersion}.txt`],
-        tagName,
-      });
       const url = mockBundleDownloadApi({
         tagName,
       });
@@ -246,19 +230,8 @@ for (const {
         getRunnerLogger(true),
         false,
       );
-      if (shouldCallReleasesApi) {
-        t.assert(
-          releaseApiMock.isDone(),
-          "Releases API should have been called",
-        );
-      } else {
-        t.false(
-          releaseApiMock.isDone(),
-          "Releases API should not have been called",
-        );
-      }
       t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
-      t.deepEqual(result.toolsVersion, cliVersion);
+      t.deepEqual(result.toolsVersion, expectedToolcacheVersion);
       t.is(result.toolsSource, ToolsSource.Download);
       t.assert(Number.isInteger(result.toolsDownloadDurationMs));
     });

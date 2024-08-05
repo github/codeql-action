@@ -386,7 +386,7 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
     mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
     const releasesApiMock = mockReleaseApi({
-      assetNames: ["cli-version-2.12.6.txt"],
+      assetNames: ["cli-version-2.13.5.txt"],
       tagName: "codeql-bundle-20230203",
     });
     mockBundleDownloadApi({
@@ -689,7 +689,7 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
@@ -718,7 +718,7 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
@@ -821,32 +821,6 @@ for (const {
   });
 }
 
-test("database finalize does not override no code found error on CodeQL 2.12.6", async (t) => {
-  const cliMessage =
-    "CodeQL did not detect any code written in languages supported by CodeQL. Review our troubleshooting guide at " +
-    "https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.";
-  stubToolRunnerConstructor(32, cliMessage);
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
-  // safeWhich throws because of the test CodeQL object.
-  sinon.stub(safeWhich, "safeWhich").resolves("");
-
-  await t.throwsAsync(
-    async () =>
-      await codeqlObject.finalizeDatabase(
-        "db",
-        "--threads=2",
-        "--ram=2048",
-        false,
-      ),
-    {
-      message:
-        'Encountered a fatal error while running "codeql-for-testing database finalize --finalize-dataset --threads=2 --ram=2048 db". ' +
-        `Exit code was 32 and last log line was: ${cliMessage} See the logs for more details.`,
-    },
-  );
-});
-
 test("runTool summarizes several fatal errors", async (t) => {
   const heapError =
     "A fatal error occurred: Evaluator heap must be at least 384.00 MiB";
@@ -857,7 +831,7 @@ test("runTool summarizes several fatal errors", async (t) => {
     `${heapError}\n${datasetImportError}.`;
   stubToolRunnerConstructor(32, cliStderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -898,7 +872,7 @@ test("runTool summarizes autobuilder errors", async (t) => {
   `;
   stubToolRunnerConstructor(1, stderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
@@ -925,7 +899,7 @@ test("runTool truncates long autobuilder errors", async (t) => {
   ).join("\n");
   stubToolRunnerConstructor(1, stderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
@@ -953,7 +927,7 @@ test("runTool recognizes fatal internal errors", async (t) => {
     Severe disk cache trouble (corruption or out of space) at /home/runner/work/_temp/codeql_databases/go/db-go/default/cache/pages/28/33.pack: Failed to write item to disk`;
   stubToolRunnerConstructor(1, stderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
@@ -963,7 +937,7 @@ test("runTool recognizes fatal internal errors", async (t) => {
       await codeqlObject.databaseRunQueries(stubConfig.dbLocation, []),
     {
       instanceOf: CommandInvocationError,
-      message: `Encountered a fatal error while running "codeql-for-testing database run-queries  --expect-discarded-cache --min-disk-free=1024 -v". Exit code was 1 and error was: Oops! A fatal internal error occurred. Details:
+      message: `Encountered a fatal error while running "codeql-for-testing database run-queries  --expect-discarded-cache --min-disk-free=1024 -v --intra-layer-parallelism". Exit code was 1 and error was: Oops! A fatal internal error occurred. Details:
     com.semmle.util.exception.CatastrophicError: An error occurred while evaluating ControlFlowGraph::ControlFlow::Root.isRootOf/1#dispred#f610e6ed/2@86282cc8
     Severe disk cache trouble (corruption or out of space) at /home/runner/work/_temp/codeql_databases/go/db-go/default/cache/pages/28/33.pack: Failed to write item to disk. See the logs for more details.`,
     },
@@ -974,7 +948,7 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
   const cliStderr = "line1\nline2\nline3\nline4\nline5";
   stubToolRunnerConstructor(32, cliStderr);
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 
@@ -999,7 +973,7 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
 test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OPTIONS", async (t) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   // safeWhich throws because of the test CodeQL object.
   sinon.stub(safeWhich, "safeWhich").resolves("");
 

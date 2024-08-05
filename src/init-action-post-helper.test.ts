@@ -359,7 +359,7 @@ async function testFailedSarifUpload(
 
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   const databaseExportDiagnosticsStub = sinon.stub(
     codeqlObject,
     "databaseExportDiagnostics",

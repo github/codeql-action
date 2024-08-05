@@ -804,7 +804,6 @@ for (const {
       "",
       Object.assign({}, stubConfig, { gitHubVersion: githubVersion }),
       createFeatures([]),
-      getRunnerLogger(true),
     );
     const actualArgs = runnerConstructorStub.firstCall.args[1] as string[];
     t.is(

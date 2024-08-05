@@ -770,7 +770,7 @@ export function parsePacksSpecification(packStr: string): Pack {
   if (version) {
     try {
       new semver.Range(version);
-    } catch (e) {
+    } catch {
       // The range string is invalid. OK to ignore the caught error
       throw new ConfigurationError(getPacksStrInvalid(packStr));
     }
@@ -874,7 +874,7 @@ function parseRegistries(
     return registriesInput
       ? (yaml.load(registriesInput) as RegistryConfigWithCredentials[])
       : undefined;
-  } catch (e) {
+  } catch {
     throw new ConfigurationError(
       "Invalid registries input. Must be a YAML string.",
     );

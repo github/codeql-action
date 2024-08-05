@@ -155,6 +155,7 @@ async function runWrapper() {
       await util.delay(1000);
     }
     if (subprocessError) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw subprocessError;
     }
     core.info(`Proxy started on ${host}:${port}`);

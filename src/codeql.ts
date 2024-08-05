@@ -538,7 +538,7 @@ export async function getCodeQLForCmd(
         const output = await runTool(cmd, ["version", "--format=json"]);
         try {
           result = JSON.parse(output) as VersionInfo;
-        } catch (err) {
+        } catch {
           throw Error(
             `Invalid JSON output from \`version --format=json\`: ${output}`,
           );

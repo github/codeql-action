@@ -52,6 +52,12 @@ jobs:
           - os: windows-latest
             version: stable-v2.16.6
           - os: ubuntu-latest
+            version: stable-v2.17.6
+          - os: macos-latest
+            version: stable-v2.17.6
+          - os: windows-latest
+            version: stable-v2.17.6
+          - os: ubuntu-latest
             version: default
           - os: macos-latest
             version: default

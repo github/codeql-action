@@ -168,7 +168,6 @@ export interface CodeQL {
     automationDetailsId: string | undefined,
     config: Config,
     features: FeatureEnablement,
-    logger: Logger,
   ): Promise<string>;
   /**
    * Run 'codeql database print-baseline'.
@@ -184,8 +183,6 @@ export interface CodeQL {
     databasePath: string,
     sarifFile: string,
     automationDetailsId: string | undefined,
-    tempDir: string,
-    logger: Logger,
   ): Promise<void>;
   /**
    * Run 'codeql diagnostics export'.
@@ -304,16 +301,6 @@ const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
  */
-
-/**
- * Versions 2.13.1+ of the CodeQL CLI fix a bug where diagnostics export could produce invalid SARIF.
- */
-export const CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED = "2.13.1";
-
-/**
- * Versions 2.13.4+ of the CodeQL CLI support the `resolve build-environment` command.
- */
-export const CODEQL_VERSION_RESOLVE_ENVIRONMENT = "2.13.4";
 
 /**
  * Versions 2.14.2+ of the CodeQL CLI support language-specific baseline configuration.
@@ -846,25 +833,18 @@ export async function getCodeQLForCmd(
       automationDetailsId: string | undefined,
       config: Config,
       features: FeatureEnablement,
-      logger: Logger,
     ): Promise<string> {
       const shouldExportDiagnostics = await features.getValue(
         Feature.ExportDiagnosticsEnabled,
         this,
       );
-      const shouldWorkaroundInvalidNotifications =
-        shouldExportDiagnostics &&
-        !(await isDiagnosticsExportInvalidSarifFixed(this));
-      const codeqlOutputFile = shouldWorkaroundInvalidNotifications
-        ? path.join(config.tempDir, "codeql-intermediate-results.sarif")
-        : sarifFile;
       const codeqlArgs = [
         "database",
         "interpret-results",
         threadsFlag,
         "--format=sarif-latest",
         verbosityFlag,
-        `--output=${codeqlOutputFile}`,
+        `--output=${sarifFile}`,
         addSnippetsFlag,
         "--print-diagnostics-summary",
         "--print-metrics-summary",
@@ -912,15 +892,9 @@ export async function getCodeQLForCmd(
       }
       // Capture the stdout, which contains the analysis summary. Don't stream it to the Actions
       // logs to avoid printing it twice.
-      const analysisSummary = await runTool(cmd, codeqlArgs, {
+      return await runTool(cmd, codeqlArgs, {
         noStreamStdout: true,
       });
-
-      if (shouldWorkaroundInvalidNotifications) {
-        util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
-      }
-
-      return analysisSummary;
     },
     async databasePrintBaseline(databasePath: string): Promise<string> {
       const codeqlArgs = [
@@ -1016,21 +990,14 @@ export async function getCodeQLForCmd(
       databasePath: string,
       sarifFile: string,
       automationDetailsId: string | undefined,
-      tempDir: string,
-      logger: Logger,
     ): Promise<void> {
-      const shouldWorkaroundInvalidNotifications =
-        !(await isDiagnosticsExportInvalidSarifFixed(this));
-      const codeqlOutputFile = shouldWorkaroundInvalidNotifications
-        ? path.join(tempDir, "codeql-intermediate-results.sarif")
-        : sarifFile;
       const args = [
         "database",
         "export-diagnostics",
         `${databasePath}`,
         "--db-cluster", // Database is always a cluster for CodeQL versions that support diagnostics.
         "--format=sarif-latest",
-        `--output=${codeqlOutputFile}`,
+        `--output=${sarifFile}`,
         "--sarif-include-diagnostics", // ExportDiagnosticsEnabled is always true if this command is run.
         "-vvv",
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
@@ -1039,11 +1006,6 @@ export async function getCodeQLForCmd(
         args.push("--sarif-category", automationDetailsId);
       }
       await new toolrunner.ToolRunner(cmd, args).exec();
-
-      if (shouldWorkaroundInvalidNotifications) {
-        // Fix invalid notifications in the SARIF file output by CodeQL.
-        util.fixInvalidNotificationsInFile(codeqlOutputFile, sarifFile, logger);
-      }
     },
     async diagnosticsExport(
       sarifFile: string,
@@ -1383,15 +1345,6 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  */
 export function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
-}
-
-async function isDiagnosticsExportInvalidSarifFixed(
-  codeql: CodeQL,
-): Promise<boolean> {
-  return await util.codeQlVersionAtLeast(
-    codeql,
-    CODEQL_VERSION_DIAGNOSTICS_EXPORT_FIXED,
-  );
 }
 
 async function getLanguageAliasingArguments(codeql: CodeQL): Promise<string[]> {

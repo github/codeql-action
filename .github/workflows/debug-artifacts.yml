@@ -25,6 +25,8 @@ jobs:
         - stable-v2.13.5
         - stable-v2.14.6
         - stable-v2.15.5
+        - stable-v2.16.6
+        - stable-v2.17.6
         - default
         - linked
         - nightly-latest
@@ -69,7 +71,7 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-v2.13.5 stable-v2.14.6 stable-v2.15.5 default linked nightly-latest"
+          VERSIONS="stable-v2.13.5 stable-v2.14.6 stable-v2.15.5 stable-v2.16.6 stable-v2.17.6 default linked nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             pushd "./my-debug-artifacts-${version//./}"

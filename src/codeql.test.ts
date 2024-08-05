@@ -197,22 +197,30 @@ test("downloads an explicitly requested bundle even if a different version is ca
 
 const EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES = [
   {
-    cliVersion: "2.10.0",
-    expectedToolcacheVersion: "2.10.0-20200610",
+    cliVersion: "2.17.6",
+    tagName: "codeql-bundle-2.17.6",
+    expectedToolcacheVersion: "2.17.6",
+    shouldCallReleasesApi: false,
   },
   {
-    cliVersion: "2.10.0-pre",
-    expectedToolcacheVersion: "0.0.0-20200610",
+    cliVersion: "2.17.6-pre",
+    tagName: "codeql-bundle-20240805",
+    expectedToolcacheVersion: "0.0.0-20240805",
+    shouldCallReleasesApi: true,
   },
   {
-    cliVersion: "2.10.0+202006100101",
-    expectedToolcacheVersion: "0.0.0-20200610",
+    cliVersion: "2.17.6+202006100101",
+    tagName: "codeql-bundle-20240805",
+    expectedToolcacheVersion: "0.0.0-20240805",
+    shouldCallReleasesApi: true,
   },
 ];
 
 for (const {
   cliVersion,
+  tagName,
   expectedToolcacheVersion,
+  shouldCallReleasesApi,
 } of EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES) {
   test(`caches an explicitly requested bundle containing CLI ${cliVersion} as ${expectedToolcacheVersion}`, async (t) => {
     await util.withTmpDir(async (tmpDir) => {
@@ -223,10 +231,10 @@ for (const {
 
       const releaseApiMock = mockReleaseApi({
         assetNames: [`cli-version-${cliVersion}.txt`],
-        tagName: "codeql-bundle-20200610",
+        tagName,
       });
       const url = mockBundleDownloadApi({
-        tagName: "codeql-bundle-20200610",
+        tagName,
       });
 
       const result = await codeql.setupCodeQL(
@@ -238,7 +246,17 @@ for (const {
         getRunnerLogger(true),
         false,
       );
-      t.assert(releaseApiMock.isDone(), "Releases API should have been called");
+      if (shouldCallReleasesApi) {
+        t.assert(
+          releaseApiMock.isDone(),
+          "Releases API should have been called",
+        );
+      } else {
+        t.false(
+          releaseApiMock.isDone(),
+          "Releases API should not have been called",
+        );
+      }
       t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
       t.deepEqual(result.toolsVersion, cliVersion);
       t.is(result.toolsSource, ToolsSource.Download);

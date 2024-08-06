@@ -516,7 +516,7 @@ export function parseGitHubUrl(inputUrl: string): string {
   let url: URL;
   try {
     url = new URL(inputUrl);
-  } catch (e) {
+  } catch {
     throw new ConfigurationError(`"${originalUrl}" is not a valid URL`);
   }
 
@@ -753,7 +753,7 @@ export function doesDirectoryExist(dirPath: string): boolean {
   try {
     const stats = fs.lstatSync(dirPath);
     return stats.isDirectory();
-  } catch (e) {
+  } catch {
     return false;
   }
 }

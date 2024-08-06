@@ -8,7 +8,7 @@ javac Main.java
 
 go build main.go
 
-if [[ "$OSTYPE" == "darwin"* || "$OSTYPE" == "linux-gnu"* ]]; then
+if [[ "$OSTYPE" == "darwin"* ]]; then
     swift build
 fi
 

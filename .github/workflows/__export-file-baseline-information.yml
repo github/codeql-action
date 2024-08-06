@@ -45,8 +45,6 @@ jobs:
         if: >-
           runner.os == 'macOS' && (
 
-          matrix.version == 'stable-20230403' ||
-
           matrix.version == 'stable-v2.13.5' ||
 
           matrix.version == 'stable-v2.14.6')
@@ -86,7 +84,7 @@ jobs:
         run: |
           cd "$RUNNER_TEMP/results"
           expected_baseline_languages="c csharp go java kotlin javascript python ruby"
-          if [[ $RUNNER_OS != "Windows" ]]; then
+          if [[ $RUNNER_OS == "macOS" ]]; then
             expected_baseline_languages+=" swift"
           fi
 

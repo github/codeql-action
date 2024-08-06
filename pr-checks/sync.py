@@ -7,16 +7,16 @@ import textwrap
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
-    # The oldest supported CodeQL version: 2.12.6. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-20230403",
-    # The last CodeQL release in the 2.13 series: 2.13.5.
+    # The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
     "stable-v2.13.5",
-    # The last CodeQL release in the 2.14 series: 2.14.6.
+    # The last CodeQL release in the 2.14 series.
     "stable-v2.14.6",
-    # The last CodeQL release in the 2.15 series: 2.15.5.
+    # The last CodeQL release in the 2.15 series.
     "stable-v2.15.5",
-    # The last CodeQL release in the 2.16 series: 2.16.6.
+    # The last CodeQL release in the 2.16 series.
     "stable-v2.16.6",
+    # The last CodeQL release in the 2.17 series.
+    "stable-v2.17.6",
     # The default version of CodeQL for Dotcom, as determined by feature flags.
     "default",
     # The version of CodeQL shipped with the Action in `defaults.json`. During the release process
@@ -78,7 +78,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
                 # Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.
                 # "macos-latest" is now an ARM runner, so we run tests on the old CLIs on Intel runners instead.
-                if version in ["stable-20230403", "stable-v2.13.4", "stable-v2.13.5", "stable-v2.14.6"] and runnerImage == "macos-latest":
+                if version in ["stable-v2.13.5", "stable-v2.14.6"] and runnerImage == "macos-latest":
                     matrix.append({
                         'os': "macos-12",
                         'version': version
@@ -101,7 +101,6 @@ for file in (this_dir / 'checks').glob('*.yml'):
             # of the generated workflow.
             'if': FoldedScalarString(textwrap.dedent('''
                     runner.os == 'macOS' && (
-                    matrix.version == 'stable-20230403' ||
                     matrix.version == 'stable-v2.13.5' ||
                     matrix.version == 'stable-v2.14.6')
             ''').strip()),

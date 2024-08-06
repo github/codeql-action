@@ -29,15 +29,9 @@ jobs:
         include:
           - os: macos-latest
             version: linked
-          - os: ubuntu-latest
-            version: linked
           - os: macos-latest
             version: default
-          - os: ubuntu-latest
-            version: default
           - os: macos-latest
-            version: nightly-latest
-          - os: ubuntu-latest
             version: nightly-latest
     name: Swift analysis using a custom build command
     permissions:
@@ -50,8 +44,6 @@ jobs:
         uses: actions/setup-python@v5
         if: >-
           runner.os == 'macOS' && (
-
-          matrix.version == 'stable-20230403' ||
 
           matrix.version == 'stable-v2.13.5' ||
 

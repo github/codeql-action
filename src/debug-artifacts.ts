@@ -39,7 +39,7 @@ export async function uploadDebugArtifacts(
         JSON.parse(matrix) as any[][],
       ).sort())
         suffix += `-${matrixVal}`;
-    } catch (e) {
+    } catch {
       core.info(
         "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input.",
       );

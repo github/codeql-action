@@ -2,7 +2,6 @@ name: PR Checks
 
 on:
   push:
-    branches: [main, releases/v*]
   pull_request:
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
     # by other workflows.
@@ -54,6 +53,7 @@ jobs:
         run: .github/workflows/script/check-js.sh
 
   check-node-modules:
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Check modules up to date
     runs-on: macos-latest
     timeout-minutes: 45
@@ -64,6 +64,7 @@ jobs:
         run: .github/workflows/script/check-node-modules.sh
 
   check-file-contents:
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Check file contents
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -88,6 +89,7 @@ jobs:
         run: .github/workflows/script/verify-pr-checks.sh
 
   npm-test:
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Unit Test
     needs: [check-js, check-node-modules]
     strategy:
@@ -107,7 +109,7 @@ jobs:
           npm test
 
   check-node-version:
-    if: ${{ github.event.pull_request }}
+    if: github.event.pull_request
     name: Check Action Node versions
     runs-on: ubuntu-latest
     timeout-minutes: 45

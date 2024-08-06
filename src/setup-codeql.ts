@@ -15,13 +15,10 @@ import * as api from "./api-client";
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
 // these dependents.
 import * as defaults from "./defaults.json";
-import {
-  CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED,
-  CodeQLDefaultVersionInfo,
-} from "./feature-flags";
+import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Logger } from "./logging";
 import * as util from "./util";
-import { isGoodVersion, wrapError } from "./util";
+import { isGoodVersion } from "./util";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -60,54 +57,6 @@ export function getCodeQLActionRepository(logger: Logger): string {
   }
 
   return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
-}
-
-function tryGetCodeQLCliVersionForRelease(
-  release,
-  logger: Logger,
-): string | undefined {
-  const cliVersionsFromMarkerFiles = (release.assets as Array<{ name: string }>)
-    .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
-    .filter((v) => v)
-    .map((v) => v as string);
-  if (cliVersionsFromMarkerFiles.length > 1) {
-    logger.warning(
-      `Ignoring release ${release.tag_name} with multiple CLI version marker files.`,
-    );
-    return undefined;
-  } else if (cliVersionsFromMarkerFiles.length === 0) {
-    logger.debug(
-      `Failed to find the CodeQL CLI version for release ${release.tag_name}.`,
-    );
-    return undefined;
-  }
-  return cliVersionsFromMarkerFiles[0];
-}
-
-export async function tryFindCliVersionDotcomOnly(
-  tagName: string,
-  logger: Logger,
-): Promise<string | undefined> {
-  try {
-    logger.debug(
-      `Fetching the GitHub Release for the CodeQL bundle tagged ${tagName}.`,
-    );
-    const apiClient = api.getApiClient();
-    const codeQLActionRepository = getCodeQLActionRepository(logger);
-    const release = await apiClient.rest.repos.getReleaseByTag({
-      owner: codeQLActionRepository.split("/")[0],
-      repo: codeQLActionRepository.split("/")[1],
-      tag: tagName,
-    });
-    return tryGetCodeQLCliVersionForRelease(release.data, logger);
-  } catch (e) {
-    logger.debug(
-      `Failed to find the CLI version for the CodeQL bundle tagged ${tagName}. ${
-        wrapError(e).message
-      }`,
-    );
-    return undefined;
-  }
 }
 
 async function getCodeQLBundleDownloadURL(
@@ -519,7 +468,6 @@ export const downloadCodeQL = async function (
   maybeBundleVersion: string | undefined,
   maybeCliVersion: string | undefined,
   apiDetails: api.GitHubApiDetails,
-  variant: util.GitHubVariant,
   tempDir: string,
   logger: Logger,
 ): Promise<{
@@ -597,18 +545,6 @@ export const downloadCodeQL = async function (
     };
   }
 
-  // Try to compute the CLI version for this bundle
-  if (
-    maybeCliVersion === undefined &&
-    variant === util.GitHubVariant.DOTCOM &&
-    codeqlURL.includes(`/${CODEQL_DEFAULT_ACTION_REPOSITORY}/`)
-  ) {
-    maybeCliVersion = await tryFindCliVersionDotcomOnly(
-      `codeql-bundle-${bundleVersion}`,
-      logger,
-    );
-  }
-
   logger.debug("Caching CodeQL bundle.");
   const toolcacheVersion = getCanonicalToolcacheVersion(
     maybeCliVersion,
@@ -669,14 +605,9 @@ function getCanonicalToolcacheVersion(
   if (!cliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)) {
     return convertToSemVer(bundleVersion, logger);
   }
-  // If the bundle is semantically versioned, it can be looked up based on just the CLI version
-  // number, so version it in the toolcache using just the CLI version number.
-  if (semver.gte(cliVersion, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)) {
-    return cliVersion;
-  }
-  // Include both the CLI version and the bundle version in the toolcache version number. That way
-  // we can find the bundle in the toolcache based on either the CLI version or the bundle version.
-  return `${cliVersion}-${bundleVersion}`;
+  // Bundles are now semantically versioned and can be looked up based on just the CLI version
+  // number, so we can version them in the toolcache using just the CLI version number.
+  return cliVersion;
 }
 
 /**
@@ -733,7 +664,6 @@ export async function setupCodeQLBundle(
         source.bundleVersion,
         source.cliVersion,
         apiDetails,
-        variant,
         tempDir,
         logger,
       );

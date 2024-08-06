@@ -1100,3 +1100,7 @@ export enum BuildMode {
   /** The database will be created by building the source root using manually specified build steps. */
   Manual = "manual",
 }
+
+export function cloneObject<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj)) as T;
+}

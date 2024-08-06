@@ -68,7 +68,7 @@ steps:
       fi
 
   - name: Check language autodetect for Swift on MacOS
-    if: runner.os == 'macOS' && matrix.version != 'stable-20230403'
+    if: runner.os == 'macOS'
     shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

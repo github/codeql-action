@@ -1,8 +1,4 @@
-import {
-  CODEQL_VERSION_LANGUAGE_ALIASING,
-  CODEQL_VERSION_RESOLVE_ENVIRONMENT,
-  getCodeQL,
-} from "./codeql";
+import { CODEQL_VERSION_LANGUAGE_ALIASING, getCodeQL } from "./codeql";
 import { parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import * as util from "./util";
@@ -34,27 +30,11 @@ export async function runResolveBuildEnvironment(
     language = parsedLanguage;
   }
 
-  let result = {};
-
-  // If the CodeQL version in use does not support the `resolve build-environment`
-  // command, just return an empty configuration. Otherwise invoke the CLI.
-  if (
-    !(await util.codeQlVersionAtLeast(
-      codeql,
-      CODEQL_VERSION_RESOLVE_ENVIRONMENT,
-    ))
-  ) {
-    logger.warning(
-      "Unsupported CodeQL CLI version for `resolve build-environment` command, " +
-        "returning an empty configuration.",
-    );
-  } else {
-    if (workingDir !== undefined) {
-      logger.info(`Using ${workingDir} as the working directory.`);
-    }
-
-    result = await codeql.resolveBuildEnvironment(workingDir, language);
+  if (workingDir !== undefined) {
+    logger.info(`Using ${workingDir} as the working directory.`);
   }
+
+  const result = await codeql.resolveBuildEnvironment(workingDir, language);
 
   logger.endGroup();
   return result;

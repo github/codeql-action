@@ -28,10 +28,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-20230403
-          - os: macos-12
-            version: stable-20230403
-          - os: ubuntu-latest
             version: stable-v2.13.5
           - os: macos-12
             version: stable-v2.13.5
@@ -47,6 +43,10 @@ jobs:
             version: stable-v2.16.6
           - os: macos-latest
             version: stable-v2.16.6
+          - os: ubuntu-latest
+            version: stable-v2.17.6
+          - os: macos-latest
+            version: stable-v2.17.6
           - os: ubuntu-latest
             version: default
           - os: macos-latest
@@ -70,8 +70,6 @@ jobs:
         uses: actions/setup-python@v5
         if: >-
           runner.os == 'macOS' && (
-
-          matrix.version == 'stable-20230403' ||
 
           matrix.version == 'stable-v2.13.5' ||
 

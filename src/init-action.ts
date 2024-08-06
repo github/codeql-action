@@ -443,10 +443,7 @@ async function run() {
 
     const kotlinLimitVar =
       "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
-    if (
-      (await codeQlVersionAtLeast(codeql, "2.13.4")) &&
-      !(await codeQlVersionAtLeast(codeql, "2.14.4"))
-    ) {
+    if (!(await codeQlVersionAtLeast(codeql, "2.14.4"))) {
       core.exportVariable(kotlinLimitVar, "1.9.20");
     }
 
@@ -500,7 +497,7 @@ async function run() {
 
     // From 2.16.0 the default for the python extractor is to not perform any
     // dependency extraction. For versions before that, you needed to set this flag to
-    // enable this behavior (supported since 2.13.1).
+    // enable this behavior.
 
     if (await codeQlVersionAtLeast(codeql, "2.17.1")) {
       // disabled by default, no warning
@@ -510,16 +507,10 @@ async function run() {
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
       );
-    } else if (await codeQlVersionAtLeast(codeql, "2.13.1")) {
+    } else {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
-      );
-    } else {
-      logger.warning(
-        `CodeQL Action versions 3.25.0 and later, and versions 2.25.0 and later no longer install Python dependencies. We recommend upgrading to at least CodeQL Bundle 2.16.0 to avoid any potential problems due to this (you are currently using ${
-          (await codeql.getVersion()).version
-        }). Alternatively, we recommend downgrading the CodeQL Action to version 3.24.10 (for customers using GitHub.com or GitHub Enterprise Server v3.12 or later) or 2.24.10 (for customers using GitHub Enterprise Server v3.11 or earlier).`,
       );
     }
 

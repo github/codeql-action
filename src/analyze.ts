@@ -339,7 +339,6 @@ export async function runQueries(
       automationDetailsId,
       config,
       features,
-      logger,
     );
   }
 

@@ -28,11 +28,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.13.4
+            version: stable-v2.13.5
           - os: macos-12
-            version: stable-v2.13.4
+            version: stable-v2.13.5
           - os: windows-latest
-            version: stable-v2.13.4
+            version: stable-v2.13.5
           - os: ubuntu-latest
             version: default
           - os: macos-latest
@@ -63,8 +63,6 @@ jobs:
         if: >-
           runner.os == 'macOS' && (
 
-          matrix.version == 'stable-20230403' ||
-
           matrix.version == 'stable-v2.13.5' ||
 
           matrix.version == 'stable-v2.14.6')
@@ -81,7 +79,7 @@ jobs:
           setup-kotlin: 'true'
       - uses: ./../action/init
         with:
-          languages: ${{ matrix.version == 'stable-v2.13.4' && 'go' || 'go,javascript-typescript'
+          languages: ${{ matrix.version == 'stable-v2.13.5' && 'go' || 'go,javascript-typescript'
             }}
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
@@ -96,14 +94,14 @@ jobs:
         run: exit 1
 
       - name: Resolve environment for JavaScript/TypeScript
-        if: matrix.version != 'stable-v2.13.4'
+        if: matrix.version != 'stable-v2.13.5'
         uses: ./../action/resolve-environment
         id: resolve-environment-js
         with:
           language: javascript-typescript
 
       - name: Fail if JavaScript/TypeScript configuration present
-        if: matrix.version != 'stable-v2.13.4' && 
+        if: matrix.version != 'stable-v2.13.5' && 
           fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
         run: exit 1
     env:

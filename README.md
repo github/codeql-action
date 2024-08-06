@@ -44,7 +44,6 @@ We typically release new minor versions of the CodeQL Action and CLI when a new 
 | `3.22.12` | `2.15.5` | Enterprise Server 3.12 |
 | `2.22.1` | `2.14.6` | Enterprise Server 3.11 |
 | `2.20.3` | `2.13.5` | Enterprise Server 3.10 |
-| `2.2.9` | `2.12.5` | Enterprise Server 3.9 |
 
 CodeQL Action `v2` will stop receiving updates when GHES 3.11 is deprecated.
 

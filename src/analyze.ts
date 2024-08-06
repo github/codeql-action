@@ -190,7 +190,7 @@ export function dbIsFinalized(
       fs.readFileSync(path.resolve(dbPath, "codeql-database.yml"), "utf8"),
     ) as { inProgress?: boolean };
     return !("inProgress" in dbInfo);
-  } catch (e) {
+  } catch {
     logger.warning(
       `Could not check whether database for ${language} was finalized. Assuming it is not.`,
     );

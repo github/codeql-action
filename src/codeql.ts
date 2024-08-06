@@ -31,7 +31,7 @@ import * as setupCodeql from "./setup-codeql";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, wrapError } from "./util";
+import { BuildMode, wrapError, cloneObject } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -1304,10 +1304,6 @@ async function generateCodeScanningConfig(
 
   fs.writeFileSync(codeScanningConfigFile, yaml.dump(augmentedConfig));
   return codeScanningConfigFile;
-}
-
-function cloneObject<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj)) as T;
 }
 
 // This constant sets the size of each TRAP cache in megabytes.

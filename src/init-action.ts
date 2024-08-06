@@ -60,6 +60,7 @@ import {
   ConfigurationError,
   wrapError,
   checkActionVersion,
+  cloneObject,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -85,12 +86,19 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   paths_ignore: string;
   /** Comma-separated list of queries sources, from the 'queries' config field or workflow input. */
   queries: string;
+  /** Stringified JSON object of packs, from the 'packs' config field or workflow input. */
+  packs: string;
   /** Comma-separated list of languages for which we are using TRAP caching. */
   trap_cache_languages: string;
   /** Size of TRAP caches that we downloaded, in bytes. */
   trap_cache_download_size_bytes: number;
   /** Time taken to download TRAP caches, in milliseconds. */
   trap_cache_download_duration_ms: number;
+  /** Stringified JSON array of registry configuration objects, from the 'registries' config field
+  or workflow input. **/
+  registries: string;
+  /** Stringified JSON object representing a query-filters, from the 'query-filters' config field. **/
+  query_filters: string;
 }
 
 /** Fields of the init status report populated when the tools source is `download`. */
@@ -174,6 +182,31 @@ async function sendCompletedStatusReport(
       queries.push(...queriesInput.split(","));
     }
 
+    let packs: Record<string, string[]> = {};
+    if (
+      (config.augmentationProperties.packsInputCombines ||
+        !config.augmentationProperties.packsInput) &&
+      config.originalUserInput.packs
+    ) {
+      // Make a copy, because we might modify `packs`.
+      const copyPacksFromOriginalUserInput = cloneObject(
+        config.originalUserInput.packs,
+      );
+      // If it is an array, then assume there is only a single language being analyzed.
+      if (Array.isArray(copyPacksFromOriginalUserInput)) {
+        packs[config.languages[0]] = copyPacksFromOriginalUserInput;
+      } else {
+        packs = copyPacksFromOriginalUserInput;
+      }
+    }
+
+    if (config.augmentationProperties.packsInput) {
+      packs[config.languages[0]] ??= [];
+      packs[config.languages[0]].push(
+        ...config.augmentationProperties.packsInput,
+      );
+    }
+
     // Append fields that are dependent on `config`
     const initWithConfigStatusReport: InitWithConfigStatusReport = {
       ...initStatusReport,
@@ -181,11 +214,20 @@ async function sendCompletedStatusReport(
       paths,
       paths_ignore: pathsIgnore,
       queries: queries.join(","),
+      packs: JSON.stringify(packs),
       trap_cache_languages: Object.keys(config.trapCaches).join(","),
       trap_cache_download_size_bytes: Math.round(
         await getTotalCacheSize(config.trapCaches, logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+      query_filters: JSON.stringify(
+        config.originalUserInput["query-filters"] ?? [],
+      ),
+      registries: JSON.stringify(
+        configUtils.parseRegistriesWithoutCredentials(
+          getOptionalInput("registries"),
+        ) ?? [],
+      ),
     };
     await sendStatusReport({
       ...initWithConfigStatusReport,

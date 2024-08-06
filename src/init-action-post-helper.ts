@@ -94,13 +94,7 @@ async function maybeUploadFailedSarif(
     await codeql.diagnosticsExport(sarifFile, category, config);
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
-    await codeql.databaseExportDiagnostics(
-      databasePath,
-      sarifFile,
-      category,
-      config.tempDir,
-      logger,
-    );
+    await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);
   }
 
   logger.info(`Uploading failed SARIF file ${sarifFile}`);

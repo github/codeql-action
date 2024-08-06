@@ -443,6 +443,7 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
       `Invalid SARIF. JSON syntax error: ${wrapError(e).message}`,
     );
   }
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const schema = require("../src/sarif-schema-2.1.0.json") as jsonschema.Schema;
 
   const result = new jsonschema.Validator().validate(sarif, schema);

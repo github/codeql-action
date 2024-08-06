@@ -404,7 +404,7 @@ test("selects CLI v2.20.1 on Dotcom when feature flags enable v2.20.0 and v2.20.
   });
 });
 
-test("includes tag name when feature flags enable version greater than v2.13.4", async (t) => {
+test("includes tag name", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const features = setUpFeatureFlagTests(tmpDir);
     const expectedFeatureEnablement = initializeFeatures(true);
@@ -426,25 +426,6 @@ test(`selects CLI from defaults.json on Dotcom when no default version feature f
   await withTmpDir(async (tmpDir) => {
     const features = setUpFeatureFlagTests(tmpDir);
     const expectedFeatureEnablement = initializeFeatures(true);
-    mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
-
-    const defaultCliVersion = await features.getDefaultCliVersion(
-      GitHubVariant.DOTCOM,
-    );
-    t.deepEqual(defaultCliVersion, {
-      cliVersion: defaults.cliVersion,
-      tagName: defaults.bundleVersion,
-      toolsFeatureFlagsValid: false,
-    });
-  });
-});
-
-test(`selects CLI from defaults.json on Dotcom when default version feature flags are unsupported`, async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const features = setUpFeatureFlagTests(tmpDir);
-    const expectedFeatureEnablement = initializeFeatures(true);
-    // Doesn't have a semantically versioned bundle
-    expectedFeatureEnablement["default_codeql_version_2_13_3_enabled"] = true;
     mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
     const defaultCliVersion = await features.getDefaultCliVersion(

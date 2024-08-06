@@ -28,12 +28,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-20230403
-          - os: macos-12
-            version: stable-20230403
-          - os: windows-latest
-            version: stable-20230403
-          - os: ubuntu-latest
             version: linked
           - os: macos-latest
             version: linked
@@ -56,8 +50,6 @@ jobs:
         uses: actions/setup-python@v5
         if: >-
           runner.os == 'macOS' && (
-
-          matrix.version == 'stable-20230403' ||
 
           matrix.version == 'stable-v2.13.5' ||
 
@@ -83,17 +75,13 @@ jobs:
         env:
           CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
         run: |
-          for i in {1..2}; do
-            # Use the same location twice to test the workaround for the bug in CodeQL CLI 2.12.6 that
-            # produces an invalid diagnostic with multiple identical location objects.
-            "$CODEQL_PATH" database add-diagnostic \
-              "$RUNNER_TEMP/codeql_databases/javascript" \
-              --file-path /path/to/file \
-              --plaintext-message "Plaintext message $i" \
-              --source-id "lang/diagnostics/example" \
-              --source-name "Diagnostic name" \
-              --ready-for-status-page
-          done
+          "$CODEQL_PATH" database add-diagnostic \
+            "$RUNNER_TEMP/codeql_databases/javascript" \
+            --file-path /path/to/file \
+            --plaintext-message "Plaintext message" \
+            --source-id "lang/diagnostics/example" \
+            --source-name "Diagnostic name" \
+            --ready-for-status-page
       - uses: ./../action/analyze
         with:
           output: ${{ runner.temp }}/results
@@ -113,7 +101,7 @@ jobs:
             const fs = require('fs');
 
             function checkStatusPageNotification(n) {
-              const expectedMessage = 'Plaintext message 1\n\nCodeQL also found 1 other diagnostic like this. See the workflow log for details.';
+              const expectedMessage = 'Plaintext message';
               if (n.message.text !== expectedMessage) {
                 core.setFailed(`Expected the status page diagnostic to have the message '${expectedMessage}', but found '${n.message.text}'.`);
               }

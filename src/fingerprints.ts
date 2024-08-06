@@ -206,7 +206,7 @@ export function resolveUriToFile(
   let uri: string;
   try {
     uri = decodeURIComponent(location.uri as string);
-  } catch (e: any) {
+  } catch {
     logger.debug(`Ignoring location as URI "${location.uri}" is invalid`);
     return undefined;
   }

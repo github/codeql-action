@@ -359,7 +359,7 @@ async function testFailedSarifUpload(
 
   const codeqlObject = await codeql.getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.12.6"));
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   const databaseExportDiagnosticsStub = sinon.stub(
     codeqlObject,
     "databaseExportDiagnostics",
@@ -398,8 +398,6 @@ async function testFailedSarifUpload(
           config.dbLocation,
           sinon.match.string,
           category,
-          sinon.match.any,
-          sinon.match.any,
         ),
         `Actual args were: ${databaseExportDiagnosticsStub.args}`,
       );

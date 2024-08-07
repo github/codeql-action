@@ -585,10 +585,12 @@ async function run() {
       apiDetails,
       logger,
     );
+    // Save the requirement variables required for tracing so they can be set in future actions.
     if (tracerConfig !== undefined) {
-      for (const [key, value] of Object.entries(tracerConfig.env)) {
-        core.exportVariable(key, value);
-      }
+      core.exportVariable(
+        EnvVar.TRACER_CONFIG_ENV,
+        JSON.stringify(tracerConfig.env),
+      );
     }
 
     // Write diagnostics to the database that we previously stored in memory because the database

@@ -72,6 +72,9 @@ export enum EnvVar {
 
   TESTING_ENVIRONMENT = "CODEQL_ACTION_TESTING_ENVIRONMENT",
 
+  /** Stringified representation of environment variables that need to be set for tracing. */
+  TRACER_CONFIG_ENV = "CODEQL_ACTION_TRACER_CONFIG_ENV",
+
   /** Semver of the CodeQL Action as specified in `package.json`. */
   VERSION = "CODEQL_ACTION_VERSION",
 

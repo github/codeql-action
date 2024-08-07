@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
+
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { isTracedLanguage } from "./languages";
@@ -32,6 +34,25 @@ export async function shouldEnableIndirectTracing(
 
   // Otherwise, use direct tracing if any of the languages need to be traced.
   return config.languages.some((l) => isTracedLanguage(l));
+}
+
+/**
+ * Set the tracer environment variables based off of the JSON string in the
+ * TRACER_CONFIG_ENV environment variable. The variable is populated in the init Action
+ * and this method is called in future steps where tracing is meant to be enabled.
+ */
+export function setTracerEnvVariables(logger: Logger): void {
+  logger.info(
+    "Setting build tracing environment variables. Subsequent steps of this job will be traced unless otherwise specified.",
+  );
+  const tracerConfigEnv: object = JSON.parse(
+    process.env["CODEQL_ACTION_TRACER_CONFIG_ENV"] ?? "null",
+  );
+  if (tracerConfigEnv !== null) {
+    for (const [key, value] of Object.entries(tracerConfigEnv)) {
+      core.exportVariable(key, value);
+    }
+  }
 }
 
 /**

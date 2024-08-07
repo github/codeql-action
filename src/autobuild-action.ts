@@ -19,7 +19,7 @@ import {
   sendStatusReport,
   ActionName,
 } from "./status-report";
-import { endTracingForCluster } from "./tracer-config";
+import { endTracingForCluster, setTracerEnvVariables } from "./tracer-config";
 import {
   checkActionVersion,
   checkDiskUsage,
@@ -97,6 +97,7 @@ async function run() {
     }
 
     const codeql = await getCodeQL(config.codeQLCmd);
+    setTracerEnvVariables(logger);
 
     languages = await determineAutobuildLanguages(codeql, config, logger);
     if (languages !== undefined) {

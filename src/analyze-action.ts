@@ -32,6 +32,7 @@ import {
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
+import { setTracerEnvVariables } from "./tracer-config";
 import {
   cleanupTrapCaches,
   getTotalCacheSize,
@@ -221,6 +222,12 @@ async function run() {
     }
 
     const codeql = await getCodeQL(config.codeQLCmd);
+
+    // If the autobuild Action already ran, we do not need to trace any parts of the analyze action
+    // so we only set the tracer environment variables if autobuild has not completed successfully.
+    if (process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") {
+      setTracerEnvVariables(logger);
+    }
 
     if (hasBadExpectErrorInput()) {
       throw new util.ConfigurationError(

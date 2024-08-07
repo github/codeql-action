@@ -50,6 +50,7 @@ export function setTracerEnvVariables(logger: Logger): void {
   );
   if (tracerConfigEnv !== null) {
     for (const [key, value] of Object.entries(tracerConfigEnv)) {
+      logger.info(`Setting ${key} to ${value}`);
       core.exportVariable(key, value);
     }
   }

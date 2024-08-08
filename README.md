@@ -16,9 +16,41 @@ We recommend using default setup to configure CodeQL analysis for your repositor
 
 You can also configure advanced setup for a repository to find security vulnerabilities in your code using a highly customizable code scanning configuration. For more information, see "[Configuring advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/configuring-advanced-setup-for-code-scanning)" and "[Customizing your advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning)."
 
-### Permissions
+### Inputs
+
+The CodeQL Action supports various inputs to customize the analysis. Here are some important inputs:
+
+- `config`: Path of the config file to use. This input allows you to specify a custom configuration file for the analysis.
+- `languages`: A comma-separated list of CodeQL languages to analyze.
+- `queries`: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
+- `packs`: Comma-separated list of packs to run. Reference a pack in the format `scope/name[@version]`. If `version` is not specified, then the latest version of the pack is used. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of packs.
+- `db-location`: Path where CodeQL databases should be created. If not specified, a temporary directory will be used.
+- `ram`: The amount of memory in MB that can be used by CodeQL extractors.
+- `threads`: The number of threads that can be used by CodeQL extractors.
+- `source-root`: Path of the root source code directory, relative to $GITHUB_WORKSPACE.
+
+### Workflow Permissions
 
 All advanced setup code scanning workflows must have the `security-events: write` permission. Workflows in private repositories must additionally have the `contents: read` permission. For more information, see "[Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs)."
+
+### Build Modes
+
+The CodeQL Action supports different build modes for analyzing the source code. The available build modes are:
+
+- `none`: The database will be created without building the source code. Available for all interpreted languages and some compiled languages.
+- `autobuild`: The database will be created by attempting to automatically build the source code. Available for all compiled languages.
+- `manual`: The database will be created by building the source code using a manually specified build command. To use this build mode, specify manual build steps in your workflow between the `init` and `analyze` steps. Available for all compiled languages.
+
+### Actions
+
+The CodeQL Action includes several actions that can be used in your workflows. Here are the available actions and how to use them:
+
+- `init`: Sets up CodeQL for analysis. For more information, see the [init action documentation](https://github.com/github/codeql-action/blob/main/init/action.yml).
+- `autobuild`: Attempts to automatically build the code. For more information, see the [autobuild action documentation](https://github.com/github/codeql-action/blob/main/autobuild/action.yml).
+- `analyze`: Finalizes the CodeQL database and runs the analysis. For more information, see the [analyze action documentation](https://github.com/github/codeql-action/blob/main/analyze/action.yml).
+- `upload-sarif`: Uploads a SARIF file to Code Scanning. For more information, see the [upload-sarif action documentation](https://github.com/github/codeql-action/blob/main/upload-sarif/action.yml).
+- `resolve-environment`: Attempts to infer a build environment suitable for automatic builds. For more information, see the [resolve-environment action documentation](https://github.com/github/codeql-action/blob/main/resolve-environment/action.yml).
+- `start-proxy`: Starts an HTTP proxy server. For more information, see the [start-proxy action documentation](https://github.com/github/codeql-action/blob/main/start-proxy/action.yml).
 
 ## Supported versions of the CodeQL Action
 

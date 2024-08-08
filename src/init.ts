@@ -12,7 +12,7 @@ import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
-import { ToolsSource } from "./setup-codeql";
+import { ToolsDownloadStatusReport, ToolsSource } from "./setup-codeql";
 import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
@@ -26,12 +26,12 @@ export async function initCodeQL(
   logger: Logger,
 ): Promise<{
   codeql: CodeQL;
-  toolsDownloadDurationMs?: number;
+  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
 }> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion } =
+  const { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion } =
     await setupCodeQL(
       toolsInput,
       apiDetails,
@@ -43,7 +43,7 @@ export async function initCodeQL(
     );
   await codeql.printVersion();
   logger.endGroup();
-  return { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion };
+  return { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion };
 }
 
 export async function initConfig(

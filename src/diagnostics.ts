@@ -100,7 +100,9 @@ export function addDiagnostic(
   diagnostic: DiagnosticMessage,
 ) {
   const logger = getActionsLogger();
-  const databasePath = getCodeQLDatabasePath(config, language);
+  const databasePath = language
+    ? getCodeQLDatabasePath(config, language)
+    : config.dbLocation;
 
   // Check that the database exists before writing to it. If the database does not yet exist,
   // store the diagnostic in memory and write it later.
@@ -124,12 +126,15 @@ export function addDiagnostic(
  */
 function writeDiagnostic(
   config: Config,
-  language: Language,
+  language: Language | undefined,
   diagnostic: DiagnosticMessage,
 ) {
   const logger = getActionsLogger();
+  const databasePath = language
+    ? getCodeQLDatabasePath(config, language)
+    : config.dbLocation;
   const diagnosticsPath = path.resolve(
-    getCodeQLDatabasePath(config, language),
+    databasePath,
     "diagnostic",
     "codeql-action",
   );

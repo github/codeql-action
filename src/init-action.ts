@@ -35,7 +35,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { ToolsSource } from "./setup-codeql";
+import { ToolsDownloadStatusReport, ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   StatusReportBase,
@@ -114,7 +114,7 @@ interface InitToolsDownloadFields {
 async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
-  toolsDownloadDurationMs: number | undefined,
+  toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
@@ -148,9 +148,9 @@ async function sendCompletedStatusReport(
 
   const initToolsDownloadFields: InitToolsDownloadFields = {};
 
-  if (toolsDownloadDurationMs !== undefined) {
+  if (toolsDownloadStatusReport !== undefined) {
     initToolsDownloadFields.tools_download_duration_ms =
-      toolsDownloadDurationMs;
+      toolsDownloadStatusReport.downloadDurationMs;
   }
   if (toolsFeatureFlagsValid !== undefined) {
     initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
@@ -245,7 +245,7 @@ async function run() {
 
   let config: configUtils.Config | undefined;
   let codeql: CodeQL;
-  let toolsDownloadDurationMs: number | undefined;
+  let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
@@ -300,7 +300,7 @@ async function run() {
       logger,
     );
     codeql = initCodeQLResult.codeql;
-    toolsDownloadDurationMs = initCodeQLResult.toolsDownloadDurationMs;
+    toolsDownloadStatusReport = initCodeQLResult.toolsDownloadStatusReport;
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
 
@@ -365,6 +365,28 @@ async function run() {
 
   try {
     cleanupDatabaseClusterDirectory(config, logger);
+
+    // Log CodeQL download telemetry, if appropriate
+    if (toolsDownloadStatusReport) {
+      addDiagnostic(
+        config,
+        // Arbitrarily choose the first language. We could also choose all languages, but that
+        // increases the risk of misinterpreting the data.
+        config.languages[0],
+        makeDiagnostic(
+          "codeql-action/bundle-download-telemetry",
+          "CodeQL bundle download telemetry",
+          {
+            attributes: toolsDownloadStatusReport,
+            visibility: {
+              cliSummaryTable: false,
+              statusPage: false,
+              telemetry: true,
+            },
+          },
+        ),
+      );
+    }
 
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
@@ -603,7 +625,7 @@ async function run() {
     await sendCompletedStatusReport(
       startedAt,
       config,
-      toolsDownloadDurationMs,
+      toolsDownloadStatusReport,
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
@@ -617,7 +639,7 @@ async function run() {
   await sendCompletedStatusReport(
     startedAt,
     config,
-    toolsDownloadDurationMs,
+    toolsDownloadStatusReport,
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,

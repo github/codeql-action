@@ -350,20 +350,24 @@ export async function setupCodeQL(
   checkVersion: boolean,
 ): Promise<{
   codeql: CodeQL;
-  toolsDownloadDurationMs?: number;
+  toolsDownloadStatusReport?: setupCodeql.ToolsDownloadStatusReport;
   toolsSource: setupCodeql.ToolsSource;
   toolsVersion: string;
 }> {
   try {
-    const { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion } =
-      await setupCodeql.setupCodeQLBundle(
-        toolsInput,
-        apiDetails,
-        tempDir,
-        variant,
-        defaultCliVersion,
-        logger,
-      );
+    const {
+      codeqlFolder,
+      toolsDownloadStatusReport,
+      toolsSource,
+      toolsVersion,
+    } = await setupCodeql.setupCodeQLBundle(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      defaultCliVersion,
+      logger,
+    );
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
@@ -376,7 +380,7 @@ export async function setupCodeQL(
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
     return {
       codeql: cachedCodeQL,
-      toolsDownloadDurationMs,
+      toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
     };

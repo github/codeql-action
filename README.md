@@ -40,6 +40,7 @@ We typically release new minor versions of the CodeQL Action and CLI when a new 
 | Recommended CodeQL Action | Recommended CodeQL CLI Version | GitHub Environment |
 |---------|----------|--------------|
 | `v3` | default (do not pass a `tools` input) | GitHub.com |
+| `v3.25.11` | `v2.17.6` | Enterprise Server 3.14 |
 | `v3.24.11` | `v2.16.6` | Enterprise Server 3.13 |
 | `3.22.12` | `2.15.5` | Enterprise Server 3.12 |
 | `2.22.1` | `2.14.6` | Enterprise Server 3.11 |

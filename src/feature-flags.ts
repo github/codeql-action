@@ -15,11 +15,6 @@ const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
 const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 
 /**
- * Versions 2.13.4+ of the CodeQL CLI have an associated CodeQL Bundle release that is semantically versioned.
- */
-export const CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED = "2.13.4";
-
-/**
  * Evaluator fine-grained parallelism (aka intra-layer parallelism) is only safe to enable in 2.15.1 onwards.
  * (Some earlier versions recognize the command-line flag, but they contain a bug which makes it unsafe to use).
  */
@@ -323,13 +318,7 @@ class GitHubFeatureFlags {
       .map(([f, isEnabled]) =>
         isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined,
       )
-      .filter(
-        (f) =>
-          f !== undefined &&
-          // Only consider versions that have semantically versioned bundles.
-          semver.gte(f, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED),
-      )
-      .map((f) => f as string);
+      .filter((f): f is string => f !== undefined);
 
     if (enabledFeatureFlagCliVersions.length === 0) {
       // We expect at least one default CLI version to be enabled on Dotcom at any time. However if

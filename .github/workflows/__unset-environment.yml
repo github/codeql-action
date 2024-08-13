@@ -28,6 +28,16 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            version: stable-v2.13.5
+          - os: ubuntu-latest
+            version: stable-v2.14.6
+          - os: ubuntu-latest
+            version: stable-v2.15.5
+          - os: ubuntu-latest
+            version: stable-v2.16.6
+          - os: ubuntu-latest
+            version: stable-v2.17.6
+          - os: ubuntu-latest
             version: default
           - os: ubuntu-latest
             version: linked
@@ -44,8 +54,6 @@ jobs:
         uses: actions/setup-python@v5
         if: >-
           runner.os == 'macOS' && (
-
-          matrix.version == 'stable-20230403' ||
 
           matrix.version == 'stable-v2.13.5' ||
 
@@ -65,10 +73,9 @@ jobs:
         id: init
         with:
           db-location: ${{ runner.temp }}/customDbLocation
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+          languages: cpp,csharp,go,java,javascript,python,ruby
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - uses: ./../action/.github/actions/setup-swift
-        with:
-          codeql-path: ${{ steps.init.outputs.codeql-path }}
       - uses: actions/setup-go@v5
         with:
           go-version: '>=1.21.0'

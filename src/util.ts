@@ -516,7 +516,7 @@ export function parseGitHubUrl(inputUrl: string): string {
   let url: URL;
   try {
     url = new URL(inputUrl);
-  } catch (e) {
+  } catch {
     throw new ConfigurationError(`"${originalUrl}" is not a valid URL`);
   }
 
@@ -753,7 +753,7 @@ export function doesDirectoryExist(dirPath: string): boolean {
   try {
     const stats = fs.lstatSync(dirPath);
     return stats.isDirectory();
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -1099,4 +1099,8 @@ export enum BuildMode {
   Autobuild = "autobuild",
   /** The database will be created by building the source root using manually specified build steps. */
   Manual = "manual",
+}
+
+export function cloneObject<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj)) as T;
 }

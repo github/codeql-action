@@ -15,13 +15,10 @@ import * as api from "./api-client";
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
 // these dependents.
 import * as defaults from "./defaults.json";
-import {
-  CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED,
-  CodeQLDefaultVersionInfo,
-} from "./feature-flags";
+import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Logger } from "./logging";
 import * as util from "./util";
-import { isGoodVersion, wrapError } from "./util";
+import { isGoodVersion } from "./util";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -60,54 +57,6 @@ export function getCodeQLActionRepository(logger: Logger): string {
   }
 
   return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
-}
-
-function tryGetCodeQLCliVersionForRelease(
-  release,
-  logger: Logger,
-): string | undefined {
-  const cliVersionsFromMarkerFiles = (release.assets as Array<{ name: string }>)
-    .map((asset) => asset.name.match(/cli-version-(.*)\.txt/)?.[1])
-    .filter((v) => v)
-    .map((v) => v as string);
-  if (cliVersionsFromMarkerFiles.length > 1) {
-    logger.warning(
-      `Ignoring release ${release.tag_name} with multiple CLI version marker files.`,
-    );
-    return undefined;
-  } else if (cliVersionsFromMarkerFiles.length === 0) {
-    logger.debug(
-      `Failed to find the CodeQL CLI version for release ${release.tag_name}.`,
-    );
-    return undefined;
-  }
-  return cliVersionsFromMarkerFiles[0];
-}
-
-export async function tryFindCliVersionDotcomOnly(
-  tagName: string,
-  logger: Logger,
-): Promise<string | undefined> {
-  try {
-    logger.debug(
-      `Fetching the GitHub Release for the CodeQL bundle tagged ${tagName}.`,
-    );
-    const apiClient = api.getApiClient();
-    const codeQLActionRepository = getCodeQLActionRepository(logger);
-    const release = await apiClient.rest.repos.getReleaseByTag({
-      owner: codeQLActionRepository.split("/")[0],
-      repo: codeQLActionRepository.split("/")[1],
-      tag: tagName,
-    });
-    return tryGetCodeQLCliVersionForRelease(release.data, logger);
-  } catch (e) {
-    logger.debug(
-      `Failed to find the CLI version for the CodeQL bundle tagged ${tagName}. ${
-        wrapError(e).message
-      }`,
-    );
-    return undefined;
-  }
 }
 
 async function getCodeQLBundleDownloadURL(
@@ -512,6 +461,11 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
+export interface ToolsDownloadStatusReport {
+  downloadDurationMs: number;
+  extractionDurationMs: number;
+}
+
 // Exported using `export const` for testing purposes. Specifically, we want to
 // be able to stub this function and have other functions in this file use that stub.
 export const downloadCodeQL = async function (
@@ -519,13 +473,12 @@ export const downloadCodeQL = async function (
   maybeBundleVersion: string | undefined,
   maybeCliVersion: string | undefined,
   apiDetails: api.GitHubApiDetails,
-  variant: util.GitHubVariant,
   tempDir: string,
   logger: Logger,
 ): Promise<{
-  toolsVersion: string;
   codeqlFolder: string;
-  toolsDownloadDurationMs: number;
+  statusReport: ToolsDownloadStatusReport;
+  toolsVersion: string;
 }> {
   const parsedCodeQLURL = new URL(codeqlURL);
   const searchParams = new URLSearchParams(parsedCodeQLURL.search);
@@ -565,20 +518,18 @@ export const downloadCodeQL = async function (
     authorization,
     finalHeaders,
   );
-  const toolsDownloadDurationMs = Math.round(
-    performance.now() - toolsDownloadStart,
-  );
+  const downloadDurationMs = Math.round(performance.now() - toolsDownloadStart);
 
   logger.debug(
-    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${toolsDownloadDurationMs} ms).`,
+    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${downloadDurationMs} ms).`,
   );
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
   const extractedBundlePath = await toolcache.extractTar(archivedBundlePath);
-  const extractionMs = Math.round(performance.now() - extractionStart);
+  const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
-    `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionMs} ms).`,
+    `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
   );
   await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
 
@@ -591,22 +542,13 @@ export const downloadCodeQL = async function (
         `URL ${codeqlURL}.`,
     );
     return {
-      toolsVersion: maybeCliVersion ?? "unknown",
       codeqlFolder: extractedBundlePath,
-      toolsDownloadDurationMs,
+      statusReport: {
+        downloadDurationMs,
+        extractionDurationMs,
+      },
+      toolsVersion: maybeCliVersion ?? "unknown",
     };
-  }
-
-  // Try to compute the CLI version for this bundle
-  if (
-    maybeCliVersion === undefined &&
-    variant === util.GitHubVariant.DOTCOM &&
-    codeqlURL.includes(`/${CODEQL_DEFAULT_ACTION_REPOSITORY}/`)
-  ) {
-    maybeCliVersion = await tryFindCliVersionDotcomOnly(
-      `codeql-bundle-${bundleVersion}`,
-      logger,
-    );
   }
 
   logger.debug("Caching CodeQL bundle.");
@@ -631,9 +573,12 @@ export const downloadCodeQL = async function (
   }
 
   return {
-    toolsVersion: maybeCliVersion ?? toolcacheVersion,
     codeqlFolder: toolcachedBundlePath,
-    toolsDownloadDurationMs,
+    statusReport: {
+      downloadDurationMs,
+      extractionDurationMs,
+    },
+    toolsVersion: maybeCliVersion ?? toolcacheVersion,
   };
 };
 
@@ -669,14 +614,9 @@ function getCanonicalToolcacheVersion(
   if (!cliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)) {
     return convertToSemVer(bundleVersion, logger);
   }
-  // If the bundle is semantically versioned, it can be looked up based on just the CLI version
-  // number, so version it in the toolcache using just the CLI version number.
-  if (semver.gte(cliVersion, CODEQL_VERSION_BUNDLE_SEMANTICALLY_VERSIONED)) {
-    return cliVersion;
-  }
-  // Include both the CLI version and the bundle version in the toolcache version number. That way
-  // we can find the bundle in the toolcache based on either the CLI version or the bundle version.
-  return `${cliVersion}-${bundleVersion}`;
+  // Bundles are now semantically versioned and can be looked up based on just the CLI version
+  // number, so we can version them in the toolcache using just the CLI version number.
+  return cliVersion;
 }
 
 /**
@@ -701,7 +641,7 @@ export async function setupCodeQLBundle(
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
-  toolsDownloadDurationMs?: number;
+  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
 }> {
@@ -715,7 +655,7 @@ export async function setupCodeQLBundle(
 
   let codeqlFolder: string;
   let toolsVersion = source.toolsVersion;
-  let toolsDownloadDurationMs: number | undefined;
+  let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsSource: ToolsSource;
   switch (source.sourceType) {
     case "local":
@@ -733,20 +673,19 @@ export async function setupCodeQLBundle(
         source.bundleVersion,
         source.cliVersion,
         apiDetails,
-        variant,
         tempDir,
         logger,
       );
       toolsVersion = result.toolsVersion;
       codeqlFolder = result.codeqlFolder;
-      toolsDownloadDurationMs = result.toolsDownloadDurationMs;
+      toolsDownloadStatusReport = result.statusReport;
       toolsSource = ToolsSource.Download;
       break;
     }
     default:
       util.assertNever(source);
   }
-  return { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion };
+  return { codeqlFolder, toolsDownloadStatusReport, toolsSource, toolsVersion };
 }
 
 async function cleanUpGlob(glob: string, name: string, logger: Logger) {

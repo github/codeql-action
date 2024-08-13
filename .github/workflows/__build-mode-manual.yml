@@ -41,8 +41,6 @@ jobs:
         if: >-
           runner.os == 'macOS' && (
 
-          matrix.version == 'stable-20230403' ||
-
           matrix.version == 'stable-v2.13.5' ||
 
           matrix.version == 'stable-v2.14.6')
@@ -73,10 +71,6 @@ jobs:
             echo "Expected build mode to be 'manual' but was $build_mode"
             exit 1
           fi
-
-      - uses: ./../action/.github/actions/setup-swift
-        with:
-          codeql-path: ${{ steps.init.outputs.codeql-path }}
 
       - name: Build code
         shell: bash

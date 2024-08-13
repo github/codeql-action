@@ -35,7 +35,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { ToolsSource } from "./setup-codeql";
+import { ToolsDownloadStatusReport, ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   StatusReportBase,
@@ -60,6 +60,7 @@ import {
   ConfigurationError,
   wrapError,
   checkActionVersion,
+  cloneObject,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -85,12 +86,19 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   paths_ignore: string;
   /** Comma-separated list of queries sources, from the 'queries' config field or workflow input. */
   queries: string;
+  /** Stringified JSON object of packs, from the 'packs' config field or workflow input. */
+  packs: string;
   /** Comma-separated list of languages for which we are using TRAP caching. */
   trap_cache_languages: string;
   /** Size of TRAP caches that we downloaded, in bytes. */
   trap_cache_download_size_bytes: number;
   /** Time taken to download TRAP caches, in milliseconds. */
   trap_cache_download_duration_ms: number;
+  /** Stringified JSON array of registry configuration objects, from the 'registries' config field
+  or workflow input. **/
+  registries: string;
+  /** Stringified JSON object representing a query-filters, from the 'query-filters' config field. **/
+  query_filters: string;
 }
 
 /** Fields of the init status report populated when the tools source is `download`. */
@@ -106,7 +114,7 @@ interface InitToolsDownloadFields {
 async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
-  toolsDownloadDurationMs: number | undefined,
+  toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
@@ -140,9 +148,9 @@ async function sendCompletedStatusReport(
 
   const initToolsDownloadFields: InitToolsDownloadFields = {};
 
-  if (toolsDownloadDurationMs !== undefined) {
+  if (toolsDownloadStatusReport !== undefined) {
     initToolsDownloadFields.tools_download_duration_ms =
-      toolsDownloadDurationMs;
+      toolsDownloadStatusReport.downloadDurationMs;
   }
   if (toolsFeatureFlagsValid !== undefined) {
     initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
@@ -174,6 +182,31 @@ async function sendCompletedStatusReport(
       queries.push(...queriesInput.split(","));
     }
 
+    let packs: Record<string, string[]> = {};
+    if (
+      (config.augmentationProperties.packsInputCombines ||
+        !config.augmentationProperties.packsInput) &&
+      config.originalUserInput.packs
+    ) {
+      // Make a copy, because we might modify `packs`.
+      const copyPacksFromOriginalUserInput = cloneObject(
+        config.originalUserInput.packs,
+      );
+      // If it is an array, then assume there is only a single language being analyzed.
+      if (Array.isArray(copyPacksFromOriginalUserInput)) {
+        packs[config.languages[0]] = copyPacksFromOriginalUserInput;
+      } else {
+        packs = copyPacksFromOriginalUserInput;
+      }
+    }
+
+    if (config.augmentationProperties.packsInput) {
+      packs[config.languages[0]] ??= [];
+      packs[config.languages[0]].push(
+        ...config.augmentationProperties.packsInput,
+      );
+    }
+
     // Append fields that are dependent on `config`
     const initWithConfigStatusReport: InitWithConfigStatusReport = {
       ...initStatusReport,
@@ -181,11 +214,20 @@ async function sendCompletedStatusReport(
       paths,
       paths_ignore: pathsIgnore,
       queries: queries.join(","),
+      packs: JSON.stringify(packs),
       trap_cache_languages: Object.keys(config.trapCaches).join(","),
       trap_cache_download_size_bytes: Math.round(
         await getTotalCacheSize(config.trapCaches, logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+      query_filters: JSON.stringify(
+        config.originalUserInput["query-filters"] ?? [],
+      ),
+      registries: JSON.stringify(
+        configUtils.parseRegistriesWithoutCredentials(
+          getOptionalInput("registries"),
+        ) ?? [],
+      ),
     };
     await sendStatusReport({
       ...initWithConfigStatusReport,
@@ -203,7 +245,7 @@ async function run() {
 
   let config: configUtils.Config | undefined;
   let codeql: CodeQL;
-  let toolsDownloadDurationMs: number | undefined;
+  let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
@@ -258,7 +300,7 @@ async function run() {
       logger,
     );
     codeql = initCodeQLResult.codeql;
-    toolsDownloadDurationMs = initCodeQLResult.toolsDownloadDurationMs;
+    toolsDownloadStatusReport = initCodeQLResult.toolsDownloadStatusReport;
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
 
@@ -324,12 +366,43 @@ async function run() {
   try {
     cleanupDatabaseClusterDirectory(config, logger);
 
+    // Log CodeQL download telemetry, if appropriate
+    if (toolsDownloadStatusReport) {
+      addDiagnostic(
+        config,
+        // Arbitrarily choose the first language. We could also choose all languages, but that
+        // increases the risk of misinterpreting the data.
+        config.languages[0],
+        makeDiagnostic(
+          "codeql-action/bundle-download-telemetry",
+          "CodeQL bundle download telemetry",
+          {
+            attributes: toolsDownloadStatusReport,
+            visibility: {
+              cliSummaryTable: false,
+              statusPage: false,
+              telemetry: true,
+            },
+          },
+        ),
+      );
+    }
+
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {
       core.exportVariable("GOFLAGS", goFlags);
       core.warning(
         "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.",
+      );
+    }
+
+    if (
+      config.languages.includes(Language.swift) &&
+      process.platform === "linux"
+    ) {
+      logger.warning(
+        `Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner if this affects you.`,
       );
     }
 
@@ -434,10 +507,7 @@ async function run() {
 
     const kotlinLimitVar =
       "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
-    if (
-      (await codeQlVersionAtLeast(codeql, "2.13.4")) &&
-      !(await codeQlVersionAtLeast(codeql, "2.14.4"))
-    ) {
+    if (!(await codeQlVersionAtLeast(codeql, "2.14.4"))) {
       core.exportVariable(kotlinLimitVar, "1.9.20");
     }
 
@@ -491,7 +561,7 @@ async function run() {
 
     // From 2.16.0 the default for the python extractor is to not perform any
     // dependency extraction. For versions before that, you needed to set this flag to
-    // enable this behavior (supported since 2.13.1).
+    // enable this behavior.
 
     if (await codeQlVersionAtLeast(codeql, "2.17.1")) {
       // disabled by default, no warning
@@ -501,16 +571,10 @@ async function run() {
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
       );
-    } else if (await codeQlVersionAtLeast(codeql, "2.13.1")) {
+    } else {
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
-      );
-    } else {
-      logger.warning(
-        `CodeQL Action versions 3.25.0 and later, and versions 2.25.0 and later no longer install Python dependencies. We recommend upgrading to at least CodeQL Bundle 2.16.0 to avoid any potential problems due to this (you are currently using ${
-          (await codeql.getVersion()).version
-        }). Alternatively, we recommend downgrading the CodeQL Action to version 3.24.10 (for customers using GitHub.com or GitHub Enterprise Server v3.12 or later) or 2.24.10 (for customers using GitHub Enterprise Server v3.11 or earlier).`,
       );
     }
 
@@ -561,7 +625,7 @@ async function run() {
     await sendCompletedStatusReport(
       startedAt,
       config,
-      toolsDownloadDurationMs,
+      toolsDownloadStatusReport,
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
@@ -575,7 +639,7 @@ async function run() {
   await sendCompletedStatusReport(
     startedAt,
     config,
-    toolsDownloadDurationMs,
+    toolsDownloadStatusReport,
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,

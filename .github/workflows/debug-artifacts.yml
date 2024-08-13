@@ -22,10 +22,11 @@ jobs:
       fail-fast: false
       matrix:
         version:
-        - stable-20230403
         - stable-v2.13.5
         - stable-v2.14.6
         - stable-v2.15.5
+        - stable-v2.16.6
+        - stable-v2.17.6
         - default
         - linked
         - nightly-latest
@@ -52,9 +53,8 @@ jobs:
           debug: true
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
-      - uses: ./../action/.github/actions/setup-swift
-        with:
-          codeql-path: ${{ steps.init.outputs.codeql-path }}
+          # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
+          languages: cpp,csharp,go,java,javascript,python,ruby 
       - name: Build code
         shell: bash
         run: ./build.sh
@@ -71,7 +71,7 @@ jobs:
       - name: Check expected artifacts exist
         shell: bash
         run: |
-          VERSIONS="stable-20230403 stable-v2.13.5 stable-v2.14.6 stable-v2.15.5 default linked nightly-latest"
+          VERSIONS="stable-v2.13.5 stable-v2.14.6 stable-v2.15.5 stable-v2.16.6 stable-v2.17.6 default linked nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             pushd "./my-debug-artifacts-${version//./}"

@@ -14,7 +14,7 @@ import {
   ConfigurationError,
 } from "./util";
 
-// eslint-disable-next-line import/no-commonjs
+// eslint-disable-next-line import/no-commonjs, @typescript-eslint/no-require-imports
 const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
 
 /**
@@ -83,7 +83,7 @@ export const getCommitOid = async function (
       },
     ).exec();
     return commitOid.trim();
-  } catch (e) {
+  } catch {
     if (stderr.includes("not a git repository")) {
       core.info(
         "Could not determine current commit SHA using git. Continuing with data from user input or environment. " +
@@ -154,7 +154,7 @@ export const determineMergeBaseCommitOid = async function (
       return baseOid;
     }
     return undefined;
-  } catch (e) {
+  } catch {
     if (stderr.includes("not a git repository")) {
       core.info(
         "The checkout path provided to the action does not appear to be a git repository. " +

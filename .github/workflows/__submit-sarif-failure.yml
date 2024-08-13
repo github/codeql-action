@@ -45,8 +45,6 @@ jobs:
         if: >-
           runner.os == 'macOS' && (
 
-          matrix.version == 'stable-20230403' ||
-
           matrix.version == 'stable-v2.13.5' ||
 
           matrix.version == 'stable-v2.14.6')
@@ -65,6 +63,7 @@ jobs:
       - uses: ./init
         with:
           languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Fail
     # We want this job to pass if the Action correctly uploads the SARIF file for
     # the failed run.

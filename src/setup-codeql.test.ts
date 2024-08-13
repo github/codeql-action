@@ -152,9 +152,12 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
   // Stub the downloadCodeQL function to prevent downloading artefacts
   // during testing from being called.
   sinon.stub(setupCodeql, "downloadCodeQL").resolves({
-    toolsVersion: LINKED_CLI_VERSION.cliVersion,
     codeqlFolder: "codeql",
-    toolsDownloadDurationMs: 200,
+    statusReport: {
+      downloadDurationMs: 200,
+      extractionDurationMs: 300,
+    },
+    toolsVersion: LINKED_CLI_VERSION.cliVersion,
   });
 
   await withTmpDir(async (tmpDir) => {
@@ -195,9 +198,12 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
   // Stub the downloadCodeQL function to prevent downloading artefacts
   // during testing from being called.
   sinon.stub(setupCodeql, "downloadCodeQL").resolves({
-    toolsVersion: expectedVersion,
     codeqlFolder: "codeql",
-    toolsDownloadDurationMs: 200,
+    statusReport: {
+      downloadDurationMs: 200,
+      extractionDurationMs: 300,
+    },
+    toolsVersion: expectedVersion,
   });
 
   await withTmpDir(async (tmpDir) => {

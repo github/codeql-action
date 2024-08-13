@@ -41,8 +41,6 @@ jobs:
         if: >-
           runner.os == 'macOS' && (
 
-          matrix.version == 'stable-20230403' ||
-
           matrix.version == 'stable-v2.13.5' ||
 
           matrix.version == 'stable-v2.14.6')
@@ -60,10 +58,9 @@ jobs:
       - id: init
         uses: ./../action/init
         with:
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+          languages: cpp,csharp,go,java,javascript,python,ruby
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - uses: ./../action/.github/actions/setup-swift
-        with:
-          codeql-path: ${{ steps.init.outputs.codeql-path }}
       - name: Build code
         shell: bash
         run: ./build.sh

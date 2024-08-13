@@ -60,6 +60,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
 
     const runFinalizeStub = sinon.stub(analyze, "runFinalize");
     const runQueriesStub = sinon.stub(analyze, "runQueries");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const analyzeAction = require("./analyze-action");
 
     // When analyze-action.ts loads, it runs an async function from the top

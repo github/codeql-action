@@ -15,7 +15,11 @@ import * as api from "./api-client";
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
 // these dependents.
 import * as defaults from "./defaults.json";
-import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { Logger } from "./logging";
 import * as util from "./util";
 import { isGoodVersion } from "./util";
@@ -31,7 +35,7 @@ export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 
-function getCodeQLBundleName(): string {
+function getCodeQLBundleBaseName(): string {
   let platform: string;
   if (process.platform === "win32") {
     platform = "win64";
@@ -40,9 +44,18 @@ function getCodeQLBundleName(): string {
   } else if (process.platform === "darwin") {
     platform = "osx64";
   } else {
-    return "codeql-bundle.tar.gz";
+    return "codeql-bundle";
   }
-  return `codeql-bundle-${platform}.tar.gz`;
+  return `codeql-bundle-${platform}`;
+}
+
+async function getCodeQLBundleName(
+  features: FeatureEnablement,
+): Promise<string> {
+  if (await features.getValue(Feature.ZstdBundle)) {
+    return `${getCodeQLBundleBaseName()}.tar.zst`;
+  }
+  return `${getCodeQLBundleBaseName()}.tar.gz`;
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
@@ -62,6 +75,7 @@ export function getCodeQLActionRepository(logger: Logger): string {
 async function getCodeQLBundleDownloadURL(
   tagName: string,
   apiDetails: api.GitHubApiDetails,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository(logger);
@@ -80,7 +94,7 @@ async function getCodeQLBundleDownloadURL(
       return !self.slice(0, index).some((other) => deepEqual(source, other));
     },
   );
-  const codeQLBundleName = getCodeQLBundleName();
+  const codeQLBundleName = await getCodeQLBundleName(features);
   for (const downloadSource of uniqueDownloadSources) {
     const [apiURL, repository] = downloadSource;
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
@@ -230,6 +244,7 @@ export async function getCodeQLSource(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
   if (
@@ -423,7 +438,12 @@ export async function getCodeQLSource(
   }
 
   if (!url) {
-    url = await getCodeQLBundleDownloadURL(tagName!, apiDetails, logger);
+    url = await getCodeQLBundleDownloadURL(
+      tagName!,
+      apiDetails,
+      features,
+      logger,
+    );
   }
 
   if (cliVersion) {
@@ -638,6 +658,7 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
@@ -650,6 +671,7 @@ export async function setupCodeQLBundle(
     defaultCliVersion,
     apiDetails,
     variant,
+    features,
     logger,
   );
 

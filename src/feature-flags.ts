@@ -47,6 +47,7 @@ export enum Feature {
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  ZstdBundle = "zstd_bundle",
 }
 
 export const featureConfig: Record<
@@ -119,6 +120,12 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
     minimumVersion: undefined,
+  },
+  [Feature.ZstdBundle]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ZSTD_BUNDLE",
+    legacyApi: false,
+    minimumVersion: undefined, // for testing
   },
 };
 

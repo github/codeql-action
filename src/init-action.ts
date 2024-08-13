@@ -272,7 +272,10 @@ async function run() {
     logger,
   );
 
-  core.exportVariable(EnvVar.JOB_RUN_UUID, uuidV4());
+  const jobRunUuid = uuidV4();
+  logger.info(`Job run UUID is ${jobRunUuid}.`);
+  core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+
   core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
   try {

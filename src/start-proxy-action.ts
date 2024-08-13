@@ -24,14 +24,15 @@ export type CertificateAuthority = {
 
 export type Credential = {
   type: string;
-  host: string;
+  host?: string;
+  url?: string;
   username?: string;
   password?: string;
   token?: string;
 };
 
 function CredentialToStr(c: Credential): string {
-  return `Type: ${c.type}; Host: ${c.host}; Username: ${c.username}; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`
+  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${c.username}; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`
 }
 
 export type BasicAuthCredentials = {

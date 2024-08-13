@@ -338,7 +338,7 @@ async function setupCodeQLBundlePreferringZstd(
 ): Promise<setupCodeql.SetupCodeQLResult> {
   let zstdError: unknown = undefined;
 
-  if (await features.getValue(Feature.ZstdBundle)) {
+  if (!toolsInput && (await features.getValue(Feature.ZstdBundle))) {
     try {
       return await setupCodeql.setupCodeQLBundle(
         toolsInput,

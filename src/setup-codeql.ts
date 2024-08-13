@@ -45,11 +45,9 @@ function getCodeQLBundleBaseName(): string {
   return `codeql-bundle-${platform}`;
 }
 
-async function getCodeQLBundleName(useStdBundle: boolean): Promise<string> {
-  if (useStdBundle) {
-    return `${getCodeQLBundleBaseName()}.tar.zst`;
-  }
-  return `${getCodeQLBundleBaseName()}.tar.gz`;
+async function getCodeQLBundleName(useZstdBundle: boolean): Promise<string> {
+  const extension = useZstdBundle ? "tar.zst" : "tar.gz";
+  return `${getCodeQLBundleBaseName()}.${extension}`;
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
@@ -69,7 +67,7 @@ export function getCodeQLActionRepository(logger: Logger): string {
 async function getCodeQLBundleDownloadURL(
   tagName: string,
   apiDetails: api.GitHubApiDetails,
-  useStdBundle: boolean,
+  useZstdBundle: boolean,
   logger: Logger,
 ): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository(logger);
@@ -88,7 +86,7 @@ async function getCodeQLBundleDownloadURL(
       return !self.slice(0, index).some((other) => deepEqual(source, other));
     },
   );
-  const codeQLBundleName = await getCodeQLBundleName(useStdBundle);
+  const codeQLBundleName = await getCodeQLBundleName(useZstdBundle);
   for (const downloadSource of uniqueDownloadSources) {
     const [apiURL, repository] = downloadSource;
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
@@ -238,7 +236,7 @@ export async function getCodeQLSource(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
-  useStdBundle: boolean,
+  useZstdBundle: boolean,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
   if (
@@ -435,7 +433,7 @@ export async function getCodeQLSource(
     url = await getCodeQLBundleDownloadURL(
       tagName!,
       apiDetails,
-      useStdBundle,
+      useZstdBundle,
       logger,
     );
   }
@@ -475,7 +473,10 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
+type CompressionMethod = "gzip" | "zstd";
+
 export interface ToolsDownloadStatusReport {
+  compressionMethod: CompressionMethod;
   downloadDurationMs: number;
   extractionDurationMs: number;
 }
@@ -540,7 +541,9 @@ export const downloadCodeQL = async function (
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
-  const extractedBundlePath = await extractBundle(archivedBundlePath);
+  const { compressionMethod, extractedBundlePath } = await extractBundle(
+    archivedBundlePath,
+  );
   const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
     `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
@@ -558,6 +561,7 @@ export const downloadCodeQL = async function (
     return {
       codeqlFolder: extractedBundlePath,
       statusReport: {
+        compressionMethod,
         downloadDurationMs,
         extractionDurationMs,
       },
@@ -589,6 +593,7 @@ export const downloadCodeQL = async function (
   return {
     codeqlFolder: toolcachedBundlePath,
     statusReport: {
+      compressionMethod,
       downloadDurationMs,
       extractionDurationMs,
     },
@@ -643,12 +648,6 @@ export interface SetupCodeQLResult {
 /**
  * Obtains the CodeQL bundle, installs it in the toolcache if appropriate, and extracts it.
  *
- * @param toolsInput
- * @param apiDetails
- * @param tempDir
- * @param variant
- * @param defaultCliVersion
- * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
  * @returns the path to the extracted bundle, and the version of the tools
@@ -659,7 +658,7 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  useStdBundle: boolean,
+  useZstdBundle: boolean,
   logger: Logger,
 ): Promise<SetupCodeQLResult> {
   const source = await getCodeQLSource(
@@ -667,7 +666,7 @@ export async function setupCodeQLBundle(
     defaultCliVersion,
     apiDetails,
     variant,
-    useStdBundle,
+    useZstdBundle,
     logger,
   );
 
@@ -724,9 +723,26 @@ async function cleanUpGlob(glob: string, name: string, logger: Logger) {
   }
 }
 
-async function extractBundle(archivedBundlePath: string): Promise<string> {
+async function extractBundle(archivedBundlePath: string): Promise<{
+  compressionMethod: CompressionMethod;
+  extractedBundlePath: string;
+}> {
   if (archivedBundlePath.endsWith(".tar.gz")) {
-    return await toolcache.extractTar(archivedBundlePath);
+    return {
+      compressionMethod: "gzip",
+      // While we could also ask tar to autodetect the compression method,
+      // we defensively keep the gzip call identical as requesting a gzipped
+      // bundle will soon be a fallback option.
+      extractedBundlePath: await toolcache.extractTar(archivedBundlePath),
+    };
   }
-  return await toolcache.extractTar(archivedBundlePath, undefined, "x");
+  return {
+    compressionMethod: "zstd",
+    // tar will autodetect the compression method
+    extractedBundlePath: await toolcache.extractTar(
+      archivedBundlePath,
+      undefined,
+      "x",
+    ),
+  };
 }

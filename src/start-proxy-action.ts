@@ -30,6 +30,10 @@ export type Credential = {
   token?: string;
 };
 
+function CredentialToStr(c: Credential): string {
+  return `Type: ${c.type}; Host: ${c.host}; Username: ${c.username}; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`
+}
+
 export type BasicAuthCredentials = {
   username: string;
   password: string;
@@ -99,7 +103,7 @@ async function runWrapper() {
 
   // Get the configuration options
   const credentials = getCredentials();
-  logger.debug(`Credentials loaded for the following URLs:\n ${credentials.map(c => c.host).join("\n")}`)
+  logger.info(`Credentials loaded for the following URLs:\n ${credentials.map(c => CredentialToStr(c)).join("\n")}`);
 
   const ca = generateCertificateAuthority();
   const proxyAuth = getProxyAuth();

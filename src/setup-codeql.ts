@@ -461,6 +461,11 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
+export interface ToolsDownloadStatusReport {
+  downloadDurationMs: number;
+  extractionDurationMs: number;
+}
+
 // Exported using `export const` for testing purposes. Specifically, we want to
 // be able to stub this function and have other functions in this file use that stub.
 export const downloadCodeQL = async function (
@@ -471,9 +476,9 @@ export const downloadCodeQL = async function (
   tempDir: string,
   logger: Logger,
 ): Promise<{
-  toolsVersion: string;
   codeqlFolder: string;
-  toolsDownloadDurationMs: number;
+  statusReport: ToolsDownloadStatusReport;
+  toolsVersion: string;
 }> {
   const parsedCodeQLURL = new URL(codeqlURL);
   const searchParams = new URLSearchParams(parsedCodeQLURL.search);
@@ -513,20 +518,18 @@ export const downloadCodeQL = async function (
     authorization,
     finalHeaders,
   );
-  const toolsDownloadDurationMs = Math.round(
-    performance.now() - toolsDownloadStart,
-  );
+  const downloadDurationMs = Math.round(performance.now() - toolsDownloadStart);
 
   logger.debug(
-    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${toolsDownloadDurationMs} ms).`,
+    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${downloadDurationMs} ms).`,
   );
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
   const extractedBundlePath = await toolcache.extractTar(archivedBundlePath);
-  const extractionMs = Math.round(performance.now() - extractionStart);
+  const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
-    `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionMs} ms).`,
+    `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
   );
   await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
 
@@ -539,9 +542,12 @@ export const downloadCodeQL = async function (
         `URL ${codeqlURL}.`,
     );
     return {
-      toolsVersion: maybeCliVersion ?? "unknown",
       codeqlFolder: extractedBundlePath,
-      toolsDownloadDurationMs,
+      statusReport: {
+        downloadDurationMs,
+        extractionDurationMs,
+      },
+      toolsVersion: maybeCliVersion ?? "unknown",
     };
   }
 
@@ -567,9 +573,12 @@ export const downloadCodeQL = async function (
   }
 
   return {
-    toolsVersion: maybeCliVersion ?? toolcacheVersion,
     codeqlFolder: toolcachedBundlePath,
-    toolsDownloadDurationMs,
+    statusReport: {
+      downloadDurationMs,
+      extractionDurationMs,
+    },
+    toolsVersion: maybeCliVersion ?? toolcacheVersion,
   };
 };
 
@@ -632,7 +641,7 @@ export async function setupCodeQLBundle(
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
-  toolsDownloadDurationMs?: number;
+  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
 }> {
@@ -646,7 +655,7 @@ export async function setupCodeQLBundle(
 
   let codeqlFolder: string;
   let toolsVersion = source.toolsVersion;
-  let toolsDownloadDurationMs: number | undefined;
+  let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsSource: ToolsSource;
   switch (source.sourceType) {
     case "local":
@@ -669,14 +678,14 @@ export async function setupCodeQLBundle(
       );
       toolsVersion = result.toolsVersion;
       codeqlFolder = result.codeqlFolder;
-      toolsDownloadDurationMs = result.toolsDownloadDurationMs;
+      toolsDownloadStatusReport = result.statusReport;
       toolsSource = ToolsSource.Download;
       break;
     }
     default:
       util.assertNever(source);
   }
-  return { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion };
+  return { codeqlFolder, toolsDownloadStatusReport, toolsSource, toolsVersion };
 }
 
 async function cleanUpGlob(glob: string, name: string, logger: Logger) {

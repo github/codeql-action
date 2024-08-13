@@ -31,7 +31,7 @@ import * as setupCodeql from "./setup-codeql";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, wrapError } from "./util";
+import { BuildMode, wrapError, cloneObject } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -350,20 +350,24 @@ export async function setupCodeQL(
   checkVersion: boolean,
 ): Promise<{
   codeql: CodeQL;
-  toolsDownloadDurationMs?: number;
+  toolsDownloadStatusReport?: setupCodeql.ToolsDownloadStatusReport;
   toolsSource: setupCodeql.ToolsSource;
   toolsVersion: string;
 }> {
   try {
-    const { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion } =
-      await setupCodeql.setupCodeQLBundle(
-        toolsInput,
-        apiDetails,
-        tempDir,
-        variant,
-        defaultCliVersion,
-        logger,
-      );
+    const {
+      codeqlFolder,
+      toolsDownloadStatusReport,
+      toolsSource,
+      toolsVersion,
+    } = await setupCodeql.setupCodeQLBundle(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      defaultCliVersion,
+      logger,
+    );
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
@@ -376,7 +380,7 @@ export async function setupCodeQL(
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
     return {
       codeql: cachedCodeQL,
-      toolsDownloadDurationMs,
+      toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
     };
@@ -1304,10 +1308,6 @@ async function generateCodeScanningConfig(
 
   fs.writeFileSync(codeScanningConfigFile, yaml.dump(augmentedConfig));
   return codeScanningConfigFile;
-}
-
-function cloneObject<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj)) as T;
 }
 
 // This constant sets the size of each TRAP cache in megabytes.

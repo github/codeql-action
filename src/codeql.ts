@@ -327,6 +327,56 @@ export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
  */
 const CODEQL_VERSION_INCLUDE_QUERY_HELP = "2.15.2";
 
+async function setupCodeQLBundlePreferringZstd(
+  toolsInput: string | undefined,
+  apiDetails: api.GitHubApiDetails,
+  tempDir: string,
+  variant: util.GitHubVariant,
+  defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<setupCodeql.SetupCodeQLResult> {
+  let zstdError: unknown = undefined;
+
+  if (await features.getValue(Feature.ZstdBundle)) {
+    try {
+      return await setupCodeql.setupCodeQLBundle(
+        toolsInput,
+        apiDetails,
+        tempDir,
+        variant,
+        defaultCliVersion,
+        true,
+        logger,
+      );
+    } catch (e) {
+      logger.info(
+        "Failed to set up bundle compressed using zstd, falling back to bundle compressed using gzip.",
+      );
+      zstdError = e;
+    }
+  }
+
+  const result = await setupCodeql.setupCodeQLBundle(
+    toolsInput,
+    apiDetails,
+    tempDir,
+    variant,
+    defaultCliVersion,
+    false,
+    logger,
+  );
+
+  if (zstdError) {
+    result.toolsDownloadStatusReport = Object.assign(
+      {},
+      result.toolsDownloadStatusReport,
+      { zstdError: wrapError(zstdError).message },
+    );
+  }
+  return result;
+}
+
 /**
  * Set up CodeQL CLI access.
  *
@@ -361,7 +411,7 @@ export async function setupCodeQL(
       toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
-    } = await setupCodeql.setupCodeQLBundle(
+    } = await setupCodeQLBundlePreferringZstd(
       toolsInput,
       apiDetails,
       tempDir,
@@ -370,6 +420,7 @@ export async function setupCodeQL(
       features,
       logger,
     );
+
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
     if (process.platform === "win32") {
       codeqlCmd += ".exe";

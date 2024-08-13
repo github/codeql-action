@@ -526,7 +526,7 @@ export const downloadCodeQL = async function (
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
-  const extractedBundlePath = await toolcache.extractTar(archivedBundlePath);
+  const extractedBundlePath = await extractBundle(archivedBundlePath);
   const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
     `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
@@ -704,4 +704,11 @@ async function cleanUpGlob(glob: string, name: string, logger: Logger) {
   } catch (e) {
     logger.warning(`Failed to clean up ${name}: ${e}.`);
   }
+}
+
+async function extractBundle(archivedBundlePath: string): Promise<string> {
+  if (archivedBundlePath.endsWith(".tar.gz")) {
+    return await toolcache.extractTar(archivedBundlePath);
+  }
+  return await toolcache.extractTar(archivedBundlePath, undefined, "x");
 }

@@ -881,6 +881,15 @@ function parseRegistries(
   }
 }
 
+export function parseRegistriesWithoutCredentials(
+  registriesInput?: string,
+): RegistryConfigNoCredentials[] | undefined {
+  return parseRegistries(registriesInput)?.map((r) => {
+    const { url, packages } = r;
+    return { url, packages };
+  });
+}
+
 function isLocal(configPath: string): boolean {
   // If the path starts with ./, look locally
   if (configPath.indexOf("./") === 0) {

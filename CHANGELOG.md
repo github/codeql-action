@@ -8,6 +8,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 - Update default CodeQL bundle version to 2.18.2. [#2417](https://github.com/github/codeql-action/pull/2417)
 
+## 3.26.1 - 13 Aug 2024
+
+No user facing changes.
+
 ## 3.26.0 - 06 Aug 2024
 
 - _Deprecation:_ Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner if this affects you. [#2403](https://github.com/github/codeql-action/pull/2403)

@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
-## [UNRELEASED]
+## 3.26.2 - 14 Aug 2024
 
 - Update default CodeQL bundle version to 2.18.2. [#2417](https://github.com/github/codeql-action/pull/2417)
 

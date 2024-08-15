@@ -6,8 +6,8 @@ import * as toolcache from "@actions/tool-cache";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
-import * as util from "./util";
 import { getActionsLogger, Logger } from "./logging";
+import * as util from "./util";
 
 const UPDATEJOB_PROXY = "update-job-proxy";
 const UPDATEJOB_PROXY_VERSION = "v2.0.20240722180912";
@@ -100,7 +100,11 @@ async function runWrapper() {
 
   // Get the configuration options
   const credentials = getCredentials(logger);
-  logger.info(`Credentials loaded for the following registries:\n ${credentials.map(c => credentialToStr(c)).join("\n")}`);
+  logger.info(
+    `Credentials loaded for the following registries:\n ${credentials
+      .map((c) => credentialToStr(c))
+      .join("\n")}`,
+  );
 
   const ca = generateCertificateAuthority();
   const proxyAuth = getProxyAuth();
@@ -116,7 +120,12 @@ async function runWrapper() {
   await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
 }
 
-async function startProxy(binPath: string, config: ProxyConfig, logFilePath: string, logger: Logger) {
+async function startProxy(
+  binPath: string,
+  config: ProxyConfig,
+  logFilePath: string,
+  logger: Logger,
+) {
   const host = "127.0.0.1";
   let port = 49152;
   try {
@@ -170,10 +179,12 @@ async function startProxy(binPath: string, config: ProxyConfig, logFilePath: str
 // It prefers `registries_credentials` over `registry_secrets`.
 // If neither is set, it returns an empty array.
 function getCredentials(logger: Logger): Credential[] {
-  const registriesCredentials = actionsUtil.getOptionalInput("registries_credentials");
+  const registriesCredentials = actionsUtil.getOptionalInput(
+    "registries_credentials",
+  );
   const registrySecrets = actionsUtil.getOptionalInput("registry_secrets");
 
-  var credentialsStr: string;
+  let credentialsStr: string;
   if (registriesCredentials !== undefined) {
     logger.info(`Using registries_credentials input.`);
     credentialsStr = Buffer.from(registriesCredentials, "base64").toString();
@@ -187,25 +198,25 @@ function getCredentials(logger: Logger): Credential[] {
 
   // Parse and validate the credentials
   const parsed = JSON.parse(credentialsStr) as Credential[];
-  let out: Credential[] = []
-  parsed.forEach(e => {
+  const out: Credential[] = [];
+  for (const e of parsed) {
     if (e.url === undefined && e.host === undefined) {
-      throw "Invalid credentials - must specify host or url"
+      throw new Error("Invalid credentials - must specify host or url");
     }
     out.push({
-        type: e.type,
-        host: e.host,
-        url: e.url,
-        username: e.username,
-        password: e.password,
-        token: e.token,
-    })
-  });
+      type: e.type,
+      host: e.host,
+      url: e.url,
+      username: e.username,
+      password: e.password,
+      token: e.token,
+    });
+  }
   return out;
 }
 
 // getProxyAuth returns the authentication information for the proxy itself.
-function getProxyAuth(): BasicAuthCredentials | undefined{
+function getProxyAuth(): BasicAuthCredentials | undefined {
   const proxy_password = actionsUtil.getOptionalInput("proxy_password");
   if (proxy_password) {
     return {
@@ -213,9 +224,8 @@ function getProxyAuth(): BasicAuthCredentials | undefined{
       password: proxy_password,
     };
   }
-  return ;
+  return;
 }
-
 
 async function getProxyBinaryPath(): Promise<string> {
   let proxyBin = toolcache.find(UPDATEJOB_PROXY, UPDATEJOB_PROXY_VERSION);
@@ -233,8 +243,9 @@ async function getProxyBinaryPath(): Promise<string> {
 }
 
 function credentialToStr(c: Credential): string {
-  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${c.username}; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`
+  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
+    c.username
+  }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;
 }
-
 
 void runWrapper();

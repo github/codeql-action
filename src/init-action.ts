@@ -44,6 +44,7 @@ import {
   sendStatusReport,
 } from "./status-report";
 import { ToolsFeature } from "./tools-features";
+import { unsetTracerEnvVarForCurrentProcess } from "./tracer-config";
 import { getTotalCacheSize } from "./trap-caching";
 import {
   checkDiskUsage,
@@ -614,6 +615,10 @@ async function run() {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
         core.exportVariable(key, value);
       }
+      // core.exportVariable() sets the environment variables for the current step as well as
+      // future steps. We unset the the DYLD_INSERT_BINARIES variable for the current process
+      // to prevent interference with later system calls.
+      unsetTracerEnvVarForCurrentProcess();
     }
 
     // Write diagnostics to the database that we previously stored in memory because the database

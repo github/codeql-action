@@ -32,6 +32,7 @@ import {
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
+import { unsetTracerEnvVarForCurrentProcess } from "./tracer-config";
 import {
   cleanupTrapCaches,
   getTotalCacheSize,
@@ -188,6 +189,11 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
 }
 
 async function run() {
+  // If the autobuild Action already ran, we have already unset this environment variable.
+  if (process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") {
+    unsetTracerEnvVarForCurrentProcess();
+  }
+
   const startedAt = new Date();
   let uploadResult: UploadResult | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;

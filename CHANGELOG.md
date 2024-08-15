@@ -7,6 +7,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.18.2. [#2417](https://github.com/github/codeql-action/pull/2417)
+- Fix a bug where system calls in the Action, such as `df`, would fail on ARM machines with System Integrity Protection disabled due to injected build tracer environment variables. [#2428](https://github.com/github/codeql-action/pull/2428)
 
 ## 3.26.1 - 13 Aug 2024
 

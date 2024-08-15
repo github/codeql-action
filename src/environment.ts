@@ -26,6 +26,8 @@ export enum EnvVar {
    */
   DISABLE_DUPLICATE_LOCATION_FIX = "CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX",
 
+  DYLD_INSERT_BINARIES = "DYLD_INSERT_BINARIES",
+
   /**
    * Whether the CodeQL Action is using its own deprecated and non-standard way of scanning for
    * multiple languages.

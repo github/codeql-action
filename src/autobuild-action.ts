@@ -19,7 +19,10 @@ import {
   sendStatusReport,
   ActionName,
 } from "./status-report";
-import { endTracingForCluster } from "./tracer-config";
+import {
+  endTracingForCluster,
+  unsetTracerEnvVarForCurrentProcess,
+} from "./tracer-config";
 import {
   checkActionVersion,
   checkDiskUsage,
@@ -73,6 +76,8 @@ async function run() {
   let currentLanguage: Language | undefined;
   let languages: Language[] | undefined;
   try {
+    unsetTracerEnvVarForCurrentProcess();
+
     const statusReportBase = await createStatusReportBase(
       ActionName.Autobuild,
       "starting",

@@ -3,6 +3,7 @@ import * as path from "path";
 
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
+import { EnvVar } from "./environment";
 import { isTracedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsFeature } from "./tools-features";
@@ -127,4 +128,13 @@ export async function getCombinedTracerConfig(
   }
 
   return mainTracerConfig;
+}
+
+/**
+ * Unsets the DYLD_INSERT_BINARIES environment variable for the current process.
+ * This method is called to prevent the environment variable from interfering with
+ * later system calls in this process.
+ */
+export function unsetTracerEnvVarForCurrentProcess(): void {
+  delete process.env[EnvVar.DYLD_INSERT_BINARIES];
 }

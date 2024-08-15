@@ -136,5 +136,5 @@ export async function getCombinedTracerConfig(
  * later system calls in this process.
  */
 export function unsetTracerEnvVarForCurrentProcess(): void {
-  delete process.env[EnvVar.DYLD_INSERT_BINARIES];
+  process.env[EnvVar.DYLD_INSERT_BINARIES] = "";
 }

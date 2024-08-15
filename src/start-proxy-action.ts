@@ -17,12 +17,12 @@ const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
 
-export type CertificateAuthority = {
+type CertificateAuthority = {
   cert: string;
   key: string;
 };
 
-export type Credential = {
+type Credential = {
   type: string;
   host?: string;
   url?: string;
@@ -31,16 +31,12 @@ export type Credential = {
   token?: string;
 };
 
-function CredentialToStr(c: Credential): string {
-  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${c.username}; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`
-}
-
-export type BasicAuthCredentials = {
+type BasicAuthCredentials = {
   username: string;
   password: string;
 };
 
-export type ProxyConfig = {
+type ProxyConfig = {
   all_credentials: Credential[];
   ca: CertificateAuthority;
   proxy_auth?: BasicAuthCredentials;
@@ -103,8 +99,8 @@ async function runWrapper() {
   core.saveState("proxy-log-file", proxyLogFilePath);
 
   // Get the configuration options
-  const credentials = getCredentials();
-  logger.info(`Credentials loaded for the following URLs:\n ${credentials.map(c => CredentialToStr(c)).join("\n")}`);
+  const credentials = getCredentials(logger);
+  logger.info(`Credentials loaded for the following registries:\n ${credentials.map(c => credentialToStr(c)).join("\n")}`);
 
   const ca = generateCertificateAuthority();
   const proxyAuth = getProxyAuth();
@@ -173,15 +169,39 @@ async function startProxy(binPath: string, config: ProxyConfig, logFilePath: str
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.
 // If neither is set, it returns an empty array.
-function getCredentials(): Credential[] {
-  const encodedCredentials = actionsUtil.getOptionalInput("registries_credentials");
-  if (encodedCredentials !== undefined) {
-    const credentialsStr = Buffer.from(encodedCredentials, "base64").toString();
-    return JSON.parse(credentialsStr) as Credential[];
+function getCredentials(logger: Logger): Credential[] {
+  const registriesCredentials = actionsUtil.getOptionalInput("registries_credentials");
+  const registrySecrets = actionsUtil.getOptionalInput("registry_secrets");
+
+  var credentialsStr: string;
+  if (registriesCredentials !== undefined) {
+    logger.info(`Using registries_credentials input.`);
+    credentialsStr = Buffer.from(registriesCredentials, "base64").toString();
+  } else if (registrySecrets !== undefined) {
+    logger.info(`Using registry_secrets input.`);
+    credentialsStr = registrySecrets;
+  } else {
+    logger.info(`No credentials defined.`);
+    return [];
   }
-  core.info(`Using structured credentials.`);
-  const registrySecrets = actionsUtil.getOptionalInput("registry_secrets") || "[]";
-  return JSON.parse(registrySecrets) as Credential[];
+
+  // Parse and validate the credentials
+  const parsed = JSON.parse(credentialsStr) as Credential[];
+  let out: Credential[] = []
+  parsed.forEach(e => {
+    if (e.url === undefined && e.host === undefined) {
+      throw "Invalid credentials - must specify host or url"
+    }
+    out.push({
+        type: e.type,
+        host: e.host,
+        url: e.url,
+        username: e.username,
+        password: e.password,
+        token: e.token,
+    })
+  });
+  return out;
 }
 
 // getProxyAuth returns the authentication information for the proxy itself.
@@ -211,5 +231,10 @@ async function getProxyBinaryPath(): Promise<string> {
   proxyBin = path.join(proxyBin, UPDATEJOB_PROXY);
   return proxyBin;
 }
+
+function credentialToStr(c: Credential): string {
+  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${c.username}; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`
+}
+
 
 void runWrapper();

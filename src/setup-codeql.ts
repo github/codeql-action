@@ -720,11 +720,14 @@ export async function setupCodeQLBundle(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<SetupCodeQLResult> {
+  let tarVersion: tar.TarVersion | undefined = undefined;
   let zstdError: unknown = undefined;
 
   if (!toolsInput && (await features.getValue(Feature.ZstdBundle))) {
     try {
-      if (await tar.isZstdAvailable(logger)) {
+      const availableResult = await tar.isZstdAvailable(logger);
+      tarVersion = availableResult.version;
+      if (availableResult.available) {
         return await setupCodeQLBundleWithZstdOption(
           toolsInput,
           apiDetails,
@@ -759,13 +762,12 @@ export async function setupCodeQLBundle(
     logger,
   );
 
-  if (zstdError) {
-    result.toolsDownloadStatusReport = Object.assign(
-      {},
-      result.toolsDownloadStatusReport,
-      { zstdError: wrapError(zstdError).message },
-    );
-  }
+  result.toolsDownloadStatusReport = Object.assign(
+    {},
+    result.toolsDownloadStatusReport,
+    tarVersion ? { tarVersion } : {},
+    zstdError ? { zstdError: wrapError(zstdError).message } : {},
+  );
   return result;
 }
 

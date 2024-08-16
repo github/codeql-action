@@ -15,10 +15,15 @@ import * as api from "./api-client";
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
 // these dependents.
 import * as defaults from "./defaults.json";
-import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { Logger } from "./logging";
+import * as tar from "./tar";
 import * as util from "./util";
-import { isGoodVersion } from "./util";
+import { isGoodVersion, wrapError } from "./util";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -473,10 +478,8 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
-type CompressionMethod = "gzip" | "zstd";
-
 export interface ToolsDownloadStatusReport {
-  compressionMethod: CompressionMethod;
+  compressionMethod: tar.CompressionMethod;
   downloadDurationMs: number;
   extractionDurationMs: number;
 }
@@ -541,9 +544,8 @@ export const downloadCodeQL = async function (
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
-  const { compressionMethod, extractedBundlePath } = await extractBundle(
-    archivedBundlePath,
-  );
+  const { compressionMethod, outputPath: extractedBundlePath } =
+    await tar.extract(archivedBundlePath);
   const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
     `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
@@ -646,13 +648,12 @@ export interface SetupCodeQLResult {
 }
 
 /**
- * Obtains the CodeQL bundle, installs it in the toolcache if appropriate, and extracts it.
+ * Sets up a CodeQL bundle.
  *
- * @param checkVersion Whether to check that CodeQL CLI meets the minimum
- *        version requirement. Must be set to true outside tests.
- * @returns the path to the extracted bundle, and the version of the tools
+ * If `useZstdBundle` is true, and the requested CodeQL bundle needs to be downloaded,
+ * this function will attempt to download a zstd-compressed bundle.
  */
-export async function setupCodeQLBundle(
+async function setupCodeQLBundleWithZstdOption(
   toolsInput: string | undefined,
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
@@ -705,6 +706,69 @@ export async function setupCodeQLBundle(
   return { codeqlFolder, toolsDownloadStatusReport, toolsSource, toolsVersion };
 }
 
+/**
+ * Obtains the CodeQL bundle, installs it in the toolcache if appropriate, and extracts it.
+ *
+ * @returns the path to the extracted bundle, and the version of the tools
+ */
+export async function setupCodeQLBundle(
+  toolsInput: string | undefined,
+  apiDetails: api.GitHubApiDetails,
+  tempDir: string,
+  variant: util.GitHubVariant,
+  defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<SetupCodeQLResult> {
+  let zstdError: unknown = undefined;
+
+  if (!toolsInput && (await features.getValue(Feature.ZstdBundle))) {
+    try {
+      if (await tar.isZstdAvailable(logger)) {
+        return await setupCodeQLBundleWithZstdOption(
+          toolsInput,
+          apiDetails,
+          tempDir,
+          variant,
+          defaultCliVersion,
+          true,
+          logger,
+        );
+      } else {
+        logger.debug(
+          "Falling back to bundle compressed using gzip because the available version of tar was not " +
+            "recognized or is too old.",
+        );
+      }
+    } catch (e) {
+      logger.info(
+        "Failed to set up bundle compressed using zstd, falling back to bundle compressed using gzip.",
+      );
+      logger.debug(`Underlying error: ${e}`);
+      zstdError = e;
+    }
+  }
+
+  const result = await setupCodeQLBundleWithZstdOption(
+    toolsInput,
+    apiDetails,
+    tempDir,
+    variant,
+    defaultCliVersion,
+    false,
+    logger,
+  );
+
+  if (zstdError) {
+    result.toolsDownloadStatusReport = Object.assign(
+      {},
+      result.toolsDownloadStatusReport,
+      { zstdError: wrapError(zstdError).message },
+    );
+  }
+  return result;
+}
+
 async function cleanUpGlob(glob: string, name: string, logger: Logger) {
   logger.debug(`Cleaning up ${name}.`);
   try {
@@ -721,28 +785,4 @@ async function cleanUpGlob(glob: string, name: string, logger: Logger) {
   } catch (e) {
     logger.warning(`Failed to clean up ${name}: ${e}.`);
   }
-}
-
-async function extractBundle(archivedBundlePath: string): Promise<{
-  compressionMethod: CompressionMethod;
-  extractedBundlePath: string;
-}> {
-  if (archivedBundlePath.endsWith(".tar.gz")) {
-    return {
-      compressionMethod: "gzip",
-      // While we could also ask tar to autodetect the compression method,
-      // we defensively keep the gzip call identical as requesting a gzipped
-      // bundle will soon be a fallback option.
-      extractedBundlePath: await toolcache.extractTar(archivedBundlePath),
-    };
-  }
-  return {
-    compressionMethod: "zstd",
-    // tar will autodetect the compression method
-    extractedBundlePath: await toolcache.extractTar(
-      archivedBundlePath,
-      undefined,
-      "x",
-    ),
-  };
 }

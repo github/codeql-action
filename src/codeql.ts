@@ -28,6 +28,7 @@ import {
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
+import { setupCodeQLBundle } from "./setup-codeql";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
@@ -327,56 +328,6 @@ export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
  */
 const CODEQL_VERSION_INCLUDE_QUERY_HELP = "2.15.2";
 
-async function setupCodeQLBundlePreferringZstd(
-  toolsInput: string | undefined,
-  apiDetails: api.GitHubApiDetails,
-  tempDir: string,
-  variant: util.GitHubVariant,
-  defaultCliVersion: CodeQLDefaultVersionInfo,
-  features: FeatureEnablement,
-  logger: Logger,
-): Promise<setupCodeql.SetupCodeQLResult> {
-  let zstdError: unknown = undefined;
-
-  if (!toolsInput && (await features.getValue(Feature.ZstdBundle))) {
-    try {
-      return await setupCodeql.setupCodeQLBundle(
-        toolsInput,
-        apiDetails,
-        tempDir,
-        variant,
-        defaultCliVersion,
-        true,
-        logger,
-      );
-    } catch (e) {
-      logger.info(
-        "Failed to set up bundle compressed using zstd, falling back to bundle compressed using gzip.",
-      );
-      zstdError = e;
-    }
-  }
-
-  const result = await setupCodeql.setupCodeQLBundle(
-    toolsInput,
-    apiDetails,
-    tempDir,
-    variant,
-    defaultCliVersion,
-    false,
-    logger,
-  );
-
-  if (zstdError) {
-    result.toolsDownloadStatusReport = Object.assign(
-      {},
-      result.toolsDownloadStatusReport,
-      { zstdError: wrapError(zstdError).message },
-    );
-  }
-  return result;
-}
-
 /**
  * Set up CodeQL CLI access.
  *
@@ -411,7 +362,7 @@ export async function setupCodeQL(
       toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
-    } = await setupCodeQLBundlePreferringZstd(
+    } = await setupCodeQLBundle(
       toolsInput,
       apiDetails,
       tempDir,

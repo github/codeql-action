@@ -11,6 +11,7 @@ import {
   LoggedMessage,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
+  createFeatures,
   getRecordingLogger,
   mockBundleDownloadApi,
   setupActionsVars,
@@ -172,7 +173,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
-      false,
+      createFeatures([]),
       logger,
     );
 
@@ -220,7 +221,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
-      false,
+      createFeatures([]),
       logger,
     );
 

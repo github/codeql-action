@@ -8,7 +8,7 @@ import { assertNever } from "./util";
 const MIN_REQUIRED_BSD_TAR_VERSION = "3.4.3";
 const MIN_REQUIRED_GNU_TAR_VERSION = "1.31";
 
-type TarVersion = {
+export type TarVersion = {
   type: "gnu" | "bsd";
   version: string;
 };
@@ -46,15 +46,24 @@ async function getTarVersion(): Promise<TarVersion> {
   }
 }
 
-export async function isZstdAvailable(logger: Logger): Promise<boolean> {
+export async function isZstdAvailable(
+  logger: Logger,
+): Promise<{ available: boolean; version?: TarVersion }> {
   try {
-    const { type, version } = await getTarVersion();
+    const tarVersion = await getTarVersion();
+    const { type, version } = tarVersion;
     logger.info(`Found ${type} tar version ${version}.`);
     switch (type) {
       case "gnu":
-        return version >= MIN_REQUIRED_GNU_TAR_VERSION;
+        return {
+          available: version >= MIN_REQUIRED_GNU_TAR_VERSION,
+          version: tarVersion,
+        };
       case "bsd":
-        return version >= MIN_REQUIRED_BSD_TAR_VERSION;
+        return {
+          available: version >= MIN_REQUIRED_BSD_TAR_VERSION,
+          version: tarVersion,
+        };
       default:
         assertNever(type);
     }
@@ -63,7 +72,7 @@ export async function isZstdAvailable(logger: Logger): Promise<boolean> {
       "Failed to determine tar version, therefore will assume zstd may not be available. " +
         `The underlying error was: ${e}`,
     );
-    return false;
+    return { available: false };
   }
 }
 

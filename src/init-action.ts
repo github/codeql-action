@@ -42,6 +42,7 @@ import {
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
+import { isZstdAvailable } from "./tar";
 import { ToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
@@ -375,6 +376,8 @@ async function run() {
   try {
     cleanupDatabaseClusterDirectory(config, logger);
 
+    await logZstdAvailability(config, logger);
+
     // Log CodeQL download telemetry, if appropriate
     if (toolsDownloadStatusReport) {
       addDiagnostic(
@@ -668,6 +671,29 @@ function getTrapCachingEnabled(): boolean {
 
   // On hosted runners, enable TRAP caching by default
   return true;
+}
+
+async function logZstdAvailability(config: configUtils.Config, logger: Logger) {
+  // Log zstd availability
+  const zstdAvailableResult = await isZstdAvailable(logger);
+  addDiagnostic(
+    config,
+    // Arbitrarily choose the first language. We could also choose all languages, but that
+    // increases the risk of misinterpreting the data.
+    config.languages[0],
+    makeDiagnostic(
+      "codeql-action/zstd-availability",
+      "Zstandard availability",
+      {
+        attributes: zstdAvailableResult,
+        visibility: {
+          cliSummaryTable: false,
+          statusPage: false,
+          telemetry: true,
+        },
+      },
+    ),
+  );
 }
 
 async function runWrapper() {

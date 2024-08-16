@@ -17,6 +17,7 @@ import * as api from "./api-client";
 import * as defaults from "./defaults.json";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Logger } from "./logging";
+import * as tar from "./tar";
 import * as util from "./util";
 import { isGoodVersion } from "./util";
 
@@ -461,10 +462,8 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
-type CompressionMethod = "gzip" | "zstd";
-
 export interface ToolsDownloadStatusReport {
-  compressionMethod: CompressionMethod;
+  compressionMethod: tar.CompressionMethod;
   downloadDurationMs: number;
   extractionDurationMs: number;
 }
@@ -529,9 +528,8 @@ export const downloadCodeQL = async function (
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
-  const { extractedBundlePath, compressionMethod } = await extractBundle(
-    archivedBundlePath,
-  );
+  const { compressionMethod, outputPath: extractedBundlePath } =
+    await tar.extract(archivedBundlePath);
   const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
     `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
@@ -705,28 +703,4 @@ async function cleanUpGlob(glob: string, name: string, logger: Logger) {
   } catch (e) {
     logger.warning(`Failed to clean up ${name}: ${e}.`);
   }
-}
-
-async function extractBundle(archivedBundlePath: string): Promise<{
-  compressionMethod: CompressionMethod;
-  extractedBundlePath: string;
-}> {
-  if (archivedBundlePath.endsWith(".tar.gz")) {
-    return {
-      compressionMethod: "gzip",
-      // While we could also ask tar to autodetect the compression method,
-      // we defensively keep the gzip call identical as requesting a gzipped
-      // bundle will soon be a fallback option.
-      extractedBundlePath: await toolcache.extractTar(archivedBundlePath),
-    };
-  }
-  return {
-    compressionMethod: "zstd",
-    // tar will autodetect the compression method
-    extractedBundlePath: await toolcache.extractTar(
-      archivedBundlePath,
-      undefined,
-      "x",
-    ),
-  };
 }

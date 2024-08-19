@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Fix an issue where the CodeQL Action could not write diagnostic messages on Windows. This issue did not impact analysis quality. [#2430](https://github.com/github/codeql-action/pull/2430)
 
 ## 3.26.2 - 14 Aug 2024
 

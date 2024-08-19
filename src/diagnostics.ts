@@ -145,7 +145,8 @@ function writeDiagnostic(
 
     const jsonPath = path.resolve(
       diagnosticsPath,
-      `codeql-action-${diagnostic.timestamp}.json`,
+      // Remove colons from the timestamp as these are not allowed in Windows filenames.
+      `codeql-action-${diagnostic.timestamp.replaceAll(":", "")}.json`,
     );
 
     writeFileSync(jsonPath, JSON.stringify(diagnostic));

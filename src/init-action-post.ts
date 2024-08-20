@@ -81,7 +81,7 @@ async function runWrapper() {
       getActionsStatus(error),
       startedAt,
       config,
-      await checkDiskUsage(),
+      await checkDiskUsage(logger),
       logger,
       error.message,
       error.stack,
@@ -99,7 +99,7 @@ async function runWrapper() {
     "success",
     startedAt,
     config,
-    await checkDiskUsage(),
+    await checkDiskUsage(logger),
     logger,
   );
   if (statusReportBase !== undefined) {

@@ -8,6 +8,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 - _Deprecation:_ Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner if this affects you. [#2403](https://github.com/github/codeql-action/pull/2403)
 - Bump the minimum CodeQL bundle version to 2.13.5. [#2408](https://github.com/github/codeql-action/pull/2408)
+- _Deprecation:_ The `add-snippets` input on the `analyze` Action is deprecated and will be removed in the first release in August 2025.
 
 ## 3.25.15 - 26 Jul 2024
 

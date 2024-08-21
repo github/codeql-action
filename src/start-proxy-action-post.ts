@@ -3,8 +3,7 @@
  * It will run after the all steps in this job, in reverse order in relation to
  * other `post:` hooks.
  */
-import * as fs from "fs";
-
+import * as artifact from "@actions/artifact";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -29,9 +28,24 @@ async function runWrapper() {
 
   if ((config && config.debugMode) || core.isDebug()) {
     const logFilePath = core.getState("proxy-log-file");
-    if (logFilePath) {
-      const readStream = fs.createReadStream(logFilePath);
-      readStream.pipe(process.stdout, { end: true });
+    core.info(
+      "Debug mode is on. Uploading proxy log as Actions debugging artifact...",
+    );
+    try {
+      await artifact
+        .create()
+        .uploadArtifact(
+          "proxy-log-file",
+          [logFilePath],
+          actionsUtil.getTemporaryDirectory(),
+          {
+            continueOnError: true,
+            retentionDays: 7,
+          },
+        );
+    } catch (e) {
+      // A failure to upload debug artifacts should not fail the entire action.
+      core.warning(`Failed to upload debug artifacts: ${e}`);
     }
   }
 }

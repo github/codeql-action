@@ -39,7 +39,7 @@ async function run() {
       "starting",
       startedAt,
       config,
-      await checkDiskUsage(),
+      await checkDiskUsage(logger),
       logger,
     );
     if (statusReportBase !== undefined) {
@@ -86,7 +86,7 @@ async function run() {
         getActionsStatus(error),
         startedAt,
         config,
-        await checkDiskUsage(),
+        await checkDiskUsage(logger),
         logger,
         error.message,
         error.stack,
@@ -104,7 +104,7 @@ async function run() {
     "success",
     startedAt,
     config,
-    await checkDiskUsage(),
+    await checkDiskUsage(logger),
     logger,
   );
   if (statusReportBase !== undefined) {

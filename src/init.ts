@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as exec from "@actions/exec/lib/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
@@ -12,7 +11,7 @@ import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
-import { ToolsSource } from "./setup-codeql";
+import { ToolsDownloadStatusReport, ToolsSource } from "./setup-codeql";
 import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
@@ -26,12 +25,12 @@ export async function initCodeQL(
   logger: Logger,
 ): Promise<{
   codeql: CodeQL;
-  toolsDownloadDurationMs?: number;
+  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
 }> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion } =
+  const { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion } =
     await setupCodeQL(
       toolsInput,
       apiDetails,
@@ -43,7 +42,7 @@ export async function initCodeQL(
     );
   await codeql.printVersion();
   logger.endGroup();
-  return { codeql, toolsDownloadDurationMs, toolsSource, toolsVersion };
+  return { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion };
 }
 
 export async function initConfig(
@@ -138,38 +137,6 @@ export async function checkInstallPython311(
     await new toolrunner.ToolRunner(await safeWhich.safeWhich("powershell"), [
       script,
     ]).exec();
-  }
-}
-
-// For MacOS runners: runs `csrutil status` to determine whether System
-// Integrity Protection is enabled.
-export async function isSipEnabled(
-  logger: Logger,
-): Promise<boolean | undefined> {
-  try {
-    const sipStatusOutput = await exec.getExecOutput("csrutil status");
-    if (sipStatusOutput.exitCode === 0) {
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: enabled.",
-        )
-      ) {
-        return true;
-      }
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: disabled.",
-        )
-      ) {
-        return false;
-      }
-    }
-    return undefined;
-  } catch (e) {
-    logger.warning(
-      `Failed to determine if System Integrity Protection was enabled: ${e}`,
-    );
-    return undefined;
   }
 }
 

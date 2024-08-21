@@ -6,6 +6,7 @@ import * as toolcache from "@actions/tool-cache";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
+import { getActionsLogger, Logger } from "./logging";
 import * as util from "./util";
 
 const UPDATEJOB_PROXY = "update-job-proxy";
@@ -16,25 +17,26 @@ const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
 
-export type CertificateAuthority = {
+type CertificateAuthority = {
   cert: string;
   key: string;
 };
 
-export type Credential = {
+type Credential = {
   type: string;
-  host: string;
+  host?: string;
+  url?: string;
   username?: string;
   password?: string;
   token?: string;
 };
 
-export type BasicAuthCredentials = {
+type BasicAuthCredentials = {
   username: string;
   password: string;
 };
 
-export type ProxyConfig = {
+type ProxyConfig = {
   all_credentials: Credential[];
   ca: CertificateAuthority;
   proxy_auth?: BasicAuthCredentials;
@@ -89,38 +91,42 @@ function generateCertificateAuthority(): CertificateAuthority {
 }
 
 async function runWrapper() {
-  const tempDir = actionsUtil.getTemporaryDirectory();
-  const logFilePath = path.resolve(tempDir, "proxy.log");
-  const input = actionsUtil.getOptionalInput("registry_secrets") || "[]";
-  const credentials = JSON.parse(input) as Credential[];
-  const ca = generateCertificateAuthority();
-  const proxy_password = actionsUtil.getOptionalInput("proxy_password");
-  core.saveState("proxy-log-file", logFilePath);
+  const logger = getActionsLogger();
 
-  let proxy_auth: BasicAuthCredentials | undefined = undefined;
-  if (proxy_password) {
-    proxy_auth = {
-      username: PROXY_USER,
-      password: proxy_password,
-    };
-  }
+  // Setup logging for the proxy
+  const tempDir = actionsUtil.getTemporaryDirectory();
+  const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
+  core.saveState("proxy-log-file", proxyLogFilePath);
+
+  // Get the configuration options
+  const credentials = getCredentials(logger);
+  logger.info(
+    `Credentials loaded for the following registries:\n ${credentials
+      .map((c) => credentialToStr(c))
+      .join("\n")}`,
+  );
+
+  const ca = generateCertificateAuthority();
+  const proxyAuth = getProxyAuth();
+
   const proxyConfig: ProxyConfig = {
     all_credentials: credentials,
     ca,
-    proxy_auth,
+    proxy_auth: proxyAuth,
   };
+
+  // Start the Proxy
+  const proxyBin = await getProxyBinaryPath();
+  await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
+}
+
+async function startProxy(
+  binPath: string,
+  config: ProxyConfig,
+  logFilePath: string,
+  logger: Logger,
+) {
   const host = "127.0.0.1";
-  let proxyBin = toolcache.find(UPDATEJOB_PROXY, UPDATEJOB_PROXY_VERSION);
-  if (!proxyBin) {
-    const temp = await toolcache.downloadTool(UPDATEJOB_PROXY_URL);
-    const extracted = await toolcache.extractTar(temp);
-    proxyBin = await toolcache.cacheDir(
-      extracted,
-      UPDATEJOB_PROXY,
-      UPDATEJOB_PROXY_VERSION,
-    );
-  }
-  proxyBin = path.join(proxyBin, UPDATEJOB_PROXY);
   let port = 49152;
   try {
     let subprocess: ChildProcess | undefined = undefined;
@@ -128,7 +134,7 @@ async function runWrapper() {
     let subprocessError: Error | undefined = undefined;
     while (tries-- > 0 && !subprocess && !subprocessError) {
       subprocess = spawn(
-        proxyBin,
+        binPath,
         ["-addr", `${host}:${port}`, "-config", "-", "-logfile", logFilePath],
         {
           detached: true,
@@ -149,7 +155,7 @@ async function runWrapper() {
           subprocess = undefined;
         }
       });
-      subprocess.stdin?.write(JSON.stringify(proxyConfig));
+      subprocess.stdin?.write(JSON.stringify(config));
       subprocess.stdin?.end();
       // Wait a little to allow the proxy to start
       await util.delay(1000);
@@ -158,15 +164,88 @@ async function runWrapper() {
       // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw subprocessError;
     }
-    core.info(`Proxy started on ${host}:${port}`);
+    logger.info(`Proxy started on ${host}:${port}`);
     core.setOutput("proxy_host", host);
     core.setOutput("proxy_port", port.toString());
-    core.setOutput("proxy_ca_certificate", ca.cert);
+    core.setOutput("proxy_ca_certificate", config.ca.cert);
   } catch (error) {
     core.setFailed(
       `start-proxy action failed: ${util.wrapError(error).message}`,
     );
   }
+}
+
+// getCredentials returns registry credentials from action inputs.
+// It prefers `registries_credentials` over `registry_secrets`.
+// If neither is set, it returns an empty array.
+function getCredentials(logger: Logger): Credential[] {
+  const registriesCredentials = actionsUtil.getOptionalInput(
+    "registries_credentials",
+  );
+  const registrySecrets = actionsUtil.getOptionalInput("registry_secrets");
+
+  let credentialsStr: string;
+  if (registriesCredentials !== undefined) {
+    logger.info(`Using registries_credentials input.`);
+    credentialsStr = Buffer.from(registriesCredentials, "base64").toString();
+  } else if (registrySecrets !== undefined) {
+    logger.info(`Using registry_secrets input.`);
+    credentialsStr = registrySecrets;
+  } else {
+    logger.info(`No credentials defined.`);
+    return [];
+  }
+
+  // Parse and validate the credentials
+  const parsed = JSON.parse(credentialsStr) as Credential[];
+  const out: Credential[] = [];
+  for (const e of parsed) {
+    if (e.url === undefined && e.host === undefined) {
+      throw new Error("Invalid credentials - must specify host or url");
+    }
+    out.push({
+      type: e.type,
+      host: e.host,
+      url: e.url,
+      username: e.username,
+      password: e.password,
+      token: e.token,
+    });
+  }
+  return out;
+}
+
+// getProxyAuth returns the authentication information for the proxy itself.
+function getProxyAuth(): BasicAuthCredentials | undefined {
+  const proxy_password = actionsUtil.getOptionalInput("proxy_password");
+  if (proxy_password) {
+    return {
+      username: PROXY_USER,
+      password: proxy_password,
+    };
+  }
+  return;
+}
+
+async function getProxyBinaryPath(): Promise<string> {
+  let proxyBin = toolcache.find(UPDATEJOB_PROXY, UPDATEJOB_PROXY_VERSION);
+  if (!proxyBin) {
+    const temp = await toolcache.downloadTool(UPDATEJOB_PROXY_URL);
+    const extracted = await toolcache.extractTar(temp);
+    proxyBin = await toolcache.cacheDir(
+      extracted,
+      UPDATEJOB_PROXY,
+      UPDATEJOB_PROXY_VERSION,
+    );
+  }
+  proxyBin = path.join(proxyBin, UPDATEJOB_PROXY);
+  return proxyBin;
+}
+
+function credentialToStr(c: Credential): string {
+  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
+    c.username
+  }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;
 }
 
 void runWrapper();

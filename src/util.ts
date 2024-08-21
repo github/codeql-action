@@ -4,6 +4,7 @@ import * as path from "path";
 import { promisify } from "util";
 
 import * as core from "@actions/core";
+import * as exec from "@actions/exec/lib/exec";
 import checkDiskSpace from "check-disk-space";
 import del from "del";
 import getFolderSize from "get-folder-size";
@@ -1013,14 +1014,23 @@ export interface DiskUsage {
 }
 
 export async function checkDiskUsage(
-  logger?: Logger,
+  logger: Logger,
 ): Promise<DiskUsage | undefined> {
   try {
+    // We avoid running the `df` binary under the hood for macOS ARM runners with SIP disabled.
+    if (
+      process.platform === "darwin" &&
+      (process.arch === "arm" || process.arch === "arm64") &&
+      !(await isSipEnabled(logger))
+    ) {
+      return undefined;
+    }
+
     const diskUsage = await checkDiskSpace(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
     );
     const gbInBytes = 1024 * 1024 * 1024;
-    if (logger && diskUsage.free < 2 * gbInBytes) {
+    if (diskUsage.free < 2 * gbInBytes) {
       const message =
         "The Actions runner is running low on disk space " +
         `(${(diskUsage.free / gbInBytes).toPrecision(4)} GB available).`;
@@ -1036,11 +1046,9 @@ export async function checkDiskUsage(
       numTotalBytes: diskUsage.size,
     };
   } catch (error) {
-    if (logger) {
-      logger.warning(
-        `Failed to check available disk space: ${getErrorMessage(error)}`,
-      );
-    }
+    logger.warning(
+      `Failed to check available disk space: ${getErrorMessage(error)}`,
+    );
     return undefined;
   }
 }
@@ -1103,4 +1111,36 @@ export enum BuildMode {
 
 export function cloneObject<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
+}
+
+// For MacOS runners: runs `csrutil status` to determine whether System
+// Integrity Protection is enabled.
+export async function isSipEnabled(
+  logger: Logger,
+): Promise<boolean | undefined> {
+  try {
+    const sipStatusOutput = await exec.getExecOutput("csrutil status");
+    if (sipStatusOutput.exitCode === 0) {
+      if (
+        sipStatusOutput.stdout.includes(
+          "System Integrity Protection status: enabled.",
+        )
+      ) {
+        return true;
+      }
+      if (
+        sipStatusOutput.stdout.includes(
+          "System Integrity Protection status: disabled.",
+        )
+      ) {
+        return false;
+      }
+    }
+    return undefined;
+  } catch (e) {
+    logger.warning(
+      `Failed to determine if System Integrity Protection was enabled: ${e}`,
+    );
+    return undefined;
+  }
 }

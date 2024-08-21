@@ -29,7 +29,6 @@ import {
   cleanupDatabaseClusterDirectory,
   initCodeQL,
   initConfig,
-  isSipEnabled,
   runInit,
 } from "./init";
 import { Language } from "./languages";
@@ -57,6 +56,7 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
+  isSipEnabled,
   ConfigurationError,
   wrapError,
   checkActionVersion,
@@ -355,7 +355,7 @@ async function run() {
       error instanceof ConfigurationError ? "user-error" : "aborted",
       startedAt,
       config,
-      await checkDiskUsage(),
+      await checkDiskUsage(logger),
       logger,
       error.message,
       error.stack,

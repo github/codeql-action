@@ -4,6 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
+## 3.26.4 - 21 Aug 2024
+
+- _Deprecation:_ The `add-snippets` input on the `analyze` Action is deprecated and will be removed in the first release in August 2025. [#2436](https://github.com/github/codeql-action/pull/2436)
+- Fix an issue where the disk usage system call used for telemetry would fail on MacOS ARM machines with System Integrity Protection disabled, and then surface a warning. The system call is now disabled for these machines. [#2434](https://github.com/github/codeql-action/pull/2434)
+
 ## 3.26.3 - 19 Aug 2024
 
 - Fix an issue where the CodeQL Action could not write diagnostic messages on Windows. This issue did not impact analysis quality. [#2430](https://github.com/github/codeql-action/pull/2430)

@@ -1,11 +1,14 @@
 name: "CodeQL: Start proxy"
-description: "[Experimental] Start HTTP proxy server"
+description: "[Experimental] Start HTTP proxy server. This action is for internal GitHub used only and will change without notice."
 author: "GitHub"
 inputs:
   registry_secrets:
     description: The URLs and credentials of package registries
     required: false
     default: "[]"
+  registries_credentials:
+    description: Base64 encoded JSON configuration for the URLs and credentials of the package registries
+    required: false
   proxy_password:
     required: false
     description: The password of the proxy

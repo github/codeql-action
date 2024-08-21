@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as exec from "@actions/exec/lib/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as safeWhich from "@chrisgavin/safe-which";
 
@@ -138,38 +137,6 @@ export async function checkInstallPython311(
     await new toolrunner.ToolRunner(await safeWhich.safeWhich("powershell"), [
       script,
     ]).exec();
-  }
-}
-
-// For MacOS runners: runs `csrutil status` to determine whether System
-// Integrity Protection is enabled.
-export async function isSipEnabled(
-  logger: Logger,
-): Promise<boolean | undefined> {
-  try {
-    const sipStatusOutput = await exec.getExecOutput("csrutil status");
-    if (sipStatusOutput.exitCode === 0) {
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: enabled.",
-        )
-      ) {
-        return true;
-      }
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: disabled.",
-        )
-      ) {
-        return false;
-      }
-    }
-    return undefined;
-  } catch (e) {
-    logger.warning(
-      `Failed to determine if System Integrity Protection was enabled: ${e}`,
-    );
-    return undefined;
   }
 }
 

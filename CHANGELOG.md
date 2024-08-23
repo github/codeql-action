@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Fix an issue where the `csrutil` system call used for telemetry would fail on MacOS ARM machines with System Integrity Protection disabled. [#2441](https://github.com/github/codeql-action/pull/2441)
 
 ## 3.26.4 - 21 Aug 2024
 

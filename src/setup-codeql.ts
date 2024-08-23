@@ -657,10 +657,12 @@ export async function setupCodeQLBundle(
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsSource: ToolsSource;
   switch (source.sourceType) {
-    case "local":
-      codeqlFolder = await toolcache.extractTar(source.codeqlTarPath);
+    case "local": {
+      const { outputPath } = await tar.extract(source.codeqlTarPath);
+      codeqlFolder = outputPath;
       toolsSource = ToolsSource.Local;
       break;
+    }
     case "toolcache":
       codeqlFolder = source.codeqlFolder;
       logger.debug(`CodeQL found in cache ${codeqlFolder}`);

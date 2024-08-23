@@ -15,15 +15,11 @@ import * as api from "./api-client";
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
 // these dependents.
 import * as defaults from "./defaults.json";
-import {
-  CodeQLDefaultVersionInfo,
-  Feature,
-  FeatureEnablement,
-} from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import * as tar from "./tar";
 import * as util from "./util";
-import { isGoodVersion, wrapError } from "./util";
+import { isGoodVersion } from "./util";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -717,40 +713,10 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  features: FeatureEnablement,
+  _features: FeatureEnablement,
   logger: Logger,
 ): Promise<SetupCodeQLResult> {
-  let zstdError: unknown = undefined;
-
   const availableResult = await tar.isZstdAvailable(logger);
-
-  if (!toolsInput && (await features.getValue(Feature.ZstdBundle))) {
-    try {
-      if (availableResult.available) {
-        return await setupCodeQLBundleWithZstdOption(
-          toolsInput,
-          apiDetails,
-          tempDir,
-          variant,
-          defaultCliVersion,
-          true,
-          logger,
-        );
-      } else {
-        logger.debug(
-          "Falling back to bundle compressed using gzip because the available version of tar was not " +
-            "recognized or is too old.",
-        );
-      }
-    } catch (e) {
-      logger.info(
-        "Failed to set up bundle compressed using zstd, falling back to bundle compressed using gzip.",
-      );
-      logger.debug(`Underlying error: ${e}`);
-      zstdError = e;
-    }
-  }
-
   const result = await setupCodeQLBundleWithZstdOption(
     toolsInput,
     apiDetails,
@@ -765,7 +731,6 @@ export async function setupCodeQLBundle(
     {},
     result.toolsDownloadStatusReport,
     { tarVersion: availableResult.version },
-    zstdError ? { zstdError: wrapError(zstdError).message } : {},
   );
   return result;
 }

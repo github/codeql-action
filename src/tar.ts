@@ -78,23 +78,26 @@ export async function isZstdAvailable(
 
 export type CompressionMethod = "gzip" | "zstd";
 
-export async function extract(path: string): Promise<{
-  compressionMethod: CompressionMethod;
-  outputPath: string;
-}> {
-  if (path.endsWith(".tar.gz")) {
-    return {
-      compressionMethod: "gzip",
+export async function extract(
+  path: string,
+  compressionMethod: CompressionMethod,
+): Promise<string> {
+  switch (compressionMethod) {
+    case "gzip":
       // While we could also ask tar to autodetect the compression method,
       // we defensively keep the gzip call identical as requesting a gzipped
       // bundle will soon be a fallback option.
-      outputPath: await toolcache.extractTar(path),
-    };
+      return await toolcache.extractTar(path);
+    case "zstd":
+      // By specifying only the "x" flag, we ask tar to autodetect the
+      // compression method.
+      return await toolcache.extractTar(path, undefined, "x");
   }
-  return {
-    compressionMethod: "zstd",
-    // By specifying only the "x" flag, we ask tar to autodetect the compression
-    // method.
-    outputPath: await toolcache.extractTar(path, undefined, "x"),
-  };
+}
+
+export function inferCompressionMethod(path: string): CompressionMethod {
+  if (path.endsWith(".tar.gz")) {
+    return "gzip";
+  }
+  return "zstd";
 }

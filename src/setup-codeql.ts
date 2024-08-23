@@ -507,6 +507,7 @@ export const downloadCodeQL = async function (
     `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
   );
 
+  const compressionMethod = tar.inferCompressionMethod(codeqlURL);
   const dest = path.join(tempDir, uuidV4());
   const finalHeaders = Object.assign(
     { "User-Agent": "CodeQL Action" },
@@ -528,8 +529,10 @@ export const downloadCodeQL = async function (
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
-  const { compressionMethod, outputPath: extractedBundlePath } =
-    await tar.extract(archivedBundlePath);
+  const extractedBundlePath = await tar.extract(
+    archivedBundlePath,
+    compressionMethod,
+  );
   const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
     `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
@@ -658,8 +661,10 @@ export async function setupCodeQLBundle(
   let toolsSource: ToolsSource;
   switch (source.sourceType) {
     case "local": {
-      const { outputPath } = await tar.extract(source.codeqlTarPath);
-      codeqlFolder = outputPath;
+      const compressionMethod = tar.inferCompressionMethod(
+        source.codeqlTarPath,
+      );
+      codeqlFolder = await tar.extract(source.codeqlTarPath, compressionMethod);
       toolsSource = ToolsSource.Local;
       break;
     }

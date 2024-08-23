@@ -1122,7 +1122,7 @@ export async function checkSipEnablement(
 ): Promise<boolean | undefined> {
   if (
     process.env[EnvVar.IS_SIP_ENABLED] !== undefined &&
-    process.env[EnvVar.IS_SIP_ENABLED] in ["true", "false"]
+    ["true", "false"].includes(process.env[EnvVar.IS_SIP_ENABLED])
   ) {
     return process.env[EnvVar.IS_SIP_ENABLED] === "true";
   }

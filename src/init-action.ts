@@ -634,7 +634,7 @@ async function run() {
     await sendCompletedStatusReport(
       startedAt,
       config,
-      undefined,  // We only report config info on success.
+      undefined, // We only report config info on success.
       toolsDownloadStatusReport,
       toolsFeatureFlagsValid,
       toolsSource,

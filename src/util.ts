@@ -1120,7 +1120,10 @@ export function cloneObject<T>(obj: T): T {
 export async function checkSipEnablement(
   logger: Logger,
 ): Promise<boolean | undefined> {
-  if (process.env[EnvVar.IS_SIP_ENABLED] !== undefined) {
+  if (
+    process.env[EnvVar.IS_SIP_ENABLED] !== undefined &&
+    process.env[EnvVar.IS_SIP_ENABLED] in ["true", "false"]
+  ) {
     return process.env[EnvVar.IS_SIP_ENABLED] === "true";
   }
 

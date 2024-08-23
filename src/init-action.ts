@@ -48,6 +48,7 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
+  checkSipEnablement,
   codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -56,7 +57,6 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
-  isSipEnabled,
   ConfigurationError,
   wrapError,
   checkActionVersion,
@@ -555,7 +555,7 @@ async function run() {
       !(await codeQlVersionAtLeast(codeql, "2.15.1")) &&
       process.platform === "darwin" &&
       (process.arch === "arm" || process.arch === "arm64") &&
-      !(await isSipEnabled(logger))
+      !(await checkSipEnablement(logger))
     ) {
       logger.warning(
         "CodeQL versions 2.15.0 and lower are not supported on MacOS ARM machines with System Integrity Protection (SIP) disabled.",

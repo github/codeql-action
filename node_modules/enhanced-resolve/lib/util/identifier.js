@@ -5,7 +5,8 @@
 
 "use strict";
 
-const PATH_QUERY_FRAGMENT_REGEXP = /^(#?(?:\0.|[^?#\0])*)(\?(?:\0.|[^#\0])*)?(#.*)?$/;
+const PATH_QUERY_FRAGMENT_REGEXP =
+	/^(#?(?:\0.|[^?#\0])*)(\?(?:\0.|[^#\0])*)?(#.*)?$/;
 
 /**
  * @param {string} identifier identifier

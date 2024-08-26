@@ -58,6 +58,8 @@ pnpm i -D eslint-plugin-import eslint-import-resolver-typescript
 yarn add -D eslint-plugin-import eslint-import-resolver-typescript
 ```
 
+**Important when using `eslint-plugin-i` and `npm`**: Use `npm i -D eslint-plugin-import@eslint-plugin-i@latest eslint-import-resolver-typescript`, or you will end up with both `eslint-plugin-import` and `eslint-plugin-i` in your node_modules.
+
 ## Configuration
 
 Add the following to your `.eslintrc` config:

@@ -32,7 +32,7 @@ module.exports = class ConditionalPlugin {
 	apply(resolver) {
 		const target = resolver.ensureHook(this.target);
 		const { test, message, allowAlternatives } = this;
-		const keys = Object.keys(test);
+		const keys = /** @type {(keyof ResolveRequest)[]} */ (Object.keys(test));
 		resolver
 			.getHook(this.source)
 			.tapAsync("ConditionalPlugin", (request, resolveContext, callback) => {

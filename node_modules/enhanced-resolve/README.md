@@ -1,5 +1,11 @@
 # enhanced-resolve
 
+[![npm][npm]][npm-url]
+[![Build Status][build-status]][build-status-url]
+[![codecov][codecov-badge]][codecov-url]
+[![Install Size][size]][size-url]
+[![GitHub Discussions][discussion]][discussion-url]
+
 Offers an async require.resolve function. It's highly configurable.
 
 ## Features
@@ -63,10 +69,10 @@ const myResolver = ResolverFactory.createResolver({
 
 // resolve a file with the new resolver
 const context = {};
-const resolveContext = {};
 const lookupStartPath = "/Users/webpack/some/root/dir";
 const request = "./path/to-look-up.js";
-myResolver.resolve({}, lookupStartPath, request, resolveContext, (
+const resolveContext = {};
+myResolver.resolve(context, lookupStartPath, request, resolveContext, (
 	err /*Error*/,
 	filepath /*string*/
 ) => {
@@ -83,7 +89,7 @@ myResolver.resolve({}, lookupStartPath, request, resolveContext, (
 | extensionAlias   | {}                          | An object which maps extension to extension aliases                                                                                                       |
 | cachePredicate   | function() { return true }; | A function which decides whether a request should be cached or not. An object is passed to the function with `path` and `request` properties.             |
 | cacheWithContext | true                        | If unsafe cache is enabled, includes `request.context` in the cache key                                                                                   |
-| conditionNames   | ["node"]                    | A list of exports field condition names                                                                                                                   |
+| conditionNames   | []                          | A list of exports field condition names                                                                                                                   |
 | descriptionFiles | ["package.json"]            | A list of description files to read from                                                                                                                  |
 | enforceExtension | false                       | Enforce that a extension from extensions must be used                                                                                                     |
 | exportsFields    | ["exports"]                 | A list of exports fields in description files                                                                                                             |
@@ -146,8 +152,6 @@ enhanced-resolve will try to resolve requests containing `#` as path and as frag
 yarn test
 ```
 
-[![Build Status](https://secure.travis-ci.org/webpack/enhanced-resolve.png?branch=main)](http://travis-ci.org/webpack/enhanced-resolve)
-
 ## Passing options from webpack
 
 If you are using `webpack`, and you want to pass custom options to `enhanced-resolve`, the options are passed from the `resolve` key of your webpack configuration e.g.:
@@ -166,3 +170,14 @@ resolve: {
 Copyright (c) 2012-2019 JS Foundation and other contributors
 
 MIT (http://www.opensource.org/licenses/mit-license.php)
+
+[npm]: https://img.shields.io/npm/v/enhanced-resolve.svg
+[npm-url]: https://www.npmjs.com/package/enhanced-resolve
+[build-status]: https://github.com/webpack/enhanced-resolve/actions/workflows/test.yml/badge.svg?branch=master
+[build-status-url]: https://github.com/webpack/enhanced-resolve/actions
+[codecov-badge]: https://codecov.io/gh/webpack/enhanced-resolve/branch/main/graph/badge.svg?token=6B6NxtsZc3
+[codecov-url]: https://codecov.io/gh/webpack/enhanced-resolve
+[size]: https://packagephobia.com/badge?p=enhanced-resolve
+[size-url]: https://packagephobia.com/result?p=enhanced-resolve
+[discussion]: https://img.shields.io/github/discussions/webpack/webpack
+[discussion-url]: https://github.com/webpack/webpack/discussions

@@ -8,8 +8,20 @@
 const nextTick = require("process").nextTick;
 
 /** @typedef {import("./Resolver").FileSystem} FileSystem */
+/** @typedef {import("./Resolver").PathLike} PathLike */
+/** @typedef {import("./Resolver").PathOrFileDescriptor} PathOrFileDescriptor */
 /** @typedef {import("./Resolver").SyncFileSystem} SyncFileSystem */
+/** @typedef {FileSystem & SyncFileSystem} BaseFileSystem */
 
+/**
+ * @template T
+ * @typedef {import("./Resolver").FileSystemCallback<T>} FileSystemCallback<T>
+ */
+
+/**
+ * @param {string} path path
+ * @returns {string} dirname
+ */
 const dirname = path => {
 	let idx = path.length - 1;
 	while (idx >= 0) {
@@ -22,6 +34,12 @@ const dirname = path => {
 	return path.slice(0, idx);
 };
 
+/**
+ * @template T
+ * @param {FileSystemCallback<T>[]} callbacks callbacks
+ * @param {Error | null} err error
+ * @param {T} result result
+ */
 const runCallbacks = (callbacks, err, result) => {
 	if (callbacks.length === 1) {
 		callbacks[0](err, result);
@@ -42,9 +60,9 @@ const runCallbacks = (callbacks, err, result) => {
 
 class OperationMergerBackend {
 	/**
-	 * @param {any} provider async method
-	 * @param {any} syncProvider sync method
-	 * @param {any} providerContext call context for the provider methods
+	 * @param {Function | undefined} provider async method in filesystem
+	 * @param {Function | undefined} syncProvider sync method in filesystem
+	 * @param {BaseFileSystem} providerContext call context for the provider methods
 	 */
 	constructor(provider, syncProvider, providerContext) {
 		this._provider = provider;
@@ -53,22 +71,36 @@ class OperationMergerBackend {
 		this._activeAsyncOperations = new Map();
 
 		this.provide = this._provider
-			? (path, options, callback) => {
+			? /**
+			   * @param {PathLike | PathOrFileDescriptor} path path
+			   * @param {object | FileSystemCallback<any> | undefined} options options
+			   * @param {FileSystemCallback<any>=} callback callback
+			   * @returns {any} result
+			   */
+			  (path, options, callback) => {
 					if (typeof options === "function") {
-						callback = options;
+						callback = /** @type {FileSystemCallback<any>} */ (options);
 						options = undefined;
 					}
+					if (
+						typeof path !== "string" &&
+						!Buffer.isBuffer(path) &&
+						!(path instanceof URL) &&
+						typeof path !== "number"
+					) {
+						/** @type {Function} */
+						(callback)(
+							new TypeError("path must be a string, Buffer, URL or number")
+						);
+						return;
+					}
 					if (options) {
-						return this._provider.call(
+						return /** @type {Function} */ (this._provider).call(
 							this._providerContext,
 							path,
 							options,
 							callback
 						);
-					}
-					if (typeof path !== "string") {
-						callback(new TypeError("path must be a string"));
-						return;
 					}
 					let callbacks = this._activeAsyncOperations.get(path);
 					if (callbacks) {
@@ -76,15 +108,32 @@ class OperationMergerBackend {
 						return;
 					}
 					this._activeAsyncOperations.set(path, (callbacks = [callback]));
-					provider(path, (err, result) => {
-						this._activeAsyncOperations.delete(path);
-						runCallbacks(callbacks, err, result);
-					});
+					/** @type {Function} */
+					(provider)(
+						path,
+						/**
+						 * @param {Error} err error
+						 * @param {any} result result
+						 */
+						(err, result) => {
+							this._activeAsyncOperations.delete(path);
+							runCallbacks(callbacks, err, result);
+						}
+					);
 			  }
 			: null;
 		this.provideSync = this._syncProvider
-			? (path, options) => {
-					return this._syncProvider.call(this._providerContext, path, options);
+			? /**
+			   * @param {PathLike | PathOrFileDescriptor} path path
+			   * @param {object=} options options
+			   * @returns {any} result
+			   */
+			  (path, options) => {
+					return /** @type {Function} */ (this._syncProvider).call(
+						this._providerContext,
+						path,
+						options
+					);
 			  }
 			: null;
 	}
@@ -117,21 +166,29 @@ const STORAGE_MODE_IDLE = 0;
 const STORAGE_MODE_SYNC = 1;
 const STORAGE_MODE_ASYNC = 2;
 
+/**
+ * @callback Provide
+ * @param {PathLike | PathOrFileDescriptor} path path
+ * @param {any} options options
+ * @param {FileSystemCallback<any>} callback callback
+ * @returns {void}
+ */
+
 class CacheBackend {
 	/**
 	 * @param {number} duration max cache duration of items
-	 * @param {any} provider async method
-	 * @param {any} syncProvider sync method
-	 * @param {any} providerContext call context for the provider methods
+	 * @param {function | undefined} provider async method
+	 * @param {function | undefined} syncProvider sync method
+	 * @param {BaseFileSystem} providerContext call context for the provider methods
 	 */
 	constructor(duration, provider, syncProvider, providerContext) {
 		this._duration = duration;
 		this._provider = provider;
 		this._syncProvider = syncProvider;
 		this._providerContext = providerContext;
-		/** @type {Map<string, (function(Error, any): void)[]>} */
+		/** @type {Map<string, FileSystemCallback<any>[]>} */
 		this._activeAsyncOperations = new Map();
-		/** @type {Map<string, { err: Error, result: any, level: Set<string> }>} */
+		/** @type {Map<string, { err: Error | null, result?: any, level: Set<string> }>} */
 		this._data = new Map();
 		/** @type {Set<string>[]} */
 		this._levels = [];
@@ -147,21 +204,35 @@ class CacheBackend {
 		/** @type {number | undefined} */
 		this._nextDecay = undefined;
 
+		// @ts-ignore
 		this.provide = provider ? this.provide.bind(this) : null;
+		// @ts-ignore
 		this.provideSync = syncProvider ? this.provideSync.bind(this) : null;
 	}
 
+	/**
+	 * @param {PathLike | PathOrFileDescriptor} path path
+	 * @param {any} options options
+	 * @param {FileSystemCallback<any>} callback callback
+	 * @returns {void}
+	 */
 	provide(path, options, callback) {
 		if (typeof options === "function") {
 			callback = options;
 			options = undefined;
 		}
-		if (typeof path !== "string") {
-			callback(new TypeError("path must be a string"));
+		if (
+			typeof path !== "string" &&
+			!Buffer.isBuffer(path) &&
+			!(path instanceof URL) &&
+			typeof path !== "number"
+		) {
+			callback(new TypeError("path must be a string, Buffer, URL or number"));
 			return;
 		}
+		const strPath = typeof path !== "string" ? path.toString() : path;
 		if (options) {
-			return this._provider.call(
+			return /** @type {Function} */ (this._provider).call(
 				this._providerContext,
 				path,
 				options,
@@ -175,38 +246,66 @@ class CacheBackend {
 		}
 
 		// Check in cache
-		let cacheEntry = this._data.get(path);
+		let cacheEntry = this._data.get(strPath);
 		if (cacheEntry !== undefined) {
 			if (cacheEntry.err) return nextTick(callback, cacheEntry.err);
 			return nextTick(callback, null, cacheEntry.result);
 		}
 
 		// Check if there is already the same operation running
-		let callbacks = this._activeAsyncOperations.get(path);
+		let callbacks = this._activeAsyncOperations.get(strPath);
 		if (callbacks !== undefined) {
 			callbacks.push(callback);
 			return;
 		}
-		this._activeAsyncOperations.set(path, (callbacks = [callback]));
+		this._activeAsyncOperations.set(strPath, (callbacks = [callback]));
 
 		// Run the operation
-		this._provider.call(this._providerContext, path, (err, result) => {
-			this._activeAsyncOperations.delete(path);
-			this._storeResult(path, err, result);
+		/** @type {Function} */
+		(this._provider).call(
+			this._providerContext,
+			path,
+			/**
+			 * @param {Error | null} err error
+			 * @param {any} [result] result
+			 */
+			(err, result) => {
+				this._activeAsyncOperations.delete(strPath);
+				this._storeResult(strPath, err, result);
 
-			// Enter async mode if not yet done
-			this._enterAsyncMode();
+				// Enter async mode if not yet done
+				this._enterAsyncMode();
 
-			runCallbacks(callbacks, err, result);
-		});
+				runCallbacks(
+					/** @type {FileSystemCallback<any>[]} */ (callbacks),
+					err,
+					result
+				);
+			}
+		);
 	}
 
+	/**
+	 * @param {PathLike | PathOrFileDescriptor} path path
+	 * @param {any} options options
+	 * @returns {any} result
+	 */
 	provideSync(path, options) {
-		if (typeof path !== "string") {
+		if (
+			typeof path !== "string" &&
+			!Buffer.isBuffer(path) &&
+			!(path instanceof URL) &&
+			typeof path !== "number"
+		) {
 			throw new TypeError("path must be a string");
 		}
+		const strPath = typeof path !== "string" ? path.toString() : path;
 		if (options) {
-			return this._syncProvider.call(this._providerContext, path, options);
+			return /** @type {Function} */ (this._syncProvider).call(
+				this._providerContext,
+				path,
+				options
+			);
 		}
 
 		// In sync mode we may have to decay some cache items
@@ -215,7 +314,7 @@ class CacheBackend {
 		}
 
 		// Check in cache
-		let cacheEntry = this._data.get(path);
+		let cacheEntry = this._data.get(strPath);
 		if (cacheEntry !== undefined) {
 			if (cacheEntry.err) throw cacheEntry.err;
 			return cacheEntry.result;
@@ -223,26 +322,36 @@ class CacheBackend {
 
 		// Get all active async operations
 		// This sync operation will also complete them
-		const callbacks = this._activeAsyncOperations.get(path);
-		this._activeAsyncOperations.delete(path);
+		const callbacks = this._activeAsyncOperations.get(strPath);
+		this._activeAsyncOperations.delete(strPath);
 
 		// Run the operation
 		// When in idle mode, we will enter sync mode
 		let result;
 		try {
-			result = this._syncProvider.call(this._providerContext, path);
+			result = /** @type {Function} */ (this._syncProvider).call(
+				this._providerContext,
+				path
+			);
 		} catch (err) {
-			this._storeResult(path, err, undefined);
+			this._storeResult(strPath, /** @type {Error} */ (err), undefined);
 			this._enterSyncModeWhenIdle();
-			if (callbacks) runCallbacks(callbacks, err, undefined);
+			if (callbacks) {
+				runCallbacks(callbacks, /** @type {Error} */ (err), undefined);
+			}
 			throw err;
 		}
-		this._storeResult(path, undefined, result);
+		this._storeResult(strPath, null, result);
 		this._enterSyncModeWhenIdle();
-		if (callbacks) runCallbacks(callbacks, undefined, result);
+		if (callbacks) {
+			runCallbacks(callbacks, null, result);
+		}
 		return result;
 	}
 
+	/**
+	 * @param {string | Buffer | URL | number | (string | URL | Buffer | number)[] | Set<string | URL | Buffer | number>} [what] what to purge
+	 */
 	purge(what) {
 		if (!what) {
 			if (this._mode !== STORAGE_MODE_IDLE) {
@@ -252,9 +361,15 @@ class CacheBackend {
 				}
 				this._enterIdleMode();
 			}
-		} else if (typeof what === "string") {
+		} else if (
+			typeof what === "string" ||
+			Buffer.isBuffer(what) ||
+			what instanceof URL ||
+			typeof what === "number"
+		) {
+			const strWhat = typeof what !== "string" ? what.toString() : what;
 			for (let [key, data] of this._data) {
-				if (key.startsWith(what)) {
+				if (key.startsWith(strWhat)) {
 					this._data.delete(key);
 					data.level.delete(key);
 				}
@@ -265,7 +380,8 @@ class CacheBackend {
 		} else {
 			for (let [key, data] of this._data) {
 				for (const item of what) {
-					if (key.startsWith(item)) {
+					const strItem = typeof item !== "string" ? item.toString() : item;
+					if (key.startsWith(strItem)) {
 						this._data.delete(key);
 						data.level.delete(key);
 						break;
@@ -278,20 +394,35 @@ class CacheBackend {
 		}
 	}
 
+	/**
+	 * @param {string | Buffer | URL | number | (string | URL | Buffer | number)[] | Set<string | URL | Buffer | number>} [what] what to purge
+	 */
 	purgeParent(what) {
 		if (!what) {
 			this.purge();
-		} else if (typeof what === "string") {
-			this.purge(dirname(what));
+		} else if (
+			typeof what === "string" ||
+			Buffer.isBuffer(what) ||
+			what instanceof URL ||
+			typeof what === "number"
+		) {
+			const strWhat = typeof what !== "string" ? what.toString() : what;
+			this.purge(dirname(strWhat));
 		} else {
 			const set = new Set();
 			for (const item of what) {
-				set.add(dirname(item));
+				const strItem = typeof item !== "string" ? item.toString() : item;
+				set.add(dirname(strItem));
 			}
 			this.purge(set);
 		}
 	}
 
+	/**
+	 * @param {string} path path
+	 * @param {Error | null} err error
+	 * @param {any} result result
+	 */
 	_storeResult(path, err, result) {
 		if (this._data.has(path)) return;
 		const level = this._levels[this._currentLevel];
@@ -310,8 +441,8 @@ class CacheBackend {
 		if (this._data.size === 0) {
 			this._enterIdleMode();
 		} else {
-			// @ts-ignore _nextDecay is always a number in sync mode
-			this._nextDecay += this._tickInterval;
+			/** @type {number} */
+			(this._nextDecay) += this._tickInterval;
 		}
 	}
 
@@ -335,8 +466,12 @@ class CacheBackend {
 				break;
 			case STORAGE_MODE_SYNC:
 				this._runDecays();
-				// @ts-ignore _runDecays may change the mode
-				if (this._mode === STORAGE_MODE_IDLE) return;
+				// _runDecays may change the mode
+				if (
+					/** @type {STORAGE_MODE_IDLE | STORAGE_MODE_SYNC | STORAGE_MODE_ASYNC}*/
+					(this._mode) === STORAGE_MODE_IDLE
+				)
+					return;
 				timeout = Math.max(
 					0,
 					/** @type {number} */ (this._nextDecay) - Date.now()
@@ -366,6 +501,16 @@ class CacheBackend {
 	}
 }
 
+/**
+ * @template {function} Provider
+ * @template {function} AsyncProvider
+ * @template FileSystem
+ * @param {number} duration duration in ms files are cached
+ * @param {Provider | undefined} provider provider
+ * @param {AsyncProvider | undefined} syncProvider sync provider
+ * @param {BaseFileSystem} providerContext provider context
+ * @returns {OperationMergerBackend | CacheBackend} backend
+ */
 const createBackend = (duration, provider, syncProvider, providerContext) => {
 	if (duration > 0) {
 		return new CacheBackend(duration, provider, syncProvider, providerContext);
@@ -374,6 +519,10 @@ const createBackend = (duration, provider, syncProvider, providerContext) => {
 };
 
 module.exports = class CachedInputFileSystem {
+	/**
+	 * @param {BaseFileSystem} fileSystem file system
+	 * @param {number} duration duration in ms files are cached
+	 */
 	constructor(fileSystem, duration) {
 		this.fileSystem = fileSystem;
 
@@ -408,7 +557,9 @@ module.exports = class CachedInputFileSystem {
 		const readdir = this._readdirBackend.provide;
 		this.readdir = /** @type {FileSystem["readdir"]} */ (readdir);
 		const readdirSync = this._readdirBackend.provideSync;
-		this.readdirSync = /** @type {SyncFileSystem["readdirSync"]} */ (readdirSync);
+		this.readdirSync = /** @type {SyncFileSystem["readdirSync"]} */ (
+			readdirSync
+		);
 
 		this._readFileBackend = createBackend(
 			duration,
@@ -419,40 +570,57 @@ module.exports = class CachedInputFileSystem {
 		const readFile = this._readFileBackend.provide;
 		this.readFile = /** @type {FileSystem["readFile"]} */ (readFile);
 		const readFileSync = this._readFileBackend.provideSync;
-		this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */ (readFileSync);
+		this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */ (
+			readFileSync
+		);
 
 		this._readJsonBackend = createBackend(
 			duration,
+			// prettier-ignore
 			this.fileSystem.readJson ||
 				(this.readFile &&
-					((path, callback) => {
-						// @ts-ignore
-						this.readFile(path, (err, buffer) => {
-							if (err) return callback(err);
-							if (!buffer || buffer.length === 0)
-								return callback(new Error("No file content"));
-							let data;
-							try {
-								data = JSON.parse(buffer.toString("utf-8"));
-							} catch (e) {
-								return callback(e);
-							}
-							callback(null, data);
-						});
-					})),
+					(
+						/**
+						 * @param {string} path path
+						 * @param {FileSystemCallback<any>} callback
+						 */
+						(path, callback) => {
+							this.readFile(path, (err, buffer) => {
+								if (err) return callback(err);
+								if (!buffer || buffer.length === 0)
+									return callback(new Error("No file content"));
+								let data;
+								try {
+									data = JSON.parse(buffer.toString("utf-8"));
+								} catch (e) {
+									return callback(/** @type {Error} */ (e));
+								}
+								callback(null, data);
+							});
+						})
+				),
+			// prettier-ignore
 			this.fileSystem.readJsonSync ||
 				(this.readFileSync &&
-					(path => {
-						const buffer = this.readFileSync(path);
-						const data = JSON.parse(buffer.toString("utf-8"));
-						return data;
-					})),
+					(
+						/**
+						 * @param {string} path path
+						 * @returns {any} result
+						 */
+						(path) => {
+							const buffer = this.readFileSync(path);
+							const data = JSON.parse(buffer.toString("utf-8"));
+							return data;
+						}
+				 )),
 			this.fileSystem
 		);
 		const readJson = this._readJsonBackend.provide;
 		this.readJson = /** @type {FileSystem["readJson"]} */ (readJson);
 		const readJsonSync = this._readJsonBackend.provideSync;
-		this.readJsonSync = /** @type {SyncFileSystem["readJsonSync"]} */ (readJsonSync);
+		this.readJsonSync = /** @type {SyncFileSystem["readJsonSync"]} */ (
+			readJsonSync
+		);
 
 		this._readlinkBackend = createBackend(
 			duration,
@@ -463,9 +631,27 @@ module.exports = class CachedInputFileSystem {
 		const readlink = this._readlinkBackend.provide;
 		this.readlink = /** @type {FileSystem["readlink"]} */ (readlink);
 		const readlinkSync = this._readlinkBackend.provideSync;
-		this.readlinkSync = /** @type {SyncFileSystem["readlinkSync"]} */ (readlinkSync);
+		this.readlinkSync = /** @type {SyncFileSystem["readlinkSync"]} */ (
+			readlinkSync
+		);
+
+		this._realpathBackend = createBackend(
+			duration,
+			this.fileSystem.realpath,
+			this.fileSystem.realpathSync,
+			this.fileSystem
+		);
+		const realpath = this._realpathBackend.provide;
+		this.realpath = /** @type {FileSystem["realpath"]} */ (realpath);
+		const realpathSync = this._realpathBackend.provideSync;
+		this.realpathSync = /** @type {SyncFileSystem["realpathSync"]} */ (
+			realpathSync
+		);
 	}
 
+	/**
+	 * @param {string | Buffer | URL | number | (string | URL | Buffer | number)[] | Set<string | URL | Buffer | number>} [what] what to purge
+	 */
 	purge(what) {
 		this._statBackend.purge(what);
 		this._lstatBackend.purge(what);
@@ -473,5 +659,6 @@ module.exports = class CachedInputFileSystem {
 		this._readFileBackend.purge(what);
 		this._readlinkBackend.purge(what);
 		this._readJsonBackend.purge(what);
+		this._realpathBackend.purge(what);
 	}
 };

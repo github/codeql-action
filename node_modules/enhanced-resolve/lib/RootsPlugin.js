@@ -8,6 +8,7 @@
 const forEachBail = require("./forEachBail");
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 class RootsPlugin {
@@ -38,8 +39,14 @@ class RootsPlugin {
 
 				forEachBail(
 					this.roots,
+					/**
+					 * @param {string} root root
+					 * @param {(err?: null|Error, result?: null|ResolveRequest) => void} callback callback
+					 * @returns {void}
+					 */
 					(root, callback) => {
 						const path = resolver.join(root, req.slice(1));
+						/** @type {ResolveRequest} */
 						const obj = {
 							...request,
 							path,

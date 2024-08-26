@@ -10,6 +10,7 @@ const getPaths = require("./getPaths");
 const { getType, PathType } = require("./util/path");
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 module.exports = class SymlinkPlugin {
@@ -33,7 +34,7 @@ module.exports = class SymlinkPlugin {
 			.getHook(this.source)
 			.tapAsync("SymlinkPlugin", (request, resolveContext, callback) => {
 				if (request.ignoreSymlinks) return callback();
-				const pathsResult = getPaths(request.path);
+				const pathsResult = getPaths(/** @type {string} */ (request.path));
 				const pathSegments = pathsResult.segments;
 				const paths = pathsResult.paths;
 
@@ -41,13 +42,18 @@ module.exports = class SymlinkPlugin {
 				let idx = -1;
 				forEachBail(
 					paths,
+					/**
+					 * @param {string} path path
+					 * @param {(err?: null|Error, result?: null|number) => void} callback callback
+					 * @returns {void}
+					 */
 					(path, callback) => {
 						idx++;
 						if (resolveContext.fileDependencies)
 							resolveContext.fileDependencies.add(path);
 						fs.readlink(path, (err, result) => {
 							if (!err && result) {
-								pathSegments[idx] = result;
+								pathSegments[idx] = /** @type {string} */ (result);
 								containsSymlink = true;
 								// Shortcut when absolute symlink found
 								const resultType = getType(result.toString());
@@ -61,6 +67,11 @@ module.exports = class SymlinkPlugin {
 							callback();
 						});
 					},
+					/**
+					 * @param {null|Error} [err] error
+					 * @param {null|number} [idx] result
+					 * @returns {void}
+					 */
 					(err, idx) => {
 						if (!containsSymlink) return callback();
 						const resultSegments =
@@ -70,6 +81,7 @@ module.exports = class SymlinkPlugin {
 						const result = resultSegments.reduceRight((a, b) => {
 							return resolver.join(a, b);
 						});
+						/** @type {ResolveRequest} */
 						const obj = {
 							...request,
 							path: result

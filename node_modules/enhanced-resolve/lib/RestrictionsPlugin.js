@@ -11,6 +11,11 @@
 const slashCode = "/".charCodeAt(0);
 const backslashCode = "\\".charCodeAt(0);
 
+/**
+ * @param {string} path path
+ * @param {string} parent parent path
+ * @returns {boolean} true, if path is inside of parent
+ */
 const isInside = (path, parent) => {
 	if (!path.startsWith(parent)) return false;
 	if (path.length === parent.length) return true;

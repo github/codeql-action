@@ -8,8 +8,14 @@
 const basename = require("./getPaths").basename;
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
+/** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 module.exports = class CloneBasenamePlugin {
+	/**
+	 * @param {string | ResolveStepHook} source source
+	 * @param {string | ResolveStepHook} target target
+	 */
 	constructor(source, target) {
 		this.source = source;
 		this.target = target;
@@ -24,8 +30,10 @@ module.exports = class CloneBasenamePlugin {
 		resolver
 			.getHook(this.source)
 			.tapAsync("CloneBasenamePlugin", (request, resolveContext, callback) => {
-				const filename = basename(request.path);
-				const filePath = resolver.join(request.path, filename);
+				const requestPath = /** @type {string} */ (request.path);
+				const filename = /** @type {string} */ (basename(requestPath));
+				const filePath = resolver.join(requestPath, filename);
+				/** @type {ResolveRequest} */
 				const obj = {
 					...request,
 					path: filePath,

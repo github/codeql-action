@@ -6,6 +6,7 @@
 "use strict";
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 module.exports = class UseFilePlugin {
@@ -29,7 +30,12 @@ module.exports = class UseFilePlugin {
 		resolver
 			.getHook(this.source)
 			.tapAsync("UseFilePlugin", (request, resolveContext, callback) => {
-				const filePath = resolver.join(request.path, this.filename);
+				const filePath = resolver.join(
+					/** @type {string} */ (request.path),
+					this.filename
+				);
+
+				/** @type {ResolveRequest} */
 				const obj = {
 					...request,
 					path: filePath,

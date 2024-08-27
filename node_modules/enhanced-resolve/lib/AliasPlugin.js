@@ -11,7 +11,8 @@ const { PathType, getType } = require("./util/path");
 /** @typedef {import("./Resolver")} Resolver */
 /** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
-/** @typedef {{alias: string|Array<string>|false, name: string, onlyModule?: boolean}} AliasOption */
+/** @typedef {string | Array<string> | false} Alias */
+/** @typedef {{alias: Alias, name: string, onlyModule?: boolean}} AliasOption */
 
 module.exports = class AliasPlugin {
 	/**
@@ -31,6 +32,10 @@ module.exports = class AliasPlugin {
 	 */
 	apply(resolver) {
 		const target = resolver.ensureHook(this.target);
+		/**
+		 * @param {string} maybeAbsolutePath path
+		 * @returns {null|string} absolute path with slash ending
+		 */
 		const getAbsolutePathWithSlashEnding = maybeAbsolutePath => {
 			const type = getType(maybeAbsolutePath);
 			if (type === PathType.AbsolutePosix || type === PathType.AbsoluteWin) {
@@ -38,6 +43,11 @@ module.exports = class AliasPlugin {
 			}
 			return null;
 		};
+		/**
+		 * @param {string} path path
+		 * @param {string} maybeSubPath sub path
+		 * @returns {boolean} true, if path is sub path
+		 */
 		const isSubPath = (path, maybeSubPath) => {
 			const absolutePath = getAbsolutePathWithSlashEnding(maybeSubPath);
 			if (!absolutePath) return false;
@@ -51,6 +61,7 @@ module.exports = class AliasPlugin {
 				forEachBail(
 					this.options,
 					(item, callback) => {
+						/** @type {boolean} */
 						let shouldStop = false;
 						if (
 							innerRequest === item.name ||
@@ -59,7 +70,13 @@ module.exports = class AliasPlugin {
 									? innerRequest.startsWith(`${item.name}/`)
 									: isSubPath(innerRequest, item.name)))
 						) {
-							const remainingRequest = innerRequest.substr(item.name.length);
+							/** @type {string} */
+							const remainingRequest = innerRequest.slice(item.name.length);
+							/**
+							 * @param {Alias} alias alias
+							 * @param {(err?: null|Error, result?: null|ResolveRequest) => void} callback callback
+							 * @returns {void}
+							 */
 							const resolveWithAlias = (alias, callback) => {
 								if (alias === false) {
 									/** @type {ResolveRequest} */
@@ -79,6 +96,7 @@ module.exports = class AliasPlugin {
 								) {
 									shouldStop = true;
 									const newRequestStr = alias + remainingRequest;
+									/** @type {ResolveRequest} */
 									const obj = {
 										...request,
 										request: newRequestStr,
@@ -104,6 +122,11 @@ module.exports = class AliasPlugin {
 								}
 								return callback();
 							};
+							/**
+							 * @param {null|Error} [err] error
+							 * @param {null|ResolveRequest} [result] result
+							 * @returns {void}
+							 */
 							const stoppingCallback = (err, result) => {
 								if (err) return callback(err);
 

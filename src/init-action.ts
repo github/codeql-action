@@ -48,6 +48,7 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
+  checkSipEnablement,
   codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -56,7 +57,6 @@ import {
   getThreadsFlagValue,
   initializeEnvironment,
   isHostedRunner,
-  isSipEnabled,
   ConfigurationError,
   wrapError,
   checkActionVersion,
@@ -99,6 +99,8 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   registries: string;
   /** Stringified JSON object representing a query-filters, from the 'query-filters' config field. **/
   query_filters: string;
+  /** Path to the specified code scanning config file, from the 'config-file' config field. */
+  config_file: string;
 }
 
 /** Fields of the init status report populated when the tools source is `download`. */
@@ -114,6 +116,7 @@ interface InitToolsDownloadFields {
 async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
+  configFile: string | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
@@ -210,6 +213,7 @@ async function sendCompletedStatusReport(
     // Append fields that are dependent on `config`
     const initWithConfigStatusReport: InitWithConfigStatusReport = {
       ...initStatusReport,
+      config_file: configFile ?? "",
       disable_default_queries: disableDefaultQueries,
       paths,
       paths_ignore: pathsIgnore,
@@ -278,6 +282,8 @@ async function run() {
 
   core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
+  const configFile = getOptionalInput("config-file");
+
   try {
     const statusReportBase = await createStatusReportBase(
       ActionName.Init,
@@ -319,7 +325,7 @@ async function run() {
         queriesInput: getOptionalInput("queries"),
         packsInput: getOptionalInput("packs"),
         buildModeInput: getOptionalInput("build-mode"),
-        configFile: getOptionalInput("config-file"),
+        configFile,
         dbLocation: getOptionalInput("db-location"),
         configInput: getOptionalInput("config"),
         trapCachingEnabled: getTrapCachingEnabled(),
@@ -555,7 +561,7 @@ async function run() {
       !(await codeQlVersionAtLeast(codeql, "2.15.1")) &&
       process.platform === "darwin" &&
       (process.arch === "arm" || process.arch === "arm64") &&
-      !(await isSipEnabled(logger))
+      !(await checkSipEnablement(logger))
     ) {
       logger.warning(
         "CodeQL versions 2.15.0 and lower are not supported on MacOS ARM machines with System Integrity Protection (SIP) disabled.",
@@ -628,6 +634,7 @@ async function run() {
     await sendCompletedStatusReport(
       startedAt,
       config,
+      undefined, // We only report config info on success.
       toolsDownloadStatusReport,
       toolsFeatureFlagsValid,
       toolsSource,
@@ -642,6 +649,7 @@ async function run() {
   await sendCompletedStatusReport(
     startedAt,
     config,
+    configFile,
     toolsDownloadStatusReport,
     toolsFeatureFlagsValid,
     toolsSource,

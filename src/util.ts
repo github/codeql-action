@@ -1021,7 +1021,7 @@ export async function checkDiskUsage(
     if (
       process.platform === "darwin" &&
       (process.arch === "arm" || process.arch === "arm64") &&
-      !(await isSipEnabled(logger))
+      !(await checkSipEnablement(logger))
     ) {
       return undefined;
     }
@@ -1113,11 +1113,20 @@ export function cloneObject<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
 
-// For MacOS runners: runs `csrutil status` to determine whether System
-// Integrity Protection is enabled.
-export async function isSipEnabled(
+// The first time this function is called, it runs `csrutil status` to determine
+// whether System Integrity Protection is enabled; and saves the result in an
+// environment variable. Afterwards, simply return the value of the environment
+// variable.
+export async function checkSipEnablement(
   logger: Logger,
 ): Promise<boolean | undefined> {
+  if (
+    process.env[EnvVar.IS_SIP_ENABLED] !== undefined &&
+    ["true", "false"].includes(process.env[EnvVar.IS_SIP_ENABLED])
+  ) {
+    return process.env[EnvVar.IS_SIP_ENABLED] === "true";
+  }
+
   try {
     const sipStatusOutput = await exec.getExecOutput("csrutil status");
     if (sipStatusOutput.exitCode === 0) {
@@ -1126,6 +1135,7 @@ export async function isSipEnabled(
           "System Integrity Protection status: enabled.",
         )
       ) {
+        core.exportVariable(EnvVar.IS_SIP_ENABLED, "true");
         return true;
       }
       if (
@@ -1133,6 +1143,7 @@ export async function isSipEnabled(
           "System Integrity Protection status: disabled.",
         )
       ) {
+        core.exportVariable(EnvVar.IS_SIP_ENABLED, "false");
         return false;
       }
     }

@@ -33,6 +33,14 @@ const PathType = Object.freeze({
 });
 exports.PathType = PathType;
 
+const invalidSegmentRegEx =
+	/(^|\\|\/)((\.|%2e)(\.|%2e)?|(n|%6e|%4e)(o|%6f|%4f)(d|%64|%44)(e|%65|%45)(_|%5f)(m|%6d|%4d)(o|%6f|%4f)(d|%64|%44)(u|%75|%55)(l|%6c|%4c)(e|%65|%45)(s|%73|%53))?(\\|\/|$)/i;
+exports.invalidSegmentRegEx = invalidSegmentRegEx;
+
+const deprecatedInvalidSegmentRegEx =
+	/(^|\\|\/)((\.|%2e)(\.|%2e)?|(n|%6e|%4e)(o|%6f|%4f)(d|%64|%44)(e|%65|%45)(_|%5f)(m|%6d|%4d)(o|%6f|%4f)(d|%64|%44)(u|%75|%55)(l|%6c|%4c)(e|%65|%45)(s|%73|%53))(\\|\/|$)/i;
+exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
+
 /**
  * @param {string} p a path
  * @returns {PathType} type of path
@@ -170,14 +178,16 @@ const join = (rootPath, request) => {
 };
 exports.join = join;
 
+/** @type {Map<string, Map<string, string | undefined>>} */
 const joinCache = new Map();
 
 /**
  * @param {string} rootPath the root path
- * @param {string | undefined} request the request path
+ * @param {string} request the request path
  * @returns {string} the joined path
  */
 const cachedJoin = (rootPath, request) => {
+	/** @type {string | undefined} */
 	let cacheEntry;
 	let cache = joinCache.get(rootPath);
 	if (cache === undefined) {
@@ -191,33 +201,3 @@ const cachedJoin = (rootPath, request) => {
 	return cacheEntry;
 };
 exports.cachedJoin = cachedJoin;
-
-const checkImportsExportsFieldTarget = relativePath => {
-	let lastNonSlashIndex = 0;
-	let slashIndex = relativePath.indexOf("/", 1);
-	let cd = 0;
-
-	while (slashIndex !== -1) {
-		const folder = relativePath.slice(lastNonSlashIndex, slashIndex);
-
-		switch (folder) {
-			case "..": {
-				cd--;
-				if (cd < 0)
-					return new Error(
-						`Trying to access out of package scope. Requesting ${relativePath}`
-					);
-				break;
-			}
-			case ".":
-				break;
-			default:
-				cd++;
-				break;
-		}
-
-		lastNonSlashIndex = slashIndex + 1;
-		slashIndex = relativePath.indexOf("/", lastNonSlashIndex);
-	}
-};
-exports.checkImportsExportsFieldTarget = checkImportsExportsFieldTarget;

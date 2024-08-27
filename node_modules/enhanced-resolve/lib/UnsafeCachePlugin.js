@@ -8,8 +8,15 @@
 /** @typedef {import("./Resolver")} Resolver */
 /** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
-/** @typedef {{[k: string]: any}} Cache */
+/** @typedef {import("./Resolver").ResolveContextYield} ResolveContextYield */
+/** @typedef {{[k: string]: ResolveRequest | ResolveRequest[] | undefined}} Cache */
 
+/**
+ * @param {string} type type of cache
+ * @param {ResolveRequest} request request
+ * @param {boolean} withContext cache with context?
+ * @returns {string} cache id
+ */
 function getCacheId(type, request, withContext) {
 	return JSON.stringify({
 		type,
@@ -64,11 +71,14 @@ module.exports = class UnsafeCachePlugin {
 						}
 						return callback(null, null);
 					}
-					return callback(null, cacheEntry);
+					return callback(null, /** @type {ResolveRequest} */ (cacheEntry));
 				}
 
+				/** @type {ResolveContextYield|undefined} */
 				let yieldFn;
+				/** @type {ResolveContextYield|undefined} */
 				let yield_;
+				/** @type {ResolveRequest[]} */
 				const yieldResult = [];
 				if (isYield) {
 					yieldFn = resolveContext.yield;
@@ -86,7 +96,10 @@ module.exports = class UnsafeCachePlugin {
 						if (err) return callback(err);
 						if (isYield) {
 							if (result) yieldResult.push(result);
-							for (const result of yieldResult) yieldFn(result);
+							for (const result of yieldResult) {
+								/** @type {ResolveContextYield} */
+								(yieldFn)(result);
+							}
 							this.cache[cacheId] = yieldResult;
 							return callback(null, null);
 						}

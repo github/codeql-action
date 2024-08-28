@@ -970,7 +970,7 @@ export async function getCodeQLForCmd(
         "database",
         "cleanup",
         databasePath,
-        `--mode=${cleanupLevel}`,
+        `--cache-cleanup=${cleanupLevel}`,
         ...getExtraOptionsFromEnv(["database", "cleanup"]),
       ];
       await runTool(cmd, codeqlArgs);

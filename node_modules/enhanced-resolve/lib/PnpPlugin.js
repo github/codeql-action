@@ -7,9 +7,10 @@
 
 /** @typedef {import("./Resolver")} Resolver */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /**
  * @typedef {Object} PnpApiImpl
- * @property {function(string, string, object): string} resolveToUnqualified
+ * @property {function(string, string, object): string | null} resolveToUnqualified
  */
 
 module.exports = class PnpPlugin {
@@ -17,11 +18,13 @@ module.exports = class PnpPlugin {
 	 * @param {string | ResolveStepHook} source source
 	 * @param {PnpApiImpl} pnpApi pnpApi
 	 * @param {string | ResolveStepHook} target target
+	 * @param {string | ResolveStepHook} alternateTarget alternateTarget
 	 */
-	constructor(source, pnpApi, target) {
+	constructor(source, pnpApi, target, alternateTarget) {
 		this.source = source;
 		this.pnpApi = pnpApi;
 		this.target = target;
+		this.alternateTarget = alternateTarget;
 	}
 
 	/**
@@ -29,7 +32,9 @@ module.exports = class PnpPlugin {
 	 * @returns {void}
 	 */
 	apply(resolver) {
+		/** @type {ResolveStepHook} */
 		const target = resolver.ensureHook(this.target);
+		const alternateTarget = resolver.ensureHook(this.alternateTarget);
 		resolver
 			.getHook(this.source)
 			.tapAsync("PnpPlugin", (request, resolveContext, callback) => {
@@ -45,32 +50,57 @@ module.exports = class PnpPlugin {
 				const packageName = packageMatch[0];
 				const innerRequest = `.${req.slice(packageName.length)}`;
 
+				/** @type {string|undefined|null} */
 				let resolution;
+				/** @type {string|undefined|null} */
 				let apiResolution;
 				try {
 					resolution = this.pnpApi.resolveToUnqualified(packageName, issuer, {
 						considerBuiltins: false
 					});
+
+					if (resolution === null) {
+						// This is either not a PnP managed issuer or it's a Node builtin
+						// Try to continue resolving with our alternatives
+						resolver.doResolve(
+							alternateTarget,
+							request,
+							"issuer is not managed by a pnpapi",
+							resolveContext,
+							(err, result) => {
+								if (err) return callback(err);
+								if (result) return callback(null, result);
+								// Skip alternatives
+								return callback(null, null);
+							}
+						);
+						return;
+					}
+
 					if (resolveContext.fileDependencies) {
 						apiResolution = this.pnpApi.resolveToUnqualified("pnpapi", issuer, {
 							considerBuiltins: false
 						});
 					}
-				} catch (error) {
+				} catch (/** @type {unknown} */ error) {
 					if (
-						error.code === "MODULE_NOT_FOUND" &&
-						error.pnpCode === "UNDECLARED_DEPENDENCY"
+						/** @type {Error & { code: string }} */
+						(error).code === "MODULE_NOT_FOUND" &&
+						/** @type {Error & { pnpCode: string }} */
+						(error).pnpCode === "UNDECLARED_DEPENDENCY"
 					) {
 						// This is not a PnP managed dependency.
 						// Try to continue resolving with our alternatives
 						if (resolveContext.log) {
 							resolveContext.log(`request is not managed by the pnpapi`);
-							for (const line of error.message.split("\n").filter(Boolean))
+							for (const line of /** @type {Error} */ (error).message
+								.split("\n")
+								.filter(Boolean))
 								resolveContext.log(`  ${line}`);
 						}
 						return callback();
 					}
-					return callback(error);
+					return callback(/** @type {Error} */ (error));
 				}
 
 				if (resolution === packageName) return callback();
@@ -78,7 +108,7 @@ module.exports = class PnpPlugin {
 				if (apiResolution && resolveContext.fileDependencies) {
 					resolveContext.fileDependencies.add(apiResolution);
 				}
-
+				/** @type {ResolveRequest} */
 				const obj = {
 					...request,
 					path: resolution,

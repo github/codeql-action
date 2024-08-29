@@ -17,18 +17,9 @@ const {
 
 /** @typedef {import("./ResolverFactory").ResolveOptions} ResolveOptions */
 
-/**
- * @typedef {Object} FileSystemStats
- * @property {function(): boolean} isDirectory
- * @property {function(): boolean} isFile
- */
+/** @typedef {Error & { details?: string }} ErrorWithDetail */
 
-/**
- * @typedef {Object} FileSystemDirent
- * @property {Buffer | string} name
- * @property {function(): boolean} isDirectory
- * @property {function(): boolean} isFile
- */
+/** @typedef {(err: ErrorWithDetail | null, res?: string | false, req?: ResolveRequest) => void} ResolveCallback */
 
 /**
  * @typedef {Object} PossibleFileSystemError
@@ -41,28 +32,244 @@ const {
 /**
  * @template T
  * @callback FileSystemCallback
- * @param {PossibleFileSystemError & Error | null | undefined} err
+ * @param {PossibleFileSystemError & Error | null} err
  * @param {T=} result
  */
 
 /**
+ * @typedef {string | Buffer | URL} PathLike
+ */
+
+/**
+ * @typedef {PathLike | number} PathOrFileDescriptor
+ */
+
+/**
+ * @typedef {Object} ObjectEncodingOptions
+ * @property {BufferEncoding | null | undefined} [encoding]
+ */
+
+/** @typedef {function(NodeJS.ErrnoException | null, string=): void} StringCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, Buffer=): void} BufferCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, (string | Buffer)=): void} StringOrBufferCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, IStats=): void} StatsCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, IBigIntStats=): void} BigIntStatsCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, (IStats | IBigIntStats)=): void} StatsOrBigIntStatsCallback */
+/** @typedef {function(NodeJS.ErrnoException | Error | null, JsonObject=): void} ReadJsonCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, string[]=): void} ReaddirStringCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, Buffer[]=): void} ReaddirBufferCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, (string[] | Buffer[])=): void} ReaddirStringOrBufferCallback */
+/** @typedef {function(NodeJS.ErrnoException | null, Dirent[]=): void} ReaddirDirentCallback */
+
+/**
+ * @template T
+ * @typedef {Object} IStatsBase
+ * @property {() => boolean} isFile
+ * @property {() => boolean} isDirectory
+ * @property {() => boolean} isBlockDevice
+ * @property {() => boolean} isCharacterDevice
+ * @property {() => boolean} isSymbolicLink
+ * @property {() => boolean} isFIFO
+ * @property {() => boolean} isSocket
+ * @property {T} dev
+ * @property {T} ino
+ * @property {T} mode
+ * @property {T} nlink
+ * @property {T} uid
+ * @property {T} gid
+ * @property {T} rdev
+ * @property {T} size
+ * @property {T} blksize
+ * @property {T} blocks
+ * @property {T} atimeMs
+ * @property {T} mtimeMs
+ * @property {T} ctimeMs
+ * @property {T} birthtimeMs
+ * @property {Date} atime
+ * @property {Date} mtime
+ * @property {Date} ctime
+ * @property {Date} birthtime
+ */
+
+/**
+ * @typedef {IStatsBase<number>} IStats
+ */
+
+/**
+ * @typedef {IStatsBase<bigint> & { atimeNs: bigint, mtimeNs: bigint, ctimeNs: bigint, birthtimeNs: bigint  }} IBigIntStats
+ */
+
+/**
+ * @typedef {Object} Dirent
+ * @property {() => boolean} isFile
+ * @property {() => boolean} isDirectory
+ * @property {() => boolean} isBlockDevice
+ * @property {() => boolean} isCharacterDevice
+ * @property {() => boolean} isSymbolicLink
+ * @property {() => boolean} isFIFO
+ * @property {() => boolean} isSocket
+ * @property {string} name
+ * @property {string} path
+ */
+
+/**
+ * @typedef {Object} StatOptions
+ * @property {(boolean | undefined)=} bigint
+ */
+
+/**
+ * @typedef {Object} StatSyncOptions
+ * @property {(boolean | undefined)=} bigint
+ * @property {(boolean | undefined)=} throwIfNoEntry
+ */
+
+/**
+ * @typedef {{
+ * (path: PathOrFileDescriptor, options: ({ encoding?: null | undefined, flag?: string | undefined } & import("events").Abortable) | undefined | null, callback: BufferCallback): void;
+ * (path: PathOrFileDescriptor, options: ({ encoding: BufferEncoding, flag?: string | undefined } & import("events").Abortable) | BufferEncoding, callback: StringCallback): void;
+ * (path: PathOrFileDescriptor, options: (ObjectEncodingOptions & { flag?: string | undefined } & import("events").Abortable) | BufferEncoding | undefined | null, callback: StringOrBufferCallback): void;
+ * (path: PathOrFileDescriptor, callback: BufferCallback): void;
+ * }} ReadFile
+ */
+
+/**
+ * @typedef {ObjectEncodingOptions | BufferEncoding | undefined | null} EncodingOption
+ */
+
+/**
+ * @typedef {'buffer'| { encoding: 'buffer' }} BufferEncodingOption
+ */
+
+/**
+ * @typedef {{
+ * (path: PathOrFileDescriptor, options?: { encoding?: null | undefined, flag?: string | undefined } | null): Buffer;
+ * (path: PathOrFileDescriptor, options: { encoding: BufferEncoding, flag?: string | undefined } | BufferEncoding): string;
+ * (path: PathOrFileDescriptor, options?: (ObjectEncodingOptions & { flag?: string | undefined }) | BufferEncoding | null): string | Buffer;
+ * }} ReadFileSync
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, options: { encoding: BufferEncoding | null, withFileTypes?: false | undefined, recursive?: boolean | undefined } | BufferEncoding | undefined | null, callback: ReaddirStringCallback): void;
+ * (path: PathLike, options: { encoding: 'buffer', withFileTypes?: false | undefined, recursive?: boolean | undefined } | 'buffer', callback: ReaddirBufferCallback): void;
+ * (path: PathLike, callback: ReaddirStringCallback): void;
+ * (path: PathLike, options: (ObjectEncodingOptions & { withFileTypes?: false | undefined, recursive?: boolean | undefined }) | BufferEncoding | undefined | null, callback: ReaddirStringOrBufferCallback): void;
+ * (path: PathLike, options: ObjectEncodingOptions & { withFileTypes: true, recursive?: boolean | undefined }, callback: ReaddirDirentCallback): void;
+ * }} Readdir
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, options?: { encoding: BufferEncoding | null, withFileTypes?: false | undefined, recursive?: boolean | undefined } | BufferEncoding | null): string[];
+ * (path: PathLike, options: { encoding: 'buffer', withFileTypes?: false | undefined, recursive?: boolean | undefined } | 'buffer'): Buffer[];
+ * (path: PathLike, options?: (ObjectEncodingOptions & { withFileTypes?: false | undefined, recursive?: boolean | undefined }) | BufferEncoding | null): string[] | Buffer[];
+ * (path: PathLike, options: ObjectEncodingOptions & { withFileTypes: true, recursive?: boolean | undefined }): Dirent[];
+ * }} ReaddirSync
+
+ /**
+ * @typedef {function(PathOrFileDescriptor, ReadJsonCallback): void} ReadJson
+ */
+
+/**
+ * @typedef {function(PathOrFileDescriptor): JsonObject} ReadJsonSync
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, options: EncodingOption, callback: StringCallback): void;
+ * (path: PathLike, options: BufferEncodingOption, callback: BufferCallback): void;
+ * (path: PathLike, options: EncodingOption, callback: StringOrBufferCallback): void;
+ * (path: PathLike, callback: StringCallback): void;
+ * }} Readlink
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, options?: EncodingOption): string;
+ * (path: PathLike, options: BufferEncodingOption): Buffer;
+ * (path: PathLike, options?: EncodingOption): string | Buffer;
+ * }} ReadlinkSync
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, callback: StatsCallback): void;
+ * (path: PathLike, options: (StatOptions & { bigint?: false | undefined }) | undefined, callback: StatsCallback): void;
+ * (path: PathLike, options: StatOptions & { bigint: true }, callback: BigIntStatsCallback): void;
+ * (path: PathLike, options: StatOptions | undefined, callback: StatsOrBigIntStatsCallback): void;
+ * }} LStat
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, options?: undefined): IStats;
+ * (path: PathLike, options?: StatSyncOptions & { bigint?: false | undefined, throwIfNoEntry: false }): IStats | undefined;
+ * (path: PathLike, options: StatSyncOptions & { bigint: true, throwIfNoEntry: false }): IBigIntStats | undefined;
+ * (path: PathLike, options?: StatSyncOptions & { bigint?: false | undefined }): IStats;
+ * (path: PathLike, options: StatSyncOptions & { bigint: true }): IBigIntStats;
+ * (path: PathLike,  options: StatSyncOptions & { bigint: boolean, throwIfNoEntry?: false | undefined }): IStats | IBigIntStats;
+ * (path: PathLike,  options?: StatSyncOptions): IStats | IBigIntStats | undefined;
+ * }} LStatSync
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, callback: StatsCallback): void;
+ * (path: PathLike, options: (StatOptions & { bigint?: false | undefined }) | undefined, callback: StatsCallback): void;
+ * (path: PathLike, options: StatOptions & { bigint: true }, callback: BigIntStatsCallback): void;
+ * (path: PathLike, options: StatOptions | undefined, callback: StatsOrBigIntStatsCallback): void;
+ * }} Stat
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, options?: undefined): IStats;
+ * (path: PathLike, options?: StatSyncOptions & { bigint?: false | undefined, throwIfNoEntry: false }): IStats | undefined;
+ * (path: PathLike, options: StatSyncOptions & { bigint: true, throwIfNoEntry: false }): IBigIntStats | undefined;
+ * (path: PathLike, options?: StatSyncOptions & { bigint?: false | undefined }): IStats;
+ * (path: PathLike, options: StatSyncOptions & { bigint: true }): IBigIntStats;
+ * (path: PathLike,  options: StatSyncOptions & { bigint: boolean, throwIfNoEntry?: false | undefined }): IStats | IBigIntStats;
+ * (path: PathLike,  options?: StatSyncOptions): IStats | IBigIntStats | undefined;
+ * }} StatSync
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, options: EncodingOption, callback: StringCallback): void;
+ * (path: PathLike, options: BufferEncodingOption, callback: BufferCallback): void;
+ * (path: PathLike, options: EncodingOption, callback: StringOrBufferCallback): void;
+ * (path: PathLike, callback: StringCallback): void;
+ * }} RealPath
+ */
+
+/**
+ * @typedef {{
+ * (path: PathLike, options?: EncodingOption): string;
+ * (path: PathLike, options: BufferEncodingOption): Buffer;
+ * (path: PathLike, options?: EncodingOption): string | Buffer;
+ * }} RealPathSync
+ */
+
+/**
  * @typedef {Object} FileSystem
- * @property {(function(string, FileSystemCallback<Buffer | string>): void) & function(string, object, FileSystemCallback<Buffer | string>): void} readFile
- * @property {(function(string, FileSystemCallback<(Buffer | string)[] | FileSystemDirent[]>): void) & function(string, object, FileSystemCallback<(Buffer | string)[] | FileSystemDirent[]>): void} readdir
- * @property {((function(string, FileSystemCallback<object>): void) & function(string, object, FileSystemCallback<object>): void)=} readJson
- * @property {(function(string, FileSystemCallback<Buffer | string>): void) & function(string, object, FileSystemCallback<Buffer | string>): void} readlink
- * @property {(function(string, FileSystemCallback<FileSystemStats>): void) & function(string, object, FileSystemCallback<Buffer | string>): void=} lstat
- * @property {(function(string, FileSystemCallback<FileSystemStats>): void) & function(string, object, FileSystemCallback<Buffer | string>): void} stat
+ * @property {ReadFile} readFile
+ * @property {Readdir} readdir
+ * @property {ReadJson=} readJson
+ * @property {Readlink} readlink
+ * @property {LStat=} lstat
+ * @property {Stat} stat
+ * @property {RealPath=} realpath
  */
 
 /**
  * @typedef {Object} SyncFileSystem
- * @property {function(string, object=): Buffer | string} readFileSync
- * @property {function(string, object=): (Buffer | string)[] | FileSystemDirent[]} readdirSync
- * @property {(function(string, object=): object)=} readJsonSync
- * @property {function(string, object=): Buffer | string} readlinkSync
- * @property {function(string, object=): FileSystemStats=} lstatSync
- * @property {function(string, object=): FileSystemStats} statSync
+ * @property {ReadFileSync} readFileSync
+ * @property {ReaddirSync} readdirSync
+ * @property {ReadJsonSync=} readJsonSync
+ * @property {ReadlinkSync} readlinkSync
+ * @property {LStatSync=} lstatSync
+ * @property {StatSync} statSync
+ * @property {RealPathSync=} realpathSync
  */
 
 /**
@@ -76,15 +283,24 @@ const {
  * @property {boolean} internal
  */
 
+/** @typedef {string | number | boolean | null} JsonPrimitive */
+/** @typedef {JsonValue[]} JsonArray */
+/** @typedef {JsonPrimitive | JsonObject | JsonArray} JsonValue */
+/** @typedef {{[Key in string]: JsonValue} & {[Key in string]?: JsonValue | undefined}} JsonObject */
+
 /**
  * @typedef {Object} BaseResolveRequest
  * @property {string | false} path
+ * @property {object=} context
  * @property {string=} descriptionFilePath
  * @property {string=} descriptionFileRoot
- * @property {object=} descriptionFileData
+ * @property {JsonObject=} descriptionFileData
  * @property {string=} relativePath
  * @property {boolean=} ignoreSymlinks
  * @property {boolean=} fullySpecified
+ * @property {string=} __innerRequest
+ * @property {string=} __innerRequest_request
+ * @property {string=} __innerRequest_relativePath
  */
 
 /** @typedef {BaseResolveRequest & Partial<ParsedIdentifier>} ResolveRequest */
@@ -94,7 +310,12 @@ const {
  * @typedef {string} StackEntry
  */
 
-/** @template T @typedef {{ add: (T) => void }} WriteOnlySet */
+/**
+ * @template T
+ * @typedef {{ add: (item: T) => void }} WriteOnlySet
+ */
+
+/** @typedef {(function (ResolveRequest): void)} ResolveContextYield */
 
 /**
  * Resolve context
@@ -104,17 +325,29 @@ const {
  * @property {WriteOnlySet<string>=} missingDependencies dependencies that was not found on file system
  * @property {Set<StackEntry>=} stack set of hooks' calls. For instance, `resolve → parsedResolve → describedResolve`,
  * @property {(function(string): void)=} log log function
- * @property {(function (ResolveRequest): void)=} yield yield result, if provided plugins can return several results
+ * @property {ResolveContextYield=} yield yield result, if provided plugins can return several results
  */
 
 /** @typedef {AsyncSeriesBailHook<[ResolveRequest, ResolveContext], ResolveRequest | null>} ResolveStepHook */
+
+/**
+ * @typedef {Object} KnownHooks
+ * @property {SyncHook<[ResolveStepHook, ResolveRequest], void>} resolveStep
+ * @property {SyncHook<[ResolveRequest, Error]>} noResolve
+ * @property {ResolveStepHook} resolve
+ * @property {AsyncSeriesHook<[ResolveRequest, ResolveContext]>} result
+ */
+
+/**
+ * @typedef {{[key: string]: ResolveStepHook}} EnsuredHooks
+ */
 
 /**
  * @param {string} str input string
  * @returns {string} in camel case
  */
 function toCamelCase(str) {
-	return str.replace(/-([a-z])/g, str => str.substr(1).toUpperCase());
+	return str.replace(/-([a-z])/g, str => str.slice(1).toUpperCase());
 }
 
 class Resolver {
@@ -144,17 +377,14 @@ class Resolver {
 	constructor(fileSystem, options) {
 		this.fileSystem = fileSystem;
 		this.options = options;
+		/** @type {KnownHooks} */
 		this.hooks = {
-			/** @type {SyncHook<[ResolveStepHook, ResolveRequest], void>} */
 			resolveStep: new SyncHook(["hook", "request"], "resolveStep"),
-			/** @type {SyncHook<[ResolveRequest, Error]>} */
 			noResolve: new SyncHook(["request", "error"], "noResolve"),
-			/** @type {ResolveStepHook} */
 			resolve: new AsyncSeriesBailHook(
 				["request", "resolveContext"],
 				"resolve"
 			),
-			/** @type {AsyncSeriesHook<[ResolveRequest, ResolveContext]>} */
 			result: new AsyncSeriesHook(["result", "resolveContext"], "result")
 		};
 	}
@@ -169,25 +399,29 @@ class Resolver {
 		}
 		name = toCamelCase(name);
 		if (/^before/.test(name)) {
-			return /** @type {ResolveStepHook} */ (this.ensureHook(
-				name[6].toLowerCase() + name.substr(7)
-			).withOptions({
-				stage: -10
-			}));
+			return /** @type {ResolveStepHook} */ (
+				this.ensureHook(name[6].toLowerCase() + name.slice(7)).withOptions({
+					stage: -10
+				})
+			);
 		}
 		if (/^after/.test(name)) {
-			return /** @type {ResolveStepHook} */ (this.ensureHook(
-				name[5].toLowerCase() + name.substr(6)
-			).withOptions({
-				stage: 10
-			}));
+			return /** @type {ResolveStepHook} */ (
+				this.ensureHook(name[5].toLowerCase() + name.slice(6)).withOptions({
+					stage: 10
+				})
+			);
 		}
-		const hook = this.hooks[name];
+		/** @type {ResolveStepHook} */
+		const hook = /** @type {KnownHooks & EnsuredHooks} */ (this.hooks)[name];
 		if (!hook) {
-			return (this.hooks[name] = new AsyncSeriesBailHook(
+			/** @type {KnownHooks & EnsuredHooks} */
+			(this.hooks)[name] = new AsyncSeriesBailHook(
 				["request", "resolveContext"],
 				name
-			));
+			);
+
+			return /** @type {KnownHooks & EnsuredHooks} */ (this.hooks)[name];
 		}
 		return hook;
 	}
@@ -202,20 +436,21 @@ class Resolver {
 		}
 		name = toCamelCase(name);
 		if (/^before/.test(name)) {
-			return /** @type {ResolveStepHook} */ (this.getHook(
-				name[6].toLowerCase() + name.substr(7)
-			).withOptions({
-				stage: -10
-			}));
+			return /** @type {ResolveStepHook} */ (
+				this.getHook(name[6].toLowerCase() + name.slice(7)).withOptions({
+					stage: -10
+				})
+			);
 		}
 		if (/^after/.test(name)) {
-			return /** @type {ResolveStepHook} */ (this.getHook(
-				name[5].toLowerCase() + name.substr(6)
-			).withOptions({
-				stage: 10
-			}));
+			return /** @type {ResolveStepHook} */ (
+				this.getHook(name[5].toLowerCase() + name.slice(6)).withOptions({
+					stage: 10
+				})
+			);
 		}
-		const hook = this.hooks[name];
+		/** @type {ResolveStepHook} */
+		const hook = /** @type {KnownHooks & EnsuredHooks} */ (this.hooks)[name];
 		if (!hook) {
 			throw new Error(`Hook ${name} doesn't exist`);
 		}
@@ -254,7 +489,7 @@ class Resolver {
 	 * @param {string} path context path
 	 * @param {string} request request string
 	 * @param {ResolveContext} resolveContext resolve context
-	 * @param {function(Error | null, (string|false)=, ResolveRequest=): void} callback callback function
+	 * @param {ResolveCallback} callback callback function
 	 * @returns {void}
 	 */
 	resolve(context, path, request, resolveContext, callback) {
@@ -267,29 +502,45 @@ class Resolver {
 		if (!resolveContext)
 			return callback(new Error("resolveContext argument is not set"));
 
+		/** @type {ResolveRequest} */
 		const obj = {
 			context: context,
 			path: path,
 			request: request
 		};
 
+		/** @type {ResolveContextYield | undefined} */
 		let yield_;
 		let yieldCalled = false;
+		/** @type {ResolveContextYield | undefined} */
 		let finishYield;
 		if (typeof resolveContext.yield === "function") {
 			const old = resolveContext.yield;
+			/**
+			 * @param {ResolveRequest} obj object
+			 */
 			yield_ = obj => {
 				old(obj);
 				yieldCalled = true;
 			};
+			/**
+			 * @param {ResolveRequest} result result
+			 * @returns {void}
+			 */
 			finishYield = result => {
-				if (result) yield_(result);
+				if (result) {
+					/** @type {ResolveContextYield} */ (yield_)(result);
+				}
 				callback(null);
 			};
 		}
 
 		const message = `resolve '${request}' in '${path}'`;
 
+		/**
+		 * @param {ResolveRequest} result result
+		 * @returns {void}
+		 */
 		const finishResolved = result => {
 			return callback(
 				null,
@@ -302,9 +553,13 @@ class Resolver {
 			);
 		};
 
+		/**
+		 * @param {string[]} log logs
+		 * @returns {void}
+		 */
 		const finishWithoutResolve = log => {
 			/**
-			 * @type {Error & {details?: string}}
+			 * @type {ErrorWithDetail}
 			 */
 			const error = new Error("Can't " + message);
 			error.details = log.join("\n");
@@ -315,6 +570,7 @@ class Resolver {
 		if (resolveContext.log) {
 			// We need log anyway to capture it in case of an error
 			const parentLog = resolveContext.log;
+			/** @type {string[]} */
 			const log = [];
 			return this.doResolve(
 				this.hooks.resolve,
@@ -334,7 +590,12 @@ class Resolver {
 				(err, result) => {
 					if (err) return callback(err);
 
-					if (yieldCalled || (result && yield_)) return finishYield(result);
+					if (yieldCalled || (result && yield_)) {
+						return /** @type {ResolveContextYield} */ (finishYield)(
+							/** @type {ResolveRequest} */ (result)
+						);
+					}
+
 					if (result) return finishResolved(result);
 
 					return finishWithoutResolve(log);
@@ -358,14 +619,19 @@ class Resolver {
 				(err, result) => {
 					if (err) return callback(err);
 
-					if (yieldCalled || (result && yield_)) return finishYield(result);
+					if (yieldCalled || (result && yield_)) {
+						return /** @type {ResolveContextYield} */ (finishYield)(
+							/** @type {ResolveRequest} */ (result)
+						);
+					}
+
 					if (result) return finishResolved(result);
 
 					// log is missing for the error details
 					// so we redo the resolving for the log info
 					// this is more expensive to the success case
 					// is assumed by default
-
+					/** @type {string[]} */
 					const log = [];
 
 					return this.doResolve(
@@ -381,7 +647,11 @@ class Resolver {
 							if (err) return callback(err);
 
 							// In a case that there is a race condition and yield will be called
-							if (yieldCalled || (result && yield_)) return finishYield(result);
+							if (yieldCalled || (result && yield_)) {
+								return /** @type {ResolveContextYield} */ (finishYield)(
+									/** @type {ResolveRequest} */ (result)
+								);
+							}
 
 							return finishWithoutResolve(log);
 						}
@@ -391,9 +661,18 @@ class Resolver {
 		}
 	}
 
+	/**
+	 * @param {ResolveStepHook} hook hook
+	 * @param {ResolveRequest} request request
+	 * @param {null|string} message string
+	 * @param {ResolveContext} resolveContext resolver context
+	 * @param {(err?: null|Error, result?: ResolveRequest) => void} callback callback
+	 * @returns {void}
+	 */
 	doResolve(hook, request, message, resolveContext, callback) {
 		const stackEntry = Resolver.createStackEntry(hook, request);
 
+		/** @type {Set<string> | undefined} */
 		let newStack;
 		if (resolveContext.stack) {
 			newStack = new Set(resolveContext.stack);
@@ -413,7 +692,11 @@ class Resolver {
 			}
 			newStack.add(stackEntry);
 		} else {
-			newStack = new Set([stackEntry]);
+			// creating a set with new Set([item])
+			// allocates a new array that has to be garbage collected
+			// this is an EXTREMELY hot path, so let's avoid it
+			newStack = new Set();
+			newStack.add(stackEntry);
 		}
 		this.hooks.resolveStep.call(hook, request);
 
@@ -465,17 +748,25 @@ class Resolver {
 			part.module = this.isModule(part.request);
 			part.directory = this.isDirectory(part.request);
 			if (part.directory) {
-				part.request = part.request.substr(0, part.request.length - 1);
+				part.request = part.request.slice(0, -1);
 			}
 		}
 
 		return part;
 	}
 
+	/**
+	 * @param {string} path path
+	 * @returns {boolean} true, if the path is a module
+	 */
 	isModule(path) {
 		return getType(path) === PathType.Normal;
 	}
 
+	/**
+	 * @param {string} path path
+	 * @returns {boolean} true, if the path is private
+	 */
 	isPrivate(path) {
 		return getType(path) === PathType.Internal;
 	}
@@ -488,10 +779,19 @@ class Resolver {
 		return path.endsWith("/");
 	}
 
+	/**
+	 * @param {string} path path
+	 * @param {string} request request
+	 * @returns {string} joined path
+	 */
 	join(path, request) {
 		return join(path, request);
 	}
 
+	/**
+	 * @param {string} path path
+	 * @returns {string} normalized path
+	 */
 	normalize(path) {
 		return normalize(path);
 	}

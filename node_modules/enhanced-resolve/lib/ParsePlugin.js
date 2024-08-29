@@ -31,6 +31,7 @@ module.exports = class ParsePlugin {
 			.getHook(this.source)
 			.tapAsync("ParsePlugin", (request, resolveContext, callback) => {
 				const parsed = resolver.parse(/** @type {string} */ (request.request));
+				/** @type {ResolveRequest} */
 				const obj = { ...request, ...parsed, ...this.requestOptions };
 				if (request.query && !parsed.query) {
 					obj.query = request.query;
@@ -46,6 +47,7 @@ module.exports = class ParsePlugin {
 				// There is an edge-case where a request with # can be a path or a fragment -> try both
 				if (obj.request && !obj.query && obj.fragment) {
 					const directory = obj.fragment.endsWith("/");
+					/** @type {ResolveRequest} */
 					const alternative = {
 						...obj,
 						directory,

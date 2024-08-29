@@ -6,6 +6,7 @@
 "use strict";
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 module.exports = class AppendPlugin {
@@ -29,6 +30,7 @@ module.exports = class AppendPlugin {
 		resolver
 			.getHook(this.source)
 			.tapAsync("AppendPlugin", (request, resolveContext, callback) => {
+				/** @type {ResolveRequest} */
 				const obj = {
 					...request,
 					path: request.path + this.appending,

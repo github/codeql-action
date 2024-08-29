@@ -4,6 +4,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
+## 2.26.6 - 29 Aug 2024
+
+- Update default CodeQL bundle version to 2.18.3. [#2449](https://github.com/github/codeql-action/pull/2449)
+
 ## 2.26.5 - 23 Aug 2024
 
 - Fix an issue where the `csrutil` system call used for telemetry would fail on MacOS ARM machines with System Integrity Protection disabled. [#2441](https://github.com/github/codeql-action/pull/2441)

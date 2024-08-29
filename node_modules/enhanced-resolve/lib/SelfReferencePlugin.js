@@ -8,6 +8,8 @@
 const DescriptionFileUtils = require("./DescriptionFileUtils");
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").JsonObject} JsonObject */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 const slashCode = "/".charCodeAt(0);
@@ -40,13 +42,13 @@ module.exports = class SelfReferencePlugin {
 
 				// Feature is only enabled when an exports field is present
 				const exportsField = DescriptionFileUtils.getField(
-					request.descriptionFileData,
+					/** @type {JsonObject} */ (request.descriptionFileData),
 					this.fieldName
 				);
 				if (!exportsField) return callback();
 
 				const name = DescriptionFileUtils.getField(
-					request.descriptionFileData,
+					/** @type {JsonObject} */ (request.descriptionFileData),
 					"name"
 				);
 				if (typeof name !== "string") return callback();
@@ -57,7 +59,7 @@ module.exports = class SelfReferencePlugin {
 						req.charCodeAt(name.length) === slashCode)
 				) {
 					const remainingRequest = `.${req.slice(name.length)}`;
-
+					/** @type {ResolveRequest} */
 					const obj = {
 						...request,
 						request: remainingRequest,

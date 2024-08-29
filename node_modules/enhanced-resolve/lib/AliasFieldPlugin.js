@@ -9,6 +9,7 @@ const DescriptionFileUtils = require("./DescriptionFileUtils");
 const getInnerRequest = require("./getInnerRequest");
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").JsonPrimitive} JsonPrimitive */
 /** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
@@ -49,13 +50,18 @@ module.exports = class AliasFieldPlugin {
 						);
 					return callback();
 				}
+				/** @type {JsonPrimitive | undefined} */
 				const data = Object.prototype.hasOwnProperty.call(
 					fieldData,
 					innerRequest
 				)
-					? fieldData[innerRequest]
+					? /** @type {{[Key in string]: JsonPrimitive}} */ (fieldData)[
+							innerRequest
+					  ]
 					: innerRequest.startsWith("./")
-					? fieldData[innerRequest.slice(2)]
+					? /** @type {{[Key in string]: JsonPrimitive}} */ (fieldData)[
+							innerRequest.slice(2)
+					  ]
 					: undefined;
 				if (data === innerRequest) return callback();
 				if (data === undefined) return callback();
@@ -71,10 +77,11 @@ module.exports = class AliasFieldPlugin {
 					}
 					return callback(null, ignoreObj);
 				}
+				/** @type {ResolveRequest} */
 				const obj = {
 					...request,
-					path: request.descriptionFileRoot,
-					request: data,
+					path: /** @type {string} */ (request.descriptionFileRoot),
+					request: /** @type {string} */ (data),
 					fullySpecified: false
 				};
 				resolver.doResolve(
@@ -85,7 +92,7 @@ module.exports = class AliasFieldPlugin {
 						" with mapping '" +
 						innerRequest +
 						"' to '" +
-						data +
+						/** @type {string} */ (data) +
 						"'",
 					resolveContext,
 					(err, result) => {

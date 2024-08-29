@@ -12,10 +12,23 @@ const ResolverFactory = require("./ResolverFactory");
 /** @typedef {import("./PnpPlugin").PnpApiImpl} PnpApi */
 /** @typedef {import("./Resolver")} Resolver */
 /** @typedef {import("./Resolver").FileSystem} FileSystem */
+/** @typedef {import("./Resolver").ResolveCallback} ResolveCallback */
 /** @typedef {import("./Resolver").ResolveContext} ResolveContext */
 /** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./ResolverFactory").Plugin} Plugin */
 /** @typedef {import("./ResolverFactory").UserResolveOptions} ResolveOptions */
+/** @typedef {{
+ * (context: object, path: string, request: string, resolveContext: ResolveContext, callback: ResolveCallback): void;
+ * (context: object, path: string, request: string, callback: ResolveCallback): void;
+ * (path: string, request: string, resolveContext: ResolveContext, callback: ResolveCallback): void;
+ * (path: string, request: string, callback: ResolveCallback): void;
+ * }} ResolveFunctionAsync
+ */
+/** @typedef {{
+ * (context: object, path: string, request: string): string|false;
+ * (path: string, request: string): string|false;
+ * }} ResolveFunction
+ */
 
 const nodeFileSystem = new CachedInputFileSystem(fs, 4000);
 
@@ -28,19 +41,37 @@ const asyncResolver = ResolverFactory.createResolver({
 	extensions: [".js", ".json", ".node"],
 	fileSystem: nodeFileSystem
 });
-function resolve(context, path, request, resolveContext, callback) {
-	if (typeof context === "string") {
-		callback = resolveContext;
-		resolveContext = request;
-		request = path;
-		path = context;
-		context = nodeContext;
-	}
-	if (typeof callback !== "function") {
-		callback = resolveContext;
-	}
-	asyncResolver.resolve(context, path, request, resolveContext, callback);
-}
+
+/**
+ * @type {ResolveFunctionAsync}
+ */
+const resolve =
+	/**
+	 * @param {object|string} context
+	 * @param {string} path
+	 * @param {string|ResolveContext|ResolveCallback} request
+	 * @param {ResolveContext|ResolveCallback=} resolveContext
+	 * @param {ResolveCallback=} callback
+	 */
+	(context, path, request, resolveContext, callback) => {
+		if (typeof context === "string") {
+			callback = /** @type {ResolveCallback} */ (resolveContext);
+			resolveContext = /** @type {ResolveContext} */ (request);
+			request = path;
+			path = context;
+			context = nodeContext;
+		}
+		if (typeof callback !== "function") {
+			callback = /** @type {ResolveCallback} */ (resolveContext);
+		}
+		asyncResolver.resolve(
+			context,
+			path,
+			/** @type {string} */ (request),
+			/** @type {ResolveContext} */ (resolveContext),
+			/** @type {ResolveCallback} */ (callback)
+		);
+	};
 
 const syncResolver = ResolverFactory.createResolver({
 	conditionNames: ["node"],
@@ -48,50 +79,91 @@ const syncResolver = ResolverFactory.createResolver({
 	useSyncFileSystemCalls: true,
 	fileSystem: nodeFileSystem
 });
-function resolveSync(context, path, request) {
-	if (typeof context === "string") {
-		request = path;
-		path = context;
-		context = nodeContext;
-	}
-	return syncResolver.resolveSync(context, path, request);
-}
 
+/**
+ * @type {ResolveFunction}
+ */
+const resolveSync =
+	/**
+	 * @param {object|string} context
+	 * @param {string} path
+	 * @param {string=} request
+	 */
+	(context, path, request) => {
+		if (typeof context === "string") {
+			request = path;
+			path = context;
+			context = nodeContext;
+		}
+		return syncResolver.resolveSync(
+			context,
+			path,
+			/** @type {string} */ (request)
+		);
+	};
+
+/** @typedef {Omit<ResolveOptions, "fileSystem"> & Partial<Pick<ResolveOptions, "fileSystem">>} ResolveOptionsOptionalFS */
+
+/**
+ * @param {ResolveOptionsOptionalFS} options Resolver options
+ * @returns {ResolveFunctionAsync} Resolver function
+ */
 function create(options) {
-	options = {
+	const resolver = ResolverFactory.createResolver({
 		fileSystem: nodeFileSystem,
 		...options
-	};
-	const resolver = ResolverFactory.createResolver(options);
+	});
+	/**
+	 * @param {object|string} context Custom context
+	 * @param {string} path Base path
+	 * @param {string|ResolveContext|ResolveCallback} request String to resolve
+	 * @param {ResolveContext|ResolveCallback=} resolveContext Resolve context
+	 * @param {ResolveCallback=} callback Result callback
+	 */
 	return function (context, path, request, resolveContext, callback) {
 		if (typeof context === "string") {
-			callback = resolveContext;
-			resolveContext = request;
+			callback = /** @type {ResolveCallback} */ (resolveContext);
+			resolveContext = /** @type {ResolveContext} */ (request);
 			request = path;
 			path = context;
 			context = nodeContext;
 		}
 		if (typeof callback !== "function") {
-			callback = resolveContext;
+			callback = /** @type {ResolveCallback} */ (resolveContext);
 		}
-		resolver.resolve(context, path, request, resolveContext, callback);
+		resolver.resolve(
+			context,
+			path,
+			/** @type {string} */ (request),
+			/** @type {ResolveContext} */ (resolveContext),
+			callback
+		);
 	};
 }
 
+/**
+ * @param {ResolveOptionsOptionalFS} options Resolver options
+ * @returns {ResolveFunction} Resolver function
+ */
 function createSync(options) {
-	options = {
+	const resolver = ResolverFactory.createResolver({
 		useSyncFileSystemCalls: true,
 		fileSystem: nodeFileSystem,
 		...options
-	};
-	const resolver = ResolverFactory.createResolver(options);
+	});
+	/**
+	 * @param {object|string} context custom context
+	 * @param {string} path base path
+	 * @param {string=} request request to resolve
+	 * @returns {string|false} Resolved path or false
+	 */
 	return function (context, path, request) {
 		if (typeof context === "string") {
 			request = path;
 			path = context;
 			context = nodeContext;
 		}
-		return resolver.resolveSync(context, path, request);
+		return resolver.resolveSync(context, path, /** @type {string} */ (request));
 	};
 }
 

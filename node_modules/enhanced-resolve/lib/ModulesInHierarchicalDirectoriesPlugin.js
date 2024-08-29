@@ -9,6 +9,7 @@ const forEachBail = require("./forEachBail");
 const getPaths = require("./getPaths");
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 module.exports = class ModulesInHierarchicalDirectoriesPlugin {
@@ -35,7 +36,7 @@ module.exports = class ModulesInHierarchicalDirectoriesPlugin {
 				"ModulesInHierarchicalDirectoriesPlugin",
 				(request, resolveContext, callback) => {
 					const fs = resolver.fileSystem;
-					const addrs = getPaths(request.path)
+					const addrs = getPaths(/** @type {string} */ (request.path))
 						.paths.map(p => {
 							return this.directories.map(d => resolver.join(p, d));
 						})
@@ -45,9 +46,15 @@ module.exports = class ModulesInHierarchicalDirectoriesPlugin {
 						}, []);
 					forEachBail(
 						addrs,
+						/**
+						 * @param {string} addr addr
+						 * @param {(err?: null|Error, result?: null|ResolveRequest) => void} callback callback
+						 * @returns {void}
+						 */
 						(addr, callback) => {
 							fs.stat(addr, (err, stat) => {
 								if (!err && stat && stat.isDirectory()) {
+									/** @type {ResolveRequest} */
 									const obj = {
 										...request,
 										path: addr,

@@ -87,7 +87,7 @@ jobs:
           setup-kotlin: 'true'
       - uses: actions/setup-go@v5
         with:
-          go-version: ~1.22.0
+          go-version: ~1.23.0
       # to avoid potentially misleading autobuilder results where we expect it to download
       # dependencies successfully, but they actually come from a warm cache
           cache: false

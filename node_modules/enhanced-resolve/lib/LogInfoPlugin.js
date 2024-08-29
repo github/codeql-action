@@ -6,8 +6,12 @@
 "use strict";
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 module.exports = class LogInfoPlugin {
+	/**
+	 * @param {string | ResolveStepHook} source source
+	 */
 	constructor(source) {
 		this.source = source;
 	}

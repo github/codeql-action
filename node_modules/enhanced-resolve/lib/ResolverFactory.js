@@ -41,14 +41,17 @@ const UseFilePlugin = require("./UseFilePlugin");
 /** @typedef {import("./AliasPlugin").AliasOption} AliasOptionEntry */
 /** @typedef {import("./ExtensionAliasPlugin").ExtensionAliasOption} ExtensionAliasOption */
 /** @typedef {import("./PnpPlugin").PnpApiImpl} PnpApi */
+/** @typedef {import("./Resolver").EnsuredHooks} EnsuredHooks */
 /** @typedef {import("./Resolver").FileSystem} FileSystem */
+/** @typedef {import("./Resolver").KnownHooks} KnownHooks */
 /** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").SyncFileSystem} SyncFileSystem */
 
 /** @typedef {string|string[]|false} AliasOptionNewRequest */
 /** @typedef {{[k: string]: AliasOptionNewRequest}} AliasOptions */
 /** @typedef {{[k: string]: string|string[] }} ExtensionAliasOptions */
-/** @typedef {{apply: function(Resolver): void} | function(this: Resolver, Resolver): void} Plugin */
+/** @typedef {false | 0 | "" | null | undefined} Falsy */
+/** @typedef {{apply: function(Resolver): void} | (function(this: Resolver, Resolver): void) | Falsy} Plugin */
 
 /**
  * @typedef {Object} UserResolveOptions
@@ -122,8 +125,27 @@ function processPnpApiOption(option) {
 		option === undefined &&
 		/** @type {NodeJS.ProcessVersions & {pnp: string}} */ versions.pnp
 	) {
-		// @ts-ignore
-		return require("pnpapi"); // eslint-disable-line node/no-missing-require
+		const _findPnpApi =
+			/** @type {function(string): PnpApi | null}} */
+			(
+				// @ts-ignore
+				require("module").findPnpApi
+			);
+
+		if (_findPnpApi) {
+			return {
+				resolveToUnqualified(request, issuer, opts) {
+					const pnpapi = _findPnpApi(issuer);
+
+					if (!pnpapi) {
+						// Issuer isn't managed by PnP
+						return null;
+					}
+
+					return pnpapi.resolveToUnqualified(request, issuer, opts);
+				}
+			};
+		}
 	}
 
 	return option || null;
@@ -141,7 +163,7 @@ function normalizeAlias(alias) {
 
 				if (/\$$/.test(key)) {
 					obj.onlyModule = true;
-					obj.name = key.substr(0, key.length - 1);
+					obj.name = key.slice(0, -1);
 				}
 
 				return obj;
@@ -155,6 +177,7 @@ function normalizeAlias(alias) {
  */
 function createOptions(options) {
 	const mainFieldsSet = new Set(options.mainFields || ["main"]);
+	/** @type {ResolveOptions["mainFields"]} */
 	const mainFields = [];
 
 	for (const item of mainFieldsSet) {
@@ -301,6 +324,7 @@ exports.createResolver = function (options) {
 	resolver.ensureHook("normalResolve");
 	resolver.ensureHook("internal");
 	resolver.ensureHook("rawModule");
+	resolver.ensureHook("alternateRawModule");
 	resolver.ensureHook("module");
 	resolver.ensureHook("resolveAsModule");
 	resolver.ensureHook("undescribedResolveInPackage");
@@ -321,6 +345,7 @@ exports.createResolver = function (options) {
 	// TODO remove in next major
 	// cspell:word Interal
 	// Backward-compat
+	// @ts-ignore
 	resolver.hooks.newInteralResolve = resolver.hooks.newInternalResolve;
 
 	// resolve
@@ -333,7 +358,7 @@ exports.createResolver = function (options) {
 				new UnsafeCachePlugin(
 					source,
 					cachePredicate,
-					unsafeCache,
+					/** @type {import("./UnsafeCachePlugin").Cache} */ (unsafeCache),
 					cacheWithContext,
 					`new-${source}`
 				)
@@ -441,7 +466,20 @@ exports.createResolver = function (options) {
 					)
 				);
 				plugins.push(
-					new PnpPlugin("raw-module", pnpApi, "undescribed-resolve-in-package")
+					new PnpPlugin(
+						"raw-module",
+						pnpApi,
+						"undescribed-resolve-in-package",
+						"alternate-raw-module"
+					)
+				);
+
+				plugins.push(
+					new ModulesInHierarchicalDirectoriesPlugin(
+						"alternate-raw-module",
+						["node_modules"],
+						"module"
+					)
 				);
 			} else {
 				plugins.push(
@@ -636,18 +674,24 @@ exports.createResolver = function (options) {
 		plugins.push(new NextPlugin("existing-file", "resolved"));
 	}
 
+	const resolved =
+		/** @type {KnownHooks & EnsuredHooks} */
+		(resolver.hooks).resolved;
+
 	// resolved
 	if (restrictions.size > 0) {
-		plugins.push(new RestrictionsPlugin(resolver.hooks.resolved, restrictions));
+		plugins.push(new RestrictionsPlugin(resolved, restrictions));
 	}
-	plugins.push(new ResultPlugin(resolver.hooks.resolved));
+
+	plugins.push(new ResultPlugin(resolved));
 
 	//// RESOLVER ////
 
 	for (const plugin of plugins) {
 		if (typeof plugin === "function") {
-			plugin.call(resolver, resolver);
-		} else {
+			/** @type {function(this: Resolver, Resolver): void} */
+			(plugin).call(resolver, resolver);
+		} else if (plugin) {
 			plugin.apply(resolver);
 		}
 	}

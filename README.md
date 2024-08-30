@@ -39,7 +39,7 @@ We typically release new minor versions of the CodeQL Action and Bundle when a n
 
 | Minimum CodeQL Action | Minimum CodeQL Bundle Version | GitHub Environment | Notes |
 |---------|----------|--------------|
-| `v3.25.11` | `2.17.6` | Enterprise Server 3.14 | Does not support CodeQL Action v2 |
+| `v3.25.11` | `2.17.6` | Enterprise Server 3.14 |  |
 | `v3.24.11` | `2.16.6` | Enterprise Server 3.13 | |
 | `v3.22.12` | `2.15.5` | Enterprise Server 3.12 | |
 | `v2.22.1` | `2.14.6` | Enterprise Server 3.11 | |

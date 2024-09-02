@@ -294,7 +294,7 @@ module.exports = function (/*Buffer|null*/ inBuffer, /** object */ options) {
 
             mainHeader.size = 0;
             mainHeader.offset = 0;
-            totalEntries = 0;
+            let totalEntries = 0;
 
             for (const entry of this.entries) {
                 // compress data and set local and entry header accordingly. Reason why is called first

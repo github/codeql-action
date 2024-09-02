@@ -17,6 +17,7 @@ import * as api from "./api-client";
 import * as defaults from "./defaults.json";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
 import { Logger } from "./logging";
+import * as tar from "./tar";
 import * as util from "./util";
 import { isGoodVersion } from "./util";
 
@@ -462,6 +463,7 @@ export async function tryGetFallbackToolcacheVersion(
 }
 
 export interface ToolsDownloadStatusReport {
+  compressionMethod: tar.CompressionMethod;
   downloadDurationMs: number;
   extractionDurationMs: number;
 }
@@ -505,6 +507,7 @@ export const downloadCodeQL = async function (
     `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
   );
 
+  const compressionMethod = tar.inferCompressionMethod(codeqlURL);
   const dest = path.join(tempDir, uuidV4());
   const finalHeaders = Object.assign(
     { "User-Agent": "CodeQL Action" },
@@ -526,7 +529,10 @@ export const downloadCodeQL = async function (
 
   logger.debug("Extracting CodeQL bundle.");
   const extractionStart = performance.now();
-  const extractedBundlePath = await toolcache.extractTar(archivedBundlePath);
+  const extractedBundlePath = await tar.extract(
+    archivedBundlePath,
+    compressionMethod,
+  );
   const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
     `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
@@ -544,6 +550,7 @@ export const downloadCodeQL = async function (
     return {
       codeqlFolder: extractedBundlePath,
       statusReport: {
+        compressionMethod,
         downloadDurationMs,
         extractionDurationMs,
       },
@@ -575,6 +582,7 @@ export const downloadCodeQL = async function (
   return {
     codeqlFolder: toolcachedBundlePath,
     statusReport: {
+      compressionMethod,
       downloadDurationMs,
       extractionDurationMs,
     },
@@ -619,17 +627,16 @@ function getCanonicalToolcacheVersion(
   return cliVersion;
 }
 
+export interface SetupCodeQLResult {
+  codeqlFolder: string;
+  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+}
+
 /**
  * Obtains the CodeQL bundle, installs it in the toolcache if appropriate, and extracts it.
  *
- * @param toolsInput
- * @param apiDetails
- * @param tempDir
- * @param variant
- * @param defaultCliVersion
- * @param logger
- * @param checkVersion Whether to check that CodeQL CLI meets the minimum
- *        version requirement. Must be set to true outside tests.
  * @returns the path to the extracted bundle, and the version of the tools
  */
 export async function setupCodeQLBundle(
@@ -639,12 +646,7 @@ export async function setupCodeQLBundle(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
-): Promise<{
-  codeqlFolder: string;
-  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
-  toolsSource: ToolsSource;
-  toolsVersion: string;
-}> {
+): Promise<SetupCodeQLResult> {
   const source = await getCodeQLSource(
     toolsInput,
     defaultCliVersion,
@@ -658,10 +660,14 @@ export async function setupCodeQLBundle(
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsSource: ToolsSource;
   switch (source.sourceType) {
-    case "local":
-      codeqlFolder = await toolcache.extractTar(source.codeqlTarPath);
+    case "local": {
+      const compressionMethod = tar.inferCompressionMethod(
+        source.codeqlTarPath,
+      );
+      codeqlFolder = await tar.extract(source.codeqlTarPath, compressionMethod);
       toolsSource = ToolsSource.Local;
       break;
+    }
     case "toolcache":
       codeqlFolder = source.codeqlFolder;
       logger.debug(`CodeQL found in cache ${codeqlFolder}`);

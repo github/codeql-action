@@ -73,8 +73,8 @@ export async function uploadDebugArtifacts(
       const artifactClient = new artifact.DefaultArtifactClient();
       await artifactClient.uploadArtifact(
         sanitizeArifactName(`${artifactName}${suffix}`),
-        toUpload,
-        rootDir,
+        toUpload.map((file) => path.normalize(file)),
+        path.normalize(rootDir),
         {
           // ensure we don't keep the debug artifacts around for too long since they can be large.
           retentionDays: 7,

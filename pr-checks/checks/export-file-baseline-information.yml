@@ -19,7 +19,7 @@ steps:
     with:
       output: "${{ runner.temp }}/results"
   - name: Upload SARIF
-    uses: actions/upload-artifact@v3
+    uses: actions/upload-artifact@v4
     with:
       name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
       path: "${{ runner.temp }}/results/javascript.sarif"

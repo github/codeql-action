@@ -328,6 +328,11 @@ export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
 const CODEQL_VERSION_INCLUDE_QUERY_HELP = "2.15.2";
 
 /**
+ * Versions 2.17.1+ of the CodeQL CLI support the `--cache-cleanup` option.
+ */
+const CODEQL_VERSION_CACHE_CLEANUP = "2.17.1";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -973,11 +978,17 @@ export async function getCodeQLForCmd(
       databasePath: string,
       cleanupLevel: string,
     ): Promise<void> {
+      const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
+        this,
+        CODEQL_VERSION_CACHE_CLEANUP,
+      ))
+        ? "--cache-cleanup"
+        : "--mode";
       const codeqlArgs = [
         "database",
         "cleanup",
         databasePath,
-        `--mode=${cleanupLevel}`,
+        `${cacheCleanupFlag}=${cleanupLevel}`,
         ...getExtraOptionsFromEnv(["database", "cleanup"]),
       ];
       await runTool(cmd, codeqlArgs);

@@ -60,7 +60,7 @@ export async function uploadDebugArtifacts(
   try {
     if (ghVariant === GitHubVariant.GHES) {
       await artifactLegacy.create().uploadArtifact(
-        sanitizeArifactName(`${artifactName}${suffix}`),
+        sanitizeArifactName(`${artifactName}${suffix}}`),
         toUpload.map((file) => path.normalize(file)),
         path.normalize(rootDir),
         {
@@ -71,15 +71,18 @@ export async function uploadDebugArtifacts(
       );
     } else {
       const artifactClient = new artifact.DefaultArtifactClient();
-      await artifactClient.uploadArtifact(
-        sanitizeArifactName(`${artifactName}${suffix}`),
-        toUpload.map((file) => path.normalize(file)),
-        path.normalize(rootDir),
-        {
-          // ensure we don't keep the debug artifacts around for too long since they can be large.
-          retentionDays: 7,
-        },
-      );
+
+      for (const file of toUpload) {
+        await artifactClient.uploadArtifact(
+          sanitizeArifactName(`${artifactName}${suffix}-${file}`),
+          [path.normalize(file)],
+          path.normalize(rootDir),
+          {
+            // ensure we don't keep the debug artifacts around for too long since they can be large.
+            retentionDays: 7,
+          },
+        );
+      }
     }
   } catch (e) {
     // A failure to upload debug artifacts should not fail the entire action.

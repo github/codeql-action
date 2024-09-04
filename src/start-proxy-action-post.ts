@@ -4,11 +4,12 @@
  * other `post:` hooks.
  */
 import * as artifact from "@actions/artifact";
+import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import * as configUtils from "./config-utils";
-import { wrapError } from "./util";
+import { GitHubVariant, wrapError } from "./util";
 
 async function runWrapper() {
   try {
@@ -31,18 +32,36 @@ async function runWrapper() {
     core.info(
       "Debug mode is on. Uploading proxy log as Actions debugging artifact...",
     );
+    if (config?.gitHubVersion.type === undefined) {
+      core.warning(
+        `Did not upload debug artifacts because cannot determine the GitHub variant running.`,
+      );
+      return;
+    }
     try {
-      await artifact
-        .create()
-        .uploadArtifact(
+      if (config.gitHubVersion.type === GitHubVariant.GHES) {
+        await artifactLegacy
+          .create()
+          .uploadArtifact(
+            "proxy-log-file",
+            [logFilePath],
+            actionsUtil.getTemporaryDirectory(),
+            {
+              continueOnError: true,
+              retentionDays: 7,
+            },
+          );
+      } else {
+        const artifactClient = new artifact.DefaultArtifactClient();
+        await artifactClient.uploadArtifact(
           "proxy-log-file",
           [logFilePath],
           actionsUtil.getTemporaryDirectory(),
           {
-            continueOnError: true,
             retentionDays: 7,
           },
         );
+      }
     } catch (e) {
       // A failure to upload debug artifacts should not fail the entire action.
       core.warning(`Failed to upload debug artifacts: ${e}`);

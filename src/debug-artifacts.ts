@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as artifact from "@actions/artifact";
+import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
 import AdmZip from "adm-zip";
 import del from "del";
@@ -16,6 +17,7 @@ import {
   bundleDb,
   doesDirectoryExist,
   getCodeQLDatabasePath,
+  GitHubVariant,
   listFolder,
 } from "./util";
 
@@ -27,10 +29,19 @@ export async function uploadDebugArtifacts(
   toUpload: string[],
   rootDir: string,
   artifactName: string,
+  ghVariant: GitHubVariant | undefined,
 ) {
   if (toUpload.length === 0) {
     return;
   }
+
+  if (ghVariant === undefined) {
+    core.warning(
+      `Did not upload debug artifacts because cannot determine the GitHub variant running.`,
+    );
+    return;
+  }
+
   let suffix = "";
   const matrix = getRequiredInput("matrix");
   if (matrix) {
@@ -47,16 +58,29 @@ export async function uploadDebugArtifacts(
   }
 
   try {
-    await artifact.create().uploadArtifact(
-      sanitizeArifactName(`${artifactName}${suffix}`),
-      toUpload.map((file) => path.normalize(file)),
-      path.normalize(rootDir),
-      {
-        continueOnError: true,
-        // ensure we don't keep the debug artifacts around for too long since they can be large.
-        retentionDays: 7,
-      },
-    );
+    if (ghVariant === GitHubVariant.GHES) {
+      await artifactLegacy.create().uploadArtifact(
+        sanitizeArifactName(`${artifactName}${suffix}`),
+        toUpload.map((file) => path.normalize(file)),
+        path.normalize(rootDir),
+        {
+          continueOnError: true,
+          // ensure we don't keep the debug artifacts around for too long since they can be large.
+          retentionDays: 7,
+        },
+      );
+    } else {
+      const artifactClient = new artifact.DefaultArtifactClient();
+      await artifactClient.uploadArtifact(
+        sanitizeArifactName(`${artifactName}${suffix}`),
+        toUpload,
+        rootDir,
+        {
+          // ensure we don't keep the debug artifacts around for too long since they can be large.
+          retentionDays: 7,
+        },
+      );
+    }
   } catch (e) {
     // A failure to upload debug artifacts should not fail the entire action.
     core.warning(`Failed to upload debug artifacts: ${e}`);
@@ -78,7 +102,12 @@ export async function uploadSarifDebugArtifact(
       toUpload = toUpload.concat(sarifFile);
     }
   }
-  await uploadDebugArtifacts(toUpload, outputDir, config.debugArtifactName);
+  await uploadDebugArtifacts(
+    toUpload,
+    outputDir,
+    config.debugArtifactName,
+    config.gitHubVersion.type,
+  );
 }
 
 export async function uploadLogsDebugArtifact(config: Config) {
@@ -104,6 +133,7 @@ export async function uploadLogsDebugArtifact(config: Config) {
     toUpload,
     config.dbLocation,
     config.debugArtifactName,
+    config.gitHubVersion.type,
   );
 }
 
@@ -170,6 +200,7 @@ export async function uploadDatabaseBundleDebugArtifact(
         [databaseBundlePath],
         config.dbLocation,
         config.debugArtifactName,
+        config.gitHubVersion.type,
       );
     } catch (error) {
       core.info(

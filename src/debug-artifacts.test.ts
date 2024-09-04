@@ -1,6 +1,7 @@
 import test from "ava";
 
 import * as debugArtifacts from "./debug-artifacts";
+import { GitHubVariant } from "./util";
 
 test("sanitizeArifactName", (t) => {
   t.deepEqual(
@@ -18,6 +19,11 @@ test("sanitizeArifactName", (t) => {
 test("uploadDebugArtifacts", async (t) => {
   // Test that no error is thrown if artifacts list is empty.
   await t.notThrowsAsync(
-    debugArtifacts.uploadDebugArtifacts([], "rootDir", "artifactName"),
+    debugArtifacts.uploadDebugArtifacts(
+      [],
+      "rootDir",
+      "artifactName",
+      GitHubVariant.DOTCOM,
+    ),
   );
 });

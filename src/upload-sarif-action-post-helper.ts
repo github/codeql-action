@@ -4,12 +4,15 @@ import * as path from "path";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
+import * as configUtils from "./config-utils";
+import { GitHubVariant } from "./util";
 
 export async function uploadArtifacts(
   uploadDebugArtifacts: (
     toUpload: string[],
     rootDir: string,
     artifactName: string,
+    ghVariant: GitHubVariant | undefined,
   ) => Promise<void>,
 ) {
   const tempDir = actionsUtil.getTemporaryDirectory();
@@ -38,11 +41,17 @@ export async function uploadArtifacts(
       }
     }
 
+    const config = await configUtils.getConfig(
+      actionsUtil.getTemporaryDirectory(),
+      core,
+    );
+
     if (toUpload.length > 0) {
       await uploadDebugArtifacts(
         toUpload,
         baseTempDir,
         "upload-debug-artifacts",
+        config?.gitHubVersion.type,
       );
     }
   }

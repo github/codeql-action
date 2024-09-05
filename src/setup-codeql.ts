@@ -466,6 +466,7 @@ export interface ToolsDownloadStatusReport {
   compressionMethod: tar.CompressionMethod;
   downloadDurationMs: number;
   extractionDurationMs: number;
+  toolsUrl: string;
 }
 
 // Exported using `export const` for testing purposes. Specifically, we want to
@@ -553,6 +554,7 @@ export const downloadCodeQL = async function (
         compressionMethod,
         downloadDurationMs,
         extractionDurationMs,
+        toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
       },
       toolsVersion: maybeCliVersion ?? "unknown",
     };
@@ -585,6 +587,7 @@ export const downloadCodeQL = async function (
       compressionMethod,
       downloadDurationMs,
       extractionDurationMs,
+      toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
     },
     toolsVersion: maybeCliVersion ?? toolcacheVersion,
   };
@@ -710,4 +713,12 @@ async function cleanUpGlob(glob: string, name: string, logger: Logger) {
   } catch (e) {
     logger.warning(`Failed to clean up ${name}: ${e}.`);
   }
+}
+
+function sanitizeUrlForStatusReport(url: string): string {
+  return ["github/codeql-action", "dsp-testing/codeql-cli-nightlies"].some(
+    (repo) => url.startsWith(`https://github.com/${repo}/releases/download/`),
+  )
+    ? url
+    : "sanitized-value";
 }

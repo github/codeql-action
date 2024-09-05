@@ -3,6 +3,7 @@ import type { VersionInfo } from "./codeql";
 export enum ToolsFeature {
   AnalysisSummaryV2IsDefault = "analysisSummaryV2Default",
   BuildModeOption = "buildModeOption",
+  DatabaseInterpretResultsSupportsSarifRunProperty = "databaseInterpretResultsSupportsSarifRunProperty",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   InformsAboutUnsupportedPathFilters = "informsAboutUnsupportedPathFilters",
   SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",

@@ -870,6 +870,7 @@ export async function getCodeQLForCmd(
         )}`,
         "--sarif-group-rules-by-pack",
         ...(await getCodeScanningQueryHelpArguments(this)),
+        ...(await getJobRunUuidSarifOptions(this)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (automationDetailsId !== undefined) {
@@ -1422,4 +1423,15 @@ function applyAutobuildAzurePipelinesTimeoutFix() {
     "-Dhttp.keepAlive=false",
     "-Dmaven.wagon.http.pool=false",
   ].join(" ");
+}
+
+async function getJobRunUuidSarifOptions(codeql: CodeQL) {
+  const jobRunUuid = process.env[EnvVar.JOB_RUN_UUID];
+
+  return jobRunUuid &&
+    (await codeql.supportsFeature(
+      ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
+    ))
+    ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`]
+    : [];
 }

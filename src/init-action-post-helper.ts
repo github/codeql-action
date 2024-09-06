@@ -158,11 +158,15 @@ export async function tryUploadSarifIfRunFailed(
 }
 
 export async function run(
-  uploadDatabaseBundleDebugArtifact: (
+  // uploadDatabaseBundleDebugArtifact: (
+  //   config: Config,
+  //   logger: Logger,
+  // ) => Promise<void>,
+  // uploadLogsDebugArtifact: (config: Config) => Promise<void>,
+  uploadAllAvailableDebugArtifacts: (
     config: Config,
     logger: Logger,
   ) => Promise<void>,
-  uploadLogsDebugArtifact: (config: Config) => Promise<void>,
   printDebugLogs: (config: Config) => Promise<void>,
   config: Config,
   repositoryNwo: RepositoryNwo,
@@ -211,8 +215,9 @@ export async function run(
     logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
-    await uploadDatabaseBundleDebugArtifact(config, logger);
-    await uploadLogsDebugArtifact(config);
+    // await uploadDatabaseBundleDebugArtifact(config, logger);
+    // await uploadLogsDebugArtifact(config);
+    await uploadAllAvailableDebugArtifacts(config, logger);
 
     await printDebugLogs(config);
   }

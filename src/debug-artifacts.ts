@@ -7,10 +7,11 @@ import * as core from "@actions/core";
 import AdmZip from "adm-zip";
 import del from "del";
 
-import { getRequiredInput } from "./actions-util";
+import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -23,6 +24,91 @@ import {
 
 export function sanitizeArifactName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
+}
+
+export function getCombinedSarifDebugArtifacts(baseTempDir: string): string[] {
+  if (process.env["CODEQL_ACTION_DEBUG_COMBINED_SARIF"] !== "true") {
+    return [];
+  }
+
+  core.info(
+    "Uploading available combined SARIF files as Actions debugging artifact...",
+  );
+
+  const combinedSarifFiles: string[] = [];
+
+  if (fs.existsSync(baseTempDir)) {
+    const outputDirs = fs.readdirSync(baseTempDir);
+
+    for (const outputDir of outputDirs) {
+      const sarifFiles = fs
+        .readdirSync(path.resolve(baseTempDir, outputDir))
+        .filter((f) => f.endsWith(".sarif"));
+
+      for (const sarifFile of sarifFiles) {
+        combinedSarifFiles.push(
+          path.resolve(baseTempDir, outputDir, sarifFile),
+        );
+      }
+    }
+  }
+  return combinedSarifFiles;
+}
+
+export async function uploadAllAvailableDebugArtifacts(
+  config: Config,
+  logger: Logger,
+) {
+  let filesToUpload: string[] = [];
+
+  const analyzeActionOutputDir = process.env[EnvVar.SARIF_RESULTS_OUTPUT_DIR];
+  for (const lang of config.languages) {
+    // SARIF
+    if (
+      analyzeActionOutputDir !== undefined &&
+      fs.existsSync(analyzeActionOutputDir) &&
+      fs.lstatSync(analyzeActionOutputDir).isDirectory()
+    ) {
+      const sarifFile = path.resolve(analyzeActionOutputDir, `${lang}.sarif`);
+      if (fs.existsSync(sarifFile)) {
+        filesToUpload = filesToUpload.concat(sarifFile);
+      }
+    }
+
+    // Logs
+    const databaseDirectory = getCodeQLDatabasePath(config, lang);
+    const logsDirectory = path.resolve(databaseDirectory, "log");
+    if (doesDirectoryExist(logsDirectory)) {
+      filesToUpload = filesToUpload.concat(listFolder(logsDirectory));
+    }
+
+    // Multilanguage tracing: there are additional logs in the root of the cluster
+    const multiLanguageTracingLogsDirectory = path.resolve(
+      config.dbLocation,
+      "log",
+    );
+    if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
+      filesToUpload = filesToUpload.concat(
+        listFolder(multiLanguageTracingLogsDirectory),
+      );
+    }
+
+    // DB Bundle
+    let databaseBundlePath: string;
+    if (!dbIsFinalized(config, lang, logger)) {
+      databaseBundlePath = await createPartialDatabaseBundle(config, lang);
+    } else {
+      databaseBundlePath = await createDatabaseBundleCli(config, lang);
+    }
+    filesToUpload = filesToUpload.concat(databaseBundlePath);
+  }
+
+  await uploadDebugArtifacts(
+    filesToUpload,
+    getTemporaryDirectory(),
+    config.debugArtifactName,
+    config.gitHubVersion.type,
+  );
 }
 
 export async function uploadDebugArtifacts(
@@ -72,17 +158,15 @@ export async function uploadDebugArtifacts(
     } else {
       const artifactClient = new artifact.DefaultArtifactClient();
 
-      for (const file of toUpload) {
-        await artifactClient.uploadArtifact(
-          sanitizeArifactName(`${artifactName}${suffix}-${file}`),
-          [path.normalize(file)],
-          path.normalize(rootDir),
-          {
-            // ensure we don't keep the debug artifacts around for too long since they can be large.
-            retentionDays: 7,
-          },
-        );
-      }
+      await artifactClient.uploadArtifact(
+        sanitizeArifactName(`${artifactName}${suffix}`),
+        toUpload.map((file) => path.normalize(file)),
+        path.normalize(rootDir),
+        {
+          // ensure we don't keep the debug artifacts around for too long since they can be large.
+          retentionDays: 7,
+        },
+      );
     }
   } catch (e) {
     // A failure to upload debug artifacts should not fail the entire action.
@@ -90,55 +174,55 @@ export async function uploadDebugArtifacts(
   }
 }
 
-export async function uploadSarifDebugArtifact(
-  config: Config,
-  outputDir: string,
-) {
-  if (!doesDirectoryExist(outputDir)) {
-    return;
-  }
+// export async function uploadSarifDebugArtifact(
+//   config: Config,
+//   outputDir: string,
+// ) {
+//   if (!doesDirectoryExist(outputDir)) {
+//     return;
+//   }
 
-  let toUpload: string[] = [];
-  for (const lang of config.languages) {
-    const sarifFile = path.resolve(outputDir, `${lang}.sarif`);
-    if (fs.existsSync(sarifFile)) {
-      toUpload = toUpload.concat(sarifFile);
-    }
-  }
-  await uploadDebugArtifacts(
-    toUpload,
-    outputDir,
-    config.debugArtifactName,
-    config.gitHubVersion.type,
-  );
-}
+//   let toUpload: string[] = [];
+//   for (const lang of config.languages) {
+//     const sarifFile = path.resolve(outputDir, `${lang}.sarif`);
+//     if (fs.existsSync(sarifFile)) {
+//       toUpload = toUpload.concat(sarifFile);
+//     }
+//   }
+//   await uploadDebugArtifacts(
+//     toUpload,
+//     outputDir,
+//     `${config.debugArtifactName}`,
+//     config.gitHubVersion.type,
+//   );
+// }
 
-export async function uploadLogsDebugArtifact(config: Config) {
-  let toUpload: string[] = [];
-  for (const language of config.languages) {
-    const databaseDirectory = getCodeQLDatabasePath(config, language);
-    const logsDirectory = path.resolve(databaseDirectory, "log");
-    if (doesDirectoryExist(logsDirectory)) {
-      toUpload = toUpload.concat(listFolder(logsDirectory));
-    }
-  }
+// export async function uploadLogsDebugArtifact(config: Config) {
+//   let toUpload: string[] = [];
+//   for (const language of config.languages) {
+//     const databaseDirectory = getCodeQLDatabasePath(config, language);
+//     const logsDirectory = path.resolve(databaseDirectory, "log");
+//     if (doesDirectoryExist(logsDirectory)) {
+//       toUpload = toUpload.concat(listFolder(logsDirectory));
+//     }
+//   }
 
-  // Multilanguage tracing: there are additional logs in the root of the cluster
-  const multiLanguageTracingLogsDirectory = path.resolve(
-    config.dbLocation,
-    "log",
-  );
-  if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
-    toUpload = toUpload.concat(listFolder(multiLanguageTracingLogsDirectory));
-  }
+//   // Multilanguage tracing: there are additional logs in the root of the cluster
+//   const multiLanguageTracingLogsDirectory = path.resolve(
+//     config.dbLocation,
+//     "log",
+//   );
+//   if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
+//     toUpload = toUpload.concat(listFolder(multiLanguageTracingLogsDirectory));
+//   }
 
-  await uploadDebugArtifacts(
-    toUpload,
-    config.dbLocation,
-    config.debugArtifactName,
-    config.gitHubVersion.type,
-  );
-}
+//   await uploadDebugArtifacts(
+//     toUpload,
+//     config.dbLocation,
+//     config.debugArtifactName,
+//     config.gitHubVersion.type,
+//   );
+// }
 
 /**
  * If a database has not been finalized, we cannot run the `codeql database bundle`
@@ -184,31 +268,31 @@ async function createDatabaseBundleCli(
   return databaseBundlePath;
 }
 
-export async function uploadDatabaseBundleDebugArtifact(
-  config: Config,
-  logger: Logger,
-) {
-  for (const language of config.languages) {
-    try {
-      let databaseBundlePath: string;
-      if (!dbIsFinalized(config, language, logger)) {
-        databaseBundlePath = await createPartialDatabaseBundle(
-          config,
-          language,
-        );
-      } else {
-        databaseBundlePath = await createDatabaseBundleCli(config, language);
-      }
-      await uploadDebugArtifacts(
-        [databaseBundlePath],
-        config.dbLocation,
-        config.debugArtifactName,
-        config.gitHubVersion.type,
-      );
-    } catch (error) {
-      core.info(
-        `Failed to upload database debug bundle for ${config.debugDatabaseName}-${language}: ${error}`,
-      );
-    }
-  }
-}
+// export async function uploadDatabaseBundleDebugArtifact(
+//   config: Config,
+//   logger: Logger,
+// ) {
+//   for (const language of config.languages) {
+//     try {
+//       let databaseBundlePath: string;
+//       if (!dbIsFinalized(config, language, logger)) {
+//         databaseBundlePath = await createPartialDatabaseBundle(
+//           config,
+//           language,
+//         );
+//       } else {
+//         databaseBundlePath = await createDatabaseBundleCli(config, language);
+//       }
+//       await uploadDebugArtifacts(
+//         [databaseBundlePath],
+//         config.dbLocation,
+//         config.debugArtifactName,
+//         config.gitHubVersion.type,
+//       );
+//     } catch (error) {
+//       core.info(
+//         `Failed to upload database debug bundle for ${config.debugDatabaseName}-${language}: ${error}`,
+//       );
+//     }
+//   }
+// }

@@ -5,3 +5,5 @@ node_modules/.cache/
 *.class
 # macOS
 .DS_Store
+# eslint sarif report
+eslint.sarif

@@ -1,0 +1,63 @@
+{
+  "name": "@microsoft/eslint-formatter-sarif",
+  "version": "3.1.0",
+  "description": "ESLint formatter for the SARIF (Static Analysis Results Interchange Format) v2.1.0 file format",
+  "main": "sarif.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "github",
+    "url": "git+https://github.com/Microsoft/sarif-js-sdk.git"
+  },
+  "keywords": [
+    "eslint",
+    "formatter",
+    "eslint formatter",
+    "sarif",
+    "sarif formatter",
+    "sarif eslint",
+    "eslint sarif"
+  ],
+  "engines": {
+    "node": ">= 14"
+  },
+  "files": [
+    "sarif.js"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Microsoft/sarif-js-sdk/issues"
+  },
+  "homepage": "https://github.com/microsoft/sarif-js-sdk/tree/main/packages/eslint-formatter-sarif#readme",
+  "dependencies": {
+    "eslint": "^8.9.0",
+    "jschardet": "latest",
+    "lodash": "^4.17.14",
+    "utf8": "^3.0.0"
+  },
+  "devDependencies": {
+    "rewire": "^6.0.0",
+    "semver-regex": "^3.1.4"
+  },
+  "release-it": {
+    "plugins": {
+      "release-it-lerna-changelog": {
+        "infile": "CHANGELOG.md",
+        "launchEditor": true
+      }
+    },
+    "git": {
+      "tagName": "eslint-formatter-sarif@${version}"
+    },
+    "github": {
+      "release": true,
+      "releaseName": "eslint-formatter-sarif@${version}",
+      "tokenRef": "GITHUB_AUTH"
+    }
+  }
+}

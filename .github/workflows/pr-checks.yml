@@ -28,14 +28,11 @@ jobs:
 
       - name: Upload sarif
         uses: github/codeql-action/upload-sarif@v3
-          # Only upload SARIF for the latest version of Node.js
+        # Only upload SARIF for the latest version of Node.js
         if: matrix.node-types-version == 'current'
         with:
           sarif_file: eslint.sarif
           category: eslint
-
-      - name: Ensure the working directory is clean
-        run: rm -f eslint.sarif
 
       - name: Update version of @types/node
         if: matrix.node-types-version != 'current'

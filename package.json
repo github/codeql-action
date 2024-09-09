@@ -9,7 +9,7 @@
     "test-debug": "ava src/**.test.ts --serial --verbose --timeout=20m",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 .",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --fix",
-    "lint-ci": "eslint --report-unused-disable-directives --max-warnings=0 . --format @microsoft/eslint-formatter-sarif --output-file=eslint.sarif",
+    "lint-ci": "SARIF_ESLINT_IGNORE_SUPPRESSED=true eslint --report-unused-disable-directives --max-warnings=0 . --format @microsoft/eslint-formatter-sarif --output-file=eslint.sarif",
     "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"
   },
   "ava": {

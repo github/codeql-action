@@ -2,8 +2,8 @@
 
 var GetIntrinsic = require('get-intrinsic');
 
-var $TypeError = GetIntrinsic('%TypeError%');
-var $SyntaxError = GetIntrinsic('%SyntaxError%');
+var $TypeError = require('es-errors/type');
+var $SyntaxError = require('es-errors/syntax');
 var $asyncIterator = GetIntrinsic('%Symbol.asyncIterator%', true);
 
 var inspect = require('object-inspect');

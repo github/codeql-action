@@ -1,14 +1,14 @@
 'use strict';
 
-var CreateDataPropertyOrThrow = require('es-abstract/2023/CreateDataPropertyOrThrow');
-var OrdinaryObjectCreate = require('es-abstract/2023/OrdinaryObjectCreate');
+var CreateDataPropertyOrThrow = require('es-abstract/2024/CreateDataPropertyOrThrow');
+var OrdinaryObjectCreate = require('es-abstract/2024/OrdinaryObjectCreate');
 
 var forEach = require('es-abstract/helpers/forEach');
 
-var GroupBy = require('./aos/GroupBy'); // TODO: replace with es-abstract 2024 implementation
+var GroupBy = require('es-abstract/2024/GroupBy'); // TODO: replace with es-abstract 2024 implementation
 
 module.exports = function groupBy(items, callbackfn) {
-	var groups = GroupBy(items, callbackfn, 'property'); // step 1
+	var groups = GroupBy(items, callbackfn, 'PROPERTY'); // step 1
 
 	var obj = OrdinaryObjectCreate(null); // step 2
 

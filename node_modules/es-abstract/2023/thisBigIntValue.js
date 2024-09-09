@@ -1,9 +1,8 @@
 'use strict';
 
-var GetIntrinsic = require('get-intrinsic');
 var callBound = require('call-bind/callBound');
 
-var $SyntaxError = GetIntrinsic('%SyntaxError%');
+var $SyntaxError = require('es-errors/syntax');
 var $bigIntValueOf = callBound('BigInt.prototype.valueOf', true);
 
 var Type = require('./Type');

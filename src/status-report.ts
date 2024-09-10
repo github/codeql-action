@@ -68,9 +68,16 @@ export enum JobStatus {
   ConfigErrorStatus = "JOB_STATUS_CONFIGURATION_ERROR",
 }
 
-export interface StatusReportBase {
-  /** Name of the action being executed. */
-  action_name: ActionName;
+const unused = 0;
+const unused2 = 0;
+const unused3 = 0;
+
+export interface StatusReportBase   {
+  /** Name of the action being executed.
+   *
+   *
+  */
+  action_name: ActionName
   /** Version of the action being executed, as a commit oid. */
   action_oid: string;
   /** Version of the action being executed, as a ref. */

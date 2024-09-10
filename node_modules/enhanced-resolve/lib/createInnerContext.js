@@ -5,27 +5,37 @@
 
 "use strict";
 
-module.exports = function createInnerContext(
-	options,
-	message,
-	messageOptional
-) {
+/** @typedef {import("./Resolver").ResolveContext} ResolveContext */
+
+/**
+ * @param {ResolveContext} options options for inner context
+ * @param {null|string} message message to log
+ * @returns {ResolveContext} inner context
+ */
+module.exports = function createInnerContext(options, message) {
 	let messageReported = false;
 	let innerLog = undefined;
 	if (options.log) {
 		if (message) {
+			/**
+			 * @param {string} msg message
+			 */
 			innerLog = msg => {
 				if (!messageReported) {
-					options.log(message);
+					/** @type {(function(string): void)} */
+					(options.log)(message);
 					messageReported = true;
 				}
-				options.log("  " + msg);
+
+				/** @type {(function(string): void)} */
+				(options.log)("  " + msg);
 			};
 		} else {
 			innerLog = options.log;
 		}
 	}
-	const childContext = {
+
+	return {
 		log: innerLog,
 		yield: options.yield,
 		fileDependencies: options.fileDependencies,
@@ -33,5 +43,4 @@ module.exports = function createInnerContext(
 		missingDependencies: options.missingDependencies,
 		stack: options.stack
 	};
-	return childContext;
 };

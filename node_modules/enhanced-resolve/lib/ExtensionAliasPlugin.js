@@ -36,27 +36,60 @@ module.exports = class ExtensionAliasPlugin {
 			.tapAsync("ExtensionAliasPlugin", (request, resolveContext, callback) => {
 				const requestPath = request.request;
 				if (!requestPath || !requestPath.endsWith(extension)) return callback();
-				const resolve = (alias, callback) => {
-					resolver.doResolve(
+				const isAliasString = typeof alias === "string";
+				/**
+				 * @param {string} alias extension alias
+				 * @param {(err?: null|Error, result?: null|ResolveRequest) => void} callback callback
+				 * @param {number} [index] index
+				 * @returns {void}
+				 */
+				const resolve = (alias, callback, index) => {
+					const newRequest = `${requestPath.slice(
+						0,
+						-extension.length
+					)}${alias}`;
+
+					return resolver.doResolve(
 						target,
 						{
 							...request,
-							request: `${requestPath.slice(0, -extension.length)}${alias}`,
+							request: newRequest,
 							fullySpecified: true
 						},
 						`aliased from extension alias with mapping '${extension}' to '${alias}'`,
 						resolveContext,
-						callback
+						(err, result) => {
+							// Throw error if we are on the last alias (for multiple aliases) and it failed, always throw if we are not an array or we have only one alias
+							if (!isAliasString && index) {
+								if (index !== this.options.alias.length) {
+									if (resolveContext.log) {
+										resolveContext.log(
+											`Failed to alias from extension alias with mapping '${extension}' to '${alias}' for '${newRequest}': ${err}`
+										);
+									}
+
+									return callback(null, result);
+								}
+
+								return callback(err, result);
+							} else {
+								callback(err, result);
+							}
+						}
 					);
 				};
-
+				/**
+				 * @param {null|Error} [err] error
+				 * @param {null|ResolveRequest} [result] result
+				 * @returns {void}
+				 */
 				const stoppingCallback = (err, result) => {
 					if (err) return callback(err);
 					if (result) return callback(null, result);
 					// Don't allow other aliasing or raw request
 					return callback(null, null);
 				};
-				if (typeof alias === "string") {
+				if (isAliasString) {
 					resolve(alias, stoppingCallback);
 				} else if (alias.length > 1) {
 					forEachBail(alias, resolve, stoppingCallback);

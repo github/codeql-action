@@ -6,6 +6,7 @@
 "use strict";
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 const namespaceStartCharCode = "@".charCodeAt(0);
@@ -38,7 +39,12 @@ module.exports = class JoinRequestPartPlugin {
 						i = req.indexOf("/", i + 1);
 					}
 
-					let moduleName, remainingRequest, fullySpecified;
+					/** @type {string} */
+					let moduleName;
+					/** @type {string} */
+					let remainingRequest;
+					/** @type {boolean} */
+					let fullySpecified;
 					if (i < 0) {
 						moduleName = req;
 						remainingRequest = ".";
@@ -46,11 +52,16 @@ module.exports = class JoinRequestPartPlugin {
 					} else {
 						moduleName = req.slice(0, i);
 						remainingRequest = "." + req.slice(i);
-						fullySpecified = request.fullySpecified;
+						fullySpecified = /** @type {boolean} */ (request.fullySpecified);
 					}
+					/** @type {ResolveRequest} */
 					const obj = {
 						...request,
-						path: resolver.join(request.path, moduleName),
+						path: resolver.join(
+							/** @type {string} */
+							(request.path),
+							moduleName
+						),
 						relativePath:
 							request.relativePath &&
 							resolver.join(request.relativePath, moduleName),

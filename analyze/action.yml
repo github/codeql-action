@@ -19,7 +19,7 @@ inputs:
     # If changing this, make sure to update workflow.ts accordingly.
     default: "always"
   cleanup-level:
-    description: "Level of cleanup to perform on CodeQL databases at the end of the analyze step. This should either be 'none' to skip cleanup, or be a valid argument for the --mode flag of the CodeQL CLI command 'codeql database cleanup' as documented at https://codeql.github.com/docs/codeql-cli/manual/database-cleanup"
+    description: "Level of cleanup to perform on CodeQL databases at the end of the analyze step. This should either be 'none' to skip cleanup, or be a valid argument for the --cache-cleanup flag of the CodeQL CLI command 'codeql database cleanup' as documented at https://codeql.github.com/docs/codeql-cli/manual/database-cleanup"
     required: false
     default: "brutal"
   ram:
@@ -34,6 +34,11 @@ inputs:
     description: Specify whether or not to add code snippets to the output sarif file.
     required: false
     default: "false"
+    deprecationMessage: >-
+      The input "add-snippets" is deprecated and will be removed on the first release in August 2025.
+      When this input is set to true it is expected to add code snippets with an alert to the SARIF file.
+      However, since Code Scanning ignores code snippets provided as part of a SARIF file this is currently
+      a no operation. No alternative is available.
   skip-queries:
     description: If this option is set, the CodeQL database will be built but no queries will be run on it. Thus, no results will be produced.
     required: false

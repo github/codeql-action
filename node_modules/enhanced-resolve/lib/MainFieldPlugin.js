@@ -9,7 +9,10 @@ const path = require("path");
 const DescriptionFileUtils = require("./DescriptionFileUtils");
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").JsonObject} JsonObject */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
+
 /** @typedef {{name: string|Array<string>, forceRelative: boolean}} MainFieldOptions */
 
 const alreadyTriedMainField = Symbol("alreadyTriedMainField");
@@ -37,15 +40,20 @@ module.exports = class MainFieldPlugin {
 			.tapAsync("MainFieldPlugin", (request, resolveContext, callback) => {
 				if (
 					request.path !== request.descriptionFileRoot ||
-					request[alreadyTriedMainField] === request.descriptionFilePath ||
+					/** @type {ResolveRequest & { [alreadyTriedMainField]?: string }} */
+					(request)[alreadyTriedMainField] === request.descriptionFilePath ||
 					!request.descriptionFilePath
 				)
 					return callback();
 				const filename = path.basename(request.descriptionFilePath);
-				let mainModule = DescriptionFileUtils.getField(
-					request.descriptionFileData,
-					this.options.name
-				);
+				let mainModule =
+					/** @type {string|null|undefined} */
+					(
+						DescriptionFileUtils.getField(
+							/** @type {JsonObject} */ (request.descriptionFileData),
+							this.options.name
+						)
+					);
 
 				if (
 					!mainModule ||
@@ -57,6 +65,7 @@ module.exports = class MainFieldPlugin {
 				}
 				if (this.options.forceRelative && !/^\.\.?\//.test(mainModule))
 					mainModule = "./" + mainModule;
+				/** @type {ResolveRequest & { [alreadyTriedMainField]?: string }} */
 				const obj = {
 					...request,
 					request: mainModule,

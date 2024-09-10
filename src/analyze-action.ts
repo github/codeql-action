@@ -75,7 +75,7 @@ async function sendStatusReport(
     status,
     startedAt,
     config,
-    await util.checkDiskUsage(),
+    await util.checkDiskUsage(logger),
     logger,
     error?.message,
     error?.stack,

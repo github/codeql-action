@@ -8,6 +8,7 @@
 const DescriptionFileUtils = require("./DescriptionFileUtils");
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 
 module.exports = class DescriptionFilePlugin {
@@ -63,7 +64,8 @@ module.exports = class DescriptionFilePlugin {
 								return callback();
 							}
 							const relativePath =
-								"." + path.substr(result.directory.length).replace(/\\/g, "/");
+								"." + path.slice(result.directory.length).replace(/\\/g, "/");
+							/** @type {ResolveRequest} */
 							const obj = {
 								...request,
 								descriptionFilePath: result.path,

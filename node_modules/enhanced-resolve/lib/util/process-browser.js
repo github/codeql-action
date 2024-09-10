@@ -6,7 +6,13 @@
 "use strict";
 
 module.exports = {
+	/**
+	 * @type {Record<string, string>}
+	 */
 	versions: {},
+	/**
+	 * @param {function} fn function
+	 */
 	nextTick(fn) {
 		const args = Array.prototype.slice.call(arguments, 1);
 		Promise.resolve().then(function () {

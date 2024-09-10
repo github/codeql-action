@@ -28,8 +28,7 @@ fi
 echo "Getting checks for $GITHUB_SHA"
 
 # Ignore any checks with "https://", CodeQL, LGTM, and Update checks.
-# Also ignore the non-matrixed "Unit Tests" job that only runs on pushes to protected branches.
-CHECKS="$(gh api repos/github/codeql-action/commits/"${GITHUB_SHA}"/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs | .[].name | select(contains("https://") or . == "CodeQL" or . == "Dependabot" or . == "check-expected-release-files" or . == "Unit Tests" or contains("Update") or contains("update") or contains("test-setup-python-scripts") | not)] | unique | sort')"
+CHECKS="$(gh api repos/github/codeql-action/commits/"${GITHUB_SHA}"/check-runs --paginate | jq --slurp --compact-output --raw-output '[.[].check_runs.[] | select(.conclusion != "skipped") | .name | select(contains("https://") or . == "CodeQL" or . == "Dependabot" or . == "check-expected-release-files" or contains("Update") or contains("update") or contains("test-setup-python-scripts") | not)] | unique | sort')"
 
 echo "$CHECKS" | jq
 

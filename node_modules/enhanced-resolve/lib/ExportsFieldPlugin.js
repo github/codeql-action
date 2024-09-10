@@ -5,14 +5,18 @@
 
 "use strict";
 
-const path = require("path");
 const DescriptionFileUtils = require("./DescriptionFileUtils");
 const forEachBail = require("./forEachBail");
 const { processExportsField } = require("./util/entrypoints");
 const { parseIdentifier } = require("./util/identifier");
-const { checkImportsExportsFieldTarget } = require("./util/path");
+const {
+	invalidSegmentRegEx,
+	deprecatedInvalidSegmentRegEx
+} = require("./util/path");
 
 /** @typedef {import("./Resolver")} Resolver */
+/** @typedef {import("./Resolver").JsonObject} JsonObject */
+/** @typedef {import("./Resolver").ResolveRequest} ResolveRequest */
 /** @typedef {import("./Resolver").ResolveStepHook} ResolveStepHook */
 /** @typedef {import("./util/entrypoints").ExportsField} ExportsField */
 /** @typedef {import("./util/entrypoints").FieldProcessor} FieldProcessor */
@@ -29,7 +33,7 @@ module.exports = class ExportsFieldPlugin {
 		this.target = target;
 		this.conditionNames = conditionNames;
 		this.fieldName = fieldNamePath;
-		/** @type {WeakMap<any, FieldProcessor>} */
+		/** @type {WeakMap<JsonObject, FieldProcessor>} */
 		this.fieldProcessorCache = new WeakMap();
 	}
 
@@ -58,11 +62,14 @@ module.exports = class ExportsFieldPlugin {
 						  request.query +
 						  request.fragment
 						: request.request;
-				/** @type {ExportsField|null} */
-				const exportsField = DescriptionFileUtils.getField(
-					request.descriptionFileData,
-					this.fieldName
-				);
+				const exportsField =
+					/** @type {ExportsField|null|undefined} */
+					(
+						DescriptionFileUtils.getField(
+							/** @type {JsonObject} */ (request.descriptionFileData),
+							this.fieldName
+						)
+					);
 				if (!exportsField) return callback();
 
 				if (request.directory) {
@@ -73,30 +80,36 @@ module.exports = class ExportsFieldPlugin {
 					);
 				}
 
+				/** @type {string[]} */
 				let paths;
+				/** @type {string | null} */
+				let usedField;
 
 				try {
 					// We attach the cache to the description file instead of the exportsField value
 					// because we use a WeakMap and the exportsField could be a string too.
 					// Description file is always an object when exports field can be accessed.
 					let fieldProcessor = this.fieldProcessorCache.get(
-						request.descriptionFileData
+						/** @type {JsonObject} */ (request.descriptionFileData)
 					);
 					if (fieldProcessor === undefined) {
 						fieldProcessor = processExportsField(exportsField);
 						this.fieldProcessorCache.set(
-							request.descriptionFileData,
+							/** @type {JsonObject} */ (request.descriptionFileData),
 							fieldProcessor
 						);
 					}
-					paths = fieldProcessor(remainingRequest, this.conditionNames);
-				} catch (err) {
+					[paths, usedField] = fieldProcessor(
+						remainingRequest,
+						this.conditionNames
+					);
+				} catch (/** @type {unknown} */ err) {
 					if (resolveContext.log) {
 						resolveContext.log(
 							`Exports field in ${request.descriptionFilePath} can't be processed: ${err}`
 						);
 					}
-					return callback(err);
+					return callback(/** @type {Error} */ (err));
 				}
 
 				if (paths.length === 0) {
@@ -109,23 +122,51 @@ module.exports = class ExportsFieldPlugin {
 
 				forEachBail(
 					paths,
-					(p, callback) => {
+					/**
+					 * @param {string} p path
+					 * @param {(err?: null|Error, result?: null|ResolveRequest) => void} callback callback
+					 * @param {number} i index
+					 * @returns {void}
+					 */
+					(p, callback, i) => {
 						const parsedIdentifier = parseIdentifier(p);
 
 						if (!parsedIdentifier) return callback();
 
 						const [relativePath, query, fragment] = parsedIdentifier;
 
-						const error = checkImportsExportsFieldTarget(relativePath);
+						if (relativePath.length === 0 || !relativePath.startsWith("./")) {
+							if (paths.length === i) {
+								return callback(
+									new Error(
+										`Invalid "exports" target "${p}" defined for "${usedField}" in the package config ${request.descriptionFilePath}, targets must start with "./"`
+									)
+								);
+							}
 
-						if (error) {
-							return callback(error);
+							return callback();
 						}
 
+						if (
+							invalidSegmentRegEx.exec(relativePath.slice(2)) !== null &&
+							deprecatedInvalidSegmentRegEx.test(relativePath.slice(2)) !== null
+						) {
+							if (paths.length === i) {
+								return callback(
+									new Error(
+										`Invalid "exports" target "${p}" defined for "${usedField}" in the package config ${request.descriptionFilePath}, targets must start with "./"`
+									)
+								);
+							}
+
+							return callback();
+						}
+
+						/** @type {ResolveRequest} */
 						const obj = {
 							...request,
 							request: undefined,
-							path: path.join(
+							path: resolver.join(
 								/** @type {string} */ (request.descriptionFileRoot),
 								relativePath
 							),
@@ -139,9 +180,19 @@ module.exports = class ExportsFieldPlugin {
 							obj,
 							"using exports field: " + p,
 							resolveContext,
-							callback
+							(err, result) => {
+								if (err) return callback(err);
+								// Don't allow to continue - https://github.com/webpack/enhanced-resolve/issues/400
+								if (result === undefined) return callback(null, null);
+								callback(null, result);
+							}
 						);
 					},
+					/**
+					 * @param {null|Error} [err] error
+					 * @param {null|ResolveRequest} [result] result
+					 * @returns {void}
+					 */
 					(err, result) => callback(err, result || null)
 				);
 			});

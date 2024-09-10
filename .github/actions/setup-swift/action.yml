@@ -11,7 +11,7 @@ runs:
       id: get_swift_version
       if: runner.os == 'Linux'
       shell: bash
-      env: 
+      env:
         CODEQL_PATH: ${{ inputs.codeql-path }}
       run: |
         SWIFT_EXTRACTOR_DIR="$("$CODEQL_PATH" resolve languages --format json | jq -r '.swift[0]')"
@@ -19,7 +19,7 @@ runs:
           VERSION="null"
         else
           VERSION="$("$SWIFT_EXTRACTOR_DIR/tools/linux64/extractor" --version | awk '/version/ { print $3 }')"
-          # Specify 5.x.0, otherwise setup Action will default to latest minor version. 
+          # Specify 5.x.0, otherwise setup Action will default to latest minor version.
           if [ $VERSION = "5.7" ]; then
             VERSION="5.7.0"
           elif [ $VERSION = "5.8" ]; then
@@ -29,11 +29,11 @@ runs:
           # setup-swift does not yet support v5.9.1 Remove this when it does.
           elif [ $VERSION = "5.9.1" ]; then
             VERSION="5.9.0"
-          fi 
+          fi
         fi
         echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
 
-    - uses: redsun82/setup-swift@b2b6f77ab14f6a9b136b520dc53ec8eca27d2b99 # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
+    - uses: redsun82/setup-swift@362f49f31da2f5f4f851657046bdd1290d03edc8 # Please update the corresponding SHA in the CLI's CodeQL Action Integration Test.
       if: runner.os == 'Linux' && steps.get_swift_version.outputs.version != 'null'
       with:
         swift-version: "${{ steps.get_swift_version.outputs.version }}"

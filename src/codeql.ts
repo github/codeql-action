@@ -31,7 +31,7 @@ import * as setupCodeql from "./setup-codeql";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, wrapError } from "./util";
+import { BuildMode, wrapError, cloneObject } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -328,6 +328,11 @@ export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
 const CODEQL_VERSION_INCLUDE_QUERY_HELP = "2.15.2";
 
 /**
+ * Versions 2.17.1+ of the CodeQL CLI support the `--cache-cleanup` option.
+ */
+const CODEQL_VERSION_CACHE_CLEANUP = "2.17.1";
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -350,20 +355,31 @@ export async function setupCodeQL(
   checkVersion: boolean,
 ): Promise<{
   codeql: CodeQL;
-  toolsDownloadDurationMs?: number;
+  toolsDownloadStatusReport?: setupCodeql.ToolsDownloadStatusReport;
   toolsSource: setupCodeql.ToolsSource;
   toolsVersion: string;
 }> {
   try {
-    const { codeqlFolder, toolsDownloadDurationMs, toolsSource, toolsVersion } =
-      await setupCodeql.setupCodeQLBundle(
-        toolsInput,
-        apiDetails,
-        tempDir,
-        variant,
-        defaultCliVersion,
-        logger,
-      );
+    const {
+      codeqlFolder,
+      toolsDownloadStatusReport,
+      toolsSource,
+      toolsVersion,
+    } = await setupCodeql.setupCodeQLBundle(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      defaultCliVersion,
+      logger,
+    );
+
+    logger.debug(
+      `Bundle download status report: ${JSON.stringify(
+        toolsDownloadStatusReport,
+      )}`,
+    );
+
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
     if (process.platform === "win32") {
       codeqlCmd += ".exe";
@@ -376,7 +392,7 @@ export async function setupCodeQL(
     cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
     return {
       codeql: cachedCodeQL,
-      toolsDownloadDurationMs,
+      toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
     };
@@ -854,6 +870,7 @@ export async function getCodeQLForCmd(
         )}`,
         "--sarif-group-rules-by-pack",
         ...(await getCodeScanningQueryHelpArguments(this)),
+        ...(await getJobRunUuidSarifOptions(this)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (automationDetailsId !== undefined) {
@@ -962,11 +979,17 @@ export async function getCodeQLForCmd(
       databasePath: string,
       cleanupLevel: string,
     ): Promise<void> {
+      const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
+        this,
+        CODEQL_VERSION_CACHE_CLEANUP,
+      ))
+        ? "--cache-cleanup"
+        : "--mode";
       const codeqlArgs = [
         "database",
         "cleanup",
         databasePath,
-        `--mode=${cleanupLevel}`,
+        `${cacheCleanupFlag}=${cleanupLevel}`,
         ...getExtraOptionsFromEnv(["database", "cleanup"]),
       ];
       await runTool(cmd, codeqlArgs);
@@ -1306,10 +1329,6 @@ async function generateCodeScanningConfig(
   return codeScanningConfigFile;
 }
 
-function cloneObject<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj)) as T;
-}
-
 // This constant sets the size of each TRAP cache in megabytes.
 const TRAP_CACHE_SIZE_MB = 1024;
 
@@ -1404,4 +1423,15 @@ function applyAutobuildAzurePipelinesTimeoutFix() {
     "-Dhttp.keepAlive=false",
     "-Dmaven.wagon.http.pool=false",
   ].join(" ");
+}
+
+async function getJobRunUuidSarifOptions(codeql: CodeQL) {
+  const jobRunUuid = process.env[EnvVar.JOB_RUN_UUID];
+
+  return jobRunUuid &&
+    (await codeql.supportsFeature(
+      ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
+    ))
+    ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`]
+    : [];
 }

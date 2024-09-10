@@ -19,6 +19,7 @@ steps:
   - uses: ./init
     with:
       languages: javascript
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Fail
     # We want this job to pass if the Action correctly uploads the SARIF file for
     # the failed run.

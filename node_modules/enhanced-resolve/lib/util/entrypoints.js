@@ -12,19 +12,11 @@
 /** @typedef {Record<string, MappingValue>} ImportsField */
 
 /**
- * @typedef {Object} PathTreeNode
- * @property {Map<string, PathTreeNode>|null} children
- * @property {MappingValue} folder
- * @property {Map<string, MappingValue>|null} wildcards
- * @property {Map<string, MappingValue>} files
- */
-
-/**
  * Processing exports/imports field
  * @callback FieldProcessor
  * @param {string} request request
  * @param {Set<string>} conditionNames condition names
- * @returns {string[]} resolved paths
+ * @returns {[string[], string | null]} resolved paths with used field
  */
 
 /*
@@ -80,9 +72,11 @@ Conditional mapping nested in another conditional mapping is called nested mappi
 
 */
 
+const { parseIdentifier } = require("./identifier");
 const slashCode = "/".charCodeAt(0);
 const dotCode = ".".charCodeAt(0);
 const hashCode = "#".charCodeAt(0);
+const patternRegEx = /\*/g;
 
 /**
  * @param {ExportsField} exportsField the exports field
@@ -92,7 +86,8 @@ module.exports.processExportsField = function processExportsField(
 	exportsField
 ) {
 	return createFieldProcessor(
-		buildExportsFieldPathTree(exportsField),
+		buildExportsField(exportsField),
+		request => (request.length === 0 ? "." : "./" + request),
 		assertExportsFieldRequest,
 		assertExportTarget
 	);
@@ -106,27 +101,35 @@ module.exports.processImportsField = function processImportsField(
 	importsField
 ) {
 	return createFieldProcessor(
-		buildImportsFieldPathTree(importsField),
+		importsField,
+		request => "#" + request,
 		assertImportsFieldRequest,
 		assertImportTarget
 	);
 };
 
 /**
- * @param {PathTreeNode} treeRoot root
+ * @param {ExportsField | ImportsField} field root
+ * @param {(s: string) => string} normalizeRequest Normalize request, for `imports` field it adds `#`, for `exports` field it adds `.` or `./`
  * @param {(s: string) => string} assertRequest assertRequest
  * @param {(s: string, f: boolean) => void} assertTarget assertTarget
  * @returns {FieldProcessor} field processor
  */
-function createFieldProcessor(treeRoot, assertRequest, assertTarget) {
+function createFieldProcessor(
+	field,
+	normalizeRequest,
+	assertRequest,
+	assertTarget
+) {
 	return function fieldProcessor(request, conditionNames) {
 		request = assertRequest(request);
 
-		const match = findMatch(request, treeRoot);
+		const match = findMatch(normalizeRequest(request), field);
 
-		if (match === null) return [];
+		if (match === null) return [[], null];
 
-		const [mapping, remainRequestIndex] = match;
+		const [mapping, remainingRequest, isSubpathMapping, isPattern, usedField] =
+			match;
 
 		/** @type {DirectMapping|null} */
 		let direct = null;
@@ -138,25 +141,22 @@ function createFieldProcessor(treeRoot, assertRequest, assertTarget) {
 			);
 
 			// matching not found
-			if (direct === null) return [];
+			if (direct === null) return [[], null];
 		} else {
 			direct = /** @type {DirectMapping} */ (mapping);
 		}
 
-		const remainingRequest =
-			remainRequestIndex === request.length + 1
-				? undefined
-				: remainRequestIndex < 0
-				? request.slice(-remainRequestIndex - 1)
-				: request.slice(remainRequestIndex);
-
-		return directMapping(
-			remainingRequest,
-			remainRequestIndex < 0,
-			direct,
-			conditionNames,
-			assertTarget
-		);
+		return [
+			directMapping(
+				remainingRequest,
+				isPattern,
+				isSubpathMapping,
+				direct,
+				conditionNames,
+				assertTarget
+			),
+			usedField
+		];
 	};
 }
 
@@ -205,18 +205,15 @@ function assertImportsFieldRequest(request) {
  * @param {boolean} expectFolder is folder expected
  */
 function assertExportTarget(exp, expectFolder) {
-	if (
-		exp.charCodeAt(0) === slashCode ||
-		(exp.charCodeAt(0) === dotCode && exp.charCodeAt(1) !== slashCode)
-	) {
-		throw new Error(
-			`Export should be relative path and start with "./", got ${JSON.stringify(
-				exp
-			)}.`
-		);
+	const parsedIdentifier = parseIdentifier(exp);
+
+	if (!parsedIdentifier) {
+		return;
 	}
 
-	const isFolder = exp.charCodeAt(exp.length - 1) === slashCode;
+	const [relativePath] = parsedIdentifier;
+	const isFolder =
+		relativePath.charCodeAt(relativePath.length - 1) === slashCode;
 
 	if (isFolder !== expectFolder) {
 		throw new Error(
@@ -236,7 +233,15 @@ function assertExportTarget(exp, expectFolder) {
  * @param {boolean} expectFolder is folder expected
  */
 function assertImportTarget(imp, expectFolder) {
-	const isFolder = imp.charCodeAt(imp.length - 1) === slashCode;
+	const parsedIdentifier = parseIdentifier(imp);
+
+	if (!parsedIdentifier) {
+		return;
+	}
+
+	const [relativePath] = parsedIdentifier;
+	const isFolder =
+		relativePath.charCodeAt(relativePath.length - 1) === slashCode;
 
 	if (isFolder !== expectFolder) {
 		throw new Error(
@@ -252,100 +257,94 @@ function assertImportTarget(imp, expectFolder) {
 }
 
 /**
+ * @param {string} a first string
+ * @param {string} b second string
+ * @returns {number} compare result
+ */
+function patternKeyCompare(a, b) {
+	const aPatternIndex = a.indexOf("*");
+	const bPatternIndex = b.indexOf("*");
+	const baseLenA = aPatternIndex === -1 ? a.length : aPatternIndex + 1;
+	const baseLenB = bPatternIndex === -1 ? b.length : bPatternIndex + 1;
+
+	if (baseLenA > baseLenB) return -1;
+	if (baseLenB > baseLenA) return 1;
+	if (aPatternIndex === -1) return 1;
+	if (bPatternIndex === -1) return -1;
+	if (a.length > b.length) return -1;
+	if (b.length > a.length) return 1;
+
+	return 0;
+}
+
+/**
  * Trying to match request to field
  * @param {string} request request
- * @param {PathTreeNode} treeRoot path tree root
- * @returns {[MappingValue, number]|null} match or null, number is negative and one less when it's a folder mapping, number is request.length + 1 for direct mappings
+ * @param {ExportsField | ImportsField} field exports or import field
+ * @returns {[MappingValue, string, boolean, boolean, string]|null} match or null, number is negative and one less when it's a folder mapping, number is request.length + 1 for direct mappings
  */
-function findMatch(request, treeRoot) {
-	if (request.length === 0) {
-		const value = treeRoot.files.get("");
-
-		return value ? [value, 1] : null;
-	}
-
+function findMatch(request, field) {
 	if (
-		treeRoot.children === null &&
-		treeRoot.folder === null &&
-		treeRoot.wildcards === null
+		Object.prototype.hasOwnProperty.call(field, request) &&
+		!request.includes("*") &&
+		!request.endsWith("/")
 	) {
-		const value = treeRoot.files.get(request);
+		const target = /** @type {{[k: string]: MappingValue}} */ (field)[request];
 
-		return value ? [value, request.length + 1] : null;
+		return [target, "", false, false, request];
 	}
 
-	let node = treeRoot;
-	let lastNonSlashIndex = 0;
-	let slashIndex = request.indexOf("/", 0);
+	/** @type {string} */
+	let bestMatch = "";
+	/** @type {string|undefined} */
+	let bestMatchSubpath;
 
-	/** @type {[MappingValue, number]|null} */
-	let lastFolderMatch = null;
+	const keys = Object.getOwnPropertyNames(field);
 
-	const applyFolderMapping = () => {
-		const folderMapping = node.folder;
-		if (folderMapping) {
-			if (lastFolderMatch) {
-				lastFolderMatch[0] = folderMapping;
-				lastFolderMatch[1] = -lastNonSlashIndex - 1;
-			} else {
-				lastFolderMatch = [folderMapping, -lastNonSlashIndex - 1];
+	for (let i = 0; i < keys.length; i++) {
+		const key = keys[i];
+		const patternIndex = key.indexOf("*");
+
+		if (patternIndex !== -1 && request.startsWith(key.slice(0, patternIndex))) {
+			const patternTrailer = key.slice(patternIndex + 1);
+
+			if (
+				request.length >= key.length &&
+				request.endsWith(patternTrailer) &&
+				patternKeyCompare(bestMatch, key) === 1 &&
+				key.lastIndexOf("*") === patternIndex
+			) {
+				bestMatch = key;
+				bestMatchSubpath = request.slice(
+					patternIndex,
+					request.length - patternTrailer.length
+				);
 			}
 		}
-	};
-
-	const applyWildcardMappings = (wildcardMappings, remainingRequest) => {
-		if (wildcardMappings) {
-			for (const [key, target] of wildcardMappings) {
-				if (remainingRequest.startsWith(key)) {
-					if (!lastFolderMatch) {
-						lastFolderMatch = [target, lastNonSlashIndex + key.length];
-					} else if (lastFolderMatch[1] < lastNonSlashIndex + key.length) {
-						lastFolderMatch[0] = target;
-						lastFolderMatch[1] = lastNonSlashIndex + key.length;
-					}
-				}
-			}
+		// For legacy `./foo/`
+		else if (
+			key[key.length - 1] === "/" &&
+			request.startsWith(key) &&
+			patternKeyCompare(bestMatch, key) === 1
+		) {
+			bestMatch = key;
+			bestMatchSubpath = request.slice(key.length);
 		}
-	};
-
-	while (slashIndex !== -1) {
-		applyFolderMapping();
-
-		const wildcardMappings = node.wildcards;
-
-		if (!wildcardMappings && node.children === null) return lastFolderMatch;
-
-		const folder = request.slice(lastNonSlashIndex, slashIndex);
-
-		applyWildcardMappings(wildcardMappings, folder);
-
-		if (node.children === null) return lastFolderMatch;
-
-		const newNode = node.children.get(folder);
-
-		if (!newNode) {
-			return lastFolderMatch;
-		}
-
-		node = newNode;
-		lastNonSlashIndex = slashIndex + 1;
-		slashIndex = request.indexOf("/", lastNonSlashIndex);
 	}
 
-	const remainingRequest =
-		lastNonSlashIndex > 0 ? request.slice(lastNonSlashIndex) : request;
+	if (bestMatch === "") return null;
 
-	const value = node.files.get(remainingRequest);
+	const target = /** @type {{[k: string]: MappingValue}} */ (field)[bestMatch];
+	const isSubpathMapping = bestMatch.endsWith("/");
+	const isPattern = bestMatch.includes("*");
 
-	if (value) {
-		return [value, request.length + 1];
-	}
-
-	applyFolderMapping();
-
-	applyWildcardMappings(node.wildcards, remainingRequest);
-
-	return lastFolderMatch;
+	return [
+		target,
+		/** @type {string} */ (bestMatchSubpath),
+		isSubpathMapping,
+		isPattern,
+		bestMatch
+	];
 }
 
 /**
@@ -360,7 +359,8 @@ function isConditionalMapping(mapping) {
 
 /**
  * @param {string|undefined} remainingRequest remaining request when folder mapping, undefined for file mappings
- * @param {boolean} subpathMapping true, for subpath mappings
+ * @param {boolean} isPattern true, if mapping is a pattern (contains "*")
+ * @param {boolean} isSubpathMapping true, for subpath mappings
  * @param {DirectMapping|null} mappingTarget direct export
  * @param {Set<string>} conditionNames condition names
  * @param {(d: string, f: boolean) => void} assert asserting direct value
@@ -368,7 +368,8 @@ function isConditionalMapping(mapping) {
  */
 function directMapping(
 	remainingRequest,
-	subpathMapping,
+	isPattern,
+	isSubpathMapping,
 	mappingTarget,
 	conditionNames,
 	assert
@@ -377,16 +378,29 @@ function directMapping(
 
 	if (typeof mappingTarget === "string") {
 		return [
-			targetMapping(remainingRequest, subpathMapping, mappingTarget, assert)
+			targetMapping(
+				remainingRequest,
+				isPattern,
+				isSubpathMapping,
+				mappingTarget,
+				assert
+			)
 		];
 	}
 
+	/** @type {string[]} */
 	const targets = [];
 
 	for (const exp of mappingTarget) {
 		if (typeof exp === "string") {
 			targets.push(
-				targetMapping(remainingRequest, subpathMapping, exp, assert)
+				targetMapping(
+					remainingRequest,
+					isPattern,
+					isSubpathMapping,
+					exp,
+					assert
+				)
 			);
 			continue;
 		}
@@ -395,7 +409,8 @@ function directMapping(
 		if (!mapping) continue;
 		const innerExports = directMapping(
 			remainingRequest,
-			subpathMapping,
+			isPattern,
+			isSubpathMapping,
 			mapping,
 			conditionNames,
 			assert
@@ -410,27 +425,43 @@ function directMapping(
 
 /**
  * @param {string|undefined} remainingRequest remaining request when folder mapping, undefined for file mappings
- * @param {boolean} subpathMapping true, for subpath mappings
+ * @param {boolean} isPattern true, if mapping is a pattern (contains "*")
+ * @param {boolean} isSubpathMapping true, for subpath mappings
  * @param {string} mappingTarget direct export
  * @param {(d: string, f: boolean) => void} assert asserting direct value
  * @returns {string} mapping result
  */
 function targetMapping(
 	remainingRequest,
-	subpathMapping,
+	isPattern,
+	isSubpathMapping,
 	mappingTarget,
 	assert
 ) {
 	if (remainingRequest === undefined) {
 		assert(mappingTarget, false);
+
 		return mappingTarget;
 	}
-	if (subpathMapping) {
+
+	if (isSubpathMapping) {
 		assert(mappingTarget, true);
+
 		return mappingTarget + remainingRequest;
 	}
+
 	assert(mappingTarget, false);
-	return mappingTarget.replace(/\*/g, remainingRequest.replace(/\$/g, "$$"));
+
+	let result = mappingTarget;
+
+	if (isPattern) {
+		result = result.replace(
+			patternRegEx,
+			remainingRequest.replace(/\$/g, "$$")
+		);
+	}
+
+	return result;
 }
 
 /**
@@ -444,21 +475,17 @@ function conditionalMapping(conditionalMapping_, conditionNames) {
 
 	loop: while (lookup.length > 0) {
 		const [mapping, conditions, j] = lookup[lookup.length - 1];
-		const last = conditions.length - 1;
 
 		for (let i = j; i < conditions.length; i++) {
 			const condition = conditions[i];
 
-			// assert default. Could be last only
-			if (i !== last) {
-				if (condition === "default") {
-					throw new Error("Default condition should be last one");
-				}
-			} else if (condition === "default") {
+			if (condition === "default") {
 				const innerMapping = mapping[condition];
 				// is nested
 				if (isConditionalMapping(innerMapping)) {
-					const conditionalMapping = /** @type {ConditionalMapping} */ (innerMapping);
+					const conditionalMapping = /** @type {ConditionalMapping} */ (
+						innerMapping
+					);
 					lookup[lookup.length - 1][2] = i + 1;
 					lookup.push([conditionalMapping, Object.keys(conditionalMapping), 0]);
 					continue loop;
@@ -471,7 +498,9 @@ function conditionalMapping(conditionalMapping_, conditionNames) {
 				const innerMapping = mapping[condition];
 				// is nested
 				if (isConditionalMapping(innerMapping)) {
-					const conditionalMapping = /** @type {ConditionalMapping} */ (innerMapping);
+					const conditionalMapping = /** @type {ConditionalMapping} */ (
+						innerMapping
+					);
 					lookup[lookup.length - 1][2] = i + 1;
 					lookup.push([conditionalMapping, Object.keys(conditionalMapping), 0]);
 					continue loop;
@@ -488,92 +517,13 @@ function conditionalMapping(conditionalMapping_, conditionNames) {
 }
 
 /**
- * Internal helper to create path tree node
- * to ensure that each node gets the same hidden class
- * @returns {PathTreeNode} node
- */
-function createNode() {
-	return {
-		children: null,
-		folder: null,
-		wildcards: null,
-		files: new Map()
-	};
-}
-
-/**
- * Internal helper for building path tree
- * @param {PathTreeNode} root root
- * @param {string} path path
- * @param {MappingValue} target target
- */
-function walkPath(root, path, target) {
-	if (path.length === 0) {
-		root.folder = target;
-		return;
-	}
-
-	let node = root;
-	// Typical path tree can looks like
-	// root
-	// - files: ["a.js", "b.js"]
-	// - children:
-	//    node1:
-	//    - files: ["a.js", "b.js"]
-	let lastNonSlashIndex = 0;
-	let slashIndex = path.indexOf("/", 0);
-
-	while (slashIndex !== -1) {
-		const folder = path.slice(lastNonSlashIndex, slashIndex);
-		let newNode;
-
-		if (node.children === null) {
-			newNode = createNode();
-			node.children = new Map();
-			node.children.set(folder, newNode);
-		} else {
-			newNode = node.children.get(folder);
-
-			if (!newNode) {
-				newNode = createNode();
-				node.children.set(folder, newNode);
-			}
-		}
-
-		node = newNode;
-		lastNonSlashIndex = slashIndex + 1;
-		slashIndex = path.indexOf("/", lastNonSlashIndex);
-	}
-
-	if (lastNonSlashIndex >= path.length) {
-		node.folder = target;
-	} else {
-		const file = lastNonSlashIndex > 0 ? path.slice(lastNonSlashIndex) : path;
-		if (file.endsWith("*")) {
-			if (node.wildcards === null) node.wildcards = new Map();
-			node.wildcards.set(file.slice(0, -1), target);
-		} else {
-			node.files.set(file, target);
-		}
-	}
-}
-
-/**
  * @param {ExportsField} field exports field
- * @returns {PathTreeNode} tree root
+ * @returns {ExportsField} normalized exports field
  */
-function buildExportsFieldPathTree(field) {
-	const root = createNode();
-
+function buildExportsField(field) {
 	// handle syntax sugar, if exports field is direct mapping for "."
-	if (typeof field === "string") {
-		root.files.set("", field);
-
-		return root;
-	} else if (Array.isArray(field)) {
-		root.files.set("", field.slice());
-
-		return root;
+	if (typeof field === "string" || Array.isArray(field)) {
+		return { ".": field };
 	}
 
 	const keys = Object.keys(field);
@@ -596,8 +546,7 @@ function buildExportsFieldPathTree(field) {
 					i++;
 				}
 
-				root.files.set("", field);
-				return root;
+				return { ".": field };
 			}
 
 			throw new Error(
@@ -608,7 +557,6 @@ function buildExportsFieldPathTree(field) {
 		}
 
 		if (key.length === 1) {
-			root.files.set("", field[key]);
 			continue;
 		}
 
@@ -619,49 +567,7 @@ function buildExportsFieldPathTree(field) {
 				)})`
 			);
 		}
-
-		walkPath(root, key.slice(2), field[key]);
 	}
 
-	return root;
-}
-
-/**
- * @param {ImportsField} field imports field
- * @returns {PathTreeNode} root
- */
-function buildImportsFieldPathTree(field) {
-	const root = createNode();
-
-	const keys = Object.keys(field);
-
-	for (let i = 0; i < keys.length; i++) {
-		const key = keys[i];
-
-		if (key.charCodeAt(0) !== hashCode) {
-			throw new Error(
-				`Imports field key should start with "#" (key: ${JSON.stringify(key)})`
-			);
-		}
-
-		if (key.length === 1) {
-			throw new Error(
-				`Imports field key should have at least 2 characters (key: ${JSON.stringify(
-					key
-				)})`
-			);
-		}
-
-		if (key.charCodeAt(1) === slashCode) {
-			throw new Error(
-				`Imports field key should not start with "#/" (key: ${JSON.stringify(
-					key
-				)})`
-			);
-		}
-
-		walkPath(root, key.slice(1), field[key]);
-	}
-
-	return root;
+	return field;
 }

@@ -9,6 +9,7 @@
     "test-debug": "ava src/**.test.ts --serial --verbose --timeout=20m",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 .",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --fix",
+    "lint-ci": "SARIF_ESLINT_IGNORE_SUPPRESSED=true eslint --report-unused-disable-directives --max-warnings=0 . --format @microsoft/eslint-formatter-sarif --output-file=eslint.sarif",
     "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"
   },
   "ava": {
@@ -59,6 +60,7 @@
     "@eslint/compat": "^1.1.1",
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.9.1",
+    "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@types/adm-zip": "^0.5.5",
     "@types/console-log-level": "^1.4.5",
     "@types/get-folder-size": "^2.0.0",

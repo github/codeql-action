@@ -28,7 +28,7 @@ export async function uploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
 ) {
-  let filesToUpload: string[] = [];
+  const filesToUpload: string[] = [];
 
   const analyzeActionOutputDir = process.env[EnvVar.SARIF_RESULTS_OUTPUT_DIR];
   for (const lang of config.languages) {
@@ -46,7 +46,7 @@ export async function uploadAllAvailableDebugArtifacts(
           `${lang}.sarif`,
         );
         fs.renameSync(sarifFile, sarifInDbLocation);
-        filesToUpload = filesToUpload.concat(sarifInDbLocation);
+        filesToUpload.push(sarifInDbLocation);
       }
     }
 
@@ -54,7 +54,7 @@ export async function uploadAllAvailableDebugArtifacts(
     const databaseDirectory = getCodeQLDatabasePath(config, lang);
     const logsDirectory = path.resolve(databaseDirectory, "log");
     if (doesDirectoryExist(logsDirectory)) {
-      filesToUpload = filesToUpload.concat(listFolder(logsDirectory));
+      filesToUpload.push(...listFolder(logsDirectory));
     }
 
     // Multilanguage tracing: there are additional logs in the root of the cluster
@@ -63,9 +63,7 @@ export async function uploadAllAvailableDebugArtifacts(
       "log",
     );
     if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
-      filesToUpload = filesToUpload.concat(
-        listFolder(multiLanguageTracingLogsDirectory),
-      );
+      filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
     }
 
     // Add database bundle
@@ -75,7 +73,7 @@ export async function uploadAllAvailableDebugArtifacts(
     } else {
       databaseBundlePath = await createDatabaseBundleCli(config, lang);
     }
-    filesToUpload = filesToUpload.concat(databaseBundlePath);
+    filesToUpload.push(databaseBundlePath);
   }
 
   await uploadDebugArtifacts(

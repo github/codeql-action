@@ -12,7 +12,7 @@ import { wrapError } from "./util";
 
 async function runWrapper() {
   try {
-    await analyzeActionPostHelper.run(debugArtifacts.uploadSarifDebugArtifact);
+    await analyzeActionPostHelper.run();
 
     // Also run the upload-sarif post action since we're potentially running
     // the same steps in the analyze action.

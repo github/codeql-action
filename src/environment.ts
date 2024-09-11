@@ -64,6 +64,9 @@ export enum EnvVar {
 
   ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 
+  /** The value of the `output` input for the analyze action. */
+  SARIF_RESULTS_OUTPUT_DIR = "CODEQL_ACTION_SARIF_RESULTS_OUTPUT_DIR",
+
   /**
    * What percentage of the total amount of RAM over 8 GB that the Action should reserve for the
    * system.

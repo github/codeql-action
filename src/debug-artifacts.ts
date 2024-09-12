@@ -6,7 +6,7 @@ import * as core from "@actions/core";
 import AdmZip from "adm-zip";
 import del from "del";
 
-import { getRequiredInput } from "./actions-util";
+import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
@@ -22,6 +22,47 @@ import {
 
 export function sanitizeArifactName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
+}
+
+/**
+ * Upload Actions SARIF artifacts for debugging when CODEQL_ACTION_DEBUG_COMBINED_SARIF
+ * environment variable is set
+ */
+export async function uploadCombinedSarifArtifacts() {
+  const tempDir = getTemporaryDirectory();
+
+  // Upload Actions SARIF artifacts for debugging when environment variable is set
+  if (process.env["CODEQL_ACTION_DEBUG_COMBINED_SARIF"] === "true") {
+    core.info(
+      "Uploading available combined SARIF files as Actions debugging artifact...",
+    );
+
+    const baseTempDir = path.resolve(tempDir, "combined-sarif");
+
+    const toUpload: string[] = [];
+
+    if (fs.existsSync(baseTempDir)) {
+      const outputDirs = fs.readdirSync(baseTempDir);
+
+      for (const outputDir of outputDirs) {
+        const sarifFiles = fs
+          .readdirSync(path.resolve(baseTempDir, outputDir))
+          .filter((f) => f.endsWith(".sarif"));
+
+        for (const sarifFile of sarifFiles) {
+          toUpload.push(path.resolve(baseTempDir, outputDir, sarifFile));
+        }
+      }
+    }
+
+    if (toUpload.length > 0) {
+      await uploadDebugArtifacts(
+        toUpload,
+        baseTempDir,
+        "upload-debug-artifacts",
+      );
+    }
+  }
 }
 
 export async function uploadAllAvailableDebugArtifacts(

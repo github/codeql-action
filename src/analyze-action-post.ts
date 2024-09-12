@@ -7,7 +7,6 @@ import * as core from "@actions/core";
 
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
-import * as uploadSarifActionPostHelper from "./upload-sarif-action-post-helper";
 import { wrapError } from "./util";
 
 async function runWrapper() {
@@ -15,9 +14,7 @@ async function runWrapper() {
     // Upload SARIF artifacts if we determine that this is a first-party analysis run.
     // For third-party runs, this artifact will be uploaded in the `upload-sarif-post` step.
     if (process.env[EnvVar.INIT_ACTION_HAS_RUN] === "true") {
-      await uploadSarifActionPostHelper.uploadArtifacts(
-        debugArtifacts.uploadDebugArtifacts,
-      );
+      await debugArtifacts.uploadCombinedSarifArtifacts();
     }
   } catch (error) {
     core.setFailed(

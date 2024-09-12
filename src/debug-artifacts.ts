@@ -86,7 +86,7 @@ export async function uploadAllAvailableDebugArtifacts(
           config.dbLocation,
           `${lang}.sarif`,
         );
-        fs.renameSync(sarifFile, sarifInDbLocation);
+        fs.copyFileSync(sarifFile, sarifInDbLocation);
         filesToUpload.push(sarifInDbLocation);
       }
     }

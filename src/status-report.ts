@@ -68,9 +68,7 @@ export enum JobStatus {
   ConfigErrorStatus = "JOB_STATUS_CONFIGURATION_ERROR",
 }
 
-const unused = 0;
-const unused2 = 0;
-const unused3 = 0;
+
 
 export interface StatusReportBase   {
   /** Name of the action being executed.

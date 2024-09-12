@@ -59,7 +59,7 @@ export async function uploadCombinedSarifArtifacts() {
       await uploadDebugArtifacts(
         toUpload,
         baseTempDir,
-        "upload-debug-artifacts",
+        "combined-sarif-artifacts",
       );
     }
   }

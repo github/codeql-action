@@ -5,20 +5,17 @@
  */
 import * as core from "@actions/core";
 
-import * as analyzeActionPostHelper from "./analyze-action-post-helper";
 import * as debugArtifacts from "./debug-artifacts";
-import * as uploadSarifActionPostHelper from "./upload-sarif-action-post-helper";
+import { EnvVar } from "./environment";
 import { wrapError } from "./util";
 
 async function runWrapper() {
   try {
-    await analyzeActionPostHelper.run(debugArtifacts.uploadSarifDebugArtifact);
-
-    // Also run the upload-sarif post action since we're potentially running
-    // the same steps in the analyze action.
-    await uploadSarifActionPostHelper.uploadArtifacts(
-      debugArtifacts.uploadDebugArtifacts,
-    );
+    // Upload SARIF artifacts if we determine that this is a first-party analysis run.
+    // For third-party runs, this artifact will be uploaded in the `upload-sarif-post` step.
+    if (process.env[EnvVar.INIT_ACTION_HAS_RUN] === "true") {
+      await debugArtifacts.uploadCombinedSarifArtifacts();
+    }
   } catch (error) {
     core.setFailed(
       `analyze post-action step failed: ${wrapError(error).message}`,

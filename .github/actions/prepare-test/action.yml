@@ -32,14 +32,20 @@ runs:
       run: |
         set -e # Fail this Action if `gh release list` fails.
 
+        if [[ ${{ inputs.version }} == "nightly-latest" ]]; then
+          extension="tar.zst"
+        else
+          extension="tar.gz"
+        fi
+
         if [[ ${{ inputs.use-all-platform-bundle }} == "true" ]]; then
-          artifact_name="codeql-bundle.tar.gz"
+          artifact_name="codeql-bundle.$extension"
         elif [[ "$RUNNER_OS" == "Linux" ]]; then
-          artifact_name="codeql-bundle-linux64.tar.gz"
+          artifact_name="codeql-bundle-linux64.$extension"
         elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          artifact_name="codeql-bundle-osx64.tar.gz"
+          artifact_name="codeql-bundle-osx64.$extension"
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          artifact_name="codeql-bundle-win64.tar.gz"
+          artifact_name="codeql-bundle-win64.$extension"
         else
           echo "::error::Unrecognized OS $RUNNER_OS"
           exit 1

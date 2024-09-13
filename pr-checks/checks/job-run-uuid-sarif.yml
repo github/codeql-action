@@ -1,0 +1,30 @@
+name: "Job run UUID added to SARIF"
+description: "Tests that the job run UUID is added to the SARIF output"
+operatingSystems: ["ubuntu"]
+versions: ["nightly-latest"]
+steps:
+  - uses: ./../action/init
+    id: init
+    with:
+      languages: javascript
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+  - name: Upload SARIF
+    uses: actions/upload-artifact@v3
+    with:
+      name: ${{ matrix.os }}-${{ matrix.version }}.sarif.json
+      path: "${{ runner.temp }}/results/javascript.sarif"
+      retention-days: 7
+  - name: Check results
+    shell: bash
+    run: |
+      cd "$RUNNER_TEMP/results"
+      actual=$(jq -r '.runs[0].properties.jobRunUuid' javascript.sarif)
+      if [[ "$actual" != "$JOB_RUN_UUID" ]]; then
+        echo "Expected SARIF output to contain job run UUID '$JOB_RUN_UUID', but found '$actual'."
+        exit 1
+      else
+        echo "Found job run UUID '$actual'."
+      fi

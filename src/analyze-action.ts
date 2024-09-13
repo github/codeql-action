@@ -230,6 +230,7 @@ async function run() {
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
+    core.exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger,

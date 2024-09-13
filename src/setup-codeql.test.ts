@@ -154,8 +154,10 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
   sinon.stub(setupCodeql, "downloadCodeQL").resolves({
     codeqlFolder: "codeql",
     statusReport: {
+      compressionMethod: "gzip",
       downloadDurationMs: 200,
       extractionDurationMs: 300,
+      toolsUrl: "toolsUrl",
     },
     toolsVersion: LINKED_CLI_VERSION.cliVersion,
   });
@@ -200,8 +202,10 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
   sinon.stub(setupCodeql, "downloadCodeQL").resolves({
     codeqlFolder: "codeql",
     statusReport: {
+      compressionMethod: "gzip",
       downloadDurationMs: 200,
       extractionDurationMs: 300,
+      toolsUrl: bundleUrl,
     },
     toolsVersion: expectedVersion,
   });

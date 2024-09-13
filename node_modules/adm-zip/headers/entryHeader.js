@@ -183,7 +183,7 @@ module.exports = function () {
 
         // get Unix file permissions
         get fileAttr() {
-            return uint16(_attr >> 16) & 0xfff;
+            return (_attr || 0) >> 16 & 0xfff;
         },
 
         get offset() {

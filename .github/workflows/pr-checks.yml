@@ -24,7 +24,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lint
-        run: npm run-script lint
+        id: lint
+        run: npm run-script lint-ci
+
+      - name: Upload sarif
+        uses: github/codeql-action/upload-sarif@v3
+        # Only upload SARIF for the latest version of Node.js
+        if: "always() && matrix.node-types-version == 'current'"
+        with:
+          sarif_file: eslint.sarif
+          category: eslint
 
       - name: Update version of @types/node
         if: matrix.node-types-version != 'current'

@@ -17,8 +17,8 @@ import {
   bundleDb,
   doesDirectoryExist,
   getCodeQLDatabasePath,
+  getErrorMessage,
   listFolder,
-  wrapError,
 } from "./util";
 
 export function sanitizeArifactName(name: string): string {
@@ -94,9 +94,9 @@ function tryGetSarifResultPath(
     }
   } catch (e) {
     logger.warning(
-      `Failed to find SARIF results path for ${language}. Reason: ${
-        wrapError(e).message
-      }`,
+      `Failed to find SARIF results path for ${language}. Reason: ${getErrorMessage(
+        e,
+      )}`,
     );
   }
   return [];
@@ -114,16 +114,16 @@ async function tryBundleDatabase(
       } catch (e) {
         logger.warning(
           `Failed to bundle database for ${language} using the CLI. ` +
-            `Falling back to a partial bundle. Reason: ${wrapError(e).message}`,
+            `Falling back to a partial bundle. Reason: ${getErrorMessage(e)}`,
         );
       }
     }
     return [await createPartialDatabaseBundle(config, language)];
   } catch (e) {
     logger.warning(
-      `Failed to bundle database for ${language}. Reason: ${
-        wrapError(e).message
-      }`,
+      `Failed to bundle database for ${language}. Reason: ${getErrorMessage(
+        e,
+      )}`,
     );
     return [];
   }
@@ -168,7 +168,7 @@ export async function uploadAllAvailableDebugArtifacts(
     );
   } catch (e) {
     logger.warning(
-      `Failed to upload debug artifacts. Reason: ${wrapError(e).message}`,
+      `Failed to upload debug artifacts. Reason: ${getErrorMessage(e)}`,
     );
   }
 }
@@ -210,7 +210,7 @@ export async function uploadDebugArtifacts(
   } catch (e) {
     // A failure to upload debug artifacts should not fail the entire action.
     core.warning(
-      `Failed to upload debug artifacts. Reason: ${wrapError(e).message}`,
+      `Failed to upload debug artifacts. Reason: ${getErrorMessage(e)}`,
     );
   }
 }

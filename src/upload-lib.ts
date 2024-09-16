@@ -24,12 +24,12 @@ import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import {
   ConfigurationError,
+  getErrorMessage,
   getRequiredEnvParam,
   GitHubVariant,
   GitHubVersion,
   SarifFile,
   SarifRun,
-  wrapError,
 } from "./util";
 
 const GENERIC_403_MSG =
@@ -440,7 +440,7 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
     sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
   } catch (e) {
     throw new InvalidSarifUploadError(
-      `Invalid SARIF. JSON syntax error: ${wrapError(e).message}`,
+      `Invalid SARIF. JSON syntax error: ${getErrorMessage(e)}`,
     );
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports

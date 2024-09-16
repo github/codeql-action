@@ -62,6 +62,7 @@ import {
   wrapError,
   checkActionVersion,
   cloneObject,
+  getErrorMessage,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -700,7 +701,7 @@ async function runWrapper() {
   try {
     await run();
   } catch (error) {
-    core.setFailed(`init action failed: ${wrapError(error).message}`);
+    core.setFailed(`init action failed: ${getErrorMessage(error)}`);
   }
   await checkForTimeout();
 }

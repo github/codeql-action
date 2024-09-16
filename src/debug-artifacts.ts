@@ -94,7 +94,9 @@ function tryGetSarifResultPath(
     }
   } catch (e) {
     logger.warning(
-      `Failed to find SARIF results path for ${language}. ${wrapError(e)}`,
+      `Failed to find SARIF results path for ${language}. ${
+        wrapError(e).message
+      }`,
     );
   }
   return [];
@@ -113,7 +115,7 @@ async function tryBundleDatabase(
     }
   } catch (e) {
     logger.warning(
-      `Failed to bundle database for ${language}. ${wrapError(e)}`,
+      `Failed to bundle database for ${language}. ${wrapError(e).message}`,
     );
     return [];
   }
@@ -123,36 +125,42 @@ export async function uploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
 ) {
-  const filesToUpload: string[] = [];
+  try {
+    const filesToUpload: string[] = [];
 
-  for (const language of config.languages) {
-    filesToUpload.push(...tryGetSarifResultPath(config, language, logger));
+    for (const language of config.languages) {
+      filesToUpload.push(...tryGetSarifResultPath(config, language, logger));
 
-    // Add any log files
-    const databaseDirectory = getCodeQLDatabasePath(config, language);
-    const logsDirectory = path.resolve(databaseDirectory, "log");
-    if (doesDirectoryExist(logsDirectory)) {
-      filesToUpload.push(...listFolder(logsDirectory));
+      // Add any log files
+      const databaseDirectory = getCodeQLDatabasePath(config, language);
+      const logsDirectory = path.resolve(databaseDirectory, "log");
+      if (doesDirectoryExist(logsDirectory)) {
+        filesToUpload.push(...listFolder(logsDirectory));
+      }
+
+      // Multilanguage tracing: there are additional logs in the root of the cluster
+      const multiLanguageTracingLogsDirectory = path.resolve(
+        config.dbLocation,
+        "log",
+      );
+      if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
+        filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
+      }
+
+      // Add database bundle
+      filesToUpload.push(
+        ...(await tryBundleDatabase(config, language, logger)),
+      );
     }
 
-    // Multilanguage tracing: there are additional logs in the root of the cluster
-    const multiLanguageTracingLogsDirectory = path.resolve(
+    await uploadDebugArtifacts(
+      filesToUpload,
       config.dbLocation,
-      "log",
+      config.debugArtifactName,
     );
-    if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
-      filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
-    }
-
-    // Add database bundle
-    filesToUpload.push(...(await tryBundleDatabase(config, language, logger)));
+  } catch (e) {
+    logger.warning(`Failed to upload debug artifacts: ${wrapError(e).message}`);
   }
-
-  await uploadDebugArtifacts(
-    filesToUpload,
-    config.dbLocation,
-    config.debugArtifactName,
-  );
 }
 
 export async function uploadDebugArtifacts(

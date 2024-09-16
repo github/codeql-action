@@ -25,6 +25,7 @@ var typedArrayNames = [
 
 test('not arrays', function (t) {
 	t.test('non-number/string primitives', function (st) {
+		// @ts-expect-error Expected 1 arguments, but got 0.ts(2554)
 		st.notOk(isTypedArray(), 'undefined is not typed array');
 		st.notOk(isTypedArray(null), 'null is not typed array');
 		st.notOk(isTypedArray(false), 'false is not typed array');
@@ -73,9 +74,13 @@ test('Arrow functions', { skip: !arrowFn }, function (t) {
 
 test('@@toStringTag', { skip: !hasToStringTag }, function (t) {
 	forEach(typedArrayNames, function (typedArray) {
+		// @ts-expect-error
 		if (typeof global[typedArray] === 'function') {
+			// @ts-expect-error
 			var fakeTypedArray = [];
+			// @ts-expect-error
 			fakeTypedArray[Symbol.toStringTag] = typedArray;
+			// @ts-expect-error
 			t.notOk(isTypedArray(fakeTypedArray), 'faked ' + typedArray + ' is not typed array');
 		} else {
 			t.comment('# SKIP ' + typedArray + ' is not supported');
@@ -89,9 +94,12 @@ test('non-Typed Arrays', function (t) {
 	t.end();
 });
 
+/** @typedef {Int8ArrayConstructor | Uint8ArrayConstructor | Uint8ClampedArrayConstructor | Int16ArrayConstructor | Uint16ArrayConstructor | Int32ArrayConstructor | Uint32ArrayConstructor | Float32ArrayConstructor | Float64ArrayConstructor | BigInt64ArrayConstructor | BigUint64ArrayConstructor} TypedArrayConstructor */
+
 test('Typed Arrays', function (t) {
 	forEach(typedArrayNames, function (typedArray) {
-		var TypedArray = global[typedArray];
+		// @ts-expect-error
+		/** @type {TypedArrayConstructor} */ var TypedArray = global[typedArray];
 		if (isCallable(TypedArray)) {
 			var arr = new TypedArray(10);
 			t.ok(isTypedArray(arr), 'new ' + typedArray + '(10) is typed array');

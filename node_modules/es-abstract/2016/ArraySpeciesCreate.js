@@ -4,7 +4,7 @@ var GetIntrinsic = require('get-intrinsic');
 
 var $Array = GetIntrinsic('%Array%');
 var $species = GetIntrinsic('%Symbol.species%', true);
-var $TypeError = GetIntrinsic('%TypeError%');
+var $TypeError = require('es-errors/type');
 
 var Get = require('./Get');
 var IsArray = require('./IsArray');

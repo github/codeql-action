@@ -8,22 +8,11 @@ var arrowFn = require('make-arrow-function')();
 var forEach = require('for-each');
 var inspect = require('object-inspect');
 
-var typedArrayNames = [
-	'Int8Array',
-	'Uint8Array',
-	'Uint8ClampedArray',
-	'Int16Array',
-	'Uint16Array',
-	'Int32Array',
-	'Uint32Array',
-	'Float32Array',
-	'Float64Array',
-	'BigInt64Array',
-	'BigUint64Array'
-];
+var typedArrayNames = require('possible-typed-array-names');
 
 test('not arrays', function (t) {
 	t.test('non-number/string primitives', function (st) {
+		// @ts-expect-error
 		st.equal(false, typedArrayByteOffset(), 'undefined is not typed array');
 		st.equal(false, typedArrayByteOffset(null), 'null is not typed array');
 		st.equal(false, typedArrayByteOffset(false), 'false is not typed array');

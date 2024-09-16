@@ -4,6 +4,12 @@
 	"extends": "@ljharb",
 
 	"rules": {
-		"new-cap": [2, { "capIsNewExceptions": ["IsCallable"] }],
+		"max-lines-per-function": 0,
+		"new-cap": [2, {
+			"capIsNewExceptions": [
+				"HasOwnProperty",
+				"IsCallable",
+			],
+		}],
 	},
 }

@@ -1,7 +1,5 @@
 'use strict';
 
-var Type = require('./Type');
-
 // var modulo = require('./modulo');
 var $floor = Math.floor;
 
@@ -9,7 +7,7 @@ var $floor = Math.floor;
 
 module.exports = function floor(x) {
 	// return x - modulo(x, 1);
-	if (Type(x) === 'BigInt') {
+	if (typeof x === 'bigint') {
 		return x;
 	}
 	return $floor(x);

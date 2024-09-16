@@ -72,7 +72,8 @@ test('core modules', function (t) {
 	});
 
 	t.test('core via builtinModules list', { skip: !data.module }, function (st) {
-		var libs = require('module').builtinModules;
+		var Module = require('module');
+		var libs = Module.builtinModules;
 		if (!libs) {
 			st.skip('module.builtinModules does not exist');
 		} else {
@@ -83,18 +84,37 @@ test('core modules', function (t) {
 				'v8/tools/tickprocessor',
 				'v8/tools/profile'
 			];
+
 			// see https://github.com/nodejs/node/issues/42785
 			if (semver.satisfies(process.version, '>= 18')) {
 				libs = libs.concat('node:test');
 			}
+			if (semver.satisfies(process.version, '^20.12 || >= 21.7')) {
+				libs = libs.concat('node:sea');
+			}
+
 			for (var i = 0; i < libs.length; ++i) {
 				var mod = libs[i];
 				if (excludeList.indexOf(mod) === -1) {
 					st.ok(data[mod], mod + ' is a core module');
+
+					if (Module.isBuiltin) {
+						st.ok(Module.isBuiltin(mod), 'module.isBuiltin(' + mod + ') is true');
+					}
+
 					st.doesNotThrow(
 						function () { require(mod); }, // eslint-disable-line no-loop-func
 						'requiring ' + mod + ' does not throw'
 					);
+
+					if (process.getBuiltinModule) {
+						st.equal(
+							process.getBuiltinModule(mod),
+							require(mod),
+							'process.getBuiltinModule(' + mod + ') === require(' + mod + ')'
+						);
+					}
+
 					if (mod.slice(0, 5) !== 'node:') {
 						if (supportsNodePrefix) {
 							st.doesNotThrow(
@@ -111,6 +131,7 @@ test('core modules', function (t) {
 				}
 			}
 		}
+
 		st.end();
 	});
 

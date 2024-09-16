@@ -6,6 +6,7 @@
 	"rules": {
 		"eqeqeq": [2, "allow-null"],
 		"id-length": 0,
+		"no-invalid-this": "off",
 	},
 
 	"overrides": [

@@ -1,10 +1,9 @@
 'use strict';
 
-var GetIntrinsic = require('get-intrinsic');
 var callBound = require('call-bind/callBound');
 var SLOT = require('internal-slot');
 
-var $TypeError = GetIntrinsic('%TypeError%');
+var $TypeError = require('es-errors/type');
 
 var ClearKeptObjects = require('./ClearKeptObjects');
 var Type = require('./Type');

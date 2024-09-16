@@ -18,6 +18,7 @@ import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
   listFolder,
+  wrapError,
 } from "./util";
 
 export function sanitizeArifactName(name: string): string {
@@ -65,34 +66,70 @@ export async function uploadCombinedSarifArtifacts() {
   }
 }
 
+function tryGetSarifResultPath(
+  config: Config,
+  language: Language,
+  logger: Logger,
+): string[] {
+  try {
+    const analyzeActionOutputDir = process.env[EnvVar.SARIF_RESULTS_OUTPUT_DIR];
+    if (
+      analyzeActionOutputDir !== undefined &&
+      fs.existsSync(analyzeActionOutputDir) &&
+      fs.lstatSync(analyzeActionOutputDir).isDirectory()
+    ) {
+      const sarifFile = path.resolve(
+        analyzeActionOutputDir,
+        `${language}.sarif`,
+      );
+      // Move SARIF to DB location so that they can be uploaded with the same root directory as the other artifacts.
+      if (fs.existsSync(sarifFile)) {
+        const sarifInDbLocation = path.resolve(
+          config.dbLocation,
+          `${language}.sarif`,
+        );
+        fs.copyFileSync(sarifFile, sarifInDbLocation);
+        return [sarifInDbLocation];
+      }
+    }
+  } catch (e) {
+    logger.warning(
+      `Failed to find SARIF results path for ${language}. ${wrapError(e)}`,
+    );
+  }
+  return [];
+}
+
+async function tryBundleDatabase(
+  config: Config,
+  language: Language,
+  logger: Logger,
+): Promise<string[]> {
+  try {
+    if (!dbIsFinalized(config, language, logger)) {
+      return [await createPartialDatabaseBundle(config, language)];
+    } else {
+      return [await createDatabaseBundleCli(config, language)];
+    }
+  } catch (e) {
+    logger.warning(
+      `Failed to bundle database for ${language}. ${wrapError(e)}`,
+    );
+    return [];
+  }
+}
+
 export async function uploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
 ) {
   const filesToUpload: string[] = [];
 
-  const analyzeActionOutputDir = process.env[EnvVar.SARIF_RESULTS_OUTPUT_DIR];
-  for (const lang of config.languages) {
-    // Add any SARIF files, if they exist
-    if (
-      analyzeActionOutputDir !== undefined &&
-      fs.existsSync(analyzeActionOutputDir) &&
-      fs.lstatSync(analyzeActionOutputDir).isDirectory()
-    ) {
-      const sarifFile = path.resolve(analyzeActionOutputDir, `${lang}.sarif`);
-      // Move SARIF to DB location so that they can be uploaded with the same root directory as the other artifacts.
-      if (fs.existsSync(sarifFile)) {
-        const sarifInDbLocation = path.resolve(
-          config.dbLocation,
-          `${lang}.sarif`,
-        );
-        fs.copyFileSync(sarifFile, sarifInDbLocation);
-        filesToUpload.push(sarifInDbLocation);
-      }
-    }
+  for (const language of config.languages) {
+    filesToUpload.push(...tryGetSarifResultPath(config, language, logger));
 
     // Add any log files
-    const databaseDirectory = getCodeQLDatabasePath(config, lang);
+    const databaseDirectory = getCodeQLDatabasePath(config, language);
     const logsDirectory = path.resolve(databaseDirectory, "log");
     if (doesDirectoryExist(logsDirectory)) {
       filesToUpload.push(...listFolder(logsDirectory));
@@ -108,13 +145,7 @@ export async function uploadAllAvailableDebugArtifacts(
     }
 
     // Add database bundle
-    let databaseBundlePath: string;
-    if (!dbIsFinalized(config, lang, logger)) {
-      databaseBundlePath = await createPartialDatabaseBundle(config, lang);
-    } else {
-      databaseBundlePath = await createDatabaseBundleCli(config, lang);
-    }
-    filesToUpload.push(databaseBundlePath);
+    filesToUpload.push(...(await tryBundleDatabase(config, language, logger)));
   }
 
   await uploadDebugArtifacts(

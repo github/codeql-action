@@ -3,7 +3,7 @@
 var GetIntrinsic = require('get-intrinsic');
 
 var $String = GetIntrinsic('%String%');
-var $RangeError = GetIntrinsic('%RangeError%');
+var $RangeError = require('es-errors/range');
 
 var StringPad = require('./StringPad');
 

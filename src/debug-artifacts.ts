@@ -21,7 +21,7 @@ import {
   listFolder,
 } from "./util";
 
-export function sanitizeArifactName(name: string): string {
+export function sanitizeArtifactName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
 }
 
@@ -66,6 +66,11 @@ export async function uploadCombinedSarifArtifacts() {
   }
 }
 
+/**
+ * Try to get the SARIF result path for the given language.
+ *
+ * If an error occurs, log it and return an empty list.
+ */
 function tryGetSarifResultPath(
   config: Config,
   language: Language,
@@ -102,6 +107,12 @@ function tryGetSarifResultPath(
   return [];
 }
 
+/**
+ * Try to bundle the database for the given language. Return a list containing
+ * the path to the database bundle.
+ *
+ * If an error occurs, log it and return an empty list.
+ */
 async function tryBundleDatabase(
   config: Config,
   language: Language,
@@ -129,7 +140,12 @@ async function tryBundleDatabase(
   }
 }
 
-export async function uploadAllAvailableDebugArtifacts(
+/**
+ * Attempt to upload all available debug artifacts.
+ *
+ * Logs and suppresses any errors that occur.
+ */
+export async function tryUploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
 ) {
@@ -198,7 +214,7 @@ export async function uploadDebugArtifacts(
 
   try {
     await artifact.create().uploadArtifact(
-      sanitizeArifactName(`${artifactName}${suffix}`),
+      sanitizeArtifactName(`${artifactName}${suffix}`),
       toUpload.map((file) => path.normalize(file)),
       path.normalize(rootDir),
       {

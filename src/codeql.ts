@@ -31,7 +31,7 @@ import * as setupCodeql from "./setup-codeql";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, wrapError, cloneObject } from "./util";
+import { BuildMode, cloneObject, getErrorMessage } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -398,7 +398,7 @@ export async function setupCodeQL(
     };
   } catch (e) {
     throw new Error(
-      `Unable to download and extract CodeQL CLI: ${wrapError(e).message}`,
+      `Unable to download and extract CodeQL CLI: ${getErrorMessage(e)}`,
     );
   }
 }
@@ -707,7 +707,7 @@ export async function getCodeQLForCmd(
             e instanceof util.ConfigurationError
               ? util.ConfigurationError
               : Error;
-          throw new ErrorConstructor(`${prefix} ${util.wrapError(e).message}`);
+          throw new ErrorConstructor(`${prefix} ${getErrorMessage(e)}`);
         } else {
           throw e;
         }

@@ -94,7 +94,7 @@ function tryGetSarifResultPath(
     }
   } catch (e) {
     logger.warning(
-      `Failed to find SARIF results path for ${language}. ${
+      `Failed to find SARIF results path for ${language}. Reason: ${
         wrapError(e).message
       }`,
     );
@@ -108,14 +108,22 @@ async function tryBundleDatabase(
   logger: Logger,
 ): Promise<string[]> {
   try {
-    if (!dbIsFinalized(config, language, logger)) {
-      return [await createPartialDatabaseBundle(config, language)];
-    } else {
-      return [await createDatabaseBundleCli(config, language)];
+    if (dbIsFinalized(config, language, logger)) {
+      try {
+        return [await createDatabaseBundleCli(config, language)];
+      } catch (e) {
+        logger.warning(
+          `Failed to bundle database for ${language} using the CLI. ` +
+            `Falling back to a partial bundle. Reason: ${wrapError(e).message}`,
+        );
+      }
     }
+    return [await createPartialDatabaseBundle(config, language)];
   } catch (e) {
     logger.warning(
-      `Failed to bundle database for ${language}. ${wrapError(e).message}`,
+      `Failed to bundle database for ${language}. Reason: ${
+        wrapError(e).message
+      }`,
     );
     return [];
   }
@@ -159,7 +167,9 @@ export async function uploadAllAvailableDebugArtifacts(
       config.debugArtifactName,
     );
   } catch (e) {
-    logger.warning(`Failed to upload debug artifacts: ${wrapError(e).message}`);
+    logger.warning(
+      `Failed to upload debug artifacts. Reason: ${wrapError(e).message}`,
+    );
   }
 }
 
@@ -199,7 +209,9 @@ export async function uploadDebugArtifacts(
     );
   } catch (e) {
     // A failure to upload debug artifacts should not fail the entire action.
-    core.warning(`Failed to upload debug artifacts: ${e}`);
+    core.warning(
+      `Failed to upload debug artifacts. Reason: ${wrapError(e).message}`,
+    );
   }
 }
 
@@ -237,7 +249,6 @@ async function createDatabaseBundleCli(
   config: Config,
   language: Language,
 ): Promise<string> {
-  // Otherwise run `codeql database bundle` command.
   const databaseBundlePath = await bundleDb(
     config,
     language,

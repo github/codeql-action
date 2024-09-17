@@ -29,12 +29,12 @@ export function sanitizeArtifactName(name: string): string {
  * Upload Actions SARIF artifacts for debugging when CODEQL_ACTION_DEBUG_COMBINED_SARIF
  * environment variable is set
  */
-export async function uploadCombinedSarifArtifacts() {
+export async function uploadCombinedSarifArtifacts(logger: Logger) {
   const tempDir = getTemporaryDirectory();
 
   // Upload Actions SARIF artifacts for debugging when environment variable is set
   if (process.env["CODEQL_ACTION_DEBUG_COMBINED_SARIF"] === "true") {
-    core.info(
+    logger.info(
       "Uploading available combined SARIF files as Actions debugging artifact...",
     );
 
@@ -56,11 +56,17 @@ export async function uploadCombinedSarifArtifacts() {
       }
     }
 
-    if (toUpload.length > 0) {
+    try {
       await uploadDebugArtifacts(
         toUpload,
         baseTempDir,
         "combined-sarif-artifacts",
+      );
+    } catch (e) {
+      logger.warning(
+        `Failed to upload combined SARIF files as Actions debugging artifact. Reason: ${getErrorMessage(
+          e,
+        )}`,
       );
     }
   }
@@ -148,9 +154,8 @@ export async function tryUploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
 ) {
+  const filesToUpload: string[] = [];
   try {
-    const filesToUpload: string[] = [];
-
     for (const language of config.languages) {
       await withGroup(`Uploading debug artifacts for ${language}`, async () => {
         logger.info("Preparing SARIF result debug artifact...");
@@ -196,12 +201,20 @@ export async function tryUploadAllAvailableDebugArtifacts(
         }
       });
     }
+  } catch (e) {
+    logger.warning(
+      `Failed to prepare debug artifacts. Reason: ${getErrorMessage(e)}`,
+    );
+    return;
+  }
 
-    logger.info("Uploading debug artifacts...");
-    await uploadDebugArtifacts(
-      filesToUpload,
-      config.dbLocation,
-      config.debugArtifactName,
+  try {
+    await withGroup("Uploading debug artifacts", async () =>
+      uploadDebugArtifacts(
+        filesToUpload,
+        config.dbLocation,
+        config.debugArtifactName,
+      ),
     );
   } catch (e) {
     logger.warning(
@@ -233,23 +246,16 @@ export async function uploadDebugArtifacts(
     }
   }
 
-  try {
-    await artifact.create().uploadArtifact(
-      sanitizeArtifactName(`${artifactName}${suffix}`),
-      toUpload.map((file) => path.normalize(file)),
-      path.normalize(rootDir),
-      {
-        continueOnError: true,
-        // ensure we don't keep the debug artifacts around for too long since they can be large.
-        retentionDays: 7,
-      },
-    );
-  } catch (e) {
-    // A failure to upload debug artifacts should not fail the entire action.
-    core.warning(
-      `Failed to upload debug artifacts. Reason: ${getErrorMessage(e)}`,
-    );
-  }
+  await artifact.create().uploadArtifact(
+    sanitizeArtifactName(`${artifactName}${suffix}`),
+    toUpload.map((file) => path.normalize(file)),
+    path.normalize(rootDir),
+    {
+      continueOnError: true,
+      // ensure we don't keep the debug artifacts around for too long since they can be large.
+      retentionDays: 7,
+    },
+  );
 }
 
 /**

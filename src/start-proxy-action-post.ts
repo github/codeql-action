@@ -8,7 +8,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import * as configUtils from "./config-utils";
-import { wrapError } from "./util";
+import { getErrorMessage } from "./util";
 
 async function runWrapper() {
   try {
@@ -18,7 +18,7 @@ async function runWrapper() {
     }
   } catch (error) {
     core.setFailed(
-      `start-proxy post-action step failed: ${wrapError(error).message}`,
+      `start-proxy post-action step failed: ${getErrorMessage(error)}`,
     );
   }
   const config = await configUtils.getConfig(

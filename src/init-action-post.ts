@@ -64,8 +64,7 @@ async function runWrapper() {
     }
 
     uploadFailedSarifResult = await initActionPostHelper.run(
-      debugArtifacts.uploadDatabaseBundleDebugArtifact,
-      debugArtifacts.uploadLogsDebugArtifact,
+      debugArtifacts.tryUploadAllAvailableDebugArtifacts,
       printDebugLogs,
       config,
       repositoryNwo,

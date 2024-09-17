@@ -17,10 +17,10 @@ import {
   setupTests,
 } from "./testing-utils";
 import {
+  getErrorMessage,
   GitHubVariant,
   initializeEnvironment,
   withTmpDir,
-  wrapError,
 } from "./util";
 
 setupTests(test);
@@ -56,7 +56,7 @@ test("convert to semver", (t) => {
       );
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
-      t.fail(wrapError(e).message);
+      t.fail(getErrorMessage(e));
     }
   }
 });

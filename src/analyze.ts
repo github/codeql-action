@@ -314,7 +314,7 @@ export async function runQueries(
       statusReport.analyze_failure_language = language;
       throw new CodeQLAnalysisError(
         statusReport,
-        `Error running analysis for ${language}: ${util.wrapError(e).message}`,
+        `Error running analysis for ${language}: ${util.getErrorMessage(e)}`,
         util.wrapError(e),
       );
     }

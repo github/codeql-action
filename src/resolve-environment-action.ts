@@ -22,6 +22,7 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
+  getErrorMessage,
   wrapError,
 } from "./util";
 
@@ -117,9 +118,9 @@ async function runWrapper() {
     await run();
   } catch (error) {
     core.setFailed(
-      `${ActionName.ResolveEnvironment} action failed: ${
-        wrapError(error).message
-      }`,
+      `${ActionName.ResolveEnvironment} action failed: ${getErrorMessage(
+        error,
+      )}`,
     );
   }
   await checkForTimeout();

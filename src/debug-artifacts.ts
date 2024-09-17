@@ -17,10 +17,11 @@ import {
   bundleDb,
   doesDirectoryExist,
   getCodeQLDatabasePath,
+  getErrorMessage,
   listFolder,
 } from "./util";
 
-export function sanitizeArifactName(name: string): string {
+export function sanitizeArtifactName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
 }
 
@@ -65,63 +66,127 @@ export async function uploadCombinedSarifArtifacts() {
   }
 }
 
-export async function uploadAllAvailableDebugArtifacts(
+/**
+ * Try to get the SARIF result path for the given language.
+ *
+ * If an error occurs, log it and return an empty list.
+ */
+function tryGetSarifResultPath(
   config: Config,
+  language: Language,
   logger: Logger,
-) {
-  const filesToUpload: string[] = [];
-
-  const analyzeActionOutputDir = process.env[EnvVar.SARIF_RESULTS_OUTPUT_DIR];
-  for (const lang of config.languages) {
-    // Add any SARIF files, if they exist
+): string[] {
+  try {
+    const analyzeActionOutputDir = process.env[EnvVar.SARIF_RESULTS_OUTPUT_DIR];
     if (
       analyzeActionOutputDir !== undefined &&
       fs.existsSync(analyzeActionOutputDir) &&
       fs.lstatSync(analyzeActionOutputDir).isDirectory()
     ) {
-      const sarifFile = path.resolve(analyzeActionOutputDir, `${lang}.sarif`);
+      const sarifFile = path.resolve(
+        analyzeActionOutputDir,
+        `${language}.sarif`,
+      );
       // Move SARIF to DB location so that they can be uploaded with the same root directory as the other artifacts.
       if (fs.existsSync(sarifFile)) {
         const sarifInDbLocation = path.resolve(
           config.dbLocation,
-          `${lang}.sarif`,
+          `${language}.sarif`,
         );
         fs.copyFileSync(sarifFile, sarifInDbLocation);
-        filesToUpload.push(sarifInDbLocation);
+        return [sarifInDbLocation];
       }
     }
-
-    // Add any log files
-    const databaseDirectory = getCodeQLDatabasePath(config, lang);
-    const logsDirectory = path.resolve(databaseDirectory, "log");
-    if (doesDirectoryExist(logsDirectory)) {
-      filesToUpload.push(...listFolder(logsDirectory));
-    }
-
-    // Multilanguage tracing: there are additional logs in the root of the cluster
-    const multiLanguageTracingLogsDirectory = path.resolve(
-      config.dbLocation,
-      "log",
+  } catch (e) {
+    logger.warning(
+      `Failed to find SARIF results path for ${language}. Reason: ${getErrorMessage(
+        e,
+      )}`,
     );
-    if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
-      filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
-    }
-
-    // Add database bundle
-    let databaseBundlePath: string;
-    if (!dbIsFinalized(config, lang, logger)) {
-      databaseBundlePath = await createPartialDatabaseBundle(config, lang);
-    } else {
-      databaseBundlePath = await createDatabaseBundleCli(config, lang);
-    }
-    filesToUpload.push(databaseBundlePath);
   }
+  return [];
+}
 
-  await uploadDebugArtifacts(
-    filesToUpload,
-    config.dbLocation,
-    config.debugArtifactName,
-  );
+/**
+ * Try to bundle the database for the given language. Return a list containing
+ * the path to the database bundle.
+ *
+ * If an error occurs, log it and return an empty list.
+ */
+async function tryBundleDatabase(
+  config: Config,
+  language: Language,
+  logger: Logger,
+): Promise<string[]> {
+  try {
+    if (dbIsFinalized(config, language, logger)) {
+      try {
+        return [await createDatabaseBundleCli(config, language)];
+      } catch (e) {
+        logger.warning(
+          `Failed to bundle database for ${language} using the CLI. ` +
+            `Falling back to a partial bundle. Reason: ${getErrorMessage(e)}`,
+        );
+      }
+    }
+    return [await createPartialDatabaseBundle(config, language)];
+  } catch (e) {
+    logger.warning(
+      `Failed to bundle database for ${language}. Reason: ${getErrorMessage(
+        e,
+      )}`,
+    );
+    return [];
+  }
+}
+
+/**
+ * Attempt to upload all available debug artifacts.
+ *
+ * Logs and suppresses any errors that occur.
+ */
+export async function tryUploadAllAvailableDebugArtifacts(
+  config: Config,
+  logger: Logger,
+) {
+  try {
+    const filesToUpload: string[] = [];
+
+    for (const language of config.languages) {
+      filesToUpload.push(...tryGetSarifResultPath(config, language, logger));
+
+      // Add any log files
+      const databaseDirectory = getCodeQLDatabasePath(config, language);
+      const logsDirectory = path.resolve(databaseDirectory, "log");
+      if (doesDirectoryExist(logsDirectory)) {
+        filesToUpload.push(...listFolder(logsDirectory));
+      }
+
+      // Multilanguage tracing: there are additional logs in the root of the cluster
+      const multiLanguageTracingLogsDirectory = path.resolve(
+        config.dbLocation,
+        "log",
+      );
+      if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
+        filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
+      }
+
+      // Add database bundle
+      filesToUpload.push(
+        ...(await tryBundleDatabase(config, language, logger)),
+      );
+    }
+
+    await uploadDebugArtifacts(
+      filesToUpload,
+      config.dbLocation,
+      config.debugArtifactName,
+    );
+  } catch (e) {
+    logger.warning(
+      `Failed to upload debug artifacts. Reason: ${getErrorMessage(e)}`,
+    );
+  }
 }
 
 export async function uploadDebugArtifacts(
@@ -149,7 +214,7 @@ export async function uploadDebugArtifacts(
 
   try {
     await artifact.create().uploadArtifact(
-      sanitizeArifactName(`${artifactName}${suffix}`),
+      sanitizeArtifactName(`${artifactName}${suffix}`),
       toUpload.map((file) => path.normalize(file)),
       path.normalize(rootDir),
       {
@@ -160,7 +225,9 @@ export async function uploadDebugArtifacts(
     );
   } catch (e) {
     // A failure to upload debug artifacts should not fail the entire action.
-    core.warning(`Failed to upload debug artifacts: ${e}`);
+    core.warning(
+      `Failed to upload debug artifacts. Reason: ${getErrorMessage(e)}`,
+    );
   }
 }
 
@@ -198,7 +265,6 @@ async function createDatabaseBundleCli(
   config: Config,
   language: Language,
 ): Promise<string> {
-  // Otherwise run `codeql database bundle` command.
   const databaseBundlePath = await bundleDb(
     config,
     language,

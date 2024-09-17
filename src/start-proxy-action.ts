@@ -169,9 +169,7 @@ async function startProxy(
     core.setOutput("proxy_port", port.toString());
     core.setOutput("proxy_ca_certificate", config.ca.cert);
   } catch (error) {
-    core.setFailed(
-      `start-proxy action failed: ${util.wrapError(error).message}`,
-    );
+    core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
   }
 }
 

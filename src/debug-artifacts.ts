@@ -12,7 +12,7 @@ import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
-import { Logger } from "./logging";
+import { Logger, withGroup } from "./logging";
 import {
   bundleDb,
   doesDirectoryExist,
@@ -29,12 +29,12 @@ export function sanitizeArtifactName(name: string): string {
  * Upload Actions SARIF artifacts for debugging when CODEQL_ACTION_DEBUG_COMBINED_SARIF
  * environment variable is set
  */
-export async function uploadCombinedSarifArtifacts() {
+export async function uploadCombinedSarifArtifacts(logger: Logger) {
   const tempDir = getTemporaryDirectory();
 
   // Upload Actions SARIF artifacts for debugging when environment variable is set
   if (process.env["CODEQL_ACTION_DEBUG_COMBINED_SARIF"] === "true") {
-    core.info(
+    logger.info(
       "Uploading available combined SARIF files as Actions debugging artifact...",
     );
 
@@ -56,26 +56,32 @@ export async function uploadCombinedSarifArtifacts() {
       }
     }
 
-    if (toUpload.length > 0) {
+    try {
       await uploadDebugArtifacts(
         toUpload,
         baseTempDir,
         "combined-sarif-artifacts",
+      );
+    } catch (e) {
+      logger.warning(
+        `Failed to upload combined SARIF files as Actions debugging artifact. Reason: ${getErrorMessage(
+          e,
+        )}`,
       );
     }
   }
 }
 
 /**
- * Try to get the SARIF result path for the given language.
+ * Try to prepare a SARIF result debug artifact for the given language.
  *
- * If an error occurs, log it and return an empty list.
+ * @return The path to that debug artifact, or undefined if an error occurs.
  */
-function tryGetSarifResultPath(
+function tryPrepareSarifDebugArtifact(
   config: Config,
   language: Language,
   logger: Logger,
-): string[] {
+): string | undefined {
   try {
     const analyzeActionOutputDir = process.env[EnvVar.SARIF_RESULTS_OUTPUT_DIR];
     if (
@@ -94,7 +100,7 @@ function tryGetSarifResultPath(
           `${language}.sarif`,
         );
         fs.copyFileSync(sarifFile, sarifInDbLocation);
-        return [sarifInDbLocation];
+        return sarifInDbLocation;
       }
     }
   } catch (e) {
@@ -104,24 +110,23 @@ function tryGetSarifResultPath(
       )}`,
     );
   }
-  return [];
+  return undefined;
 }
 
 /**
- * Try to bundle the database for the given language. Return a list containing
- * the path to the database bundle.
+ * Try to bundle the database for the given language.
  *
- * If an error occurs, log it and return an empty list.
+ * @return The path to the database bundle, or undefined if an error occurs.
  */
 async function tryBundleDatabase(
   config: Config,
   language: Language,
   logger: Logger,
-): Promise<string[]> {
+): Promise<string | undefined> {
   try {
     if (dbIsFinalized(config, language, logger)) {
       try {
-        return [await createDatabaseBundleCli(config, language)];
+        return await createDatabaseBundleCli(config, language);
       } catch (e) {
         logger.warning(
           `Failed to bundle database for ${language} using the CLI. ` +
@@ -129,14 +134,14 @@ async function tryBundleDatabase(
         );
       }
     }
-    return [await createPartialDatabaseBundle(config, language)];
+    return await createPartialDatabaseBundle(config, language);
   } catch (e) {
     logger.warning(
       `Failed to bundle database for ${language}. Reason: ${getErrorMessage(
         e,
       )}`,
     );
-    return [];
+    return undefined;
   }
 }
 
@@ -149,38 +154,67 @@ export async function tryUploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
 ) {
+  const filesToUpload: string[] = [];
   try {
-    const filesToUpload: string[] = [];
-
     for (const language of config.languages) {
-      filesToUpload.push(...tryGetSarifResultPath(config, language, logger));
+      await withGroup(`Uploading debug artifacts for ${language}`, async () => {
+        logger.info("Preparing SARIF result debug artifact...");
+        const sarifResultDebugArtifact = tryPrepareSarifDebugArtifact(
+          config,
+          language,
+          logger,
+        );
+        if (sarifResultDebugArtifact) {
+          filesToUpload.push(sarifResultDebugArtifact);
+          logger.info("SARIF result debug artifact ready for upload.");
+        }
 
-      // Add any log files
-      const databaseDirectory = getCodeQLDatabasePath(config, language);
-      const logsDirectory = path.resolve(databaseDirectory, "log");
-      if (doesDirectoryExist(logsDirectory)) {
-        filesToUpload.push(...listFolder(logsDirectory));
-      }
+        logger.info("Preparing database logs debug artifact...");
+        const databaseDirectory = getCodeQLDatabasePath(config, language);
+        const logsDirectory = path.resolve(databaseDirectory, "log");
+        if (doesDirectoryExist(logsDirectory)) {
+          filesToUpload.push(...listFolder(logsDirectory));
+          logger.info("Database logs debug artifact ready for upload.");
+        }
 
-      // Multilanguage tracing: there are additional logs in the root of the cluster
-      const multiLanguageTracingLogsDirectory = path.resolve(
-        config.dbLocation,
-        "log",
-      );
-      if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
-        filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
-      }
+        // Multilanguage tracing: there are additional logs in the root of the cluster
+        logger.info("Preparing database cluster logs debug artifact...");
+        const multiLanguageTracingLogsDirectory = path.resolve(
+          config.dbLocation,
+          "log",
+        );
+        if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
+          filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
+          logger.info("Database cluster logs debug artifact ready for upload.");
+        }
 
-      // Add database bundle
-      filesToUpload.push(
-        ...(await tryBundleDatabase(config, language, logger)),
-      );
+        // Add database bundle
+        logger.info("Preparing database bundle debug artifact...");
+        const databaseBundle = await tryBundleDatabase(
+          config,
+          language,
+          logger,
+        );
+        if (databaseBundle) {
+          filesToUpload.push(databaseBundle);
+          logger.info("Database bundle debug artifact ready for upload.");
+        }
+      });
     }
+  } catch (e) {
+    logger.warning(
+      `Failed to prepare debug artifacts. Reason: ${getErrorMessage(e)}`,
+    );
+    return;
+  }
 
-    await uploadDebugArtifacts(
-      filesToUpload,
-      config.dbLocation,
-      config.debugArtifactName,
+  try {
+    await withGroup("Uploading debug artifacts", async () =>
+      uploadDebugArtifacts(
+        filesToUpload,
+        config.dbLocation,
+        config.debugArtifactName,
+      ),
     );
   } catch (e) {
     logger.warning(
@@ -212,23 +246,16 @@ export async function uploadDebugArtifacts(
     }
   }
 
-  try {
-    await artifact.create().uploadArtifact(
-      sanitizeArtifactName(`${artifactName}${suffix}`),
-      toUpload.map((file) => path.normalize(file)),
-      path.normalize(rootDir),
-      {
-        continueOnError: true,
-        // ensure we don't keep the debug artifacts around for too long since they can be large.
-        retentionDays: 7,
-      },
-    );
-  } catch (e) {
-    // A failure to upload debug artifacts should not fail the entire action.
-    core.warning(
-      `Failed to upload debug artifacts. Reason: ${getErrorMessage(e)}`,
-    );
-  }
+  await artifact.create().uploadArtifact(
+    sanitizeArtifactName(`${artifactName}${suffix}`),
+    toUpload.map((file) => path.normalize(file)),
+    path.normalize(rootDir),
+    {
+      continueOnError: true,
+      // ensure we don't keep the debug artifacts around for too long since they can be large.
+      retentionDays: 7,
+    },
+  );
 }
 
 /**

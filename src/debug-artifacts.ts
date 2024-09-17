@@ -67,15 +67,15 @@ export async function uploadCombinedSarifArtifacts() {
 }
 
 /**
- * Try to get the SARIF result path for the given language.
+ * Try to prepare a SARIF result debug artifact for the given language.
  *
- * If an error occurs, log it and return an empty list.
+ * @return The path to that debug artifact, or undefined if an error occurs.
  */
-function tryGetSarifResultPath(
+function tryPrepareSarifDebugArtifact(
   config: Config,
   language: Language,
   logger: Logger,
-): string[] {
+): string | undefined {
   try {
     const analyzeActionOutputDir = process.env[EnvVar.SARIF_RESULTS_OUTPUT_DIR];
     if (
@@ -94,7 +94,7 @@ function tryGetSarifResultPath(
           `${language}.sarif`,
         );
         fs.copyFileSync(sarifFile, sarifInDbLocation);
-        return [sarifInDbLocation];
+        return sarifInDbLocation;
       }
     }
   } catch (e) {
@@ -104,24 +104,23 @@ function tryGetSarifResultPath(
       )}`,
     );
   }
-  return [];
+  return undefined;
 }
 
 /**
- * Try to bundle the database for the given language. Return a list containing
- * the path to the database bundle.
+ * Try to bundle the database for the given language.
  *
- * If an error occurs, log it and return an empty list.
+ * @return The path to the database bundle, or undefined if an error occurs.
  */
 async function tryBundleDatabase(
   config: Config,
   language: Language,
   logger: Logger,
-): Promise<string[]> {
+): Promise<string | undefined> {
   try {
     if (dbIsFinalized(config, language, logger)) {
       try {
-        return [await createDatabaseBundleCli(config, language)];
+        return await createDatabaseBundleCli(config, language);
       } catch (e) {
         logger.warning(
           `Failed to bundle database for ${language} using the CLI. ` +
@@ -129,14 +128,14 @@ async function tryBundleDatabase(
         );
       }
     }
-    return [await createPartialDatabaseBundle(config, language)];
+    return await createPartialDatabaseBundle(config, language);
   } catch (e) {
     logger.warning(
       `Failed to bundle database for ${language}. Reason: ${getErrorMessage(
         e,
       )}`,
     );
-    return [];
+    return undefined;
   }
 }
 
@@ -153,7 +152,14 @@ export async function tryUploadAllAvailableDebugArtifacts(
     const filesToUpload: string[] = [];
 
     for (const language of config.languages) {
-      filesToUpload.push(...tryGetSarifResultPath(config, language, logger));
+      const sarifResultDebugArtifact = tryPrepareSarifDebugArtifact(
+        config,
+        language,
+        logger,
+      );
+      if (sarifResultDebugArtifact) {
+        filesToUpload.push(sarifResultDebugArtifact);
+      }
 
       // Add any log files
       const databaseDirectory = getCodeQLDatabasePath(config, language);
@@ -172,9 +178,10 @@ export async function tryUploadAllAvailableDebugArtifacts(
       }
 
       // Add database bundle
-      filesToUpload.push(
-        ...(await tryBundleDatabase(config, language, logger)),
-      );
+      const databaseBundle = await tryBundleDatabase(config, language, logger);
+      if (databaseBundle) {
+        filesToUpload.push(databaseBundle);
+      }
     }
 
     await uploadDebugArtifacts(

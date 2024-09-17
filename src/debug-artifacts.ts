@@ -12,7 +12,7 @@ import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
-import { Logger } from "./logging";
+import { Logger, withGroup } from "./logging";
 import {
   bundleDb,
   doesDirectoryExist,
@@ -152,38 +152,52 @@ export async function tryUploadAllAvailableDebugArtifacts(
     const filesToUpload: string[] = [];
 
     for (const language of config.languages) {
-      const sarifResultDebugArtifact = tryPrepareSarifDebugArtifact(
-        config,
-        language,
-        logger,
-      );
-      if (sarifResultDebugArtifact) {
-        filesToUpload.push(sarifResultDebugArtifact);
-      }
+      await withGroup(`Uploading debug artifacts for ${language}`, async () => {
+        logger.info("Preparing SARIF result debug artifact...");
+        const sarifResultDebugArtifact = tryPrepareSarifDebugArtifact(
+          config,
+          language,
+          logger,
+        );
+        if (sarifResultDebugArtifact) {
+          filesToUpload.push(sarifResultDebugArtifact);
+          logger.info("SARIF result debug artifact ready for upload.");
+        }
 
-      // Add any log files
-      const databaseDirectory = getCodeQLDatabasePath(config, language);
-      const logsDirectory = path.resolve(databaseDirectory, "log");
-      if (doesDirectoryExist(logsDirectory)) {
-        filesToUpload.push(...listFolder(logsDirectory));
-      }
+        logger.info("Preparing database logs debug artifact...");
+        const databaseDirectory = getCodeQLDatabasePath(config, language);
+        const logsDirectory = path.resolve(databaseDirectory, "log");
+        if (doesDirectoryExist(logsDirectory)) {
+          filesToUpload.push(...listFolder(logsDirectory));
+          logger.info("Database logs debug artifact ready for upload.");
+        }
 
-      // Multilanguage tracing: there are additional logs in the root of the cluster
-      const multiLanguageTracingLogsDirectory = path.resolve(
-        config.dbLocation,
-        "log",
-      );
-      if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
-        filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
-      }
+        // Multilanguage tracing: there are additional logs in the root of the cluster
+        logger.info("Preparing database cluster logs debug artifact...");
+        const multiLanguageTracingLogsDirectory = path.resolve(
+          config.dbLocation,
+          "log",
+        );
+        if (doesDirectoryExist(multiLanguageTracingLogsDirectory)) {
+          filesToUpload.push(...listFolder(multiLanguageTracingLogsDirectory));
+          logger.info("Database cluster logs debug artifact ready for upload.");
+        }
 
-      // Add database bundle
-      const databaseBundle = await tryBundleDatabase(config, language, logger);
-      if (databaseBundle) {
-        filesToUpload.push(databaseBundle);
-      }
+        // Add database bundle
+        logger.info("Preparing database bundle debug artifact...");
+        const databaseBundle = await tryBundleDatabase(
+          config,
+          language,
+          logger,
+        );
+        if (databaseBundle) {
+          filesToUpload.push(databaseBundle);
+          logger.info("Database bundle debug artifact ready for upload.");
+        }
+      });
     }
 
+    logger.info("Uploading debug artifacts...");
     await uploadDebugArtifacts(
       filesToUpload,
       config.dbLocation,

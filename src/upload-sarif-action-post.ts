@@ -7,18 +7,22 @@ import * as core from "@actions/core";
 
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
-import { wrapError } from "./util";
+import { getActionsLogger, withGroup } from "./logging";
+import { getErrorMessage } from "./util";
 
 async function runWrapper() {
   try {
+    const logger = getActionsLogger();
     // Upload SARIF artifacts if we determine that this is a third-party analysis run.
     // For first-party runs, this artifact will be uploaded in the `analyze-post` step.
     if (process.env[EnvVar.INIT_ACTION_HAS_RUN] !== "true") {
-      await debugArtifacts.uploadCombinedSarifArtifacts();
+      await withGroup("Uploading combined SARIF debug artifact", () =>
+        debugArtifacts.uploadCombinedSarifArtifacts(logger),
+      );
     }
   } catch (error) {
     core.setFailed(
-      `upload-sarif post-action step failed: ${wrapError(error).message}`,
+      `upload-sarif post-action step failed: ${getErrorMessage(error)}`,
     );
   }
 }

@@ -417,7 +417,7 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    core.setFailed(`analyze action failed: ${util.wrapError(error).message}`);
+    core.setFailed(`analyze action failed: ${util.getErrorMessage(error)}`);
   }
   await util.checkForTimeout();
 }

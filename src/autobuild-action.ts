@@ -24,6 +24,7 @@ import {
   checkActionVersion,
   checkDiskUsage,
   checkGitHubVersionInRange,
+  getErrorMessage,
   initializeEnvironment,
   wrapError,
 } from "./util";
@@ -141,7 +142,7 @@ async function runWrapper() {
   try {
     await run();
   } catch (error) {
-    core.setFailed(`autobuild action failed. ${wrapError(error).message}`);
+    core.setFailed(`autobuild action failed. ${getErrorMessage(error)}`);
   }
 }
 

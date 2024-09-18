@@ -11,7 +11,12 @@ import { DocUrl } from "./doc-url";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { isHTTPError, tryGetFolderBytes, withTimeout, wrapError } from "./util";
+import {
+  getErrorMessage,
+  isHTTPError,
+  tryGetFolderBytes,
+  withTimeout,
+} from "./util";
 
 // This constant should be bumped if we make a breaking change
 // to how the CodeQL Action stores or retrieves the TRAP cache,
@@ -239,7 +244,7 @@ export async function cleanupTrapCaches(
     } else {
       logger.info(`Failed to cleanup TRAP caches, continuing. Details: ${e}`);
     }
-    return { trap_cache_cleanup_error: wrapError(e).message };
+    return { trap_cache_cleanup_error: getErrorMessage(e) };
   }
 }
 

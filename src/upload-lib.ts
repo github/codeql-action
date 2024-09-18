@@ -24,12 +24,12 @@ import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import {
   ConfigurationError,
+  getErrorMessage,
   getRequiredEnvParam,
   GitHubVariant,
   GitHubVersion,
   SarifFile,
   SarifRun,
-  wrapError,
 } from "./util";
 
 const GENERIC_403_MSG =
@@ -440,7 +440,7 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
     sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
   } catch (e) {
     throw new InvalidSarifUploadError(
-      `Invalid SARIF. JSON syntax error: ${wrapError(e).message}`,
+      `Invalid SARIF. JSON syntax error: ${getErrorMessage(e)}`,
     );
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -449,11 +449,20 @@ export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
   const result = new jsonschema.Validator().validate(sarif, schema);
   // Filter errors related to invalid URIs in the artifactLocation field as this
   // is a breaking change. See https://github.com/github/codeql-action/issues/1703
-  const errors = (result.errors || []).filter(
-    (err) => err.argument !== "uri-reference",
+  const warningAttributes = ["uri-reference", "uri"];
+  const errors = (result.errors ?? []).filter(
+    (err) =>
+      !(
+        err.name === "format" &&
+        typeof err.argument === "string" &&
+        warningAttributes.includes(err.argument)
+      ),
   );
-  const warnings = (result.errors || []).filter(
-    (err) => err.argument === "uri-reference",
+  const warnings = (result.errors ?? []).filter(
+    (err) =>
+      err.name === "format" &&
+      typeof err.argument === "string" &&
+      warningAttributes.includes(err.argument),
   );
 
   for (const warning of warnings) {

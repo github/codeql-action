@@ -35,13 +35,11 @@ test("post: init action with debug mode off", async (t) => {
       packs: [],
     } as unknown as configUtils.Config);
 
-    const uploadDatabaseBundleSpy = sinon.spy();
-    const uploadLogsSpy = sinon.spy();
+    const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
 
     await initActionPostHelper.run(
-      uploadDatabaseBundleSpy,
-      uploadLogsSpy,
+      uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
       createTestConfig({ debugMode: false }),
       parseRepositoryNwo("github/codeql-action"),
@@ -49,8 +47,7 @@ test("post: init action with debug mode off", async (t) => {
       getRunnerLogger(true),
     );
 
-    t.assert(uploadDatabaseBundleSpy.notCalled);
-    t.assert(uploadLogsSpy.notCalled);
+    t.assert(uploadAllAvailableDebugArtifactsSpy.notCalled);
     t.assert(printDebugLogsSpy.notCalled);
   });
 });
@@ -60,13 +57,11 @@ test("post: init action with debug mode on", async (t) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
 
-    const uploadDatabaseBundleSpy = sinon.spy();
-    const uploadLogsSpy = sinon.spy();
+    const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
 
     await initActionPostHelper.run(
-      uploadDatabaseBundleSpy,
-      uploadLogsSpy,
+      uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
       createTestConfig({ debugMode: true }),
       parseRepositoryNwo("github/codeql-action"),
@@ -74,8 +69,7 @@ test("post: init action with debug mode on", async (t) => {
       getRunnerLogger(true),
     );
 
-    t.assert(uploadDatabaseBundleSpy.called);
-    t.assert(uploadLogsSpy.called);
+    t.assert(uploadAllAvailableDebugArtifactsSpy.called);
     t.assert(printDebugLogsSpy.called);
   });
 });

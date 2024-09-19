@@ -115,24 +115,26 @@ jobs:
       SOURCE_BRANCH: ${{ needs.prepare.outputs.backport_source_branch }}
       TARGET_BRANCH: ${{ matrix.target_branch }}
     steps:
-    - uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4
+    - name: Generate token
+      uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4
       id: app-token
       with:
         app-id: ${{ vars.AUTOMATION_APP_ID }}
         private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
-    - uses: actions/checkout@v4
+
+    - name: Checkout
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Need full history for calculation of diffs
+        token: ${{ steps.app-token.outputs.token }}
     - uses: ./.github/actions/release-initialise
 
     - name: Update older release branch
-      env:
-        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
       run: |
         echo SOURCE_BRANCH=${SOURCE_BRANCH}
         echo TARGET_BRANCH=${TARGET_BRANCH}
         python .github/update-release-branch.py \
-          --github-token ${GITHUB_TOKEN} \
+          --github-token ${{ steps.app-token.outputs.token }} \
           --repository-nwo ${{ github.repository }} \
           --source-branch ${SOURCE_BRANCH} \
           --target-branch ${TARGET_BRANCH} \

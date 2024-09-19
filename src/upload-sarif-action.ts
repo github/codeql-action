@@ -19,6 +19,7 @@ import {
   ConfigurationError,
   checkActionVersion,
   checkDiskUsage,
+  getErrorMessage,
   getRequiredEnvParam,
   initializeEnvironment,
   isInTestMode,
@@ -133,7 +134,7 @@ async function runWrapper() {
     await run();
   } catch (error) {
     core.setFailed(
-      `codeql/upload-sarif action failed: ${wrapError(error).message}`,
+      `codeql/upload-sarif action failed: ${getErrorMessage(error)}`,
     );
   }
 }

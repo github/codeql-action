@@ -230,6 +230,7 @@ async function run() {
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
+    core.exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger,
@@ -416,7 +417,7 @@ async function runWrapper() {
   try {
     await runPromise;
   } catch (error) {
-    core.setFailed(`analyze action failed: ${util.wrapError(error).message}`);
+    core.setFailed(`analyze action failed: ${util.getErrorMessage(error)}`);
   }
   await util.checkForTimeout();
 }

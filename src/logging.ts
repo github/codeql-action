@@ -31,3 +31,12 @@ export function getRunnerLogger(debugMode: boolean): Logger {
     endGroup: () => undefined,
   };
 }
+
+export function withGroup<T>(groupName: string, f: () => T): T {
+  core.startGroup(groupName);
+  try {
+    return f();
+  } finally {
+    core.endGroup();
+  }
+}

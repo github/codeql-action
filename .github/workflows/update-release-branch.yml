@@ -134,7 +134,7 @@ jobs:
         echo SOURCE_BRANCH=${SOURCE_BRANCH}
         echo TARGET_BRANCH=${TARGET_BRANCH}
         python .github/update-release-branch.py \
-          --github-token ${GITHUB_TOKEN} \
+          --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
           --source-branch ${SOURCE_BRANCH} \
           --target-branch ${TARGET_BRANCH} \

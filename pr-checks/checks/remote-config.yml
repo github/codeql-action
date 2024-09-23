@@ -3,7 +3,7 @@ description: "Checks that specifying packages using only a config file works"
 operatingSystems:
   - ubuntu
 versions:
-  - latest
+  - linked
   - nightly-latest
 steps:
   - uses: ./../action/init

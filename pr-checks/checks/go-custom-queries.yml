@@ -3,7 +3,7 @@ description: "Checks that Go works in conjunction with a config file specifying 
 operatingSystems:
   - ubuntu
 versions:
-  - latest
+  - linked
   - nightly-latest
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"

@@ -351,6 +351,7 @@ export async function setupCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean,
 ): Promise<{
@@ -371,6 +372,7 @@ export async function setupCodeQL(
       tempDir,
       variant,
       defaultCliVersion,
+      features,
       logger,
     );
 

@@ -2,7 +2,7 @@
 
 var hasSymbols = require('has-symbols/shams')();
 var forEach = require('for-each');
-var has = require('has');
+var hasOwn = require('hasown');
 var mockProperty = require('mock-property');
 
 module.exports = function (assign, t) {
@@ -110,7 +110,7 @@ module.exports = function (assign, t) {
 		var target = {};
 		assign(target, window.location);
 		for (var prop in window.location) {
-			if (has(window.location, prop)) {
+			if (hasOwn(window.location, prop)) {
 				st.deepEqual(target[prop], window.location[prop], prop + ' is copied');
 			}
 		}

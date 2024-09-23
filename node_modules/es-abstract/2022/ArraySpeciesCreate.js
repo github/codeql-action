@@ -3,7 +3,7 @@
 var GetIntrinsic = require('get-intrinsic');
 
 var $species = GetIntrinsic('%Symbol.species%', true);
-var $TypeError = GetIntrinsic('%TypeError%');
+var $TypeError = require('es-errors/type');
 
 var ArrayCreate = require('./ArrayCreate');
 var Get = require('./Get');

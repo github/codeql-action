@@ -1,3 +1,11 @@
+4.1.5 / 2023-11-30
+==================
+  * [meta] republish without testing HTML file (#85)
+  * [Deps] update `call-bind`, `define-properties`
+  * [Dev Deps] use `hasown` instead of `has`
+  * [Dev Deps] update `@es-shims/api`, `@ljharb/eslint-config`, `aud`, `npmignore`, `mock-property`, `tape`
+  * [actions] update rebase action
+
 4.1.4 / 2022-08-16
 ==================
   * [meta] fix `npmignore` integration (#83)

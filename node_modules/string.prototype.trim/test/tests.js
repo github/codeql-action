@@ -1,5 +1,7 @@
 'use strict';
 
+var forEach = require('for-each');
+
 module.exports = function (trim, t) {
 	t.test('normal cases', function (st) {
 		st.equal(trim(' \t\na \t\n'), 'a', 'strips whitespace off left and right sides');
@@ -40,6 +42,21 @@ module.exports = function (trim, t) {
 	t.test('zero-width spaces', function (st) {
 		var zeroWidth = '\u200b';
 		st.equal(trim(zeroWidth), zeroWidth, 'zero width space does not trim');
+		st.end();
+	});
+
+	t.test('non-whitespace characters', function (st) {
+		// Zero-width space (zws), next line character (nel), and non-character (bom) are not whitespace.
+		var nonWhitespaces = {
+			'\\u0085': '\u0085',
+			'\\u200b': '\u200b',
+			'\\ufffe': '\ufffe'
+		};
+
+		forEach(nonWhitespaces, function (nonWhitespace, name) {
+			st.equal(trim(nonWhitespace), nonWhitespace, name + ' does not trim');
+		});
+
 		st.end();
 	});
 };

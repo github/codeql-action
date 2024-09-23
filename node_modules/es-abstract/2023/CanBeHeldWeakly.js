@@ -9,7 +9,7 @@ module.exports = function CanBeHeldWeakly(v) {
 	if (Type(v) === 'Object') {
 		return true; // step 1
 	}
-	if (Type(v) === 'Symbol' && typeof KeyForSymbol(v) === 'undefined') {
+	if (typeof v === 'symbol' && typeof KeyForSymbol(v) === 'undefined') {
 		return true; // step 2
 	}
 	return false; // step 3

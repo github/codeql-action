@@ -84,5 +84,11 @@
 				}],
 			},
 		},
+		{
+			"files": "./*/GetSubstitution.js",
+			"rules": {
+				"max-depth": "off",
+			},
+		},
 	],
 }

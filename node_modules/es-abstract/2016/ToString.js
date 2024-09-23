@@ -3,7 +3,7 @@
 var GetIntrinsic = require('get-intrinsic');
 
 var $String = GetIntrinsic('%String%');
-var $TypeError = GetIntrinsic('%TypeError%');
+var $TypeError = require('es-errors/type');
 
 // https://262.ecma-international.org/6.0/#sec-tostring
 

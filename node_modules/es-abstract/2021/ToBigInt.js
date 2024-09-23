@@ -4,8 +4,8 @@ var GetIntrinsic = require('get-intrinsic');
 
 var $BigInt = GetIntrinsic('%BigInt%', true);
 var $Number = GetIntrinsic('%Number%');
-var $TypeError = GetIntrinsic('%TypeError%');
-var $SyntaxError = GetIntrinsic('%SyntaxError%');
+var $TypeError = require('es-errors/type');
+var $SyntaxError = require('es-errors/syntax');
 
 var StringToBigInt = require('./StringToBigInt');
 var ToPrimitive = require('./ToPrimitive');

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.13](https://github.com/inspect-js/is-typed-array/compare/v1.1.12...v1.1.13) - 2024-02-01
+
+### Commits
+
+- [patch] add types [`8a8a679`](https://github.com/inspect-js/is-typed-array/commit/8a8a679937d1c4b970c98556460cef2b7fa0bffb)
+- [Dev Deps] update `aud`, `has-tostringtag`, `npmignore`, `object-inspect`, `tape` [`8146b60`](https://github.com/inspect-js/is-typed-array/commit/8146b6019a24f502e66e2c224ce5bea8df9f39bc)
+- [actions] optimize finishers [`34f875a`](https://github.com/inspect-js/is-typed-array/commit/34f875ace16c4900d6b0ef4688e9e3eb7d502715)
+- [Deps] update `which-typed-array` [`19c974f`](https://github.com/inspect-js/is-typed-array/commit/19c974f4bbd93ffc45cb8638b86688bc00f1420b)
+- [meta] add `sideEffects` flag [`0b68e5e`](https://github.com/inspect-js/is-typed-array/commit/0b68e5e58684b79110a82a0a51df8beb7574d6a2)
+
+## [v1.1.12](https://github.com/inspect-js/is-typed-array/compare/v1.1.11...v1.1.12) - 2023-07-17
+
+### Commits
+
+- [Refactor] use `which-typed-array` for all internals [`7619405`](https://github.com/inspect-js/is-typed-array/commit/761940532de595f6721fed101b02814dcfa7fe4e)
+
+## [v1.1.11](https://github.com/inspect-js/is-typed-array/compare/v1.1.10...v1.1.11) - 2023-07-17
+
+### Commits
+
+- [Fix] `node &lt; v0.6` lacks proper Object toString behavior [`c94b90d`](https://github.com/inspect-js/is-typed-array/commit/c94b90dc6bc457783d6f8cc208415a49da0933b7)
+- [Robustness] use `call-bind` [`573b00b`](https://github.com/inspect-js/is-typed-array/commit/573b00b8deec42ac1ac262415e442ea0b7e1c96b)
+- [Dev Deps] update `@ljharb/eslint-config`, `aud`, `object-inspect`, `tape` [`c88c2d4`](https://github.com/inspect-js/is-typed-array/commit/c88c2d479976110478fa4038fe8921251c06a163)
+
 ## [v1.1.10](https://github.com/inspect-js/is-typed-array/compare/v1.1.9...v1.1.10) - 2022-11-02
 
 ### Commits

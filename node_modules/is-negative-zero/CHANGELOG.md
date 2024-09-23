@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.3](https://github.com/inspect-js/is-negative-zero/compare/v2.0.2...v2.0.3) - 2024-02-19
+
+### Commits
+
+- add types [`e28f0d5`](https://github.com/inspect-js/is-negative-zero/commit/e28f0d59cffc61bd3d41c10563105e8adb868e59)
+- [meta] use `npmignore` to autogenerate an npmignore file [`f68ec13`](https://github.com/inspect-js/is-negative-zero/commit/f68ec13c1d04a2ef1e1c72506ae9c2ac0567bcdd)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `aud`, `auto-changelog`, `tape` [`70abff7`](https://github.com/inspect-js/is-negative-zero/commit/70abff788bb0156f300a09c2f5cc7d30d5618184)
+- [actions] update rebase action to use reusable workflow [`6e1356e`](https://github.com/inspect-js/is-negative-zero/commit/6e1356e9fc5fee1bcae20b365c7d71b14ecf876d)
+- [Dev Deps] update `@ljharb/eslint-config`, `aud`, `npmignore`, `tape` [`c00d4ab`](https://github.com/inspect-js/is-negative-zero/commit/c00d4ab5c381d22ac3e6d89180b3e012c479f13f)
+- [meta] add `sideEffects` flag [`9c45539`](https://github.com/inspect-js/is-negative-zero/commit/9c455398988d2db940fe6644541d09d510b6661f)
+
 ## [v2.0.2](https://github.com/inspect-js/is-negative-zero/compare/v2.0.1...v2.0.2) - 2021-12-10
 
 ### Commits

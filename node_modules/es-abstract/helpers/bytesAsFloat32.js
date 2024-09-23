@@ -5,7 +5,7 @@ var GetIntrinsic = require('get-intrinsic');
 var $pow = GetIntrinsic('%Math.pow%');
 
 module.exports = function bytesAsFloat32(rawBytes) {
-	// return new Float32Array(new Uint8Array(rawBytes).buffer)[0];
+	// return new $Float32Array(new $Uint8Array(rawBytes).buffer)[0];
 
 	/*
         Let value be the byte elements of rawBytes concatenated and interpreted as a little-endian bit string encoding of an IEEE 754-2008 binary32 value.

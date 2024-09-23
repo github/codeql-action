@@ -4,7 +4,7 @@ var GetIntrinsic = require('get-intrinsic');
 
 var hasSymbols = require('has-symbols')();
 
-var $TypeError = GetIntrinsic('%TypeError%');
+var $TypeError = require('es-errors/type');
 
 var $gOPN = GetIntrinsic('%Object.getOwnPropertyNames%', true);
 var $gOPS = hasSymbols && GetIntrinsic('%Object.getOwnPropertySymbols%', true);

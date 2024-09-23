@@ -1,9 +1,8 @@
 'use strict';
 
-var GetIntrinsic = require('get-intrinsic');
 var callBound = require('call-bind/callBound');
 
-var $TypeError = GetIntrinsic('%TypeError%');
+var $TypeError = require('es-errors/type');
 
 var Get = require('./Get');
 var HasProperty = require('./HasProperty');

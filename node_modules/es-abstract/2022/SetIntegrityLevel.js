@@ -2,8 +2,8 @@
 
 var GetIntrinsic = require('get-intrinsic');
 
-var $SyntaxError = GetIntrinsic('%SyntaxError%');
-var $TypeError = GetIntrinsic('%TypeError%');
+var $SyntaxError = require('es-errors/syntax');
+var $TypeError = require('es-errors/type');
 var $preventExtensions = GetIntrinsic('%Object.preventExtensions%', true);
 var $gOPD = require('gopd');
 var $gOPN = GetIntrinsic('%Object.getOwnPropertyNames%', true);

@@ -3,8 +3,8 @@
 var GetIntrinsic = require('get-intrinsic');
 
 var $ObjectCreate = GetIntrinsic('%Object.create%', true);
-var $TypeError = GetIntrinsic('%TypeError%');
-var $SyntaxError = GetIntrinsic('%SyntaxError%');
+var $TypeError = require('es-errors/type');
+var $SyntaxError = require('es-errors/syntax');
 
 var IsArray = require('./IsArray');
 var Type = require('./Type');

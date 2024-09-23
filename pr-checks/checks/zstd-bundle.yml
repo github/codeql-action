@@ -1,0 +1,19 @@
+name: "Zstandard bundle"
+description: "Tests using a CodeQL Bundle compressed using Zstandard"
+versions:
+  - linked
+operatingSystems:
+  - ubuntu
+env:
+  CODEQL_ACTION_ZSTD_BUNDLE: true
+steps:
+  - id: init
+    uses: ./../action/init
+    with:
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+      languages: cpp,csharp,go,java,javascript,python,ruby 
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Build code
+    shell: bash
+    run: ./build.sh
+  - uses: ./../action/analyze

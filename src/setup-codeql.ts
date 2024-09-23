@@ -242,6 +242,7 @@ export async function getCodeQLSource(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
+  zstdAvailability: tar.ZstdAvailability,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
@@ -440,7 +441,7 @@ export async function getCodeQLSource(
       tagName!,
       apiDetails,
       cliVersion !== undefined &&
-        (await useZstdBundle(cliVersion, features, logger)),
+        (await useZstdBundle(cliVersion, features, zstdAvailability)),
       logger,
     );
   }
@@ -653,6 +654,7 @@ export interface SetupCodeQLResult {
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
+  zstdAvailability: tar.ZstdAvailability;
 }
 
 /**
@@ -669,11 +671,14 @@ export async function setupCodeQLBundle(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<SetupCodeQLResult> {
+  const zstdAvailability = await tar.isZstdAvailable(logger);
+
   const source = await getCodeQLSource(
     toolsInput,
     defaultCliVersion,
     apiDetails,
     variant,
+    zstdAvailability,
     features,
     logger,
   );
@@ -714,7 +719,13 @@ export async function setupCodeQLBundle(
     default:
       util.assertNever(source);
   }
-  return { codeqlFolder, toolsDownloadStatusReport, toolsSource, toolsVersion };
+  return {
+    codeqlFolder,
+    toolsDownloadStatusReport,
+    toolsSource,
+    toolsVersion,
+    zstdAvailability,
+  };
 }
 
 async function cleanUpGlob(glob: string, name: string, logger: Logger) {
@@ -746,11 +757,11 @@ function sanitizeUrlForStatusReport(url: string): string {
 async function useZstdBundle(
   cliVersion: string,
   features: FeatureEnablement,
-  logger: Logger,
+  zstdAvailability: tar.ZstdAvailability,
 ): Promise<boolean> {
   return (
     semver.gte(cliVersion, "2.19.0") &&
     !!(await features.getValue(Feature.ZstdBundle)) &&
-    (await tar.isZstdAvailable(logger)).available
+    zstdAvailability.available
   );
 }

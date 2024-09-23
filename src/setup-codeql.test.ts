@@ -6,6 +6,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
+import { ZstdAvailability } from "./tar";
 import {
   LINKED_CLI_VERSION,
   LoggedMessage,
@@ -90,6 +91,7 @@ test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) =>
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
+      getStubZstdAvailability(),
       createFeatures([]),
       getRunnerLogger(true),
     );
@@ -107,6 +109,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == linked
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
+      getStubZstdAvailability(),
       createFeatures([]),
       getRunnerLogger(true),
     );
@@ -127,6 +130,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == latest
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
+      getStubZstdAvailability(),
       createFeatures([]),
       logger,
     );
@@ -242,3 +246,9 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
     );
   });
 });
+
+function getStubZstdAvailability(): ZstdAvailability {
+  return {
+    available: false,
+  };
+}

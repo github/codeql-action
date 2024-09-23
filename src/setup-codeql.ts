@@ -17,8 +17,8 @@ import * as api from "./api-client";
 import * as defaults from "./defaults.json";
 import {
   CodeQLDefaultVersionInfo,
+  Feature,
   FeatureEnablement,
-  useZstdBundle,
 } from "./feature-flags";
 import { Logger } from "./logging";
 import * as tar from "./tar";
@@ -439,7 +439,8 @@ export async function getCodeQLSource(
     url = await getCodeQLBundleDownloadURL(
       tagName!,
       apiDetails,
-      cliVersion !== undefined && (await useZstdBundle(cliVersion, features)),
+      cliVersion !== undefined &&
+        (await useZstdBundle(cliVersion, features, logger)),
       logger,
     );
   }
@@ -740,4 +741,16 @@ function sanitizeUrlForStatusReport(url: string): string {
   )
     ? url
     : "sanitized-value";
+}
+
+async function useZstdBundle(
+  cliVersion: string,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<boolean> {
+  return (
+    semver.gte(cliVersion, "2.19.0") &&
+    !!(await features.getValue(Feature.ZstdBundle)) &&
+    (await tar.isZstdAvailable(logger)).available
+  );
 }

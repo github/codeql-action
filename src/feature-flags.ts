@@ -499,13 +499,3 @@ class GitHubFeatureFlags {
     }
   }
 }
-
-export async function useZstdBundle(
-  cliVersion: string,
-  features: FeatureEnablement,
-): Promise<boolean> {
-  return (
-    semver.gte(cliVersion, "2.19.0") &&
-    !!(await features.getValue(Feature.ZstdBundle))
-  );
-}

@@ -3,7 +3,7 @@ description: "An end-to-end integration test that unsets some environment variab
 operatingSystems:
   - ubuntu
 versions:
-  - latest
+  - linked
   - nightly-latest
 steps:
   - uses: ./../action/init

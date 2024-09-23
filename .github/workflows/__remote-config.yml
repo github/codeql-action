@@ -28,7 +28,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: latest
+            version: linked
           - os: ubuntu-latest
             version: nightly-latest
     name: Remote config file

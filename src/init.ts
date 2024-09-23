@@ -12,6 +12,7 @@ import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsDownloadStatusReport, ToolsSource } from "./setup-codeql";
+import { ZstdAvailability } from "./tar";
 import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
@@ -29,22 +30,34 @@ export async function initCodeQL(
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
+  zstdAvailability: ZstdAvailability;
 }> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion } =
-    await setupCodeQL(
-      toolsInput,
-      apiDetails,
-      tempDir,
-      variant,
-      defaultCliVersion,
-      features,
-      logger,
-      true,
-    );
+  const {
+    codeql,
+    toolsDownloadStatusReport,
+    toolsSource,
+    toolsVersion,
+    zstdAvailability,
+  } = await setupCodeQL(
+    toolsInput,
+    apiDetails,
+    tempDir,
+    variant,
+    defaultCliVersion,
+    features,
+    logger,
+    true,
+  );
   await codeql.printVersion();
   logger.endGroup();
-  return { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion };
+  return {
+    codeql,
+    toolsDownloadStatusReport,
+    toolsSource,
+    toolsVersion,
+    zstdAvailability,
+  };
 }
 
 export async function initConfig(

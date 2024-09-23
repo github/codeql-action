@@ -242,7 +242,7 @@ export async function getCodeQLSource(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
-  zstdAvailability: tar.ZstdAvailability,
+  tarSupportsZstd: boolean,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
@@ -441,7 +441,7 @@ export async function getCodeQLSource(
       tagName!,
       apiDetails,
       cliVersion !== undefined &&
-        (await useZstdBundle(cliVersion, features, zstdAvailability)),
+        (await useZstdBundle(cliVersion, features, tarSupportsZstd)),
       logger,
     );
   }
@@ -673,12 +673,60 @@ export async function setupCodeQLBundle(
 ): Promise<SetupCodeQLResult> {
   const zstdAvailability = await tar.isZstdAvailable(logger);
 
+  // If we think the installed version of tar supports zstd, try to use zstd,
+  // but be prepared to fall back to gzip in case we were wrong.
+  if (zstdAvailability.available) {
+    try {
+      return await setupCodeQLBundleWithCompressionMethod(
+        toolsInput,
+        apiDetails,
+        tempDir,
+        variant,
+        defaultCliVersion,
+        features,
+        logger,
+        zstdAvailability,
+        true,
+      );
+    } catch (e) {
+      logger.warning(
+        `Failed to set up CodeQL tools with zstd. Falling back to gzipped version. Error: ${util.getErrorMessage(
+          e,
+        )}`,
+      );
+    }
+  }
+
+  return await setupCodeQLBundleWithCompressionMethod(
+    toolsInput,
+    apiDetails,
+    tempDir,
+    variant,
+    defaultCliVersion,
+    features,
+    logger,
+    zstdAvailability,
+    false,
+  );
+}
+
+async function setupCodeQLBundleWithCompressionMethod(
+  toolsInput: string | undefined,
+  apiDetails: api.GitHubApiDetails,
+  tempDir: string,
+  variant: util.GitHubVariant,
+  defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
+  logger: Logger,
+  zstdAvailability: tar.ZstdAvailability,
+  useTarIfAvailable: boolean,
+) {
   const source = await getCodeQLSource(
     toolsInput,
     defaultCliVersion,
     apiDetails,
     variant,
-    zstdAvailability,
+    useTarIfAvailable,
     features,
     logger,
   );
@@ -757,11 +805,11 @@ function sanitizeUrlForStatusReport(url: string): string {
 async function useZstdBundle(
   cliVersion: string,
   features: FeatureEnablement,
-  zstdAvailability: tar.ZstdAvailability,
+  tarSupportsZstd: boolean,
 ): Promise<boolean> {
   return (
+    tarSupportsZstd &&
     semver.gte(cliVersion, "2.19.0") &&
-    !!(await features.getValue(Feature.ZstdBundle)) &&
-    zstdAvailability.available
+    !!(await features.getValue(Feature.ZstdBundle))
   );
 }

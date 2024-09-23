@@ -1,7 +1,10 @@
 name: "Test unsetting environment variables"
 description: "An end-to-end integration test that unsets some environment variables"
-operatingSystems: ["ubuntu"]
-
+operatingSystems:
+  - ubuntu
+versions:
+  - latest
+  - nightly-latest
 steps:
   - uses: ./../action/init
     id: init

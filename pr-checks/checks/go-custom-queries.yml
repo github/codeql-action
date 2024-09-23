@@ -1,5 +1,10 @@
 name: "Go: Custom queries"
 description: "Checks that Go works in conjunction with a config file specifying custom queries"
+operatingSystems:
+  - ubuntu
+versions:
+  - latest
+  - nightly-latest
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:

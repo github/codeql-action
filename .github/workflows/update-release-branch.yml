@@ -116,7 +116,7 @@ jobs:
       TARGET_BRANCH: ${{ matrix.target_branch }}
     steps:
     - name: Generate token
-      uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4
+      uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69
       id: app-token
       with:
         app-id: ${{ vars.AUTOMATION_APP_ID }}
@@ -134,7 +134,7 @@ jobs:
         echo SOURCE_BRANCH=${SOURCE_BRANCH}
         echo TARGET_BRANCH=${TARGET_BRANCH}
         python .github/update-release-branch.py \
-          --github-token ${{ steps.app-token.outputs.token }} \
+          --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
           --source-branch ${SOURCE_BRANCH} \
           --target-branch ${TARGET_BRANCH} \

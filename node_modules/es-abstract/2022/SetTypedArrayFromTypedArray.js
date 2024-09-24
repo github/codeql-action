@@ -2,9 +2,9 @@
 
 var GetIntrinsic = require('get-intrinsic');
 
-var $RangeError = GetIntrinsic('%RangeError%');
-var $SyntaxError = GetIntrinsic('%SyntaxError%');
-var $TypeError = GetIntrinsic('%TypeError%');
+var $RangeError = require('es-errors/range');
+var $SyntaxError = require('es-errors/syntax');
+var $TypeError = require('es-errors/type');
 var $ArrayBuffer = GetIntrinsic('%ArrayBuffer%', true);
 
 var typedArrayBuffer = require('typed-array-buffer');

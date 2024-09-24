@@ -1,10 +1,8 @@
 'use strict';
 
-var GetIntrinsic = require('get-intrinsic');
-
 var floor = require('./floor');
 
-var $TypeError = GetIntrinsic('%TypeError%');
+var $TypeError = require('es-errors/type');
 
 // https://262.ecma-international.org/14.0/#eqn-truncate
 

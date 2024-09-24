@@ -1,6 +1,6 @@
 'use strict';
 
-var has = require('has');
+var hasOwn = require('hasown');
 
 var hasUnscopables = typeof Symbol === 'function' && typeof Symbol.unscopables === 'symbol';
 
@@ -12,7 +12,7 @@ module.exports = function shimUnscopables(method) {
 	if (typeof method !== 'string' || !method) {
 		throw new $TypeError('method must be a non-empty string');
 	}
-	if (!has(Array.prototype, method)) {
+	if (!hasOwn(Array.prototype, method)) {
 		throw new $TypeError('method must be on Array.prototype');
 	}
 	if (hasUnscopables) {

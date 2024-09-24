@@ -24,6 +24,7 @@ var typedArrayNames = [
 
 test('not arrays', function (t) {
 	t.test('non-number/string primitives', function (st) {
+		// @ts-expect-error
 		st.equal(false, whichTypedArray(), 'undefined is not typed array');
 		st.equal(false, whichTypedArray(null), 'null is not typed array');
 		st.equal(false, whichTypedArray(false), 'false is not typed array');
@@ -74,9 +75,13 @@ test('Arrow functions', { skip: arrows.length === 0 }, function (t) {
 
 test('@@toStringTag', { skip: !hasToStringTag }, function (t) {
 	forEach(typedArrayNames, function (typedArray) {
+		// @ts-expect-error TODO: fix
 		if (typeof global[typedArray] === 'function') {
+			// @ts-expect-error TODO: fix
 			var fakeTypedArray = [];
+			// @ts-expect-error TODO: fix
 			fakeTypedArray[Symbol.toStringTag] = typedArray;
+			// @ts-expect-error TODO: fix
 			t.equal(false, whichTypedArray(fakeTypedArray), 'faked ' + typedArray + ' is not typed array');
 		} else {
 			t.comment('# SKIP ' + typedArray + ' is not supported');
@@ -87,7 +92,8 @@ test('@@toStringTag', { skip: !hasToStringTag }, function (t) {
 
 test('Typed Arrays', function (t) {
 	forEach(typedArrayNames, function (typedArray) {
-		var TypedArray = global[typedArray];
+		// @ts-expect-error TODO: fix
+		/** @type {import('../').TypedArrayConstructor} */ var TypedArray = global[typedArray];
 		if (isCallable(TypedArray)) {
 			var arr = new TypedArray(10);
 			t.equal(whichTypedArray(arr), typedArray, 'new ' + typedArray + '(10) is typed array of type ' + typedArray);

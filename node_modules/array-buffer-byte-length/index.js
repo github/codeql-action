@@ -5,6 +5,7 @@ var $byteLength = callBound('ArrayBuffer.prototype.byteLength', true);
 
 var isArrayBuffer = require('is-array-buffer');
 
+/** @type {import('.')} */
 module.exports = function byteLength(ab) {
 	if (!isArrayBuffer(ab)) {
 		return NaN;

@@ -703,11 +703,7 @@ export async function getCodeQLForCmd(
             "We were unable to automatically build your code. " +
             "Please change the build mode for this language to manual and specify build steps " +
             `for your project. See ${DocUrl.AUTOMATIC_BUILD_FAILED} for more information.`;
-          const ErrorConstructor =
-            e instanceof util.ConfigurationError
-              ? util.ConfigurationError
-              : Error;
-          throw new ErrorConstructor(`${prefix} ${getErrorMessage(e)}`);
+          throw new util.ConfigurationError(`${prefix} ${getErrorMessage(e)}`);
         } else {
           throw e;
         }

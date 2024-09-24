@@ -3,8 +3,8 @@
 var GetIntrinsic = require('get-intrinsic');
 
 var $Function = GetIntrinsic('%Function%');
-var $TypeError = GetIntrinsic('%TypeError%');
-var $SyntaxError = GetIntrinsic('%SyntaxError%');
+var $TypeError = require('es-errors/type');
+var $SyntaxError = require('es-errors/syntax');
 
 var Get = require('./Get');
 var IsConstructor = require('./IsConstructor');

@@ -70,12 +70,8 @@ jobs:
       - id: init
         uses: ./../action/init
         with:
-      # Swift is not supported on Ubuntu so we manually exclude it from the list here
-          languages: cpp,csharp,go,java,javascript,python,ruby
+          languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - name: Build code
-        shell: bash
-        run: ./build.sh
       - uses: ./../action/analyze
         with:
           output: ${{ runner.temp }}/results
@@ -84,12 +80,12 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: zstd-bundle.sarif
-          path: ${{ runner.temp }}/results/cpp.sarif
+          path: ${{ runner.temp }}/results/javascript.sarif
           retention-days: 7
       - name: Check expected diagnostics
         uses: actions/github-script@v7
         env:
-          SARIF_PATH: ${{ runner.temp }}/results/cpp.sarif
+          SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
         with:
           script: |
             const fs = require('fs');

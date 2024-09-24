@@ -3,6 +3,8 @@ description: "Tests the fallback for when downloading a Zstandard-compressed Cod
 versions:
   - linked
 operatingSystems:
+  - macos
+  - windows
   - ubuntu
 env:
   CODEQL_ACTION_ZSTD_BUNDLE: true

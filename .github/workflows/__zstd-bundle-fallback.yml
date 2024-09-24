@@ -27,6 +27,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: macos-latest
+            version: linked
+          - os: windows-latest
+            version: linked
           - os: ubuntu-latest
             version: linked
     name: Zstandard bundle fallback

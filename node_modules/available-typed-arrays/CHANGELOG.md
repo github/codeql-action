@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.7](https://github.com/inspect-js/available-typed-arrays/compare/v1.0.6...v1.0.7) - 2024-02-19
+
+### Commits
+
+- [Refactor] use `possible-typed-array-names` [`ac86abf`](https://github.com/inspect-js/available-typed-arrays/commit/ac86abfd64c4b633fd6523cc4193f1913fd22666)
+
+## [v1.0.6](https://github.com/inspect-js/available-typed-arrays/compare/v1.0.5...v1.0.6) - 2024-01-31
+
+### Commits
+
+- [actions] reuse common workflows [`1850353`](https://github.com/inspect-js/available-typed-arrays/commit/1850353ded0ceb4d02d9d05649da5b7f3a28c89f)
+- [meta] use `npmignore` to autogenerate an npmignore file [`5c7de12`](https://github.com/inspect-js/available-typed-arrays/commit/5c7de120d22a5c35f703ba3f0b5287e5c5f38af6)
+- [patch] add types [`fcfb0ea`](https://github.com/inspect-js/available-typed-arrays/commit/fcfb0ea21c9dc8459d68f8bb26679abb0bec71ca)
+- [actions] update codecov uploader [`d844945`](https://github.com/inspect-js/available-typed-arrays/commit/d84494596881a298aabde9bd87e538ce10c6cd01)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `array.prototype.every`, `safe-publish-latest`, `tape` [`a2be6f4`](https://github.com/inspect-js/available-typed-arrays/commit/a2be6f482010e920692d8f65fe1f193dbb73004d)
+- [Dev Deps] update `eslint`, `@ljharb/eslint-config`, `aud`, `auto-changelog`, `tape` [`b283a3e`](https://github.com/inspect-js/available-typed-arrays/commit/b283a3e2176fbe8e431a27e20df21c831f216d5a)
+- [actions] update rebase action to use reusable workflow [`0ad1f2d`](https://github.com/inspect-js/available-typed-arrays/commit/0ad1f2d82b11713ee48d9b37cb73fcc891bd9f4a)
+- [Dev Deps] update `@ljharb/eslint-config`, `array.prototype.every`, `aud`, `tape` [`cd36e81`](https://github.com/inspect-js/available-typed-arrays/commit/cd36e8131076dd4e67a88b259f829067fa56c139)
+- [meta] simplify "exports" [`f696e5f`](https://github.com/inspect-js/available-typed-arrays/commit/f696e5ff9ded838e192ade4e8550a890c4f35eb0)
+- [Dev Deps] update `aud`, `npmignore`, `tape` [`bf20080`](https://github.com/inspect-js/available-typed-arrays/commit/bf200809aea3107b31fc8817122c693e099be30e)
+
 ## [v1.0.5](https://github.com/inspect-js/available-typed-arrays/compare/v1.0.4...v1.0.5) - 2021-08-30
 
 ### Fixed

@@ -1,7 +1,9 @@
 'use strict';
 
+var isPropertyDescriptor = require('./records/property-descriptor');
+
 module.exports = function isFullyPopulatedPropertyDescriptor(ES, Desc) {
-	return !!Desc
+	return isPropertyDescriptor(Desc)
 		&& typeof Desc === 'object'
 		&& '[[Enumerable]]' in Desc
 		&& '[[Configurable]]' in Desc

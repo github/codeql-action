@@ -19,6 +19,9 @@ test('byteLength', function (t) {
 		var ab0 = new ArrayBuffer(0);
 		st.equal(byteLength(ab0), 0, 'works on an ArrayBuffer of length 0: ' + inspect(ab0));
 
+		var dv = new DataView(ab32);
+		st.equal(byteLength(dv), NaN, 'a DataView returns NaN');
+
 		st.end();
 	});
 

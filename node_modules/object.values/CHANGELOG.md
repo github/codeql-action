@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.0](https://github.com/ljharb/Object.values/compare/v1.1.7...v1.2.0) - 2024-03-18
+
+### Commits
+
+- [Refactor] use `es-object-atoms` instead of `es-abstract`; update `call-bind`, `define-properties` [`a51f9fd`](https://github.com/ljharb/Object.values/commit/a51f9fd7c20458d2d0084d632fdba8a97f5d36b3)
+- [Dev Deps] update `array.prototype.map`, `aud`, `npmignore`, `tape` [`540765d`](https://github.com/ljharb/Object.values/commit/540765d28f61687e35bc39423e85d76a65336e60)
+- [New] add `auto` entrypoint [`ce8740c`](https://github.com/ljharb/Object.values/commit/ce8740c5783609df274f56747982bb9820436a1b)
+
 ## [v1.1.7](https://github.com/ljharb/Object.values/compare/v1.1.6...v1.1.7) - 2023-08-27
 
 ### Commits

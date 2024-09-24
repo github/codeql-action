@@ -4,7 +4,7 @@ var test = require('tape');
 var inspect = require('object-inspect');
 var v = require('es-value-fixtures');
 var forEach = require('for-each');
-var has = require('has');
+var hasOwn = require('hasown');
 
 var shimUnscopables = require('../');
 
@@ -50,7 +50,7 @@ test('shimUnscopables', function (t) {
 			Object.getOwnPropertySymbols(Array.prototype).sort(sortSymbols),
 			[Symbol.iterator, Symbol.unscopables]
 		);
-		st.notOk(has(Array.prototype[Symbol.unscopables], 'forEach'), 'unscopables map lacks forEach');
+		st.notOk(hasOwn(Array.prototype[Symbol.unscopables], 'forEach'), 'unscopables map lacks forEach');
 
 		shimUnscopables('forEach');
 

@@ -11,6 +11,7 @@ var availableTypedArrays = require('available-typed-arrays')();
 
 test('not arrays', function (t) {
 	t.test('non-number/string primitives', function (st) {
+		// @ts-expect-error
 		st.equal(false, typedArrayByteLength(), 'undefined is not typed array');
 		st.equal(false, typedArrayByteLength(null), 'null is not typed array');
 		st.equal(false, typedArrayByteLength(false), 'false is not typed array');

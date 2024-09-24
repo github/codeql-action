@@ -9,7 +9,8 @@ var inspect = require('object-inspect');
 var typedArrayBuffer = require('../');
 
 test('typedArrayBuffer', function (t) {
-	forEach(v.primitives.concat(v.objects), function (nonTA) {
+	// @ts-expect-error TS sucks at concat
+	forEach([].concat(v.primitives, v.objects), function (nonTA) {
 		t['throws'](function () { typedArrayBuffer(nonTA); }, TypeError, inspect(nonTA) + ' is not a Typed Array');
 	});
 

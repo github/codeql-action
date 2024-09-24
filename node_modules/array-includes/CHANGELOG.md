@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.1.8](https://github.com/es-shims/array-includes/compare/v3.1.7...v3.1.8) - 2024-03-20
+
+### Commits
+
+- [Deps] update `call-bind`, `define-properties`, `es-abstract`, `get-intrinsic` [`b105f3a`](https://github.com/es-shims/array-includes/commit/b105f3a0ad1801aabf47bafd788482d8866ef0c9)
+- [actions] remove redundant finisher [`fa1111d`](https://github.com/es-shims/array-includes/commit/fa1111d6d41381e4bd484e8f6d5896172874d6e7)
+- [Dev Deps] update `aud`, `npmignore`, `tape` [`499e7e9`](https://github.com/es-shims/array-includes/commit/499e7e9e952faab35740dfbe0b355183100e40b7)
+- [Refactor] use `es-object-atoms` where possible [`e4bd17f`](https://github.com/es-shims/array-includes/commit/e4bd17f980b557fdf2b39eb552bafedd8a8f6bfb)
+- [Tests] use `call-bind` instead of `function-bind` [`3dbe456`](https://github.com/es-shims/array-includes/commit/3dbe456f14c94a5d119b35ac41712c7faea93afd)
+
 ## [v3.1.7](https://github.com/es-shims/array-includes/compare/v3.1.6...v3.1.7) - 2023-09-03
 
 ### Commits

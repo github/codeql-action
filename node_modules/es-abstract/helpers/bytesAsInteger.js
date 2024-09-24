@@ -12,7 +12,7 @@ module.exports = function bytesAsInteger(rawBytes, elementSize, isUnsigned, isBi
 	// this is common to both branches
 	var intValue = Z(0);
 	for (var i = 0; i < rawBytes.length; i++) {
-		intValue += Z(rawBytes[i]) * Z($pow(2, 8 * i));
+		intValue += Z(rawBytes[i] * $pow(2, 8 * i));
 	}
 	/*
 	Let intValue be the byte elements of rawBytes concatenated and interpreted as a bit string encoding of an unsigned little-endian binary number.

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.8](https://github.com/es-shims/Object.fromEntries/compare/v2.0.7...v2.0.8) - 2024-03-18
+
+### Commits
+
+- [actions] remove redundant finisher [`70e8717`](https://github.com/es-shims/Object.fromEntries/commit/70e8717d348e7d2b919c48ce7ab8cdc403664250)
+- [Deps] update `call-bind`, `define-properties`, `es-abstract` [`f4b1a93`](https://github.com/es-shims/Object.fromEntries/commit/f4b1a93c665224e02724d3984eac0ce8508407cc)
+- [Refactor] use `es-object-atoms` where possible [`252ffa7`](https://github.com/es-shims/Object.fromEntries/commit/252ffa73b503b29a7751730f5bca52f5136469e2)
+- [Dev Deps] update `aud`, `tape` [`200ccd5`](https://github.com/es-shims/Object.fromEntries/commit/200ccd563a4bf5a55603be7877646dae1f67675c)
+
 ## [v2.0.7](https://github.com/es-shims/Object.fromEntries/compare/v2.0.6...v2.0.7) - 2023-08-28
 
 ### Commits

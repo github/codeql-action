@@ -17,19 +17,22 @@ Returns an array of Typed Array names that are available in the current environm
 var availableTypedArrays = require('available-typed-arrays');
 var assert = require('assert');
 
-assert.deepStrictEqual(availableTypedArrays(), [
-	'Int8Array',
-	'Uint8Array',
-	'Uint8ClampedArray',
-	'Int16Array',
-	'Uint16Array',
-	'Int32Array',
-	'Uint32Array',
-	'Float32Array',
-	'Float64Array',
-	'BigInt64Array',
-	'BigUint64Array'
-].sort());
+assert.deepStrictEqual(
+	availableTypedArrays().sort(),
+	[
+		'Int8Array',
+		'Uint8Array',
+		'Uint8ClampedArray',
+		'Int16Array',
+		'Uint16Array',
+		'Int32Array',
+		'Uint32Array',
+		'Float32Array',
+		'Float64Array',
+		'BigInt64Array',
+		'BigUint64Array'
+	].sort()
+);
 ```
 
 ## Tests

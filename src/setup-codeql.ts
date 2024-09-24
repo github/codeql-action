@@ -16,6 +16,7 @@ import * as api from "./api-client";
 // these dependents.
 import * as defaults from "./defaults.json";
 import {
+  CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
@@ -823,7 +824,7 @@ async function useZstdBundle(
 ): Promise<boolean> {
   return (
     tarSupportsZstd &&
-    semver.gte(cliVersion, "2.19.0") &&
+    semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE) &&
     !!(await features.getValue(Feature.ZstdBundle))
   );
 }

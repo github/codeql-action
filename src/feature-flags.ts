@@ -20,6 +20,11 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
  */
 export const CODEQL_VERSION_FINE_GRAINED_PARALLELISM = "2.15.1";
 
+/**
+ * The first version of the CodeQL Bundle that shipped with zstd-compressed bundles.
+ */
+export const CODEQL_VERSION_ZSTD_BUNDLE = "2.19.0";
+
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
   tagName: string;

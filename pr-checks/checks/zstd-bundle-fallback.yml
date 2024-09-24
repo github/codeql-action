@@ -1,5 +1,5 @@
 name: "Zstandard bundle fallback"
-description: "Tests the fallback for when downloading a Zstandard-compressed CodeQL Bundle fails"
+description: "Tests the fallback when downloading a Zstandard-compressed CodeQL Bundle fails"
 versions:
   - linked
 operatingSystems:

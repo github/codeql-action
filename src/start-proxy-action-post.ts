@@ -3,7 +3,7 @@
  * It will run after the all steps in this job, in reverse order in relation to
  * other `post:` hooks.
  */
-import * as artifact from "@actions/artifact";
+import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -32,7 +32,7 @@ async function runWrapper() {
       "Debug mode is on. Uploading proxy log as Actions debugging artifact...",
     );
     try {
-      await artifact
+      await artifactLegacy
         .create()
         .uploadArtifact(
           "proxy-log-file",

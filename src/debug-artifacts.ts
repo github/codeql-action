@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as artifact from "@actions/artifact";
+import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
 import AdmZip from "adm-zip";
 import del from "del";
@@ -246,7 +246,7 @@ export async function uploadDebugArtifacts(
     }
   }
 
-  await artifact.create().uploadArtifact(
+  await artifactLegacy.create().uploadArtifact(
     sanitizeArtifactName(`${artifactName}${suffix}`),
     toUpload.map((file) => path.normalize(file)),
     path.normalize(rootDir),

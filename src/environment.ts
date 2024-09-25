@@ -98,4 +98,11 @@ export enum EnvVar {
    * We check this later to ensure that it hasn't been tampered with by a late e.g. `setup-go` step.
    */
   GO_BINARY_LOCATION = "CODEQL_ACTION_GO_BINARY",
+
+  /**
+   * Used as an alternative to the `dependency-caching` input for the `init` Action.
+   * Useful for experiments where it is easier to set an environment variable than
+   * change the inputs to the Action.
+   */
+  DEPENDENCY_CACHING = "CODEQL_ACTION_DEPENDENCY_CACHING",
 }

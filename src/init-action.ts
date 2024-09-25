@@ -727,7 +727,9 @@ async function recordZstdAvailability(
 /** Determines whether dependency caching is enabled. */
 function getDependencyCachingEnabled(): boolean {
   // If the workflow specified something always respect that
-  const dependencyCaching = getOptionalInput("dependency-caching");
+  const dependencyCaching =
+    getOptionalInput("dependency-caching") ||
+    process.env[EnvVar.DEPENDENCY_CACHING];
   if (dependencyCaching !== undefined) return dependencyCaching === "true";
 
   // On self-hosted runners which may have dependencies installed centrally, disable caching by default

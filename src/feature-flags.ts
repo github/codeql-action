@@ -40,6 +40,7 @@ export interface FeatureEnablement {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
+  ArtifactUpgrade = "artifact_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableCsharpBuildless = "disable_csharp_buildless",
@@ -80,6 +81,11 @@ export const featureConfig: Record<
     toolsFeature?: ToolsFeature;
   }
 > = {
+  [Feature.ArtifactUpgrade]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ARTIFACT_UPGRADE",
+    minimumVersion: undefined,
+  },
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",

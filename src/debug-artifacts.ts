@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as artifact from "@actions/artifact";
 import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
 import AdmZip from "adm-zip";
@@ -11,6 +12,7 @@ import { dbIsFinalized } from "./analyze";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger, withGroup } from "./logging";
 import {
@@ -18,6 +20,7 @@ import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
   getErrorMessage,
+  GitHubVariant,
   listFolder,
 } from "./util";
 
@@ -29,7 +32,11 @@ export function sanitizeArtifactName(name: string): string {
  * Upload Actions SARIF artifacts for debugging when CODEQL_ACTION_DEBUG_COMBINED_SARIF
  * environment variable is set
  */
-export async function uploadCombinedSarifArtifacts(logger: Logger) {
+export async function uploadCombinedSarifArtifacts(
+  logger: Logger,
+  gitHubVariant: GitHubVariant,
+  features: FeatureEnablement,
+) {
   const tempDir = getTemporaryDirectory();
 
   // Upload Actions SARIF artifacts for debugging when environment variable is set
@@ -61,6 +68,8 @@ export async function uploadCombinedSarifArtifacts(logger: Logger) {
         toUpload,
         baseTempDir,
         "combined-sarif-artifacts",
+        gitHubVariant,
+        features,
       );
     } catch (e) {
       logger.warning(
@@ -153,6 +162,7 @@ async function tryBundleDatabase(
 export async function tryUploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
+  features: FeatureEnablement,
 ) {
   const filesToUpload: string[] = [];
   try {
@@ -214,6 +224,8 @@ export async function tryUploadAllAvailableDebugArtifacts(
         filesToUpload,
         config.dbLocation,
         config.debugArtifactName,
+        config.gitHubVersion.type,
+        features,
       ),
     );
   } catch (e) {
@@ -227,6 +239,8 @@ export async function uploadDebugArtifacts(
   toUpload: string[],
   rootDir: string,
   artifactName: string,
+  ghVariant: GitHubVariant,
+  features: FeatureEnablement,
 ) {
   if (toUpload.length === 0) {
     return;
@@ -246,16 +260,35 @@ export async function uploadDebugArtifacts(
     }
   }
 
-  await artifactLegacy.create().uploadArtifact(
+  // `@actions/artifact@v2` is not yet supported on GHES so the legacy version of the client will be used on GHES
+  // until it is supported. We also use the legacy version of the client if the feature flag is disabled.
+  const artifactUploader =
+    ghVariant !== GitHubVariant.GHES &&
+    (await features.getValue(Feature.ArtifactUpgrade))
+      ? new artifact.DefaultArtifactClient()
+      : artifactLegacy.create();
+
+  const artifactUploaderArgs: [
+    string, // artifact name
+    string[], // file paths to upload
+    string, // root directory
+    artifact.UploadArtifactOptions,
+  ] = [
     sanitizeArtifactName(`${artifactName}${suffix}`),
     toUpload.map((file) => path.normalize(file)),
     path.normalize(rootDir),
     {
-      continueOnError: true,
       // ensure we don't keep the debug artifacts around for too long since they can be large.
       retentionDays: 7,
     },
-  );
+  ];
+
+  try {
+    await artifactUploader.uploadArtifact(...artifactUploaderArgs);
+  } catch (e) {
+    // A failure to upload debug artifacts should not fail the entire action.
+    core.warning(`Failed to upload debug artifacts: ${e}`);
+  }
 }
 
 /**

@@ -6,7 +6,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Add support for `@actions/artifact@v2` for uploading debug artifacts, for customers not running on GitHub Enterprise Server. [#2482](https://github.com/github/codeql-action/pull/2482)
+  - Only workflows that use `actions/download-artifact` to programmatically download the CodeQL Action debug artifacts will be affected: with the legacy artifact client, only `actions/download-artifact@v3` will be compatible. With the upgraded artifact client, only `actions/download-artifact@v4` will be compatible.
+  - To opt in to the upgraded artifact client, set the `CODEQL_ACTION_ARTIFACT_UPGRADE` environment variable to true and bump to `actions/download-artifact@v4`. 
+  - All workflows that have not opted in by November 1 will be opted in by default. This is because `actions/upload-artifact@v3` and `actions/download-artifact@v3` will be deprecated at the end of November. See [GitHub Changelog](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/).
 
 ## 3.26.9 - 24 Sep 2024
 

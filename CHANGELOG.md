@@ -7,8 +7,8 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - Add support for using `actions/download-artifact@v4` to programmatically consume CodeQL Action debug artifacts. Customers who use `actions/download-artifact` should set the `CODEQL_ACTION_ARTIFACT_UPGRADE` environment variable to true and bump `actions/download-artifact@v3` to `actions/download-artifact@v4` to avoid breakage. All customers, except those running on GitHub Enterprise Server, will be opted-in to this change in early November. [#2482](https://github.com/github/codeql-action/pull/2482)
-  - This is because `actions/upload-artifact@v3` and `actions/download-artifact@v3` will be deprecated at the end of November. See [GitHub Changelog](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/).
-  - This change is currently unavailable for GitHub Enterprise Server customers, as the compatible npm `@actions/artifact@v2` used to upload the artifacts is not yet supported on GHES. 
+    - This is because `actions/upload-artifact@v3` and `actions/download-artifact@v3` will be deprecated at the end of November. See [GitHub Changelog](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/).
+    - This change is currently unavailable for GitHub Enterprise Server customers, as the compatible npm `@actions/artifact@v2` used to upload the artifacts is not yet supported on GHES. 
 
 ## 3.26.9 - 24 Sep 2024
 

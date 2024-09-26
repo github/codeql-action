@@ -268,23 +268,16 @@ export async function uploadDebugArtifacts(
       ? new artifact.DefaultArtifactClient()
       : artifactLegacy.create();
 
-  const artifactUploaderArgs: [
-    string, // artifact name
-    string[], // file paths to upload
-    string, // root directory
-    artifact.UploadArtifactOptions,
-  ] = [
-    sanitizeArtifactName(`${artifactName}${suffix}`),
-    toUpload.map((file) => path.normalize(file)),
-    path.normalize(rootDir),
-    {
-      // ensure we don't keep the debug artifacts around for too long since they can be large.
-      retentionDays: 7,
-    },
-  ];
-
   try {
-    await artifactUploader.uploadArtifact(...artifactUploaderArgs);
+    await artifactUploader.uploadArtifact(
+      sanitizeArtifactName(`${artifactName}${suffix}`),
+      toUpload.map((file) => path.normalize(file)),
+      path.normalize(rootDir),
+      {
+        // ensure we don't keep the debug artifacts around for too long since they can be large.
+        retentionDays: 7,
+      },
+    );
   } catch (e) {
     // A failure to upload debug artifacts should not fail the entire action.
     core.warning(`Failed to upload debug artifacts: ${e}`);

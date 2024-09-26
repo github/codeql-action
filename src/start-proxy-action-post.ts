@@ -66,7 +66,7 @@ async function runWrapper() {
       // until it is supported. We also use the legacy version of the client if the feature flag is disabled.
       const artifactUploader =
         config?.gitHubVersion.type !== GitHubVariant.GHES &&
-        (await features.getValue(Feature.ArtifactUpgrade))
+        (await features.getValue(Feature.ArtifactV2Upgrade))
           ? new artifact.DefaultArtifactClient()
           : artifactLegacy.create();
 

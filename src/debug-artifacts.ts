@@ -65,6 +65,7 @@ export async function uploadCombinedSarifArtifacts(
 
     try {
       await uploadDebugArtifacts(
+        logger,
         toUpload,
         baseTempDir,
         "combined-sarif-artifacts",
@@ -221,6 +222,7 @@ export async function tryUploadAllAvailableDebugArtifacts(
   try {
     await withGroup("Uploading debug artifacts", async () =>
       uploadDebugArtifacts(
+        logger,
         filesToUpload,
         config.dbLocation,
         config.debugArtifactName,
@@ -236,6 +238,7 @@ export async function tryUploadAllAvailableDebugArtifacts(
 }
 
 export async function uploadDebugArtifacts(
+  logger: Logger,
   toUpload: string[],
   rootDir: string,
   artifactName: string,
@@ -262,11 +265,23 @@ export async function uploadDebugArtifacts(
 
   // `@actions/artifact@v2` is not yet supported on GHES so the legacy version of the client will be used on GHES
   // until it is supported. We also use the legacy version of the client if the feature flag is disabled.
-  const artifactUploader =
-    ghVariant !== GitHubVariant.GHES &&
-    (await features.getValue(Feature.ArtifactV2Upgrade))
-      ? new artifact.DefaultArtifactClient()
-      : artifactLegacy.create();
+  let artifactUploader: artifact.ArtifactClient | artifactLegacy.ArtifactClient;
+  if (ghVariant === GitHubVariant.GHES) {
+    logger.info(
+      "Uploading debug artifacts using the `@actions/artifact@v1` client because the `v2` version is not yet supported on GHES.",
+    );
+    artifactUploader = artifactLegacy.create();
+  } else if (!(await features.getValue(Feature.ArtifactV2Upgrade))) {
+    logger.info(
+      "Uploading debug artifacts using the `@actions/artifact@v1` client because the value of the relevant feature flag is false. To use the `v2` version of the client, set the `CODEQL_ACTION_ARTIFACT_V2_UPGRADE` environment variable to true.",
+    );
+    artifactUploader = artifactLegacy.create();
+  } else {
+    logger.info(
+      "Uploading debug artifacts using the `@actions/artifact@v2` client.",
+    );
+    artifactUploader = new artifact.DefaultArtifactClient();
+  }
 
   try {
     await artifactUploader.uploadArtifact(

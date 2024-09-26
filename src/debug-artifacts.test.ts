@@ -2,9 +2,9 @@ import test from "ava";
 
 import * as debugArtifacts from "./debug-artifacts";
 import { Feature } from "./feature-flags";
+import { getActionsLogger } from "./logging";
 import { createFeatures } from "./testing-utils";
 import { GitHubVariant } from "./util";
-import { getActionsLogger } from "./logging";
 
 test("sanitizeArtifactName", (t) => {
   t.deepEqual(

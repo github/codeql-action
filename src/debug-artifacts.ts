@@ -287,6 +287,8 @@ export async function uploadDebugArtifacts(
 
 // `@actions/artifact@v2` is not yet supported on GHES so the legacy version of the client will be used on GHES
 // until it is supported. We also use the legacy version of the client if the feature flag is disabled.
+// The feature flag is named `ArtifactV4Upgrade` to reduce customer confusion; customers are primarily affected by
+// `actions/download-artifact`, whose upgrade to v4 must be accompanied by the `@actions/artifact@v2` upgrade.
 export async function getArtifactUploaderClient(
   logger: Logger,
   ghVariant: GitHubVariant,
@@ -294,17 +296,17 @@ export async function getArtifactUploaderClient(
 ): Promise<artifact.ArtifactClient | artifactLegacy.ArtifactClient> {
   if (ghVariant === GitHubVariant.GHES) {
     logger.info(
-      "Uploading debug artifacts using the `@actions/artifact@v1` client because the `v2` version is not yet supported on GHES.",
+      "Debug artifacts can be consumed with `actions/download-artifact@v3` because the `v4` version is not yet compatible on GHES.",
     );
     return artifactLegacy.create();
-  } else if (!(await features.getValue(Feature.ArtifactV2Upgrade))) {
+  } else if (!(await features.getValue(Feature.ArtifactV4Upgrade))) {
     logger.info(
-      "Uploading debug artifacts using the `@actions/artifact@v1` client because the value of the relevant feature flag is false. To use the `v2` version of the client, set the `CODEQL_ACTION_ARTIFACT_V2_UPGRADE` environment variable to true.",
+      "Debug artifacts can be consumed with `actions/download-artifact@v3` because the value of the relevant feature flag is false. To use the `actions/download-artifact@v4`, set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to true.",
     );
     return artifactLegacy.create();
   } else {
     logger.info(
-      "Uploading debug artifacts using the `@actions/artifact@v2` client.",
+      "Debug artifacts can be consumed with `actions/download-artifact@v4`.",
     );
     return new artifact.DefaultArtifactClient();
   }

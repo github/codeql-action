@@ -25,7 +25,7 @@ test("sanitizeArtifactName", (t) => {
 test("uploadDebugArtifacts", async (t) => {
   // Test that no error is thrown if artifacts list is empty.
   const logger = getActionsLogger();
-  const mockFeature = createFeatures([Feature.ArtifactV2Upgrade]);
+  const mockFeature = createFeatures([Feature.ArtifactV4Upgrade]);
   await t.notThrowsAsync(
     debugArtifacts.uploadDebugArtifacts(
       logger,

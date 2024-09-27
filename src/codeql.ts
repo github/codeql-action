@@ -28,6 +28,7 @@ import {
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
+import { ZstdAvailability } from "./tar";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
@@ -351,6 +352,7 @@ export async function setupCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean,
 ): Promise<{
@@ -358,6 +360,7 @@ export async function setupCodeQL(
   toolsDownloadStatusReport?: setupCodeql.ToolsDownloadStatusReport;
   toolsSource: setupCodeql.ToolsSource;
   toolsVersion: string;
+  zstdAvailability: ZstdAvailability;
 }> {
   try {
     const {
@@ -365,12 +368,14 @@ export async function setupCodeQL(
       toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
+      zstdAvailability,
     } = await setupCodeql.setupCodeQLBundle(
       toolsInput,
       apiDetails,
       tempDir,
       variant,
       defaultCliVersion,
+      features,
       logger,
     );
 
@@ -395,6 +400,7 @@ export async function setupCodeQL(
       toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
+      zstdAvailability,
     };
   } catch (e) {
     throw new Error(

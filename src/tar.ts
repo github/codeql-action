@@ -46,9 +46,14 @@ async function getTarVersion(): Promise<TarVersion> {
   }
 }
 
+export interface ZstdAvailability {
+  available: boolean;
+  version?: TarVersion;
+}
+
 export async function isZstdAvailable(
   logger: Logger,
-): Promise<{ available: boolean; version?: TarVersion }> {
+): Promise<ZstdAvailability> {
   try {
     const tarVersion = await getTarVersion();
     const { type, version } = tarVersion;

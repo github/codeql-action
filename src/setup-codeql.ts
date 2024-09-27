@@ -15,7 +15,12 @@ import * as api from "./api-client";
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
 // these dependents.
 import * as defaults from "./defaults.json";
-import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import {
+  CODEQL_VERSION_ZSTD_BUNDLE,
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { Logger } from "./logging";
 import * as tar from "./tar";
 import * as util from "./util";
@@ -32,7 +37,13 @@ export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 
-function getCodeQLBundleName(): string {
+function getCodeQLBundleExtension(useZstd: boolean): string {
+  return useZstd ? ".tar.zst" : ".tar.gz";
+}
+
+function getCodeQLBundleName(useZstd: boolean): string {
+  const extension = getCodeQLBundleExtension(useZstd);
+
   let platform: string;
   if (process.platform === "win32") {
     platform = "win64";
@@ -41,9 +52,9 @@ function getCodeQLBundleName(): string {
   } else if (process.platform === "darwin") {
     platform = "osx64";
   } else {
-    return "codeql-bundle.tar.gz";
+    return `codeql-bundle${extension}`;
   }
-  return `codeql-bundle-${platform}.tar.gz`;
+  return `codeql-bundle-${platform}${extension}`;
 }
 
 export function getCodeQLActionRepository(logger: Logger): string {
@@ -63,6 +74,7 @@ export function getCodeQLActionRepository(logger: Logger): string {
 async function getCodeQLBundleDownloadURL(
   tagName: string,
   apiDetails: api.GitHubApiDetails,
+  useZstd: boolean,
   logger: Logger,
 ): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository(logger);
@@ -81,7 +93,7 @@ async function getCodeQLBundleDownloadURL(
       return !self.slice(0, index).some((other) => deepEqual(source, other));
     },
   );
-  const codeQLBundleName = getCodeQLBundleName();
+  const codeQLBundleName = getCodeQLBundleName(useZstd);
   for (const downloadSource of uniqueDownloadSources) {
     const [apiURL, repository] = downloadSource;
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
@@ -231,6 +243,8 @@ export async function getCodeQLSource(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
+  tarSupportsZstd: boolean,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
   if (
@@ -424,7 +438,13 @@ export async function getCodeQLSource(
   }
 
   if (!url) {
-    url = await getCodeQLBundleDownloadURL(tagName!, apiDetails, logger);
+    url = await getCodeQLBundleDownloadURL(
+      tagName!,
+      apiDetails,
+      cliVersion !== undefined &&
+        (await useZstdBundle(cliVersion, features, tarSupportsZstd)),
+      logger,
+    );
   }
 
   if (cliVersion) {
@@ -467,6 +487,7 @@ export interface ToolsDownloadStatusReport {
   downloadDurationMs: number;
   extractionDurationMs: number;
   toolsUrl: string;
+  zstdFailureReason?: string;
 }
 
 // Exported using `export const` for testing purposes. Specifically, we want to
@@ -635,6 +656,8 @@ export interface SetupCodeQLResult {
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
+  zstdAvailability: tar.ZstdAvailability;
+  zstdFailureReason?: string;
 }
 
 /**
@@ -648,13 +671,78 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<SetupCodeQLResult> {
+  const zstdAvailability = await tar.isZstdAvailable(logger);
+  let zstdFailureReason: string | undefined;
+
+  // If we think the installed version of tar supports zstd, try to use zstd,
+  // but be prepared to fall back to gzip in case we were wrong.
+  if (zstdAvailability.available) {
+    try {
+      // To facilitate testing the fallback, fail here if a testing environment variable is set.
+      if (process.env.CODEQL_ACTION_FORCE_ZSTD_FAILURE === "true") {
+        throw new Error(
+          "Failing since CODEQL_ACTION_FORCE_ZSTD_FAILURE is true.",
+        );
+      }
+      return await setupCodeQLBundleWithCompressionMethod(
+        toolsInput,
+        apiDetails,
+        tempDir,
+        variant,
+        defaultCliVersion,
+        features,
+        logger,
+        zstdAvailability,
+        true,
+      );
+    } catch (e) {
+      zstdFailureReason = util.getErrorMessage(e) || "unknown error";
+      logger.warning(
+        `Failed to set up CodeQL tools with zstd. Falling back to gzipped version. Error: ${util.getErrorMessage(
+          e,
+        )}`,
+      );
+    }
+  }
+
+  const result = await setupCodeQLBundleWithCompressionMethod(
+    toolsInput,
+    apiDetails,
+    tempDir,
+    variant,
+    defaultCliVersion,
+    features,
+    logger,
+    zstdAvailability,
+    false,
+  );
+  if (result.toolsDownloadStatusReport && zstdFailureReason) {
+    result.toolsDownloadStatusReport.zstdFailureReason = zstdFailureReason;
+  }
+  return result;
+}
+
+async function setupCodeQLBundleWithCompressionMethod(
+  toolsInput: string | undefined,
+  apiDetails: api.GitHubApiDetails,
+  tempDir: string,
+  variant: util.GitHubVariant,
+  defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
+  logger: Logger,
+  zstdAvailability: tar.ZstdAvailability,
+  useTarIfAvailable: boolean,
+) {
   const source = await getCodeQLSource(
     toolsInput,
     defaultCliVersion,
     apiDetails,
     variant,
+    useTarIfAvailable,
+    features,
     logger,
   );
 
@@ -694,7 +782,13 @@ export async function setupCodeQLBundle(
     default:
       util.assertNever(source);
   }
-  return { codeqlFolder, toolsDownloadStatusReport, toolsSource, toolsVersion };
+  return {
+    codeqlFolder,
+    toolsDownloadStatusReport,
+    toolsSource,
+    toolsVersion,
+    zstdAvailability,
+  };
 }
 
 async function cleanUpGlob(glob: string, name: string, logger: Logger) {
@@ -721,4 +815,16 @@ function sanitizeUrlForStatusReport(url: string): string {
   )
     ? url
     : "sanitized-value";
+}
+
+async function useZstdBundle(
+  cliVersion: string,
+  features: FeatureEnablement,
+  tarSupportsZstd: boolean,
+): Promise<boolean> {
+  return (
+    tarSupportsZstd &&
+    semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE) &&
+    !!(await features.getValue(Feature.ZstdBundle))
+  );
 }

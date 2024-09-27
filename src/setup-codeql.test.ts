@@ -11,6 +11,7 @@ import {
   LoggedMessage,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
+  createFeatures,
   getRecordingLogger,
   mockBundleDownloadApi,
   setupActionsVars,
@@ -89,6 +90,8 @@ test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) =>
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
+      false,
+      createFeatures([]),
       getRunnerLogger(true),
     );
 
@@ -105,6 +108,8 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == linked
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
+      false,
+      createFeatures([]),
       getRunnerLogger(true),
     );
 
@@ -124,6 +129,8 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == latest
       SAMPLE_DEFAULT_CLI_VERSION,
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
+      false,
+      createFeatures([]),
       logger,
     );
 
@@ -170,6 +177,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+      createFeatures([]),
       logger,
     );
 
@@ -218,6 +226,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+      createFeatures([]),
       logger,
     );
 

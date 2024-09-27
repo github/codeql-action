@@ -20,6 +20,11 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
  */
 export const CODEQL_VERSION_FINE_GRAINED_PARALLELISM = "2.15.1";
 
+/**
+ * The first version of the CodeQL Bundle that shipped with zstd-compressed bundles.
+ */
+export const CODEQL_VERSION_ZSTD_BUNDLE = "2.19.0";
+
 export interface CodeQLDefaultVersionInfo {
   cliVersion: string;
   tagName: string;
@@ -47,6 +52,7 @@ export enum Feature {
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  ZstdBundle = "zstd_bundle",
 }
 
 export const featureConfig: Record<
@@ -118,6 +124,13 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.ZstdBundle]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ZSTD_BUNDLE",
+    // We haven't yet installed CodeQL when we check this feature flag, so we need to implement the
+    // version check separately.
     minimumVersion: undefined,
   },
 };

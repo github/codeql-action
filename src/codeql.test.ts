@@ -68,6 +68,8 @@ async function installIntoToolcache({
     cliVersion !== undefined
       ? { cliVersion, tagName }
       : SAMPLE_DEFAULT_CLI_VERSION,
+
+    createFeatures([]),
     getRunnerLogger(true),
     false,
   );
@@ -127,6 +129,8 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+
+        createFeatures([]),
         getRunnerLogger(true),
         false,
       );
@@ -156,6 +160,8 @@ test("caches semantically versioned bundles using their semantic version number"
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+
+      createFeatures([]),
       getRunnerLogger(true),
       false,
     );
@@ -189,6 +195,8 @@ test("downloads an explicitly requested bundle even if a different version is ca
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+
+      createFeatures([]),
       getRunnerLogger(true),
       false,
     );
@@ -233,6 +241,8 @@ for (const {
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+
+        createFeatures([]),
         getRunnerLogger(true),
         false,
       );
@@ -271,6 +281,8 @@ for (const toolcacheVersion of [
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
+
+          createFeatures([]),
           getRunnerLogger(true),
           false,
         );
@@ -301,6 +313,8 @@ test(`uses a cached bundle when no tools input is given on GHES`, async (t) => {
         cliVersion: defaults.cliVersion,
         tagName: defaults.bundleVersion,
       },
+
+      createFeatures([]),
       getRunnerLogger(true),
       false,
     );
@@ -335,6 +349,8 @@ test(`downloads bundle if only an unpinned version is cached on GHES`, async (t)
         cliVersion: defaults.cliVersion,
         tagName: defaults.bundleVersion,
       },
+
+      createFeatures([]),
       getRunnerLogger(true),
       false,
     );
@@ -368,6 +384,8 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+
+      createFeatures([]),
       getRunnerLogger(true),
       false,
     );
@@ -404,6 +422,8 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+
+      createFeatures([]),
       getRunnerLogger(true),
       false,
     );

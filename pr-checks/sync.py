@@ -65,7 +65,10 @@ for file in (this_dir / 'checks').glob('*.yml'):
     matrix = []
     excludedOsesAndVersions = checkSpecification.get('excludeOsAndVersionCombination', [])
     for version in checkSpecification.get('versions', defaultTestVersions):
-        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]            
+        if version == "latest":
+            raise ValueError('Did not recognize "version: latest". Did you mean "version: linked"?')
+
+        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
         operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu", "macos", "windows"])
 
         for operatingSystem in operatingSystems:

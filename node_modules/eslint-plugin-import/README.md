@@ -23,7 +23,7 @@ This plugin intends to support linting of ES2015+ (ES6+) import/export syntax, a
 ⌨️ Set in the `typescript` configuration.\
 🚸 Set in the `warnings` configuration.\
 🔧 Automatically fixable by the [`--fix` CLI option](https://eslint.org/docs/user-guide/command-line-interface#--fix).\
-💡 Manually fixable by [editor suggestions](https://eslint.org/docs/developer-guide/working-with-rules#providing-suggestions).\
+💡 Manually fixable by [editor suggestions](https://eslint.org/docs/latest/use/core-concepts#rule-suggestions).\
 ❌ Deprecated.
 
 ### Helpful warnings
@@ -73,7 +73,7 @@ This plugin intends to support linting of ES2015+ (ES6+) import/export syntax, a
 | Name                                                                             | Description                                                                | 💼 | ⚠️    | 🚫 | 🔧 | 💡 | ❌  |
 | :------------------------------------------------------------------------------- | :------------------------------------------------------------------------- | :- | :---- | :- | :- | :- | :- |
 | [consistent-type-specifier-style](docs/rules/consistent-type-specifier-style.md) | Enforce or ban the use of inline type-only markers for named imports.      |    |       |    | 🔧 |    |    |
-| [dynamic-import-chunkname](docs/rules/dynamic-import-chunkname.md)               | Enforce a leading comment with the webpackChunkName for dynamic imports.   |    |       |    |    |    |    |
+| [dynamic-import-chunkname](docs/rules/dynamic-import-chunkname.md)               | Enforce a leading comment with the webpackChunkName for dynamic imports.   |    |       |    |    | 💡 |    |
 | [exports-last](docs/rules/exports-last.md)                                       | Ensure all exports appear after other statements.                          |    |       |    |    |    |    |
 | [extensions](docs/rules/extensions.md)                                           | Ensure consistent use of file extension within the import path.            |    |       |    |    |    |    |
 | [first](docs/rules/first.md)                                                     | Ensure all imports appear before other statements.                         |    |       |    | 🔧 |    |    |
@@ -106,29 +106,60 @@ The maintainers of `eslint-plugin-import` and thousands of other packages are wo
 npm install eslint-plugin-import --save-dev
 ```
 
-All rules are off by default. However, you may configure them manually
-in your `.eslintrc.(yml|json|js)`, or extend one of the canned configs:
+### Config - Legacy (`.eslintrc`)
 
-```yaml
----
-extends:
-  - eslint:recommended
-  - plugin:import/recommended
-  # alternatively, 'recommended' is the combination of these two rule sets:
-  - plugin:import/errors
-  - plugin:import/warnings
+All rules are off by default. However, you may extend one of the preset configs, or configure them manually in your `.eslintrc.(yml|json|js)`.
 
-# or configure manually:
-plugins:
-  - import
+ - Extending a preset config:
 
-rules:
-  import/no-unresolved: [2, {commonjs: true, amd: true}]
-  import/named: 2
-  import/namespace: 2
-  import/default: 2
-  import/export: 2
-  # etc...
+```jsonc
+{
+  "extends": [
+     "eslint:recommended",
+     "plugin:import/recommended",
+  ],
+}
+```
+
+ - Configuring manually:
+
+```jsonc
+{
+  "rules": {
+    "import/no-unresolved": ["error", { "commonjs": true, "amd": true }]
+    "import/named": "error",
+    "import/namespace": "error",
+    "import/default": "error",
+    "import/export": "error",
+    // etc...
+  },
+},
+```
+
+### Config - Flat (`eslint.config.js`)
+
+All rules are off by default. However, you may configure them manually in your `eslint.config.(js|cjs|mjs)`, or extend one of the preset configs:
+
+```js
+import importPlugin from 'eslint-plugin-import';
+import js from '@eslint/js';
+
+export default [
+  js.configs.recommended,
+  importPlugin.flatConfigs.recommended,
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+    rules: {
+      'no-unused-vars': 'off',
+      'import/no-dynamic-require': 'warn',
+      'import/no-nodejs-modules': 'warn',
+    },
+  },
+];
 ```
 
 ## TypeScript
@@ -137,18 +168,23 @@ You may use the following snippet or assemble your own config using the granular
 
 Make sure you have installed [`@typescript-eslint/parser`] and [`eslint-import-resolver-typescript`] which are used in the following configuration.
 
-```yaml
-extends:
-  - eslint:recommended
-  - plugin:import/recommended
-# the following lines do the trick
-  - plugin:import/typescript
-settings:
-  import/resolver:
-    # You will also need to install and configure the TypeScript resolver
-    # See also https://github.com/import-js/eslint-import-resolver-typescript#configuration
-    typescript: true
-    node: true
+```jsonc
+{
+  "extends": [
+    "eslint:recommended",
+    "plugin:import/recommended",
+// the following lines do the trick
+    "plugin:import/typescript",
+  ],
+  "settings": {
+    "import/resolver": {
+      // You will also need to install and configure the TypeScript resolver
+      // See also https://github.com/import-js/eslint-import-resolver-typescript#configuration
+      "typescript": true,
+      "node": true,
+    },
+  },
+}
 ```
 
 [`@typescript-eslint/parser`]: https://github.com/typescript-eslint/typescript-eslint/tree/HEAD/packages/parser
@@ -177,6 +213,16 @@ You can reference resolvers in several ways (in order of precedence):
 
  - as a conventional `eslint-import-resolver` name, like `eslint-import-resolver-foo`:
 
+ ```jsonc
+// .eslintrc
+{
+  "settings": {
+    // uses 'eslint-import-resolver-foo':
+    "import/resolver": "foo",
+  },
+}
+```
+
 ```yaml
 # .eslintrc.yml
 settings:
@@ -196,6 +242,15 @@ module.exports = {
 ```
 
  - with a full npm module name, like `my-awesome-npm-module`:
+
+```jsonc
+// .eslintrc
+{
+  "settings": {
+    "import/resolver": "my-awesome-npm-module",
+  },
+}
+```
 
 ```yaml
 # .eslintrc.yml
@@ -292,11 +347,15 @@ In practice, this means rules other than [`no-unresolved`](./docs/rules/no-unres
 
 `no-unresolved` has its own [`ignore`](./docs/rules/no-unresolved.md#ignore) setting.
 
-```yaml
-settings:
-  import/ignore:
-    - \.coffee$          # fraught with parse errors
-    - \.(scss|less|css)$ # can't parse unprocessed CSS modules, either
+```jsonc
+{
+  "settings": {
+    "import/ignore": [
+      "\.coffee$", // fraught with parse errors
+      "\.(scss|less|css)$", // can't parse unprocessed CSS modules, either
+    ],
+  },
+}
 ```
 
 ### `import/core-modules`
@@ -315,10 +374,13 @@ import 'electron'  // without extra config, will be flagged as unresolved!
 that would otherwise be unresolved. To avoid this, you may provide `electron` as a
 core module:
 
-```yaml
-# .eslintrc.yml
-settings:
-  import/core-modules: [ electron ]
+```jsonc
+// .eslintrc
+{
+  "settings": {
+    "import/core-modules": ["electron"],
+  },
+}
 ```
 
 In Electron's specific case, there is a shared config named `electron`
@@ -351,11 +413,15 @@ dependency parser will require and use the map key as the parser instead of the
 configured ESLint parser. This is useful if you're inter-op-ing with TypeScript
 directly using webpack, for example:
 
-```yaml
-# .eslintrc.yml
-settings:
-  import/parsers:
-    "@typescript-eslint/parser": [ .ts, .tsx ]
+```jsonc
+// .eslintrc
+{
+  "settings": {
+    "import/parsers": {
+      "@typescript-eslint/parser": [".ts", ".tsx"],
+    },
+  },
+}
 ```
 
 In this case, [`@typescript-eslint/parser`](https://www.npmjs.com/package/@typescript-eslint/parser)
@@ -385,20 +451,28 @@ For long-lasting processes, like [`eslint_d`] or [`eslint-loader`], however, it'
 
 If you never use [`eslint_d`] or [`eslint-loader`], you may set the cache lifetime to `Infinity` and everything should be fine:
 
-```yaml
-# .eslintrc.yml
-settings:
-  import/cache:
-    lifetime: ∞  # or Infinity
+```jsonc
+// .eslintrc
+{
+  "settings": {
+    "import/cache": {
+      "lifetime": "∞", // or Infinity, in a JS config
+    },
+  },
+}
 ```
 
 Otherwise, set some integer, and cache entries will be evicted after that many seconds have elapsed:
 
-```yaml
-# .eslintrc.yml
-settings:
-  import/cache:
-    lifetime: 5  # 30 is the default
+```jsonc
+// .eslintrc
+{
+  "settings": {
+    "import/cache": {
+      "lifetime": 5, // 30 is the default
+    },
+  },
+}
 ```
 
 [`eslint_d`]: https://www.npmjs.com/package/eslint_d
@@ -412,10 +486,13 @@ By default, any package referenced from [`import/external-module-folders`](#impo
 
 For example, if your packages in a monorepo are all in `@scope`, you can configure `import/internal-regex` like this
 
-```yaml
-# .eslintrc.yml
-settings:
-  import/internal-regex: ^@scope/
+```jsonc
+// .eslintrc
+{
+  "settings": {
+    "import/internal-regex": "^@scope/",
+  },
+}
 ```
 
 ## SublimeLinter-eslint

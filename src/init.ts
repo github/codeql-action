@@ -8,10 +8,11 @@ import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsDownloadStatusReport, ToolsSource } from "./setup-codeql";
+import { ZstdAvailability } from "./tar";
 import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
@@ -22,27 +23,41 @@ export async function initCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeql: CodeQL;
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
+  zstdAvailability: ZstdAvailability;
 }> {
   logger.startGroup("Setup CodeQL tools");
-  const { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion } =
-    await setupCodeQL(
-      toolsInput,
-      apiDetails,
-      tempDir,
-      variant,
-      defaultCliVersion,
-      logger,
-      true,
-    );
+  const {
+    codeql,
+    toolsDownloadStatusReport,
+    toolsSource,
+    toolsVersion,
+    zstdAvailability,
+  } = await setupCodeQL(
+    toolsInput,
+    apiDetails,
+    tempDir,
+    variant,
+    defaultCliVersion,
+    features,
+    logger,
+    true,
+  );
   await codeql.printVersion();
   logger.endGroup();
-  return { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion };
+  return {
+    codeql,
+    toolsDownloadStatusReport,
+    toolsSource,
+    toolsVersion,
+    zstdAvailability,
+  };
 }
 
 export async function initConfig(

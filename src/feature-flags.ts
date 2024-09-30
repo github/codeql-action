@@ -45,7 +45,7 @@ export interface FeatureEnablement {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
-  ArtifactV4Upgrade = "artifact_v2_upgrade",
+  ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableCsharpBuildless = "disable_csharp_buildless",

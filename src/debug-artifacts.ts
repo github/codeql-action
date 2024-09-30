@@ -301,7 +301,7 @@ export async function getArtifactUploaderClient(
     return artifactLegacy.create();
   } else if (!(await features.getValue(Feature.ArtifactV4Upgrade))) {
     logger.info(
-      "Debug artifacts can be consumed with `actions/download-artifact@v3` because the value of the relevant feature flag is false. To use the `actions/download-artifact@v4`, set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to true.",
+      "Debug artifacts can be consumed with `actions/download-artifact@v3`. To use the `actions/download-artifact@v4`, set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to true.",
     );
     return artifactLegacy.create();
   } else {

@@ -42,7 +42,7 @@ import {
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
-import { isZstdAvailable } from "./tar";
+import { ZstdAvailability } from "./tar";
 import { ToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
@@ -255,6 +255,7 @@ async function run() {
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
+  let zstdAvailability: ZstdAvailability | undefined;
 
   const apiDetails = {
     auth: getRequiredInput("token"),
@@ -308,12 +309,14 @@ async function run() {
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      features,
       logger,
     );
     codeql = initCodeQLResult.codeql;
     toolsDownloadStatusReport = initCodeQLResult.toolsDownloadStatusReport;
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
+    zstdAvailability = initCodeQLResult.zstdAvailability;
 
     core.startGroup("Validating workflow");
     if ((await validateWorkflow(codeql, logger)) === undefined) {
@@ -377,7 +380,9 @@ async function run() {
   try {
     cleanupDatabaseClusterDirectory(config, logger);
 
-    await logZstdAvailability(config, logger);
+    if (zstdAvailability) {
+      await recordZstdAvailability(config, zstdAvailability);
+    }
 
     // Log CodeQL download telemetry, if appropriate
     if (toolsDownloadStatusReport) {
@@ -674,9 +679,10 @@ function getTrapCachingEnabled(): boolean {
   return true;
 }
 
-async function logZstdAvailability(config: configUtils.Config, logger: Logger) {
-  // Log zstd availability
-  const zstdAvailableResult = await isZstdAvailable(logger);
+async function recordZstdAvailability(
+  config: configUtils.Config,
+  zstdAvailability: ZstdAvailability,
+) {
   addDiagnostic(
     config,
     // Arbitrarily choose the first language. We could also choose all languages, but that
@@ -686,7 +692,7 @@ async function logZstdAvailability(config: configUtils.Config, logger: Logger) {
       "codeql-action/zstd-availability",
       "Zstandard availability",
       {
-        attributes: zstdAvailableResult,
+        attributes: zstdAvailability,
         visibility: {
           cliSummaryTable: false,
           statusPage: false,

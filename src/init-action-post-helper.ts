@@ -161,6 +161,7 @@ export async function run(
   uploadAllAvailableDebugArtifacts: (
     config: Config,
     logger: Logger,
+    features: FeatureEnablement,
   ) => Promise<void>,
   printDebugLogs: (config: Config) => Promise<void>,
   config: Config,
@@ -210,7 +211,7 @@ export async function run(
     logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
-    await uploadAllAvailableDebugArtifacts(config, logger);
+    await uploadAllAvailableDebugArtifacts(config, logger, features);
     await printDebugLogs(config);
   }
 

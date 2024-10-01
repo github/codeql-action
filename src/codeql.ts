@@ -7,15 +7,14 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import {
+  CommandInvocationError,
   getActionVersion,
   getOptionalInput,
   isAnalyzingDefaultBranch,
+  runTool,
 } from "./actions-util";
 import * as api from "./api-client";
-import {
-  CommandInvocationError,
-  wrapCliConfigurationError,
-} from "./cli-errors";
+import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
@@ -544,7 +543,7 @@ export async function getCodeQLForCmd(
     async getVersion() {
       let result = util.getCachedCodeQlVersion();
       if (result === undefined) {
-        const output = await runTool(cmd, ["version", "--format=json"]);
+        const output = await runCli(cmd, ["version", "--format=json"]);
         try {
           result = JSON.parse(output) as VersionInfo;
         } catch {
@@ -557,7 +556,7 @@ export async function getCodeQLForCmd(
       return result;
     },
     async printVersion() {
-      await runTool(cmd, ["version", "--format=json"]);
+      await runCli(cmd, ["version", "--format=json"]);
     },
     async supportsFeature(feature: ToolsFeature) {
       return isSupportedToolsFeature(await this.getVersion(), feature);
@@ -627,7 +626,7 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
-      await runTool(
+      await runCli(
         cmd,
         [
           "database",
@@ -674,10 +673,10 @@ export async function getCodeQLForCmd(
       // When `DYLD_INSERT_LIBRARIES` is set in the environment for a step,
       // the Actions runtime introduces its own workaround for SIP
       // (https://github.com/actions/runner/pull/416).
-      await runTool(autobuildCmd);
+      await runCli(autobuildCmd);
     },
     async extractScannedLanguage(config: Config, language: Language) {
-      await runTool(cmd, [
+      await runCli(cmd, [
         "database",
         "trace-command",
         "--index-traceless-dbs",
@@ -692,7 +691,7 @@ export async function getCodeQLForCmd(
         applyAutobuildAzurePipelinesTimeoutFix();
       }
       try {
-        await runTool(cmd, [
+        await runCli(cmd, [
           "database",
           "trace-command",
           "--use-build-mode",
@@ -731,7 +730,7 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
-      await runTool(cmd, args);
+      await runCli(cmd, args);
     },
     async resolveLanguages() {
       const codeqlArgs = [
@@ -740,7 +739,7 @@ export async function getCodeQLForCmd(
         "--format=json",
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
-      const output = await runTool(cmd, codeqlArgs);
+      const output = await runCli(cmd, codeqlArgs);
 
       try {
         return JSON.parse(output) as ResolveLanguagesOutput;
@@ -759,7 +758,7 @@ export async function getCodeQLForCmd(
         ...(await getLanguageAliasingArguments(this)),
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
-      const output = await runTool(cmd, codeqlArgs);
+      const output = await runCli(cmd, codeqlArgs);
 
       try {
         return JSON.parse(output) as BetterResolveLanguagesOutput;
@@ -783,7 +782,7 @@ export async function getCodeQLForCmd(
       if (extraSearchPath !== undefined) {
         codeqlArgs.push("--additional-packs", extraSearchPath);
       }
-      const output = await runTool(cmd, codeqlArgs);
+      const output = await runCli(cmd, codeqlArgs);
 
       try {
         return JSON.parse(output) as ResolveQueriesOutput;
@@ -805,7 +804,7 @@ export async function getCodeQLForCmd(
       if (workingDir !== undefined) {
         codeqlArgs.push("--working-dir", workingDir);
       }
-      const output = await runTool(cmd, codeqlArgs);
+      const output = await runCli(cmd, codeqlArgs);
 
       try {
         return JSON.parse(output) as ResolveBuildEnvironmentOutput;
@@ -839,7 +838,7 @@ export async function getCodeQLForCmd(
       ) {
         codeqlArgs.push("--intra-layer-parallelism");
       }
-      await runTool(cmd, codeqlArgs);
+      await runCli(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
       databasePath: string,
@@ -911,7 +910,7 @@ export async function getCodeQLForCmd(
       }
       // Capture the stdout, which contains the analysis summary. Don't stream it to the Actions
       // logs to avoid printing it twice.
-      return await runTool(cmd, codeqlArgs, {
+      return await runCli(cmd, codeqlArgs, {
         noStreamStdout: true,
       });
     },
@@ -922,7 +921,7 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "print-baseline"]),
         databasePath,
       ];
-      return await runTool(cmd, codeqlArgs);
+      return await runCli(cmd, codeqlArgs);
     },
 
     /**
@@ -956,7 +955,7 @@ export async function getCodeQLForCmd(
         ...packs,
       ];
 
-      const output = await runTool(cmd, codeqlArgs);
+      const output = await runCli(cmd, codeqlArgs);
 
       try {
         const parsedOutput: PackDownloadOutput = JSON.parse(output);
@@ -994,7 +993,7 @@ export async function getCodeQLForCmd(
         `${cacheCleanupFlag}=${cleanupLevel}`,
         ...getExtraOptionsFromEnv(["database", "cleanup"]),
       ];
-      await runTool(cmd, codeqlArgs);
+      await runCli(cmd, codeqlArgs);
     },
     async databaseBundle(
       databasePath: string,
@@ -1103,7 +1102,7 @@ export async function getCodeQLForCmd(
         args.push("--sarif-merge-runs-from-equal-category");
       }
 
-      await runTool(cmd, args);
+      await runCli(cmd, args);
     },
   };
   // To ensure that status reports include the CodeQL CLI version wherever
@@ -1216,53 +1215,19 @@ export function getExtraOptions(
   return all.concat(specific);
 }
 
-/*
- * A constant defining the maximum number of characters we will keep from
- * the programs stderr for logging. This serves two purposes:
- * (1) It avoids an OOM if a program fails in a way that results it
- *     printing many log lines.
- * (2) It avoids us hitting the limit of how much data we can send in our
- *     status reports on GitHub.com.
- */
-const maxErrorSize = 20_000;
-
-async function runTool(
+async function runCli(
   cmd: string,
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},
-) {
-  let stdout = "";
-  let stderr = "";
-  process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
-  const exitCode = await new toolrunner.ToolRunner(cmd, args, {
-    ignoreReturnCode: true,
-    listeners: {
-      stdout: (data: Buffer) => {
-        stdout += data.toString("utf8");
-        if (!opts.noStreamStdout) {
-          process.stdout.write(data);
-        }
-      },
-      stderr: (data: Buffer) => {
-        let readStartIndex = 0;
-        // If the error is too large, then we only take the last 20,000 characters
-        if (data.length - maxErrorSize > 0) {
-          // Eg: if we have 20,000 the start index should be 2.
-          readStartIndex = data.length - maxErrorSize + 1;
-        }
-        stderr += data.toString("utf8", readStartIndex);
-        // Mimic the standard behavior of the toolrunner by writing stderr to stdout
-        process.stdout.write(data);
-      },
-    },
-    silent: true,
-    ...(opts.stdin ? { input: Buffer.from(opts.stdin || "") } : {}),
-  }).exec();
-  if (exitCode !== 0) {
-    const e = new CommandInvocationError(cmd, args, exitCode, stderr, stdout);
-    throw wrapCliConfigurationError(e);
+): Promise<string> {
+  try {
+    return await runTool(cmd, args, opts);
+  } catch (e) {
+    if (e instanceof CommandInvocationError) {
+      throw wrapCliConfigurationError(new CliError(e));
+    }
+    throw e;
   }
-  return stdout;
 }
 
 /**

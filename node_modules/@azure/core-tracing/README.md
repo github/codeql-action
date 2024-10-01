@@ -6,56 +6,19 @@ This is the core tracing library that provides low-level interfaces and helper m
 
 ### Installation
 
-Install this library using npm as follows
-
-```
-npm install @azure/core-tracing
-```
+This package is primarily used in Azure client libraries and not meant to be used directly by consumers of Azure SDKs.
 
 ## Key Concepts
 
-The `@azure/core-tracing` package supports enabling tracing for Azure SDK packages, using an [OpenTelemetry](https://opentelemetry.io/) `Tracer`.
-
-By default, all libraries log with a `NoOpTracer` that takes no action.
-To change this, you have to use `setTracer` to set a new default `Tracer`.
+- `TracingClient` is the primary interface providing tracing functionality to client libraries. Client libraries should only be aware of and interact with a `TracingClient` instance.
+  - A `TracingClient` implementation can be created using the `createTracingClient` factory function.
+- `Instrumenter` provides an abstraction over an instrumentation and acts as the interop point for using third party libraries like OpenTelemetry. By default, a no-op `Instrumenter` is used. Customers who wish to enable `OpenTelemetry` based tracing will do so by installing and registering the [@azure/opentelemetry-instrumentation-azure-sdk] package.
+- `TracingContext` is an **immutable** data container, used to pass operation-specific information around (such as span parenting information).
+- `TracingSpan` is an abstraction of a `Span` which can be used to record events, attributes, and exceptions.
 
 ## Examples
 
-### Example 1 - Setting an OpenTelemetry Tracer
-
-```js
-const opentelemetry = require("@opentelemetry/api");
-const { BasicTracer, SimpleSpanProcessor } = require("@opentelemetry/tracing");
-const { ZipkinExporter } = require("@opentelemetry/exporter-zipkin");
-const { setTracer } = require("@azure/core-tracing");
-
-const exporter = new ZipkinExporter({
-  serviceName: "azure-tracing-sample"
-});
-const tracer = new BasicTracer();
-tracer.addSpanProcessor(new SimpleSpanProcessor(exporter));
-
-setTracer(tracer);
-
-const rootSpan = tracer.startSpan("root");
-const context = opentelemetry.setSpan(opentelemetry.context.active(), rootSpan);
-
-// Call some client library methods and pass rootSpan via tracingOptions.
-
-rootSpan.end();
-exporter.shutdown();
-```
-
-### Example 2 - Passing current Context to library operations
-
-```js
-// Given a BlobClient from @azure/storage-blob
-const result = await blobClient.download(undefined, undefined, {
-  tracingOptions: {
-    tracingContext: context
-  }
-});
-```
+Examples can be found in the `samples` folder.
 
 ## Next steps
 
@@ -68,5 +31,7 @@ If you run into issues while using this library, please feel free to [file an is
 ## Contributing
 
 If you'd like to contribute to this library, please read the [contributing guide](https://github.com/Azure/azure-sdk-for-js/blob/main/CONTRIBUTING.md) to learn more about how to build and test the code.
+
+[@azure/opentelemetry-instrumentation-azure-sdk]: https://www.npmjs.com/package/@azure/opentelemetry-instrumentation-azure-sdk
 
 ![Impressions](https://azure-sdk-impressions.azurewebsites.net/api/impressions/azure-sdk-for-js%2Fsdk%2Fcore%2Fcore-tracing%2FREADME.png)

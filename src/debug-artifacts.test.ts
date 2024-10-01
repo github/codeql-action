@@ -1,6 +1,10 @@
 import test from "ava";
 
 import * as debugArtifacts from "./debug-artifacts";
+import { Feature } from "./feature-flags";
+import { getActionsLogger } from "./logging";
+import { createFeatures } from "./testing-utils";
+import { GitHubVariant } from "./util";
 
 test("sanitizeArtifactName", (t) => {
   t.deepEqual(
@@ -20,7 +24,16 @@ test("sanitizeArtifactName", (t) => {
 
 test("uploadDebugArtifacts", async (t) => {
   // Test that no error is thrown if artifacts list is empty.
+  const logger = getActionsLogger();
+  const mockFeature = createFeatures([Feature.ArtifactV4Upgrade]);
   await t.notThrowsAsync(
-    debugArtifacts.uploadDebugArtifacts([], "rootDir", "artifactName"),
+    debugArtifacts.uploadDebugArtifacts(
+      logger,
+      [],
+      "rootDir",
+      "artifactName",
+      GitHubVariant.DOTCOM,
+      mockFeature,
+    ),
   );
 });

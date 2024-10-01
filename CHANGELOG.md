@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-- Add support for using `actions/download-artifact@v4` to programmatically consume CodeQL Action debug artifacts. 
+- _Upcoming breaking change_: Add support for using `actions/download-artifact@v4` to programmatically consume CodeQL Action debug artifacts. 
 
   Starting November 30, 2024, GitHub.com customers will [no longer be able to use `actions/download-artifact@v3`](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/). Therefore, to avoid breakage, customers who programmatically download the CodeQL Action debug artifacts should set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to `true` and bump `actions/download-artifact@v3` to `actions/download-artifact@v4` in their workflows.
   

@@ -1,21 +1,20 @@
+import {
+  CommandInvocationError,
+  ensureEndsInPeriod,
+  prettyPrintInvocation,
+} from "./actions-util";
 import { DocUrl } from "./doc-url";
 import { ConfigurationError } from "./util";
 
 /**
- * A class of Error that we can classify as an error stemming from a CLI
- * invocation, with associated exit code, stderr,etc.
+ * An error from a CodeQL CLI invocation, with associated exit code, stderr, etc.
  */
-export class CommandInvocationError extends Error {
-  constructor(
-    cmd: string,
-    args: string[],
-    public exitCode: number,
-    public stderr: string,
-    public stdout: string,
-  ) {
-    const prettyCommand = [cmd, ...args]
-      .map((x) => (x.includes(" ") ? `'${x}'` : x))
-      .join(" ");
+export class CliError extends Error {
+  public readonly exitCode: number;
+  public readonly stderr: string;
+
+  constructor({ cmd, args, exitCode, stderr }: CommandInvocationError) {
+    const prettyCommand = prettyPrintInvocation(cmd, args);
 
     const fatalErrors = extractFatalErrors(stderr);
     const autobuildErrors = extractAutobuildErrors(stderr);
@@ -42,6 +41,8 @@ export class CommandInvocationError extends Error {
     }
 
     super(message);
+    this.exitCode = exitCode;
+    this.stderr = stderr;
   }
 }
 
@@ -113,10 +114,6 @@ function extractAutobuildErrors(error: string): string | undefined {
     errorLines.push("(truncated)");
   }
   return errorLines.join("\n") || undefined;
-}
-
-function ensureEndsInPeriod(text: string): string {
-  return text[text.length - 1] === "." ? text : `${text}.`;
 }
 
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
@@ -282,7 +279,7 @@ export const cliErrorsConfig: Record<
  * if not, return undefined.
  */
 export function getCliConfigCategoryIfExists(
-  cliError: CommandInvocationError,
+  cliError: CliError,
 ): CliConfigErrorCategory | undefined {
   for (const [category, configuration] of Object.entries(cliErrorsConfig)) {
     if (
@@ -308,11 +305,7 @@ export function getCliConfigCategoryIfExists(
  * error message appended, if it exists in a known set of configuration errors. Otherwise,
  * simply returns the original error.
  */
-export function wrapCliConfigurationError(cliError: Error): Error {
-  if (!(cliError instanceof CommandInvocationError)) {
-    return cliError;
-  }
-
+export function wrapCliConfigurationError(cliError: CliError): Error {
   const cliConfigErrorCategory = getCliConfigCategoryIfExists(cliError);
   if (cliConfigErrorCategory === undefined) {
     return cliError;

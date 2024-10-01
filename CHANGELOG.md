@@ -11,6 +11,9 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
   Starting November 30, 2024, GitHub.com customers will [no longer be able to use `actions/download-artifact@v3`](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/). Therefore, to avoid breakage, customers who programmatically download the CodeQL Action debug artifacts should set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to `true` and bump `actions/download-artifact@v3` to `actions/download-artifact@v4` in their workflows.
   
   This change is currently unavailable for GitHub Enterprise Server customers, as `actions/upload-artifact@v4` and `actions/download-artifact@v4` are not yet compatible with GHES. 
+
+## 3.26.10 - 30 Sep 2024
+
 - We are rolling out a feature in September/October 2024 that sets up CodeQL using a bundle compressed with [Zstandard](http://facebook.github.io/zstd/). Our aim is to improve the performance of setting up CodeQL. [#2502](https://github.com/github/codeql-action/pull/2502)
 
 ## 3.26.9 - 24 Sep 2024

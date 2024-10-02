@@ -9,7 +9,7 @@ import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { isRunningLocalAction } from "./actions-util";
+import { CommandInvocationError, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 // Note: defaults.json is referenced from the CodeQL Action sync tool and the Actions runner image
 // creation scripts. Ensure that any changes to the format of this file are compatible with both of
@@ -497,6 +497,7 @@ export const downloadCodeQL = async function (
   maybeBundleVersion: string | undefined,
   maybeCliVersion: string | undefined,
   apiDetails: api.GitHubApiDetails,
+  tarVersion: tar.TarVersion | undefined,
   tempDir: string,
   logger: Logger,
 ): Promise<{
@@ -554,6 +555,7 @@ export const downloadCodeQL = async function (
   const extractedBundlePath = await tar.extract(
     archivedBundlePath,
     compressionMethod,
+    tarVersion,
   );
   const extractionDurationMs = Math.round(performance.now() - extractionStart);
   logger.debug(
@@ -700,6 +702,10 @@ export async function setupCodeQLBundle(
       );
     } catch (e) {
       zstdFailureReason = util.getErrorMessage(e) || "unknown error";
+      if (e instanceof CommandInvocationError) {
+        zstdFailureReason += ` Full error: ${e.stderr}`;
+        logger.debug(`Invocation output the following to stderr: ${e.stderr}`);
+      }
       logger.warning(
         `Failed to set up CodeQL tools with zstd. Falling back to gzipped version. Error: ${util.getErrorMessage(
           e,
@@ -755,7 +761,11 @@ async function setupCodeQLBundleWithCompressionMethod(
       const compressionMethod = tar.inferCompressionMethod(
         source.codeqlTarPath,
       );
-      codeqlFolder = await tar.extract(source.codeqlTarPath, compressionMethod);
+      codeqlFolder = await tar.extract(
+        source.codeqlTarPath,
+        compressionMethod,
+        zstdAvailability.version,
+      );
       toolsSource = ToolsSource.Local;
       break;
     }
@@ -770,6 +780,7 @@ async function setupCodeQLBundleWithCompressionMethod(
         source.bundleVersion,
         source.cliVersion,
         apiDetails,
+        zstdAvailability.version,
         tempDir,
         logger,
       );

@@ -4,7 +4,6 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
-import del from "del";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -24,7 +23,7 @@ import {
 import { Logger } from "./logging";
 import * as tar from "./tar";
 import * as util from "./util";
-import { isGoodVersion } from "./util";
+import { cleanUpGlob, isGoodVersion } from "./util";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -550,18 +549,25 @@ export const downloadCodeQL = async function (
     `Finished downloading CodeQL bundle to ${archivedBundlePath} (${downloadDurationMs} ms).`,
   );
 
-  logger.debug("Extracting CodeQL bundle.");
-  const extractionStart = performance.now();
-  const extractedBundlePath = await tar.extract(
-    archivedBundlePath,
-    compressionMethod,
-    tarVersion,
-  );
-  const extractionDurationMs = Math.round(performance.now() - extractionStart);
-  logger.debug(
-    `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
-  );
-  await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
+  let extractedBundlePath: string;
+  let extractionDurationMs: number;
+
+  try {
+    logger.debug("Extracting CodeQL bundle.");
+    const extractionStart = performance.now();
+    extractedBundlePath = await tar.extract(
+      archivedBundlePath,
+      compressionMethod,
+      tarVersion,
+      logger,
+    );
+    extractionDurationMs = Math.round(performance.now() - extractionStart);
+    logger.debug(
+      `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
+    );
+  } finally {
+    await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
+  }
 
   const bundleVersion =
     maybeBundleVersion ?? tryGetBundleVersionFromUrl(codeqlURL, logger);
@@ -765,6 +771,7 @@ async function setupCodeQLBundleWithCompressionMethod(
         source.codeqlTarPath,
         compressionMethod,
         zstdAvailability.version,
+        logger,
       );
       toolsSource = ToolsSource.Local;
       break;
@@ -800,24 +807,6 @@ async function setupCodeQLBundleWithCompressionMethod(
     toolsVersion,
     zstdAvailability,
   };
-}
-
-async function cleanUpGlob(glob: string, name: string, logger: Logger) {
-  logger.debug(`Cleaning up ${name}.`);
-  try {
-    const deletedPaths = await del(glob, { force: true });
-    if (deletedPaths.length === 0) {
-      logger.warning(
-        `Failed to clean up ${name}: no files found matching ${glob}.`,
-      );
-    } else if (deletedPaths.length === 1) {
-      logger.debug(`Cleaned up ${name}.`);
-    } else {
-      logger.debug(`Cleaned up ${name} (${deletedPaths.length} files).`);
-    }
-  } catch (e) {
-    logger.warning(`Failed to clean up ${name}: ${e}.`);
-  }
 }
 
 function sanitizeUrlForStatusReport(url: string): string {

@@ -1161,3 +1161,21 @@ export async function checkSipEnablement(
     return undefined;
   }
 }
+
+export async function cleanUpGlob(glob: string, name: string, logger: Logger) {
+  logger.debug(`Cleaning up ${name}.`);
+  try {
+    const deletedPaths = await del(glob, { force: true });
+    if (deletedPaths.length === 0) {
+      logger.warning(
+        `Failed to clean up ${name}: no files found matching ${glob}.`,
+      );
+    } else if (deletedPaths.length === 1) {
+      logger.debug(`Cleaned up ${name}.`);
+    } else {
+      logger.debug(`Cleaned up ${name} (${deletedPaths.length} files).`);
+    }
+  } catch (e) {
+    logger.warning(`Failed to clean up ${name}: ${e}.`);
+  }
+}

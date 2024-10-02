@@ -150,3 +150,14 @@ jobs:
             --body "${pr_body}" \
             --assignee "${GITHUB_ACTOR}" \
             --draft
+
+      - name: Create the GitHub release
+        env:
+          VERSION: "${{ steps.getVersion.outputs.version }}"
+        run: |
+          # Do not mark this release as latest. The most recent CLI release must be marked as latest.
+          gh release create \
+            "${VERSION}" \
+            --latest=false \
+            -t "${VERSION}" \
+            -F CHANGELOG.md

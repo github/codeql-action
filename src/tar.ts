@@ -8,7 +8,7 @@ import { v4 as uuidV4 } from "uuid";
 
 import { getTemporaryDirectory, runTool } from "./actions-util";
 import { Logger } from "./logging";
-import { assertNever } from "./util";
+import { assertNever, cleanUpGlob } from "./util";
 
 const MIN_REQUIRED_BSD_TAR_VERSION = "3.4.3";
 const MIN_REQUIRED_GNU_TAR_VERSION = "1.31";
@@ -92,6 +92,7 @@ export async function extract(
   tarPath: string,
   compressionMethod: CompressionMethod,
   tarVersion: TarVersion | undefined,
+  logger: Logger,
 ): Promise<string> {
   switch (compressionMethod) {
     case "gzip":
@@ -104,7 +105,7 @@ export async function extract(
           "Could not determine tar version, which is required to extract a Zstandard archive.",
         );
       }
-      return await extractTarZst(tarPath, tarVersion);
+      return await extractTarZst(tarPath, tarVersion, logger);
   }
 }
 
@@ -118,6 +119,7 @@ export async function extract(
 export async function extractTarZst(
   file: string,
   tarVersion: TarVersion,
+  logger: Logger,
 ): Promise<string> {
   if (!file) {
     throw new Error("parameter 'file' is required");
@@ -126,28 +128,33 @@ export async function extractTarZst(
   // Create dest
   const dest = await createExtractFolder();
 
-  // Initialize args
-  const args = ["-x", "-v"];
+  try {
+    // Initialize args
+    const args = ["-x", "-v"];
 
-  let destArg = dest;
-  let fileArg = file;
-  if (process.platform === "win32" && tarVersion.type === "gnu") {
-    args.push("--force-local");
-    destArg = dest.replace(/\\/g, "/");
+    let destArg = dest;
+    let fileArg = file;
+    if (process.platform === "win32" && tarVersion.type === "gnu") {
+      args.push("--force-local");
+      destArg = dest.replace(/\\/g, "/");
 
-    // Technically only the dest needs to have `/` but for aesthetic consistency
-    // convert slashes in the file arg too.
-    fileArg = file.replace(/\\/g, "/");
+      // Technically only the dest needs to have `/` but for aesthetic consistency
+      // convert slashes in the file arg too.
+      fileArg = file.replace(/\\/g, "/");
+    }
+
+    if (tarVersion.type === "gnu") {
+      // Suppress warnings when using GNU tar to extract archives created by BSD tar
+      args.push("--warning=no-unknown-keyword");
+      args.push("--overwrite");
+    }
+
+    args.push("-C", destArg, "-f", fileArg);
+    await runTool(`tar`, args);
+  } catch (e) {
+    await cleanUpGlob(dest, "extraction destination directory", logger);
+    throw e;
   }
-
-  if (tarVersion.type === "gnu") {
-    // Suppress warnings when using GNU tar to extract archives created by BSD tar
-    args.push("--warning=no-unknown-keyword");
-    args.push("--overwrite");
-  }
-
-  args.push("-C", destArg, "-f", fileArg);
-  await runTool(`tar`, args);
 
   return dest;
 }

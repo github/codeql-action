@@ -108,10 +108,12 @@ export const getCommitOid = async function (
 };
 
 /**
- * If the action was triggered by a pull request, determine the commit sha of the merge base.
- * Returns undefined if run by other triggers or the merge base cannot be determined.
+ * If the action was triggered by a pull request, determine the commit sha at
+ * the head of the base branch, using the merge commit that this workflow analyzes.
+ * Returns undefined if run by other triggers or the base branch commit cannot be
+ * determined.
  */
-export const determineMergeBaseCommitOid = async function (
+export const determineBaseBranchHeadCommitOid = async function (
   checkoutPathOverride?: string,
 ): Promise<string | undefined> {
   if (getWorkflowEventName() !== "pull_request") {

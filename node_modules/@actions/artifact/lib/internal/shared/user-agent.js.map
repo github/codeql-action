@@ -1,0 +1,1 @@
+{"version":3,"file":"user-agent.js","sourceRoot":"","sources":["../../../src/internal/shared/user-agent.ts"],"names":[],"mappings":";;;AAAA,qGAAqG;AACrG,MAAM,WAAW,GAAG,OAAO,CAAC,uBAAuB,CAAC,CAAA;AAEpD;;GAEG;AACH,SAAgB,kBAAkB;IAChC,OAAO,qBAAqB,WAAW,CAAC,OAAO,EAAE,CAAA;AACnD,CAAC;AAFD,gDAEC"}

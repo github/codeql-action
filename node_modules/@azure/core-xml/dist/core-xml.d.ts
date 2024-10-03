@@ -1,0 +1,53 @@
+/**
+ * Converts given XML string into JSON
+ * @param str - String containing the XML content to be parsed into JSON
+ * @param opts - Options that govern the parsing of given xml string
+ * `includeRoot` indicates whether the root element is to be included or not in the output
+ */
+export declare function parseXML(str: string, opts?: XmlOptions): Promise<any>;
+
+/**
+ * Converts given JSON object to XML string
+ * @param obj - JSON object to be converted into XML string
+ * @param opts - Options that govern the XML building of given JSON object
+ * `rootName` indicates the name of the root element in the resulting XML
+ */
+export declare function stringifyXML(obj: unknown, opts?: XmlOptions): string;
+
+/**
+ * Default key used to access the XML attributes.
+ */
+export declare const XML_ATTRKEY = "$";
+
+/**
+ * Default key used to access the XML value content.
+ */
+export declare const XML_CHARKEY = "_";
+
+/**
+ * Options to govern behavior of xml parser and builder.
+ */
+export declare interface XmlOptions {
+    /**
+     * indicates the name of the root element in the resulting XML when building XML.
+     */
+    rootName?: string;
+    /**
+     * indicates whether the root element is to be included or not in the output when parsing XML.
+     */
+    includeRoot?: boolean;
+    /**
+     * key used to access the XML value content when parsing XML.
+     */
+    xmlCharKey?: string;
+    /**
+     * property name for a CDATA section.
+     */
+    cdataPropName?: string;
+    /**
+     * XML nodes to exclude from parsing.
+     */
+    stopNodes?: string[];
+}
+
+export { }

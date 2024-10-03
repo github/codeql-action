@@ -269,26 +269,26 @@ test("isAnalyzingDefaultBranch()", async (t) => {
   });
 });
 
-test("determineMergeBaseCommitOid non-pullrequest", async (t) => {
+test("determineBaseBranchHeadCommitOid non-pullrequest", async (t) => {
   const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "hucairz";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
-  const result = await actionsUtil.determineMergeBaseCommitOid(__dirname);
+  const result = await actionsUtil.determineBaseBranchHeadCommitOid(__dirname);
   t.deepEqual(result, undefined);
   t.deepEqual(0, infoStub.callCount);
 
   infoStub.restore();
 });
 
-test("determineMergeBaseCommitOid not git repository", async (t) => {
+test("determineBaseBranchHeadCommitOid not git repository", async (t) => {
   const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
 
   await withTmpDir(async (tmpDir) => {
-    await actionsUtil.determineMergeBaseCommitOid(tmpDir);
+    await actionsUtil.determineBaseBranchHeadCommitOid(tmpDir);
   });
 
   t.deepEqual(1, infoStub.callCount);
@@ -301,12 +301,12 @@ test("determineMergeBaseCommitOid not git repository", async (t) => {
   infoStub.restore();
 });
 
-test("determineMergeBaseCommitOid other error", async (t) => {
+test("determineBaseBranchHeadCommitOid other error", async (t) => {
   const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
-  const result = await actionsUtil.determineMergeBaseCommitOid(
+  const result = await actionsUtil.determineBaseBranchHeadCommitOid(
     path.join(__dirname, "../../i-dont-exist"),
   );
   t.deepEqual(result, undefined);

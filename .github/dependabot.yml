@@ -16,6 +16,10 @@ updates:
       # v7 requires ESM
       - dependency-name: "del"
         versions: ["^7.0.0"]
+      # This is broken due to the way configuration files have changed. 
+      # This might be fixed when we move to eslint v9.
+      - dependency-name: "eslint-plugin-import"
+        versions: [">=2.30.0"]
     groups:
       npm:
         patterns:

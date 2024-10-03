@@ -3,12 +3,20 @@
  * It will run after the all steps in this job, in reverse order in relation to
  * other `post:` hooks.
  */
-import * as artifact from "@actions/artifact";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
+import { getGitHubVersion } from "./api-client";
 import * as configUtils from "./config-utils";
-import { getErrorMessage } from "./util";
+import { getArtifactUploaderClient } from "./debug-artifacts";
+import { Features } from "./feature-flags";
+import { getActionsLogger } from "./logging";
+import { parseRepositoryNwo } from "./repository";
+import {
+  checkGitHubVersionInRange,
+  getErrorMessage,
+  getRequiredEnvParam,
+} from "./util";
 
 async function runWrapper() {
   try {
@@ -31,18 +39,42 @@ async function runWrapper() {
     core.info(
       "Debug mode is on. Uploading proxy log as Actions debugging artifact...",
     );
+    if (config?.gitHubVersion.type === undefined) {
+      core.warning(
+        `Did not upload debug artifacts because cannot determine the GitHub variant running.`,
+      );
+      return;
+    }
+
+    const logger = getActionsLogger();
+    const gitHubVersion = await getGitHubVersion();
+    checkGitHubVersionInRange(gitHubVersion, logger);
+    const repositoryNwo = parseRepositoryNwo(
+      getRequiredEnvParam("GITHUB_REPOSITORY"),
+    );
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      actionsUtil.getTemporaryDirectory(),
+      logger,
+    );
+
     try {
-      await artifact
-        .create()
-        .uploadArtifact(
-          "proxy-log-file",
-          [logFilePath],
-          actionsUtil.getTemporaryDirectory(),
-          {
-            continueOnError: true,
-            retentionDays: 7,
-          },
-        );
+      const artifactUploader = await getArtifactUploaderClient(
+        logger,
+        gitHubVersion.type,
+        features,
+      );
+
+      await artifactUploader.uploadArtifact(
+        "proxy-log-file",
+        [logFilePath],
+        actionsUtil.getTemporaryDirectory(),
+        {
+          // ensure we don't keep the debug artifacts around for too long since they can be large.
+          retentionDays: 7,
+        },
+      );
     } catch (e) {
       // A failure to upload debug artifacts should not fail the entire action.
       core.warning(`Failed to upload debug artifacts: ${e}`);

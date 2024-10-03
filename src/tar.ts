@@ -1,9 +1,14 @@
+import * as fs from "fs";
+import path from "path";
+
 import { ToolRunner } from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import { safeWhich } from "@chrisgavin/safe-which";
+import { v4 as uuidV4 } from "uuid";
 
+import { getTemporaryDirectory, runTool } from "./actions-util";
 import { Logger } from "./logging";
-import { assertNever } from "./util";
+import { assertNever, cleanUpGlob } from "./util";
 
 const MIN_REQUIRED_BSD_TAR_VERSION = "3.4.3";
 const MIN_REQUIRED_GNU_TAR_VERSION = "1.31";
@@ -84,24 +89,84 @@ export async function isZstdAvailable(
 export type CompressionMethod = "gzip" | "zstd";
 
 export async function extract(
-  path: string,
+  tarPath: string,
   compressionMethod: CompressionMethod,
+  tarVersion: TarVersion | undefined,
+  logger: Logger,
 ): Promise<string> {
   switch (compressionMethod) {
     case "gzip":
-      // While we could also ask tar to autodetect the compression method,
-      // we defensively keep the gzip call identical as requesting a gzipped
-      // bundle will soon be a fallback option.
-      return await toolcache.extractTar(path);
+      // Defensively continue to call the toolcache API as requesting a gzipped
+      // bundle may be a fallback option.
+      return await toolcache.extractTar(tarPath);
     case "zstd":
-      // By specifying only the "x" flag, we ask tar to autodetect the
-      // compression method.
-      return await toolcache.extractTar(path, undefined, "x");
+      if (!tarVersion) {
+        throw new Error(
+          "Could not determine tar version, which is required to extract a Zstandard archive.",
+        );
+      }
+      return await extractTarZst(tarPath, tarVersion, logger);
   }
 }
 
-export function inferCompressionMethod(path: string): CompressionMethod {
-  if (path.endsWith(".tar.gz")) {
+/**
+ * Extract a compressed tar archive
+ *
+ * @param file     path to the tar
+ * @param dest     destination directory. Optional.
+ * @returns        path to the destination directory
+ */
+export async function extractTarZst(
+  file: string,
+  tarVersion: TarVersion,
+  logger: Logger,
+): Promise<string> {
+  if (!file) {
+    throw new Error("parameter 'file' is required");
+  }
+
+  // Create dest
+  const dest = await createExtractFolder();
+
+  try {
+    // Initialize args
+    const args = ["-x", "-v"];
+
+    let destArg = dest;
+    let fileArg = file;
+    if (process.platform === "win32" && tarVersion.type === "gnu") {
+      args.push("--force-local");
+      destArg = dest.replace(/\\/g, "/");
+
+      // Technically only the dest needs to have `/` but for aesthetic consistency
+      // convert slashes in the file arg too.
+      fileArg = file.replace(/\\/g, "/");
+    }
+
+    if (tarVersion.type === "gnu") {
+      // Suppress warnings when using GNU tar to extract archives created by BSD tar
+      args.push("--warning=no-unknown-keyword");
+      args.push("--overwrite");
+    }
+
+    args.push("-C", destArg, "-f", fileArg);
+    await runTool(`tar`, args);
+  } catch (e) {
+    await cleanUpGlob(dest, "extraction destination directory", logger);
+    throw e;
+  }
+
+  return dest;
+}
+
+async function createExtractFolder(): Promise<string> {
+  const dest = path.join(getTemporaryDirectory(), uuidV4());
+  fs.mkdirSync(dest, { recursive: true });
+  return dest;
+}
+
+export function inferCompressionMethod(tarPath: string): CompressionMethod {
+  if (tarPath.endsWith(".tar.gz")) {
     return "gzip";
   }
   return "zstd";

@@ -480,3 +480,89 @@ export const getFileType = async (filePath: string): Promise<string> => {
 export function isSelfHostedRunner() {
   return process.env.RUNNER_ENVIRONMENT === "self-hosted";
 }
+
+export function prettyPrintInvocation(cmd: string, args: string[]): string {
+  return [cmd, ...args].map((x) => (x.includes(" ") ? `'${x}'` : x)).join(" ");
+}
+
+/**
+ * An error from a tool invocation, with associated exit code, stderr, etc.
+ */
+export class CommandInvocationError extends Error {
+  constructor(
+    public cmd: string,
+    public args: string[],
+    public exitCode: number,
+    public stderr: string,
+    public stdout: string,
+  ) {
+    const prettyCommand = prettyPrintInvocation(cmd, args);
+    const lastLine = ensureEndsInPeriod(
+      stderr.trim().split("\n").pop()?.trim() || "n/a",
+    );
+    super(
+      `Failed to run "${prettyCommand}". ` +
+        `Exit code was ${exitCode} and last log line was: ${lastLine} See the logs for more details.`,
+    );
+  }
+}
+
+export function ensureEndsInPeriod(text: string): string {
+  return text[text.length - 1] === "." ? text : `${text}.`;
+}
+
+/**
+ * A constant defining the maximum number of characters we will keep from
+ * the programs stderr for logging.
+ *
+ * This serves two purposes:
+ * 1. It avoids an OOM if a program fails in a way that results it
+ *    printing many log lines.
+ * 2. It avoids us hitting the limit of how much data we can send in our
+ *    status reports on GitHub.com.
+ */
+const MAX_STDERR_BUFFER_SIZE = 20000;
+
+/**
+ * Runs a CLI tool.
+ *
+ * @returns Standard output produced by the tool.
+ * @throws A `CommandInvocationError` if the tool exits with a non-zero status code.
+ */
+export async function runTool(
+  cmd: string,
+  args: string[] = [],
+  opts: { stdin?: string; noStreamStdout?: boolean } = {},
+): Promise<string> {
+  let stdout = "";
+  let stderr = "";
+  process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
+  const exitCode = await new toolrunner.ToolRunner(cmd, args, {
+    ignoreReturnCode: true,
+    listeners: {
+      stdout: (data: Buffer) => {
+        stdout += data.toString("utf8");
+        if (!opts.noStreamStdout) {
+          process.stdout.write(data);
+        }
+      },
+      stderr: (data: Buffer) => {
+        let readStartIndex = 0;
+        // If the error is too large, then we only take the last MAX_STDERR_BUFFER_SIZE characters
+        if (data.length - MAX_STDERR_BUFFER_SIZE > 0) {
+          // Eg: if we have MAX_STDERR_BUFFER_SIZE the start index should be 2.
+          readStartIndex = data.length - MAX_STDERR_BUFFER_SIZE + 1;
+        }
+        stderr += data.toString("utf8", readStartIndex);
+        // Mimic the standard behavior of the toolrunner by writing stderr to stdout
+        process.stdout.write(data);
+      },
+    },
+    silent: true,
+    ...(opts.stdin ? { input: Buffer.from(opts.stdin || "") } : {}),
+  }).exec();
+  if (exitCode !== 0) {
+    throw new CommandInvocationError(cmd, args, exitCode, stderr, stdout);
+  }
+  return stdout;
+}

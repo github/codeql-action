@@ -1,0 +1,6 @@
+
+
+/@Test
+qf 4dw i it(" <sec> e a ",<sp> <esc> f)la => <esc> %a ); <esc>n
+         ----           ------            --          --
+

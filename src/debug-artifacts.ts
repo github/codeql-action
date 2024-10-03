@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as artifact from "@actions/artifact";
+import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
 import AdmZip from "adm-zip";
 import del from "del";
@@ -11,6 +12,7 @@ import { dbIsFinalized } from "./analyze";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { Logger, withGroup } from "./logging";
 import {
@@ -18,6 +20,7 @@ import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
   getErrorMessage,
+  GitHubVariant,
   listFolder,
 } from "./util";
 
@@ -29,7 +32,11 @@ export function sanitizeArtifactName(name: string): string {
  * Upload Actions SARIF artifacts for debugging when CODEQL_ACTION_DEBUG_COMBINED_SARIF
  * environment variable is set
  */
-export async function uploadCombinedSarifArtifacts(logger: Logger) {
+export async function uploadCombinedSarifArtifacts(
+  logger: Logger,
+  gitHubVariant: GitHubVariant,
+  features: FeatureEnablement,
+) {
   const tempDir = getTemporaryDirectory();
 
   // Upload Actions SARIF artifacts for debugging when environment variable is set
@@ -58,9 +65,12 @@ export async function uploadCombinedSarifArtifacts(logger: Logger) {
 
     try {
       await uploadDebugArtifacts(
+        logger,
         toUpload,
         baseTempDir,
         "combined-sarif-artifacts",
+        gitHubVariant,
+        features,
       );
     } catch (e) {
       logger.warning(
@@ -153,6 +163,7 @@ async function tryBundleDatabase(
 export async function tryUploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
+  features: FeatureEnablement,
 ) {
   const filesToUpload: string[] = [];
   try {
@@ -211,9 +222,12 @@ export async function tryUploadAllAvailableDebugArtifacts(
   try {
     await withGroup("Uploading debug artifacts", async () =>
       uploadDebugArtifacts(
+        logger,
         filesToUpload,
         config.dbLocation,
         config.debugArtifactName,
+        config.gitHubVersion.type,
+        features,
       ),
     );
   } catch (e) {
@@ -224,9 +238,12 @@ export async function tryUploadAllAvailableDebugArtifacts(
 }
 
 export async function uploadDebugArtifacts(
+  logger: Logger,
   toUpload: string[],
   rootDir: string,
   artifactName: string,
+  ghVariant: GitHubVariant,
+  features: FeatureEnablement,
 ) {
   if (toUpload.length === 0) {
     return;
@@ -246,16 +263,53 @@ export async function uploadDebugArtifacts(
     }
   }
 
-  await artifact.create().uploadArtifact(
-    sanitizeArtifactName(`${artifactName}${suffix}`),
-    toUpload.map((file) => path.normalize(file)),
-    path.normalize(rootDir),
-    {
-      continueOnError: true,
-      // ensure we don't keep the debug artifacts around for too long since they can be large.
-      retentionDays: 7,
-    },
+  const artifactUploader = await getArtifactUploaderClient(
+    logger,
+    ghVariant,
+    features,
   );
+
+  try {
+    await artifactUploader.uploadArtifact(
+      sanitizeArtifactName(`${artifactName}${suffix}`),
+      toUpload.map((file) => path.normalize(file)),
+      path.normalize(rootDir),
+      {
+        // ensure we don't keep the debug artifacts around for too long since they can be large.
+        retentionDays: 7,
+      },
+    );
+  } catch (e) {
+    // A failure to upload debug artifacts should not fail the entire action.
+    core.warning(`Failed to upload debug artifacts: ${e}`);
+  }
+}
+
+// `@actions/artifact@v2` is not yet supported on GHES so the legacy version of the client will be used on GHES
+// until it is supported. We also use the legacy version of the client if the feature flag is disabled.
+// The feature flag is named `ArtifactV4Upgrade` to reduce customer confusion; customers are primarily affected by
+// `actions/download-artifact`, whose upgrade to v4 must be accompanied by the `@actions/artifact@v2` upgrade.
+export async function getArtifactUploaderClient(
+  logger: Logger,
+  ghVariant: GitHubVariant,
+  features: FeatureEnablement,
+): Promise<artifact.ArtifactClient | artifactLegacy.ArtifactClient> {
+  if (ghVariant === GitHubVariant.GHES) {
+    logger.info(
+      "Debug artifacts can be consumed with `actions/download-artifact@v3` because the `v4` version is not yet compatible on GHES.",
+    );
+    return artifactLegacy.create();
+  } else if (!(await features.getValue(Feature.ArtifactV4Upgrade))) {
+    logger.info(
+      "Debug artifacts can be consumed with `actions/download-artifact@v3`. To use the `actions/download-artifact@v4`, set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to true.",
+    );
+    return artifactLegacy.create();
+  } else {
+    logger.info(
+      "Debug artifacts can be consumed with `actions/download-artifact@v4`.",
+    );
+    return new artifact.DefaultArtifactClient();
+  }
 }
 
 /**

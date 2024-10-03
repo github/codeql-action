@@ -281,7 +281,7 @@ test("determineMergeBaseCommitOid non-pullrequest", async (t) => {
   infoStub.restore();
 });
 
-test("determineMergeBaseCommitOid no error", async (t) => {
+test("determineMergeBaseCommitOid not git repository", async (t) => {
   const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
@@ -292,11 +292,12 @@ test("determineMergeBaseCommitOid no error", async (t) => {
   });
 
   t.deepEqual(1, infoStub.callCount);
-  t.assert(
-    infoStub.firstCall.args[0].startsWith(
+  t.deepEqual(
+    infoStub.firstCall.args[0],
+    "git call failed. Will calculate the base branch SHA on the server. Error: " +
       "The checkout path provided to the action does not appear to be a git repository.",
-    ),
   );
+
   infoStub.restore();
 });
 
@@ -312,7 +313,12 @@ test("determineMergeBaseCommitOid other error", async (t) => {
   t.deepEqual(1, infoStub.callCount);
   t.assert(
     infoStub.firstCall.args[0].startsWith(
-      "Failed to call git to determine merge base.",
+      "git call failed. Will calculate the base branch SHA on the server. Error: ",
+    ),
+  );
+  t.assert(
+    !infoStub.firstCall.args[0].endsWith(
+      "The checkout path provided to the action does not appear to be a git repository.",
     ),
   );
 

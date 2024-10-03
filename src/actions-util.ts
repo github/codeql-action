@@ -49,6 +49,38 @@ export function getTemporaryDirectory(): string {
     : getRequiredEnvParam("RUNNER_TEMP");
 }
 
+async function runGitCommand(
+  checkoutPath: string | undefined,
+  args: string[],
+  customErrorMessage: string,
+): Promise<string> {
+  let stdout = "";
+  let stderr = "";
+  try {
+    await new toolrunner.ToolRunner(await safeWhich.safeWhich("git"), args, {
+      silent: true,
+      listeners: {
+        stdout: (data) => {
+          stdout += data.toString();
+        },
+        stderr: (data) => {
+          stderr += data.toString();
+        },
+      },
+      cwd: checkoutPath,
+    }).exec();
+    return stdout;
+  } catch (error) {
+    let reason = stderr;
+    if (stderr.includes("not a git repository")) {
+      reason =
+        "The checkout path provided to the action does not appear to be a git repository.";
+    }
+    core.info(`git call failed. ${customErrorMessage} Error: ${reason}`);
+    throw error;
+  }
+}
+
 /**
  * Gets the SHA of the commit that is currently checked out.
  */
@@ -63,38 +95,14 @@ export const getCommitOid = async function (
   // the merge commit, which must mean that git is available.
   // Even if this does go wrong, it's not a huge problem for the alerts to
   // reported on the merge commit.
-  let stderr = "";
   try {
-    let commitOid = "";
-    await new toolrunner.ToolRunner(
-      await safeWhich.safeWhich("git"),
+    const stdout = await runGitCommand(
+      checkoutPath,
       ["rev-parse", ref],
-      {
-        silent: true,
-        listeners: {
-          stdout: (data) => {
-            commitOid += data.toString();
-          },
-          stderr: (data) => {
-            stderr += data.toString();
-          },
-        },
-        cwd: checkoutPath,
-      },
-    ).exec();
-    return commitOid.trim();
+      "Continuing with commit SHA from user input or environment.",
+    );
+    return stdout.trim();
   } catch {
-    if (stderr.includes("not a git repository")) {
-      core.info(
-        "Could not determine current commit SHA using git. Continuing with data from user input or environment. " +
-          "The checkout path provided to the action does not appear to be a git repository.",
-      );
-    } else {
-      core.info(
-        `Could not determine current commit SHA using git. Continuing with data from user input or environment. ${stderr}`,
-      );
-    }
-
     return getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
   }
 };
@@ -113,37 +121,29 @@ export const determineMergeBaseCommitOid = async function (
   const mergeSha = getRequiredEnvParam("GITHUB_SHA");
   const checkoutPath =
     checkoutPathOverride ?? getOptionalInput("checkout_path");
-  let stderr = "";
 
   try {
     let commitOid = "";
     let baseOid = "";
     let headOid = "";
 
-    await new toolrunner.ToolRunner(
-      await safeWhich.safeWhich("git"),
+    const stdout = await runGitCommand(
+      checkoutPath,
       ["show", "-s", "--format=raw", mergeSha],
-      {
-        silent: true,
-        listeners: {
-          stdline: (data) => {
-            if (data.startsWith("commit ") && commitOid === "") {
-              commitOid = data.substring(7);
-            } else if (data.startsWith("parent ")) {
-              if (baseOid === "") {
-                baseOid = data.substring(7);
-              } else if (headOid === "") {
-                headOid = data.substring(7);
-              }
-            }
-          },
-          stderr: (data) => {
-            stderr += data.toString();
-          },
-        },
-        cwd: checkoutPath,
-      },
-    ).exec();
+      "Will calculate the base branch SHA on the server.",
+    );
+
+    for (const data of stdout.split("\n")) {
+      if (data.startsWith("commit ") && commitOid === "") {
+        commitOid = data.substring(7);
+      } else if (data.startsWith("parent ")) {
+        if (baseOid === "") {
+          baseOid = data.substring(7);
+        } else if (headOid === "") {
+          headOid = data.substring(7);
+        }
+      }
+    }
 
     // Let's confirm our assumptions: We had a merge commit and the parsed parent data looks correct
     if (
@@ -155,17 +155,6 @@ export const determineMergeBaseCommitOid = async function (
     }
     return undefined;
   } catch {
-    if (stderr.includes("not a git repository")) {
-      core.info(
-        "The checkout path provided to the action does not appear to be a git repository. " +
-          "Will calculate the merge base on the server.",
-      );
-    } else {
-      core.info(
-        `Failed to call git to determine merge base. Will calculate the merge base on ` +
-          `the server. Reason: ${stderr}`,
-      );
-    }
     return undefined;
   }
 };

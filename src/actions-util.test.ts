@@ -269,50 +269,56 @@ test("isAnalyzingDefaultBranch()", async (t) => {
   });
 });
 
-test("determineMergeBaseCommitOid non-pullrequest", async (t) => {
+test("determineBaseBranchHeadCommitOid non-pullrequest", async (t) => {
   const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "hucairz";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
-  const result = await actionsUtil.determineMergeBaseCommitOid(__dirname);
+  const result = await actionsUtil.determineBaseBranchHeadCommitOid(__dirname);
   t.deepEqual(result, undefined);
   t.deepEqual(0, infoStub.callCount);
 
   infoStub.restore();
 });
 
-test("determineMergeBaseCommitOid no error", async (t) => {
+test("determineBaseBranchHeadCommitOid not git repository", async (t) => {
   const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
 
   await withTmpDir(async (tmpDir) => {
-    await actionsUtil.determineMergeBaseCommitOid(tmpDir);
+    await actionsUtil.determineBaseBranchHeadCommitOid(tmpDir);
   });
 
   t.deepEqual(1, infoStub.callCount);
-  t.assert(
-    infoStub.firstCall.args[0].startsWith(
+  t.deepEqual(
+    infoStub.firstCall.args[0],
+    "git call failed. Will calculate the base branch SHA on the server. Error: " +
       "The checkout path provided to the action does not appear to be a git repository.",
-    ),
   );
+
   infoStub.restore();
 });
 
-test("determineMergeBaseCommitOid other error", async (t) => {
+test("determineBaseBranchHeadCommitOid other error", async (t) => {
   const infoStub = sinon.stub(core, "info");
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
-  const result = await actionsUtil.determineMergeBaseCommitOid(
+  const result = await actionsUtil.determineBaseBranchHeadCommitOid(
     path.join(__dirname, "../../i-dont-exist"),
   );
   t.deepEqual(result, undefined);
   t.deepEqual(1, infoStub.callCount);
   t.assert(
     infoStub.firstCall.args[0].startsWith(
-      "Failed to call git to determine merge base.",
+      "git call failed. Will calculate the base branch SHA on the server. Error: ",
+    ),
+  );
+  t.assert(
+    !infoStub.firstCall.args[0].endsWith(
+      "The checkout path provided to the action does not appear to be a git repository.",
     ),
   );
 

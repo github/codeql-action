@@ -6,7 +6,11 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.14.5 and earlier. These versions of CodeQL were discontinued on 24 September 2024 alongside GitHub Enterprise Server 3.10, and will be unsupported by CodeQL Action versions 3.27.0 and later and versions 2.27.0 and later. [#2520](https://github.com/github/codeql-action/pull/2520)
+
+  - If you are using one of these versions, please update to CodeQL CLI version 2.14.6 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
+
+  - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.13.5 and 2.14.5, you can replace `github/codeql-action/*@v3` by `github/codeql-action/*@v3.26.11` and `github/codeql-action/*@v2` by `github/codeql-action/*@v2.26.11` in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
 
 ## 3.26.11 - 03 Oct 2024
 
@@ -15,12 +19,6 @@ No user facing changes.
   Starting November 30, 2024, GitHub.com customers will [no longer be able to use `actions/download-artifact@v3`](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/). Therefore, to avoid breakage, customers who programmatically download the CodeQL Action debug artifacts should set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to `true` and bump `actions/download-artifact@v3` to `actions/download-artifact@v4` in their workflows. The CodeQL Action will enable this behavior by default in early November and workflows that have not yet bumped to `actions/download-artifact@v3` to `actions/download-artifact@v4` will begin failing then.
   
   This change is currently unavailable for GitHub Enterprise Server customers, as `actions/upload-artifact@v4` and `actions/download-artifact@v4` are not yet compatible with GHES. 
-
-- _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.14.5 and earlier. These versions of CodeQL were discontinued on 24 September 2024 alongside GitHub Enterprise Server 3.10, and will be unsupported by CodeQL Action versions 3.27.0 and later and versions 2.27.0 and later. [#2520](https://github.com/github/codeql-action/pull/2520)
-
-  - If you are using one of these versions, please update to CodeQL CLI version 2.14.6 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
-
-  - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.13.5 and 2.14.5, you can replace `github/codeql-action/*@v3` by `github/codeql-action/*@v3.26.11` and `github/codeql-action/*@v2` by `github/codeql-action/*@v2.26.11` in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
 
 ## 3.26.10 - 30 Sep 2024
 

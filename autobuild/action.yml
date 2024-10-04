@@ -1,5 +1,5 @@
 name: 'CodeQL: Autobuild'
-description: '(Deprecated) Attempt to automatically build the code. Only used for analyzing languages that require a build. Use the `build-mode: autobuild` input in the `init` action instead.'
+description: 'Attempt to automatically build the code. Only used for analyzing languages that require a build. Use the `build-mode: autobuild` input in the `init` action instead.'
 author: 'GitHub'
 inputs:
   token:

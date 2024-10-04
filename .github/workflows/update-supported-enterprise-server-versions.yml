@@ -54,7 +54,8 @@ jobs:
             git push origin update-supported-enterprise-server-versions
 
             body="This PR updates the list of supported GitHub Enterprise Server versions, either because a new "
-            body+="version is about to be feature frozen, or because an old release has been deprecated.\n\n"
+            body+="version is about to be feature frozen, or because an old release has been deprecated."
+            body+=$'\n\n'
             body+="If an old release has been deprecated, please follow the instructions in CONTRIBUTING.md to "
             body+="deprecate the corresponding version of CodeQL."
 

@@ -122,6 +122,8 @@ export async function downloadDependencyCaches(
     if (hitKey !== undefined) {
       logger.info(`Cache hit on key ${hitKey} for ${language}.`);
       restoredCaches.push(language);
+    } else {
+      logger.info(`No suitable cache found for ${language}.`);
     }
   }
 

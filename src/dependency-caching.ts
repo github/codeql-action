@@ -6,10 +6,10 @@ import * as glob from "@actions/glob";
 
 import { getTotalCacheSize } from "./caching-utils";
 import { Config } from "./config-utils";
+import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { getRequiredEnvParam } from "./util";
-import { EnvVar } from "./environment";
 
 /**
  * Caching configuration for a particular language.

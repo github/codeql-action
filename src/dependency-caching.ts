@@ -9,6 +9,7 @@ import { Config } from "./config-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { getRequiredEnvParam } from "./util";
+import { EnvVar } from "./environment";
 
 /**
  * Caching configuration for a particular language.
@@ -197,5 +198,12 @@ async function cacheKey(
  */
 async function cachePrefix(language: Language): Promise<string> {
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
-  return `${CODEQL_DEPENDENCY_CACHE_PREFIX}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
+  const customPrefix = process.env[EnvVar.DEPENDENCY_CACHING_PREFIX];
+  let prefix = CODEQL_DEPENDENCY_CACHE_PREFIX;
+
+  if (customPrefix !== undefined && customPrefix.length > 0) {
+    prefix = `${prefix}-${customPrefix}`;
+  }
+
+  return `${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
 }

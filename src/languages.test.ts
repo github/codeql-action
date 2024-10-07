@@ -18,6 +18,7 @@ test("parseLanguage", async (t) => {
   t.deepEqual(parseLanguage("java"), Language.java);
   t.deepEqual(parseLanguage("javascript"), Language.javascript);
   t.deepEqual(parseLanguage("python"), Language.python);
+  t.deepEqual(parseLanguage("rust"), Language.rust);
 
   // Aliases
   t.deepEqual(parseLanguage("c"), Language.cpp);
@@ -46,6 +47,7 @@ test("isTracedLanguage", async (t) => {
   t.false(isTracedLanguage(Language.javascript));
   t.false(isTracedLanguage(Language.python));
   t.false(isTracedLanguage(Language.ruby));
+  t.false(isTracedLanguage(Language.rust));
 });
 
 test("isScannedLanguage", async (t) => {
@@ -58,4 +60,5 @@ test("isScannedLanguage", async (t) => {
   t.true(isScannedLanguage(Language.javascript));
   t.true(isScannedLanguage(Language.python));
   t.true(isScannedLanguage(Language.ruby));
+  t.true(isScannedLanguage(Language.rust));
 });

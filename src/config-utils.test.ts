@@ -52,6 +52,7 @@ function createTestInitConfigInputs(
       configInput: undefined,
       buildModeInput: undefined,
       trapCachingEnabled: false,
+      dependencyCachingEnabled: false,
       debugMode: false,
       debugArtifactName: "",
       debugDatabaseName: "",
@@ -347,6 +348,7 @@ test("load non-empty input", async (t) => {
       augmentationProperties: configUtils.defaultAugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
+      dependencyCachingEnabled: false,
     };
 
     const languagesInput = "javascript";

@@ -331,6 +331,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       },
       trapCaches: {},
       trapCacheDownloadTime: 0,
+      dependencyCachingEnabled: false,
     },
     overrides,
   );

@@ -1,5 +1,5 @@
 name: 'CodeQL: Autobuild'
-description: 'Attempt to automatically build code'
+description: 'Attempt to automatically build the code. Only used for analyzing languages that require a build. Use the `build-mode: autobuild` input in the `init` action instead.'
 author: 'GitHub'
 inputs:
   token:

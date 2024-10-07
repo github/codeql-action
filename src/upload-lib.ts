@@ -609,7 +609,7 @@ export async function uploadFiles(
     checkoutURI,
     environment,
     toolNames,
-    await actionsUtil.determineMergeBaseCommitOid(),
+    await actionsUtil.determineBaseBranchHeadCommitOid(),
   );
 
   // Log some useful debug info about the info

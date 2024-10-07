@@ -481,11 +481,23 @@ async function getPullRequestEditedDiffRanges(
   // branch and the PR topic branch.
   await actionsUtil.deepenGitHistory();
 
+  try {
+    const stdout = await actionsUtil.runGitCommand(
+      checkoutPath,
+      ["log", "--graph"],
+      "Cannot retrieve Git log.",
+    );
+    logger.info(`Git log graph:\n${stdout}`);
+  } catch {
+    // Ignore errors
+  }
+
   // To compute the exact same diff as GitHub would compute for the PR, we need
   // to use the same merge base as GitHub. That is easy to do if there is only
   // one merge base, which is by far the most common case. If there are multiple
   // merge bases, we stop without producing a diff range.
   const mergeBases = await actionsUtil.getAllGitMergeBases([baseRef, headRef]);
+  core.info(`Merge bases: ${mergeBases.join(", ")}`);
   if (mergeBases.length !== 1) {
     return undefined;
   }

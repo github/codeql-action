@@ -49,7 +49,7 @@ export function getTemporaryDirectory(): string {
     : getRequiredEnvParam("RUNNER_TEMP");
 }
 
-async function runGitCommand(
+export async function runGitCommand(
   checkoutPath: string | undefined,
   args: string[],
   customErrorMessage: string,

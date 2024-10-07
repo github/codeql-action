@@ -18,6 +18,20 @@ export type TarVersion = {
   version: string;
 };
 
+async function isBinaryAccessible(
+  binary: string,
+  logger: Logger,
+): Promise<boolean> {
+  try {
+    await safeWhich(binary);
+    logger.debug(`Found ${binary}.`);
+    return true;
+  } catch (e) {
+    logger.debug(`Could not find ${binary}: ${e}`);
+    return false;
+  }
+}
+
 async function getTarVersion(): Promise<TarVersion> {
   const tar = await safeWhich("tar");
   let stdout = "";
@@ -53,12 +67,14 @@ async function getTarVersion(): Promise<TarVersion> {
 
 export interface ZstdAvailability {
   available: boolean;
+  foundZstdBinary: boolean;
   version?: TarVersion;
 }
 
 export async function isZstdAvailable(
   logger: Logger,
 ): Promise<ZstdAvailability> {
+  const foundZstdBinary = await isBinaryAccessible("zstd", logger);
   try {
     const tarVersion = await getTarVersion();
     const { type, version } = tarVersion;
@@ -66,23 +82,25 @@ export async function isZstdAvailable(
     switch (type) {
       case "gnu":
         return {
-          available: version >= MIN_REQUIRED_GNU_TAR_VERSION,
+          available: foundZstdBinary && version >= MIN_REQUIRED_GNU_TAR_VERSION,
+          foundZstdBinary,
           version: tarVersion,
         };
       case "bsd":
         return {
-          available: version >= MIN_REQUIRED_BSD_TAR_VERSION,
+          available: foundZstdBinary && version >= MIN_REQUIRED_BSD_TAR_VERSION,
+          foundZstdBinary,
           version: tarVersion,
         };
       default:
         assertNever(type);
     }
   } catch (e) {
-    logger.error(
-      "Failed to determine tar version, therefore will assume zstd may not be available. " +
+    logger.warning(
+      "Failed to determine tar version, therefore will assume zstd is not available. " +
         `The underlying error was: ${e}`,
     );
-    return { available: false };
+    return { available: false, foundZstdBinary };
   }
 }
 

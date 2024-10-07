@@ -105,4 +105,10 @@ export enum EnvVar {
    * change the inputs to the Action.
    */
   DEPENDENCY_CACHING = "CODEQL_ACTION_DEPENDENCY_CACHING",
+
+  /**
+   * An optional string to add into the cache key used by dependency caching.
+   * Useful for testing purposes where multiple caches may be stored in the same repository.
+   */
+  DEPENDENCY_CACHING_PREFIX = "CODEQL_ACTION_DEPENDENCY_CACHE_PREFIX",
 }

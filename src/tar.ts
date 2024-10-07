@@ -97,7 +97,7 @@ export async function isZstdAvailable(
     }
   } catch (e) {
     logger.warning(
-      "Failed to determine tar version, therefore will assume zstd may not be available. " +
+      "Failed to determine tar version, therefore will assume zstd is not available. " +
         `The underlying error was: ${e}`,
     );
     return { available: false, foundZstdBinary };

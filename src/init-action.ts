@@ -65,7 +65,6 @@ import {
   getErrorMessage,
 } from "./util";
 import { validateWorkflow } from "./workflow";
-import { isFeatureAvailable } from "@actions/cache";
 
 /** Fields of the init status report that can be sent before `config` is populated. */
 interface InitStatusReport extends StatusReportBase {

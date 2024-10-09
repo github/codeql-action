@@ -47,6 +47,7 @@ export interface FeatureEnablement {
 export enum Feature {
   ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
+  CodeqlActionPythonDefaultIsToNotExtractStdlib = "codeql_action_python_default_is_to_not_extract_stdlib",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
@@ -96,6 +97,12 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
     minimumVersion: undefined,
+  },
+  [Feature.CodeqlActionPythonDefaultIsToNotExtractStdlib]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_DISABLE_PYTHON_STANDARD_LIBRARY_EXTRACTION",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
   },
   [Feature.CppDependencyInstallation]: {
     defaultValue: false,

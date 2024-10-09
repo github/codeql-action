@@ -65,6 +65,7 @@ import {
   getErrorMessage,
 } from "./util";
 import { validateWorkflow } from "./workflow";
+import { isFeatureAvailable } from "@actions/cache";
 
 /** Fields of the init status report that can be sent before `config` is populated. */
 interface InitStatusReport extends StatusReportBase {
@@ -609,6 +610,15 @@ async function run() {
       logger.warning(
         "The CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION environment variable is deprecated and no longer has any effect. We recommend removing any references from your workflows. See https://github.blog/changelog/2024-01-23-codeql-2-16-python-dependency-installation-disabled-new-queries-and-bug-fixes/ for more information.",
       );
+    }
+
+    if (await codeql.supportsFeature(ToolsFeature.PythonDefaultIsToNotExtractStdlib)) {
+      // We are in the case where the default has switched to not extracting the stdlib.
+      if (!(await features.getValue(Feature.CodeqlActionPythonDefaultIsToNotExtractStdlib, codeql))) {
+        // We are in a situation where the feature flag is not rolled out,
+        // so we need to suppress the new default behavior.
+        core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
+      }
     }
 
     const sourceRoot = path.resolve(

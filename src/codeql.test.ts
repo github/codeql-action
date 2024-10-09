@@ -826,6 +826,7 @@ for (const {
       "",
       "",
       "-v",
+      undefined,
       "",
       Object.assign({}, stubConfig, { gitHubVersion: githubVersion }),
       createFeatures([]),

@@ -3,6 +3,7 @@ import path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
+import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -32,6 +33,7 @@ import {
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
+import { ToolsFeature } from "./tools-features";
 import {
   cleanupTrapCaches,
   getTotalCacheSize,
@@ -256,6 +258,22 @@ async function run() {
       logger,
     );
 
+    core.startGroup("Generating diff range extension pack");
+    let diffRangePackDir: string | undefined = undefined;
+    if (
+      await codeql.supportsFeature(
+        ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
+      )
+    ) {
+      // If we restrict query results using the PR diff range, we need to be
+      // able to report that the SARIF output does not contain the full set of
+      // results. So only attempt to generate the diff range extension pack if
+      // the CodeQL CLI supports --sarif-run-property.
+      const diffRanges = await getPullRequestEditedDiffRanges(logger);
+      diffRangePackDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
+    }
+    core.endGroup();
+
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 
@@ -274,6 +292,7 @@ async function run() {
         memory,
         util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
         threads,
+        diffRangePackDir,
         actionsUtil.getOptionalInput("category"),
         config,
         logger,
@@ -412,6 +431,163 @@ async function run() {
 }
 
 export const runPromise = run();
+
+/**
+ * Return the file line ranges that were added or modified in the pull request.
+ *
+ * @param logger
+ * @returns An array of tuples, where each tuple contains the absolute path of a
+ * file, the start line and the end line (both 1-based and inclusive) of an
+ * added or modified range in that file. Returns `undefined` if the action was
+ * not triggered by a pull request or if there was an error.
+ */
+async function getPullRequestEditedDiffRanges(
+  logger: Logger,
+): Promise<Array<[string, number, number]> | undefined> {
+  const pull_request = github.context.payload.pull_request;
+  if (pull_request === undefined) {
+    return undefined;
+  }
+  const checkoutPath = actionsUtil.getOptionalInput("checkout_path");
+  if (checkoutPath === undefined) {
+    return undefined;
+  }
+
+  const baseRef: string = pull_request.base.ref;
+  const headRef: string = pull_request.head.ref;
+
+  // To compute the merge bases between the base branch and the PR topic branch,
+  // we need to fetch the commit graph from the branch heads to those merge
+  // babes. The following 4-step procedure does so while limiting the amount of
+  // history fetched.
+
+  // Step 1: Deepen from the PR merge commit to the base branch head and the PR
+  // topic branch head, so that the PR merge commit is no longer considered a
+  // grafted commit.
+  await actionsUtil.deepenGitHistory();
+  // Step 2: Fetch the PR topic branch history, stopping when we reach commits
+  // that are reachable from the base branch head.
+  await actionsUtil.fetchShallowExclude(headRef, baseRef);
+  // Step 3: Fetch the base branch history, stopping when we reach commits that
+  // are reachable from the PR topic branch head.
+  await actionsUtil.fetchShallowExclude(baseRef, headRef);
+  // Step 4: Deepen the history so that we have the merge bases between the base
+  // branch and the PR topic branch.
+  await actionsUtil.deepenGitHistory();
+
+  // To compute the exact same diff as GitHub would compute for the PR, we need
+  // to use the same merge base as GitHub. That is easy to do if there is only
+  // one merge base, which is by far the most common case. If there are multiple
+  // merge bases, we stop without producing a diff range.
+  const mergeBases = await actionsUtil.getAllMergeBases([baseRef, headRef]);
+  if (mergeBases.length !== 1) {
+    return undefined;
+  }
+
+  const diffHunkHeaders = await actionsUtil.getGitDiffHunkHeaders(
+    mergeBases[0],
+    headRef,
+  );
+  if (diffHunkHeaders === undefined) {
+    return undefined;
+  }
+
+  const results = new Array<[string, number, number]>();
+
+  let changedFile = "";
+  for (const line of diffHunkHeaders) {
+    // TODO: Handle cases where the file path is quoted and escaped. See help
+    // text of git diff for description of the quoted format.
+    if (line.startsWith("+++ b/")) {
+      changedFile = line.substring(6);
+      continue;
+    }
+    if (line.startsWith("+++ ")) {
+      changedFile = "";
+      continue;
+    }
+    if (line.startsWith("@@ ")) {
+      if (changedFile === "") continue;
+
+      const match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+      if (match === null) {
+        logger.info(
+          `Failed to parse diff hunk header line: ${line}. Skipping.`,
+        );
+        continue;
+      }
+      const startLine = parseInt(match[1], 10);
+      const endLine = startLine + (parseInt(match[2], 10) || 1) - 1;
+      results.push([path.join(checkoutPath, changedFile), startLine, endLine]);
+    }
+  }
+  return results;
+}
+
+/**
+ * Create an extension pack in the temporary directory that contains the file
+ * line ranges that were added or modified in the pull request.
+ *
+ * @param logger
+ * @param ranges The file line ranges, as returned by
+ * `getPullRequestEditedDiffRanges`.
+ * @returns The absolute path of the directory containing the extension pack, or
+ * `undefined` if no extension pack was created.
+ */
+function writeDiffRangeDataExtensionPack(
+  logger: Logger,
+  ranges: Array<[string, number, number]> | undefined,
+): string | undefined {
+  if (ranges === undefined) {
+    return undefined;
+  }
+
+  const diffRangeDir = path.join(
+    actionsUtil.getTemporaryDirectory(),
+    "pr-diff-range",
+  );
+  fs.mkdirSync(diffRangeDir);
+  fs.writeFileSync(
+    path.join(diffRangeDir, "qlpack.yml"),
+    `
+name: codeql-action/pr-diff-range
+version: 0.0.0
+library: true
+extensionTargets:
+  codeql/util: '*'
+dataExtensions:
+  - pr-diff-range.yml
+`,
+  );
+
+  const header = `
+extensions:
+  - addsTo:
+      pack: codeql/util
+      extensible: restrictAlertsTo
+    data:
+`;
+
+  let data = ranges
+    .map((range) => {
+      return `      - ["${range[0]}", ${range[1]}, ${range[2]}]\n`;
+    })
+    .join("");
+  if (!data) {
+    // Ensure that the data extension is not empty, so that a pull request with
+    // no edited lines would exclude (instead of accepting) all alerts.
+    data = '      - ["", 0, 0]\n';
+  }
+
+  const extensionContents = header + data;
+  const extensionFilePath = path.join(diffRangeDir, "pr-diff-range.yml");
+  fs.writeFileSync(extensionFilePath, extensionContents);
+  logger.info(
+    `Wrote pr-diff-range extension pack to ${extensionFilePath}:\n${extensionContents}`,
+  );
+
+  return diffRangeDir;
+}
 
 async function runWrapper() {
   try {

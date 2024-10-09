@@ -240,6 +240,7 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger,
@@ -247,8 +248,18 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
+  const dataExtensionFlags = diffRangePackDir
+    ? [
+        `--additional-packs=${diffRangePackDir}`,
+        "--extension-packs=codeql-action/pr-diff-range",
+      ]
+    : [];
+  const sarifRunPropertyFlag = diffRangePackDir
+    ? "--sarif-run-property=incrementalMode=diff-informed"
+    : undefined;
+
   const codeql = await getCodeQL(config.codeQLCmd);
-  const queryFlags = [memoryFlag, threadsFlag];
+  const queryFlags = [memoryFlag, threadsFlag].concat(dataExtensionFlags);
 
   for (const language of config.languages) {
     try {
@@ -336,6 +347,7 @@ export async function runQueries(
       addSnippetsFlag,
       threadsFlag,
       enableDebugLogging ? "-vv" : "-v",
+      sarifRunPropertyFlag,
       automationDetailsId,
       config,
       features,

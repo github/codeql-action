@@ -483,7 +483,7 @@ export class CommandInvocationError extends Error {
   constructor(
     public cmd: string,
     public args: string[],
-    public exitCode: number,
+    public exitCode: number | undefined,
     public stderr: string,
     public stdout: string,
   ) {

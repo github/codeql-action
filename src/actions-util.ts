@@ -527,7 +527,9 @@ export async function runTool(
 ): Promise<string> {
   let stdout = "";
   let stderr = "";
-  process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
+  if (!opts.noStreamStdout) {
+    process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
+  }
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
     ignoreReturnCode: true,
     listeners: {

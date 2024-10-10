@@ -10,6 +10,7 @@ export enum ToolsFeature {
   TraceCommandUseBuildMode = "traceCommandUseBuildMode",
   SarifMergeRunsFromEqualCategory = "sarifMergeRunsFromEqualCategory",
   ForceOverwrite = "forceOverwrite",
+  PythonDefaultIsToNotExtractStdlib = "pythonDefaultIsToNotExtractStdlib",
 }
 
 /**

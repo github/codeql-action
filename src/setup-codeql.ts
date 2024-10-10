@@ -1,18 +1,13 @@
 import * as fs from "fs";
 import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
-import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
-import { v4 as uuidV4 } from "uuid";
 
 import { CommandInvocationError, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
-// Note: defaults.json is referenced from the CodeQL Action sync tool and the Actions runner image
-// creation scripts. Ensure that any changes to the format of this file are compatible with both of
-// these dependents.
 import * as defaults from "./defaults.json";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
@@ -22,6 +17,10 @@ import {
 } from "./feature-flags";
 import { Logger } from "./logging";
 import * as tar from "./tar";
+import {
+  downloadAndExtract,
+  ToolsDownloadStatusReport,
+} from "./tools-download";
 import * as util from "./util";
 import { cleanUpGlob, isGoodVersion } from "./util";
 
@@ -481,14 +480,6 @@ export async function tryGetFallbackToolcacheVersion(
   return fallbackVersion;
 }
 
-export interface ToolsDownloadStatusReport {
-  compressionMethod: tar.CompressionMethod;
-  downloadDurationMs: number;
-  extractionDurationMs: number;
-  toolsUrl: string;
-  zstdFailureReason?: string;
-}
-
 // Exported using `export const` for testing purposes. Specifically, we want to
 // be able to stub this function and have other functions in this file use that stub.
 export const downloadCodeQL = async function (
@@ -498,6 +489,7 @@ export const downloadCodeQL = async function (
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
@@ -529,45 +521,15 @@ export const downloadCodeQL = async function (
     `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
   );
 
-  const compressionMethod = tar.inferCompressionMethod(codeqlURL);
-  const dest = path.join(tempDir, uuidV4());
-  const finalHeaders = Object.assign(
-    { "User-Agent": "CodeQL Action" },
-    headers,
-  );
-
-  const toolsDownloadStart = performance.now();
-  const archivedBundlePath = await toolcache.downloadTool(
+  const { extractedBundlePath, statusReport } = await downloadAndExtract(
     codeqlURL,
-    dest,
     authorization,
-    finalHeaders,
+    { "User-Agent": "CodeQL Action", ...headers },
+    tarVersion,
+    tempDir,
+    features,
+    logger,
   );
-  const downloadDurationMs = Math.round(performance.now() - toolsDownloadStart);
-
-  logger.debug(
-    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${downloadDurationMs} ms).`,
-  );
-
-  let extractedBundlePath: string;
-  let extractionDurationMs: number;
-
-  try {
-    logger.debug("Extracting CodeQL bundle.");
-    const extractionStart = performance.now();
-    extractedBundlePath = await tar.extract(
-      archivedBundlePath,
-      compressionMethod,
-      tarVersion,
-      logger,
-    );
-    extractionDurationMs = Math.round(performance.now() - extractionStart);
-    logger.debug(
-      `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
-    );
-  } finally {
-    await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
-  }
 
   const bundleVersion =
     maybeBundleVersion ?? tryGetBundleVersionFromUrl(codeqlURL, logger);
@@ -579,12 +541,7 @@ export const downloadCodeQL = async function (
     );
     return {
       codeqlFolder: extractedBundlePath,
-      statusReport: {
-        compressionMethod,
-        downloadDurationMs,
-        extractionDurationMs,
-        toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
-      },
+      statusReport,
       toolsVersion: maybeCliVersion ?? "unknown",
     };
   }
@@ -612,12 +569,7 @@ export const downloadCodeQL = async function (
 
   return {
     codeqlFolder: toolcachedBundlePath,
-    statusReport: {
-      compressionMethod,
-      downloadDurationMs,
-      extractionDurationMs,
-      toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
-    },
+    statusReport,
     toolsVersion: maybeCliVersion ?? toolcacheVersion,
   };
 };
@@ -789,6 +741,7 @@ async function setupCodeQLBundleWithCompressionMethod(
         apiDetails,
         zstdAvailability.version,
         tempDir,
+        features,
         logger,
       );
       toolsVersion = result.toolsVersion;
@@ -807,14 +760,6 @@ async function setupCodeQLBundleWithCompressionMethod(
     toolsVersion,
     zstdAvailability,
   };
-}
-
-function sanitizeUrlForStatusReport(url: string): string {
-  return ["github/codeql-action", "dsp-testing/codeql-cli-nightlies"].some(
-    (repo) => url.startsWith(`https://github.com/${repo}/releases/download/`),
-  )
-    ? url
-    : "sanitized-value";
 }
 
 async function useZstdBundle(

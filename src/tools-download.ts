@@ -53,12 +53,18 @@ export async function downloadAndExtract(
   extractedBundlePath: string;
   statusReport: ToolsDownloadStatusReport;
 }> {
+  logger.info(
+    `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
+  );
+
   const compressionMethod = tar.inferCompressionMethod(codeqlURL);
 
   if (
     compressionMethod === "zstd" &&
     (await features.getValue(Feature.ZstdBundleStreamingExtraction))
   ) {
+    logger.info(`Streaming the extraction of the CodeQL bundle.`);
+
     const toolsInstallStart = performance.now();
     const extractedBundlePath = await downloadAndExtractZstdWithStreaming(
       codeqlURL,

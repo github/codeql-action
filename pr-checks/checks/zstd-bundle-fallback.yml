@@ -4,7 +4,6 @@ versions:
   - linked
 operatingSystems:
   - macos
-  - windows
   - ubuntu
 env:
   CODEQL_ACTION_ZSTD_BUNDLE: true

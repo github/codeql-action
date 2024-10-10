@@ -15,7 +15,7 @@ import {
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
-import { Logger } from "./logging";
+import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
 import {
   downloadAndExtract,
@@ -557,9 +557,9 @@ export const downloadCodeQL = async function (
   );
 
   logger.info(
-    `Added CodeQL bundle to the tool cache (${Math.round(
+    `Added CodeQL bundle to the tool cache (${formatDuration(
       performance.now() - toolcacheStart,
-    )} ms).`,
+    )}).`,
   );
 
   // Defensive check: we expect `cacheDir` to copy the bundle to a new location.

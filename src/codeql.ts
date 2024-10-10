@@ -28,6 +28,7 @@ import { Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
+import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
@@ -356,7 +357,7 @@ export async function setupCodeQL(
   checkVersion: boolean,
 ): Promise<{
   codeql: CodeQL;
-  toolsDownloadStatusReport?: setupCodeql.ToolsDownloadStatusReport;
+  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: setupCodeql.ToolsSource;
   toolsVersion: string;
   zstdAvailability: ZstdAvailability;

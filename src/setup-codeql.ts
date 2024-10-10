@@ -557,9 +557,9 @@ export const downloadCodeQL = async function (
   );
 
   logger.info(
-    `Added CodeQL bundle to the tool cache (${
-      performance.now() - toolcacheStart
-    } ms).`,
+    `Added CodeQL bundle to the tool cache (${Math.round(
+      performance.now() - toolcacheStart,
+    )} ms).`,
   );
 
   // Defensive check: we expect `cacheDir` to copy the bundle to a new location.

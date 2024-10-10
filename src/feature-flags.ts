@@ -54,6 +54,7 @@ export enum Feature {
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ZstdBundle = "zstd_bundle",
+  ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
 }
 
 export const featureConfig: Record<
@@ -137,6 +138,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_ZSTD_BUNDLE",
     // We haven't yet installed CodeQL when we check this feature flag, so we need to implement the
     // version check separately.
+    minimumVersion: undefined,
+  },
+  [Feature.ZstdBundleStreamingExtraction]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ZSTD_BUNDLE_STREAMING_EXTRACTION",
     minimumVersion: undefined,
   },
 };

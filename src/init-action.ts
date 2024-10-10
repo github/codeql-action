@@ -34,7 +34,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { ToolsDownloadStatusReport, ToolsSource } from "./setup-codeql";
+import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   StatusReportBase,
@@ -43,6 +43,7 @@ import {
   sendStatusReport,
 } from "./status-report";
 import { ZstdAvailability } from "./tar";
+import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
@@ -153,7 +154,7 @@ async function sendCompletedStatusReport(
 
   const initToolsDownloadFields: InitToolsDownloadFields = {};
 
-  if (toolsDownloadStatusReport !== undefined) {
+  if (toolsDownloadStatusReport?.downloadDurationMs !== undefined) {
     initToolsDownloadFields.tools_download_duration_ms =
       toolsDownloadStatusReport.downloadDurationMs;
   }

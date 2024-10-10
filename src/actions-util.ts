@@ -483,7 +483,7 @@ export class CommandInvocationError extends Error {
   constructor(
     public cmd: string,
     public args: string[],
-    public exitCode: number,
+    public exitCode: number | undefined,
     public stderr: string,
     public stdout: string,
   ) {
@@ -527,7 +527,9 @@ export async function runTool(
 ): Promise<string> {
   let stdout = "";
   let stderr = "";
-  process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
+  if (!opts.noStreamStdout) {
+    process.stdout.write(`[command]${cmd} ${args.join(" ")}\n`);
+  }
   const exitCode = await new toolrunner.ToolRunner(cmd, args, {
     ignoreReturnCode: true,
     listeners: {

@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
+import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";

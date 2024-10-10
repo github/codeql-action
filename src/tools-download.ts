@@ -1,9 +1,9 @@
 import { IncomingMessage, OutgoingHttpHeaders } from "http";
-import * as https from "https";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
+import { https } from "follow-redirects";
 import { v4 as uuidV4 } from "uuid";
 
 import { Feature, FeatureEnablement } from "./feature-flags";

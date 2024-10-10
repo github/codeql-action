@@ -446,9 +446,9 @@ export async function getCodeQLSource(
   }
 
   if (cliVersion) {
-    logger.info(`Using CodeQL CLI version ${cliVersion} sourced from ${url}.`);
+    logger.info(`Using CodeQL CLI version ${cliVersion} sourced from ${url} .`);
   } else {
-    logger.info(`Using CodeQL CLI sourced from ${url}.`);
+    logger.info(`Using CodeQL CLI sourced from ${url} .`);
   }
   return {
     bundleVersion: tagName && tryGetBundleVersionFromTagName(tagName, logger),

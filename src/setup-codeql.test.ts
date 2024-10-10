@@ -237,7 +237,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
     t.is(result.toolsVersion, expectedVersion);
 
     // Ensure message logging CodeQL CLI version was present in user logs.
-    const expected_message: string = `Using CodeQL CLI version 2.16.0 sourced from ${bundleUrl}.`;
+    const expected_message: string = `Using CodeQL CLI version 2.16.0 sourced from ${bundleUrl} .`;
     t.assert(
       loggedMessages.some(
         (msg) =>

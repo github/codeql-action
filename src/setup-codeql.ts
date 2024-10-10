@@ -517,9 +517,6 @@ export const downloadCodeQL = async function (
   } else {
     logger.debug("Downloading CodeQL tools without an authorization token.");
   }
-  logger.info(
-    `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
-  );
 
   const { extractedBundlePath, statusReport } = await downloadAndExtract(
     codeqlURL,
@@ -552,10 +549,17 @@ export const downloadCodeQL = async function (
     bundleVersion,
     logger,
   );
+  const toolcacheStart = performance.now();
   const toolcachedBundlePath = await toolcache.cacheDir(
     extractedBundlePath,
     "CodeQL",
     toolcacheVersion,
+  );
+
+  logger.info(
+    `Added CodeQL bundle to the tool cache (${
+      performance.now() - toolcacheStart
+    } ms).`,
   );
 
   // Defensive check: we expect `cacheDir` to copy the bundle to a new location.

@@ -19,7 +19,20 @@ type DownloadFirstToolsDownloadDurations = {
   combinedDurationMs: number;
   downloadDurationMs: number;
   extractionDurationMs: number;
+  streamExtraction: false;
 };
+
+function makeDownloadFirstToolsDownloadDurations(
+  downloadDurationMs: number,
+  extractionDurationMs: number,
+): DownloadFirstToolsDownloadDurations {
+  return {
+    combinedDurationMs: downloadDurationMs + extractionDurationMs,
+    downloadDurationMs,
+    extractionDurationMs,
+    streamExtraction: false,
+  };
+}
 
 /**
  * Timing information for the download and extraction of the CodeQL tools when
@@ -29,7 +42,19 @@ type StreamedToolsDownloadDurations = {
   combinedDurationMs: number;
   downloadDurationMs: undefined;
   extractionDurationMs: undefined;
+  streamExtraction: true;
 };
+
+function makeStreamedToolsDownloadDurations(
+  combinedDurationMs: number,
+): StreamedToolsDownloadDurations {
+  return {
+    combinedDurationMs,
+    downloadDurationMs: undefined,
+    extractionDurationMs: undefined,
+    streamExtraction: true,
+  };
+}
 
 type ToolsDownloadDurations =
   | DownloadFirstToolsDownloadDurations
@@ -86,11 +111,9 @@ export async function downloadAndExtract(
     return {
       extractedBundlePath,
       statusReport: {
-        combinedDurationMs,
         compressionMethod,
-        downloadDurationMs: undefined,
-        extractionDurationMs: undefined,
         toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
+        ...makeStreamedToolsDownloadDurations(combinedDurationMs),
       },
     };
   }
@@ -138,10 +161,11 @@ export async function downloadAndExtract(
     extractedBundlePath,
     statusReport: {
       compressionMethod,
-      combinedDurationMs: downloadDurationMs + extractionDurationMs,
-      downloadDurationMs,
-      extractionDurationMs,
       toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
+      ...makeDownloadFirstToolsDownloadDurations(
+        downloadDurationMs,
+        extractionDurationMs,
+      ),
     },
   };
 }

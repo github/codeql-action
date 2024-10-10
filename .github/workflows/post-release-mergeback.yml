@@ -151,13 +151,24 @@ jobs:
             --assignee "${GITHUB_ACTOR}" \
             --draft
 
+
+      - name: Prepare the partial Changelog
+        env:
+          VERSION: "${{ steps.getVersion.outputs.version }}"
+          PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
+        run: |
+          # Prepare the partial changelog for the release notes
+          python .github/workflows/script/prepare_changelog.py CHANGELOG.md "$VERSION"> $PARTIAL_CHANGELOG
+
       - name: Create the GitHub release
         env:
           VERSION: "${{ steps.getVersion.outputs.version }}"
+          PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Do not mark this release as latest. The most recent CLI release must be marked as latest.
           gh release create \
-            "${VERSION}" \
+            "$VERSION" \
             --latest=false \
-            -t "${VERSION}" \
-            -F CHANGELOG.md
+            -t "$VERSION" \
+            -F "$PARTIAL_CHANGELOG"

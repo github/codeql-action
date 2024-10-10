@@ -1,5 +1,5 @@
-import * as http from "http";
-import { OutgoingHttpHeaders } from "http";
+import { IncomingMessage, OutgoingHttpHeaders } from "http";
+import * as https from "https";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
@@ -145,8 +145,8 @@ async function downloadAndExtractZstdWithStreaming(
     { "User-Agent": "CodeQL Action", authorization },
     headers,
   );
-  const response = await new Promise<http.IncomingMessage>((resolve) =>
-    http.get(codeqlURL, { headers }, (r) => resolve(r)),
+  const response = await new Promise<IncomingMessage>((resolve) =>
+    https.get(codeqlURL, { headers }, (r) => resolve(r)),
   );
 
   if (response.statusCode !== 200) {

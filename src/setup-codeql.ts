@@ -823,6 +823,8 @@ async function useZstdBundle(
   tarSupportsZstd: boolean,
 ): Promise<boolean> {
   return (
+    // In testing, gzip performs better than zstd on Windows.
+    process.platform !== "win32" &&
     tarSupportsZstd &&
     semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE) &&
     !!(await features.getValue(Feature.ZstdBundle))

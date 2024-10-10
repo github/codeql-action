@@ -7,7 +7,7 @@ import { https } from "follow-redirects";
 import { v4 as uuidV4 } from "uuid";
 
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { Logger } from "./logging";
+import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
 import { cleanUpGlob } from "./util";
 
@@ -78,7 +78,9 @@ export async function downloadAndExtract(
       performance.now() - toolsInstallStart,
     );
     logger.info(
-      `Finished downloading and extracting CodeQL bundle to ${extractedBundlePath} (${combinedDurationMs} ms).`,
+      `Finished downloading and extracting CodeQL bundle to ${extractedBundlePath} (${formatDuration(
+        combinedDurationMs,
+      )}).`,
     );
 
     return {
@@ -105,7 +107,9 @@ export async function downloadAndExtract(
   const downloadDurationMs = Math.round(performance.now() - toolsDownloadStart);
 
   logger.info(
-    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${downloadDurationMs} ms).`,
+    `Finished downloading CodeQL bundle to ${archivedBundlePath} (${formatDuration(
+      downloadDurationMs,
+    )}).`,
   );
 
   let extractedBundlePath: string;
@@ -122,7 +126,9 @@ export async function downloadAndExtract(
     );
     extractionDurationMs = Math.round(performance.now() - extractionStart);
     logger.info(
-      `Finished extracting CodeQL bundle to ${extractedBundlePath} (${extractionDurationMs} ms).`,
+      `Finished extracting CodeQL bundle to ${extractedBundlePath} (${formatDuration(
+        extractionDurationMs,
+      )}).`,
     );
   } finally {
     await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);

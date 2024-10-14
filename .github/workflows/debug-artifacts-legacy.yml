@@ -1,9 +1,9 @@
 # Checks logs, SARIF, and database bundle debug artifacts exist and are accessible
-# with download-artifact@v4 when CODEQL_ACTION_ARTIFACT_V4_UPGRADE is set to true.
+# with download-artifact@v3 when CODEQL_ACTION_ARTIFACT_V4_UPGRADE is set to false.
 name: PR Check - Debug artifact upload using artifact@v2
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  CODEQL_ACTION_ARTIFACT_V4_UPGRADE: true
+  CODEQL_ACTION_ARTIFACT_V4_UPGRADE: false
 on:
   push:
     branches:
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
       - name: Check expected artifacts exist
         shell: bash
         run: |

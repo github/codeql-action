@@ -29,9 +29,9 @@ jobs:
         include:
           - os: macos-latest
             version: linked
-          - os: windows-latest
-            version: linked
           - os: ubuntu-latest
+            version: linked
+          - os: windows-latest
             version: linked
     name: Zstandard bundle
     permissions:
@@ -109,9 +109,11 @@ jobs:
             const toolsUrl = downloadTelemetryNotifications[0].properties.attributes.toolsUrl;
             console.log(`Found tools URL: ${toolsUrl}`);
 
-            if (!toolsUrl.endsWith('.tar.zst')) {
+            const expectedExtension = process.env['RUNNER_OS'] === 'Windows' ? '.tar.gz' : '.tar.zst';
+
+            if (!toolsUrl.endsWith(expectedExtension)) {
               core.setFailed(
-                `Expected the tools URL to be a .tar.zst file, but found ${toolsUrl}.`
+                `Expected the tools URL to be a ${expectedExtension} file, but found ${toolsUrl}.`
               );
             }
     env:

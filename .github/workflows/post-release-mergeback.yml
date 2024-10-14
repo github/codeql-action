@@ -108,6 +108,17 @@ jobs:
           # - `--force` since we're overwriting the `vN` tag
           git push origin --atomic --force refs/tags/"${VERSION}" refs/tags/"${major_version_tag}"
 
+      - name: Prepare partial Changelog
+        env:
+          PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
+          VERSION: "${{ steps.getVersion.outputs.version }}"
+        run: |
+          python .github/workflows/script/prepare_changelog.py CHANGELOG.md "$VERSION" > $PARTIAL_CHANGELOG
+
+          echo "::group::Partial CHANGELOG"
+          cat $PARTIAL_CHANGELOG
+          echo "::endgroup::"
+
       - name: Create mergeback branch
         if: ${{ steps.check.outputs.exists != 'true' && endsWith(github.ref_name, steps.getVersion.outputs.latest_release_branch) }}
         env:
@@ -150,3 +161,16 @@ jobs:
             --body "${pr_body}" \
             --assignee "${GITHUB_ACTOR}" \
             --draft
+
+      - name: Create the GitHub release
+        env:
+          PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
+          VERSION: "${{ steps.getVersion.outputs.version }}"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Do not mark this release as latest. The most recent CLI release must be marked as latest.
+          gh release create \
+            "$VERSION" \
+            --latest=false \
+            --title "$VERSION" \
+            --notes-file "$PARTIAL_CHANGELOG"

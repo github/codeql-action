@@ -7,6 +7,7 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
+import { CachingKind } from "./caching-utils";
 import {
   CodeQL,
   getCachedCodeQL,
@@ -52,7 +53,7 @@ function createTestInitConfigInputs(
       configInput: undefined,
       buildModeInput: undefined,
       trapCachingEnabled: false,
-      dependencyCachingEnabled: false,
+      dependencyCachingEnabled: CachingKind.None,
       debugMode: false,
       debugArtifactName: "",
       debugDatabaseName: "",
@@ -348,7 +349,7 @@ test("load non-empty input", async (t) => {
       augmentationProperties: configUtils.defaultAugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
-      dependencyCachingEnabled: false,
+      dependencyCachingEnabled: CachingKind.None,
     };
 
     const languagesInput = "javascript";

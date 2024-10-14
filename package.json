@@ -69,8 +69,8 @@
     "@types/node": "20.9.0",
     "@types/semver": "^7.5.8",
     "@types/sinon": "^17.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.8.1",
-    "@typescript-eslint/parser": "^8.8.1",
+    "@typescript-eslint/eslint-plugin": "^8.9.0",
+    "@typescript-eslint/parser": "^8.9.0",
     "ava": "^5.3.1",
     "eslint": "^8.57.1",
     "eslint-import-resolver-typescript": "^3.6.3",
@@ -82,7 +82,7 @@
     "nock": "^13.5.5",
     "removeNPMAbsolutePaths": "3.0.1",
     "sinon": "^19.0.2",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.3"
   },
   "overrides": {
     "@actions/tool-cache": {

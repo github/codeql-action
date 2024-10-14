@@ -56,6 +56,8 @@ const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
     hash: [
       // NuGet
       "**/packages.lock.json",
+      // Paket
+      "**/paket.lock",
     ],
   },
   go: {

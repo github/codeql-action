@@ -13,9 +13,12 @@ import {
   getRequiredInput,
   getTemporaryDirectory,
   persistInputs,
-  isDefaultSetup,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
+import {
+  getDependencyCachingEnabled,
+  shouldRestoreCache,
+} from "./caching-utils";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { downloadDependencyCaches } from "./dependency-caching";
@@ -560,7 +563,7 @@ async function run() {
     }
 
     // Restore dependency cache(s), if they exist.
-    if (config.dependencyCachingEnabled) {
+    if (shouldRestoreCache(config.dependencyCachingEnabled)) {
       await downloadDependencyCaches(config.languages, logger);
     }
 
@@ -722,24 +725,6 @@ async function recordZstdAvailability(
       },
     ),
   );
-}
-
-/** Determines whether dependency caching is enabled. */
-function getDependencyCachingEnabled(): boolean {
-  // If the workflow specified something always respect that
-  const dependencyCaching =
-    getOptionalInput("dependency-caching") ||
-    process.env[EnvVar.DEPENDENCY_CACHING];
-  if (dependencyCaching !== undefined) return dependencyCaching === "true";
-
-  // On self-hosted runners which may have dependencies installed centrally, disable caching by default
-  if (!isHostedRunner()) return false;
-
-  // Disable in advanced workflows by default.
-  if (!isDefaultSetup()) return false;
-
-  // On hosted runners, enable dependency caching by default
-  return true;
 }
 
 async function runWrapper() {

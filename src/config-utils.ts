@@ -6,6 +6,7 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as api from "./api-client";
+import { CachingKind, getCachingKind } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
@@ -137,8 +138,8 @@ export interface Config {
    */
   trapCacheDownloadTime: number;
 
-  /** A value indicating whether dependency caching is enabled. */
-  dependencyCachingEnabled: boolean;
+  /** A value indicating how dependency caching should be used. */
+  dependencyCachingEnabled: CachingKind;
 }
 
 /**
@@ -396,7 +397,7 @@ export interface InitConfigInputs {
   configInput: string | undefined;
   buildModeInput: string | undefined;
   trapCachingEnabled: boolean;
-  dependencyCachingEnabled: boolean;
+  dependencyCachingEnabled: string | undefined;
   debugMode: boolean;
   debugArtifactName: string;
   debugDatabaseName: string;
@@ -481,7 +482,7 @@ export async function getDefaultConfig({
     augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
-    dependencyCachingEnabled,
+    dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
   };
 }
 
@@ -587,7 +588,7 @@ async function loadConfig({
     augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
-    dependencyCachingEnabled,
+    dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
   };
 }
 

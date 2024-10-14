@@ -16,6 +16,7 @@ import {
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
+import { shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
@@ -330,7 +331,7 @@ async function run() {
     );
 
     // Store dependency cache(s) if dependency caching is enabled.
-    if (config.dependencyCachingEnabled) {
+    if (shouldStoreCache(config.dependencyCachingEnabled)) {
       await uploadDependencyCaches(config, logger);
     }
 

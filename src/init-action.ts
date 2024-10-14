@@ -612,6 +612,24 @@ async function run() {
       );
     }
 
+    if (
+      await codeql.supportsFeature(
+        ToolsFeature.PythonDefaultIsToNotExtractStdlib,
+      )
+    ) {
+      // We are in the case where the default has switched to not extracting the stdlib.
+      if (
+        !(await features.getValue(
+          Feature.CodeqlActionPythonDefaultIsToNotExtractStdlib,
+          codeql,
+        ))
+      ) {
+        // We are in a situation where the feature flag is not rolled out,
+        // so we need to suppress the new default behavior.
+        core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
+      }
+    }
+
     const sourceRoot = path.resolve(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
       getOptionalInput("source-root") || "",

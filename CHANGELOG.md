@@ -8,6 +8,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 3.26.13 - 14 Oct 2024
+
+No user facing changes.
+
 ## 3.26.12 - 07 Oct 2024
 
 - _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.14.5 and earlier. These versions of CodeQL were discontinued on 24 September 2024 alongside GitHub Enterprise Server 3.10, and will be unsupported by CodeQL Action versions 3.27.0 and later and versions 2.27.0 and later. [#2520](https://github.com/github/codeql-action/pull/2520)

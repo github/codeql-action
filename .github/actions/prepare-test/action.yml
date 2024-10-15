@@ -32,6 +32,14 @@ runs:
       run: |
         set -e # Fail this Action if `gh release list` fails.
 
+        if [[ ${{ inputs.version }} == "linked" ]]; then
+          echo "tools-url=linked" >> "$GITHUB_OUTPUT"
+          exit 0
+        elif [[ ${{ inputs.version }} == "default" ]]; then
+          echo "tools-url=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
         if [[ ${{ inputs.version }} == "nightly-latest" ]]; then
           extension="tar.zst"
         else
@@ -60,10 +68,6 @@ runs:
         elif [[ ${{ inputs.version }} == *"stable"* ]]; then
           version=`echo ${{ inputs.version }} | sed -e 's/^.*\-//'`
           echo "tools-url=https://github.com/github/codeql-action/releases/download/codeql-bundle-$version/$artifact_name" >> $GITHUB_OUTPUT
-        elif [[ ${{ inputs.version }} == "linked" ]]; then
-          echo "tools-url=linked" >> $GITHUB_OUTPUT
-        elif [[ ${{ inputs.version }} == "default" ]]; then
-          echo "tools-url=" >> $GITHUB_OUTPUT
         else
           echo "::error::Unrecognized version specified!"
           exit 1

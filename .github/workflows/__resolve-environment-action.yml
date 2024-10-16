@@ -28,12 +28,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.13.5
-          - os: macos-12
-            version: stable-v2.13.5
-          - os: windows-latest
-            version: stable-v2.13.5
-          - os: ubuntu-latest
             version: default
           - os: macos-latest
             version: default
@@ -60,12 +54,7 @@ jobs:
     steps:
       - name: Setup Python on MacOS
         uses: actions/setup-python@v5
-        if: >-
-          runner.os == 'macOS' && (
-
-          matrix.version == 'stable-v2.13.5' ||
-
-          matrix.version == 'stable-v2.14.6')
+        if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
         with:
           python-version: '3.11'
       - name: Check out repository
@@ -79,8 +68,7 @@ jobs:
           setup-kotlin: 'true'
       - uses: ./../action/init
         with:
-          languages: ${{ matrix.version == 'stable-v2.13.5' && 'go' || 'go,javascript-typescript'
-            }}
+          languages: go,javascript-typescript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
       - name: Resolve environment for Go
@@ -94,14 +82,13 @@ jobs:
         run: exit 1
 
       - name: Resolve environment for JavaScript/TypeScript
-        if: matrix.version != 'stable-v2.13.5'
         uses: ./../action/resolve-environment
         id: resolve-environment-js
         with:
           language: javascript-typescript
 
       - name: Fail if JavaScript/TypeScript configuration present
-        if: matrix.version != 'stable-v2.13.5' && 
+        if: 
           fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
         run: exit 1
     env:

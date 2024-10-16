@@ -28,10 +28,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.13.5
-          - os: macos-12
-            version: stable-v2.13.5
-          - os: ubuntu-latest
             version: stable-v2.14.6
           - os: macos-12
             version: stable-v2.14.6
@@ -47,6 +43,10 @@ jobs:
             version: stable-v2.17.6
           - os: macos-latest
             version: stable-v2.17.6
+          - os: ubuntu-latest
+            version: stable-v2.18.4
+          - os: macos-latest
+            version: stable-v2.18.4
           - os: ubuntu-latest
             version: default
           - os: macos-latest
@@ -68,12 +68,7 @@ jobs:
     steps:
       - name: Setup Python on MacOS
         uses: actions/setup-python@v5
-        if: >-
-          runner.os == 'macOS' && (
-
-          matrix.version == 'stable-v2.13.5' ||
-
-          matrix.version == 'stable-v2.14.6')
+        if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
         with:
           python-version: '3.11'
       - name: Check out repository

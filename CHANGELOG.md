@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Bump the minimum CodeQL bundle version to 2.14.6. [#2549](https://github.com/github/codeql-action/pull/2549)
 
 ## 3.26.13 - 14 Oct 2024
 

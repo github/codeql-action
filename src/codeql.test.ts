@@ -149,7 +149,7 @@ test("caches semantically versioned bundles using their semantic version number"
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     const url = mockBundleDownloadApi({
-      tagName: `codeql-bundle-v2.14.0`,
+      tagName: `codeql-bundle-v2.15.0`,
       isPinned: false,
     });
     const result = await codeql.setupCodeQL(
@@ -165,8 +165,8 @@ test("caches semantically versioned bundles using their semantic version number"
     );
 
     t.is(toolcache.findAllVersions("CodeQL").length, 1);
-    t.assert(toolcache.find("CodeQL", `2.14.0`));
-    t.is(result.toolsVersion, `2.14.0`);
+    t.assert(toolcache.find("CodeQL", `2.15.0`));
+    t.is(result.toolsVersion, `2.15.0`);
     t.is(result.toolsSource, ToolsSource.Download);
     if (result.toolsDownloadStatusReport) {
       assertDurationsInteger(t, result.toolsDownloadStatusReport);
@@ -409,7 +409,7 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
     mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
     const releasesApiMock = mockReleaseApi({
-      assetNames: ["cli-version-2.13.5.txt"],
+      assetNames: ["cli-version-2.14.6.txt"],
       tagName: "codeql-bundle-20230203",
     });
     mockBundleDownloadApi({

@@ -6,14 +6,13 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as api from "./api-client";
-import { CodeQL, CODEQL_VERSION_LANGUAGE_ALIASING } from "./codeql";
+import { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
 import {
-  codeQlVersionAtLeast,
   GitHubVersion,
   prettyPrintPack,
   ConfigurationError,
@@ -317,7 +316,7 @@ export async function getLanguages(
 
     logger.info(`Automatically detected languages: ${languages.join(", ")}`);
   } else {
-    const aliases = await getLanguageAliases(codeQL);
+    const aliases = (await codeQL.betterResolveLanguages()).aliases;
     if (aliases) {
       languages = languages.map((lang) => aliases[lang] || lang);
     }
@@ -350,19 +349,6 @@ export async function getLanguages(
   }
 
   return parsedLanguages;
-}
-
-/**
- * Gets the set of languages supported by CodeQL, along with their aliases if supported by the
- * version of the CLI.
- */
-export async function getLanguageAliases(
-  codeql: CodeQL,
-): Promise<{ [alias: string]: string } | undefined> {
-  if (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)) {
-    return (await codeql.betterResolveLanguages()).aliases;
-  }
-  return undefined;
 }
 
 /**

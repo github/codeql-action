@@ -597,7 +597,7 @@ async function run() {
       // We are in the case where the default has switched to not extracting the stdlib.
       if (
         !(await features.getValue(
-          Feature.CodeqlActionPythonDefaultIsToNotExtractStdlib,
+          Feature.PythonDefaultIsToNotExtractStdlib,
           codeql,
         ))
       ) {

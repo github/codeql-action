@@ -594,15 +594,18 @@ async function run() {
         ToolsFeature.PythonDefaultIsToNotExtractStdlib,
       )
     ) {
-      // We are in the case where the default has switched to not extracting the stdlib.
-      if (
+      if (process.env["CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB"]) {
+        logger.debug(
+          "CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB is already set, so the Action will not override it.",
+        );
+      } else if (
         !(await features.getValue(
-          Feature.CodeqlActionPythonDefaultIsToNotExtractStdlib,
+          Feature.PythonDefaultIsToNotExtractStdlib,
           codeql,
         ))
       ) {
         // We are in a situation where the feature flag is not rolled out,
-        // so we need to suppress the new default behavior.
+        // so we need to suppress the new default CLI behavior.
         core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
       }
     }

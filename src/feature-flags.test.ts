@@ -495,6 +495,17 @@ test("non-legacy feature flags should not end with _enabled", async (t) => {
   }
 });
 
+test("non-legacy feature flags should not start with codeql_action_", async (t) => {
+  for (const [feature, config] of Object.entries(featureConfig)) {
+    if (!config.legacyApi) {
+      t.false(
+        feature.startsWith("codeql_action_"),
+        `non-legacy feature ${feature} should not start with 'codeql_action_'`,
+      );
+    }
+  }
+});
+
 function assertAllFeaturesUndefinedInApi(
   t: ExecutionContext<unknown>,
   loggedMessages: LoggedMessage[],

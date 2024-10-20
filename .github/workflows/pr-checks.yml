@@ -13,6 +13,9 @@ jobs:
     name: Check JS
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
 
     strategy:
       fail-fast: false

@@ -18,13 +18,30 @@ import {
 const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
 
 /**
+ * Wrapper around core.getInput to save state between main and post stages.
+ *
+ * This lets this action work around the fact that github/runner is broken.
+ */
+const getInput = function (name: string): string {
+  const key = name.replace(/ /g, "_").toUpperCase();
+  let value = core.getState(key);
+  if (!value) {
+    value = core.getInput(name);
+    if (value) {
+      core.saveState(key, value);
+    }
+  }
+  return value;
+};
+
+/**
  * Wrapper around core.getInput for inputs that always have a value.
  * Also see getOptionalInput.
  *
  * This allows us to get stronger type checking of required/optional inputs.
  */
 export const getRequiredInput = function (name: string): string {
-  const value = core.getInput(name);
+  const value = getInput(name);
   if (!value) {
     throw new ConfigurationError(`Input required and not supplied: ${name}`);
   }
@@ -38,7 +55,7 @@ export const getRequiredInput = function (name: string): string {
  * This allows us to get stronger type checking of required/optional inputs.
  */
 export const getOptionalInput = function (name: string): string | undefined {
-  const value = core.getInput(name);
+  const value = getInput(name);
   return value.length > 0 ? value : undefined;
 };
 

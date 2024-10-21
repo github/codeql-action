@@ -51,6 +51,7 @@ export enum Feature {
   ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
@@ -107,6 +108,12 @@ export const featureConfig: Record<
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     legacyApi: true,
     minimumVersion: "2.15.0",
+  },
+  [Feature.DiffInformedQueries]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_DIFF_INFORMED_QUERIES",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
   },
   [Feature.DisableCsharpBuildless]: {
     defaultValue: false,

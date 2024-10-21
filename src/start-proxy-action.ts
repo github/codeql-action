@@ -91,6 +91,9 @@ function generateCertificateAuthority(): CertificateAuthority {
 }
 
 async function runWrapper() {
+  // Make inputs accessible in the `post` step.
+  actionsUtil.persistInputs();
+
   const logger = getActionsLogger();
 
   // Setup logging for the proxy

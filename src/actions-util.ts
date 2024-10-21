@@ -162,6 +162,54 @@ export const determineBaseBranchHeadCommitOid = async function (
 };
 
 /**
+ * Decode, if necessary, a file path produced by Git. See
+ * https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
+ * for details on how Git encodes file paths with special characters.
+ *
+ * This function works only for Git output with `core.quotePath=false`.
+ */
+export const decodeGitFilePath = function (filePath: string): string {
+  if (filePath.startsWith('"') && filePath.endsWith('"')) {
+    filePath = filePath.substring(1, filePath.length - 1);
+    return filePath.replace(
+      /\\([abfnrtv\\"]|[0-7]{1,3})/g,
+      (_match, seq: string) => {
+        switch (seq[0]) {
+          case "a":
+            return "\x07";
+          case "b":
+            return "\b";
+          case "f":
+            return "\f";
+          case "n":
+            return "\n";
+          case "r":
+            return "\r";
+          case "t":
+            return "\t";
+          case "v":
+            return "\v";
+          case "\\":
+            return "\\";
+          case '"':
+            return '"';
+          default:
+            // Both String.fromCharCode() and String.fromCodePoint() works only
+            // for constructing an entire character at once. If a Unicode
+            // character is encoded as a sequence of escaped bytes, calling these
+            // methods sequentially on the individual byte values would *not*
+            // produce the original multi-byte Unicode character. As a result,
+            // this implementation works only with the Git option core.quotePath
+            // set to false.
+            return String.fromCharCode(parseInt(seq, 8));
+        }
+      },
+    );
+  }
+  return filePath;
+};
+
+/**
  * Get the ref currently being analyzed.
  */
 export async function getRef(): Promise<string> {

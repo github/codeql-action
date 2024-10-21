@@ -6,7 +6,11 @@
 
 import * as core from "@actions/core";
 
-import { getTemporaryDirectory, printDebugLogs } from "./actions-util";
+import {
+  restoreInputs,
+  getTemporaryDirectory,
+  printDebugLogs,
+} from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { Config, getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
@@ -42,6 +46,10 @@ async function runWrapper() {
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
   try {
+    // Work around for issue in actions/runner, details at
+    // https://github.com/github/codeql-action/issues/2553
+    restoreInputs();
+
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 

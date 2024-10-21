@@ -199,6 +199,10 @@ async function run() {
   let didUploadTrapCaches = false;
   util.initializeEnvironment(actionsUtil.getActionVersion());
 
+  // Work around for issue in actions/runner, details at
+  // https://github.com/github/codeql-action/issues/2553
+  actionsUtil.persistInputs();
+
   const logger = getActionsLogger();
   try {
     const statusReportBase = await createStatusReportBase(

@@ -20,6 +20,9 @@ import {
 
 async function runWrapper() {
   try {
+    // Work around for issue in actions/runner, details at
+    // https://github.com/github/codeql-action/issues/2553
+    actionsUtil.restoreInputs();
     const pid = core.getState("proxy-process-pid");
     if (pid) {
       process.kill(Number(pid));

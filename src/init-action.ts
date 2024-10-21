@@ -12,6 +12,7 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
+  persistInputs,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
@@ -249,6 +250,9 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
+
+  // Make inputs accessible in the `post` step.
+  persistInputs();
 
   let config: configUtils.Config | undefined;
   let codeql: CodeQL;

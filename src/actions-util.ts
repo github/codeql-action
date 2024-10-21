@@ -559,3 +559,29 @@ export async function runTool(
   }
   return stdout;
 }
+
+const persistedInputsKey = "persisted_inputs";
+
+/**
+ * Persists all inputs to the action as state that can be retrieved later in the post-action.
+ * This would be simplified if actions/runner#3514 is addressed.
+ * https://github.com/actions/runner/issues/3514
+ */
+export const persistInputs = function () {
+  const inputEnvironmentVariables = Object.entries(process.env).filter(
+    ([name]) => name.startsWith("INPUT_"),
+  );
+  core.saveState(persistedInputsKey, JSON.stringify(inputEnvironmentVariables));
+};
+
+/**
+ * Restores all inputs to the action from the persisted state.
+ */
+export const restoreInputs = function () {
+  const persistedInputs = core.getState(persistedInputsKey);
+  if (persistedInputs) {
+    for (const [name, value] of JSON.parse(persistedInputs)) {
+      process.env[name] = value;
+    }
+  }
+};

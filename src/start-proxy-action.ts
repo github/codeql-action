@@ -91,6 +91,10 @@ function generateCertificateAuthority(): CertificateAuthority {
 }
 
 async function runWrapper() {
+  // Work around for issue in actions/runner, details at
+  // https://github.com/github/codeql-action/issues/2553
+  actionsUtil.persistInputs();
+
   const logger = getActionsLogger();
 
   // Setup logging for the proxy

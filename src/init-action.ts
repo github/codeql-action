@@ -12,6 +12,7 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
+  persistInputs,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
@@ -249,6 +250,10 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
+
+  // Work around for issue in actions/runner, details at
+  // https://github.com/github/codeql-action/issues/2553
+  persistInputs();
 
   let config: configUtils.Config | undefined;
   let codeql: CodeQL;

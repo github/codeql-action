@@ -91,8 +91,7 @@ function generateCertificateAuthority(): CertificateAuthority {
 }
 
 async function runWrapper() {
-  // Work around for issue in actions/runner, details at
-  // https://github.com/github/codeql-action/issues/2553
+  // Make inputs accessible in the `post` step.
   actionsUtil.persistInputs();
 
   const logger = getActionsLogger();

@@ -564,7 +564,7 @@ const persistedInputsKey = "persisted_inputs";
 
 /**
  * Persists all inputs to the action as state that can be retrieved later in the post-action.
- * This is need due to a runner bug that can cause inputs to be lost in the post-action.
+ * This would be simplified if actions/runner#3514 is addressed.
  * https://github.com/actions/runner/issues/3514
  */
 export const persistInputs = function () {

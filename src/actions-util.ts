@@ -56,6 +56,7 @@ async function runGitCommand(
 ): Promise<string> {
   let stdout = "";
   let stderr = "";
+  core.debug(`Running git command: git ${args.join(" ")}`);
   try {
     await new toolrunner.ToolRunner(await safeWhich.safeWhich("git"), args, {
       silent: true,

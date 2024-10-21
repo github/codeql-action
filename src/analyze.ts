@@ -247,6 +247,8 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
+  const sarifRunPropertyFlag = undefined;
+
   const codeql = await getCodeQL(config.codeQLCmd);
   const queryFlags = [memoryFlag, threadsFlag];
 
@@ -336,6 +338,7 @@ export async function runQueries(
       addSnippetsFlag,
       threadsFlag,
       enableDebugLogging ? "-vv" : "-v",
+      sarifRunPropertyFlag,
       automationDetailsId,
       config,
       features,

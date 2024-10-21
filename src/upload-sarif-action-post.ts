@@ -21,6 +21,7 @@ import {
 
 async function runWrapper() {
   try {
+    // Restore inputs from `upload-sarif` Action.
     actionsUtil.restoreInputs();
     const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();

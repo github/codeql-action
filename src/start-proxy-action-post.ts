@@ -20,8 +20,7 @@ import {
 
 async function runWrapper() {
   try {
-    // Work around for issue in actions/runner, details at
-    // https://github.com/github/codeql-action/issues/2553
+    // Restore inputs from `start-proxy` Action.
     actionsUtil.restoreInputs();
     const pid = core.getState("proxy-process-pid");
     if (pid) {

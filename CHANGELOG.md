@@ -7,7 +7,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - Bump the minimum CodeQL bundle version to 2.14.6. [#2549](https://github.com/github/codeql-action/pull/2549)
-- The upload-sarif action should not break composite actions that have a different set of inputs than the ones expected by upload-sarif. Failure used to appear in the form of: `upload-sarif post-action step failed: Input required and not supplied: token`.
+- Fix an issue where the `upload-sarif` Action would fail with "upload-sarif post-action step failed: Input required and not supplied: token" when called in a composite Action that had a different set of inputs to the ones expected by the `upload-sarif` Action. [#2557](https://github.com/github/codeql-action/pull/2557)
 
 ## 3.26.13 - 14 Oct 2024
 

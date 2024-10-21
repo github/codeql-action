@@ -46,8 +46,7 @@ async function runWrapper() {
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
   try {
-    // Work around for issue in actions/runner, details at
-    // https://github.com/github/codeql-action/issues/2553
+    // Restore inputs from `init` Action.
     restoreInputs();
 
     const gitHubVersion = await getGitHubVersion();

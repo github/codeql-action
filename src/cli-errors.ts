@@ -10,7 +10,7 @@ import { ConfigurationError } from "./util";
  * An error from a CodeQL CLI invocation, with associated exit code, stderr, etc.
  */
 export class CliError extends Error {
-  public readonly exitCode: number;
+  public readonly exitCode: number | undefined;
   public readonly stderr: string;
 
   constructor({ cmd, args, exitCode, stderr }: CommandInvocationError) {

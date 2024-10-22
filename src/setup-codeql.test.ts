@@ -161,9 +161,11 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
   sinon.stub(setupCodeql, "downloadCodeQL").resolves({
     codeqlFolder: "codeql",
     statusReport: {
+      combinedDurationMs: 500,
       compressionMethod: "gzip",
       downloadDurationMs: 200,
       extractionDurationMs: 300,
+      streamExtraction: false,
       toolsUrl: "toolsUrl",
     },
     toolsVersion: LINKED_CLI_VERSION.cliVersion,
@@ -210,9 +212,11 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
   sinon.stub(setupCodeql, "downloadCodeQL").resolves({
     codeqlFolder: "codeql",
     statusReport: {
+      combinedDurationMs: 500,
       compressionMethod: "gzip",
       downloadDurationMs: 200,
       extractionDurationMs: 300,
+      streamExtraction: false,
       toolsUrl: bundleUrl,
     },
     toolsVersion: expectedVersion,
@@ -235,7 +239,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
     t.is(result.toolsVersion, expectedVersion);
 
     // Ensure message logging CodeQL CLI version was present in user logs.
-    const expected_message: string = `Using CodeQL CLI version 2.16.0 sourced from ${bundleUrl}.`;
+    const expected_message: string = `Using CodeQL CLI version 2.16.0 sourced from ${bundleUrl} .`;
     t.assert(
       loggedMessages.some(
         (msg) =>

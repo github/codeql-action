@@ -42,19 +42,24 @@ export interface FeatureEnablement {
 /**
  * Feature enablement as returned by the GitHub API endpoint.
  *
+ * Do not include the `codeql_action_` prefix as this is stripped by the API
+ * endpoint.
+ *
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
   ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
-  CodeqlActionPythonDefaultIsToNotExtractStdlib = "codeql_action_python_default_is_to_not_extract_stdlib",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ZstdBundle = "zstd_bundle",
+  ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
 }
 
 export const featureConfig: Record<
@@ -98,17 +103,17 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
     minimumVersion: undefined,
   },
-  [Feature.CodeqlActionPythonDefaultIsToNotExtractStdlib]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_DISABLE_PYTHON_STANDARD_LIBRARY_EXTRACTION",
-    minimumVersion: undefined,
-    toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
-  },
   [Feature.CppDependencyInstallation]: {
     defaultValue: false,
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     legacyApi: true,
     minimumVersion: "2.15.0",
+  },
+  [Feature.DiffInformedQueries]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_DIFF_INFORMED_QUERIES",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
   },
   [Feature.DisableCsharpBuildless]: {
     defaultValue: false,
@@ -133,6 +138,12 @@ export const featureConfig: Record<
     legacyApi: true,
     minimumVersion: undefined,
   },
+  [Feature.PythonDefaultIsToNotExtractStdlib]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_DISABLE_PYTHON_STANDARD_LIBRARY_EXTRACTION",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
+  },
   [Feature.QaTelemetryEnabled]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
@@ -144,6 +155,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_ZSTD_BUNDLE",
     // We haven't yet installed CodeQL when we check this feature flag, so we need to implement the
     // version check separately.
+    minimumVersion: undefined,
+  },
+  [Feature.ZstdBundleStreamingExtraction]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ZSTD_BUNDLE_STREAMING_EXTRACTION",
     minimumVersion: undefined,
   },
 };

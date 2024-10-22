@@ -12,6 +12,7 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
+  persistInputs,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
@@ -34,7 +35,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
-import { ToolsDownloadStatusReport, ToolsSource } from "./setup-codeql";
+import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   StatusReportBase,
@@ -43,6 +44,7 @@ import {
   sendStatusReport,
 } from "./status-report";
 import { ZstdAvailability } from "./tar";
+import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
 import { getTotalCacheSize } from "./trap-caching";
 import {
@@ -153,7 +155,7 @@ async function sendCompletedStatusReport(
 
   const initToolsDownloadFields: InitToolsDownloadFields = {};
 
-  if (toolsDownloadStatusReport !== undefined) {
+  if (toolsDownloadStatusReport?.downloadDurationMs !== undefined) {
     initToolsDownloadFields.tools_download_duration_ms =
       toolsDownloadStatusReport.downloadDurationMs;
   }
@@ -248,6 +250,9 @@ async function run() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   initializeEnvironment(getActionVersion());
+
+  // Make inputs accessible in the `post` step.
+  persistInputs();
 
   let config: configUtils.Config | undefined;
   let codeql: CodeQL;
@@ -523,29 +528,6 @@ async function run() {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 
-    const kotlinLimitVar =
-      "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
-    if (!(await codeQlVersionAtLeast(codeql, "2.14.4"))) {
-      core.exportVariable(kotlinLimitVar, "1.9.20");
-    }
-
-    if (
-      config.languages.includes(Language.java) &&
-      // Java Lombok support is enabled by default for >= 2.14.4
-      (await codeQlVersionAtLeast(codeql, "2.14.0")) &&
-      !(await codeQlVersionAtLeast(codeql, "2.14.4"))
-    ) {
-      const envVar = "CODEQL_EXTRACTOR_JAVA_RUN_ANNOTATION_PROCESSORS";
-      if (process.env[envVar]) {
-        logger.info(
-          `Environment variable ${envVar} already set. Not en/disabling CodeQL Java Lombok support`,
-        );
-      } else {
-        logger.info("Enabling CodeQL Java Lombok support");
-        core.exportVariable(envVar, "true");
-      }
-    }
-
     if (config.languages.includes(Language.cpp)) {
       const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
       if (process.env[envVar]) {
@@ -616,15 +598,18 @@ async function run() {
         ToolsFeature.PythonDefaultIsToNotExtractStdlib,
       )
     ) {
-      // We are in the case where the default has switched to not extracting the stdlib.
-      if (
+      if (process.env["CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB"]) {
+        logger.debug(
+          "CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB is already set, so the Action will not override it.",
+        );
+      } else if (
         !(await features.getValue(
-          Feature.CodeqlActionPythonDefaultIsToNotExtractStdlib,
+          Feature.PythonDefaultIsToNotExtractStdlib,
           codeql,
         ))
       ) {
         // We are in a situation where the feature flag is not rolled out,
-        // so we need to suppress the new default behavior.
+        // so we need to suppress the new default CLI behavior.
         core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
       }
     }

@@ -142,6 +142,13 @@ export async function extractTarZst(
   logger: Logger,
 ): Promise<string> {
   const dest = await createExtractFolder();
+  logger.debug(
+    `Extracting to ${dest}.${
+      tar instanceof stream.Readable
+        ? ` Input stream has high water mark ${tar.readableHighWaterMark}.`
+        : ""
+    }`,
+  );
 
   try {
     // Initialize args

@@ -77,11 +77,11 @@ We typically release new minor versions of the CodeQL Action and Bundle when a n
 
 | Minimum CodeQL Action | Minimum CodeQL Bundle Version | GitHub Environment | Notes |
 |-----------------------|-------------------------------|--------------------|-------|
+| `v3.26.6` | `2.18.4` | Enterprise Server 3.15 | |
 | `v3.25.11` | `2.17.6` | Enterprise Server 3.14 | |
 | `v3.24.11` | `2.16.6` | Enterprise Server 3.13 | |
 | `v3.22.12` | `2.15.5` | Enterprise Server 3.12 | |
 | `v2.22.1` | `2.14.6` | Enterprise Server 3.11 | Supports CodeQL Action v3, but did not ship with CodeQL Action v3. For more information, see "[Code scanning: deprecation of CodeQL Action v2](https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/#users-of-github-enterprise-server-311)." |
-| `v2.20.3` | `2.13.5` | Enterprise Server 3.10 | Does not support CodeQL Action v3. |
 
 CodeQL Action v2 will stop receiving updates when GHES 3.11 is deprecated.
 

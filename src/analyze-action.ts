@@ -199,6 +199,10 @@ async function run() {
   let didUploadTrapCaches = false;
   util.initializeEnvironment(actionsUtil.getActionVersion());
 
+  // Make inputs accessible in the `post` step, details at
+  // https://github.com/github/codeql-action/issues/2553
+  actionsUtil.persistInputs();
+
   const logger = getActionsLogger();
   try {
     const statusReportBase = await createStatusReportBase(

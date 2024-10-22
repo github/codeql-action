@@ -28,6 +28,7 @@ import { Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
+import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
@@ -274,7 +275,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.13.5";
+const CODEQL_MINIMUM_VERSION = "2.14.6";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -301,16 +302,6 @@ const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
  * For convenience, please keep these in descending order. Once a version
  * flag is older than the oldest supported version above, it may be removed.
  */
-
-/**
- * Versions 2.14.2+ of the CodeQL CLI support language-specific baseline configuration.
- */
-export const CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG = "2.14.2";
-
-/**
- * Versions 2.14.4+ of the CodeQL CLI support language aliasing.
- */
-export const CODEQL_VERSION_LANGUAGE_ALIASING = "2.14.4";
 
 /**
  * Versions 2.15.0+ of the CodeQL CLI support new analysis summaries.
@@ -356,7 +347,7 @@ export async function setupCodeQL(
   checkVersion: boolean,
 ): Promise<{
   codeql: CodeQL;
-  toolsDownloadStatusReport?: setupCodeql.ToolsDownloadStatusReport;
+  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: setupCodeql.ToolsSource;
   toolsVersion: string;
   zstdAvailability: ZstdAvailability;
@@ -470,6 +461,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     betterResolveLanguages: resolveFunction(
       partialCodeql,
       "betterResolveLanguages",
+      async () => ({ aliases: {}, extractors: {} }),
     ),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     resolveBuildEnvironment: resolveFunction(
@@ -543,7 +535,9 @@ export async function getCodeQLForCmd(
     async getVersion() {
       let result = util.getCachedCodeQlVersion();
       if (result === undefined) {
-        const output = await runCli(cmd, ["version", "--format=json"]);
+        const output = await runCli(cmd, ["version", "--format=json"], {
+          noStreamStdout: true,
+        });
         try {
           result = JSON.parse(output) as VersionInfo;
         } catch {
@@ -599,14 +593,7 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
 
-      if (
-        await util.codeQlVersionAtLeast(
-          this,
-          CODEQL_VERSION_LANGUAGE_BASELINE_CONFIG,
-        )
-      ) {
-        extraArgs.push("--calculate-language-specific-baseline");
-      }
+      extraArgs.push("--calculate-language-specific-baseline");
 
       if (await isSublanguageFileCoverageEnabled(config, this)) {
         extraArgs.push("--sublanguage-file-coverage");
@@ -635,7 +622,7 @@ export async function getCodeQLForCmd(
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
-          ...(await getLanguageAliasingArguments(this)),
+          "--extractor-include-aliases",
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"], {
             ignoringOptions: ["--overwrite"],
@@ -755,7 +742,7 @@ export async function getCodeQLForCmd(
         "languages",
         "--format=betterjson",
         "--extractor-options-verbosity=4",
-        ...(await getLanguageAliasingArguments(this)),
+        "--extractor-include-aliases",
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
       const output = await runCli(cmd, codeqlArgs);
@@ -798,7 +785,7 @@ export async function getCodeQLForCmd(
         "resolve",
         "build-environment",
         `--language=${language}`,
-        ...(await getLanguageAliasingArguments(this)),
+        "--extractor-include-aliases",
         ...getExtraOptionsFromEnv(["resolve", "build-environment"]),
       ];
       if (workingDir !== undefined) {
@@ -1062,7 +1049,7 @@ export async function getCodeQLForCmd(
           "extractor",
           "--format=json",
           `--language=${language}`,
-          ...(await getLanguageAliasingArguments(this)),
+          "--extractor-include-aliases",
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {
@@ -1331,15 +1318,6 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  */
 export function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
-}
-
-async function getLanguageAliasingArguments(codeql: CodeQL): Promise<string[]> {
-  if (
-    await util.codeQlVersionAtLeast(codeql, CODEQL_VERSION_LANGUAGE_ALIASING)
-  ) {
-    return ["--extractor-include-aliases"];
-  }
-  return [];
 }
 
 async function isSublanguageFileCoverageEnabled(

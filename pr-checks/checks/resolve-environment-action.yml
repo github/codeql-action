@@ -1,10 +1,10 @@
 name: "Resolve environment"
 description: "Tests that the resolve-environment action works for Go and JavaScript/TypeScript"
-versions: ["stable-v2.13.5", "default", "linked", "nightly-latest"]
+versions: ["default", "linked", "nightly-latest"]
 steps:
   - uses: ./../action/init
     with:
-      languages: ${{ matrix.version == 'stable-v2.13.5' && 'go' || 'go,javascript-typescript' }}
+      languages: go,javascript-typescript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
   - name: Resolve environment for Go
@@ -18,12 +18,11 @@ steps:
     run: exit 1
 
   - name: Resolve environment for JavaScript/TypeScript
-    if: matrix.version != 'stable-v2.13.5'
     uses: ./../action/resolve-environment
     id: resolve-environment-js
     with:
       language: javascript-typescript
 
   - name: Fail if JavaScript/TypeScript configuration present
-    if: matrix.version != 'stable-v2.13.5' && fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
+    if: fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
     run: exit 1

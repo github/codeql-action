@@ -60,6 +60,9 @@ async function run() {
   const gitHubVersion = await getGitHubVersion();
   checkActionVersion(getActionVersion(), gitHubVersion);
 
+  // Make inputs accessible in the `post` step.
+  actionsUtil.persistInputs();
+
   const repositoryNwo = parseRepositoryNwo(
     getRequiredEnvParam("GITHUB_REPOSITORY"),
   );

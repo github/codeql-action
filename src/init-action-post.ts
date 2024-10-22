@@ -6,7 +6,11 @@
 
 import * as core from "@actions/core";
 
-import { getTemporaryDirectory, printDebugLogs } from "./actions-util";
+import {
+  restoreInputs,
+  getTemporaryDirectory,
+  printDebugLogs,
+} from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { Config, getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
@@ -42,6 +46,9 @@ async function runWrapper() {
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
   try {
+    // Restore inputs from `init` Action.
+    restoreInputs();
+
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 

@@ -141,7 +141,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == latest
 
     // Afterwards, ensure that we see the deprecation message in the log.
     const expected_message: string =
-      "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported for now. No action is required.";
+      "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.";
     t.assert(
       loggedMessages.some(
         (msg) =>

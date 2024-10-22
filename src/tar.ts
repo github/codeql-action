@@ -1,12 +1,14 @@
+import { spawn } from "child_process";
 import * as fs from "fs";
 import path from "path";
+import * as stream from "stream";
 
 import { ToolRunner } from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import { safeWhich } from "@chrisgavin/safe-which";
 import { v4 as uuidV4 } from "uuid";
 
-import { getTemporaryDirectory, runTool } from "./actions-util";
+import { CommandInvocationError, getTemporaryDirectory } from "./actions-util";
 import { Logger } from "./logging";
 import { assertNever, cleanUpGlob } from "./util";
 
@@ -123,7 +125,11 @@ export async function extract(
           "Could not determine tar version, which is required to extract a Zstandard archive.",
         );
       }
-      return await extractTarZst(tarPath, tarVersion, logger);
+      return await extractTarZst(
+        fs.createReadStream(tarPath),
+        tarVersion,
+        logger,
+      );
   }
 }
 
@@ -135,31 +141,15 @@ export async function extract(
  * @returns        path to the destination directory
  */
 export async function extractTarZst(
-  file: string,
+  tarStream: stream.Readable,
   tarVersion: TarVersion,
   logger: Logger,
 ): Promise<string> {
-  if (!file) {
-    throw new Error("parameter 'file' is required");
-  }
-
-  // Create dest
   const dest = await createExtractFolder();
 
   try {
     // Initialize args
-    const args = ["-x", "-v"];
-
-    let destArg = dest;
-    let fileArg = file;
-    if (process.platform === "win32" && tarVersion.type === "gnu") {
-      args.push("--force-local");
-      destArg = dest.replace(/\\/g, "/");
-
-      // Technically only the dest needs to have `/` but for aesthetic consistency
-      // convert slashes in the file arg too.
-      fileArg = file.replace(/\\/g, "/");
-    }
+    const args = ["-x", "--zstd"];
 
     if (tarVersion.type === "gnu") {
       // Suppress warnings when using GNU tar to extract archives created by BSD tar
@@ -167,14 +157,48 @@ export async function extractTarZst(
       args.push("--overwrite");
     }
 
-    args.push("-C", destArg, "-f", fileArg);
-    await runTool(`tar`, args);
+    args.push("-f", "-", "-C", dest);
+
+    process.stdout.write(`[command]tar ${args.join(" ")}\n`);
+
+    const tarProcess = spawn("tar", args, { stdio: "pipe" });
+    let stdout = "";
+    tarProcess.stdout?.on("data", (data: Buffer) => {
+      stdout += data.toString();
+      process.stdout.write(data);
+    });
+
+    let stderr = "";
+    tarProcess.stderr?.on("data", (data: Buffer) => {
+      stderr += data.toString();
+      // Mimic the standard behavior of the toolrunner by writing stderr to stdout
+      process.stdout.write(data);
+    });
+
+    tarStream.pipe(tarProcess.stdin);
+
+    await new Promise<void>((resolve, reject) => {
+      tarProcess.on("exit", (code) => {
+        if (code !== 0) {
+          reject(
+            new CommandInvocationError(
+              "tar",
+              args,
+              code ?? undefined,
+              stdout,
+              stderr,
+            ),
+          );
+        }
+        resolve();
+      });
+    });
+
+    return dest;
   } catch (e) {
     await cleanUpGlob(dest, "extraction destination directory", logger);
     throw e;
   }
-
-  return dest;
 }
 
 async function createExtractFolder(): Promise<string> {

@@ -8,6 +8,16 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 3.27.0 - 22 Oct 2024
+
+- Bump the minimum CodeQL bundle version to 2.14.6. [#2549](https://github.com/github/codeql-action/pull/2549)
+- Fix an issue where the `upload-sarif` Action would fail with "upload-sarif post-action step failed: Input required and not supplied: token" when called in a composite Action that had a different set of inputs to the ones expected by the `upload-sarif` Action. [#2557](https://github.com/github/codeql-action/pull/2557)
+- Update default CodeQL bundle version to 2.19.2. [#2552](https://github.com/github/codeql-action/pull/2552)
+
+## 3.26.13 - 14 Oct 2024
+
+No user facing changes.
+
 ## 3.26.12 - 07 Oct 2024
 
 - _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.14.5 and earlier. These versions of CodeQL were discontinued on 24 September 2024 alongside GitHub Enterprise Server 3.10, and will be unsupported by CodeQL Action versions 3.27.0 and later and versions 2.27.0 and later. [#2520](https://github.com/github/codeql-action/pull/2520)
@@ -18,11 +28,11 @@ No user facing changes.
 
 ## 3.26.11 - 03 Oct 2024
 
-- _Upcoming breaking change_: Add support for using `actions/download-artifact@v4` to programmatically consume CodeQL Action debug artifacts. 
+- _Upcoming breaking change_: Add support for using `actions/download-artifact@v4` to programmatically consume CodeQL Action debug artifacts.
 
   Starting November 30, 2024, GitHub.com customers will [no longer be able to use `actions/download-artifact@v3`](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/). Therefore, to avoid breakage, customers who programmatically download the CodeQL Action debug artifacts should set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to `true` and bump `actions/download-artifact@v3` to `actions/download-artifact@v4` in their workflows. The CodeQL Action will enable this behavior by default in early November and workflows that have not yet bumped to `actions/download-artifact@v3` to `actions/download-artifact@v4` will begin failing then.
-  
-  This change is currently unavailable for GitHub Enterprise Server customers, as `actions/upload-artifact@v4` and `actions/download-artifact@v4` are not yet compatible with GHES. 
+
+  This change is currently unavailable for GitHub Enterprise Server customers, as `actions/upload-artifact@v4` and `actions/download-artifact@v4` are not yet compatible with GHES.
 - Update default CodeQL bundle version to 2.19.1. [#2519](https://github.com/github/codeql-action/pull/2519)
 
 ## 3.26.10 - 30 Sep 2024

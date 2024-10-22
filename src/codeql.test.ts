@@ -30,6 +30,7 @@ import {
   makeVersionInfo,
   createTestConfig,
 } from "./testing-utils";
+import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import { initializeEnvironment } from "./util";
@@ -138,9 +139,6 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
       t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
       t.is(result.toolsVersion, `0.0.0-${version}`);
       t.is(result.toolsSource, ToolsSource.Download);
-      t.assert(
-        Number.isInteger(result.toolsDownloadStatusReport?.downloadDurationMs),
-      );
     }
 
     t.is(toolcache.findAllVersions("CodeQL").length, 2);
@@ -151,7 +149,7 @@ test("caches semantically versioned bundles using their semantic version number"
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     const url = mockBundleDownloadApi({
-      tagName: `codeql-bundle-v2.14.0`,
+      tagName: `codeql-bundle-v2.15.0`,
       isPinned: false,
     });
     const result = await codeql.setupCodeQL(
@@ -167,12 +165,12 @@ test("caches semantically versioned bundles using their semantic version number"
     );
 
     t.is(toolcache.findAllVersions("CodeQL").length, 1);
-    t.assert(toolcache.find("CodeQL", `2.14.0`));
-    t.is(result.toolsVersion, `2.14.0`);
+    t.assert(toolcache.find("CodeQL", `2.15.0`));
+    t.is(result.toolsVersion, `2.15.0`);
     t.is(result.toolsSource, ToolsSource.Download);
-    t.assert(
-      Number.isInteger(result.toolsDownloadStatusReport?.downloadDurationMs),
-    );
+    if (result.toolsDownloadStatusReport) {
+      assertDurationsInteger(t, result.toolsDownloadStatusReport);
+    }
   });
 });
 
@@ -203,9 +201,9 @@ test("downloads an explicitly requested bundle even if a different version is ca
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
     t.deepEqual(result.toolsVersion, "0.0.0-20200610");
     t.is(result.toolsSource, ToolsSource.Download);
-    t.assert(
-      Number.isInteger(result.toolsDownloadStatusReport?.downloadDurationMs),
-    );
+    if (result.toolsDownloadStatusReport) {
+      assertDurationsInteger(t, result.toolsDownloadStatusReport);
+    }
   });
 });
 
@@ -288,7 +286,9 @@ for (const toolcacheVersion of [
         );
         t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
         t.is(result.toolsSource, ToolsSource.Toolcache);
+        t.is(result.toolsDownloadStatusReport?.combinedDurationMs, undefined);
         t.is(result.toolsDownloadStatusReport?.downloadDurationMs, undefined);
+        t.is(result.toolsDownloadStatusReport?.extractionDurationMs, undefined);
       });
     },
   );
@@ -320,7 +320,9 @@ test(`uses a cached bundle when no tools input is given on GHES`, async (t) => {
     );
     t.deepEqual(result.toolsVersion, "0.0.0-20200601");
     t.is(result.toolsSource, ToolsSource.Toolcache);
+    t.is(result.toolsDownloadStatusReport?.combinedDurationMs, undefined);
     t.is(result.toolsDownloadStatusReport?.downloadDurationMs, undefined);
+    t.is(result.toolsDownloadStatusReport?.extractionDurationMs, undefined);
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 1);
@@ -356,9 +358,9 @@ test(`downloads bundle if only an unpinned version is cached on GHES`, async (t)
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
     t.is(result.toolsSource, ToolsSource.Download);
-    t.assert(
-      Number.isInteger(result.toolsDownloadStatusReport?.downloadDurationMs),
-    );
+    if (result.toolsDownloadStatusReport) {
+      assertDurationsInteger(t, result.toolsDownloadStatusReport);
+    }
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 2);
@@ -391,9 +393,9 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
     t.is(result.toolsSource, ToolsSource.Download);
-    t.assert(
-      Number.isInteger(result.toolsDownloadStatusReport?.downloadDurationMs),
-    );
+    if (result.toolsDownloadStatusReport) {
+      assertDurationsInteger(t, result.toolsDownloadStatusReport);
+    }
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 2);
@@ -407,7 +409,7 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
     mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
     const releasesApiMock = mockReleaseApi({
-      assetNames: ["cli-version-2.13.5.txt"],
+      assetNames: ["cli-version-2.14.6.txt"],
       tagName: "codeql-bundle-20230203",
     });
     mockBundleDownloadApi({
@@ -430,9 +432,9 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
 
     t.is(result.toolsVersion, "0.0.0-20230203");
     t.is(result.toolsSource, ToolsSource.Download);
-    t.true(
-      Number.isInteger(result.toolsDownloadStatusReport?.downloadDurationMs),
-    );
+    if (result.toolsDownloadStatusReport) {
+      assertDurationsInteger(t, result.toolsDownloadStatusReport);
+    }
 
     const cachedVersions = toolcache.findAllVersions("CodeQL");
     t.is(cachedVersions.length, 1);
@@ -441,6 +443,17 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
     t.false(releasesApiMock.isDone());
   });
 });
+
+function assertDurationsInteger(
+  t: ExecutionContext<unknown>,
+  statusReport: ToolsDownloadStatusReport,
+) {
+  t.assert(Number.isInteger(statusReport?.combinedDurationMs));
+  if (statusReport.downloadDurationMs !== undefined) {
+    t.assert(Number.isInteger(statusReport?.downloadDurationMs));
+    t.assert(Number.isInteger(statusReport?.extractionDurationMs));
+  }
+}
 
 test("getExtraOptions works for explicit paths", (t) => {
   t.deepEqual(codeql.getExtraOptions({}, ["foo"], []), []);

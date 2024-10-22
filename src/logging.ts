@@ -40,3 +40,17 @@ export function withGroup<T>(groupName: string, f: () => T): T {
     core.endGroup();
   }
 }
+
+/** Format a duration for use in logs. */
+export function formatDuration(durationMs: number) {
+  if (durationMs < 1000) {
+    return `${durationMs}ms`;
+  }
+
+  if (durationMs < 60 * 1000) {
+    return `${(durationMs / 1000).toFixed(1)}s`;
+  }
+  const minutes = Math.floor(durationMs / (60 * 1000));
+  const seconds = Math.floor((durationMs % (60 * 1000)) / 1000);
+  return `${minutes}m${seconds}s`;
+}

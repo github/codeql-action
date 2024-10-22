@@ -91,6 +91,7 @@ export async function downloadAndExtract(
 
   if (
     compressionMethod === "zstd" &&
+    process.platform === "linux" &&
     (await features.getValue(Feature.ZstdBundleStreamingExtraction))
   ) {
     logger.info(`Streaming the extraction of the CodeQL bundle.`);

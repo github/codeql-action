@@ -274,13 +274,12 @@ export async function getCodeQLSource(
     toolsInput && CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput);
   if (forceShippedTools) {
     logger.info(
-      `Overriding the version of the CodeQL tools by ${defaultCliVersion.cliVersion}, the version shipped with the Action since ` +
-        `tools: ${toolsInput} was requested.`,
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${defaultCliVersion.cliVersion}, the version shipped with the Action.`,
     );
 
     if (toolsInput === "latest") {
       logger.warning(
-        "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported for now. No action is required.",
+        "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.",
       );
     }
   }

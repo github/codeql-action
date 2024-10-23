@@ -101,6 +101,7 @@ test("status report fields", async (t) => {
         addSnippetsFlag,
         threadsFlag,
         undefined,
+        undefined,
         config,
         getRunnerLogger(true),
         createFeatures([Feature.QaTelemetryEnabled]),

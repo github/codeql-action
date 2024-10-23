@@ -163,6 +163,111 @@ export const determineBaseBranchHeadCommitOid = async function (
 };
 
 /**
+ * Deepen the git history of the given ref by one level. Errors are logged.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ */
+export const deepenGitHistory = async function () {
+  try {
+    await runGitCommand(
+      getOptionalInput("checkout_path"),
+      ["fetch", "--no-tags", "--deepen=1"],
+      "Cannot deepen the shallow repository.",
+    );
+  } catch {
+    // Errors are already logged by runGitCommand()
+  }
+};
+
+/**
+ * Fetch the given remote branch. Errors are logged.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ */
+export const gitFetch = async function (branch: string, extraFlags: string[]) {
+  try {
+    await runGitCommand(
+      getOptionalInput("checkout_path"),
+      ["fetch", "--no-tags", ...extraFlags, "origin", `${branch}:${branch}`],
+      `Cannot fetch ${branch}.`,
+    );
+  } catch {
+    // Errors are already logged by runGitCommand()
+  }
+};
+
+/**
+ * Compute the all merge bases between the given refs. Returns an empty array
+ * if no merge base is found, or if there is an error.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ */
+export const getAllGitMergeBases = async function (
+  refs: string[],
+): Promise<string[]> {
+  try {
+    const stdout = await runGitCommand(
+      getOptionalInput("checkout_path"),
+      ["merge-base", "--all", ...refs],
+      `Cannot get merge base of ${refs}.`,
+    );
+    return stdout.trim().split("\n");
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Compute the diff hunk headers between the two given refs.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ *
+ * @returns an array of diff hunk headers (one element per line), or undefined
+ * if the action was not triggered by a pull request, or if the diff could not
+ * be determined.
+ */
+export const getGitDiffHunkHeaders = async function (
+  fromRef: string,
+  toRef: string,
+): Promise<string[] | undefined> {
+  let stdout = "";
+  try {
+    stdout = await runGitCommand(
+      getOptionalInput("checkout_path"),
+      [
+        "-c",
+        "core.quotePath=false",
+        "diff",
+        "--no-renames",
+        "--irreversible-delete",
+        "-U0",
+        fromRef,
+        toRef,
+      ],
+      `Cannot get diff from ${fromRef} to ${toRef}.`,
+    );
+  } catch {
+    return undefined;
+  }
+
+  const headers: string[] = [];
+  for (const line of stdout.split("\n")) {
+    if (
+      line.startsWith("--- ") ||
+      line.startsWith("+++ ") ||
+      line.startsWith("@@ ")
+    ) {
+      headers.push(line);
+    }
+  }
+  return headers;
+};
+
+/**
  * Decode, if necessary, a file path produced by Git. See
  * https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
  * for details on how Git encodes file paths with special characters.

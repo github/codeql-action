@@ -51,7 +51,7 @@ export enum Feature {
   ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppBuildModeNoneDisabled = "cpp_build_mode_none_disabled",
-  CppBuildModeNoneEnabled = "cpp_build_mode_none_enabled",
+  CppBuildModeNoneEnabled = "cpp_build_mode_none",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",

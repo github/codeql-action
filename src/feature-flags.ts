@@ -50,8 +50,7 @@ export interface FeatureEnablement {
 export enum Feature {
   ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
-  CppBuildModeNoneDisabled = "cpp_build_mode_none_disabled",
-  CppBuildModeNoneEnabled = "cpp_build_mode_none",
+  CppBuildModeNone = "cpp_build_mode_none",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
@@ -105,14 +104,9 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
     minimumVersion: undefined,
   },
-  [Feature.CppBuildModeNoneDisabled]: {
+  [Feature.CppBuildModeNone]: {
     defaultValue: false,
-    envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE_DISABLED",
-    minimumVersion: undefined,
-  },
-  [Feature.CppBuildModeNoneEnabled]: {
-    defaultValue: false,
-    envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE_ENABLED",
+    envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE",
     minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {

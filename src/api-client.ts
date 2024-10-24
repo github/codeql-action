@@ -4,6 +4,7 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
+import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   ConfigurationError,
@@ -116,6 +117,9 @@ export async function getGitHubVersion(): Promise<GitHubVersion> {
       getApiDetails(),
     );
   }
+  getRunnerLogger(true).info(JSON.stringify(cachedGitHubVersion));
+  getRunnerLogger(true).info(getApiDetails().url);
+  getRunnerLogger(true).info(getApiDetails().apiURL);
   return cachedGitHubVersion;
 }
 

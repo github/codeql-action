@@ -546,6 +546,20 @@ async function run() {
       }
     }
 
+    // Set CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE
+    if (config.languages.includes(Language.cpp)) {
+      const bmn_var = "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE";
+      if (process.env[bmn_var]) {
+        logger.info("CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE is already set");
+      } else if (await features.getValue(Feature.CppBuildModeNone, codeql)) {
+        logger.info("Enabling C++ build-mode: none");
+        core.exportVariable(bmn_var, "true");
+      } else {
+        logger.info("Disabling C++ build-mode: none");
+        core.exportVariable(bmn_var, "false");
+      }
+    }
+
     // For CLI versions <2.15.1, build tracing caused errors in MacOS ARM machines with
     // System Integrity Protection (SIP) disabled.
     if (

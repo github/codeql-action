@@ -522,6 +522,7 @@ class GitHubFeatureFlags {
         this.logger.debug(`  ${feature}: ${value}`);
       }
       this.hasAccessedRemoteFeatureFlags = true;
+      this.logger.info(`[DEBUG] Got remote flags: ${JSON.stringify(remoteFlags)}`);
       return remoteFlags;
     } catch (e) {
       if (util.isHTTPError(e) && e.status === 403) {
@@ -531,6 +532,7 @@ class GitHubFeatureFlags {
             "This could be because the Action is running on a pull request from a fork. If not, " +
             `please ensure the Action has the 'security-events: write' permission. Details: ${e.message}`,
         );
+        this.logger.info(`[DEBUG] Got HTTP error while retrieving remote flags`);
         this.hasAccessedRemoteFeatureFlags = false;
         return {};
       } else {

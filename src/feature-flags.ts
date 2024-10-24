@@ -491,7 +491,7 @@ class GitHubFeatureFlags {
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
-    if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
+    if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM && this.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM) {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features.",
       );

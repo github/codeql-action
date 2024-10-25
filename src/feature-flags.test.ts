@@ -60,7 +60,7 @@ test(`All features are disabled if running against GHES`, async (t) => {
   });
 });
 
-test(`Features work when run against GHES_dotcom as an environment (proxima stamp)`, async (t) => {
+test(`Feature flags are requested in Proxima`, async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages = [];
     const features = setUpFeatureFlagTests(

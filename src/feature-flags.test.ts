@@ -60,6 +60,36 @@ test(`All features are disabled if running against GHES`, async (t) => {
   });
 });
 
+test(`Features work when run against GHES_dotcom as an environment (proxima stamp)`, async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const loggedMessages = [];
+    const features = setUpFeatureFlagTests(
+      tmpDir,
+      getRecordingLogger(loggedMessages),
+      { type: GitHubVariant.GHE_DOTCOM },
+    );
+
+    mockFeatureFlagApiEndpoint(200, initializeFeatures(true));
+
+    for (const feature of Object.values(Feature)) {
+      // Ensure we have gotten a response value back from the Mock API
+      t.assert(
+        await features.getValue(feature, includeCodeQlIfRequired(feature)),
+      );
+    }
+
+    // And that we haven't bailed preemptively.
+    t.assert(
+      loggedMessages.find(
+        (v: LoggedMessage) =>
+          v.type === "debug" &&
+          v.message ===
+            "Not running against github.com. Disabling all toggleable features.",
+      ) === undefined,
+    );
+  });
+});
+
 test("API response missing and features use default value", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];

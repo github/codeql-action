@@ -549,7 +549,9 @@ async function run() {
     // Set CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE
     if (config.languages.includes(Language.cpp)) {
       const bmnVar = "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE";
-      const value = process.env[bmnVar] || await features.getValue(Feature.CppBuildModeNone, codeql)
+      const value =
+        process.env[bmnVar] ||
+        (await features.getValue(Feature.CppBuildModeNone, codeql));
       logger.info(`Setting C++ build-mode: none to ${value}`);
       core.exportVariable(bmnVar, value);
     }

@@ -546,6 +546,16 @@ async function run() {
       }
     }
 
+    // Set CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE
+    if (config.languages.includes(Language.cpp)) {
+      const bmnVar = "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE";
+      const value =
+        process.env[bmnVar] ||
+        (await features.getValue(Feature.CppBuildModeNone, codeql));
+      logger.info(`Setting C++ build-mode: none to ${value}`);
+      core.exportVariable(bmnVar, value);
+    }
+
     // For CLI versions <2.15.1, build tracing caused errors in MacOS ARM machines with
     // System Integrity Protection (SIP) disabled.
     if (

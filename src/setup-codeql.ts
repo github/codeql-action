@@ -138,7 +138,10 @@ function tryGetBundleVersionFromTagName(
   return match[1];
 }
 
-function tryGetTagNameFromUrl(url: string, logger: Logger): string | undefined {
+export function tryGetTagNameFromUrl(
+  url: string,
+  logger: Logger,
+): string | undefined {
   const matches = [...url.matchAll(/\/(codeql-bundle-[^/]*)\//g)];
   if (!matches.length) {
     logger.debug(`Could not determine tag name for URL ${url}.`);

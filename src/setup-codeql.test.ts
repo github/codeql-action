@@ -249,3 +249,13 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
     );
   });
 });
+
+test('tryGetTagNameFromUrl extracts the right tag name for a repo name containing "codeql-bundle"', (t) => {
+  t.is(
+    setupCodeql.tryGetTagNameFromUrl(
+      "https://github.com/org/codeql-bundle-testing/releases/download/codeql-bundle-v2.19.0/codeql-bundle-linux64.tar.zst",
+      getRunnerLogger(true),
+    ),
+    "codeql-bundle-v2.19.0",
+  );
+});

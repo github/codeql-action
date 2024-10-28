@@ -84,6 +84,7 @@ export function getDependencyCachingEnabled(): CachingKind {
   // Disable in advanced workflows by default.
   if (!isDefaultSetup()) return CachingKind.None;
 
-  // On hosted runners, enable dependency caching by default
-  return CachingKind.Full;
+  // On hosted runners, disable dependency caching by default.
+  // TODO: Review later whether we can enable this by default.
+  return CachingKind.None;
 }

@@ -138,12 +138,30 @@ function tryGetBundleVersionFromTagName(
   return match[1];
 }
 
-function tryGetTagNameFromUrl(url: string, logger: Logger): string | undefined {
-  const match = url.match(/\/(codeql-bundle-.*)\//);
-  if (match === null || match.length < 2) {
+export function tryGetTagNameFromUrl(
+  url: string,
+  logger: Logger,
+): string | undefined {
+  const matches = [...url.matchAll(/\/(codeql-bundle-[^/]*)\//g)];
+  if (!matches.length) {
     logger.debug(`Could not determine tag name for URL ${url}.`);
     return undefined;
   }
+  // Example: https://github.com/org/codeql-bundle-testing/releases/download/codeql-bundle-v2.19.0/codeql-bundle-linux64.tar.zst
+  // We require a trailing forward slash to be part of the match, so the last match gives us the tag
+  // name. An alternative approach would be to also match against `/releases/`, but this approach
+  // assumes less about the structure of the URL.
+  const match = matches[matches.length - 1];
+
+  if (match === null || match.length !== 2) {
+    logger.debug(
+      `Could not determine tag name for URL ${url}. Matched ${JSON.stringify(
+        match,
+      )}.`,
+    );
+    return undefined;
+  }
+
   return match[1];
 }
 

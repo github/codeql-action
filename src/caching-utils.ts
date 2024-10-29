@@ -44,8 +44,7 @@ export function shouldRestoreCache(kind: CachingKind): boolean {
 }
 
 /**
- * Parses the `upload` input into an `UploadKind`, converting unspecified and deprecated upload
- * inputs appropriately.
+ * Parses the `upload` input into an `UploadKind`.
  */
 export function getCachingKind(input: string | undefined): CachingKind {
   switch (input) {

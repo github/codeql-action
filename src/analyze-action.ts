@@ -16,7 +16,7 @@ import {
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
-import { shouldStoreCache } from "./caching-utils";
+import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
@@ -36,7 +36,6 @@ import {
 } from "./status-report";
 import {
   cleanupTrapCaches,
-  getTotalCacheSize,
   TrapCacheCleanupStatusReport,
   uploadTrapCaches,
 } from "./trap-caching";
@@ -94,7 +93,7 @@ async function sendStatusReport(
         ...report,
         trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
         trap_cache_upload_size_bytes: Math.round(
-          await getTotalCacheSize(config.trapCaches, logger),
+          await getTotalCacheSize(Object.values(config.trapCaches), logger),
         ),
       };
       await statusReport.sendStatusReport(trapCacheUploadStatusReport);

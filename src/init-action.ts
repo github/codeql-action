@@ -17,6 +17,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import {
   getDependencyCachingEnabled,
+  getTotalCacheSize,
   shouldRestoreCache,
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
@@ -51,7 +52,6 @@ import {
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
-import { getTotalCacheSize } from "./trap-caching";
 import {
   checkDiskUsage,
   checkForTimeout,
@@ -230,7 +230,7 @@ async function sendCompletedStatusReport(
       packs: JSON.stringify(packs),
       trap_cache_languages: Object.keys(config.trapCaches).join(","),
       trap_cache_download_size_bytes: Math.round(
-        await getTotalCacheSize(config.trapCaches, logger),
+        await getTotalCacheSize(Object.values(config.trapCaches), logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
       query_filters: JSON.stringify(

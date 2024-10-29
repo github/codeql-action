@@ -3,6 +3,7 @@ import path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
+import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -12,6 +13,7 @@ import {
   runCleanup,
   runFinalize,
   runQueries,
+  setupDiffInformedQueryRun,
   warnIfGoInstalledAfterInit,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
@@ -260,6 +262,17 @@ async function run() {
       logger,
     );
 
+    const pull_request = github.context.payload.pull_request;
+    const diffRangePackDir =
+      pull_request &&
+      (await setupDiffInformedQueryRun(
+        pull_request.base.ref as string,
+        pull_request.head.ref as string,
+        codeql,
+        logger,
+        features,
+      ));
+
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 
@@ -278,6 +291,7 @@ async function run() {
         memory,
         util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
         threads,
+        diffRangePackDir,
         actionsUtil.getOptionalInput("category"),
         config,
         logger,

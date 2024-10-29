@@ -16,9 +16,11 @@ import {
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
+import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { uploadDependencyCaches } from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
@@ -34,7 +36,6 @@ import {
 } from "./status-report";
 import {
   cleanupTrapCaches,
-  getTotalCacheSize,
   TrapCacheCleanupStatusReport,
   uploadTrapCaches,
 } from "./trap-caching";
@@ -92,7 +93,7 @@ async function sendStatusReport(
         ...report,
         trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
         trap_cache_upload_size_bytes: Math.round(
-          await getTotalCacheSize(config.trapCaches, logger),
+          await getTotalCacheSize(Object.values(config.trapCaches), logger),
         ),
       };
       await statusReport.sendStatusReport(trapCacheUploadStatusReport);
@@ -327,6 +328,11 @@ async function run() {
       features,
       logger,
     );
+
+    // Store dependency cache(s) if dependency caching is enabled.
+    if (shouldStoreCache(config.dependencyCachingEnabled)) {
+      await uploadDependencyCaches(config, logger);
+    }
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {

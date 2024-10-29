@@ -472,6 +472,11 @@ export function isSelfHostedRunner() {
   return process.env.RUNNER_ENVIRONMENT === "self-hosted";
 }
 
+/** Determines whether we are running in default setup. */
+export function isDefaultSetup(): boolean {
+  return getWorkflowEventName() === "dynamic";
+}
+
 export function prettyPrintInvocation(cmd: string, args: string[]): string {
   return [cmd, ...args].map((x) => (x.includes(" ") ? `'${x}'` : x)).join(" ");
 }

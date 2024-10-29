@@ -158,6 +158,16 @@ export async function uploadDependencyCaches(config: Config, logger: Logger) {
       continue;
     }
 
+    // Calculate the size of the files that we would store in the cache. We use this to determine whether the
+    // cache should be saved or not. For example, if there are no files to store, then we skip creating the
+    // cache. In the future, we could also:
+    // - Skip uploading caches with a size below some threshold: this makes sense for avoiding the overhead
+    //   of storing and restoring small caches, but does not help with alert wobble if a package repository
+    //   cannot be reached in a given run.
+    // - Skip uploading caches with a size above some threshold: this could be a concern if other workflows
+    //   use the cache quota that we compete with. In that case, we do not wish to use up all of the quota
+    //   with the dependency caches. For this, we could use the Cache API to check whether other workflows
+    //   are using the quota and how full it is.
     const size = await getTotalCacheSize(cacheConfig.paths, logger);
 
     // Skip uploading an empty cache.

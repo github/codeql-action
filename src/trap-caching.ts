@@ -312,18 +312,6 @@ export async function getLanguagesSupportingCaching(
   return result;
 }
 
-export async function getTotalCacheSize(
-  trapCaches: Partial<Record<Language, string>>,
-  logger: Logger,
-): Promise<number> {
-  const sizes = await Promise.all(
-    Object.values(trapCaches).map((cacheDir) =>
-      tryGetFolderBytes(cacheDir, logger),
-    ),
-  );
-  return sizes.map((a) => a || 0).reduce((a, b) => a + b, 0);
-}
-
 async function cacheKey(
   codeql: CodeQL,
   language: Language,

@@ -1,0 +1,11 @@
+name: 'CodeQL: Stub'
+description: "Stub: Don't use this action directly. Read [the documentation](https://docs.github.com/en/code-security/code-scanning/introduction-to-code-scanning/about-code-scanning-with-codeql) instead."
+author: 'GitHub'
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Stub'
+      run: |
+        echo 'This is a stub. Read [the documentation](https://docs.github.com/en/code-security/code-scanning/introduction-to-code-scanning/about-code-scanning-with-codeql) instead.'
+        exit 1
+      shell: bash

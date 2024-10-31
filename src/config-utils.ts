@@ -6,6 +6,7 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as api from "./api-client";
+import { CachingKind, getCachingKind } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
@@ -139,6 +140,9 @@ export interface Config {
    * Time taken to download TRAP caches. Used for status reporting.
    */
   trapCacheDownloadTime: number;
+
+  /** A value indicating how dependency caching should be used. */
+  dependencyCachingEnabled: CachingKind;
 }
 
 /**
@@ -396,6 +400,7 @@ export interface InitConfigInputs {
   configInput: string | undefined;
   buildModeInput: string | undefined;
   trapCachingEnabled: boolean;
+  dependencyCachingEnabled: string | undefined;
   debugMode: boolean;
   debugArtifactName: string;
   debugDatabaseName: string;
@@ -428,6 +433,7 @@ export async function getDefaultConfig({
   buildModeInput,
   dbLocation,
   trapCachingEnabled,
+  dependencyCachingEnabled,
   debugMode,
   debugArtifactName,
   debugDatabaseName,
@@ -479,6 +485,7 @@ export async function getDefaultConfig({
     augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
+    dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
   };
 }
 
@@ -512,6 +519,7 @@ async function loadConfig({
   configFile,
   dbLocation,
   trapCachingEnabled,
+  dependencyCachingEnabled,
   debugMode,
   debugArtifactName,
   debugDatabaseName,
@@ -583,6 +591,7 @@ async function loadConfig({
     augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
+    dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
   };
 }
 

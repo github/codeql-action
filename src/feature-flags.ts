@@ -50,6 +50,7 @@ export interface FeatureEnablement {
 export enum Feature {
   ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
+  CppBuildModeNone = "cpp_build_mode_none",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
@@ -101,6 +102,11 @@ export const featureConfig: Record<
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
+    minimumVersion: undefined,
+  },
+  [Feature.CppBuildModeNone]: {
+    defaultValue: false,
+    envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE",
     minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {
@@ -479,7 +485,10 @@ class GitHubFeatureFlags {
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
-    if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
+    if (
+      this.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
+      this.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
+    ) {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features.",
       );

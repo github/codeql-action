@@ -5,6 +5,7 @@
  */
 import * as core from "@actions/core";
 
+import * as actionsUtil from "./actions-util";
 import { getTemporaryDirectory } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
@@ -20,6 +21,8 @@ import {
 
 async function runWrapper() {
   try {
+    // Restore inputs from `upload-sarif` Action.
+    actionsUtil.restoreInputs();
     const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);

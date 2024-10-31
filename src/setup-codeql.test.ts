@@ -141,7 +141,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == latest
 
     // Afterwards, ensure that we see the deprecation message in the log.
     const expected_message: string =
-      "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported for now. No action is required.";
+      "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.";
     t.assert(
       loggedMessages.some(
         (msg) =>
@@ -248,4 +248,14 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
       ),
     );
   });
+});
+
+test('tryGetTagNameFromUrl extracts the right tag name for a repo name containing "codeql-bundle"', (t) => {
+  t.is(
+    setupCodeql.tryGetTagNameFromUrl(
+      "https://github.com/org/codeql-bundle-testing/releases/download/codeql-bundle-v2.19.0/codeql-bundle-linux64.tar.zst",
+      getRunnerLogger(true),
+    ),
+    "codeql-bundle-v2.19.0",
+  );
 });

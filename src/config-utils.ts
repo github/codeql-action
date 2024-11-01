@@ -66,6 +66,9 @@ export interface RegistryConfigNoCredentials {
   packages: string[] | string;
 
   // Kind of registry, either "github" or "docker". Default is "docker".
+  // "docker" refers specifically to the GitHub Container Registry, which is the usual way of sharing CodeQL packs.
+  // "github" refers to packs published as content in a GitHub repository. This kind of registry is used in scenarios
+  // where GHCR is not available, such as certain GHES environments.
   kind?: "github" | "docker";
 }
 

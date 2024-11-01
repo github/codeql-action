@@ -221,7 +221,6 @@ async function combineSarifFilesUsingCLI(
       tempDir,
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
-      features,
       logger,
     );
 

@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The CodeQL Action now downloads bundles compressed using Zstandard on GitHub Enterprise Server when using Linux or macOS runners. This speeds up the installation of the CodeQL tools. This feature is already available to GitHub.com users. [#2573](https://github.com/github/codeql-action/pull/2573)
 
 ## 3.27.0 - 22 Oct 2024
 

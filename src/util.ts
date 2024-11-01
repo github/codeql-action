@@ -8,6 +8,7 @@ import * as exec from "@actions/exec/lib/exec";
 import checkDiskSpace from "check-disk-space";
 import del from "del";
 import getFolderSize from "get-folder-size";
+import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
@@ -121,7 +122,7 @@ export function getExtraOptionsEnvParam(): object {
     return {};
   }
   try {
-    return JSON.parse(raw) as object;
+    return yaml.load(raw) as object;
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     throw new ConfigurationError(

@@ -1,5 +1,6 @@
 // All the languages supported by CodeQL
 export enum Language {
+  actions = "actions",
   csharp = "csharp",
   cpp = "cpp",
   go = "go",

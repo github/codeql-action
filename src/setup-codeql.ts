@@ -7,7 +7,7 @@ import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 
-import { CommandInvocationError, isRunningLocalAction } from "./actions-util";
+import { isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
 import {
@@ -634,7 +634,6 @@ export interface SetupCodeQLResult {
   toolsSource: ToolsSource;
   toolsVersion: string;
   zstdAvailability: tar.ZstdAvailability;
-  zstdFailureReason?: string;
 }
 
 /**
@@ -649,76 +648,15 @@ export async function setupCodeQLBundle(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
-): Promise<SetupCodeQLResult> {
-  const zstdAvailability = await tar.isZstdAvailable(logger);
-  let zstdFailureReason: string | undefined;
-
-  // If we think the installed version of tar supports zstd, try to use zstd,
-  // but be prepared to fall back to gzip in case we were wrong.
-  if (zstdAvailability.available) {
-    try {
-      // To facilitate testing the fallback, fail here if a testing environment variable is set.
-      if (process.env.CODEQL_ACTION_FORCE_ZSTD_FAILURE === "true") {
-        throw new Error(
-          "Failing since CODEQL_ACTION_FORCE_ZSTD_FAILURE is true.",
-        );
-      }
-      return await setupCodeQLBundleWithCompressionMethod(
-        toolsInput,
-        apiDetails,
-        tempDir,
-        variant,
-        defaultCliVersion,
-        logger,
-        zstdAvailability,
-        true,
-      );
-    } catch (e) {
-      zstdFailureReason = util.getErrorMessage(e) || "unknown error";
-      if (e instanceof CommandInvocationError) {
-        zstdFailureReason += ` Full error: ${e.stderr}`;
-        logger.debug(`Invocation output the following to stderr: ${e.stderr}`);
-      }
-      logger.warning(
-        `Failed to set up CodeQL tools with zstd. Falling back to gzipped version. Error: ${util.getErrorMessage(
-          e,
-        )}`,
-      );
-    }
-  }
-
-  const result = await setupCodeQLBundleWithCompressionMethod(
-    toolsInput,
-    apiDetails,
-    tempDir,
-    variant,
-    defaultCliVersion,
-    logger,
-    zstdAvailability,
-    false,
-  );
-  if (result.toolsDownloadStatusReport && zstdFailureReason) {
-    result.toolsDownloadStatusReport.zstdFailureReason = zstdFailureReason;
-  }
-  return result;
-}
-
-async function setupCodeQLBundleWithCompressionMethod(
-  toolsInput: string | undefined,
-  apiDetails: api.GitHubApiDetails,
-  tempDir: string,
-  variant: util.GitHubVariant,
-  defaultCliVersion: CodeQLDefaultVersionInfo,
-  logger: Logger,
-  zstdAvailability: tar.ZstdAvailability,
-  useTarIfAvailable: boolean,
 ) {
+  const zstdAvailability = await tar.isZstdAvailable(logger);
+
   const source = await getCodeQLSource(
     toolsInput,
     defaultCliVersion,
     apiDetails,
     variant,
-    useTarIfAvailable,
+    zstdAvailability.available,
     logger,
   );
 

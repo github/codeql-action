@@ -6,7 +6,6 @@ import * as toolcache from "@actions/tool-cache";
 import { https } from "follow-redirects";
 import { v4 as uuidV4 } from "uuid";
 
-import { Feature, FeatureEnablement } from "./feature-flags";
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
 import { cleanUpGlob } from "./util";
@@ -77,7 +76,6 @@ export async function downloadAndExtract(
   headers: OutgoingHttpHeaders,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   extractedBundlePath: string;
@@ -89,11 +87,7 @@ export async function downloadAndExtract(
 
   const compressionMethod = tar.inferCompressionMethod(codeqlURL);
 
-  if (
-    compressionMethod === "zstd" &&
-    process.platform === "linux" &&
-    (await features.getValue(Feature.ZstdBundleStreamingExtraction))
-  ) {
+  if (compressionMethod === "zstd" && process.platform === "linux") {
     logger.info(`Streaming the extraction of the CodeQL bundle.`);
 
     const toolsInstallStart = performance.now();

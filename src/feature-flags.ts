@@ -59,8 +59,6 @@ export enum Feature {
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  ZstdBundle = "zstd_bundle",
-  ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
 }
 
 export const featureConfig: Record<
@@ -154,18 +152,6 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
-    minimumVersion: undefined,
-  },
-  [Feature.ZstdBundle]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ZSTD_BUNDLE",
-    // We haven't yet installed CodeQL when we check this feature flag, so we need to implement the
-    // version check separately.
-    minimumVersion: undefined,
-  },
-  [Feature.ZstdBundleStreamingExtraction]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ZSTD_BUNDLE_STREAMING_EXTRACTION",
     minimumVersion: undefined,
   },
 };

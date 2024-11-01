@@ -13,8 +13,6 @@ import * as defaults from "./defaults.json";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
-  Feature,
-  FeatureEnablement,
 } from "./feature-flags";
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
@@ -261,7 +259,6 @@ export async function getCodeQLSource(
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
   tarSupportsZstd: boolean,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
   if (
@@ -458,7 +455,7 @@ export async function getCodeQLSource(
       tagName!,
       apiDetails,
       cliVersion !== undefined &&
-        (await useZstdBundle(cliVersion, features, tarSupportsZstd)),
+        (await useZstdBundle(cliVersion, tarSupportsZstd)),
       logger,
     );
   }
@@ -507,7 +504,6 @@ export const downloadCodeQL = async function (
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
@@ -542,7 +538,6 @@ export const downloadCodeQL = async function (
     { "User-Agent": "CodeQL Action", ...headers },
     tarVersion,
     tempDir,
-    features,
     logger,
   );
 
@@ -653,7 +648,6 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<SetupCodeQLResult> {
   const zstdAvailability = await tar.isZstdAvailable(logger);
@@ -675,7 +669,6 @@ export async function setupCodeQLBundle(
         tempDir,
         variant,
         defaultCliVersion,
-        features,
         logger,
         zstdAvailability,
         true,
@@ -700,7 +693,6 @@ export async function setupCodeQLBundle(
     tempDir,
     variant,
     defaultCliVersion,
-    features,
     logger,
     zstdAvailability,
     false,
@@ -717,7 +709,6 @@ async function setupCodeQLBundleWithCompressionMethod(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  features: FeatureEnablement,
   logger: Logger,
   zstdAvailability: tar.ZstdAvailability,
   useTarIfAvailable: boolean,
@@ -728,7 +719,6 @@ async function setupCodeQLBundleWithCompressionMethod(
     apiDetails,
     variant,
     useTarIfAvailable,
-    features,
     logger,
   );
 
@@ -763,7 +753,6 @@ async function setupCodeQLBundleWithCompressionMethod(
         apiDetails,
         zstdAvailability.version,
         tempDir,
-        features,
         logger,
       );
       toolsVersion = result.toolsVersion;
@@ -786,14 +775,12 @@ async function setupCodeQLBundleWithCompressionMethod(
 
 async function useZstdBundle(
   cliVersion: string,
-  features: FeatureEnablement,
   tarSupportsZstd: boolean,
 ): Promise<boolean> {
   return (
     // In testing, gzip performs better than zstd on Windows.
     process.platform !== "win32" &&
     tarSupportsZstd &&
-    semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE) &&
-    !!(await features.getValue(Feature.ZstdBundle))
+    semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE)
   );
 }

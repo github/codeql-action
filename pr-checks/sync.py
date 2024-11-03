@@ -4,6 +4,7 @@ import ruamel.yaml
 from ruamel.yaml.scalarstring import FoldedScalarString, SingleQuotedScalarString
 import pathlib
 import textwrap
+import os
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
@@ -153,7 +154,8 @@ for file in (this_dir / 'checks').glob('*.yml'):
         checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
     checkName = file.stem
 
-    with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w') as output_stream:
+    raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
+    with open(raw_file, 'w') as output_stream:
         writeHeader(output_stream)
         yaml.dump({
             'name': f"PR Check - {checkSpecification['name']}",
@@ -175,3 +177,9 @@ for file in (this_dir / 'checks').glob('*.yml'):
                 checkName: checkJob
             }
         }, output_stream)
+
+    with open(raw_file, 'r') as input_stream:
+        with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w') as output_stream:
+            content = input_stream.read()
+            output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
+    os.remove(raw_file)

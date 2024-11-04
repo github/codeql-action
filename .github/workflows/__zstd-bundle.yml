@@ -61,7 +61,9 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             const codeqlPath = path.join(process.env['RUNNER_TOOL_CACHE'], 'CodeQL');
-            fs.rmdirSync(codeqlPath, { recursive: true });
+            if (codeqlPath !== undefined) {
+              fs.rmdirSync(codeqlPath, { recursive: true });
+            }
       - id: init
         uses: ./../action/init
         with:

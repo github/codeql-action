@@ -98,7 +98,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
     steps = [
         {
-            'name': 'Setup Python on MacOS',
+            'name': 'Setup Python on macOS',
             'uses': 'actions/setup-python@v5',
             'if': "runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'",
             'with': {

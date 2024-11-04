@@ -51,7 +51,7 @@ export enum EnvVar {
   INIT_ACTION_HAS_RUN = "CODEQL_ACTION_INIT_HAS_RUN",
 
   /**
-   * For MacOS. Result of `csrutil status` to determine whether System Integrity
+   * For macOS. Result of `csrutil status` to determine whether System Integrity
    * Protection is enabled.
    */
   IS_SIP_ENABLED = "CODEQL_ACTION_IS_SIP_ENABLED",

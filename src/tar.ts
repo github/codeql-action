@@ -105,13 +105,16 @@ export async function extract(
       // Defensively continue to call the toolcache API as requesting a gzipped
       // bundle may be a fallback option.
       return await toolcache.extractTar(tarPath);
-    case "zstd":
+    case "zstd": {
       if (!tarVersion) {
         throw new Error(
           "Could not determine tar version, which is required to extract a Zstandard archive.",
         );
       }
-      return await extractTarZst(tarPath, tarVersion, logger);
+      const dest = await createExtractFolder();
+      await extractTarZst(tarPath, dest, tarVersion, logger);
+      return dest;
+    }
   }
 }
 
@@ -119,15 +122,14 @@ export async function extract(
  * Extract a compressed tar archive
  *
  * @param tar   tar stream, or path to the tar
- * @param dest     destination directory. Optional.
- * @returns        path to the destination directory
+ * @param dest     destination directory
  */
 export async function extractTarZst(
   tar: stream.Readable | string,
+  dest: string,
   tarVersion: TarVersion,
   logger: Logger,
-): Promise<string> {
-  const dest = await createExtractFolder();
+): Promise<void> {
   logger.debug(
     `Extracting to ${dest}.${
       tar instanceof stream.Readable
@@ -184,15 +186,13 @@ export async function extractTarZst(
         resolve();
       });
     });
-
-    return dest;
   } catch (e) {
     await cleanUpGlob(dest, "extraction destination directory", logger);
     throw e;
   }
 }
 
-async function createExtractFolder(): Promise<string> {
+export async function createExtractFolder(): Promise<string> {
   const dest = path.join(getTemporaryDirectory(), uuidV4());
   fs.mkdirSync(dest, { recursive: true });
   return dest;

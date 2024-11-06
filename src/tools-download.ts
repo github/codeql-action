@@ -99,8 +99,10 @@ export async function downloadAndExtract(
     logger.info(`Streaming the extraction of the CodeQL bundle.`);
 
     const toolsInstallStart = performance.now();
-    const extractedBundlePath = await downloadAndExtractZstdWithStreaming(
+    const extractedBundlePath = await tar.createExtractFolder();
+    await downloadAndExtractZstdWithStreaming(
       codeqlURL,
+      extractedBundlePath,
       authorization,
       headers,
       tarVersion!,
@@ -180,11 +182,12 @@ export async function downloadAndExtract(
 
 async function downloadAndExtractZstdWithStreaming(
   codeqlURL: string,
+  dest: string,
   authorization: string | undefined,
   headers: OutgoingHttpHeaders,
   tarVersion: tar.TarVersion,
   logger: Logger,
-): Promise<string> {
+): Promise<void> {
   headers = Object.assign(
     { "User-Agent": "CodeQL Action" },
     authorization ? { authorization } : {},
@@ -207,7 +210,7 @@ async function downloadAndExtractZstdWithStreaming(
     );
   }
 
-  return await tar.extractTarZst(response, tarVersion, logger);
+  await tar.extractTarZst(response, dest, tarVersion, logger);
 }
 
 function sanitizeUrlForStatusReport(url: string): string {

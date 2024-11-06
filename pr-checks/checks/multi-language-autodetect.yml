@@ -1,5 +1,5 @@
 name: "Multi-language repository"
-description: "An end-to-end integration test of a multi-language repository using automatic language detection for MacOS"
+description: "An end-to-end integration test of a multi-language repository using automatic language detection for macOS"
 operatingSystems: ["macos", "ubuntu"]
 steps:
   - uses: actions/setup-go@v5
@@ -67,7 +67,7 @@ steps:
         exit 1
       fi
 
-  - name: Check language autodetect for Swift on MacOS
+  - name: Check language autodetect for Swift on macOS
     if: runner.os == 'macOS'
     shell: bash
     run: |

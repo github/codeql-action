@@ -566,7 +566,7 @@ async function run() {
       await downloadDependencyCaches(config.languages, logger);
     }
 
-    // For CLI versions <2.15.1, build tracing caused errors in MacOS ARM machines with
+    // For CLI versions <2.15.1, build tracing caused errors in macOS ARM machines with
     // System Integrity Protection (SIP) disabled.
     if (
       !(await codeQlVersionAtLeast(codeql, "2.15.1")) &&
@@ -575,7 +575,7 @@ async function run() {
       !(await checkSipEnablement(logger))
     ) {
       logger.warning(
-        "CodeQL versions 2.15.0 and lower are not supported on MacOS ARM machines with System Integrity Protection (SIP) disabled.",
+        "CodeQL versions 2.15.0 and lower are not supported on macOS ARM machines with System Integrity Protection (SIP) disabled.",
       );
     }
 

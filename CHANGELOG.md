@@ -58,12 +58,12 @@ No user facing changes.
 
 ## 3.26.5 - 23 Aug 2024
 
-- Fix an issue where the `csrutil` system call used for telemetry would fail on MacOS ARM machines with System Integrity Protection disabled. [#2441](https://github.com/github/codeql-action/pull/2441)
+- Fix an issue where the `csrutil` system call used for telemetry would fail on macOS ARM machines with System Integrity Protection disabled. [#2441](https://github.com/github/codeql-action/pull/2441)
 
 ## 3.26.4 - 21 Aug 2024
 
 - _Deprecation:_ The `add-snippets` input on the `analyze` Action is deprecated and will be removed in the first release in August 2025. [#2436](https://github.com/github/codeql-action/pull/2436)
-- Fix an issue where the disk usage system call used for telemetry would fail on MacOS ARM machines with System Integrity Protection disabled, and then surface a warning. The system call is now disabled for these machines. [#2434](https://github.com/github/codeql-action/pull/2434)
+- Fix an issue where the disk usage system call used for telemetry would fail on macOS ARM machines with System Integrity Protection disabled, and then surface a warning. The system call is now disabled for these machines. [#2434](https://github.com/github/codeql-action/pull/2434)
 
 ## 3.26.3 - 19 Aug 2024
 
@@ -141,7 +141,7 @@ No user facing changes.
 ## 3.25.3 - 25 Apr 2024
 
 - Update default CodeQL bundle version to 2.17.1. [#2247](https://github.com/github/codeql-action/pull/2247)
-- Workflows running on `macos-latest` using CodeQL CLI versions before v2.15.1 will need to either upgrade their CLI version to v2.15.1 or newer, or change the platform to an Intel MacOS runner, such as `macos-12`. ARM machines with SIP disabled, including the newest `macos-latest` image, are unsupported for CLI versions before 2.15.1. [#2261](https://github.com/github/codeql-action/pull/2261)
+- Workflows running on `macos-latest` using CodeQL CLI versions before v2.15.1 will need to either upgrade their CLI version to v2.15.1 or newer, or change the platform to an Intel macOS runner, such as `macos-12`. ARM machines with SIP disabled, including the newest `macos-latest` image, are unsupported for CLI versions before 2.15.1. [#2261](https://github.com/github/codeql-action/pull/2261)
 
 ## 3.25.2 - 22 Apr 2024
 

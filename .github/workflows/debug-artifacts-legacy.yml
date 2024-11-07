@@ -56,7 +56,7 @@ jobs:
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
           # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
-          languages: cpp,csharp,go,java,javascript,python,ruby 
+          languages: cpp,csharp,go,java,javascript,python,ruby
       - name: Build code
         shell: bash
         run: ./build.sh

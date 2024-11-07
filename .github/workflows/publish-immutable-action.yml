@@ -32,4 +32,4 @@ jobs:
       - name: Publish
         if: steps.check.outputs.is-action-release == 'true'
         id: publish
-        uses: actions/publish-immutable-action@0.0.3
+        uses: actions/publish-immutable-action@v0.0.4

@@ -28,6 +28,7 @@ No user facing changes.
 
 - The CodeQL Action now downloads bundles compressed using Zstandard on GitHub Enterprise Server when using Linux or macOS runners. This speeds up the installation of the CodeQL tools. This feature is already available to GitHub.com users. [#2573](https://github.com/github/codeql-action/pull/2573)
 - Update default CodeQL bundle version to 2.19.3. [#2576](https://github.com/github/codeql-action/pull/2576)
+- The CodeQL Action is now faster to download by several seconds since `node_modules` are no longer included in this repository. [#2578](https://github.com/github/codeql-action/pull/2578)
 
 ## 3.27.0 - 22 Oct 2024
 

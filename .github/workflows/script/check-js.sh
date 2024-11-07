@@ -7,14 +7,12 @@ if [ ! -z "$(git status --porcelain)" ]; then
     >&2 echo "Failed: Repo should be clean before testing!"
     exit 1
 fi
-# Wipe the lib directory in case there are extra unnecessary files in there
-rm -rf lib
 # Generate the JavaScript files
 npm run-script build
 # Check that repo is still clean
 if [ ! -z "$(git status --porcelain)" ]; then
     # If we get a fail here then the PR needs attention
-    >&2 echo "Failed: JavaScript files are not up to date. Run 'rm -rf lib && npm run-script build' to update"
+    >&2 echo "Failed: JavaScript files are not up to date. Run 'npm run-script build' to update"
     git status
     exit 1
 fi

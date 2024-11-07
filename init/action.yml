@@ -147,5 +147,5 @@ outputs:
     description: The version of the CodeQL binary used for analysis
 runs:
   using: node20
-  main: '../lib/init-action.js'
-  post: '../lib/init-action-post.js'
+  main: 'init-action.js'
+  post: 'init-action-post.js'

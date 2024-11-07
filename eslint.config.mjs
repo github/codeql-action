@@ -31,6 +31,8 @@ export default [
       "tests/**/*",
       "eslint.config.mjs",
       ".github/**/*",
+      "*/*-action.js",
+      "*/*-action-post.js",
     ],
   },
   ...fixupConfigRules(

@@ -31,14 +31,19 @@ jobs:
         run: |
           git fetch origin "$BASE_BRANCH"
 
-          # Allow merge conflicts in `lib`, since rebuilding should resolve them.
+          # Allow merge conflicts in `action(-post|-pre|).js`, since rebuilding should resolve them.
           git merge "origin/$BASE_BRANCH" || echo "Merge conflicts detected"
 
-          # Check for merge conflicts outside of `lib`. Disable git diff's trailing whitespace check
-          # since `node_modules/@types/semver/README.md` fails it.
-          if git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/'; then
-            echo "Merge conflicts detected outside of lib/ directory. Please resolve them manually."
-            git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/' || true
+          git_diff_ignore_generated_actions() {
+            git diff --check |
+            grep --invert-match -- '-action-pre\.js$' |
+            grep --invert-match -- '-action\.js$' |
+            grep --invert-match -- '-action-post\.js$'
+          }
+
+          if git_diff_ignore_generated_actions | grep -q .; then
+            echo "Merge conflicts detected outside of generated action js files. Please resolve them manually."
+            git_diff_ignore_generated_actions || true
             exit 1
           fi
 

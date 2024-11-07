@@ -26,6 +26,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install
+        shell: bash
+        run: npm install
+
       - name: Lint
         id: lint
         run: npm run-script lint-ci
@@ -33,12 +37,12 @@ jobs:
       - name: Upload sarif
         uses: github/codeql-action/upload-sarif@v3
         # Only upload SARIF for the latest version of Node.js
-        if: "!cancelled() && matrix.node-types-version == 'current' && !startsWith(github.head_ref, 'dependabot/')"
+        if: ${{ !cancelled() && matrix.node-types-version == 'current' && !startsWith(github.head_ref, 'dependabot/') }}
         with:
           sarif_file: eslint.sarif
           category: eslint
 
-      - name: Update version of @types/node
+      - name: Override version of @types/node
         if: matrix.node-types-version != 'current'
         env:
           NODE_TYPES_VERSION: ${{ matrix.node-types-version }}
@@ -52,6 +56,25 @@ jobs:
           # `npm install` on Linux.
           npm install
 
+          # esbuild embeds package.json version details into these files.
+          # Since the jq step has actively changed package.json, we know that if these files
+          # are successfully rebuilt (without the changes below), they would be dirty.
+          #
+          # In order to allow check-js.sh to verify that it can build them at all, we ignore them,
+          # delete them, and commit those changes. Thus, when it runs, it will be able to try to
+          # build them, and as long at they build, it will be happy. If it can't build them, it can
+          # complain, although that error won't make much sense, because you shouldn't update them
+          # using the wrong node types version information.
+          (
+            echo '*/*-action.js';
+            echo '*/*-action-post.js'
+          ) >> .gitignore
+          for action in $(
+            find * -mindepth 1 -maxdepth 1 -type f -name action.yml
+          ); do
+            git rm -f "$(dirname "$action")"/*-action*.js
+          done
+
           if [ ! -z "$(git status --porcelain)" ]; then
             git config --global user.email "github-actions@github.com"
             git config --global user.name "github-actions[bot]"
@@ -62,17 +85,6 @@ jobs:
 
       - name: Check generated JS
         run: .github/workflows/script/check-js.sh
-
-  check-node-modules:
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
-    name: Check modules up to date
-    runs-on: macos-latest
-    timeout-minutes: 45
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check node modules up to date
-        run: .github/workflows/script/check-node-modules.sh
 
   check-file-contents:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
@@ -102,7 +114,7 @@ jobs:
   npm-test:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Unit Test
-    needs: [check-js, check-node-modules]
+    needs: check-js
     strategy:
       fail-fast: false
       matrix:
@@ -112,6 +124,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          npm run build
       - name: npm test
         run: |
           # Run any commands referenced in package.json using Bash, otherwise

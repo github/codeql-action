@@ -748,8 +748,6 @@ export async function getCodeQLForCmd(
         "--format=betterjson",
         "--extractor-options-verbosity=4",
         "--extractor-include-aliases",
-        "--search-path",
-        path.resolve(__dirname, "../actions-extractor"),
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
       const output = await runCli(cmd, codeqlArgs);

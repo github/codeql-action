@@ -56,6 +56,7 @@ async function runGitCommand(
 ): Promise<string> {
   let stdout = "";
   let stderr = "";
+  core.debug(`Running git command: git ${args.join(" ")}`);
   try {
     await new toolrunner.ToolRunner(await safeWhich.safeWhich("git"), args, {
       silent: true,
@@ -159,6 +160,159 @@ export const determineBaseBranchHeadCommitOid = async function (
   } catch {
     return undefined;
   }
+};
+
+/**
+ * Deepen the git history of the given ref by one level. Errors are logged.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ */
+export const deepenGitHistory = async function () {
+  try {
+    await runGitCommand(
+      getOptionalInput("checkout_path"),
+      ["fetch", "--no-tags", "--deepen=1"],
+      "Cannot deepen the shallow repository.",
+    );
+  } catch {
+    // Errors are already logged by runGitCommand()
+  }
+};
+
+/**
+ * Fetch the given remote branch. Errors are logged.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ */
+export const gitFetch = async function (branch: string, extraFlags: string[]) {
+  try {
+    await runGitCommand(
+      getOptionalInput("checkout_path"),
+      ["fetch", "--no-tags", ...extraFlags, "origin", `${branch}:${branch}`],
+      `Cannot fetch ${branch}.`,
+    );
+  } catch {
+    // Errors are already logged by runGitCommand()
+  }
+};
+
+/**
+ * Compute the all merge bases between the given refs. Returns an empty array
+ * if no merge base is found, or if there is an error.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ */
+export const getAllGitMergeBases = async function (
+  refs: string[],
+): Promise<string[]> {
+  try {
+    const stdout = await runGitCommand(
+      getOptionalInput("checkout_path"),
+      ["merge-base", "--all", ...refs],
+      `Cannot get merge base of ${refs}.`,
+    );
+    return stdout.trim().split("\n");
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Compute the diff hunk headers between the two given refs.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ *
+ * @returns an array of diff hunk headers (one element per line), or undefined
+ * if the action was not triggered by a pull request, or if the diff could not
+ * be determined.
+ */
+export const getGitDiffHunkHeaders = async function (
+  fromRef: string,
+  toRef: string,
+): Promise<string[] | undefined> {
+  let stdout = "";
+  try {
+    stdout = await runGitCommand(
+      getOptionalInput("checkout_path"),
+      [
+        "-c",
+        "core.quotePath=false",
+        "diff",
+        "--no-renames",
+        "--irreversible-delete",
+        "-U0",
+        fromRef,
+        toRef,
+      ],
+      `Cannot get diff from ${fromRef} to ${toRef}.`,
+    );
+  } catch {
+    return undefined;
+  }
+
+  const headers: string[] = [];
+  for (const line of stdout.split("\n")) {
+    if (
+      line.startsWith("--- ") ||
+      line.startsWith("+++ ") ||
+      line.startsWith("@@ ")
+    ) {
+      headers.push(line);
+    }
+  }
+  return headers;
+};
+
+/**
+ * Decode, if necessary, a file path produced by Git. See
+ * https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
+ * for details on how Git encodes file paths with special characters.
+ *
+ * This function works only for Git output with `core.quotePath=false`.
+ */
+export const decodeGitFilePath = function (filePath: string): string {
+  if (filePath.startsWith('"') && filePath.endsWith('"')) {
+    filePath = filePath.substring(1, filePath.length - 1);
+    return filePath.replace(
+      /\\([abfnrtv\\"]|[0-7]{1,3})/g,
+      (_match, seq: string) => {
+        switch (seq[0]) {
+          case "a":
+            return "\x07";
+          case "b":
+            return "\b";
+          case "f":
+            return "\f";
+          case "n":
+            return "\n";
+          case "r":
+            return "\r";
+          case "t":
+            return "\t";
+          case "v":
+            return "\v";
+          case "\\":
+            return "\\";
+          case '"':
+            return '"';
+          default:
+            // Both String.fromCharCode() and String.fromCodePoint() works only
+            // for constructing an entire character at once. If a Unicode
+            // character is encoded as a sequence of escaped bytes, calling these
+            // methods sequentially on the individual byte values would *not*
+            // produce the original multi-byte Unicode character. As a result,
+            // this implementation works only with the Git option core.quotePath
+            // set to false.
+            return String.fromCharCode(parseInt(seq, 8));
+        }
+      },
+    );
+  }
+  return filePath;
 };
 
 /**
@@ -470,6 +624,11 @@ export const getFileType = async (filePath: string): Promise<string> => {
 
 export function isSelfHostedRunner() {
   return process.env.RUNNER_ENVIRONMENT === "self-hosted";
+}
+
+/** Determines whether we are running in default setup. */
+export function isDefaultSetup(): boolean {
+  return getWorkflowEventName() === "dynamic";
 }
 
 export function prettyPrintInvocation(cmd: string, args: string[]): string {

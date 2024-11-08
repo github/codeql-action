@@ -136,6 +136,10 @@ inputs:
     description: >-
       Explicitly enable or disable TRAP caching rather than respecting the feature flag for it.
     required: false
+  dependency-caching:
+    description: >-
+      Explicitly enable or disable caching of project build dependencies.
+    required: false
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

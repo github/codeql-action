@@ -6,6 +6,7 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as api from "./api-client";
+import { CachingKind, getCachingKind } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
@@ -63,6 +64,12 @@ export interface RegistryConfigNoCredentials {
 
   // List of globs that determine which packs are associated with this registry.
   packages: string[] | string;
+
+  // Kind of registry, either "github" or "docker". Default is "docker".
+  // "docker" refers specifically to the GitHub Container Registry, which is the usual way of sharing CodeQL packs.
+  // "github" refers to packs published as content in a GitHub repository. This kind of registry is used in scenarios
+  // where GHCR is not available, such as certain GHES environments.
+  kind?: "github" | "docker";
 }
 
 interface ExcludeQueryFilter {
@@ -136,6 +143,9 @@ export interface Config {
    * Time taken to download TRAP caches. Used for status reporting.
    */
   trapCacheDownloadTime: number;
+
+  /** A value indicating how dependency caching should be used. */
+  dependencyCachingEnabled: CachingKind;
 }
 
 /**
@@ -393,6 +403,7 @@ export interface InitConfigInputs {
   configInput: string | undefined;
   buildModeInput: string | undefined;
   trapCachingEnabled: boolean;
+  dependencyCachingEnabled: string | undefined;
   debugMode: boolean;
   debugArtifactName: string;
   debugDatabaseName: string;
@@ -425,6 +436,7 @@ export async function getDefaultConfig({
   buildModeInput,
   dbLocation,
   trapCachingEnabled,
+  dependencyCachingEnabled,
   debugMode,
   debugArtifactName,
   debugDatabaseName,
@@ -476,6 +488,7 @@ export async function getDefaultConfig({
     augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
+    dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
   };
 }
 
@@ -509,6 +522,7 @@ async function loadConfig({
   configFile,
   dbLocation,
   trapCachingEnabled,
+  dependencyCachingEnabled,
   debugMode,
   debugArtifactName,
   debugDatabaseName,
@@ -580,6 +594,7 @@ async function loadConfig({
     augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
+    dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
   };
 }
 
@@ -871,8 +886,8 @@ export function parseRegistriesWithoutCredentials(
   registriesInput?: string,
 ): RegistryConfigNoCredentials[] | undefined {
   return parseRegistries(registriesInput)?.map((r) => {
-    const { url, packages } = r;
-    return { url, packages };
+    const { url, packages, kind } = r;
+    return { url, packages, kind };
   });
 }
 
@@ -1039,6 +1054,7 @@ function createRegistriesBlock(registries: RegistryConfigWithCredentials[]): {
     // ensure the url ends with a slash to avoid a bug in the CLI 2.10.4
     url: !registry?.url.endsWith("/") ? `${registry.url}/` : registry.url,
     packages: registry.packages,
+    kind: registry.kind,
   }));
   const qlconfig = {
     registries: safeRegistries,

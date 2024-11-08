@@ -111,7 +111,7 @@ export async function getCombinedTracerConfig(
   // If the CLI doesn't yet support setting the CODEQL_RUNNER environment variable to
   // the runner executable path, we set it here in the Action.
   if (!(await codeql.supportsFeature(ToolsFeature.SetsCodeqlRunnerEnvVar))) {
-    // On MacOS when System Integrity Protection is enabled, it's necessary to prefix
+    // On macOS when System Integrity Protection is enabled, it's necessary to prefix
     // the build command with the runner executable for indirect tracing, so we expose
     // it here via the CODEQL_RUNNER environment variable.
     // The executable also exists and works for other platforms so we unconditionally

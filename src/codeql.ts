@@ -166,6 +166,7 @@ export interface CodeQL {
     addSnippetsFlag: string,
     threadsFlag: string,
     verbosityFlag: string | undefined,
+    sarifRunPropertyFlag: string | undefined,
     automationDetailsId: string | undefined,
     config: Config,
     features: FeatureEnablement,
@@ -342,7 +343,6 @@ export async function setupCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean,
 ): Promise<{
@@ -365,7 +365,6 @@ export async function setupCodeQL(
       tempDir,
       variant,
       defaultCliVersion,
-      features,
       logger,
     );
 
@@ -834,6 +833,7 @@ export async function getCodeQLForCmd(
       addSnippetsFlag: string,
       threadsFlag: string,
       verbosityFlag: string,
+      sarifRunPropertyFlag: string | undefined,
       automationDetailsId: string | undefined,
       config: Config,
       features: FeatureEnablement,
@@ -861,6 +861,9 @@ export async function getCodeQLForCmd(
         ...(await getJobRunUuidSarifOptions(this)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
+      if (sarifRunPropertyFlag !== undefined) {
+        codeqlArgs.push(sarifRunPropertyFlag);
+      }
       if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }

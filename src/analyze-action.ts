@@ -3,6 +3,7 @@ import path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
+import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -12,13 +13,16 @@ import {
   runCleanup,
   runFinalize,
   runQueries,
+  setupDiffInformedQueryRun,
   warnIfGoInstalledAfterInit,
 } from "./analyze";
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
+import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import { uploadDependencyCaches } from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
@@ -34,7 +38,6 @@ import {
 } from "./status-report";
 import {
   cleanupTrapCaches,
-  getTotalCacheSize,
   TrapCacheCleanupStatusReport,
   uploadTrapCaches,
 } from "./trap-caching";
@@ -92,7 +95,7 @@ async function sendStatusReport(
         ...report,
         trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
         trap_cache_upload_size_bytes: Math.round(
-          await getTotalCacheSize(config.trapCaches, logger),
+          await getTotalCacheSize(Object.values(config.trapCaches), logger),
         ),
       };
       await statusReport.sendStatusReport(trapCacheUploadStatusReport);
@@ -260,6 +263,17 @@ async function run() {
       logger,
     );
 
+    const pull_request = github.context.payload.pull_request;
+    const diffRangePackDir =
+      pull_request &&
+      (await setupDiffInformedQueryRun(
+        pull_request.base.ref as string,
+        pull_request.head.ref as string,
+        codeql,
+        logger,
+        features,
+      ));
+
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 
@@ -278,6 +292,7 @@ async function run() {
         memory,
         util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
         threads,
+        diffRangePackDir,
         actionsUtil.getOptionalInput("category"),
         config,
         logger,
@@ -327,6 +342,11 @@ async function run() {
       features,
       logger,
     );
+
+    // Store dependency cache(s) if dependency caching is enabled.
+    if (shouldStoreCache(config.dependencyCachingEnabled)) {
+      await uploadDependencyCaches(config, logger);
+    }
 
     // We don't upload results in test mode, so don't wait for processing
     if (util.isInTestMode()) {

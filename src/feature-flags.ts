@@ -50,6 +50,7 @@ export interface FeatureEnablement {
 export enum Feature {
   ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
+  CppBuildModeNone = "cpp_build_mode_none",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
@@ -58,8 +59,6 @@ export enum Feature {
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  ZstdBundle = "zstd_bundle",
-  ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
 }
 
 export const featureConfig: Record<
@@ -101,6 +100,11 @@ export const featureConfig: Record<
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
+    minimumVersion: undefined,
+  },
+  [Feature.CppBuildModeNone]: {
+    defaultValue: false,
+    envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE",
     minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {
@@ -148,18 +152,6 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
-    minimumVersion: undefined,
-  },
-  [Feature.ZstdBundle]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ZSTD_BUNDLE",
-    // We haven't yet installed CodeQL when we check this feature flag, so we need to implement the
-    // version check separately.
-    minimumVersion: undefined,
-  },
-  [Feature.ZstdBundleStreamingExtraction]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ZSTD_BUNDLE_STREAMING_EXTRACTION",
     minimumVersion: undefined,
   },
 };
@@ -479,7 +471,10 @@ class GitHubFeatureFlags {
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
-    if (this.gitHubVersion.type !== util.GitHubVariant.DOTCOM) {
+    if (
+      this.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
+      this.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
+    ) {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features.",
       );

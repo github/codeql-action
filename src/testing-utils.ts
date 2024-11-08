@@ -290,23 +290,30 @@ export function mockBundleDownloadApi({
       : "osx64";
 
   const baseUrl = apiDetails?.url ?? "https://example.com";
-  const relativeUrl = apiDetails
-    ? `/${repo}/releases/download/${tagName}/codeql-bundle${
-        platformSpecific ? `-${platform}` : ""
-      }.tar.gz`
-    : `/download/${tagName}/codeql-bundle.tar.gz`;
 
-  nock(baseUrl)
-    .get(relativeUrl)
-    .replyWithFile(
-      200,
-      path.join(
-        __dirname,
-        `/../src/testdata/codeql-bundle${isPinned ? "-pinned" : ""}.tar.gz`,
-      ),
-    );
+  const bundleUrls = ["tar.gz", "tar.zst"].map((extension) => {
+    const relativeUrl = apiDetails
+      ? `/${repo}/releases/download/${tagName}/codeql-bundle${
+          platformSpecific ? `-${platform}` : ""
+        }.${extension}`
+      : `/download/${tagName}/codeql-bundle.${extension}`;
 
-  return `${baseUrl}${relativeUrl}`;
+    nock(baseUrl)
+      .get(relativeUrl)
+      .replyWithFile(
+        200,
+        path.join(
+          __dirname,
+          `/../src/testdata/codeql-bundle${
+            isPinned ? "-pinned" : ""
+          }.${extension}`,
+        ),
+      );
+    return `${baseUrl}${relativeUrl}`;
+  });
+
+  // Choose an arbitrary URL to return
+  return bundleUrls[0];
 }
 
 export function createTestConfig(overrides: Partial<Config>): Config {
@@ -331,6 +338,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       },
       trapCaches: {},
       trapCacheDownloadTime: 0,
+      dependencyCachingEnabled: false,
     },
     overrides,
   );

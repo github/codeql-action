@@ -4,6 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
+## 3.27.1 - 08 Nov 2024
+
+- The CodeQL Action now downloads bundles compressed using Zstandard on GitHub Enterprise Server when using Linux or macOS runners. This speeds up the installation of the CodeQL tools. This feature is already available to GitHub.com users. [#2573](https://github.com/github/codeql-action/pull/2573)
+- Update default CodeQL bundle version to 2.19.3. [#2576](https://github.com/github/codeql-action/pull/2576)
+
 ## 3.27.0 - 22 Oct 2024
 
 - Bump the minimum CodeQL bundle version to 2.14.6. [#2549](https://github.com/github/codeql-action/pull/2549)
@@ -53,12 +58,12 @@ No user facing changes.
 
 ## 3.26.5 - 23 Aug 2024
 
-- Fix an issue where the `csrutil` system call used for telemetry would fail on MacOS ARM machines with System Integrity Protection disabled. [#2441](https://github.com/github/codeql-action/pull/2441)
+- Fix an issue where the `csrutil` system call used for telemetry would fail on macOS ARM machines with System Integrity Protection disabled. [#2441](https://github.com/github/codeql-action/pull/2441)
 
 ## 3.26.4 - 21 Aug 2024
 
 - _Deprecation:_ The `add-snippets` input on the `analyze` Action is deprecated and will be removed in the first release in August 2025. [#2436](https://github.com/github/codeql-action/pull/2436)
-- Fix an issue where the disk usage system call used for telemetry would fail on MacOS ARM machines with System Integrity Protection disabled, and then surface a warning. The system call is now disabled for these machines. [#2434](https://github.com/github/codeql-action/pull/2434)
+- Fix an issue where the disk usage system call used for telemetry would fail on macOS ARM machines with System Integrity Protection disabled, and then surface a warning. The system call is now disabled for these machines. [#2434](https://github.com/github/codeql-action/pull/2434)
 
 ## 3.26.3 - 19 Aug 2024
 
@@ -136,7 +141,7 @@ No user facing changes.
 ## 3.25.3 - 25 Apr 2024
 
 - Update default CodeQL bundle version to 2.17.1. [#2247](https://github.com/github/codeql-action/pull/2247)
-- Workflows running on `macos-latest` using CodeQL CLI versions before v2.15.1 will need to either upgrade their CLI version to v2.15.1 or newer, or change the platform to an Intel MacOS runner, such as `macos-12`. ARM machines with SIP disabled, including the newest `macos-latest` image, are unsupported for CLI versions before 2.15.1. [#2261](https://github.com/github/codeql-action/pull/2261)
+- Workflows running on `macos-latest` using CodeQL CLI versions before v2.15.1 will need to either upgrade their CLI version to v2.15.1 or newer, or change the platform to an Intel macOS runner, such as `macos-12`. ARM machines with SIP disabled, including the newest `macos-latest` image, are unsupported for CLI versions before 2.15.1. [#2261](https://github.com/github/codeql-action/pull/2261)
 
 ## 3.25.2 - 22 Apr 2024
 

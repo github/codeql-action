@@ -6,6 +6,7 @@ import { safeWhich } from "@chrisgavin/safe-which";
 import del from "del";
 import * as yaml from "js-yaml";
 
+import * as actionsUtil from "./actions-util";
 import { setupCppAutobuild } from "./autobuild";
 import {
   CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
@@ -17,7 +18,7 @@ import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
-import { Logger } from "./logging";
+import { Logger, withGroup } from "./logging";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
@@ -234,12 +235,224 @@ async function finalizeDatabaseCreation(
   };
 }
 
+/**
+ * Set up the diff-informed analysis feature.
+ *
+ * @param baseRef The base branch name, used for calculating the diff range.
+ * @param headRef The head branch name, used for calculating the diff range.
+ * @param codeql
+ * @param logger
+ * @param features
+ * @returns Absolute path to the directory containing the extension pack for
+ * the diff range information, or `undefined` if the feature is disabled.
+ */
+export async function setupDiffInformedQueryRun(
+  baseRef: string,
+  headRef: string,
+  codeql: CodeQL,
+  logger: Logger,
+  features: FeatureEnablement,
+): Promise<string | undefined> {
+  if (!(await features.getValue(Feature.DiffInformedQueries, codeql))) {
+    return undefined;
+  }
+  return await withGroup("Generating diff range extension pack", async () => {
+    const diffRanges = await getPullRequestEditedDiffRanges(
+      baseRef,
+      headRef,
+      logger,
+    );
+    return writeDiffRangeDataExtensionPack(logger, diffRanges);
+  });
+}
+
+interface DiffThunkRange {
+  path: string;
+  startLine: number;
+  endLine: number;
+}
+
+/**
+ * Return the file line ranges that were added or modified in the pull request.
+ *
+ * @param baseRef The base branch name, used for calculating the diff range.
+ * @param headRef The head branch name, used for calculating the diff range.
+ * @param logger
+ * @returns An array of tuples, where each tuple contains the absolute path of a
+ * file, the start line and the end line (both 1-based and inclusive) of an
+ * added or modified range in that file. Returns `undefined` if the action was
+ * not triggered by a pull request or if there was an error.
+ */
+async function getPullRequestEditedDiffRanges(
+  baseRef: string,
+  headRef: string,
+  logger: Logger,
+): Promise<DiffThunkRange[] | undefined> {
+  const checkoutPath = actionsUtil.getOptionalInput("checkout_path");
+  if (checkoutPath === undefined) {
+    return undefined;
+  }
+
+  // To compute the merge bases between the base branch and the PR topic branch,
+  // we need to fetch the commit graph from the branch heads to those merge
+  // babes. The following 4-step procedure does so while limiting the amount of
+  // history fetched.
+
+  // Step 1: Deepen from the PR merge commit to the base branch head and the PR
+  // topic branch head, so that the PR merge commit is no longer considered a
+  // grafted commit.
+  await actionsUtil.deepenGitHistory();
+  // Step 2: Fetch the base branch shallow history. This step ensures that the
+  // base branch name is present in the local repository. Normally the base
+  // branch name would be added by Step 4. However, if the base branch head is
+  // an ancestor of the PR topic branch head, Step 4 would fail without doing
+  // anything, so we need to fetch the base branch explicitly.
+  await actionsUtil.gitFetch(baseRef, ["--depth=1"]);
+  // Step 3: Fetch the PR topic branch history, stopping when we reach commits
+  // that are reachable from the base branch head.
+  await actionsUtil.gitFetch(headRef, [`--shallow-exclude=${baseRef}`]);
+  // Step 4: Fetch the base branch history, stopping when we reach commits that
+  // are reachable from the PR topic branch head.
+  await actionsUtil.gitFetch(baseRef, [`--shallow-exclude=${headRef}`]);
+  // Step 5: Deepen the history so that we have the merge bases between the base
+  // branch and the PR topic branch.
+  await actionsUtil.deepenGitHistory();
+
+  // To compute the exact same diff as GitHub would compute for the PR, we need
+  // to use the same merge base as GitHub. That is easy to do if there is only
+  // one merge base, which is by far the most common case. If there are multiple
+  // merge bases, we stop without producing a diff range.
+  const mergeBases = await actionsUtil.getAllGitMergeBases([baseRef, headRef]);
+  logger.info(`Merge bases: ${mergeBases.join(", ")}`);
+  if (mergeBases.length !== 1) {
+    logger.info(
+      "Cannot compute diff range because baseRef and headRef " +
+        `have ${mergeBases.length} merge bases (instead of exactly 1).`,
+    );
+    return undefined;
+  }
+
+  const diffHunkHeaders = await actionsUtil.getGitDiffHunkHeaders(
+    mergeBases[0],
+    headRef,
+  );
+  if (diffHunkHeaders === undefined) {
+    return undefined;
+  }
+
+  const results = new Array<DiffThunkRange>();
+
+  let changedFile = "";
+  for (const line of diffHunkHeaders) {
+    if (line.startsWith("+++ ")) {
+      const filePath = actionsUtil.decodeGitFilePath(line.substring(4));
+      if (filePath.startsWith("b/")) {
+        // The file was edited: track all hunks in the file
+        changedFile = filePath.substring(2);
+      } else if (filePath === "/dev/null") {
+        // The file was deleted: skip all hunks in the file
+        changedFile = "";
+      } else {
+        logger.warning(`Failed to parse diff hunk header line: ${line}`);
+        return undefined;
+      }
+      continue;
+    }
+    if (line.startsWith("@@ ")) {
+      if (changedFile === "") continue;
+
+      const match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+      if (match === null) {
+        logger.warning(`Failed to parse diff hunk header line: ${line}`);
+        return undefined;
+      }
+      const startLine = parseInt(match[1], 10);
+      const numLines = parseInt(match[2], 10);
+      if (numLines === 0) {
+        // The hunk was a deletion: skip it
+        continue;
+      }
+      const endLine = startLine + (numLines || 1) - 1;
+      results.push({
+        path: path.join(checkoutPath, changedFile),
+        startLine,
+        endLine,
+      });
+    }
+  }
+  return results;
+}
+
+/**
+ * Create an extension pack in the temporary directory that contains the file
+ * line ranges that were added or modified in the pull request.
+ *
+ * @param logger
+ * @param ranges The file line ranges, as returned by
+ * `getPullRequestEditedDiffRanges`.
+ * @returns The absolute path of the directory containing the extension pack, or
+ * `undefined` if no extension pack was created.
+ */
+function writeDiffRangeDataExtensionPack(
+  logger: Logger,
+  ranges: DiffThunkRange[] | undefined,
+): string | undefined {
+  if (ranges === undefined) {
+    return undefined;
+  }
+
+  const diffRangeDir = path.join(
+    actionsUtil.getTemporaryDirectory(),
+    "pr-diff-range",
+  );
+  fs.mkdirSync(diffRangeDir);
+  fs.writeFileSync(
+    path.join(diffRangeDir, "qlpack.yml"),
+    `
+name: codeql-action/pr-diff-range
+version: 0.0.0
+library: true
+extensionTargets:
+  codeql/util: '*'
+dataExtensions:
+  - pr-diff-range.yml
+`,
+  );
+
+  const header = `
+extensions:
+  - addsTo:
+      pack: codeql/util
+      extensible: restrictAlertsTo
+    data:
+`;
+
+  let data = ranges
+    .map((range) => `      - ["${range[0]}", ${range[1]}, ${range[2]}]\n`)
+    .join("");
+  if (!data) {
+    // Ensure that the data extension is not empty, so that a pull request with
+    // no edited lines would exclude (instead of accepting) all alerts.
+    data = '      - ["", 0, 0]\n';
+  }
+
+  const extensionContents = header + data;
+  const extensionFilePath = path.join(diffRangeDir, "pr-diff-range.yml");
+  fs.writeFileSync(extensionFilePath, extensionContents);
+  logger.debug(
+    `Wrote pr-diff-range extension pack to ${extensionFilePath}:\n${extensionContents}`,
+  );
+
+  return diffRangeDir;
+}
+
 // Runs queries and creates sarif files in the given folder
 export async function runQueries(
   sarifFolder: string,
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
   config: configUtils.Config,
   logger: Logger,
@@ -247,8 +460,18 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
+  const dataExtensionFlags = diffRangePackDir
+    ? [
+        `--additional-packs=${diffRangePackDir}`,
+        "--extension-packs=codeql-action/pr-diff-range",
+      ]
+    : [];
+  const sarifRunPropertyFlag = diffRangePackDir
+    ? "--sarif-run-property=incrementalMode=diff-informed"
+    : undefined;
+
   const codeql = await getCodeQL(config.codeQLCmd);
-  const queryFlags = [memoryFlag, threadsFlag];
+  const queryFlags = [memoryFlag, threadsFlag, ...dataExtensionFlags];
 
   for (const language of config.languages) {
     try {
@@ -336,6 +559,7 @@ export async function runQueries(
       addSnippetsFlag,
       threadsFlag,
       enableDebugLogging ? "-vv" : "-v",
+      sarifRunPropertyFlag,
       automationDetailsId,
       config,
       features,

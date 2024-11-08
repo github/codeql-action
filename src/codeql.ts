@@ -570,6 +570,12 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--trace-process-name=${processName}`);
       }
 
+      if (config.languages.indexOf(Language.actions) >= 0) {
+        extraArgs.push("--search-path");
+        const extractorPath = path.resolve(__dirname, "../actions-extractor");
+        extraArgs.push(extractorPath);
+      }
+
       const codeScanningConfigFile = await generateCodeScanningConfig(
         config,
         logger,

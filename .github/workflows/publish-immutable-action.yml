@@ -1,0 +1,35 @@
+name: 'Publish Immutable Action Version'
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+
+    steps:
+      - name: Check release name
+        id: check
+        env:
+          RELEASE_NAME: ${{ github.event.release.name }}
+        run: |
+          echo "Release name: ${{ github.event.release.name }}"
+          if [[ $RELEASE_NAME == v* ]]; then
+            echo "This is a CodeQL Action release. Create an Immutable Action"
+            echo "is-action-release=true" >> $GITHUB_OUTPUT
+          else
+            echo "This is a CodeQL Bundle release. Do not create an Immutable Action"
+            echo "is-action-release=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Checking out
+        if: steps.check.outputs.is-action-release == 'true'
+        uses: actions/checkout@v4
+      - name: Publish
+        if: steps.check.outputs.is-action-release == 'true'
+        id: publish
+        uses: actions/publish-immutable-action@v0.0.4

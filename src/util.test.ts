@@ -4,6 +4,7 @@ import path from "path";
 
 import * as core from "@actions/core";
 import test from "ava";
+import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as api from "./api-client";
@@ -144,7 +145,7 @@ test("getExtraOptionsEnvParam() succeeds on valid JSON with invalid options (for
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
 });
 
-test("getExtraOptionsEnvParam() succeeds on valid options", (t) => {
+test("getExtraOptionsEnvParam() succeeds on valid JSON options", (t) => {
   const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
 
   const options = { database: { init: ["--debug"] } };
@@ -155,10 +156,21 @@ test("getExtraOptionsEnvParam() succeeds on valid options", (t) => {
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
 });
 
+test("getExtraOptionsEnvParam() succeeds on valid YAML options", (t) => {
+  const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
+
+  const options = { database: { init: ["--debug"] } };
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = yaml.dump(options);
+
+  t.deepEqual(util.getExtraOptionsEnvParam(), { ...options });
+
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+});
+
 test("getExtraOptionsEnvParam() fails on invalid JSON", (t) => {
   const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
 
-  process.env.CODEQL_ACTION_EXTRA_OPTIONS = "{{invalid-json}}";
+  process.env.CODEQL_ACTION_EXTRA_OPTIONS = "{{invalid-json}";
   t.throws(util.getExtraOptionsEnvParam);
 
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;

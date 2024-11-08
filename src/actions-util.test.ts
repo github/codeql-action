@@ -324,3 +324,41 @@ test("determineBaseBranchHeadCommitOid other error", async (t) => {
 
   infoStub.restore();
 });
+
+test("decodeGitFilePath unquoted strings", async (t) => {
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo"), "foo");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo bar"), "foo bar");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\\\bar"), "foo\\\\bar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('foo\\"bar'), 'foo\\"bar');
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\001bar"), "foo\\001bar");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\abar"), "foo\\abar");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\bbar"), "foo\\bbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\fbar"), "foo\\fbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\nbar"), "foo\\nbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\rbar"), "foo\\rbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\tbar"), "foo\\tbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\vbar"), "foo\\vbar");
+  t.deepEqual(
+    actionsUtil.decodeGitFilePath("\\a\\b\\f\\n\\r\\t\\v"),
+    "\\a\\b\\f\\n\\r\\t\\v",
+  );
+});
+
+test("decodeGitFilePath quoted strings", async (t) => {
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo"'), "foo");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo bar"'), "foo bar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\\\bar"'), "foo\\bar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\"bar"'), 'foo"bar');
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\001bar"'), "foo\x01bar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\abar"'), "foo\x07bar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\bbar"'), "foo\bbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\fbar"'), "foo\fbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\nbar"'), "foo\nbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\rbar"'), "foo\rbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\tbar"'), "foo\tbar");
+  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\vbar"'), "foo\vbar");
+  t.deepEqual(
+    actionsUtil.decodeGitFilePath('"\\a\\b\\f\\n\\r\\t\\v"'),
+    "\x07\b\f\n\r\t\v",
+  );
+});

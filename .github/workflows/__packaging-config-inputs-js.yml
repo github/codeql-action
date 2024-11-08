@@ -52,7 +52,7 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Setup Python on MacOS
+      - name: Setup Python on macOS
         uses: actions/setup-python@v5
         if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
         with:
@@ -84,7 +84,7 @@ jobs:
         uses: ./../action/.github/actions/check-sarif
         with:
           sarif-file: ${{ runner.temp }}/results/javascript.sarif
-          queries-run: 
+          queries-run:
             javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
           queries-not-run: foo,bar
 

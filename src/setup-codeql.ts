@@ -7,14 +7,12 @@ import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 
-import { CommandInvocationError, isRunningLocalAction } from "./actions-util";
+import { isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
-  Feature,
-  FeatureEnablement,
 } from "./feature-flags";
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
@@ -138,12 +136,30 @@ function tryGetBundleVersionFromTagName(
   return match[1];
 }
 
-function tryGetTagNameFromUrl(url: string, logger: Logger): string | undefined {
-  const match = url.match(/\/(codeql-bundle-.*)\//);
-  if (match === null || match.length < 2) {
+export function tryGetTagNameFromUrl(
+  url: string,
+  logger: Logger,
+): string | undefined {
+  const matches = [...url.matchAll(/\/(codeql-bundle-[^/]*)\//g)];
+  if (!matches.length) {
     logger.debug(`Could not determine tag name for URL ${url}.`);
     return undefined;
   }
+  // Example: https://github.com/org/codeql-bundle-testing/releases/download/codeql-bundle-v2.19.0/codeql-bundle-linux64.tar.zst
+  // We require a trailing forward slash to be part of the match, so the last match gives us the tag
+  // name. An alternative approach would be to also match against `/releases/`, but this approach
+  // assumes less about the structure of the URL.
+  const match = matches[matches.length - 1];
+
+  if (match === null || match.length !== 2) {
+    logger.debug(
+      `Could not determine tag name for URL ${url}. Matched ${JSON.stringify(
+        match,
+      )}.`,
+    );
+    return undefined;
+  }
+
   return match[1];
 }
 
@@ -243,7 +259,6 @@ export async function getCodeQLSource(
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
   tarSupportsZstd: boolean,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
   if (
@@ -274,13 +289,12 @@ export async function getCodeQLSource(
     toolsInput && CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput);
   if (forceShippedTools) {
     logger.info(
-      `Overriding the version of the CodeQL tools by ${defaultCliVersion.cliVersion}, the version shipped with the Action since ` +
-        `tools: ${toolsInput} was requested.`,
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${defaultCliVersion.cliVersion}, the version shipped with the Action.`,
     );
 
     if (toolsInput === "latest") {
       logger.warning(
-        "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported for now. No action is required.",
+        "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.",
       );
     }
   }
@@ -441,7 +455,7 @@ export async function getCodeQLSource(
       tagName!,
       apiDetails,
       cliVersion !== undefined &&
-        (await useZstdBundle(cliVersion, features, tarSupportsZstd)),
+        (await useZstdBundle(cliVersion, tarSupportsZstd)),
       logger,
     );
   }
@@ -490,7 +504,6 @@ export const downloadCodeQL = async function (
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
@@ -525,7 +538,6 @@ export const downloadCodeQL = async function (
     { "User-Agent": "CodeQL Action", ...headers },
     tarVersion,
     tempDir,
-    features,
     logger,
   );
 
@@ -622,7 +634,6 @@ export interface SetupCodeQLResult {
   toolsSource: ToolsSource;
   toolsVersion: string;
   zstdAvailability: tar.ZstdAvailability;
-  zstdFailureReason?: string;
 }
 
 /**
@@ -636,82 +647,16 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  features: FeatureEnablement,
   logger: Logger,
-): Promise<SetupCodeQLResult> {
-  const zstdAvailability = await tar.isZstdAvailable(logger);
-  let zstdFailureReason: string | undefined;
-
-  // If we think the installed version of tar supports zstd, try to use zstd,
-  // but be prepared to fall back to gzip in case we were wrong.
-  if (zstdAvailability.available) {
-    try {
-      // To facilitate testing the fallback, fail here if a testing environment variable is set.
-      if (process.env.CODEQL_ACTION_FORCE_ZSTD_FAILURE === "true") {
-        throw new Error(
-          "Failing since CODEQL_ACTION_FORCE_ZSTD_FAILURE is true.",
-        );
-      }
-      return await setupCodeQLBundleWithCompressionMethod(
-        toolsInput,
-        apiDetails,
-        tempDir,
-        variant,
-        defaultCliVersion,
-        features,
-        logger,
-        zstdAvailability,
-        true,
-      );
-    } catch (e) {
-      zstdFailureReason = util.getErrorMessage(e) || "unknown error";
-      if (e instanceof CommandInvocationError) {
-        zstdFailureReason += ` Full error: ${e.stderr}`;
-        logger.debug(`Invocation output the following to stderr: ${e.stderr}`);
-      }
-      logger.warning(
-        `Failed to set up CodeQL tools with zstd. Falling back to gzipped version. Error: ${util.getErrorMessage(
-          e,
-        )}`,
-      );
-    }
-  }
-
-  const result = await setupCodeQLBundleWithCompressionMethod(
-    toolsInput,
-    apiDetails,
-    tempDir,
-    variant,
-    defaultCliVersion,
-    features,
-    logger,
-    zstdAvailability,
-    false,
-  );
-  if (result.toolsDownloadStatusReport && zstdFailureReason) {
-    result.toolsDownloadStatusReport.zstdFailureReason = zstdFailureReason;
-  }
-  return result;
-}
-
-async function setupCodeQLBundleWithCompressionMethod(
-  toolsInput: string | undefined,
-  apiDetails: api.GitHubApiDetails,
-  tempDir: string,
-  variant: util.GitHubVariant,
-  defaultCliVersion: CodeQLDefaultVersionInfo,
-  features: FeatureEnablement,
-  logger: Logger,
-  zstdAvailability: tar.ZstdAvailability,
-  useTarIfAvailable: boolean,
 ) {
+  const zstdAvailability = await tar.isZstdAvailable(logger);
+
   const source = await getCodeQLSource(
     toolsInput,
     defaultCliVersion,
     apiDetails,
     variant,
-    useTarIfAvailable,
-    features,
+    zstdAvailability.available,
     logger,
   );
 
@@ -746,7 +691,6 @@ async function setupCodeQLBundleWithCompressionMethod(
         apiDetails,
         zstdAvailability.version,
         tempDir,
-        features,
         logger,
       );
       toolsVersion = result.toolsVersion;
@@ -769,14 +713,12 @@ async function setupCodeQLBundleWithCompressionMethod(
 
 async function useZstdBundle(
   cliVersion: string,
-  features: FeatureEnablement,
   tarSupportsZstd: boolean,
 ): Promise<boolean> {
   return (
     // In testing, gzip performs better than zstd on Windows.
     process.platform !== "win32" &&
     tarSupportsZstd &&
-    semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE) &&
-    !!(await features.getValue(Feature.ZstdBundle))
+    semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE)
   );
 }

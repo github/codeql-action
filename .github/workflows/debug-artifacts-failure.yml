@@ -50,7 +50,7 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
-        env: 
+        env:
           # Forces a failure in this step.
           CODEQL_ACTION_EXTRA_OPTIONS: '{ "database": { "finalize": ["--invalid-option"] } }'
         with:

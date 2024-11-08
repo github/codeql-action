@@ -15,8 +15,14 @@ import {
   persistInputs,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
+import {
+  getDependencyCachingEnabled,
+  getTotalCacheSize,
+  shouldRestoreCache,
+} from "./caching-utils";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { downloadDependencyCaches } from "./dependency-caching";
 import {
   addDiagnostic,
   flushDiagnostics,
@@ -46,7 +52,6 @@ import {
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
-import { getTotalCacheSize } from "./trap-caching";
 import {
   checkDiskUsage,
   checkForTimeout,
@@ -225,7 +230,7 @@ async function sendCompletedStatusReport(
       packs: JSON.stringify(packs),
       trap_cache_languages: Object.keys(config.trapCaches).join(","),
       trap_cache_download_size_bytes: Math.round(
-        await getTotalCacheSize(config.trapCaches, logger),
+        await getTotalCacheSize(Object.values(config.trapCaches), logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
       query_filters: JSON.stringify(
@@ -314,7 +319,6 @@ async function run() {
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
-      features,
       logger,
     );
     codeql = initCodeQLResult.codeql;
@@ -339,6 +343,7 @@ async function run() {
         dbLocation: getOptionalInput("db-location"),
         configInput: getOptionalInput("config"),
         trapCachingEnabled: getTrapCachingEnabled(),
+        dependencyCachingEnabled: getDependencyCachingEnabled(),
         // Debug mode is enabled if:
         // - The `init` Action is passed `debug: true`.
         // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
@@ -546,7 +551,22 @@ async function run() {
       }
     }
 
-    // For CLI versions <2.15.1, build tracing caused errors in MacOS ARM machines with
+    // Set CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE
+    if (config.languages.includes(Language.cpp)) {
+      const bmnVar = "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE";
+      const value =
+        process.env[bmnVar] ||
+        (await features.getValue(Feature.CppBuildModeNone, codeql));
+      logger.info(`Setting C++ build-mode: none to ${value}`);
+      core.exportVariable(bmnVar, value);
+    }
+
+    // Restore dependency cache(s), if they exist.
+    if (shouldRestoreCache(config.dependencyCachingEnabled)) {
+      await downloadDependencyCaches(config.languages, logger);
+    }
+
+    // For CLI versions <2.15.1, build tracing caused errors in macOS ARM machines with
     // System Integrity Protection (SIP) disabled.
     if (
       !(await codeQlVersionAtLeast(codeql, "2.15.1")) &&
@@ -555,7 +575,7 @@ async function run() {
       !(await checkSipEnablement(logger))
     ) {
       logger.warning(
-        "CodeQL versions 2.15.0 and lower are not supported on MacOS ARM machines with System Integrity Protection (SIP) disabled.",
+        "CodeQL versions 2.15.0 and lower are not supported on macOS ARM machines with System Integrity Protection (SIP) disabled.",
       );
     }
 

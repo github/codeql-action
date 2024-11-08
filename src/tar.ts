@@ -125,27 +125,30 @@ export async function extract(
           "Could not determine tar version, which is required to extract a Zstandard archive.",
         );
       }
-      return await extractTarZst(
-        fs.createReadStream(tarPath),
-        tarVersion,
-        logger,
-      );
+      return await extractTarZst(tarPath, tarVersion, logger);
   }
 }
 
 /**
  * Extract a compressed tar archive
  *
- * @param file     path to the tar
+ * @param tar   tar stream, or path to the tar
  * @param dest     destination directory. Optional.
  * @returns        path to the destination directory
  */
 export async function extractTarZst(
-  tarStream: stream.Readable,
+  tar: stream.Readable | string,
   tarVersion: TarVersion,
   logger: Logger,
 ): Promise<string> {
   const dest = await createExtractFolder();
+  logger.debug(
+    `Extracting to ${dest}.${
+      tar instanceof stream.Readable
+        ? ` Input stream has high water mark ${tar.readableHighWaterMark}.`
+        : ""
+    }`,
+  );
 
   try {
     // Initialize args
@@ -157,7 +160,7 @@ export async function extractTarZst(
       args.push("--overwrite");
     }
 
-    args.push("-f", "-", "-C", dest);
+    args.push("-f", tar instanceof stream.Readable ? "-" : tar, "-C", dest);
 
     process.stdout.write(`[command]tar ${args.join(" ")}\n`);
 
@@ -175,7 +178,9 @@ export async function extractTarZst(
       process.stdout.write(data);
     });
 
-    tarStream.pipe(tarProcess.stdin);
+    if (tar instanceof stream.Readable) {
+      tar.pipe(tarProcess.stdin);
+    }
 
     await new Promise<void>((resolve, reject) => {
       tarProcess.on("exit", (code) => {

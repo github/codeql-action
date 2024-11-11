@@ -30,6 +30,12 @@ jobs:
           - os: windows-latest
             version: nightly-latest
             tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20241111/codeql-bundle-win64.tar.zst
+          - os: windows-latest
+            version: nightly-latest
+            tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20241110/codeql-bundle-win64.tar.gz
+          - os: windows-latest
+            version: nightly-latest
+            tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20241111/codeql-bundle-win64.tar.gz
     name: 'Packaging: Config and input'
     permissions:
       contents: read

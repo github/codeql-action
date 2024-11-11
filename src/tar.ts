@@ -8,7 +8,7 @@ import * as toolcache from "@actions/tool-cache";
 import { safeWhich } from "@chrisgavin/safe-which";
 import { v4 as uuidV4 } from "uuid";
 
-import { CommandInvocationError, getTemporaryDirectory } from "./actions-util";
+import { CommandInvocationError, getTemporaryDirectory, runTool } from "./actions-util";
 import { Logger } from "./logging";
 import { assertNever, cleanUpGlob } from "./util";
 
@@ -149,6 +149,10 @@ export async function extractTarZst(
         : ""
     }`,
   );
+
+  if (typeof tar === "string") {
+    await runTool("file", [tar]);
+  }
 
   try {
     // Initialize args

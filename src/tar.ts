@@ -151,7 +151,21 @@ export async function extractTarZst(
   );
 
   if (typeof tar === "string") {
-    await runTool("file", [tar]);
+    try {
+      await runTool("sha256sum", [tar]);
+    } catch (e) {
+      logger.error(
+        `Could not determine the SHA256 checksum of the tar file at ${tar}. The underlying error was: ${e}`,
+      );
+    }
+
+    try {
+      await runTool("file", [tar]);
+    } catch (e) {
+      logger.error(
+        `Could not determine the type of the tar file at ${tar}. The underlying error was: ${e}`,
+      );
+    }
   }
 
   try {

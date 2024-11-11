@@ -9,9 +9,6 @@ env:
   GO111MODULE: auto
 on:
   push:
-    branches:
-      - main
-      - releases/v*
   pull_request:
     types:
       - opened
@@ -27,24 +24,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            version: linked
-          - os: macos-latest
-            version: linked
-          - os: windows-latest
-            version: linked
-          - os: ubuntu-latest
-            version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
-          - os: ubuntu-latest
-            version: nightly-latest
-          - os: macos-latest
-            version: nightly-latest
           - os: windows-latest
             version: nightly-latest
+            tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20241110/codeql-bundle-win64.tar.zst
+          - os: windows-latest
+            version: nightly-latest
+            tools: https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20241111/codeql-bundle-win64.tar.zst
     name: 'Packaging: Config and input'
     permissions:
       contents: read
@@ -71,7 +56,7 @@ jobs:
           config-file: .github/codeql/codeql-config-packaging3.yml
           packs: +codeql-testing/codeql-pack1@1.0.0
           languages: javascript
-          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          tools: ${{ matrix.tools }}
       - name: Build code
         shell: bash
         run: ./build.sh

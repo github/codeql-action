@@ -152,7 +152,7 @@ export async function extractTarZst(
 
   try {
     // Initialize args
-    const args = ["-x", "--zstd"];
+    const args = ["-x", "--zstd", "-v"];
 
     if (tarVersion.type === "gnu") {
       // Suppress warnings when using GNU tar to extract archives created by BSD tar

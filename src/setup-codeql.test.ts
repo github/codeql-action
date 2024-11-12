@@ -4,6 +4,8 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { Feature, FeatureEnablement } from "./feature-flags";
+import { initializeFeatures } from "./feature-flags.test";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import {
@@ -25,6 +27,14 @@ import {
 
 setupTests(test);
 
+// TODO: Remove when when we no longer need to pass in features (https://github.com/github/codeql-action/issues/2600)
+const expectedFeatureEnablement: FeatureEnablement = initializeFeatures(
+  true,
+) as FeatureEnablement;
+expectedFeatureEnablement.getValue = function (feature: Feature) {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return expectedFeatureEnablement[feature];
+};
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 });
@@ -174,6 +184,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
       SAMPLE_DOTCOM_API_DETAILS,
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
+      expectedFeatureEnablement,
       SAMPLE_DEFAULT_CLI_VERSION,
       logger,
     );
@@ -224,6 +235,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
       SAMPLE_DOTCOM_API_DETAILS,
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
+      expectedFeatureEnablement,
       SAMPLE_DEFAULT_CLI_VERSION,
       logger,
     );

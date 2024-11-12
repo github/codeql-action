@@ -84,7 +84,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
                 # "macos-latest" is now an ARM runner, so we run tests on the old CLIs on Intel runners instead.
                 if version in ["stable-v2.14.6"] and runnerImage == "macos-latest":
                     matrix.append({
-                        'os': "macos-12",
+                        'os': "macos-13",
                         'version': version
                     })
                 else:

@@ -59,6 +59,7 @@ export enum Feature {
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
 }
 
 export const featureConfig: Record<
@@ -105,6 +106,11 @@ export const featureConfig: Record<
   [Feature.CppBuildModeNone]: {
     defaultValue: false,
     envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE",
+    minimumVersion: undefined,
+  },
+  [Feature.ZstdBundleStreamingExtraction]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ZSTD_BUNDLE_STREAMING_EXTRACTION",
     minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {

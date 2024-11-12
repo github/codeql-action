@@ -8,6 +8,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 3.27.3 - 12 Nov 2024
+
+No user facing changes.
+
 ## 3.27.2 - 12 Nov 2024
 
 - Fixed an issue where setting up the CodeQL tools would sometimes fail with the message "Invalid value 'undefined' for header 'authorization'". [#2590](https://github.com/github/codeql-action/pull/2590)

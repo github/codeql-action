@@ -552,7 +552,7 @@ function assertAllFeaturesUndefinedInApi(
   }
 }
 
-function initializeFeatures(initialValue: boolean) {
+export function initializeFeatures(initialValue: boolean) {
   return Object.keys(featureConfig).reduce((features, key) => {
     features[key] = initialValue;
     return features;

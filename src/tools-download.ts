@@ -87,7 +87,9 @@ export async function downloadAndExtract(
 
   const compressionMethod = tar.inferCompressionMethod(codeqlURL);
 
-  if (compressionMethod === "zstd" && process.platform === "linux") {
+  // TODO: Re-enable streaming when we have a more reliable way to respect proxy settings.
+  // eslint-disable-next-line no-constant-condition, no-constant-binary-expression
+  if (false && compressionMethod === "zstd" && process.platform === "linux") {
     logger.info(`Streaming the extraction of the CodeQL bundle.`);
 
     const toolsInstallStart = performance.now();

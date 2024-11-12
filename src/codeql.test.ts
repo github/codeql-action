@@ -17,6 +17,8 @@ import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
+import { Feature, FeatureEnablement } from "./feature-flags";
+import { initializeFeatures } from "./feature-flags.test";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -38,6 +40,15 @@ import { initializeEnvironment } from "./util";
 setupTests(test);
 
 let stubConfig: Config;
+
+// TODO: Remove when when we no longer need to pass in features
+const expectedFeatureEnablement: FeatureEnablement = initializeFeatures(
+  true,
+) as FeatureEnablement;
+expectedFeatureEnablement.getValue = function (feature: Feature) {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return expectedFeatureEnablement[feature];
+};
 
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
@@ -70,6 +81,7 @@ async function installIntoToolcache({
       ? { cliVersion, tagName }
       : SAMPLE_DEFAULT_CLI_VERSION,
     getRunnerLogger(true),
+    expectedFeatureEnablement,
     false,
   );
 }
@@ -129,6 +141,7 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
+        expectedFeatureEnablement,
         false,
       );
 
@@ -155,6 +168,7 @@ test("caches semantically versioned bundles using their semantic version number"
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
+      expectedFeatureEnablement,
       false,
     );
 
@@ -188,6 +202,7 @@ test("downloads an explicitly requested bundle even if a different version is ca
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
+      expectedFeatureEnablement,
       false,
     );
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
@@ -232,6 +247,7 @@ for (const {
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
+        expectedFeatureEnablement,
         false,
       );
       t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
@@ -270,6 +286,7 @@ for (const toolcacheVersion of [
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           getRunnerLogger(true),
+          expectedFeatureEnablement,
           false,
         );
         t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
@@ -302,6 +319,7 @@ test(`uses a cached bundle when no tools input is given on GHES`, async (t) => {
         tagName: defaults.bundleVersion,
       },
       getRunnerLogger(true),
+      expectedFeatureEnablement,
       false,
     );
     t.deepEqual(result.toolsVersion, "0.0.0-20200601");
@@ -338,6 +356,7 @@ test(`downloads bundle if only an unpinned version is cached on GHES`, async (t)
         tagName: defaults.bundleVersion,
       },
       getRunnerLogger(true),
+      expectedFeatureEnablement,
       false,
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -371,6 +390,7 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
+      expectedFeatureEnablement,
       false,
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -399,7 +419,6 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
       platformSpecific: false,
       tagName: "codeql-bundle-20230203",
     });
-
     const result = await codeql.setupCodeQL(
       "https://github.com/codeql-testing/codeql-cli-nightlies/releases/download/codeql-bundle-20230203/codeql-bundle.tar.gz",
       SAMPLE_DOTCOM_API_DETAILS,
@@ -407,6 +426,7 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
+      expectedFeatureEnablement,
       false,
     );
 

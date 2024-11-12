@@ -40,7 +40,7 @@ runs:
           exit 0
         fi
 
-        if [[ ${{ inputs.version }} == "nightly-latest" ]]; then
+        if [[ ${{ inputs.version }} == "nightly-latest" && "$RUNNER_OS" != "Windows" ]]; then
           extension="tar.zst"
         else
           extension="tar.gz"

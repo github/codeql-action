@@ -178,7 +178,8 @@ async function downloadAndExtractZstdWithStreaming(
   logger: Logger,
 ): Promise<string> {
   headers = Object.assign(
-    { "User-Agent": "CodeQL Action", authorization },
+    { "User-Agent": "CodeQL Action" },
+    authorization ? { authorization } : {},
     headers,
   );
   const response = await new Promise<IncomingMessage>((resolve) =>

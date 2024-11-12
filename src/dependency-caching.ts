@@ -168,7 +168,7 @@ export async function uploadDependencyCaches(config: Config, logger: Logger) {
     //   use the cache quota that we compete with. In that case, we do not wish to use up all of the quota
     //   with the dependency caches. For this, we could use the Cache API to check whether other workflows
     //   are using the quota and how full it is.
-    const size = await getTotalCacheSize(cacheConfig.paths, logger);
+    const size = await getTotalCacheSize(cacheConfig.paths, logger, true);
 
     // Skip uploading an empty cache.
     if (size === 0) {

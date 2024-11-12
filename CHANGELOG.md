@@ -4,6 +4,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 Note that the only difference between `v2` and `v3` of the CodeQL Action is the node version they support, with `v3` running on node 20 while we continue to release `v2` to support running on node 16. For example `3.22.11` was the first `v3` release and is functionally identical to `2.22.11`. This approach ensures an easy way to track exactly which features are included in different versions, indicated by the minor and patch version numbers.
 
+## 3.27.2 - 12 Nov 2024
+
+- Fixed an issue where setting up the CodeQL tools would sometimes fail with the message "Invalid value 'undefined' for header 'authorization'". [#2590](https://github.com/github/codeql-action/pull/2590)
+
 ## 3.27.1 - 08 Nov 2024
 
 - The CodeQL Action now downloads bundles compressed using Zstandard on GitHub Enterprise Server when using Linux or macOS runners. This speeds up the installation of the CodeQL tools. This feature is already available to GitHub.com users. [#2573](https://github.com/github/codeql-action/pull/2573)

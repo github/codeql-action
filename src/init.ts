@@ -8,7 +8,7 @@ import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -24,6 +24,7 @@ export async function initCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeql: CodeQL;
@@ -46,6 +47,7 @@ export async function initCodeQL(
     variant,
     defaultCliVersion,
     logger,
+    features,
     true,
   );
   await codeql.printVersion();

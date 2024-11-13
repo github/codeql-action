@@ -29,9 +29,9 @@ steps:
       output: ${{ runner.temp }}/results
       upload-database: false
   - name: Upload SARIF
-    uses: actions/upload-artifact@v3
+    uses: actions/upload-artifact@v4
     with:
-      name: zstd-bundle.sarif
+      name: ${{ matrix.os }}-zstd-bundle.sarif
       path: ${{ runner.temp }}/results/javascript.sarif
       retention-days: 7
   - name: Check diagnostic with expected tools URL appears in SARIF

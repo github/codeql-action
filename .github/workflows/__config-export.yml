@@ -70,7 +70,7 @@ jobs:
           output: ${{ runner.temp }}/results
           upload-database: false
       - name: Upload SARIF
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
           path: ${{ runner.temp }}/results/javascript.sarif

@@ -329,8 +329,13 @@ async function run() {
     zstdAvailability = initCodeQLResult.zstdAvailability;
 
     core.startGroup("Validating workflow");
-    if ((await validateWorkflow(codeql, logger)) === undefined) {
+    const validateWorkflowResult = await validateWorkflow(codeql, logger);
+    if (validateWorkflowResult === undefined) {
       logger.info("Detected no issues with the code scanning workflow.");
+    } else {
+      logger.warning(
+        `Unable to validate code scanning workflow: ${validateWorkflowResult}`,
+      );
     }
     core.endGroup();
 

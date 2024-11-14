@@ -785,16 +785,23 @@ export function listFolder(dir: string): string[] {
  *
  * @param cacheDir A directory to get the size of.
  * @param logger A logger to log any errors to.
+ * @param quiet A value indicating whether to suppress warnings for errors (default: false).
+ *              Ignored if the log level is `debug`.
  * @returns The size in bytes of the folder, or undefined if errors occurred.
  */
 export async function tryGetFolderBytes(
   cacheDir: string,
   logger: Logger,
+  quiet: boolean = false,
 ): Promise<number | undefined> {
   try {
     return await promisify<string, number>(getFolderSize)(cacheDir);
   } catch (e) {
-    logger.warning(`Encountered an error while getting size of folder: ${e}`);
+    if (!quiet || logger.isDebug()) {
+      logger.warning(
+        `Encountered an error while getting size of '${cacheDir}': ${e}`,
+      );
+    }
     return undefined;
   }
 }

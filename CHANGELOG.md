@@ -8,6 +8,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 3.27.4 - 14 Nov 2024
+
+No user facing changes.
+
 ## 3.27.3 - 12 Nov 2024
 
 No user facing changes.

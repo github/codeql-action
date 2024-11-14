@@ -168,7 +168,7 @@ export async function uploadDependencyCaches(config: Config, logger: Logger) {
     //   use the cache quota that we compete with. In that case, we do not wish to use up all of the quota
     //   with the dependency caches. For this, we could use the Cache API to check whether other workflows
     //   are using the quota and how full it is.
-    const size = await getTotalCacheSize(cacheConfig.paths, logger);
+    const size = await getTotalCacheSize(cacheConfig.paths, logger, true);
 
     // Skip uploading an empty cache.
     if (size === 0) {
@@ -181,10 +181,25 @@ export async function uploadDependencyCaches(config: Config, logger: Logger) {
     const key = await cacheKey(language, cacheConfig);
 
     logger.info(
-      `Uploading cache of size ${size} for ${language} with key ${key}`,
+      `Uploading cache of size ${size} for ${language} with key ${key}...`,
     );
 
-    await actionsCache.saveCache(cacheConfig.paths, key);
+    try {
+      await actionsCache.saveCache(cacheConfig.paths, key);
+    } catch (error) {
+      // `ReserveCacheError` indicates that the cache key is already in use, which means that a
+      // cache with that key already exists or is in the process of being uploaded by another
+      // workflow. We can ignore this.
+      if (error instanceof actionsCache.ReserveCacheError) {
+        logger.info(
+          `Not uploading cache for ${language}, because ${key} is already in use.`,
+        );
+        logger.debug(error.message);
+      } else {
+        // Propagate other errors upwards.
+        throw error;
+      }
+    }
   }
 }
 

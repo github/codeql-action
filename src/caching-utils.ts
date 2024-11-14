@@ -9,14 +9,16 @@ import { isHostedRunner, tryGetFolderBytes } from "./util";
  * Returns the total size of all the specified paths.
  * @param paths The paths for which to calculate the total size.
  * @param logger A logger to record some informational messages to.
+ * @param quiet A value indicating whether to suppress logging warnings (default: false).
  * @returns The total size of all specified paths.
  */
 export async function getTotalCacheSize(
   paths: string[],
   logger: Logger,
+  quiet: boolean = false,
 ): Promise<number> {
   const sizes = await Promise.all(
-    paths.map((cacheDir) => tryGetFolderBytes(cacheDir, logger)),
+    paths.map((cacheDir) => tryGetFolderBytes(cacheDir, logger, quiet)),
   );
   return sizes.map((a) => a || 0).reduce((a, b) => a + b, 0);
 }

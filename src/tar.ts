@@ -10,7 +10,7 @@ import { v4 as uuidV4 } from "uuid";
 
 import { CommandInvocationError, getTemporaryDirectory } from "./actions-util";
 import { Logger } from "./logging";
-import { assertNever, cleanUpGlob } from "./util";
+import { assertNever, cleanUpGlob, isBinaryAccessible } from "./util";
 
 const MIN_REQUIRED_BSD_TAR_VERSION = "3.4.3";
 const MIN_REQUIRED_GNU_TAR_VERSION = "1.31";
@@ -19,20 +19,6 @@ export type TarVersion = {
   type: "gnu" | "bsd";
   version: string;
 };
-
-async function isBinaryAccessible(
-  binary: string,
-  logger: Logger,
-): Promise<boolean> {
-  try {
-    await safeWhich(binary);
-    logger.debug(`Found ${binary}.`);
-    return true;
-  } catch (e) {
-    logger.debug(`Could not find ${binary}: ${e}`);
-    return false;
-  }
-}
 
 async function getTarVersion(): Promise<TarVersion> {
   const tar = await safeWhich("tar");

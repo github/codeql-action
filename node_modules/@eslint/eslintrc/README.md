@@ -40,7 +40,7 @@ const compat = new FlatCompat({
 export default [
 
     // mimic ESLintRC-style extends
-    ...compat.extends("standard", "example"),
+    ...compat.extends("standard", "example", "plugin:react/recommended"),
 
     // mimic environments
     ...compat.env({
@@ -49,11 +49,11 @@ export default [
     }),
 
     // mimic plugins
-    ...compat.plugins("airbnb", "react"),
+    ...compat.plugins("jsx-a11y", "react"),
 
     // translate an entire config
     ...compat.config({
-        plugins: ["airbnb", "react"],
+        plugins: ["jsx-a11y", "react"],
         extends: "standard",
         env: {
             es2020: true,
@@ -84,7 +84,7 @@ const compat = new FlatCompat({
 module.exports = [
 
     // mimic ESLintRC-style extends
-    ...compat.extends("standard", "example"),
+    ...compat.extends("standard", "example", "plugin:react/recommended"),
 
     // mimic environments
     ...compat.env({
@@ -93,11 +93,11 @@ module.exports = [
     }),
 
     // mimic plugins
-    ...compat.plugins("airbnb", "react"),
+    ...compat.plugins("jsx-a11y", "react"),
 
     // translate an entire config
     ...compat.config({
-        plugins: ["airbnb", "react"],
+        plugins: ["jsx-a11y", "react"],
         extends: "standard",
         env: {
             es2020: true,

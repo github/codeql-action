@@ -653,6 +653,11 @@ export async function setupCodeQLBundle(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
 ) {
+  if (!(await util.isBinaryAccessible("tar", logger))) {
+    throw new util.ConfigurationError(
+      "Could not find tar in PATH, so unable to extract CodeQL bundle.",
+    );
+  }
   const zstdAvailability = await tar.isZstdAvailable(logger);
 
   const source = await getCodeQLSource(

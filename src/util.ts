@@ -5,6 +5,7 @@ import { promisify } from "util";
 
 import * as core from "@actions/core";
 import * as exec from "@actions/exec/lib/exec";
+import { safeWhich } from "@chrisgavin/safe-which";
 import checkDiskSpace from "check-disk-space";
 import del from "del";
 import getFolderSize from "get-folder-size";
@@ -1185,5 +1186,19 @@ export async function cleanUpGlob(glob: string, name: string, logger: Logger) {
     }
   } catch (e) {
     logger.warning(`Failed to clean up ${name}: ${e}.`);
+  }
+}
+
+export async function isBinaryAccessible(
+  binary: string,
+  logger: Logger,
+): Promise<boolean> {
+  try {
+    await safeWhich(binary);
+    logger.debug(`Found ${binary}.`);
+    return true;
+  } catch (e) {
+    logger.debug(`Could not find ${binary}: ${e}`);
+    return false;
   }
 }

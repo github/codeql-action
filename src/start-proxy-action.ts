@@ -10,9 +10,9 @@ import { getActionsLogger, Logger } from "./logging";
 import * as util from "./util";
 
 const UPDATEJOB_PROXY = "update-job-proxy";
-const UPDATEJOB_PROXY_VERSION = "v2.0.20240722180912";
-const UPDATEJOB_PROXY_URL =
-  "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.18.1/update-job-proxy.tar.gz";
+const UPDATEJOB_PROXY_VERSION = "v2.0.20241023203727";
+const UPDATEJOB_PROXY_URL_PREFIX =
+  "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.18.1/";
 const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
@@ -229,17 +229,28 @@ function getProxyAuth(): BasicAuthCredentials | undefined {
 }
 
 async function getProxyBinaryPath(): Promise<string> {
-  let proxyBin = toolcache.find(UPDATEJOB_PROXY, UPDATEJOB_PROXY_VERSION);
+  const proxyFileName =
+    process.platform === "win32" ? `${UPDATEJOB_PROXY}.exe` : UPDATEJOB_PROXY;
+  const platform =
+    process.platform === "win32"
+      ? "win64"
+      : process.platform === "darwin"
+      ? "osx64"
+      : "linux64";
+  const proxyPackage = `${UPDATEJOB_PROXY}-${platform}.tar.gz`;
+  const proxyURL = `${UPDATEJOB_PROXY_URL_PREFIX}${proxyPackage}`;
+
+  let proxyBin = toolcache.find(proxyFileName, UPDATEJOB_PROXY_VERSION);
   if (!proxyBin) {
-    const temp = await toolcache.downloadTool(UPDATEJOB_PROXY_URL);
+    const temp = await toolcache.downloadTool(proxyURL);
     const extracted = await toolcache.extractTar(temp);
     proxyBin = await toolcache.cacheDir(
       extracted,
-      UPDATEJOB_PROXY,
+      proxyFileName,
       UPDATEJOB_PROXY_VERSION,
     );
   }
-  proxyBin = path.join(proxyBin, UPDATEJOB_PROXY);
+  proxyBin = path.join(proxyBin, proxyFileName);
   return proxyBin;
 }
 

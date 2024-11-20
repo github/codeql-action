@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "3.27.4",
+  "version": "3.27.5",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -61,8 +61,8 @@
   "devDependencies": {
     "@ava/typescript": "4.1.0",
     "@eslint/compat": "^1.1.1",
-    "@eslint/eslintrc": "^3.1.0",
-    "@eslint/js": "^9.14.0",
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.15.0",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@types/adm-zip": "^0.5.6",
     "@types/console-log-level": "^1.4.5",
@@ -72,8 +72,8 @@
     "@types/node": "20.9.0",
     "@types/semver": "^7.5.8",
     "@types/sinon": "^17.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.14.0",
-    "@typescript-eslint/parser": "^8.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
     "ava": "^5.3.1",
     "eslint": "^8.57.1",
     "eslint-import-resolver-typescript": "^3.6.3",

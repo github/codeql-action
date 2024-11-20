@@ -19,6 +19,7 @@ import util from "util";
 import * as ConfigOps from "./config-ops.js";
 import { emitDeprecationWarning } from "./deprecation-warnings.js";
 import ajvOrig from "./ajv.js";
+import { deepMergeArrays } from "./deep-merge-arrays.js";
 import configSchema from "../../conf/config-schema.js";
 import BuiltInEnvironments from "../../conf/environments.js";
 
@@ -148,7 +149,10 @@ export default class ConfigValidator {
         const validateRule = ruleValidators.get(rule);
 
         if (validateRule) {
-            validateRule(localOptions);
+            const mergedOptions = deepMergeArrays(rule.meta?.defaultOptions, localOptions);
+
+            validateRule(mergedOptions);
+
             if (validateRule.errors) {
                 throw new Error(validateRule.errors.map(
                     error => `\tValue ${JSON.stringify(error.data)} ${error.message}.\n`

@@ -10,6 +10,7 @@ import {
   getWorkflowRunAttempt,
   getActionVersion,
   getRequiredInput,
+  isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
 import { type Config } from "./config-utils";
@@ -340,7 +341,9 @@ export async function createStatusReportBase(
       // Values other than X86, X64, ARM, or ARM64 are discarded server side
       statusReport.runner_arch = process.env["RUNNER_ARCH"];
     }
-    if (runnerOs === "Windows" || runnerOs === "macOS") {
+    if (!(runnerOs === "Linux" && isSelfHostedRunner())) {
+      // We do not report the release number for Linux self-hosted runners
+      // because the custom build suffix may be private customer information.
       statusReport.runner_os_release = os.release();
     }
     if (codeQlCliVersion !== undefined) {

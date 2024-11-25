@@ -8,6 +8,8 @@ npm install --save-dev eslint eslint-plugin-github
 
 ## Setup
 
+### Legacy Configuration (`.eslintrc`)
+
 Add `github` to your list of plugins in your ESLint config.
 
 JSON ESLint config example:
@@ -26,6 +28,31 @@ JSON ESLint config example:
 {
   "extends": ["plugin:github/recommended"]
 }
+```
+
+### Flat Configuration (`eslint-config.js`)
+
+Import the `eslint-plugin-github`, and extend any of the configurations using `getFlatConfigs()` as needed like so:
+
+```js
+import github from 'eslint-plugin-github'
+
+export default [
+  github.getFlatConfigs().browser,
+  github.getFlatConfigs().recommended,
+  github.getFlatConfigs().react,
+  ...github.getFlatConfigs().typescript,
+  {
+    files: ['**/*.{js,mjs,cjs,jsx,mjsx,ts,tsx,mtsx}'],
+    ignores: ['eslint.config.mjs'],
+    rules: {
+      'github/array-foreach': 'error',
+      'github/async-preventdefault': 'warn',
+      'github/no-then': 'error',
+      'github/no-blur': 'error',
+    },
+  },
+]
 ```
 
 The available configs are:

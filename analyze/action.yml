@@ -92,5 +92,5 @@ outputs:
     description: The ID of the uploaded SARIF file.
 runs:
   using: node20
-  main: "../lib/analyze-action.js"
-  post: "../lib/analyze-action-post.js"
+  main: "analyze-action.js"
+  post: "analyze-action-post.js"

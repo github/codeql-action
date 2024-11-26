@@ -58,7 +58,7 @@ async function main() {
   const previousDefaults: Defaults = JSON.parse(fs.readFileSync('../../../src/defaults.json', 'utf8'));
   const newDefaults = await getNewDefaults(previousDefaults);
   // Update the source file in the repository. Calling workflows should subsequently rebuild
-  // the Action to update `lib/defaults.json`.
+  // the Action.
   fs.writeFileSync('../../../src/defaults.json', JSON.stringify(newDefaults, null, 2) + "\n");
 }
 

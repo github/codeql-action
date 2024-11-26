@@ -22,4 +22,4 @@ outputs:
     description: The inferred build environment configuration.
 runs:
   using: node20
-  main: '../lib/resolve-environment-action.js'
+  main: 'resolve-environment-action.js'

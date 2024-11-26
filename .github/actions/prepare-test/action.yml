@@ -19,6 +19,12 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: npm install
+      shell: bash
+      run: |
+        if command -v npm >/dev/null 2>/dev/null; then
+          npm ci
+        fi
     - name: Move codeql-action
       shell: bash
       run: |

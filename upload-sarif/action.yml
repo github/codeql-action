@@ -37,5 +37,5 @@ outputs:
     description: The ID of the uploaded SARIF file.
 runs:
   using: node20
-  main: '../lib/upload-sarif-action.js'
-  post: '../lib/upload-sarif-action-post.js'
+  main: 'upload-sarif-action.js'
+  post: 'upload-sarif-action-post.js'

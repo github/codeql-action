@@ -28,14 +28,13 @@ jobs:
       run: |
         git fetch origin "$BRANCH" --depth=1
         git checkout "origin/$BRANCH"
-        .github/workflows/script/update-node-modules.sh update
+        npm run build
         if [ ! -z "$(git status --porcelain)" ]; then
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git add node_modules
-          git commit -am "Update checked-in dependencies"
+          git commit -am "Update action bundles"
           git push origin "HEAD:$BRANCH"
-          echo "Pushed a commit to update the checked-in dependencies." \
+          echo "Pushed a commit to update the checked-in action bundles." \
             "Please mark the PR as ready for review to trigger PR checks." |
             gh pr comment --body-file - --repo github/codeql-action "${{ github.event.pull_request.number }}"
           gh pr ready --undo --repo github/codeql-action "${{ github.event.pull_request.number }}"

@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Update default CodeQL bundle version to 2.19.4. [#2626](https://github.com/github/codeql-action/pull/2626)
 
 ## 3.27.4 - 14 Nov 2024
 

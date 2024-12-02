@@ -23,6 +23,7 @@ import {
   downloadAndExtract,
   getToolcacheDirectory,
   ToolsDownloadStatusReport,
+  writeToolcacheMarkerFile,
 } from "./tools-download";
 import * as util from "./util";
 import { cleanUpGlob, isGoodVersion } from "./util";
@@ -571,31 +572,37 @@ export const downloadCodeQL = async function (
     };
   }
 
-  logger.debug("Caching CodeQL bundle.");
-  const toolcacheStart = performance.now();
-  const toolcachedBundlePath = await toolcache.cacheDir(
-    extractedBundlePath,
-    "CodeQL",
-    toolcacheInfo.version,
-  );
+  let codeqlFolder = extractedBundlePath;
 
-  logger.info(
-    `Added CodeQL bundle to the tool cache (${formatDuration(
-      performance.now() - toolcacheStart,
-    )}).`,
-  );
-
-  // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
-  if (toolcachedBundlePath !== extractedBundlePath) {
-    await cleanUpGlob(
+  if (extractToToolcache) {
+    writeToolcacheMarkerFile(toolcacheInfo.path, logger);
+  } else {
+    logger.debug("Caching CodeQL bundle.");
+    const toolcacheStart = performance.now();
+    codeqlFolder = await toolcache.cacheDir(
       extractedBundlePath,
-      "CodeQL bundle from temporary directory",
-      logger,
+      "CodeQL",
+      toolcacheInfo.version,
     );
+
+    logger.info(
+      `Added CodeQL bundle to the tool cache (${formatDuration(
+        performance.now() - toolcacheStart,
+      )}).`,
+    );
+
+    // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
+    if (codeqlFolder !== extractedBundlePath) {
+      await cleanUpGlob(
+        extractedBundlePath,
+        "CodeQL bundle from temporary directory",
+        logger,
+      );
+    }
   }
 
   return {
-    codeqlFolder: toolcachedBundlePath,
+    codeqlFolder,
     statusReport,
     toolsVersion: maybeCliVersion ?? toolcacheInfo.version,
   };

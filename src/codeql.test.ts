@@ -17,8 +17,7 @@ import * as codeql from "./codeql";
 import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
-import { Feature, FeatureEnablement } from "./feature-flags";
-import { initializeFeatures } from "./feature-flags.test";
+import { FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -41,14 +40,7 @@ setupTests(test);
 
 let stubConfig: Config;
 
-// TODO: Remove when when we no longer need to pass in features (https://github.com/github/codeql-action/issues/2600)
-const expectedFeatureEnablement: FeatureEnablement = initializeFeatures(
-  true,
-) as FeatureEnablement;
-expectedFeatureEnablement.getValue = function (feature: Feature) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  return expectedFeatureEnablement[feature];
-};
+const NO_FEATURES: FeatureEnablement = createFeatures([]);
 
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
@@ -81,7 +73,7 @@ async function installIntoToolcache({
       ? { cliVersion, tagName }
       : SAMPLE_DEFAULT_CLI_VERSION,
     getRunnerLogger(true),
-    expectedFeatureEnablement,
+    NO_FEATURES,
     false,
   );
 }
@@ -114,11 +106,8 @@ function mockApiDetails(apiDetails: GitHubApiDetails) {
     .stub(actionsUtil, "getRequiredInput")
     .withArgs("token")
     .returns(apiDetails.auth);
-  const requiredEnvParamStub = sinon.stub(util, "getRequiredEnvParam");
-  requiredEnvParamStub.withArgs("GITHUB_SERVER_URL").returns(apiDetails.url);
-  requiredEnvParamStub
-    .withArgs("GITHUB_API_URL")
-    .returns(apiDetails.apiURL || "");
+  process.env["GITHUB_SERVER_URL"] = apiDetails.url;
+  process.env["GITHUB_API_URL"] = apiDetails.apiURL || "";
 }
 
 test("downloads and caches explicitly requested bundles that aren't in the toolcache", async (t) => {
@@ -141,7 +130,7 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
-        expectedFeatureEnablement,
+        NO_FEATURES,
         false,
       );
 
@@ -168,7 +157,7 @@ test("caches semantically versioned bundles using their semantic version number"
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
-      expectedFeatureEnablement,
+      NO_FEATURES,
       false,
     );
 
@@ -202,7 +191,7 @@ test("downloads an explicitly requested bundle even if a different version is ca
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
-      expectedFeatureEnablement,
+      NO_FEATURES,
       false,
     );
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
@@ -247,7 +236,7 @@ for (const {
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         getRunnerLogger(true),
-        expectedFeatureEnablement,
+        NO_FEATURES,
         false,
       );
       t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
@@ -286,7 +275,7 @@ for (const toolcacheVersion of [
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           getRunnerLogger(true),
-          expectedFeatureEnablement,
+          NO_FEATURES,
           false,
         );
         t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
@@ -319,7 +308,7 @@ test(`uses a cached bundle when no tools input is given on GHES`, async (t) => {
         tagName: defaults.bundleVersion,
       },
       getRunnerLogger(true),
-      expectedFeatureEnablement,
+      NO_FEATURES,
       false,
     );
     t.deepEqual(result.toolsVersion, "0.0.0-20200601");
@@ -356,7 +345,7 @@ test(`downloads bundle if only an unpinned version is cached on GHES`, async (t)
         tagName: defaults.bundleVersion,
       },
       getRunnerLogger(true),
-      expectedFeatureEnablement,
+      NO_FEATURES,
       false,
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -390,7 +379,7 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
-      expectedFeatureEnablement,
+      NO_FEATURES,
       false,
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -426,7 +415,7 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
       getRunnerLogger(true),
-      expectedFeatureEnablement,
+      NO_FEATURES,
       false,
     );
 

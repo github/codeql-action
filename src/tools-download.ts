@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import { IncomingMessage, OutgoingHttpHeaders, RequestOptions } from "http";
 import * as os from "os";
 import * as path from "path";
@@ -215,6 +216,15 @@ export function getToolcacheDirectory(version: string): string {
     semver.clean(version) || version,
     os.arch() || "",
   );
+}
+
+export function writeToolcacheMarkerFile(
+  extractedPath: string,
+  logger: Logger,
+): void {
+  const markerFilePath = `${extractedPath}.complete`;
+  fs.writeFileSync(markerFilePath, "");
+  logger.debug(`Wrote marker file to ${markerFilePath}`);
 }
 
 function sanitizeUrlForStatusReport(url: string): string {

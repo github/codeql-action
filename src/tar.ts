@@ -1,14 +1,12 @@
 import { spawn } from "child_process";
 import * as fs from "fs";
-import path from "path";
 import * as stream from "stream";
 
 import { ToolRunner } from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import { safeWhich } from "@chrisgavin/safe-which";
-import { v4 as uuidV4 } from "uuid";
 
-import { CommandInvocationError, getTemporaryDirectory } from "./actions-util";
+import { CommandInvocationError } from "./actions-util";
 import { Logger } from "./logging";
 import { assertNever, cleanUpGlob, isBinaryAccessible } from "./util";
 
@@ -96,22 +94,25 @@ export type CompressionMethod = "gzip" | "zstd";
 
 export async function extract(
   tarPath: string,
+  dest: string,
   compressionMethod: CompressionMethod,
   tarVersion: TarVersion | undefined,
   logger: Logger,
 ): Promise<string> {
+  // Ensure destination exists
+  fs.mkdirSync(dest, { recursive: true });
+
   switch (compressionMethod) {
     case "gzip":
       // Defensively continue to call the toolcache API as requesting a gzipped
       // bundle may be a fallback option.
-      return await toolcache.extractTar(tarPath);
+      return await toolcache.extractTar(tarPath, dest);
     case "zstd": {
       if (!tarVersion) {
         throw new Error(
           "Could not determine tar version, which is required to extract a Zstandard archive.",
         );
       }
-      const dest = await createExtractFolder();
       await extractTarZst(tarPath, dest, tarVersion, logger);
       return dest;
     }
@@ -190,12 +191,6 @@ export async function extractTarZst(
     await cleanUpGlob(dest, "extraction destination directory", logger);
     throw e;
   }
-}
-
-export async function createExtractFolder(): Promise<string> {
-  const dest = path.join(getTemporaryDirectory(), uuidV4());
-  fs.mkdirSync(dest, { recursive: true });
-  return dest;
 }
 
 export function inferCompressionMethod(tarPath: string): CompressionMethod {

@@ -1,0 +1,18 @@
+diff --git a/.github/workflows/__test-proxy.yml b/.github/workflows/__test-proxy.yml
+index b6831b7a0..3be758b02 100644
+--- a/.github/workflows/__test-proxy.yml
++++ b/.github/workflows/__test-proxy.yml
+@@ -45,6 +45,13 @@ jobs:
+           python-version: '3.11'
+       - name: Check out repository
+         uses: actions/checkout@v4
++      - name: Set up GitHub CLI
++        run: |
++          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
++          sudo apt-key add /usr/share/keyrings/githubcli-archive-keyring.gpg
++          sudo apt-add-repository https://cli.github.com/packages
++          sudo apt-get update
++          sudo apt-get install gh
+       - name: Prepare test
+         id: prepare-test
+         uses: ./.github/actions/prepare-test

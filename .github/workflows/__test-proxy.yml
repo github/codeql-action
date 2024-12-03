@@ -29,6 +29,8 @@ jobs:
         include:
           - os: ubuntu-latest
             version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
     name: Proxy test
     permissions:
       contents: read
@@ -43,6 +45,17 @@ jobs:
           python-version: '3.11'
       - name: Check out repository
         uses: actions/checkout@v4
+        env:
+          https_proxy: http://squid-proxy:3128
+          CODEQL_ACTION_TEST_MODE: true
+      - name: Set up GitHub CLI
+        run: |
+          apt update
+          apt install -y curl libreadline8 gnupg2 software-properties-common zstd
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          apt-key add /usr/share/keyrings/githubcli-archive-keyring.gpg
+          apt-add-repository https://cli.github.com/packages
+          apt install -y gh
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -50,17 +63,23 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'false'
+        env:
+            https_proxy: http://squid-proxy:3128
+            CODEQL_ACTION_TEST_MODE: true
       - uses: ./../action/init
         with:
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
+        env:
+          https_proxy: http://squid-proxy:3128
+          CODEQL_ACTION_TEST_MODE: true
       - uses: ./../action/analyze
-    env:
-      https_proxy: http://squid-proxy:3128
-      CODEQL_ACTION_TEST_MODE: true
+        env:
+          https_proxy: http://squid-proxy:3128
+          CODEQL_ACTION_TEST_MODE: true
     container:
       image: ubuntu:22.04
-      options: --dns 127.0.0.1
+      options: --dns 8.8.8.8
     services:
       squid-proxy:
         image: ubuntu/squid:latest

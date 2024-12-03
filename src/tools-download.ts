@@ -224,7 +224,7 @@ export function writeToolcacheMarkerFile(
 ): void {
   const markerFilePath = `${extractedPath}.complete`;
   fs.writeFileSync(markerFilePath, "");
-  logger.debug(`Wrote marker file to ${markerFilePath}`);
+  logger.info(`Wrote toolcache marker file to ${markerFilePath}`);
 }
 
 function sanitizeUrlForStatusReport(url: string): string {

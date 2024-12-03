@@ -73,6 +73,7 @@ type ToolsDownloadDurations =
   | StreamedToolsDownloadDurations;
 
 export type ToolsDownloadStatusReport = {
+  cacheDurationMs?: number;
   compressionMethod: tar.CompressionMethod;
   toolsUrl: string;
   zstdFailureReason?: string;

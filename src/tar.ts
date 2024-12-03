@@ -153,25 +153,32 @@ export async function extractTarZst(
 
     process.stdout.write(`[command]tar ${args.join(" ")}\n`);
 
-    const tarProcess = spawn("tar", args, { stdio: "pipe" });
-    let stdout = "";
-    tarProcess.stdout?.on("data", (data: Buffer) => {
-      stdout += data.toString();
-      process.stdout.write(data);
-    });
-
-    let stderr = "";
-    tarProcess.stderr?.on("data", (data: Buffer) => {
-      stderr += data.toString();
-      // Mimic the standard behavior of the toolrunner by writing stderr to stdout
-      process.stdout.write(data);
-    });
-
-    if (tar instanceof stream.Readable) {
-      tar.pipe(tarProcess.stdin);
-    }
-
     await new Promise<void>((resolve, reject) => {
+      const tarProcess = spawn("tar", args, { stdio: "pipe" });
+
+      let stdout = "";
+      tarProcess.stdout?.on("data", (data: Buffer) => {
+        stdout += data.toString();
+        process.stdout.write(data);
+      });
+
+      let stderr = "";
+      tarProcess.stderr?.on("data", (data: Buffer) => {
+        stderr += data.toString();
+        // Mimic the standard behavior of the toolrunner by writing stderr to stdout
+        process.stdout.write(data);
+      });
+
+      tarProcess.on("error", (err) => {
+        reject(new Error(`Error while extracting tar: ${err}`));
+      });
+
+      if (tar instanceof stream.Readable) {
+        tar.pipe(tarProcess.stdin).on("error", (err) => {
+          reject(new Error(`Error while piping tar stream: ${err}`));
+        });
+      }
+
       tarProcess.on("exit", (code) => {
         if (code !== 0) {
           reject(

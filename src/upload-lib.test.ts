@@ -50,9 +50,8 @@ test("validate correct payload used for push, PR merge commit, and PR head", asy
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "commit";
   process.env["GITHUB_BASE_REF"] = "master";
-  process.env[
-    "GITHUB_EVENT_PATH"
-  ] = `${__dirname}/../src/testdata/pull_request.json`;
+  process.env["GITHUB_EVENT_PATH"] =
+    `${__dirname}/../src/testdata/pull_request.json`;
   const prMergePayload: any = uploadLib.buildPayload(
     "commit",
     "refs/pull/123/merge",

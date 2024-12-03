@@ -652,7 +652,7 @@ function parseQueriesFromInput(
 
   const trimmedInput = queriesInputCombines
     ? rawQueriesInput.trim().slice(1).trim()
-    : rawQueriesInput?.trim() ?? "";
+    : (rawQueriesInput?.trim() ?? "");
   if (queriesInputCombines && trimmedInput.length === 0) {
     throw new ConfigurationError(
       getConfigFilePropertyError(

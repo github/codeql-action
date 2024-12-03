@@ -10,14 +10,8 @@ import { getGitHubVersion } from "./api-client";
 import { getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
 import { getActionsLogger, withGroup } from "./logging";
-import { parseRepositoryNwo } from "./repository";
-import {
-  checkGitHubVersionInRange,
-  getErrorMessage,
-  getRequiredEnvParam,
-} from "./util";
+import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
 async function runWrapper() {
   try {
@@ -25,15 +19,6 @@ async function runWrapper() {
     const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
-    const repositoryNwo = parseRepositoryNwo(
-      getRequiredEnvParam("GITHUB_REPOSITORY"),
-    );
-    const features = new Features(
-      gitHubVersion,
-      repositoryNwo,
-      actionsUtil.getTemporaryDirectory(),
-      logger,
-    );
 
     // Upload SARIF artifacts if we determine that this is a first-party analysis run.
     // For third-party runs, this artifact will be uploaded in the `upload-sarif-post` step.
@@ -47,7 +32,6 @@ async function runWrapper() {
           debugArtifacts.uploadCombinedSarifArtifacts(
             logger,
             config.gitHubVersion.type,
-            features,
           ),
         );
       }

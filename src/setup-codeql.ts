@@ -550,7 +550,7 @@ export const downloadCodeQL = async function (
     ? toolcacheInfo.path
     : getTempExtractionDir(tempDir);
 
-  const statusReport = await downloadAndExtract(
+  let statusReport = await downloadAndExtract(
     codeqlURL,
     extractedBundlePath,
     authorization,
@@ -585,11 +585,16 @@ export const downloadCodeQL = async function (
       toolcacheInfo.version,
     );
 
+    const cacheDurationMs = performance.now() - toolcacheStart;
     logger.info(
       `Added CodeQL bundle to the tool cache (${formatDuration(
-        performance.now() - toolcacheStart,
+        cacheDurationMs,
       )}).`,
     );
+    statusReport = {
+      ...statusReport,
+      cacheDurationMs,
+    };
 
     // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
     if (codeqlFolder !== extractedBundlePath) {

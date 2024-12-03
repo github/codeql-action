@@ -30,18 +30,6 @@ module.exports = {
         canvas: ['img'],
       },
     ],
-    // Remove once https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/pull/950 is shipped.
-    'jsx-a11y/no-noninteractive-element-to-interactive-role': [
-      'error',
-      {
-        ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-        ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-        li: ['menuitem', 'menuitemradio', 'menuitemcheckbox', 'option', 'row', 'tab', 'treeitem'],
-        table: ['grid'],
-        td: ['gridcell'],
-        fieldset: ['radiogroup', 'presentation'],
-      },
-    ],
     'jsx-a11y/no-redundant-roles': [
       'error',
       {

@@ -17,6 +17,18 @@ steps:
         const path = require('path');
         const codeqlPath = path.join(process.env['RUNNER_TOOL_CACHE'], 'CodeQL');
         fs.rmdirSync(codeqlPath, { recursive: true });
+  - name: Install @actions/tool-cache
+    run: npm install @actions/tool-cache
+  - name: Check toolcache does not contain CodeQL
+    uses: actions/github-script@v7
+    with:
+      script: |
+        const toolcache = require('@actions/tool-cache');
+        const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+        if (allCodeqlVersions.length !== 0) {
+          throw new Error(`CodeQL should not be found in the toolcache, but found ${allCodeqlVersions}`);
+        }
+        console.log('No versions of CodeQL found in the toolcache');
   - id: init
     uses: ./../action/init
     with:
@@ -26,8 +38,6 @@ steps:
     with:
       output: ${{ runner.temp }}/results
       upload-database: false
-  - name: Install @actions/tool-cache
-    run: npm install @actions/tool-cache
   - name: Check CodeQL is installed within the toolcache
     uses: actions/github-script@v7
     with:
@@ -41,4 +51,3 @@ steps:
         if (allCodeqlVersions.length > 1) {
           throw new Error('Multiple CodeQL versions found in toolcache');
         }
-        console.log(`CodeQL version: ${allCodeqlVersions[0]}`);

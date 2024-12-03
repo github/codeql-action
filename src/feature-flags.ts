@@ -94,7 +94,7 @@ export const featureConfig: Record<
   }
 > = {
   [Feature.ArtifactV4Upgrade]: {
-    defaultValue: false,
+    defaultValue: true,
     envVar: "CODEQL_ACTION_ARTIFACT_V4_UPGRADE",
     minimumVersion: undefined,
   },

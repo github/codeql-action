@@ -62,6 +62,90 @@ yarn add -D eslint-plugin-import eslint-import-resolver-typescript
 
 ## Configuration
 
+### `eslint.config.js`
+
+If you are using `eslint-plugin-import-x@>=4.5.0`, you can use import/require to reference `eslint-import-resolver-typescript` directly in your ESLint flat config:
+
+```js
+// eslint.config.js
+const {
+  createTypeScriptImportResolver,
+} = require('eslint-import-resolver-typescript')
+
+module.exports = [{
+  settings: {
+    "import/resolver-next": [
+      createTypeScriptImportResolver({
+        alwaysTryTypes: true, // always try to resolve types under `<root>@types` directory even it doesn't contain any source code, like `@types/unist`
+
+        // Choose from one of the "project" configs below or omit to use <root>/tsconfig.json by default
+
+        // use <root>/path/to/folder/tsconfig.json
+        project: "path/to/folder",
+
+        // Multiple tsconfigs (Useful for monorepos)
+
+        // use a glob pattern
+        project: "packages/*/tsconfig.json",
+
+        // use an array
+        project: [
+          "packages/module-a/tsconfig.json",
+          "packages/module-b/tsconfig.json"
+        ],
+
+        // use an array of glob patterns
+        project: [
+          "packages/*/tsconfig.json",
+          "other-packages/*/tsconfig.json"
+        ]
+      }),
+    ];
+  }
+}]
+```
+
+But if you are using `eslint-plugin-import` or the older version of `eslint-plugin-import-x`, you can't use require/import:
+
+```js
+// eslint.config.js
+module.exports = [
+  {
+    settings: {
+      'import/resolvers': {
+        typescript: {
+          alwaysTryTypes: true, // always try to resolve types under `<root>@types` directory even it doesn't contain any source code, like `@types/unist`
+
+          // Choose from one of the "project" configs below or omit to use <root>/tsconfig.json by default
+
+          // use <root>/path/to/folder/tsconfig.json
+          project: 'path/to/folder',
+
+          // Multiple tsconfigs (Useful for monorepos)
+
+          // use a glob pattern
+          project: 'packages/*/tsconfig.json',
+
+          // use an array
+          project: [
+            'packages/module-a/tsconfig.json',
+            'packages/module-b/tsconfig.json',
+          ],
+
+          // use an array of glob patterns
+          project: [
+            'packages/*/tsconfig.json',
+            'other-packages/*/tsconfig.json',
+          ],
+        },
+      },
+    },
+  },
+]
+```
+
+### `.eslintrc`
+
 Add the following to your `.eslintrc` config:
 
 ```jsonc

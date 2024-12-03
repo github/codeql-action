@@ -9,9 +9,10 @@ module.exports = {
   },
 
   create(context) {
+    const sourceCode = context.sourceCode ?? context.getSourceCode()
     return {
-      Program() {
-        const scope = context.getScope()
+      Program(node) {
+        const scope = sourceCode.getScope(node) ? sourceCode.getScope(node) : context.getScope()
 
         for (const variable of scope.variables) {
           if (variable.writeable) {

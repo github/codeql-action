@@ -44,8 +44,8 @@ test("getCombinedTracerConfig - with start-tracing.json environment file", async
       process.platform === "win32"
         ? "win64"
         : process.platform === "darwin"
-        ? "osx64"
-        : "linux64";
+          ? "osx64"
+          : "linux64";
     const startTracingEnv = {
       foo: "bar",
       CODEQL_DIST: bundlePath,
@@ -104,8 +104,8 @@ test("getCombinedTracerConfig - with SetsCodeqlRunnerEnvVar feature enabled in C
       process.platform === "win32"
         ? "win64"
         : process.platform === "darwin"
-        ? "osx64"
-        : "linux64";
+          ? "osx64"
+          : "linux64";
     const startTracingEnv = {
       foo: "bar",
       CODEQL_DIST: bundlePath,

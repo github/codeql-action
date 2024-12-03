@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = (context, badBrowser) => ({
   // Ignore type annotations that don't assign
   'ClassProperty[static=false]:not([typeAnnotation]:not([value]))'(node) {

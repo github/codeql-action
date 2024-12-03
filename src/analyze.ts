@@ -428,7 +428,10 @@ extensions:
 `;
 
   let data = ranges
-    .map((range) => `      - ["${range[0]}", ${range[1]}, ${range[2]}]\n`)
+    .map(
+      (range) =>
+        `      - ["${range.path}", ${range.startLine}, ${range.endLine}]\n`,
+    )
     .join("");
   if (!data) {
     // Ensure that the data extension is not empty, so that a pull request with

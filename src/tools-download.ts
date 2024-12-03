@@ -183,6 +183,10 @@ async function downloadAndExtractZstdWithStreaming(
   tarVersion: tar.TarVersion,
   logger: Logger,
 ): Promise<void> {
+  // Ensure destination exists
+  fs.mkdirSync(dest, { recursive: true });
+
+  // Add User-Agent header and Authorization header if provided.
   headers = Object.assign(
     { "User-Agent": "CodeQL Action" },
     authorization ? { authorization } : {},
@@ -193,6 +197,7 @@ async function downloadAndExtractZstdWithStreaming(
       codeqlURL,
       {
         headers,
+        // Increase the high water mark to improve performance.
         highWaterMark: STREAMING_HIGH_WATERMARK_BYTES,
       } as unknown as RequestOptions,
       (r) => resolve(r),

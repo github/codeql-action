@@ -175,7 +175,9 @@ export async function extractTarZst(
 
       if (tar instanceof stream.Readable) {
         tar.pipe(tarProcess.stdin).on("error", (err) => {
-          reject(new Error(`Error while piping tar stream: ${err}`));
+          reject(
+            new Error(`Error while downloading and extracting tar: ${err}`),
+          );
         });
       }
 

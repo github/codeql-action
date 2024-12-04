@@ -57,6 +57,7 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  ExtractToToolcache = "extract_to_toolcache",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
@@ -146,6 +147,11 @@ export const featureConfig: Record<
     defaultValue: true,
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.ExtractToToolcache]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_EXTRACT_TOOLCACHE",
     minimumVersion: undefined,
   },
   [Feature.PythonDefaultIsToNotExtractStdlib]: {

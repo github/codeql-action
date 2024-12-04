@@ -13,5 +13,6 @@ export declare const parsers: {
   __babel_estree: Parser;
   json: Parser;
   json5: Parser;
+  jsonc: Parser;
   "json-stringify": Parser;
 };

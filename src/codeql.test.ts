@@ -811,8 +811,8 @@ for (const {
     flagPassed
       ? "--new-analysis-summary"
       : negativeFlagPassed
-      ? "--no-new-analysis-summary"
-      : "nothing"
+        ? "--no-new-analysis-summary"
+        : "nothing"
   } for CodeQL version ${JSON.stringify(codeqlVersion)} and ${
     util.GitHubVariant[githubVersion.type]
   } ${githubVersion.version ? ` ${githubVersion.version}` : ""}`, async (t) => {

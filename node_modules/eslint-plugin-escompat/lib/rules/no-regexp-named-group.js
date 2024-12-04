@@ -1,3 +1,5 @@
+'use strict';
+
 const hasNamedGroup = s => /\(\?<[_$\w]/.test(s)
 
 module.exports = (context, badBrowser) => ({

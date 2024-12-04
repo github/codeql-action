@@ -2,7 +2,6 @@
 name: PR Check - Debug artifact upload
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  CODEQL_ACTION_ARTIFACT_V4_UPGRADE: true
 on:
   push:
     branches:

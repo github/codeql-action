@@ -1,3 +1,5 @@
+'use strict';
+
 const objectPatternHasDefaults = node =>
   node.type === 'ObjectPattern' && node.properties.some(prop => prop.value.type === 'AssignmentPattern')
 

@@ -124,6 +124,12 @@ for file in (this_dir / 'checks').glob('*.yml'):
         },
     ]
 
+    # If container initialisation steps are present in the check specification,
+    # make sure to execute them first.
+    if 'container' in checkSpecification and 'container-init-steps' in checkSpecification:
+        steps.insert(0, checkSpecification['container-init-steps'])
+
+
     steps.extend(checkSpecification['steps'])
 
     checkJob = {

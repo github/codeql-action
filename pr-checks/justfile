@@ -1,7 +1,6 @@
 # Perform all necessary steps to update the PR checks
 update-pr-checks:
     python3 -m venv env
-    env/bin/activate
+    source env/bin/activate
     pip3 install ruamel.yaml
     python3 sync.py
-    git apply pr-checks.patch

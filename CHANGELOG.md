@@ -7,6 +7,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - We are rolling out a change in December 2024 that will extract the CodeQL bundle directly to the toolcache to improve performance. [#2631](https://github.com/github/codeql-action/pull/2631)
+- Update default CodeQL bundle version to 2.20.0. [#2636](https://github.com/github/codeql-action/pull/2636)
 
 ## 3.27.6 - 03 Dec 2024
 

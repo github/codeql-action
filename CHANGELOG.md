@@ -7,7 +7,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - We are rolling out a change in December 2024 that will extract the CodeQL bundle directly to the toolcache to improve performance. [#2631](https://github.com/github/codeql-action/pull/2631)
-- We have added support for respecting the proxy settings present in environment variables in a runner when streaming the download and extraction of the CodeQL bundle. [#2624](https://github.com/github/codeql-action/pull/2624)
+- Fixed an issue where streaming the download and extraction of the CodeQL bundle did not respect proxy settings. [#2624](https://github.com/github/codeql-action/pull/2624)
 
 ## 3.27.6 - 03 Dec 2024
 

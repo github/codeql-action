@@ -316,6 +316,7 @@ async function getPullRequestEditedDiffRanges(
   await actionsUtil.gitFetch(baseRef, [`--shallow-exclude=${headRef}`]);
   // Step 5: Deepen the history so that we have the merge bases between the base
   // branch and the PR topic branch.
+  await actionsUtil.gitRepack();
   await actionsUtil.deepenGitHistory();
 
   // To compute the exact same diff as GitHub would compute for the PR, we need

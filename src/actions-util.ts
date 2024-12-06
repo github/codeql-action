@@ -172,10 +172,23 @@ export const deepenGitHistory = async function () {
   try {
     await runGitCommand(
       getOptionalInput("checkout_path"),
-      ["fetch", "--no-tags", "--deepen=1"],
+      ["fetch", "origin", "HEAD", "--no-tags", "--deepen=1"],
       "Cannot deepen the shallow repository.",
     );
   } catch {
+    // Errors are already logged by runGitCommand()
+  }
+};
+
+export const gitRepack = async function () {
+  try {
+    await runGitCommand(
+      getOptionalInput("checkout_path"),
+      ["repack", "-d"],
+      "Cannot repack the repository.",
+    );
+  }
+  catch {
     // Errors are already logged by runGitCommand()
   }
 };

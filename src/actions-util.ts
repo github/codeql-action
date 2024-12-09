@@ -206,6 +206,24 @@ export const gitFetch = async function (branch: string, extraFlags: string[]) {
 };
 
 /**
+ * Repack the git repository, using with the given flags. Errors are logged.
+ *
+ * This function uses the `checkout_path` to determine the repository path and
+ * works only when called from `analyze` or `upload-sarif`.
+ */
+export const gitRepack = async function (flags: string[]) {
+  try {
+    await runGitCommand(
+      getOptionalInput("checkout_path"),
+      ["repack", ...flags],
+      "Cannot repack the repository.",
+    );
+  } catch {
+    // Errors are already logged by runGitCommand()
+  }
+};
+
+/**
  * Compute the all merge bases between the given refs. Returns an empty array
  * if no merge base is found, or if there is an error.
  *

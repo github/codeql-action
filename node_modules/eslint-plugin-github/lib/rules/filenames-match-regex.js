@@ -25,7 +25,8 @@ module.exports = {
   },
 
   create(context) {
-    const defaultRegexp = /^([a-z0-9]+)([A-Z][a-z0-9]+)*$/g
+    // GitHub's default is kebab case or one hump camel case
+    const defaultRegexp = /^[a-z0-9-]+(.[a-z0-9-]+)?$/
     const conventionRegexp = context.options[0] ? new RegExp(context.options[0]) : defaultRegexp
     const ignoreExporting = context.options[1] ? context.options[1] : false
 

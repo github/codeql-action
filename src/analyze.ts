@@ -298,7 +298,7 @@ async function getPullRequestEditedDiffRanges(
 
   // To compute the merge bases between the base branch and the PR topic branch,
   // we need to fetch the commit graph from the branch heads to those merge
-  // babes. The following 4-step procedure does so while limiting the amount of
+  // babes. The following 6-step procedure does so while limiting the amount of
   // history fetched.
 
   // Step 1: Deepen from the PR merge commit to the base branch head and the PR
@@ -317,7 +317,12 @@ async function getPullRequestEditedDiffRanges(
   // Step 4: Fetch the base branch history, stopping when we reach commits that
   // are reachable from the PR topic branch head.
   await actionsUtil.gitFetch(baseRef, [`--shallow-exclude=${headRef}`]);
-  // Step 5: Deepen the history so that we have the merge bases between the base
+  // Step 5: Repack the history to remove the shallow grafts that were added by
+  // the previous fetches. This step works around a bug that causes subsequent
+  // deepening fetches to fail with "fatal: error in object: unshallow <SHA>".
+  // See https://stackoverflow.com/q/63878612
+  await actionsUtil.gitRepack(["-d"]);
+  // Step 6: Deepen the history so that we have the merge bases between the base
   // branch and the PR topic branch.
   await actionsUtil.deepenGitHistory();
 

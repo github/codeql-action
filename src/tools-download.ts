@@ -127,7 +127,11 @@ export async function downloadAndExtract(
     core.warning(
       `Failed to download and extract CodeQL bundle using streaming. Falling back to downloading the bundle before extracting.`,
     );
-    core.warning(getErrorMessage(e));
+    core.warning(`Error: ${getErrorMessage(e)}`);
+
+    // If we failed during processing, we want to clean up the destination directory
+    // before we try again.
+    await cleanUpGlob(dest, "CodeQL bundle", logger);
   }
 
   const toolsDownloadStart = performance.now();

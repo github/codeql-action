@@ -172,7 +172,14 @@ export const deepenGitHistory = async function () {
   try {
     await runGitCommand(
       getOptionalInput("checkout_path"),
-      ["fetch", "origin", "HEAD", "--no-tags", "--deepen=1"],
+      [
+        "fetch",
+        "origin",
+        "HEAD",
+        "--no-tags",
+        "--no-recurse-submodules",
+        "--deepen=1",
+      ],
       "Cannot deepen the shallow repository.",
     );
   } catch {

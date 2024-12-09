@@ -3,6 +3,14 @@
  */
 export interface UploadOptions {
     /**
+     * Indicates whether to use the Azure Blob SDK to download caches
+     * that are stored on Azure Blob Storage to improve reliability and
+     * performance
+     *
+     * @default false
+     */
+    useAzureSdk?: boolean;
+    /**
      * Number of parallel cache upload
      *
      * @default 4
@@ -14,6 +22,10 @@ export interface UploadOptions {
      * @default 32MB
      */
     uploadChunkSize?: number;
+    /**
+     * Archive size in bytes
+     */
+    archiveSizeBytes?: number;
 }
 /**
  * Options to control cache download

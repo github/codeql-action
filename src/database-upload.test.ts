@@ -10,6 +10,7 @@ import * as apiClient from "./api-client";
 import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
+import * as gitUtils from "./git-utils";
 import { Language } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
@@ -75,7 +76,7 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
       .returns("false");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
     const loggedMessages = [];
     await uploadDatabases(
@@ -102,7 +103,7 @@ test("Abort database upload if running against GHES", async (t) => {
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
       .returns("true");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
     const config = getTestConfig(tmpDir);
     config.gitHubVersion = { type: GitHubVariant.GHES, version: "3.0" };
@@ -132,7 +133,7 @@ test("Abort database upload if not analyzing default branch", async (t) => {
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
       .returns("true");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(false);
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
 
     const loggedMessages = [];
     await uploadDatabases(
@@ -158,7 +159,7 @@ test("Don't crash if uploading a database fails", async (t) => {
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
       .returns("true");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
     await mockHttpRequests(500);
 
@@ -194,7 +195,7 @@ test("Successfully uploading a database to github.com", async (t) => {
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
       .returns("true");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
     await mockHttpRequests(201);
 
@@ -228,7 +229,7 @@ test("Successfully uploading a database to GHEC-DR", async (t) => {
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
       .returns("true");
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
     const databaseUploadSpy = await mockHttpRequests(201);
 

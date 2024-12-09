@@ -17,6 +17,7 @@ import { getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
+import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { parseRepositoryNwo, RepositoryNwo } from "./repository";
@@ -599,8 +600,8 @@ export async function uploadFiles(
   const checkoutURI = fileUrl(checkoutPath);
 
   const payload = buildPayload(
-    await actionsUtil.getCommitOid(checkoutPath),
-    await actionsUtil.getRef(),
+    await gitUtils.getCommitOid(checkoutPath),
+    await gitUtils.getRef(),
     analysisKey,
     util.getRequiredEnvParam("GITHUB_WORKFLOW"),
     zippedSarif,
@@ -609,7 +610,7 @@ export async function uploadFiles(
     checkoutURI,
     environment,
     toolNames,
-    await actionsUtil.determineBaseBranchHeadCommitOid(),
+    await gitUtils.determineBaseBranchHeadCommitOid(),
   );
 
   // Log some useful debug info about the info

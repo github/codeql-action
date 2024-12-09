@@ -9,6 +9,7 @@ import { CodeQL } from "./codeql";
 import type { Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { Feature, FeatureEnablement } from "./feature-flags";
+import * as gitUtils from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -71,7 +72,7 @@ export async function downloadTrapCaches(
     result[language] = cacheDir;
   }
 
-  if (await actionsUtil.isAnalyzingDefaultBranch()) {
+  if (await gitUtils.isAnalyzingDefaultBranch()) {
     logger.info(
       "Analyzing default branch. Skipping downloading of TRAP caches.",
     );
@@ -131,7 +132,7 @@ export async function uploadTrapCaches(
   config: Config,
   logger: Logger,
 ): Promise<boolean> {
-  if (!(await actionsUtil.isAnalyzingDefaultBranch())) return false; // Only upload caches from the default branch
+  if (!(await gitUtils.isAnalyzingDefaultBranch())) return false; // Only upload caches from the default branch
 
   for (const language of config.languages) {
     const cacheDir = config.trapCaches[language];
@@ -184,7 +185,7 @@ export async function cleanupTrapCaches(
       trap_cache_cleanup_skipped_because: "feature disabled",
     };
   }
-  if (!(await actionsUtil.isAnalyzingDefaultBranch())) {
+  if (!(await gitUtils.isAnalyzingDefaultBranch())) {
     return {
       trap_cache_cleanup_skipped_because: "not analyzing default branch",
     };
@@ -195,7 +196,7 @@ export async function cleanupTrapCaches(
 
     const allCaches = await apiClient.listActionsCaches(
       CODEQL_TRAP_CACHE_PREFIX,
-      await actionsUtil.getRef(),
+      await gitUtils.getRef(),
     );
 
     for (const language of config.languages) {

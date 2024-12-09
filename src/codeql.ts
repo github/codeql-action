@@ -10,7 +10,6 @@ import {
   CommandInvocationError,
   getActionVersion,
   getOptionalInput,
-  isAnalyzingDefaultBranch,
   runTool,
 } from "./actions-util";
 import * as api from "./api-client";
@@ -24,6 +23,7 @@ import {
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
+import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";

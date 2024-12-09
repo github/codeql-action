@@ -8,6 +8,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
+import * as gitUtils from "./git-utils";
 import { setupActionsVars, setupTests } from "./testing-utils";
 import { initializeEnvironment, withTmpDir } from "./util";
 
@@ -15,7 +16,7 @@ setupTests(test);
 
 test("getRef() throws on the empty string", async (t) => {
   process.env["GITHUB_REF"] = "";
-  await t.throwsAsync(actionsUtil.getRef);
+  await t.throwsAsync(gitUtils.getRef);
 });
 
 test("getRef() returns merge PR ref if GITHUB_SHA still checked out", async (t) => {
@@ -26,10 +27,10 @@ test("getRef() returns merge PR ref if GITHUB_SHA still checked out", async (t) 
     process.env["GITHUB_REF"] = expectedRef;
     process.env["GITHUB_SHA"] = currentSha;
 
-    const callback = sinon.stub(actionsUtil, "getCommitOid");
+    const callback = sinon.stub(gitUtils, "getCommitOid");
     callback.withArgs("HEAD").resolves(currentSha);
 
-    const actualRef = await actionsUtil.getRef();
+    const actualRef = await gitUtils.getRef();
     t.deepEqual(actualRef, expectedRef);
     callback.restore();
   });
@@ -43,11 +44,11 @@ test("getRef() returns merge PR ref if GITHUB_REF still checked out but sha has 
     process.env["GITHUB_SHA"] = "b".repeat(40);
     const sha = "a".repeat(40);
 
-    const callback = sinon.stub(actionsUtil, "getCommitOid");
+    const callback = sinon.stub(gitUtils, "getCommitOid");
     callback.withArgs("refs/remotes/pull/1/merge").resolves(sha);
     callback.withArgs("HEAD").resolves(sha);
 
-    const actualRef = await actionsUtil.getRef();
+    const actualRef = await gitUtils.getRef();
     t.deepEqual(actualRef, expectedRef);
     callback.restore();
   });
@@ -59,11 +60,11 @@ test("getRef() returns head PR ref if GITHUB_REF no longer checked out", async (
     process.env["GITHUB_REF"] = "refs/pull/1/merge";
     process.env["GITHUB_SHA"] = "a".repeat(40);
 
-    const callback = sinon.stub(actionsUtil, "getCommitOid");
+    const callback = sinon.stub(gitUtils, "getCommitOid");
     callback.withArgs(tmpDir, "refs/pull/1/merge").resolves("a".repeat(40));
     callback.withArgs(tmpDir, "HEAD").resolves("b".repeat(40));
 
-    const actualRef = await actionsUtil.getRef();
+    const actualRef = await gitUtils.getRef();
     t.deepEqual(actualRef, "refs/pull/1/head");
     callback.restore();
   });
@@ -80,11 +81,11 @@ test("getRef() returns ref provided as an input and ignores current HEAD", async
     process.env["GITHUB_REF"] = "refs/pull/1/merge";
     process.env["GITHUB_SHA"] = "a".repeat(40);
 
-    const callback = sinon.stub(actionsUtil, "getCommitOid");
+    const callback = sinon.stub(gitUtils, "getCommitOid");
     callback.withArgs("refs/pull/1/merge").resolves("b".repeat(40));
     callback.withArgs("HEAD").resolves("b".repeat(40));
 
-    const actualRef = await actionsUtil.getRef();
+    const actualRef = await gitUtils.getRef();
     t.deepEqual(actualRef, "refs/pull/2/merge");
     callback.restore();
     getAdditionalInputStub.restore();
@@ -100,7 +101,7 @@ test("getRef() returns CODE_SCANNING_REF as a fallback for GITHUB_REF", async (t
     process.env["GITHUB_REF"] = "";
     process.env["GITHUB_SHA"] = currentSha;
 
-    const actualRef = await actionsUtil.getRef();
+    const actualRef = await gitUtils.getRef();
     t.deepEqual(actualRef, expectedRef);
   });
 });
@@ -114,7 +115,7 @@ test("getRef() returns GITHUB_REF over CODE_SCANNING_REF if both are provided", 
     process.env["GITHUB_REF"] = expectedRef;
     process.env["GITHUB_SHA"] = currentSha;
 
-    const actualRef = await actionsUtil.getRef();
+    const actualRef = await gitUtils.getRef();
     t.deepEqual(actualRef, expectedRef);
   });
 });
@@ -127,7 +128,7 @@ test("getRef() throws an error if only `ref` is provided as an input", async (t)
 
     await t.throwsAsync(
       async () => {
-        await actionsUtil.getRef();
+        await gitUtils.getRef();
       },
       {
         instanceOf: Error,
@@ -148,7 +149,7 @@ test("getRef() throws an error if only `sha` is provided as an input", async (t)
 
     await t.throwsAsync(
       async () => {
-        await actionsUtil.getRef();
+        await gitUtils.getRef();
       },
       {
         instanceOf: Error,
@@ -219,7 +220,7 @@ test("initializeEnvironment", (t) => {
 test("isAnalyzingDefaultBranch()", async (t) => {
   process.env["GITHUB_EVENT_NAME"] = "push";
   process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "true";
-  t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), true);
+  t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), true);
   process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "false";
 
   await withTmpDir(async (tmpDir) => {
@@ -237,13 +238,13 @@ test("isAnalyzingDefaultBranch()", async (t) => {
 
     process.env["GITHUB_REF"] = "main";
     process.env["GITHUB_SHA"] = "1234";
-    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), true);
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), true);
 
     process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), true);
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), true);
 
     process.env["GITHUB_REF"] = "feature";
-    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), false);
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), false);
 
     fs.writeFileSync(
       envFile,
@@ -253,7 +254,7 @@ test("isAnalyzingDefaultBranch()", async (t) => {
     );
     process.env["GITHUB_EVENT_NAME"] = "schedule";
     process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), true);
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), true);
 
     const getAdditionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     getAdditionalInputStub
@@ -264,7 +265,7 @@ test("isAnalyzingDefaultBranch()", async (t) => {
       .resolves("0000000000000000000000000000000000000000");
     process.env["GITHUB_EVENT_NAME"] = "schedule";
     process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await actionsUtil.isAnalyzingDefaultBranch(), false);
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), false);
     getAdditionalInputStub.restore();
   });
 });
@@ -274,7 +275,7 @@ test("determineBaseBranchHeadCommitOid non-pullrequest", async (t) => {
 
   process.env["GITHUB_EVENT_NAME"] = "hucairz";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
-  const result = await actionsUtil.determineBaseBranchHeadCommitOid(__dirname);
+  const result = await gitUtils.determineBaseBranchHeadCommitOid(__dirname);
   t.deepEqual(result, undefined);
   t.deepEqual(0, infoStub.callCount);
 
@@ -288,7 +289,7 @@ test("determineBaseBranchHeadCommitOid not git repository", async (t) => {
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
 
   await withTmpDir(async (tmpDir) => {
-    await actionsUtil.determineBaseBranchHeadCommitOid(tmpDir);
+    await gitUtils.determineBaseBranchHeadCommitOid(tmpDir);
   });
 
   t.deepEqual(1, infoStub.callCount);
@@ -306,7 +307,7 @@ test("determineBaseBranchHeadCommitOid other error", async (t) => {
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
-  const result = await actionsUtil.determineBaseBranchHeadCommitOid(
+  const result = await gitUtils.determineBaseBranchHeadCommitOid(
     path.join(__dirname, "../../i-dont-exist"),
   );
   t.deepEqual(result, undefined);
@@ -326,39 +327,39 @@ test("determineBaseBranchHeadCommitOid other error", async (t) => {
 });
 
 test("decodeGitFilePath unquoted strings", async (t) => {
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo"), "foo");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo bar"), "foo bar");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\\\bar"), "foo\\\\bar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('foo\\"bar'), 'foo\\"bar');
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\001bar"), "foo\\001bar");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\abar"), "foo\\abar");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\bbar"), "foo\\bbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\fbar"), "foo\\fbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\nbar"), "foo\\nbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\rbar"), "foo\\rbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\tbar"), "foo\\tbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath("foo\\vbar"), "foo\\vbar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo"), "foo");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo bar"), "foo bar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\\\bar"), "foo\\\\bar");
+  t.deepEqual(gitUtils.decodeGitFilePath('foo\\"bar'), 'foo\\"bar');
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\001bar"), "foo\\001bar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\abar"), "foo\\abar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\bbar"), "foo\\bbar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\fbar"), "foo\\fbar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\nbar"), "foo\\nbar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\rbar"), "foo\\rbar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\tbar"), "foo\\tbar");
+  t.deepEqual(gitUtils.decodeGitFilePath("foo\\vbar"), "foo\\vbar");
   t.deepEqual(
-    actionsUtil.decodeGitFilePath("\\a\\b\\f\\n\\r\\t\\v"),
+    gitUtils.decodeGitFilePath("\\a\\b\\f\\n\\r\\t\\v"),
     "\\a\\b\\f\\n\\r\\t\\v",
   );
 });
 
 test("decodeGitFilePath quoted strings", async (t) => {
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo"'), "foo");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo bar"'), "foo bar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\\\bar"'), "foo\\bar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\"bar"'), 'foo"bar');
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\001bar"'), "foo\x01bar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\abar"'), "foo\x07bar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\bbar"'), "foo\bbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\fbar"'), "foo\fbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\nbar"'), "foo\nbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\rbar"'), "foo\rbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\tbar"'), "foo\tbar");
-  t.deepEqual(actionsUtil.decodeGitFilePath('"foo\\vbar"'), "foo\vbar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo"'), "foo");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo bar"'), "foo bar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\\\bar"'), "foo\\bar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\"bar"'), 'foo"bar');
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\001bar"'), "foo\x01bar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\abar"'), "foo\x07bar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\bbar"'), "foo\bbar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\fbar"'), "foo\fbar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\nbar"'), "foo\nbar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\rbar"'), "foo\rbar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\tbar"'), "foo\tbar");
+  t.deepEqual(gitUtils.decodeGitFilePath('"foo\\vbar"'), "foo\vbar");
   t.deepEqual(
-    actionsUtil.decodeGitFilePath('"\\a\\b\\f\\n\\r\\t\\v"'),
+    gitUtils.decodeGitFilePath('"\\a\\b\\f\\n\\r\\t\\v"'),
     "\x07\b\f\n\r\t\v",
   );
 });

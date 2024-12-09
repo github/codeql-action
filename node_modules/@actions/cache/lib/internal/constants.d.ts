@@ -18,3 +18,4 @@ export declare const GnuTarPathOnWindows: string;
 export declare const SystemTarPathOnWindows: string;
 export declare const TarFilename = "cache.tar";
 export declare const ManifestFilename = "manifest.txt";
+export declare const CacheFileSizeLimit: number;

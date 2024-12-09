@@ -32,7 +32,7 @@ module.exports = {
     'eslintComments/no-unused-disable': 'error',
     'eslintComments/no-unused-enable': 'error',
     'eslintComments/no-use': ['error', {allow: ['eslint', 'eslint-disable-next-line', 'eslint-env', 'globals']}],
-    'github/filenames-match-regex': ['error', '^[a-z0-9-]+(.[a-z0-9-]+)?$'],
+    'github/filenames-match-regex': 'error',
     'func-style': ['error', 'declaration', {allowArrowFunctions: true}],
     'github/array-foreach': 'error',
     'github/no-implicit-buggy-globals': 'error',

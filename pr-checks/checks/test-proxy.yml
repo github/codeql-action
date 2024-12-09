@@ -4,7 +4,6 @@ versions: ["linked", "nightly-latest"]
 operatingSystems: ["ubuntu"]
 container:
   image: ubuntu:22.04
-  options: --dns 8.8.8.8
 container-init-steps:
   name: Set up GitHub CLI
   run: |

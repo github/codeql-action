@@ -163,7 +163,7 @@ export const determineBaseBranchHeadCommitOid = async function (
 };
 
 /**
- * Deepen the git history of the given ref by one level. Errors are logged.
+ * Deepen the git history of HEAD by one level. Errors are logged.
  *
  * This function uses the `checkout_path` to determine the repository path and
  * works only when called from `analyze` or `upload-sarif`.
@@ -172,7 +172,7 @@ export const deepenGitHistory = async function () {
   try {
     await runGitCommand(
       getOptionalInput("checkout_path"),
-      ["fetch", "--no-tags", "--deepen=1"],
+      ["fetch", "origin", "HEAD", "--no-tags", "--deepen=1"],
       "Cannot deepen the shallow repository.",
     );
   } catch {

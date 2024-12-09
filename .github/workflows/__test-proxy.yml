@@ -29,6 +29,8 @@ jobs:
         include:
           - os: ubuntu-latest
             version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
     name: Proxy test
     permissions:
       contents: read
@@ -36,6 +38,18 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
+  # These steps are required to initialise the `gh` cli in a container that doesn't
+  # come pre-installed with it. The reason for that is that this is later
+  # needed by the `prepare-test` workflow to find the latest release of CodeQL.
+      - name: Set up GitHub CLI
+        run: |
+          apt update
+          apt install -y curl libreadline8 gnupg2 software-properties-common zstd
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          apt-key add /usr/share/keyrings/githubcli-archive-keyring.gpg
+          apt-add-repository https://cli.github.com/packages
+          apt install -y gh
+        env: {}
       - name: Setup Python on macOS
         uses: actions/setup-python@v5
         if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
@@ -60,7 +74,6 @@ jobs:
       CODEQL_ACTION_TEST_MODE: true
     container:
       image: ubuntu:22.04
-      options: --dns 127.0.0.1
     services:
       squid-proxy:
         image: ubuntu/squid:latest

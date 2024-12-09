@@ -18,7 +18,7 @@ import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
-import { Logger, withGroup } from "./logging";
+import { Logger, withGroupAsync } from "./logging";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
@@ -256,14 +256,17 @@ export async function setupDiffInformedQueryRun(
   if (!(await features.getValue(Feature.DiffInformedQueries, codeql))) {
     return undefined;
   }
-  return await withGroup("Generating diff range extension pack", async () => {
-    const diffRanges = await getPullRequestEditedDiffRanges(
-      baseRef,
-      headRef,
-      logger,
-    );
-    return writeDiffRangeDataExtensionPack(logger, diffRanges);
-  });
+  return await withGroupAsync(
+    "Generating diff range extension pack",
+    async () => {
+      const diffRanges = await getPullRequestEditedDiffRanges(
+        baseRef,
+        headRef,
+        logger,
+      );
+      return writeDiffRangeDataExtensionPack(logger, diffRanges);
+    },
+  );
 }
 
 interface DiffThunkRange {

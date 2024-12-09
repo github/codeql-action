@@ -5,6 +5,9 @@ operatingSystems: ["ubuntu"]
 container:
   image: ubuntu:22.04
 container-init-steps:
+  # These steps are required to initialise the `gh` cli in a container that doesn't
+  # come pre-installed with it. The reason for that is that this is later
+  # needed by the `prepare-test` workflow to find the latest release of CodeQL. 
   name: Set up GitHub CLI
   run: |
     apt update

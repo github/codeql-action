@@ -5,7 +5,6 @@ import * as core from "@actions/core";
 import {
   getWorkflowEventName,
   getOptionalInput,
-  getRef,
   getWorkflowRunID,
   getWorkflowRunAttempt,
   getActionVersion,
@@ -16,6 +15,7 @@ import { getAnalysisKey, getApiClient } from "./api-client";
 import { type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
+import { getRef } from "./git-utils";
 import { Logger } from "./logging";
 import {
   ConfigurationError,

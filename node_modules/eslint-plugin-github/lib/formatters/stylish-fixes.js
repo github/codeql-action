@@ -7,7 +7,7 @@ const path = require('path')
 let SourceCodeFixer = null
 try {
   SourceCodeFixer = require('eslint/lib/linter/source-code-fixer')
-} catch (e) {
+} catch {
   SourceCodeFixer = require('eslint/lib/util/source-code-fixer')
 }
 const getRuleURI = require('eslint-rule-documentation')

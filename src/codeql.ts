@@ -395,7 +395,9 @@ export async function setupCodeQL(
     };
   } catch (e) {
     throw new Error(
-      `Unable to download and extract CodeQL CLI: ${getErrorMessage(e)}`,
+      `Unable to download and extract CodeQL CLI: ${getErrorMessage(e)}${
+        e instanceof Error && e.stack ? `\n\nDetails: ${e.stack}` : ""
+      }`,
     );
   }
 }

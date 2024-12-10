@@ -6,18 +6,11 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getTemporaryDirectory } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
 import { getActionsLogger, withGroup } from "./logging";
-import { parseRepositoryNwo } from "./repository";
-import {
-  checkGitHubVersionInRange,
-  getErrorMessage,
-  getRequiredEnvParam,
-} from "./util";
+import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
 async function runWrapper() {
   try {
@@ -26,15 +19,6 @@ async function runWrapper() {
     const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
-    const repositoryNwo = parseRepositoryNwo(
-      getRequiredEnvParam("GITHUB_REPOSITORY"),
-    );
-    const features = new Features(
-      gitHubVersion,
-      repositoryNwo,
-      getTemporaryDirectory(),
-      logger,
-    );
 
     // Upload SARIF artifacts if we determine that this is a third-party analysis run.
     // For first-party runs, this artifact will be uploaded in the `analyze-post` step.
@@ -46,11 +30,7 @@ async function runWrapper() {
         return;
       }
       await withGroup("Uploading combined SARIF debug artifact", () =>
-        debugArtifacts.uploadCombinedSarifArtifacts(
-          logger,
-          gitHubVersion.type,
-          features,
-        ),
+        debugArtifacts.uploadCombinedSarifArtifacts(logger, gitHubVersion.type),
       );
     }
   } catch (error) {

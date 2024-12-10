@@ -717,8 +717,8 @@ export async function waitForProcessing(
         throw shouldConsiderConfigurationError(processingErrors)
           ? new ConfigurationError(message)
           : shouldConsiderInvalidRequest(processingErrors)
-          ? new InvalidSarifUploadError(message)
-          : new Error(message);
+            ? new InvalidSarifUploadError(message)
+            : new Error(message);
       } else {
         util.assertNever(status);
       }

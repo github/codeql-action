@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = (context, badBrowser) => ({
   'ObjectExpression > SpreadElement'(node) {
     context.report(node, `Object Rest/Spread is not supported in ${badBrowser}`)

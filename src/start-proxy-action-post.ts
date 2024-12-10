@@ -9,14 +9,8 @@ import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as configUtils from "./config-utils";
 import { getArtifactUploaderClient } from "./debug-artifacts";
-import { Features } from "./feature-flags";
 import { getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
-import {
-  checkGitHubVersionInRange,
-  getErrorMessage,
-  getRequiredEnvParam,
-} from "./util";
+import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
 async function runWrapper() {
   try {
@@ -51,21 +45,11 @@ async function runWrapper() {
     const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
-    const repositoryNwo = parseRepositoryNwo(
-      getRequiredEnvParam("GITHUB_REPOSITORY"),
-    );
-    const features = new Features(
-      gitHubVersion,
-      repositoryNwo,
-      actionsUtil.getTemporaryDirectory(),
-      logger,
-    );
 
     try {
       const artifactUploader = await getArtifactUploaderClient(
         logger,
         gitHubVersion.type,
-        features,
       );
 
       await artifactUploader.uploadArtifact(

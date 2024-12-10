@@ -17,6 +17,7 @@ import * as configUtils from "./config-utils";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
+import * as gitUtils from "./git-utils";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
@@ -304,33 +305,33 @@ async function getPullRequestEditedDiffRanges(
   // Step 1: Deepen from the PR merge commit to the base branch head and the PR
   // topic branch head, so that the PR merge commit is no longer considered a
   // grafted commit.
-  await actionsUtil.deepenGitHistory();
+  await gitUtils.deepenGitHistory();
   // Step 2: Fetch the base branch shallow history. This step ensures that the
   // base branch name is present in the local repository. Normally the base
   // branch name would be added by Step 4. However, if the base branch head is
   // an ancestor of the PR topic branch head, Step 4 would fail without doing
   // anything, so we need to fetch the base branch explicitly.
-  await actionsUtil.gitFetch(baseRef, ["--depth=1"]);
+  await gitUtils.gitFetch(baseRef, ["--depth=1"]);
   // Step 3: Fetch the PR topic branch history, stopping when we reach commits
   // that are reachable from the base branch head.
-  await actionsUtil.gitFetch(headRef, [`--shallow-exclude=${baseRef}`]);
+  await gitUtils.gitFetch(headRef, [`--shallow-exclude=${baseRef}`]);
   // Step 4: Fetch the base branch history, stopping when we reach commits that
   // are reachable from the PR topic branch head.
-  await actionsUtil.gitFetch(baseRef, [`--shallow-exclude=${headRef}`]);
+  await gitUtils.gitFetch(baseRef, [`--shallow-exclude=${headRef}`]);
   // Step 5: Repack the history to remove the shallow grafts that were added by
   // the previous fetches. This step works around a bug that causes subsequent
   // deepening fetches to fail with "fatal: error in object: unshallow <SHA>".
   // See https://stackoverflow.com/q/63878612
-  await actionsUtil.gitRepack(["-d"]);
+  await gitUtils.gitRepack(["-d"]);
   // Step 6: Deepen the history so that we have the merge bases between the base
   // branch and the PR topic branch.
-  await actionsUtil.deepenGitHistory();
+  await gitUtils.deepenGitHistory();
 
   // To compute the exact same diff as GitHub would compute for the PR, we need
   // to use the same merge base as GitHub. That is easy to do if there is only
   // one merge base, which is by far the most common case. If there are multiple
   // merge bases, we stop without producing a diff range.
-  const mergeBases = await actionsUtil.getAllGitMergeBases([baseRef, headRef]);
+  const mergeBases = await gitUtils.getAllGitMergeBases([baseRef, headRef]);
   logger.info(`Merge bases: ${mergeBases.join(", ")}`);
   if (mergeBases.length !== 1) {
     logger.info(
@@ -340,7 +341,7 @@ async function getPullRequestEditedDiffRanges(
     return undefined;
   }
 
-  const diffHunkHeaders = await actionsUtil.getGitDiffHunkHeaders(
+  const diffHunkHeaders = await gitUtils.getGitDiffHunkHeaders(
     mergeBases[0],
     headRef,
   );
@@ -353,7 +354,7 @@ async function getPullRequestEditedDiffRanges(
   let changedFile = "";
   for (const line of diffHunkHeaders) {
     if (line.startsWith("+++ ")) {
-      const filePath = actionsUtil.decodeGitFilePath(line.substring(4));
+      const filePath = gitUtils.decodeGitFilePath(line.substring(4));
       if (filePath.startsWith("b/")) {
         // The file was edited: track all hunks in the file
         changedFile = filePath.substring(2);

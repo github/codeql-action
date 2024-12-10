@@ -1,20 +1,27 @@
+import * as fs from "fs";
 import { IncomingMessage, OutgoingHttpHeaders, RequestOptions } from "http";
+import * as os from "os";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
 import { https } from "follow-redirects";
-import { v4 as uuidV4 } from "uuid";
+import * as semver from "semver";
 
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
-import { cleanUpGlob } from "./util";
+import { cleanUpGlob, getRequiredEnvParam } from "./util";
 
 /**
  * High watermark to use when streaming the download and extraction of the CodeQL tools.
  */
 export const STREAMING_HIGH_WATERMARK_BYTES = 4 * 1024 * 1024; // 4 MiB
+
+/**
+ * The name of the tool cache directory for the CodeQL tools.
+ */
+const TOOLCACHE_TOOL_NAME = "CodeQL";
 
 /**
  * Timing information for the download and extraction of the CodeQL tools when
@@ -66,6 +73,7 @@ type ToolsDownloadDurations =
   | StreamedToolsDownloadDurations;
 
 export type ToolsDownloadStatusReport = {
+  cacheDurationMs?: number;
   compressionMethod: tar.CompressionMethod;
   toolsUrl: string;
   zstdFailureReason?: string;
@@ -73,16 +81,13 @@ export type ToolsDownloadStatusReport = {
 
 export async function downloadAndExtract(
   codeqlURL: string,
+  dest: string,
   authorization: string | undefined,
   headers: OutgoingHttpHeaders,
   tarVersion: tar.TarVersion | undefined,
-  tempDir: string,
   features: FeatureEnablement,
   logger: Logger,
-): Promise<{
-  extractedBundlePath: string;
-  statusReport: ToolsDownloadStatusReport;
-}> {
+): Promise<ToolsDownloadStatusReport> {
   logger.info(
     `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
   );
@@ -99,8 +104,9 @@ export async function downloadAndExtract(
     logger.info(`Streaming the extraction of the CodeQL bundle.`);
 
     const toolsInstallStart = performance.now();
-    const extractedBundlePath = await downloadAndExtractZstdWithStreaming(
+    await downloadAndExtractZstdWithStreaming(
       codeqlURL,
+      dest,
       authorization,
       headers,
       tarVersion!,
@@ -111,27 +117,22 @@ export async function downloadAndExtract(
       performance.now() - toolsInstallStart,
     );
     logger.info(
-      `Finished downloading and extracting CodeQL bundle to ${extractedBundlePath} (${formatDuration(
+      `Finished downloading and extracting CodeQL bundle to ${dest} (${formatDuration(
         combinedDurationMs,
       )}).`,
     );
 
     return {
-      extractedBundlePath,
-      statusReport: {
-        compressionMethod,
-        toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
-        ...makeStreamedToolsDownloadDurations(combinedDurationMs),
-      },
+      compressionMethod,
+      toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
+      ...makeStreamedToolsDownloadDurations(combinedDurationMs),
     };
   }
-
-  const dest = path.join(tempDir, uuidV4());
 
   const toolsDownloadStart = performance.now();
   const archivedBundlePath = await toolcache.downloadTool(
     codeqlURL,
-    dest,
+    undefined,
     authorization,
     headers,
   );
@@ -143,21 +144,21 @@ export async function downloadAndExtract(
     )}).`,
   );
 
-  let extractedBundlePath: string;
   let extractionDurationMs: number;
 
   try {
     logger.info("Extracting CodeQL bundle.");
     const extractionStart = performance.now();
-    extractedBundlePath = await tar.extract(
+    await tar.extract(
       archivedBundlePath,
+      dest,
       compressionMethod,
       tarVersion,
       logger,
     );
     extractionDurationMs = Math.round(performance.now() - extractionStart);
     logger.info(
-      `Finished extracting CodeQL bundle to ${extractedBundlePath} (${formatDuration(
+      `Finished extracting CodeQL bundle to ${dest} (${formatDuration(
         extractionDurationMs,
       )}).`,
     );
@@ -166,25 +167,27 @@ export async function downloadAndExtract(
   }
 
   return {
-    extractedBundlePath,
-    statusReport: {
-      compressionMethod,
-      toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
-      ...makeDownloadFirstToolsDownloadDurations(
-        downloadDurationMs,
-        extractionDurationMs,
-      ),
-    },
+    compressionMethod,
+    toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
+    ...makeDownloadFirstToolsDownloadDurations(
+      downloadDurationMs,
+      extractionDurationMs,
+    ),
   };
 }
 
 async function downloadAndExtractZstdWithStreaming(
   codeqlURL: string,
+  dest: string,
   authorization: string | undefined,
   headers: OutgoingHttpHeaders,
   tarVersion: tar.TarVersion,
   logger: Logger,
-): Promise<string> {
+): Promise<void> {
+  // Ensure destination exists
+  fs.mkdirSync(dest, { recursive: true });
+
+  // Add User-Agent header and Authorization header if provided.
   headers = Object.assign(
     { "User-Agent": "CodeQL Action" },
     authorization ? { authorization } : {},
@@ -195,6 +198,7 @@ async function downloadAndExtractZstdWithStreaming(
       codeqlURL,
       {
         headers,
+        // Increase the high water mark to improve performance.
         highWaterMark: STREAMING_HIGH_WATERMARK_BYTES,
       } as unknown as RequestOptions,
       (r) => resolve(r),
@@ -207,7 +211,26 @@ async function downloadAndExtractZstdWithStreaming(
     );
   }
 
-  return await tar.extractTarZst(response, tarVersion, logger);
+  await tar.extractTarZst(response, dest, tarVersion, logger);
+}
+
+/** Gets the path to the toolcache directory for the specified version of the CodeQL tools. */
+export function getToolcacheDirectory(version: string): string {
+  return path.join(
+    getRequiredEnvParam("RUNNER_TOOL_CACHE"),
+    TOOLCACHE_TOOL_NAME,
+    semver.clean(version) || version,
+    os.arch() || "",
+  );
+}
+
+export function writeToolcacheMarkerFile(
+  extractedPath: string,
+  logger: Logger,
+): void {
+  const markerFilePath = `${extractedPath}.complete`;
+  fs.writeFileSync(markerFilePath, "");
+  logger.info(`Created toolcache marker file ${markerFilePath}`);
 }
 
 function sanitizeUrlForStatusReport(url: string): string {

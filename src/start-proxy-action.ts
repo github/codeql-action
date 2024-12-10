@@ -235,8 +235,8 @@ async function getProxyBinaryPath(): Promise<string> {
     process.platform === "win32"
       ? "win64"
       : process.platform === "darwin"
-      ? "osx64"
-      : "linux64";
+        ? "osx64"
+        : "linux64";
   const proxyPackage = `${UPDATEJOB_PROXY}-${platform}.tar.gz`;
   const proxyURL = `${UPDATEJOB_PROXY_URL_PREFIX}${proxyPackage}`;
 

@@ -1,0 +1,53 @@
+name: "Extract directly to toolcache"
+description: "Extract the CodeQL bundle directly into the toolcache"
+versions:
+  - linked
+operatingSystems:
+  - macos
+  - ubuntu
+  - windows
+env:
+  CODEQL_ACTION_EXTRACT_TOOLCACHE: true
+steps:
+  - name: Remove CodeQL from toolcache
+    uses: actions/github-script@v7
+    with:
+      script: |
+        const fs = require('fs');
+        const path = require('path');
+        const codeqlPath = path.join(process.env['RUNNER_TOOL_CACHE'], 'CodeQL');
+        fs.rmdirSync(codeqlPath, { recursive: true });
+  - name: Install @actions/tool-cache
+    run: npm install @actions/tool-cache
+  - name: Check toolcache does not contain CodeQL
+    uses: actions/github-script@v7
+    with:
+      script: |
+        const toolcache = require('@actions/tool-cache');
+        const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+        if (allCodeqlVersions.length !== 0) {
+          throw new Error(`CodeQL should not be found in the toolcache, but found ${allCodeqlVersions}`);
+        }
+        console.log('No versions of CodeQL found in the toolcache');
+  - id: init
+    uses: ./../action/init
+    with:
+      languages: javascript
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    with:
+      output: ${{ runner.temp }}/results
+      upload-database: false
+  - name: Check CodeQL is installed within the toolcache
+    uses: actions/github-script@v7
+    with:
+      script: |
+        const toolcache = require('@actions/tool-cache');
+        const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+        console.log(`Found CodeQL versions: ${allCodeqlVersions}`);
+        if (allCodeqlVersions.length === 0) {
+          throw new Error('CodeQL not found in toolcache');
+        }
+        if (allCodeqlVersions.length > 1) {
+          throw new Error('Multiple CodeQL versions found in toolcache');
+        }

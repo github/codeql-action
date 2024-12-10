@@ -48,7 +48,6 @@ export interface FeatureEnablement {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
-  ArtifactV4Upgrade = "artifact_v4_upgrade",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppBuildModeNone = "cpp_build_mode_none",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
@@ -57,6 +56,7 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  ExtractToToolcache = "extract_to_toolcache",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
@@ -93,11 +93,6 @@ export const featureConfig: Record<
     toolsFeature?: ToolsFeature;
   }
 > = {
-  [Feature.ArtifactV4Upgrade]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ARTIFACT_V4_UPGRADE",
-    minimumVersion: undefined,
-  },
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
@@ -146,6 +141,11 @@ export const featureConfig: Record<
     defaultValue: true,
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.ExtractToToolcache]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_EXTRACT_TOOLCACHE",
     minimumVersion: undefined,
   },
   [Feature.PythonDefaultIsToNotExtractStdlib]: {

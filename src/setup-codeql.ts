@@ -6,6 +6,7 @@ import { performance } from "perf_hooks";
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
+import { v4 as uuidV4 } from "uuid";
 
 import { isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
@@ -13,13 +14,16 @@ import * as defaults from "./defaults.json";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
+  Feature,
   FeatureEnablement,
 } from "./feature-flags";
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
 import {
   downloadAndExtract,
+  getToolcacheDirectory,
   ToolsDownloadStatusReport,
+  writeToolcacheMarkerFile,
 } from "./tools-download";
 import * as util from "./util";
 import { cleanUpGlob, isGoodVersion } from "./util";
@@ -534,20 +538,29 @@ export const downloadCodeQL = async function (
     logger.debug("Downloading CodeQL tools without an authorization token.");
   }
 
-  const { extractedBundlePath, statusReport } = await downloadAndExtract(
+  const toolcacheInfo = getToolcacheDestinationInfo(
+    maybeBundleVersion,
+    maybeCliVersion,
+    logger,
+  );
+  const extractToToolcache =
+    !!toolcacheInfo && !!(await features.getValue(Feature.ExtractToToolcache));
+
+  const extractedBundlePath = extractToToolcache
+    ? toolcacheInfo.path
+    : getTempExtractionDir(tempDir);
+
+  let statusReport = await downloadAndExtract(
     codeqlURL,
+    extractedBundlePath,
     authorization,
     { "User-Agent": "CodeQL Action", ...headers },
     tarVersion,
-    tempDir,
     features,
     logger,
   );
 
-  const bundleVersion =
-    maybeBundleVersion ?? tryGetBundleVersionFromUrl(codeqlURL, logger);
-
-  if (bundleVersion === undefined) {
+  if (!toolcacheInfo) {
     logger.debug(
       "Could not cache CodeQL tools because we could not determine the bundle version from the " +
         `URL ${codeqlURL}.`,
@@ -559,40 +572,67 @@ export const downloadCodeQL = async function (
     };
   }
 
-  logger.debug("Caching CodeQL bundle.");
-  const toolcacheVersion = getCanonicalToolcacheVersion(
-    maybeCliVersion,
-    bundleVersion,
-    logger,
-  );
-  const toolcacheStart = performance.now();
-  const toolcachedBundlePath = await toolcache.cacheDir(
-    extractedBundlePath,
-    "CodeQL",
-    toolcacheVersion,
-  );
+  let codeqlFolder = extractedBundlePath;
 
-  logger.info(
-    `Added CodeQL bundle to the tool cache (${formatDuration(
-      performance.now() - toolcacheStart,
-    )}).`,
-  );
-
-  // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
-  if (toolcachedBundlePath !== extractedBundlePath) {
-    await cleanUpGlob(
+  if (extractToToolcache) {
+    writeToolcacheMarkerFile(toolcacheInfo.path, logger);
+  } else {
+    logger.debug("Caching CodeQL bundle.");
+    const toolcacheStart = performance.now();
+    codeqlFolder = await toolcache.cacheDir(
       extractedBundlePath,
-      "CodeQL bundle from temporary directory",
-      logger,
+      "CodeQL",
+      toolcacheInfo.version,
     );
+
+    const cacheDurationMs = performance.now() - toolcacheStart;
+    logger.info(
+      `Added CodeQL bundle to the tool cache (${formatDuration(
+        cacheDurationMs,
+      )}).`,
+    );
+    statusReport = {
+      ...statusReport,
+      cacheDurationMs,
+    };
+
+    // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
+    if (codeqlFolder !== extractedBundlePath) {
+      await cleanUpGlob(
+        extractedBundlePath,
+        "CodeQL bundle from temporary directory",
+        logger,
+      );
+    }
   }
 
   return {
-    codeqlFolder: toolcachedBundlePath,
+    codeqlFolder,
     statusReport,
-    toolsVersion: maybeCliVersion ?? toolcacheVersion,
+    toolsVersion: maybeCliVersion ?? toolcacheInfo.version,
   };
 };
+
+function getToolcacheDestinationInfo(
+  maybeBundleVersion: string | undefined,
+  maybeCliVersion: string | undefined,
+  logger: Logger,
+): { path: string; version: string } | undefined {
+  if (maybeBundleVersion) {
+    const version = getCanonicalToolcacheVersion(
+      maybeCliVersion,
+      maybeBundleVersion,
+      logger,
+    );
+
+    return {
+      path: getToolcacheDirectory(version),
+      version,
+    };
+  }
+
+  return undefined;
+}
 
 export function getCodeQLURLVersion(url: string): string {
   const match = url.match(/\/codeql-bundle-(.*)\//);
@@ -617,7 +657,7 @@ function getCanonicalToolcacheVersion(
   cliVersion: string | undefined,
   bundleVersion: string,
   logger: Logger,
-) {
+): string {
   // If the CLI version is a pre-release or contains build metadata, then cache the
   // bundle as `0.0.0-<bundleVersion>` to avoid the bundle being interpreted as containing a stable
   // CLI release. In principle, it should be enough to just check that the CLI version isn't a
@@ -680,6 +720,7 @@ export async function setupCodeQLBundle(
       );
       codeqlFolder = await tar.extract(
         source.codeqlTarPath,
+        getTempExtractionDir(tempDir),
         compressionMethod,
         zstdAvailability.version,
         logger,
@@ -731,4 +772,8 @@ async function useZstdBundle(
     tarSupportsZstd &&
     semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE)
   );
+}
+
+function getTempExtractionDir(tempDir: string) {
+  return path.join(tempDir, uuidV4());
 }

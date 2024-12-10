@@ -1,14 +1,12 @@
 import { spawn } from "child_process";
 import * as fs from "fs";
-import path from "path";
 import * as stream from "stream";
 
 import { ToolRunner } from "@actions/exec/lib/toolrunner";
 import * as toolcache from "@actions/tool-cache";
 import { safeWhich } from "@chrisgavin/safe-which";
-import { v4 as uuidV4 } from "uuid";
 
-import { CommandInvocationError, getTemporaryDirectory } from "./actions-util";
+import { CommandInvocationError } from "./actions-util";
 import { Logger } from "./logging";
 import { assertNever, cleanUpGlob, isBinaryAccessible } from "./util";
 
@@ -96,22 +94,28 @@ export type CompressionMethod = "gzip" | "zstd";
 
 export async function extract(
   tarPath: string,
+  dest: string,
   compressionMethod: CompressionMethod,
   tarVersion: TarVersion | undefined,
   logger: Logger,
 ): Promise<string> {
+  // Ensure destination exists
+  fs.mkdirSync(dest, { recursive: true });
+
   switch (compressionMethod) {
     case "gzip":
       // Defensively continue to call the toolcache API as requesting a gzipped
       // bundle may be a fallback option.
-      return await toolcache.extractTar(tarPath);
-    case "zstd":
+      return await toolcache.extractTar(tarPath, dest);
+    case "zstd": {
       if (!tarVersion) {
         throw new Error(
           "Could not determine tar version, which is required to extract a Zstandard archive.",
         );
       }
-      return await extractTarZst(tarPath, tarVersion, logger);
+      await extractTarZst(tarPath, dest, tarVersion, logger);
+      return dest;
+    }
   }
 }
 
@@ -119,15 +123,14 @@ export async function extract(
  * Extract a compressed tar archive
  *
  * @param tar   tar stream, or path to the tar
- * @param dest     destination directory. Optional.
- * @returns        path to the destination directory
+ * @param dest     destination directory
  */
 export async function extractTarZst(
   tar: stream.Readable | string,
+  dest: string,
   tarVersion: TarVersion,
   logger: Logger,
-): Promise<string> {
-  const dest = await createExtractFolder();
+): Promise<void> {
   logger.debug(
     `Extracting to ${dest}.${
       tar instanceof stream.Readable
@@ -150,25 +153,34 @@ export async function extractTarZst(
 
     process.stdout.write(`[command]tar ${args.join(" ")}\n`);
 
-    const tarProcess = spawn("tar", args, { stdio: "pipe" });
-    let stdout = "";
-    tarProcess.stdout?.on("data", (data: Buffer) => {
-      stdout += data.toString();
-      process.stdout.write(data);
-    });
-
-    let stderr = "";
-    tarProcess.stderr?.on("data", (data: Buffer) => {
-      stderr += data.toString();
-      // Mimic the standard behavior of the toolrunner by writing stderr to stdout
-      process.stdout.write(data);
-    });
-
-    if (tar instanceof stream.Readable) {
-      tar.pipe(tarProcess.stdin);
-    }
-
     await new Promise<void>((resolve, reject) => {
+      const tarProcess = spawn("tar", args, { stdio: "pipe" });
+
+      let stdout = "";
+      tarProcess.stdout?.on("data", (data: Buffer) => {
+        stdout += data.toString();
+        process.stdout.write(data);
+      });
+
+      let stderr = "";
+      tarProcess.stderr?.on("data", (data: Buffer) => {
+        stderr += data.toString();
+        // Mimic the standard behavior of the toolrunner by writing stderr to stdout
+        process.stdout.write(data);
+      });
+
+      tarProcess.on("error", (err) => {
+        reject(new Error(`Error while extracting tar: ${err}`));
+      });
+
+      if (tar instanceof stream.Readable) {
+        tar.pipe(tarProcess.stdin).on("error", (err) => {
+          reject(
+            new Error(`Error while downloading and extracting tar: ${err}`),
+          );
+        });
+      }
+
       tarProcess.on("exit", (code) => {
         if (code !== 0) {
           reject(
@@ -184,18 +196,10 @@ export async function extractTarZst(
         resolve();
       });
     });
-
-    return dest;
   } catch (e) {
     await cleanUpGlob(dest, "extraction destination directory", logger);
     throw e;
   }
-}
-
-async function createExtractFolder(): Promise<string> {
-  const dest = path.join(getTemporaryDirectory(), uuidV4());
-  fs.mkdirSync(dest, { recursive: true });
-  return dest;
 }
 
 export function inferCompressionMethod(tarPath: string): CompressionMethod {

@@ -4,6 +4,7 @@ import * as actionsUtil from "./actions-util";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import * as gitUtils from "./git-utils";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
@@ -34,7 +35,7 @@ export async function uploadDatabases(
     return;
   }
 
-  if (!(await actionsUtil.isAnalyzingDefaultBranch())) {
+  if (!(await gitUtils.isAnalyzingDefaultBranch())) {
     // We only want to upload a database if we are analyzing the default branch.
     logger.debug("Not analyzing default branch. Skipping upload.");
     return;
@@ -62,7 +63,7 @@ export async function uploadDatabases(
       const bundledDb = await bundleDb(config, language, codeql, language);
       const bundledDbSize = fs.statSync(bundledDb).size;
       const bundledDbReadStream = fs.createReadStream(bundledDb);
-      const commitOid = await actionsUtil.getCommitOid(
+      const commitOid = await gitUtils.getCommitOid(
         actionsUtil.getRequiredInput("checkout_path"),
       );
       try {

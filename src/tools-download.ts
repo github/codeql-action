@@ -125,9 +125,9 @@ export async function downloadAndExtract(
     }
   } catch (e) {
     core.warning(
-      `Failed to download and extract CodeQL bundle using streaming. Falling back to downloading the bundle before extracting.`,
+      `Failed to download and extract CodeQL bundle using streaming with error: ${getErrorMessage(e)}`,
     );
-    core.warning(`Error: ${getErrorMessage(e)}`);
+    core.warning(`Falling back to downloading the bundle before extracting.`);
 
     // If we failed during processing, we want to clean up the destination directory
     // before we try again.

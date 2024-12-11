@@ -25,7 +25,6 @@ async function runWrapper() {
       process.kill(Number(pid));
     }
 
-
     const config = await configUtils.getConfig(
       actionsUtil.getTemporaryDirectory(),
       logger,
@@ -60,9 +59,11 @@ async function runWrapper() {
         },
       );
     }
-  } catch(error) {
+  } catch (error) {
     // A failure in the post step should not fail the entire action.
-    logger.warning(`start-proxy post-action step failed: ${getErrorMessage(error)}`);
+    logger.warning(
+      `start-proxy post-action step failed: ${getErrorMessage(error)}`,
+    );
   }
 }
 

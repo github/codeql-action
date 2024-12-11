@@ -556,7 +556,6 @@ export const downloadCodeQL = async function (
     authorization,
     { "User-Agent": "CodeQL Action", ...headers },
     tarVersion,
-    features,
     logger,
   );
 

@@ -13,40 +13,37 @@ import { getActionsLogger } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
 async function runWrapper() {
+  const logger = getActionsLogger();
+
   try {
     // Restore inputs from `start-proxy` Action.
     actionsUtil.restoreInputs();
+
+    // Kill the running proxy
     const pid = core.getState("proxy-process-pid");
     if (pid) {
       process.kill(Number(pid));
     }
-  } catch (error) {
-    core.setFailed(
-      `start-proxy post-action step failed: ${getErrorMessage(error)}`,
-    );
-  }
-  const config = await configUtils.getConfig(
-    actionsUtil.getTemporaryDirectory(),
-    core,
-  );
 
-  if ((config && config.debugMode) || core.isDebug()) {
-    const logFilePath = core.getState("proxy-log-file");
-    core.info(
-      "Debug mode is on. Uploading proxy log as Actions debugging artifact...",
+    const config = await configUtils.getConfig(
+      actionsUtil.getTemporaryDirectory(),
+      logger,
     );
-    if (config?.gitHubVersion.type === undefined) {
-      core.warning(
-        `Did not upload debug artifacts because cannot determine the GitHub variant running.`,
+
+    if ((config && config.debugMode) || core.isDebug()) {
+      const logFilePath = core.getState("proxy-log-file");
+      logger.info(
+        "Debug mode is on. Uploading proxy log as Actions debugging artifact...",
       );
-      return;
-    }
+      if (config?.gitHubVersion.type === undefined) {
+        logger.warning(
+          `Did not upload debug artifacts because cannot determine the GitHub variant running.`,
+        );
+        return;
+      }
+      const gitHubVersion = await getGitHubVersion();
+      checkGitHubVersionInRange(gitHubVersion, logger);
 
-    const logger = getActionsLogger();
-    const gitHubVersion = await getGitHubVersion();
-    checkGitHubVersionInRange(gitHubVersion, logger);
-
-    try {
       const artifactUploader = await getArtifactUploaderClient(
         logger,
         gitHubVersion.type,
@@ -61,10 +58,12 @@ async function runWrapper() {
           retentionDays: 7,
         },
       );
-    } catch (e) {
-      // A failure to upload debug artifacts should not fail the entire action.
-      core.warning(`Failed to upload debug artifacts: ${e}`);
     }
+  } catch (error) {
+    // A failure in the post step should not fail the entire action.
+    logger.warning(
+      `start-proxy post-action step failed: ${getErrorMessage(error)}`,
+    );
   }
 }
 

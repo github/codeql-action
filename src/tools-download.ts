@@ -4,14 +4,15 @@ import * as os from "os";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
+import * as core from "@actions/core";
+import { HttpClient } from "@actions/http-client";
 import * as toolcache from "@actions/tool-cache";
 import { https } from "follow-redirects";
 import * as semver from "semver";
 
-import { Feature, FeatureEnablement } from "./feature-flags";
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
-import { cleanUpGlob, getRequiredEnvParam } from "./util";
+import { cleanUpGlob, getErrorMessage, getRequiredEnvParam } from "./util";
 
 /**
  * High watermark to use when streaming the download and extraction of the CodeQL tools.
@@ -85,7 +86,6 @@ export async function downloadAndExtract(
   authorization: string | undefined,
   headers: OutgoingHttpHeaders,
   tarVersion: tar.TarVersion | undefined,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<ToolsDownloadStatusReport> {
   logger.info(
@@ -94,39 +94,44 @@ export async function downloadAndExtract(
 
   const compressionMethod = tar.inferCompressionMethod(codeqlURL);
 
-  // TODO: Re-enable streaming when we have a more reliable way to respect proxy settings.
+  try {
+    if (compressionMethod === "zstd" && process.platform === "linux") {
+      logger.info(`Streaming the extraction of the CodeQL bundle.`);
 
-  if (
-    (await features.getValue(Feature.ZstdBundleStreamingExtraction)) &&
-    compressionMethod === "zstd" &&
-    process.platform === "linux"
-  ) {
-    logger.info(`Streaming the extraction of the CodeQL bundle.`);
+      const toolsInstallStart = performance.now();
+      await downloadAndExtractZstdWithStreaming(
+        codeqlURL,
+        dest,
+        authorization,
+        headers,
+        tarVersion!,
+        logger,
+      );
 
-    const toolsInstallStart = performance.now();
-    await downloadAndExtractZstdWithStreaming(
-      codeqlURL,
-      dest,
-      authorization,
-      headers,
-      tarVersion!,
-      logger,
+      const combinedDurationMs = Math.round(
+        performance.now() - toolsInstallStart,
+      );
+      logger.info(
+        `Finished downloading and extracting CodeQL bundle to ${dest} (${formatDuration(
+          combinedDurationMs,
+        )}).`,
+      );
+
+      return {
+        compressionMethod,
+        toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
+        ...makeStreamedToolsDownloadDurations(combinedDurationMs),
+      };
+    }
+  } catch (e) {
+    core.warning(
+      `Failed to download and extract CodeQL bundle using streaming with error: ${getErrorMessage(e)}`,
     );
+    core.warning(`Falling back to downloading the bundle before extracting.`);
 
-    const combinedDurationMs = Math.round(
-      performance.now() - toolsInstallStart,
-    );
-    logger.info(
-      `Finished downloading and extracting CodeQL bundle to ${dest} (${formatDuration(
-        combinedDurationMs,
-      )}).`,
-    );
-
-    return {
-      compressionMethod,
-      toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
-      ...makeStreamedToolsDownloadDurations(combinedDurationMs),
-    };
+    // If we failed during processing, we want to clean up the destination directory
+    // before we try again.
+    await cleanUpGlob(dest, "CodeQL bundle", logger);
   }
 
   const toolsDownloadStart = performance.now();
@@ -187,6 +192,9 @@ async function downloadAndExtractZstdWithStreaming(
   // Ensure destination exists
   fs.mkdirSync(dest, { recursive: true });
 
+  // Get HTTP Agent to use (respects proxy settings).
+  const agent = new HttpClient().getAgent(codeqlURL);
+
   // Add User-Agent header and Authorization header if provided.
   headers = Object.assign(
     { "User-Agent": "CodeQL Action" },
@@ -200,6 +208,8 @@ async function downloadAndExtractZstdWithStreaming(
         headers,
         // Increase the high water mark to improve performance.
         highWaterMark: STREAMING_HIGH_WATERMARK_BYTES,
+        // Use the agent to respect proxy settings.
+        agent,
       } as unknown as RequestOptions,
       (r) => resolve(r),
     ),

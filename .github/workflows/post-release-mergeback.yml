@@ -162,11 +162,18 @@ jobs:
             --assignee "${GITHUB_ACTOR}" \
             --draft
 
+      - name: Generate token
+        uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69
+        id: app-token
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
+
       - name: Create the GitHub release
         env:
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
           VERSION: "${{ steps.getVersion.outputs.version }}"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           # Do not mark this release as latest. The most recent CLI release must be marked as latest.
           gh release create \

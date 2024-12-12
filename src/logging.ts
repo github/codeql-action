@@ -41,6 +41,18 @@ export function withGroup<T>(groupName: string, f: () => T): T {
   }
 }
 
+export async function withGroupAsync<T>(
+  groupName: string,
+  f: () => Promise<T>,
+): Promise<T> {
+  core.startGroup(groupName);
+  try {
+    return await f();
+  } finally {
+    core.endGroup();
+  }
+}
+
 /** Format a duration for use in logs. */
 export function formatDuration(durationMs: number) {
   if (durationMs < 1000) {

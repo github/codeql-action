@@ -5,6 +5,7 @@ import * as actionsUtil from "./actions-util";
 import * as analyze from "./analyze";
 import * as api from "./api-client";
 import * as configUtils from "./config-utils";
+import * as gitUtils from "./git-utils";
 import * as statusReport from "./status-report";
 import {
   setupTests,
@@ -47,7 +48,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     optionalInputStub.withArgs("cleanup-level").returns("none");
     optionalInputStub.withArgs("expect-error").returns("false");
     sinon.stub(api, "getGitHubVersion").resolves(gitHubVersion);
-    sinon.stub(actionsUtil, "isAnalyzingDefaultBranch").resolves(true);
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
     setupActionsVars(tmpDir, tmpDir);
     mockFeatureFlagApiEndpoint(200, {});
 

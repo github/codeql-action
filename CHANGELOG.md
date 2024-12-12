@@ -8,6 +8,10 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 No user facing changes.
 
+## 3.27.9 - 12 Dec 2024
+
+No user facing changes.
+
 ## 3.27.8 - 12 Dec 2024
 
 - Fixed an issue where streaming the download and extraction of the CodeQL bundle did not respect proxy settings. [#2624](https://github.com/github/codeql-action/pull/2624)

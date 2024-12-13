@@ -1,0 +1,15 @@
+name: "Start proxy"
+description: "Tests that the proxy can be initialised on all platforms"
+operatingSystems: ["ubuntu", "macos", "windows"]
+versions: ["linked"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: csharp
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: Setup proxy for registries
+    id: proxy
+    uses: ./../action/start-proxy
+    with:
+      registries_secrets: '[{ "type": "nuget_feed", "url": "https://api.nuget.org/v3/index.json" }]'

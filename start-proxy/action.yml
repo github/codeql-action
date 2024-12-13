@@ -23,6 +23,8 @@ outputs:
     description: The port of the proxy
   proxy_ca_certificate:
     description: The proxy's internal CA certificate in PEM format
+  proxy_urls:
+    description: The URLs of the configured registries, as a JSON array.
 runs:
   using: node20
   main: "../lib/start-proxy-action.js"

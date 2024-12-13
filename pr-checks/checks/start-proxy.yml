@@ -12,4 +12,4 @@ steps:
     id: proxy
     uses: ./../action/start-proxy
     with:
-      registries_secrets: '[{ "type": "nuget_feed", "url": "https://api.nuget.org/v3/index.json" }]'
+      registry_secrets: '[{ "type": "nuget_feed", "url": "https://api.nuget.org/v3/index.json" }]'

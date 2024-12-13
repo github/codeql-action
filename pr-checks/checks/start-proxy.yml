@@ -13,3 +13,9 @@ steps:
     uses: ./../action/start-proxy
     with:
       registry_secrets: '[{ "type": "nuget_feed", "url": "https://api.nuget.org/v3/index.json" }]'
+
+  - name: Print proxy outputs
+    run: |
+      echo "${{ steps.proxy.outputs.proxy_host }}"
+      echo "${{ steps.proxy.outputs.proxy_port }}"
+      echo "${{ steps.proxy.outputs.proxy_urls }}"

@@ -171,6 +171,11 @@ async function startProxy(
     core.setOutput("proxy_host", host);
     core.setOutput("proxy_port", port.toString());
     core.setOutput("proxy_ca_certificate", config.ca.cert);
+
+    const registry_urls = config.all_credentials
+      .filter((credential) => credential.url !== undefined)
+      .map((credential) => credential.url);
+    core.setOutput("proxy_urls", JSON.stringify(registry_urls));
   } catch (error) {
     core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
   }

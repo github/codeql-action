@@ -1,0 +1,25 @@
+name: "Start proxy"
+description: "Tests that the proxy can be initialised on all platforms"
+operatingSystems: ["ubuntu", "macos", "windows"]
+versions: ["linked"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: csharp
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: Setup proxy for registries
+    id: proxy
+    uses: ./../action/start-proxy
+    with:
+      registry_secrets: '[{ "type": "nuget_feed", "url": "https://api.nuget.org/v3/index.json" }]'
+
+  - name: Print proxy outputs
+    run: |
+      echo "${{ steps.proxy.outputs.proxy_host }}"
+      echo "${{ steps.proxy.outputs.proxy_port }}"
+      echo "${{ steps.proxy.outputs.proxy_urls }}"
+
+  - name: Fail if proxy outputs are not set
+    if: (!steps.proxy.outputs.proxy_host) || (!steps.proxy.outputs.proxy_port) || (!steps.proxy.outputs.proxy_ca_certificate) || (!steps.proxy.outputs.proxy_urls)
+    run: exit 1

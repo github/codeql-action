@@ -3,8 +3,8 @@ import * as fs from "fs";
 import * as stream from "stream";
 
 import { ToolRunner } from "@actions/exec/lib/toolrunner";
+import * as io from "@actions/io";
 import * as toolcache from "@actions/tool-cache";
-import { safeWhich } from "@chrisgavin/safe-which";
 
 import { CommandInvocationError } from "./actions-util";
 import { Logger } from "./logging";
@@ -19,7 +19,7 @@ export type TarVersion = {
 };
 
 async function getTarVersion(): Promise<TarVersion> {
-  const tar = await safeWhich("tar");
+  const tar = await io.which("tar", true);
   let stdout = "";
   const exitCode = await new ToolRunner(tar, ["--version"], {
     listeners: {

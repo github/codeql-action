@@ -7,6 +7,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 ## [UNRELEASED]
 
 - Bump the minimum CodeQL bundle version to 2.15.5. [#2655](https://github.com/github/codeql-action/pull/2655)
+- Don't fail in the unusual case that a file is on the search path. [#2660](https://github.com/github/codeql-action/pull/2660).
 
 ## 3.27.9 - 12 Dec 2024
 

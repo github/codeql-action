@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import { safeWhich } from "@chrisgavin/safe-which";
+import * as io from "@actions/io";
 import { v4 as uuidV4 } from "uuid";
 
 import {
@@ -445,7 +445,7 @@ async function run() {
       process.platform === "linux"
     ) {
       try {
-        const goBinaryPath = await safeWhich("go");
+        const goBinaryPath = await io.which("go", true);
         const fileOutput = await getFileType(goBinaryPath);
 
         // Go 1.21 and above ships with statically linked binaries on Linux. CodeQL cannot currently trace custom builds

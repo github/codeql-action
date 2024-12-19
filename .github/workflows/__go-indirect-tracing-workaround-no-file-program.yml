@@ -28,7 +28,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.14.6
+            version: default
     name: 'Go: diagnostic when `file` is not installed'
     permissions:
       contents: read

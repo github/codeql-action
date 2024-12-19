@@ -276,22 +276,22 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.14.6";
+const CODEQL_MINIMUM_VERSION = "2.15.5";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.14.6";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.15.5";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.10";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.11";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2024-09-24";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2024-12-19";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";

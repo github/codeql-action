@@ -10,13 +10,11 @@ steps:
     id: init
     with:
       db-location: "${{ runner.temp }}/customDbLocation"
-      # Swift is not supported on Ubuntu or codeql 2.14 so we manually exclude it from the list here
-      languages: ${{ (runner.os == 'Linux' || (runner.os == 'macOS' && matrix.version == 'stable-v2.14.6')) && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
+      languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
   - uses: ./../action/.github/actions/setup-swift
-    # Exclude macos on v2.14.6 since we can not longer run swift on ARM runners
-    if: runner.os == 'macOS' && matrix.version != 'stable-v2.14.6'
+    if: runner.os == 'macOS'
     with:
       codeql-path: ${{ steps.init.outputs.codeql-path }}
 
@@ -69,8 +67,7 @@ steps:
       fi
 
   - name: Check language autodetect for Swift on macOS
-    # Exclude macos on v2.14.6 since we can not longer run swift on ARM runners
-    if: runner.os == 'macOS' && matrix.version != 'stable-v2.14.6'
+    if: runner.os == 'macOS'
     shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}

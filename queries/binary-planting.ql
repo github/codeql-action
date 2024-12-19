@@ -10,8 +10,8 @@ import javascript
 import DataFlow
 import DataFlow::PathGraph
 
-class SafeWhichBarrierGuardNode extends DataFlow::BarrierGuardNode, DataFlow::InvokeNode {
-  SafeWhichBarrierGuardNode() { getCalleeName() = "safeWhich" }
+class WhichBarrierGuardNode extends DataFlow::BarrierGuardNode, DataFlow::InvokeNode {
+  WhichBarrierGuardNode() { getCalleeName() = "which" }
 
   override predicate blocks(boolean outcome, Expr e) {
     outcome = true and
@@ -36,7 +36,7 @@ class BinaryPlantingConfiguration extends DataFlow::Configuration {
   }
 
   override predicate isBarrierGuard(DataFlow::BarrierGuardNode guard) {
-    guard instanceof SafeWhichBarrierGuardNode
+    guard instanceof WhichBarrierGuardNode
   }
 }
 

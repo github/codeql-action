@@ -3,7 +3,7 @@ description: "Checks that we emit a diagnostic if the `file` program is not inst
 # only Linux is affected
 operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing
-versions: ["stable-v2.14.6"]
+versions: ["default"]
 steps:
   - uses: actions/setup-go@v5
     with:

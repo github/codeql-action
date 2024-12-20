@@ -3,7 +3,7 @@ description: "Checks that our workaround for indirect tracing for Go 1.21+ on Li
 # only Linux is affected
 operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing
-versions: ["stable-v2.14.6"]
+versions: ["default"]
 steps:
   - uses: actions/setup-go@v5
     with:

@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
-import * as safeWhich from "@chrisgavin/safe-which";
+import * as io from "@actions/io";
 
 import {
   getOptionalInput,
@@ -18,7 +18,7 @@ async function runGitCommand(
   let stderr = "";
   core.debug(`Running git command: git ${args.join(" ")}`);
   try {
-    await new toolrunner.ToolRunner(await safeWhich.safeWhich("git"), args, {
+    await new toolrunner.ToolRunner(await io.which("git", true), args, {
       silent: true,
       listeners: {
         stdout: (data) => {

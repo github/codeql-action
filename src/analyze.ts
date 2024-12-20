@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
-import { safeWhich } from "@chrisgavin/safe-which";
+import * as io from "@actions/io";
 import del from "del";
 import * as yaml from "js-yaml";
 
@@ -660,7 +660,7 @@ export async function warnIfGoInstalledAfterInit(
     process.env[EnvVar.DID_AUTOBUILD_GOLANG] !== "true" &&
     goInitPath !== undefined
   ) {
-    const goBinaryPath = await safeWhich("go");
+    const goBinaryPath = await io.which("go", true);
 
     if (goInitPath !== goBinaryPath) {
       logger.warning(

@@ -3,7 +3,7 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
-import * as safeWhich from "@chrisgavin/safe-which";
+import * as io from "@actions/io";
 import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import type { Config } from "./config-utils";
@@ -209,7 +209,7 @@ export const getFileType = async (filePath: string): Promise<string> => {
   let fileCmdPath: string;
 
   try {
-    fileCmdPath = await safeWhich.safeWhich("file");
+    fileCmdPath = await io.which("file", true);
   } catch (e) {
     throw new FileCmdNotFoundError(
       `The \`file\` program is required, but does not appear to be installed. Please install it: ${e}`,

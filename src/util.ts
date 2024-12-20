@@ -5,7 +5,7 @@ import { promisify } from "util";
 
 import * as core from "@actions/core";
 import * as exec from "@actions/exec/lib/exec";
-import { safeWhich } from "@chrisgavin/safe-which";
+import * as io from "@actions/io";
 import checkDiskSpace from "check-disk-space";
 import del from "del";
 import getFolderSize from "get-folder-size";
@@ -1194,7 +1194,7 @@ export async function isBinaryAccessible(
   logger: Logger,
 ): Promise<boolean> {
   try {
-    await safeWhich(binary);
+    await io.which(binary, true);
     logger.debug(`Found ${binary}.`);
     return true;
   } catch (e) {

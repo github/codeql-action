@@ -28,10 +28,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.14.6
-          - os: macos-13
-            version: stable-v2.14.6
-          - os: ubuntu-latest
             version: stable-v2.15.5
           - os: macos-latest
             version: stable-v2.15.5
@@ -47,6 +43,10 @@ jobs:
             version: stable-v2.18.4
           - os: macos-latest
             version: stable-v2.18.4
+          - os: ubuntu-latest
+            version: stable-v2.19.4
+          - os: macos-latest
+            version: stable-v2.19.4
           - os: ubuntu-latest
             version: default
           - os: macos-latest

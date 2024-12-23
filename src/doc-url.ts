@@ -9,4 +9,5 @@ export enum DocUrl {
   SCANNING_ON_PUSH = "https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning#scanning-on-push",
   SPECIFY_BUILD_STEPS_MANUALLY = "https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#about-specifying-build-steps-manually",
   TRACK_CODE_SCANNING_ALERTS_ACROSS_RUNS = "https://docs.github.com/en/enterprise-cloud@latest/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning#providing-data-to-track-code-scanning-alerts-across-runs",
+  CODEQL_BUILD_MODES = "https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#codeql-build-modes",
 }

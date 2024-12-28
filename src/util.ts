@@ -1098,7 +1098,7 @@ export function checkActionVersion(
         ))
     ) {
       core.warning(
-        "CodeQL Action v2 will be deprecated on December 5th, 2024. " +
+        "CodeQL Action v2 will be deprecated on January 29, 2025. " +
           "Please update all occurrences of the CodeQL Action in your workflow files to v3. " +
           "For more information, see " +
           "https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/",

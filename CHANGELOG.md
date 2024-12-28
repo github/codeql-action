@@ -6,7 +6,7 @@ Note that the only difference between `v2` and `v3` of the CodeQL Action is the 
 
 ## [UNRELEASED]
 
-No user facing changes.
+- _Upcoming deprecation_: Update a deprecation warning for customers using CodeQL Action v2, on compatible GitHub versions. Support for CodeQL Action v2 will end on January 29, 2025. [#2520](https://github.com/github/codeql-action/pull/2670)
 
 ## 3.28.0 - 20 Dec 2024
 

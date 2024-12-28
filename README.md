@@ -63,7 +63,7 @@ For compiled languages:
 The following versions of the CodeQL Action are currently supported:
 
 - v3 (latest)
-- v2 (deprecated, support will end on December 5th, 2024)
+- v2 (deprecated, support will end on January 29, 2025)
 
 The only difference between CodeQL Action v2 and v3 is the version of Node.js on which they run. CodeQL Action v3 runs on Node 20, while CodeQL Action v2 runs on Node 16.
 

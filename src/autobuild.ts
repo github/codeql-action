@@ -25,7 +25,7 @@ export async function determineAutobuildLanguages(
   ) {
     logger.info(
       `Using build mode "${config.buildMode}", nothing to autobuild. ` +
-      `See ${DocUrl.CODEQL_BUILD_MODES} for more information.`,
+        `See ${DocUrl.CODEQL_BUILD_MODES} for more information.`,
     );
     return undefined;
   }

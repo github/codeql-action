@@ -50,6 +50,9 @@ export enum EnvVar {
   /** Whether the init action has been run. */
   INIT_ACTION_HAS_RUN = "CODEQL_ACTION_INIT_HAS_RUN",
 
+  /** Whether the error for a deprecated version of the CodeQL Action was logged. */
+  LOG_VERSION_DEPRECATION = "CODEQL_ACTION_DID_LOG_VERSION_DEPRECATION",
+
   /**
    * For macOS. Result of `csrutil status` to determine whether System Integrity
    * Protection is enabled.

@@ -100,9 +100,17 @@ We typically deprecate a version of CodeQL when the GitHub Enterprise Server (GH
     - Add a changelog note announcing the new minimum version of CodeQL that is now required.
     - Example PR: https://github.com/github/codeql-action/pull/1907
 
-## Deprecating a CodeQL Action version (write access required)
+## Adding a new CodeQL Action major version
 
 We sometimes maintain multiple versions of the CodeQL Action to enable customers on older but still supported versions of GitHub Enterprise Server (GHES) to continue to benefit from the latest CodeQL improvements. To accomplish this, the release process automation listens to updates to the release branch for the newest supported version.  When this branch is updated, the release process automatically opens backport PRs to update the release branches for older versions.
+
+To add a new major version of the Action:
+
+1. Change the `version` field of `package.json` by running `npm version x.y.z` where `x` is the new major version, and `y` and `z` match the latest minor and patch versions of the last release.
+1. Update appropriate documentation to explain the reasoning behind the releases: see [the diff](https://github.com/github/codeql-action/pull/2677/commits/913d60579d4b560addf53ec3c493d491dd3c1378) in our last major version deprecation for examples on which parts of the documentation should be updated.
+1. Consider the timeline behind deprecating the prior Action version: see [CodeQL Action deprecation documentation](#deprecating-a-codeql-action-major-version-write-access-required)
+
+## Deprecating a CodeQL Action major version (write access required)
 
 We typically deprecate older versions of the Action once all supported GHES versions are compatible with the version of Node.js we are using on `main`.
 

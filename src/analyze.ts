@@ -375,6 +375,20 @@ function getDiffRanges(
   logger: Logger,
 ): DiffThunkRange[] | undefined {
   if (fileDiff.patch === undefined) {
+    if (fileDiff.changes === 0) {
+      // There are situations where a changed file legitimately has no diff.
+      // For example, the file may be a binary file, or that the file may have
+      // been renamed with no changes to its contents. In these cases, the
+      // file would be reported as having 0 changes, and we can return an empty
+      // array to indicate no diff range in this file.
+      return [];
+    }
+    // If a file is reported to have nonzero changes but no patch, that may be
+    // due to the file diff being too large. In this case, we should return
+    // undefined to indicate that we cannot process the diff.
+    logger.warning(
+      `No patch found for file ${fileDiff.filename} with ${fileDiff.changes} changes.`,
+    );
     return undefined;
   }
 

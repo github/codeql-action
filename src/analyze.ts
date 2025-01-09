@@ -266,7 +266,18 @@ export async function setupDiffInformedQueryRun(
         headLabel,
         logger,
       );
-      return writeDiffRangeDataExtensionPack(logger, diffRanges);
+      const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
+      if (packDir === undefined) {
+        logger.warning(
+          "Cannot create diff range extension pack for diff-informed queries; " +
+            "reverting to performing full analysis.",
+        );
+      } else {
+        logger.info(
+          `Successfully created diff range extension pack at ${packDir}.`,
+        );
+      }
+      return packDir;
     },
   );
 }

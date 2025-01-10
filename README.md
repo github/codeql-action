@@ -63,13 +63,6 @@ For compiled languages:
 The following versions of the CodeQL Action are currently supported:
 
 - v3 (latest)
-- v2 (deprecated, support will end on December 5th, 2024)
-
-The only difference between CodeQL Action v2 and v3 is the version of Node.js on which they run. CodeQL Action v3 runs on Node 20, while CodeQL Action v2 runs on Node 16.
-
-To provide the best experience to customers using older versions of GitHub Enterprise Server, we will continue to release CodeQL Action v2 so that these customers can continue to run the latest version of CodeQL as long as their version of GitHub Enterprise Server is supported. For example CodeQL Action v3.22.11 was the first release of CodeQL Action v3 and is functionally identical to v2.22.11. This approach provides an easy way to track exactly which features are included in different versions by looking at the minor and patch version numbers.
-
-For more information, see "[Code scanning: deprecation of CodeQL Action v2](https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/)."
 
 ## Supported versions of the CodeQL Bundle on GitHub Enterprise Server
 
@@ -77,12 +70,10 @@ We typically release new minor versions of the CodeQL Action and Bundle when a n
 
 | Minimum CodeQL Action | Minimum CodeQL Bundle Version | GitHub Environment | Notes |
 |-----------------------|-------------------------------|--------------------|-------|
-| `v3.26.6` | `2.18.4` | Enterprise Server 3.15 | |
+| `v3.26.6`  | `2.18.4` | Enterprise Server 3.15 | |
 | `v3.25.11` | `2.17.6` | Enterprise Server 3.14 | |
 | `v3.24.11` | `2.16.6` | Enterprise Server 3.13 | |
 | `v3.22.12` | `2.15.5` | Enterprise Server 3.12 | |
-
-CodeQL Action v2 has stopped receiving updates now that GHES 3.11 is deprecated.
 
 See the full list of GHES release and deprecation dates at [GitHub Enterprise Server releases](https://docs.github.com/en/enterprise-server/admin/all-releases#releases-of-github-enterprise-server).
 

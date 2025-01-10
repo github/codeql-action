@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- CodeQL Action v2 is now deprecated, and is no longer updated or supported. For better performance, improved security, and new features, upgrade to v3. For more information, see [this changelog post](https://github.blog/changelog/2025-01-10-code-scanning-codeql-action-v2-is-now-deprecated/). [#1467](https://github.com/github/codeql-action/pull/2677)
+- CodeQL Action v2 is now deprecated, and is no longer updated or supported. For better performance, improved security, and new features, upgrade to v3. For more information, see [this changelog post](https://github.blog/changelog/2025-01-10-code-scanning-codeql-action-v2-is-now-deprecated/). [#2677](https://github.com/github/codeql-action/pull/2677)
 
 ## 3.28.0 - 20 Dec 2024
 

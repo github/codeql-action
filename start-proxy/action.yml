@@ -24,7 +24,7 @@ outputs:
   proxy_ca_certificate:
     description: The proxy's internal CA certificate in PEM format
   proxy_urls:
-    description: The URLs of the configured registries, as a JSON array.
+    description: A stringified JSON array of objects containing the types and URLs of the configured registries.
 runs:
   using: node16
   main: "../lib/start-proxy-action.js"

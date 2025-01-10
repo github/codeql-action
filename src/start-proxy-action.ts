@@ -174,7 +174,10 @@ async function startProxy(
 
     const registry_urls = config.all_credentials
       .filter((credential) => credential.url !== undefined)
-      .map((credential) => credential.url);
+      .map((credential) => ({
+        type: credential.type,
+        url: credential.url,
+      }));
     core.setOutput("proxy_urls", JSON.stringify(registry_urls));
   } catch (error) {
     core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);

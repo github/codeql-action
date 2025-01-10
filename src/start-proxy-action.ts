@@ -17,6 +17,11 @@ const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
 
+const LANGUAGE_TO_REGISTRY_TYPE = {
+  "java-kotlin": "maven_repository",
+  csharp: "nuget_feed",
+} as const;
+
 type CertificateAuthority = {
   cert: string;
   key: string;
@@ -192,6 +197,7 @@ function getCredentials(logger: Logger): Credential[] {
     "registries_credentials",
   );
   const registrySecrets = actionsUtil.getOptionalInput("registry_secrets");
+  const language = actionsUtil.getOptionalInput("language");
 
   let credentialsStr: string;
   if (registriesCredentials !== undefined) {
@@ -212,6 +218,13 @@ function getCredentials(logger: Logger): Credential[] {
     if (e.url === undefined && e.host === undefined) {
       throw new Error("Invalid credentials - must specify host or url");
     }
+
+    // Filter credentials based on language if specified. `type` is the registry type.
+    // E.g., "maven_feed" for Java/Kotlin, "nuget_repository" for C#.
+    if (language && LANGUAGE_TO_REGISTRY_TYPE[language] !== e.type) {
+      continue;
+    }
+
     out.push({
       type: e.type,
       host: e.host,

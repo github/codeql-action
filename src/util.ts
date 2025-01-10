@@ -1100,7 +1100,7 @@ export function checkActionVersion(
         "CodeQL Action major versions v1 and v2 have been deprecated. " +
           "Please update all occurrences of the CodeQL Action in your workflow files to v3. " +
           "For more information, see " +
-          "https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/", // TODO: update to new changelog post when published
+          "https://github.blog/changelog/2025-01-10-code-scanning-codeql-action-v2-is-now-deprecated/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
       core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");

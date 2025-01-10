@@ -431,16 +431,16 @@ const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
 for (const [
   version,
   githubVersion,
-  shouldReportWarning,
+  shouldReportError,
 ] of CHECK_ACTION_VERSION_TESTS) {
-  const reportWarningDescription = shouldReportWarning
-    ? "reports warning"
-    : "doesn't report warning";
+  const reportErrorDescription = shouldReportError
+    ? "reports error"
+    : "doesn't report error";
   const versionsDescription = `CodeQL Action version ${version} and GitHub version ${formatGitHubVersion(
     githubVersion,
   )}`;
-  test(`checkActionVersion ${reportWarningDescription} for ${versionsDescription}`, async (t) => {
-    const warningSpy = sinon.spy(core, "warning");
+  test(`checkActionVersion ${reportErrorDescription} for ${versionsDescription}`, async (t) => {
+    const warningSpy = sinon.spy(core, "error");
     const versionStub = sinon
       .stub(api, "getGitHubVersion")
       .resolves(githubVersion);
@@ -449,10 +449,12 @@ for (const [
     util.checkActionVersion(version, await api.getGitHubVersion());
     util.checkActionVersion(version, await api.getGitHubVersion());
 
-    if (shouldReportWarning) {
+    if (shouldReportError) {
       t.true(
         warningSpy.calledOnceWithExactly(
-          sinon.match("CodeQL Action v2 will be deprecated"),
+          sinon.match(
+            "CodeQL Action major versions v1 and v2 have been deprecated.",
+          ),
         ),
       );
     } else {

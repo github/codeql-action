@@ -2,15 +2,12 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+**This is the last planned release of the `v2`. To continue getting updates for the CodeQL Action, please switch to `v3`.**
+
 ## 2.28.1 - 10 Jan 2025
 
 - CodeQL Action v2 is now deprecated, and is no longer updated or supported. For better performance, improved security, and new features, upgrade to v3. For more information, see [this changelog post](https://github.blog/changelog/2025-01-10-code-scanning-codeql-action-v2-is-now-deprecated/). [#2677](https://github.com/github/codeql-action/pull/2677)
 - Update default CodeQL bundle version to 2.20.1. [#2678](https://github.com/github/codeql-action/pull/2678)
-**This is the last planned release of the `v2`. To continue getting updates for the CodeQL Action, please switch to `v3`.**
-
-## 2.28.0 - 20 Dec 2024
-
-No user facing changes.
 
 ## 2.28.0 - 20 Dec 2024
 

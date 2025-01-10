@@ -512,7 +512,11 @@ extensions:
   let data = ranges
     .map(
       (range) =>
-        `      - ["${range.path}", ${range.startLine}, ${range.endLine}]\n`,
+        // Using yaml.dump() with `forceQuotes: true` ensures that all special
+        // characters are escaped, and that the path is always rendered as a
+        // quoted string on a single line.
+        `      - [${yaml.dump(range.path, { forceQuotes: true }).trim()}, ` +
+        `${range.startLine}, ${range.endLine}]\n`,
     )
     .join("");
   if (!data) {

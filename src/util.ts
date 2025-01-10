@@ -1071,19 +1071,18 @@ export async function checkDiskUsage(
 /**
  * Prompt the customer to upgrade to CodeQL Action v3, if appropriate.
  *
- * Check whether a customer is running v2. If they are, and we can determine that the GitHub
- * instance supports v3, then log a warning about v2's upcoming deprecation prompting the customer
- * to upgrade to v3.
+ * Check whether a customer is running v1 or v2. If they are, and we can determine that the GitHub
+ * instance supports v3, then log an error prompting the customer to upgrade to v3.
  */
 export function checkActionVersion(
   version: string,
   githubVersion: GitHubVersion,
 ) {
   if (
-    !semver.satisfies(version, ">=3") && // do not warn if the customer is already running v3
-    !process.env.CODEQL_V2_DEPRECATION_WARNING // do not warn if we have already warned
+    !semver.satisfies(version, ">=3") && // do not log error if the customer is already running v3
+    !process.env[EnvVar.LOG_VERSION_DEPRECATION] // do not log error if we have already
   ) {
-    // Only log a warning for versions of GHES that are compatible with CodeQL Action version 3.
+    // Only error for versions of GHES that are compatible with CodeQL Action version 3.
     //
     // GHES 3.11 shipped without the v3 tag, but it also shipped without this warning message code.
     // Therefore users who are seeing this warning message code have pulled in a new version of the
@@ -1097,14 +1096,14 @@ export function checkActionVersion(
           ">=3.11",
         ))
     ) {
-      core.warning(
-        "CodeQL Action v2 will be deprecated on December 5th, 2024. " +
+      core.error(
+        "CodeQL Action major versions v1 and v2 have been deprecated. " +
           "Please update all occurrences of the CodeQL Action in your workflow files to v3. " +
           "For more information, see " +
-          "https://github.blog/changelog/2024-01-12-code-scanning-deprecation-of-codeql-action-v2/",
+          "https://github.blog/changelog/2025-01-10-code-scanning-codeql-action-v2-is-now-deprecated/",
       );
-      // set CODEQL_V2_DEPRECATION_WARNING env var to prevent the warning from being logged multiple times
-      core.exportVariable("CODEQL_V2_DEPRECATION_WARNING", "true");
+      // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
+      core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
     }
   }
 }

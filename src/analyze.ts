@@ -764,3 +764,7 @@ export async function runCleanup(
   }
   logger.endGroup();
 }
+
+export const exportedForTesting = {
+  getDiffRanges,
+};

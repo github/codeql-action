@@ -4,7 +4,8 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
-import { runQueries } from "./analyze";
+import * as actionsUtil from "./actions-util";
+import { exportedForTesting, runQueries } from "./analyze";
 import { setCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
@@ -118,4 +119,191 @@ test("status report fields", async (t) => {
       }
     }
   });
+});
+
+function runGetDiffRanges(changes: number, patch: string[] | undefined): any {
+  sinon
+    .stub(actionsUtil, "getRequiredInput")
+    .withArgs("checkout_path")
+    .returns("/checkout/path");
+  return exportedForTesting.getDiffRanges(
+    {
+      filename: "test.txt",
+      changes,
+      patch: patch?.join("\n"),
+    },
+    getRunnerLogger(true),
+  );
+}
+
+test("getDiffRanges: file unchanged", async (t) => {
+  const diffRanges = runGetDiffRanges(0, undefined);
+  t.deepEqual(diffRanges, []);
+});
+
+test("getDiffRanges: file diff too large", async (t) => {
+  const diffRanges = runGetDiffRanges(1000000, undefined);
+  t.deepEqual(diffRanges, undefined);
+});
+
+test("getDiffRanges: diff thunk with single addition range", async (t) => {
+  const diffRanges = runGetDiffRanges(2, [
+    "@@ -30,6 +50,8 @@",
+    " a",
+    " b",
+    " c",
+    "+1",
+    "+2",
+    " d",
+    " e",
+    " f",
+  ]);
+  t.deepEqual(diffRanges, [
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 53,
+      endLine: 54,
+    },
+  ]);
+});
+
+test("getDiffRanges: diff thunk with single deletion range", async (t) => {
+  const diffRanges = runGetDiffRanges(2, [
+    "@@ -30,8 +50,6 @@",
+    " a",
+    " b",
+    " c",
+    "-1",
+    "-2",
+    " d",
+    " e",
+    " f",
+  ]);
+  t.deepEqual(diffRanges, []);
+});
+
+test("getDiffRanges: diff thunk with single update range", async (t) => {
+  const diffRanges = runGetDiffRanges(2, [
+    "@@ -30,7 +50,7 @@",
+    " a",
+    " b",
+    " c",
+    "-1",
+    "+2",
+    " d",
+    " e",
+    " f",
+  ]);
+  t.deepEqual(diffRanges, [
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 53,
+      endLine: 53,
+    },
+  ]);
+});
+
+test("getDiffRanges: diff thunk with addition ranges", async (t) => {
+  const diffRanges = runGetDiffRanges(2, [
+    "@@ -30,7 +50,9 @@",
+    " a",
+    " b",
+    " c",
+    "+1",
+    " c",
+    "+2",
+    " d",
+    " e",
+    " f",
+  ]);
+  t.deepEqual(diffRanges, [
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 53,
+      endLine: 53,
+    },
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 55,
+      endLine: 55,
+    },
+  ]);
+});
+
+test("getDiffRanges: diff thunk with mixed ranges", async (t) => {
+  const diffRanges = runGetDiffRanges(2, [
+    "@@ -30,7 +50,7 @@",
+    " a",
+    " b",
+    " c",
+    "-1",
+    " d",
+    "-2",
+    "+3",
+    " e",
+    " f",
+    "+4",
+    "+5",
+    " g",
+    " h",
+    " i",
+  ]);
+  t.deepEqual(diffRanges, [
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 54,
+      endLine: 54,
+    },
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 57,
+      endLine: 58,
+    },
+  ]);
+});
+
+test("getDiffRanges: multiple diff thunks", async (t) => {
+  const diffRanges = runGetDiffRanges(2, [
+    "@@ -30,6 +50,8 @@",
+    " a",
+    " b",
+    " c",
+    "+1",
+    "+2",
+    " d",
+    " e",
+    " f",
+    "@@ -130,6 +150,8 @@",
+    " a",
+    " b",
+    " c",
+    "+1",
+    "+2",
+    " d",
+    " e",
+    " f",
+  ]);
+  t.deepEqual(diffRanges, [
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 53,
+      endLine: 54,
+    },
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 153,
+      endLine: 154,
+    },
+  ]);
+});
+
+test("getDiffRanges: no diff context lines", async (t) => {
+  const diffRanges = runGetDiffRanges(2, ["@@ -30 +50,2 @@", "+1", "+2"]);
+  t.deepEqual(diffRanges, [
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 50,
+      endLine: 51,
+    },
+  ]);
 });

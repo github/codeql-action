@@ -294,8 +294,19 @@ async function getPullRequestEditedDiffRanges(
   headLabel: string,
   logger: Logger,
 ): Promise<DiffThunkRange[] | undefined> {
-  await getFileDiffsWithBasehead(baseRef, headLabel, logger);
-  return undefined;
+  const fileDiffs = await getFileDiffsWithBasehead(baseRef, headLabel, logger);
+  if (fileDiffs === undefined) {
+    return undefined;
+  }
+  const results: DiffThunkRange[] = [];
+  for (const filediff of fileDiffs) {
+    const diffRanges = getDiffRanges(filediff, logger);
+    if (diffRanges === undefined) {
+      return undefined;
+    }
+    results.push(...diffRanges);
+  }
+  return results;
 }
 
 /**
@@ -346,6 +357,76 @@ async function getFileDiffsWithBasehead(
       throw error;
     }
   }
+}
+
+function getDiffRanges(
+  fileDiff: FileDiff,
+  logger: Logger,
+): DiffThunkRange[] | undefined {
+  if (fileDiff.patch === undefined) {
+    return undefined;
+  }
+
+  // Diff-informed queries expect the file path to be absolute. CodeQL always
+  // uses forward slashes as the path separator, so on Windows we need to
+  // replace any backslashes with forward slashes.
+  const filename = path
+    .join(actionsUtil.getRequiredInput("checkout_path"), fileDiff.filename)
+    .replaceAll(path.sep, "/");
+
+  // The 1-based file line number of the current line
+  let currentLine = 0;
+  // The 1-based file line number that starts the current range of added lines
+  let additionRangeStartLine: number | undefined = undefined;
+  const diffRanges: DiffThunkRange[] = [];
+
+  const diffLines = fileDiff.patch.split("\n");
+  // Adding a fake context line at the end ensures that the following loop will
+  // always terminate the last range of added lines.
+  diffLines.push(" ");
+
+  for (const diffLine of diffLines) {
+    if (diffLine.startsWith("-")) {
+      // Ignore deletions completely -- we do not even want to consider them when
+      // calculating consecutive ranges of added lines.
+      continue;
+    }
+    if (diffLine.startsWith("+")) {
+      if (additionRangeStartLine === undefined) {
+        additionRangeStartLine = currentLine;
+      }
+      currentLine++;
+      continue;
+    }
+    if (additionRangeStartLine !== undefined) {
+      // Any line that does not start with a "+" or "-" terminates the current
+      // range of added lines.
+      diffRanges.push({
+        path: filename,
+        startLine: additionRangeStartLine,
+        endLine: currentLine - 1,
+      });
+      additionRangeStartLine = undefined;
+    }
+    if (diffLine.startsWith("@@ ")) {
+      // A new hunk header line resets the current line number.
+      const match = diffLine.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      if (match === null) {
+        logger.warning(
+          `Cannot parse diff hunk header for ${fileDiff.filename}: ${diffLine}`,
+        );
+        return undefined;
+      }
+      currentLine = parseInt(match[1], 10);
+      continue;
+    }
+    if (diffLine.startsWith(" ")) {
+      // An unchanged context line advances the current line number.
+      currentLine++;
+      continue;
+    }
+  }
+  return diffRanges;
 }
 
 /**

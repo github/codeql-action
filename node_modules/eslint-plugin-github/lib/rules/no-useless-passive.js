@@ -32,7 +32,7 @@ module.exports = {
           if (i === -1) return
           const passiveProp = options.properties[i]
           const l = options.properties.length
-          const source = context.getSourceCode()
+          const source = context.sourceCode ?? context.getSourceCode()
           context.report({
             node: passiveProp,
             message: `"${name.value}" event listener is not cancellable and so \`passive: true\` does nothing.`,

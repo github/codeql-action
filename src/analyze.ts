@@ -298,6 +298,17 @@ async function getPullRequestEditedDiffRanges(
   if (fileDiffs === undefined) {
     return undefined;
   }
+  if (fileDiffs.length >= 300) {
+    // The "compare two commits" API returns a maximum of 300 changed files. If
+    // we see that many changed files, it is possible that there could be more,
+    // with the rest being truncated. In this case, we should not attempt to
+    // compute the diff ranges, as the result would be incomplete.
+    logger.warning(
+      `Cannot retrieve the full diff because there are too many ` +
+        `(${fileDiffs.length}) changed files in the pull request.`,
+    );
+    return undefined;
+  }
   const results: DiffThunkRange[] = [];
   for (const filediff of fileDiffs) {
     const diffRanges = getDiffRanges(filediff, logger);

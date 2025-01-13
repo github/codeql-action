@@ -19,6 +19,7 @@ const KEY_EXPIRY_YEARS = 2;
 
 const LANGUAGE_TO_REGISTRY_TYPE = {
   "java-kotlin": "maven_repository",
+  java: "maven_repository",
   csharp: "nuget_feed",
 } as const;
 

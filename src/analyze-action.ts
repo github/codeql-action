@@ -268,7 +268,7 @@ async function run() {
       pull_request &&
       (await setupDiffInformedQueryRun(
         pull_request.base.ref as string,
-        pull_request.head.ref as string,
+        pull_request.head.label as string,
         codeql,
         logger,
         features,

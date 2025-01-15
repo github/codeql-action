@@ -109,6 +109,7 @@ To add a new major version of the Action:
 1. Change the `version` field of `package.json` by running `npm version x.y.z` where `x` is the new major version, and `y` and `z` match the latest minor and patch versions of the last release.
 1. Update appropriate documentation to explain the reasoning behind the releases: see [the diff](https://github.com/github/codeql-action/pull/2677/commits/913d60579d4b560addf53ec3c493d491dd3c1378) in our last major version deprecation for examples on which parts of the documentation should be updated.
 1. Consider the timeline behind deprecating the prior Action version: see [CodeQL Action deprecation documentation](#deprecating-a-codeql-action-major-version-write-access-required)
+1. If the new major version runs on a new version of Node, add a PR check to ensure the codebase continues to compile against the previous version of Node. See [Remove Node 16 compilation PR check](https://github.com/github/codeql-action/pull/2695) for an example.
 
 ## Deprecating a CodeQL Action major version (write access required)
 

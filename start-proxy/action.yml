@@ -16,6 +16,9 @@ inputs:
     description: GitHub token to use for authenticating with this instance of GitHub, used to upload debug artifacts.
     default: ${{ github.token }}
     required: false
+  language:
+    description: The programming language to setup the proxy for the correct ecosystem
+    required: false
 outputs:
   proxy_host:
     description: The IP address of the proxy

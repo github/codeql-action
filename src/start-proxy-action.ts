@@ -6,6 +6,7 @@ import * as toolcache from "@actions/tool-cache";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
+import { Language, parseLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import * as util from "./util";
 
@@ -16,6 +17,20 @@ const UPDATEJOB_PROXY_URL_PREFIX =
 const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
+
+const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
+  java: "maven_repository",
+  csharp: "nuget_feed",
+  javascript: "npm_registry",
+  python: "python_index",
+  ruby: "rubygems_server",
+  rust: "cargo_registry",
+  // We do not have an established proxy type for these languages, thus leaving empty.
+  actions: "",
+  cpp: "",
+  go: "",
+  swift: "",
+} as const;
 
 type CertificateAuthority = {
   cert: string;
@@ -192,6 +207,11 @@ function getCredentials(logger: Logger): Credential[] {
     "registries_credentials",
   );
   const registrySecrets = actionsUtil.getOptionalInput("registry_secrets");
+  const languageString = actionsUtil.getOptionalInput("language");
+  const language = languageString ? parseLanguage(languageString) : undefined;
+  const registryTypeForLanguage = language
+    ? LANGUAGE_TO_REGISTRY_TYPE[language]
+    : undefined;
 
   let credentialsStr: string;
   if (registriesCredentials !== undefined) {
@@ -212,6 +232,13 @@ function getCredentials(logger: Logger): Credential[] {
     if (e.url === undefined && e.host === undefined) {
       throw new Error("Invalid credentials - must specify host or url");
     }
+
+    // Filter credentials based on language if specified. `type` is the registry type.
+    // E.g., "maven_feed" for Java/Kotlin, "nuget_repository" for C#.
+    if (e.type !== registryTypeForLanguage) {
+      continue;
+    }
+
     out.push({
       type: e.type,
       host: e.host,

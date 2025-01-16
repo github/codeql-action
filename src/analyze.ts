@@ -108,6 +108,12 @@ export interface QueriesStatusReport {
   /** Time taken in ms to interpret results for swift (or undefined if this language was not analyzed). */
   interpret_results_swift_duration_ms?: number;
 
+  /**
+   * Whether the analysis is diff-informed (in the sense that the action generates a diff-range data
+   * extension for the analysis, regardless of whether the data extension is actually used by queries).
+   */
+  analysis_is_diff_informed?: boolean;
+
   /** Name of language that errored during analysis (or undefined if no language failed). */
   analyze_failure_language?: string;
   /** Reports on discrete events associated with this status report. */
@@ -545,6 +551,7 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
 
+  statusReport.analysis_is_diff_informed = diffRangePackDir !== undefined;
   const dataExtensionFlags = diffRangePackDir
     ? [
         `--additional-packs=${diffRangePackDir}`,

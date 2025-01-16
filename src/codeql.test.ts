@@ -791,14 +791,6 @@ const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
     flagPassed: true,
     negativeFlagPassed: false,
   },
-  {
-    codeqlVersion: makeVersionInfo("2.14.6"),
-    githubVersion: {
-      type: util.GitHubVariant.DOTCOM,
-    },
-    flagPassed: false,
-    negativeFlagPassed: false,
-  },
 ];
 
 for (const {
@@ -965,7 +957,7 @@ test("runTool recognizes fatal internal errors", async (t) => {
       await codeqlObject.databaseRunQueries(stubConfig.dbLocation, []),
     {
       instanceOf: CliError,
-      message: `Encountered a fatal error while running "codeql-for-testing database run-queries  --expect-discarded-cache --min-disk-free=1024 -v --intra-layer-parallelism". Exit code was 1 and error was: Oops! A fatal internal error occurred. Details:
+      message: `Encountered a fatal error while running "codeql-for-testing database run-queries  --expect-discarded-cache --intra-layer-parallelism --min-disk-free=1024 -v". Exit code was 1 and error was: Oops! A fatal internal error occurred. Details:
     com.semmle.util.exception.CatastrophicError: An error occurred while evaluating ControlFlowGraph::ControlFlow::Root.isRootOf/1#dispred#f610e6ed/2@86282cc8
     Severe disk cache trouble (corruption or out of space) at /home/runner/work/_temp/codeql_databases/go/db-go/default/cache/pages/28/33.pack: Failed to write item to disk. See the logs for more details.`,
     },

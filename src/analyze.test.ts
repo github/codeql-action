@@ -144,7 +144,13 @@ test("getDiffRanges: file unchanged", async (t) => {
 
 test("getDiffRanges: file diff too large", async (t) => {
   const diffRanges = runGetDiffRanges(1000000, undefined);
-  t.deepEqual(diffRanges, undefined);
+  t.deepEqual(diffRanges, [
+    {
+      path: "/checkout/path/test.txt",
+      startLine: 0,
+      endLine: 0,
+    },
+  ]);
 });
 
 test("getDiffRanges: diff thunk with single addition range", async (t) => {
@@ -307,4 +313,9 @@ test("getDiffRanges: no diff context lines", async (t) => {
       endLine: 51,
     },
   ]);
+});
+
+test("getDiffRanges: malformed thunk header", async (t) => {
+  const diffRanges = runGetDiffRanges(2, ["@@ 30 +50,2 @@", "+1", "+2"]);
+  t.deepEqual(diffRanges, undefined);
 });

@@ -9,11 +9,7 @@ import * as yaml from "js-yaml";
 import * as actionsUtil from "./actions-util";
 import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
-import {
-  CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
-  CodeQL,
-  getCodeQL,
-} from "./codeql";
+import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import { EnvVar } from "./environment";
@@ -613,15 +609,6 @@ export async function runQueries(
         }
         statusReport["event_reports"].push(perQueryAlertCountEventReport);
       }
-
-      if (
-        !(await util.codeQlVersionAtLeast(
-          codeql,
-          CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
-        ))
-      ) {
-        await runPrintLinesOfCode(language);
-      }
     } catch (e) {
       statusReport.analyze_failure_language = language;
       throw new CodeQLAnalysisError(
@@ -681,11 +668,6 @@ export async function runQueries(
       }
     }
     return perQueryAlertCounts;
-  }
-
-  async function runPrintLinesOfCode(language: Language): Promise<string> {
-    const databasePath = util.getCodeQLDatabasePath(config, language);
-    return await codeql.databasePrintBaseline(databasePath);
   }
 }
 

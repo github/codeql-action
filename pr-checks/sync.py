@@ -80,32 +80,16 @@ for file in (this_dir / 'checks').glob('*.yml'):
                 if is_os_and_version_excluded(operatingSystem, version, excludedOsesAndVersions):
                     continue
 
-                # Prior to CLI v2.15.1, ARM runners were not supported by the build tracer.
-                # "macos-latest" is now an ARM runner, so we run tests on the old CLIs on Intel runners instead.
-                if version in ["stable-v2.14.6"] and runnerImage == "macos-latest":
-                    matrix.append({
-                        'os': "macos-13",
-                        'version': version
-                    })
-                else:
-                    matrix.append({
-                        'os': runnerImage,
-                        'version': version
-                    })
+                matrix.append({
+                    'os': runnerImage,
+                    'version': version
+                })
 
         useAllPlatformBundle = "false" # Default to false
         if checkSpecification.get('useAllPlatformBundle'):
             useAllPlatformBundle = checkSpecification['useAllPlatformBundle']
 
     steps = [
-        {
-            'name': 'Setup Python on macOS',
-            'uses': 'actions/setup-python@v5',
-            'if': "runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'",
-            'with': {
-                'python-version': '3.11'
-            }
-        },
         {
             'name': 'Check out repository',
             'uses': 'actions/checkout@v4'

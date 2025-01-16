@@ -108,6 +108,7 @@ test("status report fields", async (t) => {
         createFeatures([Feature.QaTelemetryEnabled]),
       );
       t.deepEqual(Object.keys(statusReport).sort(), [
+        "analysis_is_diff_informed",
         `analyze_builtin_queries_${language}_duration_ms`,
         "event_reports",
         `interpret_results_${language}_duration_ms`,

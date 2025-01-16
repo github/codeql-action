@@ -387,6 +387,13 @@ function getDiffRanges(
   fileDiff: FileDiff,
   logger: Logger,
 ): DiffThunkRange[] | undefined {
+  // Diff-informed queries expect the file path to be absolute. CodeQL always
+  // uses forward slashes as the path separator, so on Windows we need to
+  // replace any backslashes with forward slashes.
+  const filename = path
+    .join(actionsUtil.getRequiredInput("checkout_path"), fileDiff.filename)
+    .replaceAll(path.sep, "/");
+
   if (fileDiff.patch === undefined) {
     if (fileDiff.changes === 0) {
       // There are situations where a changed file legitimately has no diff.
@@ -397,20 +404,16 @@ function getDiffRanges(
       return [];
     }
     // If a file is reported to have nonzero changes but no patch, that may be
-    // due to the file diff being too large. In this case, we should return
-    // undefined to indicate that we cannot process the diff.
-    logger.warning(
-      `No patch found for file ${fileDiff.filename} with ${fileDiff.changes} changes.`,
-    );
-    return undefined;
+    // due to the file diff being too large. In this case, we should fall back
+    // to a special diff range that covers the entire file.
+    return [
+      {
+        path: filename,
+        startLine: 0,
+        endLine: 0,
+      },
+    ];
   }
-
-  // Diff-informed queries expect the file path to be absolute. CodeQL always
-  // uses forward slashes as the path separator, so on Windows we need to
-  // replace any backslashes with forward slashes.
-  const filename = path
-    .join(actionsUtil.getRequiredInput("checkout_path"), fileDiff.filename)
-    .replaceAll(path.sep, "/");
 
   // The 1-based file line number of the current line
   let currentLine = 0;

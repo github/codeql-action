@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - Update default CodeQL bundle version to 2.20.2. [#2707](https://github.com/github/codeql-action/pull/2707)
+- Fix an issue downloading the CodeQL Bundle from a GitHub Enterprise Server instance which occurred when the CodeQL Bundle had been synced to the instance using the [CodeQL Action sync tool](https://github.com/github/codeql-action-sync-tool) and the Actions runner did not have Zstandard installed. [#2710](https://github.com/github/codeql-action/pull/2710)
 
 ## 3.28.2 - 21 Jan 2025
 

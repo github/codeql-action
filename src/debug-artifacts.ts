@@ -242,6 +242,9 @@ export async function uploadDebugArtifacts(
   if (toUpload.length === 0) {
     return;
   }
+  logger.info("Uploading debug artifacts is temporarily disabled");
+  return;
+
   let suffix = "";
   const matrix = getRequiredInput("matrix");
   if (matrix) {

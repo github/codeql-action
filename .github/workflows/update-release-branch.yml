@@ -22,6 +22,8 @@ jobs:
       latest_tag: ${{ steps.versions.outputs.latest_tag }}
       backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}
       backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
       with:
@@ -63,6 +65,9 @@ jobs:
       REPOSITORY: "${{ github.repository }}"
       MAJOR_VERSION: "${{ needs.prepare.outputs.major_version }}"
       LATEST_TAG: "${{ needs.prepare.outputs.latest_tag }}"
+    permissions:
+      contents: write # needed to push commits
+      pull-requests: write # needed to create pull request
     steps:
     - uses: actions/checkout@v4
       with:
@@ -114,6 +119,9 @@ jobs:
     env:
       SOURCE_BRANCH: ${{ needs.prepare.outputs.backport_source_branch }}
       TARGET_BRANCH: ${{ matrix.target_branch }}
+    permissions:
+      contents: write # needed to push commits
+      pull-requests: write # needed to create pull request
     steps:
     - name: Generate token
       uses: actions/create-github-app-token@c1a285145b9d317df6ced56c09f525b5c2b6f755

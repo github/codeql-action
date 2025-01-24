@@ -82,6 +82,7 @@ export type ToolsDownloadStatusReport = {
 
 export async function downloadAndExtract(
   codeqlURL: string,
+  compressionMethod: tar.CompressionMethod,
   dest: string,
   authorization: string | undefined,
   headers: OutgoingHttpHeaders,
@@ -91,8 +92,6 @@ export async function downloadAndExtract(
   logger.info(
     `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
   );
-
-  const compressionMethod = tar.inferCompressionMethod(codeqlURL);
 
   try {
     if (compressionMethod === "zstd" && process.platform === "linux") {

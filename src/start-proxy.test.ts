@@ -82,29 +82,34 @@ test("getCredentials returns all credentials when no language specified", async 
 });
 
 test("getCredentials throws an error when non-printable characters are used", async (t) => {
-    const invalidCredentials = [
-      { type: "nuget_feed", host: "1nuget.pkg.github.com", token: "abc\u0000" }, // Non-printable character in token
-      { type: "nuget_feed", host: "2nuget.pkg.github.com\u0001" }, // Non-printable character in host
-      { type: "nuget_feed", host: "3nuget.pkg.github.com", password: "ghi\u0002" }, // Non-printable character in password
-      { type: "nuget_feed", host: "4nuget.pkg.github.com", password: "ghi\x00" }, // Non-printable character in password
-    ];
+  const invalidCredentials = [
+    { type: "nuget_feed", host: "1nuget.pkg.github.com", token: "abc\u0000" }, // Non-printable character in token
+    { type: "nuget_feed", host: "2nuget.pkg.github.com\u0001" }, // Non-printable character in host
+    {
+      type: "nuget_feed",
+      host: "3nuget.pkg.github.com",
+      password: "ghi\u0002",
+    }, // Non-printable character in password
+    { type: "nuget_feed", host: "4nuget.pkg.github.com", password: "ghi\x00" }, // Non-printable character in password
+  ];
 
-    for (const invalidCredential of invalidCredentials) {
-      const credentialsInput = Buffer.from(
-        JSON.stringify([invalidCredential]),
-      ).toString("base64");
+  for (const invalidCredential of invalidCredentials) {
+    const credentialsInput = Buffer.from(
+      JSON.stringify([invalidCredential]),
+    ).toString("base64");
 
-      t.throws(
-        () =>
-          startProxyExports.getCredentials(
-            getRunnerLogger(true),
-            undefined,
-            credentialsInput,
-            undefined,
-          ),
-        {
-          message: "Invalid credentials - fields must contain only printable characters",
-        },
-      );
-    }
-  });
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});

@@ -23,6 +23,8 @@ jobs:
     continue-on-error: true
     env:
       CODEQL_ACTION_TEST_MODE: true
+    permissions:
+      contents: read
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
@@ -58,6 +60,8 @@ jobs:
     name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts
     timeout-minutes: 45
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts

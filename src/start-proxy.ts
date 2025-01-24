@@ -54,13 +54,13 @@ export function getCredentials(
   let parsed: Credential[];
   try {
     parsed = JSON.parse(credentialsStr) as Credential[];
-  } catch (error) {
+  } catch {
     // Don't log the error since it might contain sensitive information.
     logger.error("Failed to parse the credentials data.");
     throw new Error("Invalid credentials format.");
   }
 
-  let out: Credential[] = [];
+  const out: Credential[] = [];
   for (const e of parsed) {
     if (e.url === undefined && e.host === undefined) {
       // The proxy needs one of these to work. If both are defined, the url has the precedence.
@@ -73,13 +73,21 @@ export function getCredentials(
       continue;
     }
 
-
     const isPrintable = (str: string | undefined): boolean => {
       return str ? /^[\x20-\x7E]*$/.test(str) : true;
     };
 
-    if (!isPrintable(e.type) || !isPrintable(e.host) || !isPrintable(e.url) || !isPrintable(e.username) || !isPrintable(e.password) || !isPrintable(e.token)) {
-      throw new Error("Invalid credentials - fields must contain only printable characters");
+    if (
+      !isPrintable(e.type) ||
+      !isPrintable(e.host) ||
+      !isPrintable(e.url) ||
+      !isPrintable(e.username) ||
+      !isPrintable(e.password) ||
+      !isPrintable(e.token)
+    ) {
+      throw new Error(
+        "Invalid credentials - fields must contain only printable characters",
+      );
     }
 
     out.push({

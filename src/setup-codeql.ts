@@ -39,12 +39,21 @@ export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 
-function getCodeQLBundleExtension(useZstd: boolean): string {
-  return useZstd ? ".tar.zst" : ".tar.gz";
+function getCodeQLBundleExtension(
+  compressionMethod: tar.CompressionMethod,
+): string {
+  switch (compressionMethod) {
+    case "gzip":
+      return ".tar.gz";
+    case "zstd":
+      return ".tar.zst";
+    default:
+      util.assertNever(compressionMethod);
+  }
 }
 
-function getCodeQLBundleName(useZstd: boolean): string {
-  const extension = getCodeQLBundleExtension(useZstd);
+function getCodeQLBundleName(compressionMethod: tar.CompressionMethod): string {
+  const extension = getCodeQLBundleExtension(compressionMethod);
 
   let platform: string;
   if (process.platform === "win32") {
@@ -76,7 +85,7 @@ export function getCodeQLActionRepository(logger: Logger): string {
 async function getCodeQLBundleDownloadURL(
   tagName: string,
   apiDetails: api.GitHubApiDetails,
-  useZstd: boolean,
+  compressionMethod: tar.CompressionMethod,
   logger: Logger,
 ): Promise<string> {
   const codeQLActionRepository = getCodeQLActionRepository(logger);
@@ -95,7 +104,7 @@ async function getCodeQLBundleDownloadURL(
       return !self.slice(0, index).some((other) => deepEqual(source, other));
     },
   );
-  const codeQLBundleName = getCodeQLBundleName(useZstd);
+  const codeQLBundleName = getCodeQLBundleName(compressionMethod);
   for (const downloadSource of uniqueDownloadSources) {
     const [apiURL, repository] = downloadSource;
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
@@ -115,14 +124,14 @@ async function getCodeQLBundleDownloadURL(
       for (const asset of release.data.assets) {
         if (asset.name === codeQLBundleName) {
           logger.info(
-            `Found CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} with URL ${asset.url}.`,
+            `Found CodeQL bundle ${codeQLBundleName} in ${repository} on ${apiURL} with URL ${asset.url}.`,
           );
           return asset.url;
         }
       }
     } catch (e) {
       logger.info(
-        `Looked for CodeQL bundle in ${downloadSource[1]} on ${downloadSource[0]} but got error ${e}.`,
+        `Looked for CodeQL bundle ${codeQLBundleName} in ${repository} on ${apiURL} but got error ${e}.`,
       );
     }
   }
@@ -198,6 +207,7 @@ export function convertToSemVer(version: string, logger: Logger): string {
 type CodeQLToolsSource =
   | {
       codeqlTarPath: string;
+      compressionMethod: tar.CompressionMethod;
       sourceType: "local";
       /** Human-readable description of the source of the tools for telemetry purposes. */
       toolsVersion: "local";
@@ -213,6 +223,7 @@ type CodeQLToolsSource =
       bundleVersion?: string;
       /** CLI version of the tools, if known. */
       cliVersion?: string;
+      compressionMethod: tar.CompressionMethod;
       codeqlURL: string;
       sourceType: "download";
       /** Human-readable description of the source of the tools for telemetry purposes. */
@@ -272,8 +283,16 @@ export async function getCodeQLSource(
     !toolsInput.startsWith("http")
   ) {
     logger.info(`Using CodeQL CLI from local path ${toolsInput}`);
+    const compressionMethod = tar.inferCompressionMethod(toolsInput);
+    if (compressionMethod === undefined) {
+      throw new util.ConfigurationError(
+        `Could not infer compression method from path ${toolsInput}. Please specify a path ` +
+          "ending in '.tar.gz' or '.tar.zst'.",
+      );
+    }
     return {
       codeqlTarPath: toolsInput,
+      compressionMethod,
       sourceType: "local",
       toolsVersion: "local",
     };
@@ -455,14 +474,30 @@ export async function getCodeQLSource(
     }
   }
 
+  let compressionMethod: tar.CompressionMethod;
+
   if (!url) {
+    compressionMethod =
+      cliVersion !== undefined &&
+      (await useZstdBundle(cliVersion, tarSupportsZstd))
+        ? "zstd"
+        : "gzip";
+
     url = await getCodeQLBundleDownloadURL(
       tagName!,
       apiDetails,
-      cliVersion !== undefined &&
-        (await useZstdBundle(cliVersion, tarSupportsZstd)),
+      compressionMethod,
       logger,
     );
+  } else {
+    const method = tar.inferCompressionMethod(url);
+    if (method === undefined) {
+      throw new util.ConfigurationError(
+        `Could not infer compression method from URL ${url}. Please specify a URL ` +
+          "ending in '.tar.gz' or '.tar.zst'.",
+      );
+    }
+    compressionMethod = method;
   }
 
   if (cliVersion) {
@@ -474,6 +509,7 @@ export async function getCodeQLSource(
     bundleVersion: tagName && tryGetBundleVersionFromTagName(tagName, logger),
     cliVersion,
     codeqlURL: url,
+    compressionMethod,
     sourceType: "download",
     toolsVersion: cliVersion ?? humanReadableVersion,
   };
@@ -504,6 +540,7 @@ export async function tryGetFallbackToolcacheVersion(
 // be able to stub this function and have other functions in this file use that stub.
 export const downloadCodeQL = async function (
   codeqlURL: string,
+  compressionMethod: tar.CompressionMethod,
   maybeBundleVersion: string | undefined,
   maybeCliVersion: string | undefined,
   apiDetails: api.GitHubApiDetails,
@@ -552,6 +589,7 @@ export const downloadCodeQL = async function (
 
   let statusReport = await downloadAndExtract(
     codeqlURL,
+    compressionMethod,
     extractedBundlePath,
     authorization,
     { "User-Agent": "CodeQL Action", ...headers },
@@ -714,13 +752,10 @@ export async function setupCodeQLBundle(
   let toolsSource: ToolsSource;
   switch (source.sourceType) {
     case "local": {
-      const compressionMethod = tar.inferCompressionMethod(
-        source.codeqlTarPath,
-      );
       codeqlFolder = await tar.extract(
         source.codeqlTarPath,
         getTempExtractionDir(tempDir),
-        compressionMethod,
+        source.compressionMethod,
         zstdAvailability.version,
         logger,
       );
@@ -735,6 +770,7 @@ export async function setupCodeQLBundle(
     case "download": {
       const result = await downloadCodeQL(
         source.codeqlURL,
+        source.compressionMethod,
         source.bundleVersion,
         source.cliVersion,
         apiDetails,

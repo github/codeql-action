@@ -4,7 +4,17 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 3.28.4 - 23 Jan 2025
+
+No user facing changes.
+
+## 3.28.3 - 22 Jan 2025
+
 - Update default CodeQL bundle version to 2.20.2. [#2707](https://github.com/github/codeql-action/pull/2707)
+- Fix an issue downloading the CodeQL Bundle from a GitHub Enterprise Server instance which occurred when the CodeQL Bundle had been synced to the instance using the [CodeQL Action sync tool](https://github.com/github/codeql-action-sync-tool) and the Actions runner did not have Zstandard installed. [#2710](https://github.com/github/codeql-action/pull/2710)
+- Uploading debug artifacts for CodeQL analysis is temporarily disabled. [#2712](https://github.com/github/codeql-action/pull/2712)
 
 ## 3.28.2 - 21 Jan 2025
 

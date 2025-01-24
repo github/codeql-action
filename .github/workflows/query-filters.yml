@@ -19,9 +19,9 @@ jobs:
   query-filters:
     name: Query Filters Tests
     timeout-minutes: 45
-    permissions:
-      contents: read
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # This permission is needed to allow the GitHub Actions workflow to read the contents of the repository.
     steps:
     - name: Check out repository
       uses: actions/checkout@v4

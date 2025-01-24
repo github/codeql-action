@@ -19,6 +19,8 @@ jobs:
   query-filters:
     name: Query Filters Tests
     timeout-minutes: 45
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
     - name: Check out repository

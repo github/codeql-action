@@ -40,6 +40,8 @@ jobs:
   check-node-modules:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Check modules up to date
+    permissions:
+      contents: read
     runs-on: macos-latest
     timeout-minutes: 45
 
@@ -51,6 +53,8 @@ jobs:
   check-file-contents:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Check file contents
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -81,6 +85,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    permissions:
+      contents: read
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
 
@@ -100,6 +106,9 @@ jobs:
     timeout-minutes: 45
     env:
       BASE_REF: ${{ github.base_ref }}
+
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4

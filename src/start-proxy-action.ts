@@ -6,8 +6,8 @@ import * as toolcache from "@actions/tool-cache";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
-import { Language, parseLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
+import { Credential, getCredentials } from "./start-proxy";
 import * as util from "./util";
 
 const UPDATEJOB_PROXY = "update-job-proxy";
@@ -18,32 +18,9 @@ const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
 
-const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
-  java: "maven_repository",
-  csharp: "nuget_feed",
-  javascript: "npm_registry",
-  python: "python_index",
-  ruby: "rubygems_server",
-  rust: "cargo_registry",
-  // We do not have an established proxy type for these languages, thus leaving empty.
-  actions: "",
-  cpp: "",
-  go: "",
-  swift: "",
-} as const;
-
 type CertificateAuthority = {
   cert: string;
   key: string;
-};
-
-type Credential = {
-  type: string;
-  host?: string;
-  url?: string;
-  username?: string;
-  password?: string;
-  token?: string;
 };
 
 type BasicAuthCredentials = {
@@ -117,7 +94,12 @@ async function runWrapper() {
   core.saveState("proxy-log-file", proxyLogFilePath);
 
   // Get the configuration options
-  const credentials = getCredentials(logger);
+  const credentials = getCredentials(
+    logger,
+    actionsUtil.getOptionalInput("registry_secrets"),
+    actionsUtil.getOptionalInput("registries_credentials"),
+    actionsUtil.getOptionalInput("language"),
+  );
   logger.info(
     `Credentials loaded for the following registries:\n ${credentials
       .map((c) => credentialToStr(c))
@@ -197,58 +179,6 @@ async function startProxy(
   } catch (error) {
     core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
   }
-}
-
-// getCredentials returns registry credentials from action inputs.
-// It prefers `registries_credentials` over `registry_secrets`.
-// If neither is set, it returns an empty array.
-function getCredentials(logger: Logger): Credential[] {
-  const registriesCredentials = actionsUtil.getOptionalInput(
-    "registries_credentials",
-  );
-  const registrySecrets = actionsUtil.getOptionalInput("registry_secrets");
-  const languageString = actionsUtil.getOptionalInput("language");
-  const language = languageString ? parseLanguage(languageString) : undefined;
-  const registryTypeForLanguage = language
-    ? LANGUAGE_TO_REGISTRY_TYPE[language]
-    : undefined;
-
-  let credentialsStr: string;
-  if (registriesCredentials !== undefined) {
-    logger.info(`Using registries_credentials input.`);
-    credentialsStr = Buffer.from(registriesCredentials, "base64").toString();
-  } else if (registrySecrets !== undefined) {
-    logger.info(`Using registry_secrets input.`);
-    credentialsStr = registrySecrets;
-  } else {
-    logger.info(`No credentials defined.`);
-    return [];
-  }
-
-  // Parse and validate the credentials
-  const parsed = JSON.parse(credentialsStr) as Credential[];
-  const out: Credential[] = [];
-  for (const e of parsed) {
-    if (e.url === undefined && e.host === undefined) {
-      throw new Error("Invalid credentials - must specify host or url");
-    }
-
-    // Filter credentials based on language if specified. `type` is the registry type.
-    // E.g., "maven_feed" for Java/Kotlin, "nuget_repository" for C#.
-    if (e.type !== registryTypeForLanguage) {
-      continue;
-    }
-
-    out.push({
-      type: e.type,
-      host: e.host,
-      url: e.url,
-      username: e.username,
-      password: e.password,
-      token: e.token,
-    });
-  }
-  return out;
 }
 
 // getProxyAuth returns the authentication information for the proxy itself.

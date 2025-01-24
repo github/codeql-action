@@ -51,10 +51,19 @@ export function getCredentials(
   }
 
   // Parse and validate the credentials
-  const parsed = JSON.parse(credentialsStr) as Credential[];
-  const out: Credential[] = [];
+  let parsed: Credential[];
+  try {
+    parsed = JSON.parse(credentialsStr) as Credential[];
+  } catch (error) {
+    // Don't log the error since it might contain sensitive information.
+    logger.error("Failed to parse the credentials data.");
+    throw new Error("Invalid credentials format.");
+  }
+
+  let out: Credential[] = [];
   for (const e of parsed) {
     if (e.url === undefined && e.host === undefined) {
+      // The proxy needs one of these to work. If both are defined, the url has the precedence.
       throw new Error("Invalid credentials - must specify host or url");
     }
 
@@ -62,6 +71,15 @@ export function getCredentials(
     // E.g., "maven_feed" for Java/Kotlin, "nuget_repository" for C#.
     if (registryTypeForLanguage && e.type !== registryTypeForLanguage) {
       continue;
+    }
+
+
+    const isPrintable = (str: string | undefined): boolean => {
+      return str ? /^[\x20-\x7E]*$/.test(str) : true;
+    };
+
+    if (!isPrintable(e.type) || !isPrintable(e.host) || !isPrintable(e.url) || !isPrintable(e.username) || !isPrintable(e.password) || !isPrintable(e.token)) {
+      throw new Error("Invalid credentials - fields must contain only printable characters");
     }
 
     out.push({

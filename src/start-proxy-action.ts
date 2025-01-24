@@ -100,6 +100,12 @@ async function runWrapper() {
     actionsUtil.getOptionalInput("registries_credentials"),
     actionsUtil.getOptionalInput("language"),
   );
+
+  if (credentials.length === 0) {
+    logger.info("No credentials found, skipping proxy setup.");
+    return;
+  }
+
   logger.info(
     `Credentials loaded for the following registries:\n ${credentials
       .map((c) => credentialToStr(c))

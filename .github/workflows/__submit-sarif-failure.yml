@@ -36,7 +36,8 @@ jobs:
     name: Submit SARIF after failure
     permissions:
       contents: read
-      security-events: write
+      security-events: write # needed to upload the SARIF file
+
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

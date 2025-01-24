@@ -34,6 +34,8 @@ jobs:
     env:
       CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -64,6 +66,8 @@ jobs:
     name: Download and check debug artifacts
     needs: upload-artifacts
     timeout-minutes: 45
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts

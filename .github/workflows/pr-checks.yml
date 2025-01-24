@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      security-events: write
+      security-events: write # needed to upload ESLint results
 
     strategy:
       fail-fast: false

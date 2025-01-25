@@ -10,8 +10,15 @@ import { getGitHubVersion } from "./api-client";
 import { getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
-import { getActionsLogger, withGroup } from "./logging";
-import { checkGitHubVersionInRange, getErrorMessage } from "./util";
+import { Features } from "./feature-flags";
+import { getActionsLogger, Logger, withGroup } from "./logging";
+import { parseRepositoryNwo } from "./repository";
+import {
+  checkGitHubVersionInRange,
+  getErrorMessage,
+  getRequiredEnvParam,
+  GitHubVersion,
+} from "./util";
 
 async function runWrapper() {
   try {
@@ -19,6 +26,8 @@ async function runWrapper() {
     const logger = getActionsLogger();
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
+
+    const features = createFeatures(gitHubVersion, logger);
 
     // Upload SARIF artifacts if we determine that this is a first-party analysis run.
     // For third-party runs, this artifact will be uploaded in the `upload-sarif-post` step.
@@ -32,6 +41,7 @@ async function runWrapper() {
           debugArtifacts.uploadCombinedSarifArtifacts(
             logger,
             config.gitHubVersion.type,
+            features,
           ),
         );
       }
@@ -41,6 +51,20 @@ async function runWrapper() {
       `analyze post-action step failed: ${getErrorMessage(error)}`,
     );
   }
+}
+
+function createFeatures(gitHubVersion: GitHubVersion, logger: Logger) {
+  const repositoryNwo = parseRepositoryNwo(
+    getRequiredEnvParam("GITHUB_REPOSITORY"),
+  );
+
+  const features = new Features(
+    gitHubVersion,
+    repositoryNwo,
+    actionsUtil.getTemporaryDirectory(),
+    logger,
+  );
+  return features;
 }
 
 void runWrapper();

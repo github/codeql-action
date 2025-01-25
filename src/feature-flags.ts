@@ -54,6 +54,7 @@ export enum Feature {
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
+  SafeArtifactUpload = "safe_artifact_upload",
 }
 
 export const featureConfig: Record<
@@ -153,6 +154,18 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
     minimumVersion: undefined,
+  },
+
+  /**
+   * The first version of the CodeQL CLI where artifact upload is safe to use
+   * for failed runs. This is not really a feature flag, but it is easiest to
+   * model the behavior as a feature flag.
+   */
+  [Feature.SafeArtifactUpload]: {
+    defaultValue: true,
+    envVar: "CODEQL_ACTION_SAFE_ARTIFACT_UPLOAD",
+    legacyApi: true,
+    minimumVersion: "2.20.3",
   },
 };
 

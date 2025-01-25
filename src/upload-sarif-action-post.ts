@@ -30,7 +30,11 @@ async function runWrapper() {
         return;
       }
       await withGroup("Uploading combined SARIF debug artifact", () =>
-        debugArtifacts.uploadCombinedSarifArtifacts(logger, gitHubVersion.type),
+        debugArtifacts.uploadCombinedSarifArtifacts(
+          logger,
+          gitHubVersion.type,
+          true,
+        ),
       );
     }
   } catch (error) {

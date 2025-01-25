@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Re-enable debug artifact upload for CLI versions 2.20.3 or greater. [#2726](https://github.com/github/codeql-action/pull/2726)
 
 ## 3.28.5 - 24 Jan 2025
 

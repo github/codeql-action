@@ -1,3 +1,5 @@
+import * as semver from "semver";
+
 import type { VersionInfo } from "./codeql";
 
 export enum ToolsFeature {
@@ -25,4 +27,22 @@ export function isSupportedToolsFeature(
   feature: ToolsFeature,
 ): boolean {
   return !!versionInfo.features && versionInfo.features[feature];
+}
+
+export const SafeArtifactUploadVersion = "2.20.3";
+
+/**
+ * The first version of the CodeQL CLI where artifact upload is safe to use
+ * for failed runs. This is not really a feature flag, but it is easiest to
+ * model the behavior as a feature flag.
+ *
+ * This was not captured in a tools feature, so we need to use semver.
+ *
+ * @param codeQlVersion The version of the CodeQL CLI to check. If not provided, it is assumed to be safe.
+ * @returns True if artifact upload is safe to use for failed runs or false otherwise.
+ */
+export function isSafeArtifactUpload(codeQlVersion?: string): boolean {
+  return !codeQlVersion
+    ? true
+    : semver.gte(codeQlVersion, SafeArtifactUploadVersion);
 }

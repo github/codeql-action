@@ -1,9 +1,7 @@
 import test from "ava";
 
 import * as debugArtifacts from "./debug-artifacts";
-import { Feature } from "./feature-flags";
 import { getActionsLogger } from "./logging";
-import { createFeatures } from "./testing-utils";
 import { GitHubVariant } from "./util";
 
 test("sanitizeArtifactName", (t) => {
@@ -32,7 +30,7 @@ test("uploadDebugArtifacts when artifacts empty", async (t) => {
       "i-dont-exist",
       "artifactName",
       GitHubVariant.DOTCOM,
-      true,
+      undefined,
     );
     t.is(
       uploaded,
@@ -42,7 +40,7 @@ test("uploadDebugArtifacts when artifacts empty", async (t) => {
   });
 });
 
-test("uploadDebugArtifacts when true", async (t) => {
+test("uploadDebugArtifacts when no codeql version is used", async (t) => {
   // Test that the artifact is uploaded.
   const logger = getActionsLogger();
   await t.notThrowsAsync(async () => {
@@ -52,7 +50,7 @@ test("uploadDebugArtifacts when true", async (t) => {
       "i-dont-exist",
       "artifactName",
       GitHubVariant.DOTCOM,
-      true,
+      undefined,
     );
     t.is(
       uploaded,
@@ -62,27 +60,7 @@ test("uploadDebugArtifacts when true", async (t) => {
   });
 });
 
-test("uploadDebugArtifacts when false", async (t) => {
-  // Test that the artifact is not uploaded.
-  const logger = getActionsLogger();
-  await t.notThrowsAsync(async () => {
-    const uploaded = await debugArtifacts.uploadDebugArtifacts(
-      logger,
-      ["hucairz"],
-      "i-dont-exist",
-      "artifactName",
-      GitHubVariant.DOTCOM,
-      false,
-    );
-    t.is(
-      uploaded,
-      "upload-not-supported",
-      "Should not have uploaded any artifacts",
-    );
-  });
-});
-
-test("uploadDebugArtifacts when feature enabled", async (t) => {
+test("uploadDebugArtifacts when new codeql version is used", async (t) => {
   // Test that the artifact is uploaded.
   const logger = getActionsLogger();
   await t.notThrowsAsync(async () => {
@@ -92,7 +70,7 @@ test("uploadDebugArtifacts when feature enabled", async (t) => {
       "i-dont-exist",
       "artifactName",
       GitHubVariant.DOTCOM,
-      createFeatures([Feature.SafeArtifactUpload]),
+      "2.20.3",
     );
     t.is(
       uploaded,
@@ -102,7 +80,7 @@ test("uploadDebugArtifacts when feature enabled", async (t) => {
   });
 });
 
-test("uploadDebugArtifacts when feature disabled", async (t) => {
+test("uploadDebugArtifacts when old codeql is used", async (t) => {
   // Test that the artifact is not uploaded.
   const logger = getActionsLogger();
   await t.notThrowsAsync(async () => {
@@ -112,7 +90,7 @@ test("uploadDebugArtifacts when feature disabled", async (t) => {
       "i-dont-exist",
       "artifactName",
       GitHubVariant.DOTCOM,
-      createFeatures([]),
+      "2.20.2",
     );
     t.is(
       uploaded,

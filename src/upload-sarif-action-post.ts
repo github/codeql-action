@@ -33,7 +33,9 @@ async function runWrapper() {
         debugArtifacts.uploadCombinedSarifArtifacts(
           logger,
           gitHubVersion.type,
-          true,
+          // The codeqlVersion is not applicable for uploading non-codeql sarif.
+          // We can assume all versions are safe to upload.
+          undefined,
         ),
       );
     }

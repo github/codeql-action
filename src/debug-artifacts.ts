@@ -12,14 +12,12 @@ import { dbIsFinalized } from "./analyze";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
-import {
-  Feature,
-  featureConfig,
-  FeatureEnablement,
-  Features,
-} from "./feature-flags";
 import { Language } from "./languages";
 import { Logger, withGroup } from "./logging";
+import {
+  isSafeArtifactUpload,
+  SafeArtifactUploadVersion,
+} from "./tools-features";
 import {
   bundleDb,
   doesDirectoryExist,
@@ -40,7 +38,7 @@ export function sanitizeArtifactName(name: string): string {
 export async function uploadCombinedSarifArtifacts(
   logger: Logger,
   gitHubVariant: GitHubVariant,
-  features: Features | boolean,
+  codeQlVersion: string | undefined,
 ) {
   const tempDir = getTemporaryDirectory();
 
@@ -75,7 +73,7 @@ export async function uploadCombinedSarifArtifacts(
         baseTempDir,
         "combined-sarif-artifacts",
         gitHubVariant,
-        features,
+        codeQlVersion,
       );
     } catch (e) {
       logger.warning(
@@ -168,7 +166,7 @@ async function tryBundleDatabase(
 export async function tryUploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
-  features: FeatureEnablement,
+  codeQlVersion: string | undefined,
 ) {
   const filesToUpload: string[] = [];
   try {
@@ -232,7 +230,7 @@ export async function tryUploadAllAvailableDebugArtifacts(
         config.dbLocation,
         config.debugArtifactName,
         config.gitHubVersion.type,
-        features,
+        codeQlVersion,
       ),
     );
   } catch (e) {
@@ -248,7 +246,7 @@ export async function uploadDebugArtifacts(
   rootDir: string,
   artifactName: string,
   ghVariant: GitHubVariant,
-  features: FeatureEnablement | boolean,
+  codeQlVersion: string | undefined,
 ): Promise<
   | "no-artifacts-to-upload"
   | "upload-successful"
@@ -258,14 +256,11 @@ export async function uploadDebugArtifacts(
   if (toUpload.length === 0) {
     return "no-artifacts-to-upload";
   }
-  const uploadSupported =
-    typeof features === "boolean"
-      ? features
-      : await features.getValue(Feature.SafeArtifactUpload);
+  const uploadSupported = isSafeArtifactUpload(codeQlVersion);
 
   if (!uploadSupported) {
     core.info(
-      `Skipping debug artifact upload because the current CLI does not support safe upload. Please upgrade to CLI v${featureConfig.safe_artifact_upload.minimumVersion} or later.`,
+      `Skipping debug artifact upload because the current CLI does not support safe upload. Please upgrade to CLI v${SafeArtifactUploadVersion} or later.`,
     );
     return "upload-not-supported";
   }

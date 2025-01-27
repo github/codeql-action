@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.label.name == 'Rebuild'
 
+    permissions:
+      contents: write # needed to push rebuilt commit
+      pull-requests: write # needed to comment on the PR
     steps:
       - name: Checkout
         uses: actions/checkout@v4

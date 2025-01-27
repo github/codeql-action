@@ -27,6 +27,9 @@ jobs:
       BASE_BRANCH: "${{ github.event.inputs.baseBranch || 'main' }}"
       HEAD_BRANCH: "${{ github.head_ref || github.ref }}"
 
+    permissions:
+      contents: write # needed to create tags and push commits
+
     steps:
       - name: Dump environment
         run: env

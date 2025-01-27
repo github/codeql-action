@@ -105,7 +105,7 @@ test("uploadDebugArtifacts when old codeql is used should avoid trying to upload
     t.is(
       uploaded,
       "upload-not-supported",
-      "Expect failure to upload artifacts since root dir does not exist",
+      "Expected artifact upload to be blocked because of old CodeQL version",
     );
   });
 });

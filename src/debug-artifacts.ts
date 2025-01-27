@@ -7,13 +7,17 @@ import * as core from "@actions/core";
 import AdmZip from "adm-zip";
 import del from "del";
 
-import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
+import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
 import { getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger, withGroup } from "./logging";
+import {
+  isSafeArtifactUpload,
+  SafeArtifactUploadVersion,
+} from "./tools-features";
 import {
   bundleDb,
   doesDirectoryExist,
@@ -34,6 +38,7 @@ export function sanitizeArtifactName(name: string): string {
 export async function uploadCombinedSarifArtifacts(
   logger: Logger,
   gitHubVariant: GitHubVariant,
+  codeQlVersion: string | undefined,
 ) {
   const tempDir = getTemporaryDirectory();
 
@@ -68,6 +73,7 @@ export async function uploadCombinedSarifArtifacts(
         baseTempDir,
         "combined-sarif-artifacts",
         gitHubVariant,
+        codeQlVersion,
       );
     } catch (e) {
       logger.warning(
@@ -160,6 +166,7 @@ async function tryBundleDatabase(
 export async function tryUploadAllAvailableDebugArtifacts(
   config: Config,
   logger: Logger,
+  codeQlVersion: string | undefined,
 ) {
   const filesToUpload: string[] = [];
   try {
@@ -223,6 +230,7 @@ export async function tryUploadAllAvailableDebugArtifacts(
         config.dbLocation,
         config.debugArtifactName,
         config.gitHubVersion.type,
+        codeQlVersion,
       ),
     );
   } catch (e) {
@@ -238,15 +246,27 @@ export async function uploadDebugArtifacts(
   rootDir: string,
   artifactName: string,
   ghVariant: GitHubVariant,
-) {
+  codeQlVersion: string | undefined,
+): Promise<
+  | "no-artifacts-to-upload"
+  | "upload-successful"
+  | "upload-failed"
+  | "upload-not-supported"
+> {
   if (toUpload.length === 0) {
-    return;
+    return "no-artifacts-to-upload";
   }
-  logger.info("Uploading debug artifacts is temporarily disabled");
-  return;
+  const uploadSupported = isSafeArtifactUpload(codeQlVersion);
+
+  if (!uploadSupported) {
+    core.info(
+      `Skipping debug artifact upload because the current CLI does not support safe upload. Please upgrade to CLI v${SafeArtifactUploadVersion} or later.`,
+    );
+    return "upload-not-supported";
+  }
 
   let suffix = "";
-  const matrix = getRequiredInput("matrix");
+  const matrix = getOptionalInput("matrix");
   if (matrix) {
     try {
       for (const [, matrixVal] of Object.entries(
@@ -272,9 +292,11 @@ export async function uploadDebugArtifacts(
         retentionDays: 7,
       },
     );
+    return "upload-successful";
   } catch (e) {
     // A failure to upload debug artifacts should not fail the entire action.
     core.warning(`Failed to upload debug artifacts: ${e}`);
+    return "upload-failed";
   }
 }
 

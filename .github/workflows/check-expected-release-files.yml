@@ -13,6 +13,9 @@ jobs:
   check-expected-release-files:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout CodeQL Action
         uses: actions/checkout@v4

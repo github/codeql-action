@@ -32,7 +32,7 @@ jobs:
     name: Job run UUID added to SARIF
     permissions:
       contents: read
-      security-events: write
+      security-events: read
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

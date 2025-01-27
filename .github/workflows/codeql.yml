@@ -24,7 +24,7 @@ jobs:
       versions: ${{ steps.compare.outputs.versions }}
 
     permissions:
-      security-events: write
+      contents: read
 
     steps:
     - uses: actions/checkout@v4
@@ -80,7 +80,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     permissions:
-      security-events: write
+      contents: read
+      security-events: write # needed to upload results
 
     steps:
     - name: Checkout

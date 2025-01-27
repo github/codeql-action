@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
+      security-events: read
     steps:
     - name: Check out repository
       uses: actions/checkout@v4

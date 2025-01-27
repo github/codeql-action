@@ -9,6 +9,9 @@ jobs:
     timeout-minutes: 45
     runs-on: macos-latest
     if: contains(github.event.pull_request.labels.*.name, 'Update dependencies') && (github.event.pull_request.head.repo.full_name == 'github/codeql-action')
+    permissions:
+      contents: write # needed to push the updated dependencies
+      pull-requests: write # needed to comment on the PR
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4

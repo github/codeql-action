@@ -9,9 +9,6 @@ inputs:
   registries_credentials:
     description: Base64 encoded JSON configuration for the URLs and credentials of the package registries
     required: false
-  proxy_password:
-    required: false
-    description: The password of the proxy
   token:
     description: GitHub token to use for authenticating with this instance of GitHub, used to upload debug artifacts.
     default: ${{ github.token }}

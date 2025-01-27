@@ -78,22 +78,25 @@ jobs:
         shell: bash
         run: |
           LANGUAGES="cpp csharp go java javascript python"
-          cd "./my-debug-artifacts"
-          echo "Artifacts from run:"
-          for language in $LANGUAGES; do
-            echo "- Checking $language"
-            if [[ ! -f "my-db-$language-partial.zip" ]] ; then
-              echo "Missing a partial database bundle for $language"
-              exit 1
-            fi
-            if [[ ! -d "log" ]] ; then
-              echo "Missing database initialization logs"
-              exit 1
-            fi
-            if [[ ! "$language" == "go" ]] && [[ ! -d "$language/log" ]] ; then
-              echo "Missing logs for $language"
-              exit 1
-            fi
+          for version in $VERSIONS; do
+            echo "Artifacts from version $version:"
+            pushd "./my-debug-artifacts-${version//./}"
+            for language in $LANGUAGES; do
+              echo "- Checking $language"
+              if [[ ! -f "my-db-$language-partial.zip" ]] ; then
+                echo "Missing a partial database bundle for $language"
+                exit 1
+              fi
+              if [[ ! -d "log" ]] ; then
+                echo "Missing database initialization logs"
+                exit 1
+              fi
+              if [[ ! "$language" == "go" ]] && [[ ! -d "$language/log" ]] ; then
+                echo "Missing logs for $language"
+                exit 1
+              fi
+            done
+            popd
           done
         env:
           GO111MODULE: auto

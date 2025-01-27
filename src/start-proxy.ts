@@ -1,5 +1,6 @@
 import { parseLanguage, Language } from "./languages";
 import { Logger } from "./logging";
+import { ConfigurationError } from "./util";
 
 export type Credential = {
   type: string;
@@ -57,14 +58,16 @@ export function getCredentials(
   } catch {
     // Don't log the error since it might contain sensitive information.
     logger.error("Failed to parse the credentials data.");
-    throw new Error("Invalid credentials format.");
+    throw new ConfigurationError("Invalid credentials format.");
   }
 
   const out: Credential[] = [];
   for (const e of parsed) {
     if (e.url === undefined && e.host === undefined) {
       // The proxy needs one of these to work. If both are defined, the url has the precedence.
-      throw new Error("Invalid credentials - must specify host or url");
+      throw new ConfigurationError(
+        "Invalid credentials - must specify host or url",
+      );
     }
 
     // Filter credentials based on language if specified. `type` is the registry type.
@@ -85,7 +88,7 @@ export function getCredentials(
       !isPrintable(e.password) ||
       !isPrintable(e.token)
     ) {
-      throw new Error(
+      throw new ConfigurationError(
         "Invalid credentials - fields must contain only printable characters",
       );
     }

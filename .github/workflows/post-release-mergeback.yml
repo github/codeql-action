@@ -29,6 +29,7 @@ jobs:
 
     permissions:
       contents: write # needed to create tags and push commits
+      pull-requests: write
 
     steps:
       - name: Dump environment

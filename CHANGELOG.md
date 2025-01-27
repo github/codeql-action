@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 3.28.6 - 27 Jan 2025
 
 - Re-enable debug artifact upload for CLI versions 2.20.3 or greater. [#2726](https://github.com/github/codeql-action/pull/2726)

@@ -19,10 +19,20 @@ on:
   workflow_dispatch: {}
 jobs:
   upload-artifacts:
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+        - stable-v2.20.3
+        - default
+        - linked
+        - nightly-latest
     name: Upload debug artifacts after failure in analyze
     continue-on-error: true
     env:
       CODEQL_ACTION_TEST_MODE: true
+    permissions:
+      contents: read
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
@@ -34,7 +44,7 @@ jobs:
         id: prepare-test
         uses: ./.github/actions/prepare-test
         with:
-          version: linked
+          version: ${{ matrix.version }}
       - uses: actions/setup-go@v5
         with:
           go-version: ^1.13.1
@@ -58,6 +68,8 @@ jobs:
     name: Download and check debug artifacts after failure in analyze
     needs: upload-artifacts
     timeout-minutes: 45
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -66,22 +78,25 @@ jobs:
         shell: bash
         run: |
           LANGUAGES="cpp csharp go java javascript python"
-          cd "./my-debug-artifacts"
-          echo "Artifacts from run:"
-          for language in $LANGUAGES; do
-            echo "- Checking $language"
-            if [[ ! -f "my-db-$language-partial.zip" ]] ; then
-              echo "Missing a partial database bundle for $language"
-              exit 1
-            fi
-            if [[ ! -d "log" ]] ; then
-              echo "Missing database initialization logs"
-              exit 1
-            fi
-            if [[ ! "$language" == "go" ]] && [[ ! -d "$language/log" ]] ; then
-              echo "Missing logs for $language"
-              exit 1
-            fi
+          for version in $VERSIONS; do
+            echo "Artifacts from version $version:"
+            pushd "./my-debug-artifacts-${version//./}"
+            for language in $LANGUAGES; do
+              echo "- Checking $language"
+              if [[ ! -f "my-db-$language-partial.zip" ]] ; then
+                echo "Missing a partial database bundle for $language"
+                exit 1
+              fi
+              if [[ ! -d "log" ]] ; then
+                echo "Missing database initialization logs"
+                exit 1
+              fi
+              if [[ ! "$language" == "go" ]] && [[ ! -d "$language/log" ]] ; then
+                echo "Missing logs for $language"
+                exit 1
+              fi
+            done
+            popd
           done
         env:
           GO111MODULE: auto

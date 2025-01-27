@@ -36,7 +36,7 @@ jobs:
     name: "Analyze: 'ref' and 'sha' from inputs"
     permissions:
       contents: read
-      security-events: write
+      security-events: read
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:

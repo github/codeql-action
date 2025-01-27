@@ -10,7 +10,10 @@ jobs:
     name: Update Supported Enterprise Server Versions
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    if: ${{ github.repository == 'github/codeql-action' }}
+    if: github.repository == 'github/codeql-action'
+    permissions:
+      contents: write # needed to push commits
+      pull-requests: write # needed to create pull request
 
     steps:
       - name: Setup Python

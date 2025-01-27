@@ -126,7 +126,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
         'name': checkSpecification['name'],
         'permissions': {
             'contents': 'read',
-            'security-events': 'write'
+            'security-events': 'read'
         },
         'timeout-minutes': 45,
         'runs-on': '${{ matrix.os }}',

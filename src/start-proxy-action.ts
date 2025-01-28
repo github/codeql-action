@@ -14,7 +14,6 @@ const UPDATEJOB_PROXY = "update-job-proxy";
 const UPDATEJOB_PROXY_VERSION = "v2.0.20241023203727";
 const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.18.1/";
-const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
 
@@ -107,12 +106,10 @@ async function runWrapper() {
   );
 
   const ca = generateCertificateAuthority();
-  const proxyAuth = getProxyAuth();
 
   const proxyConfig: ProxyConfig = {
     all_credentials: credentials,
     ca,
-    proxy_auth: proxyAuth,
   };
 
   // Start the Proxy
@@ -179,18 +176,6 @@ async function startProxy(
   } catch (error) {
     core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
   }
-}
-
-// getProxyAuth returns the authentication information for the proxy itself.
-function getProxyAuth(): BasicAuthCredentials | undefined {
-  const proxy_password = actionsUtil.getOptionalInput("proxy_password");
-  if (proxy_password) {
-    return {
-      username: PROXY_USER,
-      password: proxy_password,
-    };
-  }
-  return;
 }
 
 async function getProxyBinaryPath(): Promise<string> {

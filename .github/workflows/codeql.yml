@@ -119,7 +119,7 @@ jobs:
       uses: ./init
       with:
         languages: actions
-        config-file: ./.github/codeql/codeql-config.yml
+        config-file: ./.github/codeql/codeql-actions-config.yml
     - name: Perform CodeQL Analysis
       uses: ./analyze
       with:

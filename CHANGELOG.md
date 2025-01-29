@@ -6,6 +6,18 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 No user facing changes.
 
+## 3.28.8 - 29 Jan 2025
+
+- Enable support for Kotlin 2.1.10 when running with CodeQL CLI v2.20.3. [#2744](https://github.com/github/codeql-action/pull/2744)
+
+## 3.28.7 - 29 Jan 2025
+
+No user facing changes.
+
+## 3.28.6 - 27 Jan 2025
+
+- Re-enable debug artifact upload for CLI versions 2.20.3 or greater. [#2726](https://github.com/github/codeql-action/pull/2726)
+
 ## 3.28.5 - 24 Jan 2025
 
 - Update default CodeQL bundle version to 2.20.3. [#2717](https://github.com/github/codeql-action/pull/2717)

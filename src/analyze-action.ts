@@ -202,6 +202,15 @@ async function run() {
   let didUploadTrapCaches = false;
   util.initializeEnvironment(actionsUtil.getActionVersion());
 
+  // Unset the CODEQL_PROXY_* environment variables, as they are not needed
+  // and can cause issues with the CodeQL CLI
+  // Check for CODEQL_PROXY_HOST: and if it is empty but set, unset it
+  if (process.env.CODEQL_PROXY_HOST === "") {
+    delete process.env.CODEQL_PROXY_HOST;
+    delete process.env.CODEQL_PROXY_PORT;
+    delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
+  }
+
   // Make inputs accessible in the `post` step, details at
   // https://github.com/github/codeql-action/issues/2553
   actionsUtil.persistInputs();

@@ -539,6 +539,15 @@ async function run() {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 
+    const kotlinLimitVar =
+      "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
+    if (
+      (await codeQlVersionAtLeast(codeql, "2.20.3")) &&
+      !(await codeQlVersionAtLeast(codeql, "2.20.4"))
+    ) {
+      core.exportVariable(kotlinLimitVar, "2.1.20");
+    }
+
     if (config.languages.includes(Language.cpp)) {
       const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
       if (process.env[envVar]) {

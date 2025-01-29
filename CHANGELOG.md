@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 3.28.8 - 29 Jan 2025
 
 - Enable support for Kotlin 2.1.20 when running with CodeQL CLI v2.20.3. [#2744](https://github.com/github/codeql-action/pull/2744)
 

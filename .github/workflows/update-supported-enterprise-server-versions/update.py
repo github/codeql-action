@@ -7,14 +7,12 @@ import pathlib
 import semver
 
 _API_COMPATIBILITY_PATH = pathlib.Path(__file__).absolute().parents[3] / "src" / "api-compatibility.json"
-_ENTERPRISE_RELEASES_PATH = pathlib.Path(os.environ["ENTERPRISE_RELEASES_PATH"])
-_RELEASE_FILE_PATH = _ENTERPRISE_RELEASES_PATH / "releases.json"
 _FIRST_SUPPORTED_RELEASE = semver.VersionInfo.parse("2.22.0") # Versions older than this did not include Code Scanning.
 
 def main():
 	api_compatibility_data = json.loads(_API_COMPATIBILITY_PATH.read_text())
 
-	releases = json.loads(_RELEASE_FILE_PATH.read_text())
+	releases = json.loads(os.environ["MAINTAINED_RELEASES"])
 
 	# Remove GHES version using a previous version numbering scheme.
 	if "11.10" in releases:

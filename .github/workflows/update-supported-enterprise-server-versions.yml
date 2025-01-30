@@ -15,6 +15,16 @@ jobs:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull request
       actions: write
+      attestations: write
+      checks: write
+      deployments: write
+      discussions: write
+      issues: write
+      packages: write
+      pages: write
+      repository-projects: write
+      security-events: write
+      statuses: write
 
     steps:
       - name: Setup Python

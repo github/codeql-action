@@ -18,6 +18,7 @@ const defaultPlugins = [
   // 'nullishCoalescing', // TODO: update to babel 7
 ];
 let plugins = [...defaultPlugins];
+let isESM = false;
 
 export function setParserName(name) {
   parserName = name;
@@ -33,8 +34,13 @@ export function changePlugins(pluginOrFn) {
   }
 }
 
+export function setIsESM() {
+  isESM = true;
+}
+
 beforeEach(() => {
   plugins = [...defaultPlugins];
+  isESM = false;
 });
 
 function parse(code) {
@@ -43,7 +49,7 @@ function parse(code) {
   }
   if (parserName === 'babel') {
     try {
-      return babelParser.parse(code, { plugins, sourceFilename: 'test.js' });
+      return babelParser.parse(code, { plugins, sourceFilename: 'test.js', ...(isESM && { sourceType: 'module' }) });
     } catch (_) {
       // eslint-disable-next-line no-console
       console.warn(`Failed to parse with ${fallbackToBabylon ? 'babylon' : 'Babel'} parser.`);

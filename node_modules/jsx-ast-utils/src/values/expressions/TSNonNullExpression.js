@@ -1,4 +1,5 @@
 const extractValueFromThisExpression = require('./ThisExpression').default;
+const extractValueFromCallExpression = require('./CallExpression').default;
 
 function navigate(obj, prop, value) {
   if (value.computed) {
@@ -33,6 +34,10 @@ export default function extractValueFromTSNonNullExpression(value) {
 
   if (value.type === 'TSAsExpression') {
     return extractValueFromTSNonNullExpression(value.expression);
+  }
+
+  if (value.type === 'CallExpression') {
+    return extractValueFromCallExpression(value);
   }
 
   if (value.type === 'ThisExpression') {

@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/mattcg/language-tags.png?branch=master)](https://travis-ci.org/mattcg/language-tags)
 [![Coverage Status](https://coveralls.io/repos/mattcg/language-tags/badge.png)](https://coveralls.io/r/mattcg/language-tags)
 
-Based on [BCP 47](http://tools.ietf.org/html/bcp47) ([RFC 5646](http://tools.ietf.org/html/rfc5646)) and the latest [IANA language subtag registry](http://www.iana.org/assignments/language-subtag-registry).
+Based on [BCP 47](https://www.rfc-editor.org/info/bcp47) ([RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html)) and the latest [IANA language subtag registry](http://www.iana.org/assignments/language-subtag-registry).
 
 This project will be updated as the standards change.
 

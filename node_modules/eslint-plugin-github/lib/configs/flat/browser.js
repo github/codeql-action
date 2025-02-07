@@ -1,19 +1,19 @@
 const globals = require('globals')
 const github = require('../../plugin')
 const importPlugin = require('eslint-plugin-import')
-const escompatPlugin = require('eslint-plugin-escompat')
+const escompat = require('eslint-plugin-escompat')
 const {fixupPluginRules} = require('@eslint/compat')
 
 module.exports = {
-  ...escompatPlugin.configs['flat/recommended'],
+  ...escompat.configs['flat/recommended'],
   languageOptions: {
     globals: {
       ...globals.browser,
     },
   },
-  plugins: {importPlugin, escompatPlugin, github: fixupPluginRules(github)},
+  plugins: {import: importPlugin, escompat, github: fixupPluginRules(github)},
   rules: {
-    'escompatPlugin/no-dynamic-imports': 'off',
+    'escompat/no-dynamic-imports': 'off',
     'github/async-currenttarget': 'error',
     'github/async-preventdefault': 'error',
     'github/get-attribute': 'error',
@@ -25,7 +25,7 @@ module.exports = {
     'github/no-useless-passive': 'error',
     'github/require-passive-events': 'error',
     'github/prefer-observers': 'error',
-    'importPlugin/no-nodejs-modules': 'error',
+    'import/no-nodejs-modules': 'error',
     'no-restricted-syntax': [
       'error',
       {

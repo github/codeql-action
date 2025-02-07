@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 3.28.9 - 07 Feb 2025
+
+- Update default CodeQL bundle version to 2.20.4. [#2753](https://github.com/github/codeql-action/pull/2753)
+
 ## 3.28.8 - 29 Jan 2025
 
 - Enable support for Kotlin 2.1.10 when running with CodeQL CLI v2.20.3. [#2744](https://github.com/github/codeql-action/pull/2744)

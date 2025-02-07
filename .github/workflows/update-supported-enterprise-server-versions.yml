@@ -19,14 +19,14 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.7"
+          python-version: "3.13"
       - name: Checkout CodeQL Action
         uses: actions/checkout@v4
       - name: Checkout Enterprise Releases
         uses: actions/checkout@v4
         with:
           repository: github/enterprise-releases
-          ssh-key: ${{ secrets.ENTERPRISE_RELEASES_SSH_KEY }}
+          token: ${{ secrets.ENTERPRISE_RELEASE_TOKEN }}
           path: ${{ github.workspace }}/enterprise-releases/
       - name: Update Supported Enterprise Server Versions
         run: |

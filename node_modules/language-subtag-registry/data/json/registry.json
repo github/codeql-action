@@ -1312,7 +1312,8 @@
 		"Description": [
 			"Sanskrit"
 		],
-		"Added": "2005-10-16"
+		"Added": "2005-10-16",
+		"Scope": "macrolanguage"
 	},
 	{
 		"Type": "language",
@@ -3296,6 +3297,8 @@
 			"South Levantine Arabic"
 		],
 		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "apc",
 		"Macrolanguage": "ar"
 	},
 	{
@@ -4323,7 +4326,7 @@
 		"Type": "language",
 		"Subtag": "apc",
 		"Description": [
-			"North Levantine Arabic"
+			"Levantine Arabic"
 		],
 		"Added": "2009-07-29",
 		"Macrolanguage": "ar"
@@ -12623,6 +12626,15 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "cls",
+		"Description": [
+			"Classical Sanskrit"
+		],
+		"Added": "2024-03-04",
+		"Macrolanguage": "sa"
+	},
+	{
+		"Type": "language",
 		"Subtag": "clt",
 		"Description": [
 			"Lautu Chin"
@@ -14015,6 +14027,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "cxh",
+		"Description": [
+			"Cha'ari"
+		],
+		"Added": "2023-03-17"
+	},
+	{
+		"Type": "language",
 		"Subtag": "cya",
 		"Description": [
 			"Nopala Chatino"
@@ -14777,6 +14797,7 @@
 		"Type": "language",
 		"Subtag": "dgr",
 		"Description": [
+			"Tlicho",
 			"Dogrib",
 			"Tłı̨chǫ"
 		],
@@ -16018,6 +16039,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "dsk",
+		"Description": [
+			"Dokshi"
+		],
+		"Added": "2023-03-17"
+	},
+	{
+		"Type": "language",
 		"Subtag": "dsl",
 		"Description": [
 			"Danish Sign Language"
@@ -16540,6 +16569,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "dyr",
+		"Description": [
+			"Dyarim"
+		],
+		"Added": "2023-03-17"
+	},
+	{
+		"Type": "language",
 		"Subtag": "dyu",
 		"Description": [
 			"Dyula"
@@ -16569,8 +16606,7 @@
 		"Description": [
 			"Daza"
 		],
-		"Added": "2009-07-29",
-		"Deprecated": "2015-02-12"
+		"Added": "2009-07-29"
 	},
 	{
 		"Type": "language",
@@ -17557,6 +17593,14 @@
 			"Semimi"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "eud",
+		"Description": [
+			"Eudeve"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -23328,6 +23372,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "ikh",
+		"Description": [
+			"Ikhin-Arokho"
+		],
+		"Added": "2023-03-17"
+	},
+	{
+		"Type": "language",
 		"Subtag": "iki",
 		"Description": [
 			"Iko"
@@ -23990,6 +24042,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "isv",
+		"Description": [
+			"Interslavic"
+		],
+		"Added": "2024-05-15"
+	},
+	{
+		"Type": "language",
 		"Subtag": "itb",
 		"Description": [
 			"Binongan Itneg"
@@ -24240,6 +24300,14 @@
 		"Comments": [
 			"see eza, gmz, iqw, izz"
 		]
+	},
+	{
+		"Type": "language",
+		"Subtag": "izm",
+		"Description": [
+			"Kizamani"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -26695,7 +26763,9 @@
 		"Description": [
 			"Karipúna"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "plu"
 	},
 	{
 		"Type": "language",
@@ -28946,7 +29016,7 @@
 		"Type": "language",
 		"Subtag": "krp",
 		"Description": [
-			"Korop"
+			"Durop"
 		],
 		"Added": "2009-07-29"
 	},
@@ -29029,7 +29099,11 @@
 		"Description": [
 			"Shuwa-Zamani"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Comments": [
+			"see izm, rsw"
+		]
 	},
 	{
 		"Type": "language",
@@ -30750,7 +30824,7 @@
 		"Type": "language",
 		"Subtag": "lag",
 		"Description": [
-			"Langi"
+			"Rangi"
 		],
 		"Added": "2009-07-29"
 	},
@@ -31595,6 +31669,15 @@
 			"Lengo"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "lgs",
+		"Description": [
+			"Guinea-Bissau Sign Language",
+			"Língua Gestual Guineense"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -32620,6 +32703,7 @@
 		"Type": "language",
 		"Subtag": "loh",
 		"Description": [
+			"Laarim",
 			"Narim"
 		],
 		"Added": "2009-07-29"
@@ -33363,6 +33447,14 @@
 			"Lavukaleve"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "lvl",
+		"Description": [
+			"Lwel"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -41408,7 +41500,9 @@
 		"Description": [
 			"Nocamán"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "cbr"
 	},
 	{
 		"Type": "language",
@@ -41710,7 +41804,8 @@
 		"Subtag": "nrf",
 		"Description": [
 			"Jèrriais",
-			"Guernésiais"
+			"Guernésiais",
+			"Sercquiais"
 		],
 		"Added": "2015-02-12"
 	},
@@ -42835,6 +42930,14 @@
 			"Zeme Naga"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "nzr",
+		"Description": [
+			"Dir-Nyamzak-Mbarimi"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -45625,7 +45728,11 @@
 		"Description": [
 			"Polci"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Comments": [
+			"see nzr, pze, uly, zlu"
+		]
 	},
 	{
 		"Type": "language",
@@ -45822,7 +45929,9 @@
 		"Description": [
 			"Pamlico"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "crr"
 	},
 	{
 		"Type": "language",
@@ -46574,7 +46683,9 @@
 		"Description": [
 			"Parsi"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "gu"
 	},
 	{
 		"Type": "language",
@@ -47221,6 +47332,14 @@
 			"Pyen"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "pze",
+		"Description": [
+			"Pesse"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -48774,6 +48893,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "rrm",
+		"Description": [
+			"Moriori"
+		],
+		"Added": "2024-03-04"
+	},
+	{
+		"Type": "language",
 		"Subtag": "rro",
 		"Description": [
 			"Waima"
@@ -48810,7 +48937,7 @@
 		"Subtag": "rsk",
 		"Description": [
 			"Ruthenian",
-			"Rusyn"
+			"Rusnak"
 		],
 		"Added": "2022-02-25"
 	},
@@ -48837,6 +48964,14 @@
 			"Rwandan Sign Language"
 		],
 		"Added": "2022-02-25"
+	},
+	{
+		"Type": "language",
+		"Subtag": "rsw",
+		"Description": [
+			"Rishiwa"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -51120,7 +51255,8 @@
 		"Description": [
 			"Salchuq"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -53278,7 +53414,9 @@
 		"Description": [
 			"Seru"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "umi"
 	},
 	{
 		"Type": "language",
@@ -55466,7 +55604,9 @@
 		"Description": [
 			"Northwestern Tamang"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "tdg"
 	},
 	{
 		"Type": "language",
@@ -56125,7 +56265,9 @@
 		"Description": [
 			"Tupí"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "tpn"
 	},
 	{
 		"Type": "language",
@@ -57067,6 +57209,14 @@
 			"Te'un"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "tvi",
+		"Description": [
+			"Tulai"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -58108,6 +58258,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "uly",
+		"Description": [
+			"Buli"
+		],
+		"Added": "2023-03-17"
+	},
+	{
+		"Type": "language",
 		"Subtag": "uma",
 		"Description": [
 			"Umatilla"
@@ -59045,6 +59203,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "vjk",
+		"Description": [
+			"Bajjika"
+		],
+		"Added": "2023-03-17"
+	},
+	{
+		"Type": "language",
 		"Subtag": "vka",
 		"Description": [
 			"Kariyarra"
@@ -59439,6 +59605,15 @@
 			"Venezuelan Sign Language"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "vsn",
+		"Description": [
+			"Vedic Sanskrit"
+		],
+		"Added": "2024-03-04",
+		"Macrolanguage": "sa"
 	},
 	{
 		"Type": "language",
@@ -60638,7 +60813,7 @@
 		"Type": "language",
 		"Subtag": "wnb",
 		"Description": [
-			"Wanambre"
+			"Mokati"
 		],
 		"Added": "2009-07-29"
 	},
@@ -61116,6 +61291,14 @@
 			"Wotapuri-Katarqalai"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "wtb",
+		"Description": [
+			"Matambwe"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -63445,7 +63628,9 @@
 		"Description": [
 			"Assan"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "zko"
 	},
 	{
 		"Type": "language",
@@ -64377,6 +64562,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "ycr",
+		"Description": [
+			"Yilan Creole"
+		],
+		"Added": "2023-03-17"
+	},
+	{
+		"Type": "language",
 		"Subtag": "yda",
 		"Description": [
 			"Yanda"
@@ -64819,6 +65012,14 @@
 			"Northern Yukaghir"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "language",
+		"Subtag": "ykh",
+		"Description": [
+			"Khamnigan Mongol"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -66354,6 +66555,14 @@
 	},
 	{
 		"Type": "language",
+		"Subtag": "zem",
+		"Description": [
+			"Zeem"
+		],
+		"Added": "2023-03-17"
+	},
+	{
+		"Type": "language",
 		"Subtag": "zen",
 		"Description": [
 			"Zenaga"
@@ -66550,7 +66759,9 @@
 		"Description": [
 			"Koibal"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Preferred-Value": "kjh"
 	},
 	{
 		"Type": "language",
@@ -66709,6 +66920,14 @@
 		],
 		"Added": "2009-07-29",
 		"Scope": "collection"
+	},
+	{
+		"Type": "language",
+		"Subtag": "zlu",
+		"Description": [
+			"Zul"
+		],
+		"Added": "2023-03-17"
 	},
 	{
 		"Type": "language",
@@ -67490,7 +67709,11 @@
 		"Description": [
 			"Zeem"
 		],
-		"Added": "2009-07-29"
+		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
+		"Comments": [
+			"see cxh, dsk, dyr, tvi, zem"
+		]
 	},
 	{
 		"Type": "language",
@@ -67820,6 +68043,7 @@
 			"South Levantine Arabic"
 		],
 		"Added": "2009-07-29",
+		"Deprecated": "2023-03-17",
 		"Preferred-Value": "ajp",
 		"Prefix": [
 			"ar"
@@ -67842,7 +68066,7 @@
 		"Type": "extlang",
 		"Subtag": "apc",
 		"Description": [
-			"North Levantine Arabic"
+			"Levantine Arabic"
 		],
 		"Added": "2009-07-29",
 		"Preferred-Value": "apc",
@@ -69209,6 +69433,19 @@
 			"ms"
 		],
 		"Macrolanguage": "ms"
+	},
+	{
+		"Type": "extlang",
+		"Subtag": "lgs",
+		"Description": [
+			"Guinea-Bissau Sign Language",
+			"Língua Gestual Guineense"
+		],
+		"Added": "2023-03-17",
+		"Preferred-Value": "lgs",
+		"Prefix": [
+			"sgn"
+		]
 	},
 	{
 		"Type": "extlang",
@@ -70962,6 +71199,14 @@
 	},
 	{
 		"Type": "script",
+		"Subtag": "Chis",
+		"Description": [
+			"Chisoi"
+		],
+		"Added": "2023-10-16"
+	},
+	{
+		"Type": "script",
 		"Subtag": "Chrs",
 		"Description": [
 			"Chorasmian"
@@ -71111,6 +71356,14 @@
 	},
 	{
 		"Type": "script",
+		"Subtag": "Gara",
+		"Description": [
+			"Garay"
+		],
+		"Added": "2023-10-16"
+	},
+	{
+		"Type": "script",
 		"Subtag": "Geok",
 		"Description": [
 			"Khutsuri (Asomtavruli and Nuskhuri)"
@@ -71180,6 +71433,14 @@
 			"Gujarati"
 		],
 		"Added": "2005-10-16"
+	},
+	{
+		"Type": "script",
+		"Subtag": "Gukh",
+		"Description": [
+			"Gurung Khema"
+		],
+		"Added": "2023-10-16"
 	},
 	{
 		"Type": "script",
@@ -71446,6 +71707,14 @@
 			"Kpelle"
 		],
 		"Added": "2010-04-10"
+	},
+	{
+		"Type": "script",
+		"Subtag": "Krai",
+		"Description": [
+			"Kirat Rai"
+		],
+		"Added": "2023-10-16"
 	},
 	{
 		"Type": "script",
@@ -71828,6 +72097,14 @@
 	},
 	{
 		"Type": "script",
+		"Subtag": "Onao",
+		"Description": [
+			"Ol Onal"
+		],
+		"Added": "2023-10-16"
+	},
+	{
+		"Type": "script",
 		"Subtag": "Orkh",
 		"Description": [
 			"Old Turkic",
@@ -72109,6 +72386,14 @@
 	},
 	{
 		"Type": "script",
+		"Subtag": "Sidt",
+		"Description": [
+			"Sidetic"
+		],
+		"Added": "2023-10-16"
+	},
+	{
+		"Type": "script",
 		"Subtag": "Sind",
 		"Description": [
 			"Khudawadi",
@@ -72272,6 +72557,14 @@
 	},
 	{
 		"Type": "script",
+		"Subtag": "Tayo",
+		"Description": [
+			"Tai Yo"
+		],
+		"Added": "2023-10-16"
+	},
+	{
+		"Type": "script",
 		"Subtag": "Telu",
 		"Description": [
 			"Telugu"
@@ -72347,11 +72640,35 @@
 	},
 	{
 		"Type": "script",
+		"Subtag": "Todr",
+		"Description": [
+			"Todhri"
+		],
+		"Added": "2023-10-16"
+	},
+	{
+		"Type": "script",
+		"Subtag": "Tols",
+		"Description": [
+			"Tolong Siki"
+		],
+		"Added": "2023-10-16"
+	},
+	{
+		"Type": "script",
 		"Subtag": "Toto",
 		"Description": [
 			"Toto"
 		],
 		"Added": "2020-05-12"
+	},
+	{
+		"Type": "script",
+		"Subtag": "Tutg",
+		"Description": [
+			"Tulu-Tigalari"
+		],
+		"Added": "2023-10-16"
 	},
 	{
 		"Type": "script",
@@ -72949,6 +73266,14 @@
 			"Clipperton Island"
 		],
 		"Added": "2009-07-29"
+	},
+	{
+		"Type": "region",
+		"Subtag": "CQ",
+		"Description": [
+			"Sark"
+		],
+		"Added": "2023-02-07"
 	},
 	{
 		"Type": "region",
@@ -74477,6 +74802,7 @@
 		"Type": "region",
 		"Subtag": "TR",
 		"Description": [
+			"Türkiye",
 			"Turkey"
 		],
 		"Added": "2005-10-16"
@@ -75115,6 +75441,20 @@
 	},
 	{
 		"Type": "variant",
+		"Subtag": "anpezo",
+		"Description": [
+			"Anpezo standard of Ladin"
+		],
+		"Added": "2024-03-04",
+		"Prefix": [
+			"lld"
+		],
+		"Comments": [
+			"Represents the standard written form of Ladin in Anpezo"
+		]
+	},
+	{
+		"Type": "variant",
 		"Subtag": "ao1990",
 		"Description": [
 			"Portuguese Language Orthographic Agreement of 1990 (Acordo Ortográfico da Língua Portuguesa de 1990)"
@@ -75288,6 +75628,34 @@
 	},
 	{
 		"Type": "variant",
+		"Subtag": "bciav",
+		"Description": [
+			"BCI Blissymbolics AV"
+		],
+		"Added": "2023-05-11",
+		"Prefix": [
+			"zbl"
+		],
+		"Comments": [
+			"Name given to a subset of the variety of Blissymbolics curated by Blissymbolics Communication International, as represented by entries in the BCI Authorized Vocabulary"
+		]
+	},
+	{
+		"Type": "variant",
+		"Subtag": "bcizbl",
+		"Description": [
+			"BCI Blissymbolics"
+		],
+		"Added": "2023-05-11",
+		"Prefix": [
+			"zbl"
+		],
+		"Comments": [
+			"Name given to the variety of Blissymbolics curated by Blissymbolics Communication International"
+		]
+	},
+	{
+		"Type": "variant",
 		"Subtag": "biscayan",
 		"Description": [
 			"Biscayan dialect of Basque"
@@ -75310,6 +75678,21 @@
 		],
 		"Comments": [
 			"The dialect of San Giorgio/Bila is one of the four major local dialects of Resian"
+		]
+	},
+	{
+		"Type": "variant",
+		"Subtag": "blasl",
+		"Description": [
+			"Black American Sign Language dialect"
+		],
+		"Added": "2023-07-31",
+		"Prefix": [
+			"ase",
+			"sgn-ase"
+		],
+		"Comments": [
+			"Black American Sign Language (BASL) or Black Sign Variation (BSV) is a dialect of American Sign Language (ASL)"
 		]
 	},
 	{
@@ -75443,6 +75826,34 @@
 	},
 	{
 		"Type": "variant",
+		"Subtag": "fascia",
+		"Description": [
+			"Fascia standard of Ladin"
+		],
+		"Added": "2024-03-04",
+		"Prefix": [
+			"lld"
+		],
+		"Comments": [
+			"Represents the standard written form of Ladin in Fascia which unified the three subvarieties Cazet, Brach and Moenat"
+		]
+	},
+	{
+		"Type": "variant",
+		"Subtag": "fodom",
+		"Description": [
+			"Fodom standard of Ladin"
+		],
+		"Added": "2024-03-04",
+		"Prefix": [
+			"lld"
+		],
+		"Comments": [
+			"Represents the standard written form of Ladin in Livinallongo and Colle Santa Lucia"
+		]
+	},
+	{
+		"Type": "variant",
 		"Subtag": "fonipa",
 		"Description": [
 			"International Phonetic Alphabet"
@@ -75508,6 +75919,20 @@
 		],
 		"Comments": [
 			"Occitan variant spoken in Gascony"
+		]
+	},
+	{
+		"Type": "variant",
+		"Subtag": "gherd",
+		"Description": [
+			"Gherdëina standard of Ladin"
+		],
+		"Added": "2024-03-04",
+		"Prefix": [
+			"lld"
+		],
+		"Comments": [
+			"Represents the standard written form of Ladin in Gherdëina"
 		]
 	},
 	{
@@ -75783,6 +76208,17 @@
 	},
 	{
 		"Type": "variant",
+		"Subtag": "ltg1929",
+		"Description": [
+			"The Latgalian language orthography codified in 1929"
+		],
+		"Added": "2022-08-05",
+		"Prefix": [
+			"ltg"
+		]
+	},
+	{
+		"Type": "variant",
 		"Subtag": "ltg2007",
 		"Description": [
 			"The Latgalian language orthography codified in the language law in 2007"
@@ -76006,6 +76442,21 @@
 			"Peano’s Interlingua, created in 1903 by Giuseppe Peano as an international auxiliary language"
 		],
 		"Added": "2020-03-12"
+	},
+	{
+		"Type": "variant",
+		"Subtag": "pehoeji",
+		"Description": [
+			"Hokkien Vernacular Romanization System",
+			"Pe̍h-ōe-jī orthography/romanization"
+		],
+		"Added": "2024-03-04",
+		"Prefix": [
+			"nan-Latn"
+		],
+		"Comments": [
+			"Modern Hokkien Vernacular Romanization System, evolved from the New Dictionary in the Amoy by John Van Nest Talmage in 1894"
+		]
 	},
 	{
 		"Type": "variant",
@@ -76246,6 +76697,21 @@
 	},
 	{
 		"Type": "variant",
+		"Subtag": "tailo",
+		"Description": [
+			"Taiwanese Hokkien Romanization System for Hokkien languages",
+			"Tâi-lô orthography/romanization"
+		],
+		"Added": "2024-03-04",
+		"Prefix": [
+			"nan-Latn"
+		],
+		"Comments": [
+			"Taiwanese Hokkien Romanization System (Tâi-lô) published in 2006 by the Taiwan Ministry of Education"
+		]
+	},
+	{
+		"Type": "variant",
 		"Subtag": "tarask",
 		"Description": [
 			"Belarusian in Taraskievica orthography"
@@ -76348,6 +76814,20 @@
 		],
 		"Comments": [
 			"The most ancient dialect of Sanskrit used in verse and prose composed until about the 4th century B.C.E."
+		]
+	},
+	{
+		"Type": "variant",
+		"Subtag": "valbadia",
+		"Description": [
+			"Val Badia standard of Ladin"
+		],
+		"Added": "2024-03-04",
+		"Prefix": [
+			"lld"
+		],
+		"Comments": [
+			"Represents the standard written form of Ladin in the Val Badia, unifying the three variants Marô, Mesaval and Badiot spoken in this valley"
 		]
 	},
 	{

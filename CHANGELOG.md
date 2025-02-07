@@ -4,6 +4,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 3.28.9 - 07 Feb 2025
+
 - Update default CodeQL bundle version to 2.20.4. [#2753](https://github.com/github/codeql-action/pull/2753)
 
 ## 3.28.8 - 29 Jan 2025

@@ -10,15 +10,14 @@ export default function extractValueFromObjectExpression(value) {
   // eslint-disable-next-line global-require
   const getValue = require('.').default;
   return value.properties.reduce((obj, property) => {
-    const object = { ...obj };
     // Support types: SpreadProperty and ExperimentalSpreadProperty
     if (/^(?:Experimental)?Spread(?:Property|Element)$/.test(property.type)) {
       if (property.argument.type === 'ObjectExpression') {
-        return assign(object, extractValueFromObjectExpression(property.argument));
+        return assign({}, obj, extractValueFromObjectExpression(property.argument));
       }
     } else {
-      object[getValue(property.key)] = getValue(property.value);
+      return assign({}, obj, { [getValue(property.key)]: getValue(property.value) });
     }
-    return object;
+    return obj;
   }, {});
 }

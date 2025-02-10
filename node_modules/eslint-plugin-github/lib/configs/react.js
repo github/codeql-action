@@ -36,6 +36,7 @@ module.exports = {
         nav: ['navigation'], // default in eslint-plugin-jsx-a11y
         tbody: ['rowgroup'],
         thead: ['rowgroup'],
+        ul: ['list'], // In webkit, setting list-style-type: none results in semantics being removed. Need explicit role.
       },
     ],
   },

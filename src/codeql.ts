@@ -4,7 +4,6 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
-import * as semver from "semver";
 
 import {
   CommandInvocationError,
@@ -18,7 +17,6 @@ import { type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import {
-  CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
@@ -305,21 +303,6 @@ const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
  */
 
 /**
- * Versions 2.15.0+ of the CodeQL CLI support new analysis summaries.
- */
-export const CODEQL_VERSION_ANALYSIS_SUMMARY_V2 = "2.15.0";
-
-/**
- * Versions 2.15.0+ of the CodeQL CLI support sub-language file coverage information.
- */
-export const CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE = "2.15.0";
-
-/**
- * Versions 2.15.2+ of the CodeQL CLI support the `--sarif-include-query-help` option.
- */
-const CODEQL_VERSION_INCLUDE_QUERY_HELP = "2.15.2";
-
-/**
  * Versions 2.17.1+ of the CodeQL CLI support the `--cache-cleanup` option.
  */
 const CODEQL_VERSION_CACHE_CLEANUP = "2.17.1";
@@ -602,19 +585,6 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
 
-      extraArgs.push("--calculate-language-specific-baseline");
-
-      if (await isSublanguageFileCoverageEnabled(config, this)) {
-        extraArgs.push("--sublanguage-file-coverage");
-      } else if (
-        await util.codeQlVersionAtLeast(
-          this,
-          CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
-        )
-      ) {
-        extraArgs.push("--no-sublanguage-file-coverage");
-      }
-
       const overwriteFlag = isSupportedToolsFeature(
         await this.getVersion(),
         ToolsFeature.ForceOverwrite,
@@ -631,7 +601,9 @@ export async function getCodeQLForCmd(
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
+          "--calculate-language-specific-baseline",
           "--extractor-include-aliases",
+          "--sublanguage-file-coverage",
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"], {
             ignoringOptions: ["--overwrite"],
@@ -820,20 +792,13 @@ export async function getCodeQLForCmd(
         ...flags,
         databasePath,
         "--expect-discarded-cache",
+        "--intra-layer-parallelism",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
         ...getExtraOptionsFromEnv(["database", "run-queries"], {
           ignoringOptions: ["--expect-discarded-cache"],
         }),
       ];
-      if (
-        await util.codeQlVersionAtLeast(
-          this,
-          CODEQL_VERSION_FINE_GRAINED_PARALLELISM,
-        )
-      ) {
-        codeqlArgs.push("--intra-layer-parallelism");
-      }
       await runCli(cmd, codeqlArgs);
     },
     async databaseInterpretResults(
@@ -867,7 +832,8 @@ export async function getCodeQLForCmd(
           config,
         )}`,
         "--sarif-group-rules-by-pack",
-        ...(await getCodeScanningQueryHelpArguments(this)),
+        "--sarif-include-query-help=always",
+        "--sublanguage-file-coverage",
         ...(await getJobRunUuidSarifOptions(this)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
@@ -877,26 +843,12 @@ export async function getCodeQLForCmd(
       if (automationDetailsId !== undefined) {
         codeqlArgs.push("--sarif-category", automationDetailsId);
       }
-      if (await isSublanguageFileCoverageEnabled(config, this)) {
-        codeqlArgs.push("--sublanguage-file-coverage");
-      } else if (
-        await util.codeQlVersionAtLeast(
-          this,
-          CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
-        )
-      ) {
-        codeqlArgs.push("--no-sublanguage-file-coverage");
-      }
       if (shouldExportDiagnostics) {
         codeqlArgs.push("--sarif-include-diagnostics");
       } else {
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
       if (
-        (await util.codeQlVersionAtLeast(
-          this,
-          CODEQL_VERSION_ANALYSIS_SUMMARY_V2,
-        )) &&
         !isSupportedToolsFeature(
           await this.getVersion(),
           ToolsFeature.AnalysisSummaryV2IsDefault,
@@ -1331,32 +1283,6 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  */
 export function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
-}
-
-async function isSublanguageFileCoverageEnabled(
-  config: Config,
-  codeql: CodeQL,
-) {
-  return (
-    // Sub-language file coverage is first supported in GHES 3.12.
-    (config.gitHubVersion.type !== util.GitHubVariant.GHES ||
-      semver.gte(config.gitHubVersion.version, "3.12.0")) &&
-    (await util.codeQlVersionAtLeast(
-      codeql,
-      CODEQL_VERSION_SUBLANGUAGE_FILE_COVERAGE,
-    ))
-  );
-}
-
-async function getCodeScanningQueryHelpArguments(
-  codeql: CodeQL,
-): Promise<string[]> {
-  if (
-    await util.codeQlVersionAtLeast(codeql, CODEQL_VERSION_INCLUDE_QUERY_HELP)
-  ) {
-    return ["--sarif-include-query-help=always"];
-  }
-  return ["--sarif-add-query-help"];
 }
 
 function getExtractionVerbosityArguments(

@@ -17,6 +17,8 @@ jobs:
     env:
       CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45
+    permissions:
+      contents: read
     runs-on: windows-latest
 
     steps:

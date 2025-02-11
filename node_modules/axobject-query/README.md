@@ -1,5 +1,3 @@
-**NOTICE: The API for AXObject Query is very much under development until a major version release. Please be aware that data structures might change in minor version releases before 1.0.0 is released.**
-
 # AXObject Query
 
 ![CI](https://github.com/A11yance/axobject-query/workflows/CI/badge.svg)

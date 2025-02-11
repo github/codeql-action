@@ -30,7 +30,13 @@ async function runWrapper() {
         return;
       }
       await withGroup("Uploading combined SARIF debug artifact", () =>
-        debugArtifacts.uploadCombinedSarifArtifacts(logger, gitHubVersion.type),
+        debugArtifacts.uploadCombinedSarifArtifacts(
+          logger,
+          gitHubVersion.type,
+          // The codeqlVersion is not applicable for uploading non-codeql sarif.
+          // We can assume all versions are safe to upload.
+          undefined,
+        ),
       );
     }
   } catch (error) {

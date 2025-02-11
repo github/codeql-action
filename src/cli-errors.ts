@@ -124,6 +124,7 @@ export enum CliConfigErrorCategory {
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
   InitCalledTwice = "InitCalledTwice",
   InvalidConfigFile = "InvalidConfigFile",
+  InvalidExternalRepoSpecifier = "InvalidExternalRepoSpecifier",
   InvalidSourceRoot = "InvalidSourceRoot",
   MavenBuildFailed = "MavenBuildFailed",
   NoBuildCommandAutodetected = "NoBuildCommandAutodetected",
@@ -186,6 +187,11 @@ export const cliErrorsConfig: Record<
     cliErrorMessageCandidates: [
       new RegExp("Config file .* is not valid"),
       new RegExp("The supplied config file is empty"),
+    ],
+  },
+  [CliConfigErrorCategory.InvalidExternalRepoSpecifier]: {
+    cliErrorMessageCandidates: [
+      new RegExp("Specifier for external repository is invalid"),
     ],
   },
   // Expected source location for database creation does not exist

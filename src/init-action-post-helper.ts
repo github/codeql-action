@@ -161,7 +161,7 @@ export async function run(
   uploadAllAvailableDebugArtifacts: (
     config: Config,
     logger: Logger,
-    features: FeatureEnablement,
+    codeQlVersion: string,
   ) => Promise<void>,
   printDebugLogs: (config: Config) => Promise<void>,
   config: Config,
@@ -211,7 +211,9 @@ export async function run(
     logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
-    await uploadAllAvailableDebugArtifacts(config, logger, features);
+    const codeql = await getCodeQL(config.codeQLCmd);
+    const version = await codeql.getVersion();
+    await uploadAllAvailableDebugArtifacts(config, logger, version.version);
     await printDebugLogs(config);
   }
 

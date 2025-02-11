@@ -1,7 +1,7 @@
 name: "C/C++: disabling autoinstalling dependencies (Linux)"
 description: "Checks that running C/C++ autobuild with autoinstalling dependencies explicitly disabled works"
 operatingSystems: ["ubuntu"]
-versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with CLIs < 2.15.0
+versions: ["linked", "default", "nightly-latest"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:

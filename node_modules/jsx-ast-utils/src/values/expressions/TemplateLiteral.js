@@ -17,22 +17,19 @@ export default function extractValueFromTemplateLiteral(value) {
   } = value;
   const partitions = quasis.concat(expressions);
 
-  return partitions.sort(sortStarts).reduce((raw, part) => {
-    const {
-      type,
-    } = part;
+  return partitions.sort(sortStarts).map(({ type, value: { raw } = {}, name }) => {
     if (type === 'TemplateElement') {
-      return raw + part.value.raw;
+      return raw;
     }
 
     if (type === 'Identifier') {
-      return part.name === 'undefined' ? `${raw}${part.name}` : `${raw}{${part.name}}`;
+      return name === 'undefined' ? name : `{${name}}`;
     }
 
     if (type.indexOf('Expression') > -1) {
-      return `${raw}{${type}}`;
+      return `{${type}}`;
     }
 
-    return raw;
-  }, '');
+    return '';
+  }).join('');
 }

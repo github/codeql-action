@@ -27,6 +27,10 @@ jobs:
       BASE_BRANCH: "${{ github.event.inputs.baseBranch || 'main' }}"
       HEAD_BRANCH: "${{ github.head_ref || github.ref }}"
 
+    permissions:
+      contents: write # needed to create tags and push commits
+      pull-requests: write
+
     steps:
       - name: Dump environment
         run: env
@@ -164,7 +168,7 @@ jobs:
             --draft
 
       - name: Generate token
-        uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69
+        uses: actions/create-github-app-token@67e27a7eb7db372a1c61a7f9bdab8699e9ee57f7
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}

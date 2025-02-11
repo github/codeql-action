@@ -19,6 +19,8 @@ export const LANGUAGE_ALIASES: { [lang: string]: Language } = {
   "c#": Language.csharp,
   kotlin: Language.java,
   typescript: Language.javascript,
+  "javascript-typescript": Language.javascript,
+  "java-kotlin": Language.java,
 };
 
 /**

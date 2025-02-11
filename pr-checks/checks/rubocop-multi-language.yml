@@ -5,7 +5,7 @@ operatingSystems: ["ubuntu"]
 versions: ["default"]
 steps:
   - name: Set up Ruby
-    uses: ruby/setup-ruby@v1
+    uses: ruby/setup-ruby@d781c1b4ed31764801bfae177617bb0446f5ef8d # v1.218.0
     with:
       ruby-version: 2.6
   - name: Install Code Scanning integration

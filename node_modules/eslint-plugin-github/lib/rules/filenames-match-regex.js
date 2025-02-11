@@ -32,7 +32,7 @@ module.exports = {
 
     return {
       Program(node) {
-        const filename = context.getFilename()
+        const filename = context.filename ?? context.getFilename()
         const absoluteFilename = path.resolve(filename)
         const parsed = parseFilename(absoluteFilename)
         const shouldIgnore = isIgnoredFilename(filename)

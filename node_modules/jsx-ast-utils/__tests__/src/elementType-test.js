@@ -92,5 +92,27 @@ describe('elementType tests', () => {
 
       assert.equal(actual, expected);
     });
+
+    it('works with nested fragments', () => {
+      const code = `
+        <Hello
+          role="checkbox"
+          frag={
+            <>
+              <div>Hello</div>
+              <>
+                <div>There</div>
+              </>
+            </>
+          }
+        />
+      `;
+      const node = getOpeningElement(code);
+
+      const expected = 'Hello';
+      const actual = elementType(node);
+
+      assert.equal(actual, expected);
+    });
   });
 });

@@ -23,7 +23,10 @@ export async function determineAutobuildLanguages(
       (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))) ||
     config.buildMode === BuildMode.Manual
   ) {
-    logger.info(`Using ${config.buildMode} build mode, nothing to autobuild.`);
+    logger.info(
+      `Using build mode "${config.buildMode}", nothing to autobuild. ` +
+        `See ${DocUrl.CODEQL_BUILD_MODES} for more information.`,
+    );
     return undefined;
   }
 

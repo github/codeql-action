@@ -9,12 +9,12 @@ inputs:
   registries_credentials:
     description: Base64 encoded JSON configuration for the URLs and credentials of the package registries
     required: false
-  proxy_password:
-    required: false
-    description: The password of the proxy
   token:
     description: GitHub token to use for authenticating with this instance of GitHub, used to upload debug artifacts.
     default: ${{ github.token }}
+    required: false
+  language:
+    description: The programming language to setup the proxy for the correct ecosystem
     required: false
 outputs:
   proxy_host:
@@ -24,7 +24,7 @@ outputs:
   proxy_ca_certificate:
     description: The proxy's internal CA certificate in PEM format
   proxy_urls:
-    description: The URLs of the configured registries, as a JSON array.
+    description: A stringified JSON array of objects containing the types and URLs of the configured registries.
 runs:
   using: node20
   main: "../lib/start-proxy-action.js"

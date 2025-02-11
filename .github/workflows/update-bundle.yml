@@ -17,6 +17,9 @@ jobs:
   update-bundle:
     if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'codeql-bundle-')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to push commits
+      pull-requests: write # needed to create pull requests
     steps:
       - name: Dump environment
         run: env

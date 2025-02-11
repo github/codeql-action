@@ -67,17 +67,16 @@ async function runWrapper() {
       logger.warning(
         "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
       );
-      return;
+    } else {
+      uploadFailedSarifResult = await initActionPostHelper.run(
+        debugArtifacts.tryUploadAllAvailableDebugArtifacts,
+        printDebugLogs,
+        config,
+        repositoryNwo,
+        features,
+        logger,
+      );
     }
-
-    uploadFailedSarifResult = await initActionPostHelper.run(
-      debugArtifacts.tryUploadAllAvailableDebugArtifacts,
-      printDebugLogs,
-      config,
-      repositoryNwo,
-      features,
-      logger,
-    );
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

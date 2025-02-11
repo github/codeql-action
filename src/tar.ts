@@ -3,8 +3,9 @@ import * as fs from "fs";
 import * as stream from "stream";
 
 import { ToolRunner } from "@actions/exec/lib/toolrunner";
+import * as io from "@actions/io";
 import * as toolcache from "@actions/tool-cache";
-import { safeWhich } from "@chrisgavin/safe-which";
+import * as semver from "semver";
 
 import { CommandInvocationError } from "./actions-util";
 import { Logger } from "./logging";
@@ -19,7 +20,7 @@ export type TarVersion = {
 };
 
 async function getTarVersion(): Promise<TarVersion> {
-  const tar = await safeWhich("tar");
+  const tar = await io.which("tar", true);
   let stdout = "";
   const exitCode = await new ToolRunner(tar, ["--version"], {
     listeners: {
@@ -68,13 +69,23 @@ export async function isZstdAvailable(
     switch (type) {
       case "gnu":
         return {
-          available: foundZstdBinary && version >= MIN_REQUIRED_GNU_TAR_VERSION,
+          available:
+            foundZstdBinary &&
+            // GNU tar only uses major and minor version numbers
+            semver.gte(
+              semver.coerce(version)!,
+              semver.coerce(MIN_REQUIRED_GNU_TAR_VERSION)!,
+            ),
           foundZstdBinary,
           version: tarVersion,
         };
       case "bsd":
         return {
-          available: foundZstdBinary && version >= MIN_REQUIRED_BSD_TAR_VERSION,
+          available:
+            foundZstdBinary &&
+            // Do a loose comparison since these version numbers don't contain
+            // a patch version number.
+            semver.gte(version, MIN_REQUIRED_BSD_TAR_VERSION),
           foundZstdBinary,
           version: tarVersion,
         };
@@ -202,9 +213,18 @@ export async function extractTarZst(
   }
 }
 
-export function inferCompressionMethod(tarPath: string): CompressionMethod {
-  if (tarPath.endsWith(".tar.gz")) {
-    return "gzip";
+const KNOWN_EXTENSIONS: Record<string, CompressionMethod> = {
+  "tar.gz": "gzip",
+  "tar.zst": "zstd",
+};
+
+export function inferCompressionMethod(
+  tarPath: string,
+): CompressionMethod | undefined {
+  for (const [ext, method] of Object.entries(KNOWN_EXTENSIONS)) {
+    if (tarPath.endsWith(`.${ext}`)) {
+      return method;
+    }
   }
-  return "zstd";
+  return undefined;
 }

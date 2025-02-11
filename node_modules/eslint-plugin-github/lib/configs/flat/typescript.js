@@ -1,14 +1,13 @@
-const eslint = require('@eslint/js')
 const tseslint = require('typescript-eslint')
-const escompatPlugin = require('eslint-plugin-escompat')
+const escompat = require('eslint-plugin-escompat')
 const github = require('../../plugin')
 const {fixupPluginRules} = require('@eslint/compat')
 
-module.exports = tseslint.config(eslint.configs.recommended, ...tseslint.configs.recommended, {
+module.exports = tseslint.config(...tseslint.configs.recommended, ...escompat.configs['flat/typescript-2020'], {
   languageOptions: {
     parser: tseslint.parser,
   },
-  plugins: {'@typescript-eslint': tseslint.plugin, escompatPlugin, github: fixupPluginRules(github)},
+  plugins: {'@typescript-eslint': tseslint.plugin, escompat, github: fixupPluginRules(github)},
   rules: {
     camelcase: 'off',
     'no-unused-vars': 'off',

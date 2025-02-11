@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import { safeWhich } from "@chrisgavin/safe-which";
+import * as io from "@actions/io";
 import { v4 as uuidV4 } from "uuid";
 
 import {
@@ -445,7 +445,7 @@ async function run() {
       process.platform === "linux"
     ) {
       try {
-        const goBinaryPath = await safeWhich("go");
+        const goBinaryPath = await io.which("go", true);
         const fileOutput = await getFileType(goBinaryPath);
 
         // Go 1.21 and above ships with statically linked binaries on Linux. CodeQL cannot currently trace custom builds
@@ -537,6 +537,15 @@ async function run() {
     // Disable Kotlin extractor if feature flag set
     if (await features.getValue(Feature.DisableKotlinAnalysisEnabled)) {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
+    }
+
+    const kotlinLimitVar =
+      "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
+    if (
+      (await codeQlVersionAtLeast(codeql, "2.20.3")) &&
+      !(await codeQlVersionAtLeast(codeql, "2.20.4"))
+    ) {
+      core.exportVariable(kotlinLimitVar, "2.1.20");
     }
 
     if (config.languages.includes(Language.cpp)) {

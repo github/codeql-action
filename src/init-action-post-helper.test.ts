@@ -393,7 +393,7 @@ async function testFailedSarifUpload(
           sinon.match.string,
           category,
         ),
-        `Actual args were: ${databaseExportDiagnosticsStub.args}`,
+        `Actual args were: ${JSON.stringify(databaseExportDiagnosticsStub.args)}`,
       );
     } else {
       t.true(
@@ -402,7 +402,7 @@ async function testFailedSarifUpload(
           category,
           config,
         ),
-        `Actual args were: ${diagnosticsExportStub.args}`,
+        `Actual args were: ${JSON.stringify(diagnosticsExportStub.args)}`,
       );
     }
     t.true(
@@ -413,7 +413,7 @@ async function testFailedSarifUpload(
         sinon.match.any,
         sinon.match.any,
       ),
-      `Actual args were: ${uploadFiles.args}`,
+      `Actual args were: ${JSON.stringify(uploadFiles.args)}`,
     );
     t.true(
       waitForProcessing.calledOnceWith(sinon.match.any, "42", sinon.match.any, {

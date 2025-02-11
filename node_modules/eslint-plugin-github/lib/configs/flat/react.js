@@ -12,23 +12,23 @@ module.exports = {
       },
     },
   },
-  plugins: {github: fixupPluginRules(github), jsxA11yPlugin},
+  plugins: {github: fixupPluginRules(github), 'jsx-a11y': jsxA11yPlugin},
   rules: {
-    'jsxA11yPlugin/role-supports-aria-props': 'off', // Override with github/a11y-role-supports-aria-props until https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/issues/910 is resolved
+    'jsx-a11y/role-supports-aria-props': 'off', // Override with github/a11y-role-supports-aria-props until https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/issues/910 is resolved
     'github/a11y-aria-label-is-well-formatted': 'error',
     'github/a11y-no-visually-hidden-interactive-element': 'error',
     'github/a11y-no-title-attribute': 'error',
     'github/a11y-svg-has-accessible-name': 'error',
     'github/a11y-role-supports-aria-props': 'error',
-    'jsxA11yPlugin/no-aria-hidden-on-focusable': 'error',
-    'jsxA11yPlugin/no-autofocus': 'off',
-    'jsxA11yPlugin/anchor-ambiguous-text': [
+    'jsx-a11y/no-aria-hidden-on-focusable': 'error',
+    'jsx-a11y/no-autofocus': 'off',
+    'jsx-a11y/anchor-ambiguous-text': [
       'error',
       {
         words: ['this', 'more', 'read here', 'read more'],
       },
     ],
-    'jsxA11yPlugin/no-interactive-element-to-noninteractive-role': [
+    'jsx-a11y/no-interactive-element-to-noninteractive-role': [
       'error',
       {
         tr: ['none', 'presentation'],
@@ -36,7 +36,7 @@ module.exports = {
         canvas: ['img'],
       },
     ],
-    'jsxA11yPlugin/no-redundant-roles': [
+    'jsx-a11y/no-redundant-roles': [
       'error',
       {
         nav: ['navigation'], // default in eslint-plugin-jsx-a11y

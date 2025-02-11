@@ -24,7 +24,7 @@ jobs:
       versions: ${{ steps.compare.outputs.versions }}
 
     permissions:
-      security-events: write
+      contents: read
 
     steps:
     - uses: actions/checkout@v4
@@ -70,7 +70,7 @@ jobs:
         echo "Suggested matrix config for analysis job: $VERSIONS_JSON"
         echo "versions=${VERSIONS_JSON}" >> $GITHUB_OUTPUT
 
-  build:
+  analyze-javascript:
     needs: [check-codeql-versions]
     strategy:
       fail-fast: false
@@ -80,6 +80,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     permissions:
+      contents: read
       security-events: write
 
     steps:
@@ -99,3 +100,27 @@ jobs:
       uses: ./analyze
       with:
         category: "/language:javascript"
+
+
+  analyze-actions:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Initialize CodeQL
+      uses: ./init
+      with:
+        languages: actions
+        config-file: ./.github/codeql/codeql-actions-config.yml
+    - name: Perform CodeQL Analysis
+      uses: ./analyze
+      with:
+        category: "/language:actions"

@@ -27,7 +27,7 @@ You may want to run `tsc --watch` from the command line or inside of vscode in o
 
 ### Checking in compiled artifacts and `node_modules`
 
-Because CodeQL Action users consume the code directly from this repository, and there can be no build step during an GitHub Actions run, this repository contains all compiled artifacts and node modules. There is a PR check that will fail if any of the compiled artifacts are not up to date. Compiled artifacts are stored in the `lib/` directory. For all day-to-day development purposes, this folder can be ignored.
+Because CodeQL Action users consume the code directly from this repository, and there can be no build step during a GitHub Actions run, this repository contains all compiled artifacts and node modules. There is a PR check that will fail if any of the compiled artifacts are not up to date. Compiled artifacts are stored in the `lib/` directory. For all day-to-day development purposes, this folder can be ignored.
 
 Only run `npm install` if you are explicitly changing the set of dependencies in `package.json`. The `node_modules` directory should be up to date when you check out, but if for some reason, there is an inconsistency use `npm ci && npm run removeNPMAbsolutePaths` to ensure the directory is in a state consistent with the `package-lock.json`. Note that due to a macOS-specific dependency, this command should be run on a macOS machine. There is a PR check to ensure the consistency of the `node_modules` directory.
 
@@ -62,8 +62,9 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
     You can start a release by triggering this workflow via [workflow dispatch](https://github.com/github/codeql-action/actions/workflows/update-release-branch.yml).
 1. The workflow run will open a pull request titled "Merge main into releases/v3". Follow the steps on the checklist in the pull request. Once you've checked off all but the last two of these, approve the PR and automerge it.
-1. When the "Merge main into releases/v3" pull request is merged into the `releases/v3` branch, a mergeback pull request to `main` and a backport pull request to `releases/v2` will both be automatically created. This mergeback pull request incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into releases/v3" pull request, and bumps the patch version of the CodeQL Action. The backport pull request will incorporate the updates into `releases/v2`.
-1. Approve the mergeback and backport pull requests and automerge them.
+1. When the "Merge main into releases/v3" pull request is merged into the `releases/v3` branch, a mergeback pull request to `main` will be automatically created. This mergeback pull request incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into releases/v3" pull request, and bumps the patch version of the CodeQL Action. 
+1. If a backport to an older major version is required, a pull request targeting that version's branch will also be automatically created.
+1. Approve the mergeback and backport pull request (if applicable) and automerge them.
 
 Once the mergeback and backport pull request have been merged, the release is complete.
 
@@ -73,9 +74,9 @@ Since the `codeql-action` runs most of its testing through individual Actions wo
 
 1. By default, this script retrieves the checks from the latest SHA on `main`, so make sure that your `main` branch is up to date.
 2. Run the script. If there's a reason to, you can pass in a different SHA as a CLI argument.
-3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v2`, and `v3` have been updated.
+3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v3`, and any other currently supported major versions have been updated.
 
-Note that any updates to checks need to be backported to the `releases/v2` branch, in order to maintain the same set of names for required checks.
+Note that any updates to checks on `main` need to be backported to all currently supported major version branches, in order to maintain the same set of names for required checks.
 
 ## Deprecating a CodeQL version (write access required)
 
@@ -99,9 +100,18 @@ We typically deprecate a version of CodeQL when the GitHub Enterprise Server (GH
     - Add a changelog note announcing the new minimum version of CodeQL that is now required.
     - Example PR: https://github.com/github/codeql-action/pull/1907
 
-## Deprecating a CodeQL Action version (write access required)
+## Adding a new CodeQL Action major version
 
 We sometimes maintain multiple versions of the CodeQL Action to enable customers on older but still supported versions of GitHub Enterprise Server (GHES) to continue to benefit from the latest CodeQL improvements. To accomplish this, the release process automation listens to updates to the release branch for the newest supported version.  When this branch is updated, the release process automatically opens backport PRs to update the release branches for older versions.
+
+To add a new major version of the Action:
+
+1. Change the `version` field of `package.json` by running `npm version x.y.z` where `x` is the new major version, and `y` and `z` match the latest minor and patch versions of the last release.
+1. Update appropriate documentation to explain the reasoning behind the releases: see [the diff](https://github.com/github/codeql-action/pull/2677/commits/913d60579d4b560addf53ec3c493d491dd3c1378) in our last major version deprecation for examples on which parts of the documentation should be updated.
+1. Consider the timeline behind deprecating the prior Action version: see [CodeQL Action deprecation documentation](#deprecating-a-codeql-action-major-version-write-access-required)
+1. If the new major version runs on a new version of Node, add a PR check to ensure the codebase continues to compile against the previous version of Node. See [Remove Node 16 compilation PR check](https://github.com/github/codeql-action/pull/2695) for an example.
+
+## Deprecating a CodeQL Action major version (write access required)
 
 We typically deprecate older versions of the Action once all supported GHES versions are compatible with the version of Node.js we are using on `main`.
 

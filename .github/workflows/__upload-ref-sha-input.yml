@@ -36,15 +36,10 @@ jobs:
     name: "Upload-sarif: 'ref' and 'sha' from inputs"
     permissions:
       contents: read
-      security-events: write
+      security-events: read
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Setup Python on macOS
-        uses: actions/setup-python@v5
-        if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
-        with:
-          python-version: '3.11'
       - name: Check out repository
         uses: actions/checkout@v4
       - name: Prepare test

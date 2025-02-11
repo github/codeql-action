@@ -1,0 +1,4 @@
+# Configuration for the CodeQL Actions Queries
+name: "CodeQL Actions Queries config"
+queries:
+  - uses: security-and-quality

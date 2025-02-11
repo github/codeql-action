@@ -32,15 +32,10 @@ jobs:
     name: RuboCop multi-language
     permissions:
       contents: read
-      security-events: write
+      security-events: read
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Setup Python on macOS
-        uses: actions/setup-python@v5
-        if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
-        with:
-          python-version: '3.11'
       - name: Check out repository
         uses: actions/checkout@v4
       - name: Prepare test
@@ -51,7 +46,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@d781c1b4ed31764801bfae177617bb0446f5ef8d # v1.218.0
         with:
           ruby-version: 2.6
       - name: Install Code Scanning integration

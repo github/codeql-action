@@ -15,12 +15,6 @@ const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
 const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 
 /**
- * Evaluator fine-grained parallelism (aka intra-layer parallelism) is only safe to enable in 2.15.1 onwards.
- * (Some earlier versions recognize the command-line flag, but they contain a bug which makes it unsafe to use).
- */
-export const CODEQL_VERSION_FINE_GRAINED_PARALLELISM = "2.15.1";
-
-/**
  * The first version of the CodeQL Bundle that shipped with zstd-compressed bundles.
  */
 export const CODEQL_VERSION_ZSTD_BUNDLE = "2.19.0";

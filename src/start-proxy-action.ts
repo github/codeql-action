@@ -7,28 +7,19 @@ import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getActionsLogger, Logger } from "./logging";
+import { Credential, getCredentials } from "./start-proxy";
 import * as util from "./util";
 
 const UPDATEJOB_PROXY = "update-job-proxy";
 const UPDATEJOB_PROXY_VERSION = "v2.0.20241023203727";
 const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.18.1/";
-const PROXY_USER = "proxy_user";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
 
 type CertificateAuthority = {
   cert: string;
   key: string;
-};
-
-type Credential = {
-  type: string;
-  host?: string;
-  url?: string;
-  username?: string;
-  password?: string;
-  token?: string;
 };
 
 type BasicAuthCredentials = {
@@ -102,7 +93,18 @@ async function runWrapper() {
   core.saveState("proxy-log-file", proxyLogFilePath);
 
   // Get the configuration options
-  const credentials = getCredentials(logger);
+  const credentials = getCredentials(
+    logger,
+    actionsUtil.getOptionalInput("registry_secrets"),
+    actionsUtil.getOptionalInput("registries_credentials"),
+    actionsUtil.getOptionalInput("language"),
+  );
+
+  if (credentials.length === 0) {
+    logger.info("No credentials found, skipping proxy setup.");
+    return;
+  }
+
   logger.info(
     `Credentials loaded for the following registries:\n ${credentials
       .map((c) => credentialToStr(c))
@@ -110,12 +112,10 @@ async function runWrapper() {
   );
 
   const ca = generateCertificateAuthority();
-  const proxyAuth = getProxyAuth();
 
   const proxyConfig: ProxyConfig = {
     all_credentials: credentials,
     ca,
-    proxy_auth: proxyAuth,
   };
 
   // Start the Proxy
@@ -174,63 +174,14 @@ async function startProxy(
 
     const registry_urls = config.all_credentials
       .filter((credential) => credential.url !== undefined)
-      .map((credential) => credential.url);
+      .map((credential) => ({
+        type: credential.type,
+        url: credential.url,
+      }));
     core.setOutput("proxy_urls", JSON.stringify(registry_urls));
   } catch (error) {
     core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
   }
-}
-
-// getCredentials returns registry credentials from action inputs.
-// It prefers `registries_credentials` over `registry_secrets`.
-// If neither is set, it returns an empty array.
-function getCredentials(logger: Logger): Credential[] {
-  const registriesCredentials = actionsUtil.getOptionalInput(
-    "registries_credentials",
-  );
-  const registrySecrets = actionsUtil.getOptionalInput("registry_secrets");
-
-  let credentialsStr: string;
-  if (registriesCredentials !== undefined) {
-    logger.info(`Using registries_credentials input.`);
-    credentialsStr = Buffer.from(registriesCredentials, "base64").toString();
-  } else if (registrySecrets !== undefined) {
-    logger.info(`Using registry_secrets input.`);
-    credentialsStr = registrySecrets;
-  } else {
-    logger.info(`No credentials defined.`);
-    return [];
-  }
-
-  // Parse and validate the credentials
-  const parsed = JSON.parse(credentialsStr) as Credential[];
-  const out: Credential[] = [];
-  for (const e of parsed) {
-    if (e.url === undefined && e.host === undefined) {
-      throw new Error("Invalid credentials - must specify host or url");
-    }
-    out.push({
-      type: e.type,
-      host: e.host,
-      url: e.url,
-      username: e.username,
-      password: e.password,
-      token: e.token,
-    });
-  }
-  return out;
-}
-
-// getProxyAuth returns the authentication information for the proxy itself.
-function getProxyAuth(): BasicAuthCredentials | undefined {
-  const proxy_password = actionsUtil.getOptionalInput("proxy_password");
-  if (proxy_password) {
-    return {
-      username: PROXY_USER,
-      password: proxy_password,
-    };
-  }
-  return;
 }
 
 async function getProxyBinaryPath(): Promise<string> {

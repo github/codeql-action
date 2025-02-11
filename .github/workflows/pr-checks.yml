@@ -15,12 +15,10 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      security-events: write
+      security-events: write # needed to upload ESLint results
 
     strategy:
       fail-fast: false
-      matrix:
-        node-types-version: [16.11, current] # run tests on 16.11 while CodeQL Action v2 is still supported
 
     steps:
       - name: Checkout
@@ -32,33 +30,9 @@ jobs:
 
       - name: Upload sarif
         uses: github/codeql-action/upload-sarif@v3
-        # Only upload SARIF for the latest version of Node.js
-        if: "!cancelled() && matrix.node-types-version == 'current' && !startsWith(github.head_ref, 'dependabot/')"
         with:
           sarif_file: eslint.sarif
           category: eslint
-
-      - name: Update version of @types/node
-        if: matrix.node-types-version != 'current'
-        env:
-          NODE_TYPES_VERSION: ${{ matrix.node-types-version }}
-        run: |
-          # Export `NODE_TYPES_VERSION` so it's available to jq
-          export NODE_TYPES_VERSION="${NODE_TYPES_VERSION}"
-          contents=$(jq '.devDependencies."@types/node" = env.NODE_TYPES_VERSION' package.json)
-          echo "${contents}" > package.json
-          # Usually we run `npm install` on macOS to ensure that we pick up macOS-only dependencies.
-          # However we're not checking in the updated lockfile here, so it's fine to run
-          # `npm install` on Linux.
-          npm install
-
-          if [ ! -z "$(git status --porcelain)" ]; then
-            git config --global user.email "github-actions@github.com"
-            git config --global user.name "github-actions[bot]"
-            # The period in `git add --all .` ensures that we stage deleted files too.
-            git add --all .
-            git commit -m "Use @types/node=${NODE_TYPES_VERSION}"
-          fi
 
       - name: Check generated JS
         run: .github/workflows/script/check-js.sh
@@ -66,6 +40,8 @@ jobs:
   check-node-modules:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Check modules up to date
+    permissions:
+      contents: read
     runs-on: macos-latest
     timeout-minutes: 45
 
@@ -77,6 +53,8 @@ jobs:
   check-file-contents:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Check file contents
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -107,6 +85,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    permissions:
+      contents: read
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
 
@@ -126,6 +106,9 @@ jobs:
     timeout-minutes: 45
     env:
       BASE_REF: ${{ github.base_ref }}
+
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4

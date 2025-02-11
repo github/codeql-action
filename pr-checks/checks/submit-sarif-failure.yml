@@ -14,6 +14,10 @@ env:
   # Mark telemetry for this workflow so it can be treated separately.
   CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
 
+permissions:
+  contents: read
+  security-events: write # needed to upload the SARIF file
+
 steps:
   - uses: actions/checkout@v4
   - uses: ./init

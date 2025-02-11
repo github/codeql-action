@@ -1,6 +1,7 @@
 import Literal from './Literal';
 import JSXElement from './JSXElement';
 import JSXText from './JSXText';
+import JSXFragment from './JSXFragment';
 import JSXExpressionContainer, { extractLiteral } from './expressions';
 
 // Composition map of types to their extractor functions.
@@ -9,6 +10,7 @@ const TYPES = {
   JSXElement,
   JSXExpressionContainer,
   JSXText,
+  JSXFragment,
 };
 
 // Composition map of types to their extractor functions to handle literals.
@@ -28,6 +30,7 @@ const LITERAL_TYPES = {
  * @param value - AST Value object on a JSX Attribute.
  */
 export default function getValue(value) {
+  if (!TYPES[value.type]) console.log(value.type);
   return TYPES[value.type](value);
 }
 

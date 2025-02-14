@@ -20,8 +20,8 @@ export type TarVersion = {
   version: string;
 };
 
-async function getTarVersion(): Promise<TarVersion> {
-  const tar = await io.which("tar", true);
+async function getTarVersion(programName: string): Promise<TarVersion> {
+  const tar = await io.which(programName, true);
   let stdout = "";
   const exitCode = await new ToolRunner(tar, ["--version"], {
     listeners: {
@@ -31,23 +31,23 @@ async function getTarVersion(): Promise<TarVersion> {
     },
   }).exec();
   if (exitCode !== 0) {
-    throw new Error("Failed to call tar --version");
+    throw new Error(`Failed to call ${programName} --version`);
   }
   // Return whether this is GNU tar or BSD tar, and the version number
   if (stdout.includes("GNU tar")) {
     const match = stdout.match(/tar \(GNU tar\) ([0-9.]+)/);
     if (!match || !match[1]) {
-      throw new Error("Failed to parse output of tar --version.");
+      throw new Error(`Failed to parse output of ${programName} --version.`);
     }
 
-    return { name: "tar", type: "gnu", version: match[1] };
+    return { name: programName, type: "gnu", version: match[1] };
   } else if (stdout.includes("bsdtar")) {
     const match = stdout.match(/bsdtar ([0-9.]+)/);
     if (!match || !match[1]) {
-      throw new Error("Failed to parse output of tar --version.");
+      throw new Error(`Failed to parse output of ${programName} --version.`);
     }
 
-    return { name: "tar", type: "bsd", version: match[1] };
+    return { name: programName, type: "bsd", version: match[1] };
   } else {
     throw new Error("Unknown tar version");
   }
@@ -64,7 +64,7 @@ export async function isZstdAvailable(
 ): Promise<ZstdAvailability> {
   const foundZstdBinary = await isBinaryAccessible("zstd", logger);
   try {
-    const tarVersion = await getTarVersion();
+    const tarVersion = await getTarVersion("tar");
     const { type, version } = tarVersion;
     logger.info(`Found ${type} tar version ${version}.`);
     switch (type) {

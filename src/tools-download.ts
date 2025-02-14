@@ -5,6 +5,7 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 import { HttpClient } from "@actions/http-client";
 import * as toolcache from "@actions/tool-cache";
 import { https } from "follow-redirects";
@@ -148,6 +149,13 @@ export async function downloadAndExtract(
     )}).`,
   );
 
+  // Add the following log to display the size of the downloaded bundle
+  const bundleSize = fs.statSync(archivedBundlePath).size;
+  logger.info(`Size of the downloaded CodeQL bundle: ${bundleSize} bytes`);
+
+  await logDiskUsage(logger);
+  await verifyZstdIntegrity(archivedBundlePath, logger);
+
   let extractionDurationMs: number;
 
   try {
@@ -167,6 +175,8 @@ export async function downloadAndExtract(
       )}).`,
     );
   } finally {
+    await logDiskUsage(logger);
+    await verifyZstdIntegrity(archivedBundlePath, logger);
     await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
   }
 
@@ -178,6 +188,61 @@ export async function downloadAndExtract(
       extractionDurationMs,
     ),
   };
+}
+
+async function logDiskUsage(logger: Logger) {
+  let stdout = "";
+  let stderr = "";
+  try {
+    const dfRunner = new toolrunner.ToolRunner("df", ["-h"], {
+      silent: true,
+      listeners: {
+        stdout: (data: Buffer) => {
+          stdout += data.toString();
+        },
+        stderr: (data: Buffer) => {
+          stderr += data.toString();
+        },
+      },
+    });
+    const exitCode = await dfRunner.exec();
+    logger.info(`df -h exited with code ${exitCode}.`);
+  } catch (error) {
+    logger.warning(`Failed to run df: ${error}`);
+  }
+  logger.info(`df -h stdout: ${stdout}`);
+  logger.info(`df -h stderr: ${stderr}`);
+}
+
+async function verifyZstdIntegrity(archivedBundlePath: string, logger: Logger) {
+  // Run `zstd -t` on the CodeQL bundle and log the results
+  let stdout = "";
+  let stderr = "";
+  try {
+    const zstdTestRunner = new toolrunner.ToolRunner(
+      "zstd",
+      ["-t", archivedBundlePath],
+      {
+        silent: true,
+        listeners: {
+          stdout: (data: Buffer) => {
+            stdout += data.toString();
+          },
+          stderr: (data: Buffer) => {
+            stderr += data.toString();
+          },
+        },
+      },
+    );
+    const exitCode = await zstdTestRunner.exec();
+    logger.info(`zstd -t exited with code ${exitCode}.`);
+  } catch (error) {
+    logger.warning(
+      `Failed to verify the integrity of the CodeQL bundle using zstd: ${error}`,
+    );
+  }
+  logger.info(`zstd -t stdout: ${stdout}`);
+  logger.info(`zstd -t stderr: ${stderr}`);
 }
 
 async function downloadAndExtractZstdWithStreaming(

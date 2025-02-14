@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Update the action to prefer `gtar` over `tar` to make zstd archive extraction more robust. [2767](https://github.com/github/codeql-action/pull/2767)
 
 ## 3.28.9 - 07 Feb 2025
 

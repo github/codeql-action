@@ -53,6 +53,21 @@ async function getTarVersion(programName: string): Promise<TarVersion> {
   }
 }
 
+async function pickTarCommand(): Promise<TarVersion> {
+  // bsdtar 3.5.3 on the macos-14 (arm) action runner image is prone to crash with the following
+  // error messages when extracting zstd archives:
+  //
+  //   tar: Child process exited with status 1
+  //   tar: Error exit delayed from previous errors.
+  //
+  // To avoid this problem, prefer GNU tar under the name "gtar" if it is available.
+  try {
+    return await getTarVersion("gtar");
+  } catch {
+    return await getTarVersion("tar");
+  }
+}
+
 export interface ZstdAvailability {
   available: boolean;
   foundZstdBinary: boolean;
@@ -64,7 +79,7 @@ export async function isZstdAvailable(
 ): Promise<ZstdAvailability> {
   const foundZstdBinary = await isBinaryAccessible("zstd", logger);
   try {
-    const tarVersion = await getTarVersion("tar");
+    const tarVersion = await pickTarCommand();
     const { type, version } = tarVersion;
     logger.info(`Found ${type} tar version ${version}.`);
     switch (type) {

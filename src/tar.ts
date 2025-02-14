@@ -16,11 +16,20 @@ const MIN_REQUIRED_GNU_TAR_VERSION = "1.31";
 
 export type TarVersion = {
   type: "gnu" | "bsd";
+  name: string;
   version: string;
 };
 
 async function getTarVersion(): Promise<TarVersion> {
-  const tar = await io.which("tar", true);
+  let tarName = "";
+  let tar = "";
+  try {
+    tarName = "gtar";
+    tar = await io.which(tarName, true);
+  } catch {
+    tarName = "tar";
+    tar = await io.which(tarName, true);
+  }
   let stdout = "";
   const exitCode = await new ToolRunner(tar, ["--version"], {
     listeners: {
@@ -39,14 +48,14 @@ async function getTarVersion(): Promise<TarVersion> {
       throw new Error("Failed to parse output of tar --version.");
     }
 
-    return { type: "gnu", version: match[1] };
+    return { type: "gnu", name: tarName, version: match[1] };
   } else if (stdout.includes("bsdtar")) {
     const match = stdout.match(/bsdtar ([0-9.]+)/);
     if (!match || !match[1]) {
       throw new Error("Failed to parse output of tar --version.");
     }
 
-    return { type: "bsd", version: match[1] };
+    return { type: "bsd", name: tarName, version: match[1] };
   } else {
     throw new Error("Unknown tar version");
   }
@@ -162,10 +171,10 @@ export async function extractTarZst(
 
     args.push("-f", tar instanceof stream.Readable ? "-" : tar, "-C", dest);
 
-    process.stdout.write(`[command]tar ${args.join(" ")}\n`);
+    process.stdout.write(`[command]${tarVersion.name} ${args.join(" ")}\n`);
 
     await new Promise<void>((resolve, reject) => {
-      const tarProcess = spawn("tar", args, { stdio: "pipe" });
+      const tarProcess = spawn(tarVersion.name, args, { stdio: "pipe" });
 
       let stdout = "";
       tarProcess.stdout?.on("data", (data: Buffer) => {
@@ -196,7 +205,7 @@ export async function extractTarZst(
         if (code !== 0) {
           reject(
             new CommandInvocationError(
-              "tar",
+              tarVersion.name,
               args,
               code ?? undefined,
               stdout,

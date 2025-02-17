@@ -15,12 +15,13 @@ const MIN_REQUIRED_BSD_TAR_VERSION = "3.4.3";
 const MIN_REQUIRED_GNU_TAR_VERSION = "1.31";
 
 export type TarVersion = {
+  name: string;
   type: "gnu" | "bsd";
   version: string;
 };
 
-async function getTarVersion(): Promise<TarVersion> {
-  const tar = await io.which("tar", true);
+async function getTarVersion(programName: string): Promise<TarVersion> {
+  const tar = await io.which(programName, true);
   let stdout = "";
   const exitCode = await new ToolRunner(tar, ["--version"], {
     listeners: {
@@ -30,25 +31,40 @@ async function getTarVersion(): Promise<TarVersion> {
     },
   }).exec();
   if (exitCode !== 0) {
-    throw new Error("Failed to call tar --version");
+    throw new Error(`Failed to call ${programName} --version`);
   }
   // Return whether this is GNU tar or BSD tar, and the version number
   if (stdout.includes("GNU tar")) {
     const match = stdout.match(/tar \(GNU tar\) ([0-9.]+)/);
     if (!match || !match[1]) {
-      throw new Error("Failed to parse output of tar --version.");
+      throw new Error(`Failed to parse output of ${programName} --version.`);
     }
 
-    return { type: "gnu", version: match[1] };
+    return { name: programName, type: "gnu", version: match[1] };
   } else if (stdout.includes("bsdtar")) {
     const match = stdout.match(/bsdtar ([0-9.]+)/);
     if (!match || !match[1]) {
-      throw new Error("Failed to parse output of tar --version.");
+      throw new Error(`Failed to parse output of ${programName} --version.`);
     }
 
-    return { type: "bsd", version: match[1] };
+    return { name: programName, type: "bsd", version: match[1] };
   } else {
     throw new Error("Unknown tar version");
+  }
+}
+
+async function pickTarCommand(): Promise<TarVersion> {
+  // bsdtar 3.5.3 on the macos-14 (arm) action runner image is prone to crash with the following
+  // error messages when extracting zstd archives:
+  //
+  //   tar: Child process exited with status 1
+  //   tar: Error exit delayed from previous errors.
+  //
+  // To avoid this problem, prefer GNU tar under the name "gtar" if it is available.
+  try {
+    return await getTarVersion("gtar");
+  } catch {
+    return await getTarVersion("tar");
   }
 }
 
@@ -63,7 +79,7 @@ export async function isZstdAvailable(
 ): Promise<ZstdAvailability> {
   const foundZstdBinary = await isBinaryAccessible("zstd", logger);
   try {
-    const tarVersion = await getTarVersion();
+    const tarVersion = await pickTarCommand();
     const { type, version } = tarVersion;
     logger.info(`Found ${type} tar version ${version}.`);
     switch (type) {
@@ -162,10 +178,10 @@ export async function extractTarZst(
 
     args.push("-f", tar instanceof stream.Readable ? "-" : tar, "-C", dest);
 
-    process.stdout.write(`[command]tar ${args.join(" ")}\n`);
+    process.stdout.write(`[command]${tarVersion.name} ${args.join(" ")}\n`);
 
     await new Promise<void>((resolve, reject) => {
-      const tarProcess = spawn("tar", args, { stdio: "pipe" });
+      const tarProcess = spawn(tarVersion.name, args, { stdio: "pipe" });
 
       let stdout = "";
       tarProcess.stdout?.on("data", (data: Buffer) => {
@@ -196,7 +212,7 @@ export async function extractTarZst(
         if (code !== 0) {
           reject(
             new CommandInvocationError(
-              "tar",
+              tarVersion.name,
               args,
               code ?? undefined,
               stdout,

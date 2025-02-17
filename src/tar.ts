@@ -168,7 +168,16 @@ export async function extractTarZst(
 
   try {
     // Initialize args
-    const args = ["-x", "--zstd"];
+    //
+    // `--ignore-zeros` means that trailing zero bytes at the end of an archive will be read
+    // by `tar` in case a further concatenated archive follows. Otherwise when a tarball built
+    // by GNU tar, which writes many trailing zeroes, is read by BSD tar, which expects less, then
+    // BSD tar can hang up the pipe to its filter program early, and if that program is `zstd`
+    // then it will try to write the remaining zeroes, get an EPIPE error because `tar` has closed
+    // its end of the pipe, return 1, and `tar` will pass the error along.
+    //
+    // See also https://github.com/facebook/zstd/issues/4294
+    const args = ["-x", "--zstd", "--ignore-zeros"];
 
     if (tarVersion.type === "gnu") {
       // Suppress warnings when using GNU tar to extract archives created by BSD tar

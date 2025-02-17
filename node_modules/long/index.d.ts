@@ -1,2 +1,2 @@
-import { Long } from './types.js';
+import { Long } from "./types.js";
 export default Long;

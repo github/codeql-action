@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Address an issue where the CodeQL Bundle would occasionally fail to decompress on macOS. [#2768](https://github.com/github/codeql-action/pull/2768)
 
 ## 3.28.9 - 07 Feb 2025
 

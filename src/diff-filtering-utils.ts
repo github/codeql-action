@@ -25,3 +25,18 @@ export function writeDiffRangesJsonFile(
     `Wrote pr-diff-range JSON file to ${jsonFilePath}:\n${jsonContents}`,
   );
 }
+
+export function readDiffRangesJsonFile(
+  logger: Logger,
+): DiffThunkRange[] | undefined {
+  const jsonFilePath = getDiffRangesJsonFilePath();
+  if (!fs.existsSync(jsonFilePath)) {
+    logger.debug(`Diff ranges JSON file does not exist at ${jsonFilePath}`);
+    return undefined;
+  }
+  const jsonContents = fs.readFileSync(jsonFilePath, "utf8");
+  logger.debug(
+    `Read pr-diff-range JSON file from ${jsonFilePath}:\n${jsonContents}`,
+  );
+  return JSON.parse(jsonContents) as DiffThunkRange[];
+}

@@ -1,0 +1,62 @@
+{
+  "name": "universal-github-app-jwt",
+  "type": "module",
+  "version": "2.2.0",
+  "exports": "./index.js",
+  "imports": {
+    "#crypto": {
+      "node": "./lib/crypto-node.js",
+      "default": "./lib/crypto-native.js"
+    }
+  },
+  "description": "Calculate GitHub App bearer tokens for Node & modern browsers",
+  "repository": "github:gr2m/universal-github-app-jwt",
+  "keywords": [
+    "github",
+    "authentication",
+    "app",
+    "jwt",
+    "webcrypto"
+  ],
+  "author": "Gregor Martynus (https://github.com/gr2m)",
+  "scripts": {
+    "test": "npm run test:code && npm run test:tsc && npm run test:tsd && npm run lint",
+    "test:code": "c8 --100 ava test/node.test.js",
+    "test:deno": "deno test test/deno.test.js",
+    "test:tsc": "tsc --allowJs --noEmit --esModuleInterop --skipLibCheck --lib es2020 index.js",
+    "test:tsd": "tsd",
+    "lint": "prettier --check '{src,test}/**/*' README.md package.json",
+    "lint:fix": "prettier --write '{src,test}/**/*' README.md package.json",
+    "coverage": "c8 report --reporter html",
+    "postcoverage": "open-cli coverage/index.html",
+    "build": "npm run build:default && npm run build:node",
+    "build:default": "esbuild index.js --bundle --outfile=dist/default.js --platform=browser --target=es2020 --format=esm",
+    "build:node": "esbuild index.js --bundle --outfile=dist/node.js --platform=node --target=es2020 --format=esm"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "ava": "^6.0.0",
+    "c8": "^9.0.0",
+    "esbuild": "^0.20.0",
+    "mockdate": "^3.0.5",
+    "open-cli": "^8.0.0",
+    "prettier": "^3.0.0",
+    "tsd": "^0.31.0",
+    "typescript": "^5.0.0"
+  },
+  "release": {
+    "branches": [
+      "+([0-9]).x",
+      "main",
+      {
+        "name": "beta",
+        "prerelease": true
+      }
+    ]
+  },
+  "renovate": {
+    "extends": [
+      "github>gr2m/.github"
+    ]
+  }
+}

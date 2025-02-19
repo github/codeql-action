@@ -1,0 +1,56 @@
+{
+  "name": "@octokit/auth-oauth-app",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module",
+  "version": "8.1.3",
+  "description": "GitHub OAuth App authentication for JavaScript",
+  "repository": "github:octokit/auth-oauth-app.js",
+  "keywords": [
+    "github",
+    "octokit",
+    "authentication",
+    "oauth",
+    "api"
+  ],
+  "author": "Gregor Martynus (https://github.com/gr2m)",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/auth-oauth-device": "^7.1.3",
+    "@octokit/auth-oauth-user": "^5.1.3",
+    "@octokit/request": "^9.2.1",
+    "@octokit/types": "^13.6.2",
+    "universal-user-agent": "^7.0.0"
+  },
+  "devDependencies": {
+    "@octokit/core": "^6.1.3",
+    "@octokit/tsconfig": "^4.0.0",
+    "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^3.0.5",
+    "esbuild": "^0.25.0",
+    "fetch-mock": "^12.0.0",
+    "glob": "^11.0.0",
+    "prettier": "3.5.1",
+    "semantic-release-plugin-update-version-in-files": "^1.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "files": [
+    "dist-*/**",
+    "bin/**"
+  ],
+  "types": "./dist-types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-types/index.d.ts",
+      "import": "./dist-bundle/index.js",
+      "default": "./dist-bundle/index.js"
+    }
+  },
+  "sideEffects": false
+}

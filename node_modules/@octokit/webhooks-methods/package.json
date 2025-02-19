@@ -1,0 +1,53 @@
+{
+  "name": "@octokit/webhooks-methods",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module",
+  "version": "5.1.1",
+  "description": "Methods to handle GitHub Webhook requests",
+  "repository": "github:octokit/webhooks-methods.js",
+  "keywords": [
+    "github",
+    "api",
+    "sdk",
+    "toolkit"
+  ],
+  "author": "Gregor Martynus (https://dev.to/gr2m)",
+  "license": "MIT",
+  "devDependencies": {
+    "@octokit/tsconfig": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "prettier": "3.4.2",
+    "puppeteer": "^23.0.0",
+    "semantic-release-plugin-update-version-in-files": "^1.1.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "files": [
+    "dist-*/**"
+  ],
+  "exports": {
+    ".": {
+      "node": {
+        "types": "./dist-types/index.d.ts",
+        "import": "./dist-node/index.js"
+      },
+      "browser": {
+        "types": "./dist-types/web.d.ts",
+        "import": "./dist-web/index.js"
+      },
+      "default": {
+        "types": "./dist-types/index.d.ts",
+        "import": "./dist-node/index.js"
+      }
+    }
+  },
+  "sideEffects": false
+}

@@ -12,6 +12,10 @@ import { setupCppAutobuild } from "./autobuild";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
+import {
+  DiffThunkRange,
+  writeDiffRangesJsonFile,
+} from "./diff-filtering-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
@@ -284,12 +288,6 @@ export async function setupDiffInformedQueryRun(
   );
 }
 
-interface DiffThunkRange {
-  path: string;
-  startLine: number;
-  endLine: number;
-}
-
 /**
  * Return the file line ranges that were added or modified in the pull request.
  *
@@ -536,6 +534,10 @@ extensions:
   logger.debug(
     `Wrote pr-diff-range extension pack to ${extensionFilePath}:\n${extensionContents}`,
   );
+
+  // Write the diff ranges to a JSON file, for action-side alert filtering by the
+  // upload-lib module.
+  writeDiffRangesJsonFile(logger, ranges);
 
   return diffRangeDir;
 }

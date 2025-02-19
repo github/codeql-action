@@ -4,8 +4,8 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- Update the action to prefer `gtar` over `tar` to make zstd archive extraction more robust. [2767](https://github.com/github/codeql-action/pull/2767)
 - Update default CodeQL bundle version to 2.20.5. [#2772](https://github.com/github/codeql-action/pull/2772)
+- Address an issue where the CodeQL Bundle would occasionally fail to decompress on macOS. [#2768](https://github.com/github/codeql-action/pull/2768)
 
 ## 3.28.9 - 07 Feb 2025
 

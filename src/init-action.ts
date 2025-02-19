@@ -30,7 +30,7 @@ import {
   makeDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Feature, featureConfig, Features } from "./feature-flags";
 import {
   checkInstallPython311,
   cleanupDatabaseClusterDirectory,
@@ -574,6 +574,34 @@ async function run() {
         (await features.getValue(Feature.CppBuildModeNone, codeql));
       logger.info(`Setting C++ build-mode: none to ${value}`);
       core.exportVariable(bmnVar, value);
+    }
+
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for rust
+    if (config.languages.includes(Language.rust)) {
+      const feat = Feature.RustAnalysis;
+      const minVer = featureConfig[feat].minimumVersion as string;
+      if (!(await codeQlVersionAtLeast(codeql, minVer))) {
+        logger.error(
+          `Experimental rust analysis requires CodeQL version ${minVer} or higher`,
+        );
+      } else {
+        const envVar = featureConfig[feat].envVar;
+        const expVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
+        if (
+          process.env[envVar] === "true" ||
+          (await features.getValue(feat, codeql))
+        ) {
+          core.exportVariable(expVar, "true");
+        }
+        if (process.env[expVar] === "true") {
+          logger.info("Experimental rust analysis enabled");
+        } else {
+          logger.error(
+            "Experimental rust analysis requested but not enabled. " +
+              "You must set the CODEQL_ENABLE_EXPERIMENTAL_FEATURES environment variable to true",
+          );
+        }
+      }
     }
 
     // Restore dependency cache(s), if they exist.

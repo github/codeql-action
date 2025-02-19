@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: PR Check - Resolve environment
+name: PR Check - Rust analysis
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -22,30 +22,18 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
-  resolve-environment-action:
+  rust:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
-          - os: ubuntu-latest
-            version: linked
-          - os: macos-latest
-            version: linked
-          - os: windows-latest
             version: linked
           - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
             version: nightly-latest
-          - os: macos-latest
-            version: nightly-latest
-          - os: windows-latest
-            version: nightly-latest
-    name: Resolve environment
+    name: Rust analysis
     permissions:
       contents: read
       security-events: read
@@ -63,27 +51,21 @@ jobs:
           setup-kotlin: 'true'
       - uses: ./../action/init
         with:
-          languages: go,javascript-typescript
+          languages: rust
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-
-      - name: Resolve environment for Go
-        uses: ./../action/resolve-environment
-        id: resolve-environment-go
+        env:
+          CODEQL_ACTION_RUST_ANALYSIS: true
+      - uses: ./../action/analyze
+        id: analysis
         with:
-          language: go
-
-      - name: Fail if Go configuration missing
-        if: (!fromJSON(steps.resolve-environment-go.outputs.environment).configuration.go)
-        run: exit 1
-
-      - name: Resolve environment for JavaScript/TypeScript
-        uses: ./../action/resolve-environment
-        id: resolve-environment-js
-        with:
-          language: javascript-typescript
-
-      - name: Fail if JavaScript/TypeScript configuration present
-        if: fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
-        run: exit 1
+          upload-database: false
+      - name: Check database
+        shell: bash
+        run: |
+          RUST_DB="${{ fromJson(steps.analysis.outputs.db-locations).rust }}"
+          if [[ ! -d "$RUST_DB" ]]; then
+            echo "Did not create a database for Rust."
+            exit 1
+          fi
     env:
       CODEQL_ACTION_TEST_MODE: true

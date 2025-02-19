@@ -96,6 +96,16 @@ export interface SarifResult {
       };
     };
   }>;
+  relatedLocations?: Array<{
+    physicalLocation: {
+      artifactLocation: {
+        uri: string;
+      };
+      region?: {
+        startLine?: number;
+      };
+    };
+  }>;
   partialFingerprints: {
     primaryLocationLineHash?: string;
   };

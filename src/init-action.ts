@@ -14,6 +14,7 @@ import {
   getRequiredInput,
   getTemporaryDirectory,
   persistInputs,
+  isDefaultSetup,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import {
@@ -581,7 +582,10 @@ async function run() {
       const feat = Feature.RustAnalysis;
       const minVer = featureConfig[feat].minimumVersion as string;
       const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
-      if (await features.getValue(feat, codeql)) {
+      // if in default setup, it means the feature flag was on when rust was enabled
+      // if the feature flag gets turned off, let's not have rust analysis throwing a configuration error
+      // in that case rust analysis will be disabled only when default setup is refreshed
+      if (isDefaultSetup() || (await features.getValue(feat, codeql))) {
         core.exportVariable(envVar, "true");
       }
       if (process.env[envVar] !== "true") {

@@ -1,0 +1,23 @@
+name: "Rust analysis"
+description: "Tests creation of a Rust database"
+versions: ["linked", "default", "nightly-latest"]
+operatingSystems: ["ubuntu"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: rust
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      CODEQL_ACTION_RUST_ANALYSIS: true
+  - uses: ./../action/analyze
+    id: analysis
+    with:
+      upload-database: false
+  - name: Check database
+    shell: bash
+    run: |
+      RUST_DB="${{ fromJson(steps.analysis.outputs.db-locations).rust }}"
+      if [[ ! -d "$RUST_DB" ]]; then
+        echo "Did not create a database for Rust."
+        exit 1
+      fi

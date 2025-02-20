@@ -53,6 +53,7 @@ export enum Feature {
   ExtractToToolcache = "extract_to_toolcache",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  RustAnalysis = "rust_analysis",
   ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
 }
 
@@ -147,6 +148,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_STANDARD_LIBRARY_EXTRACTION",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
+  },
+  [Feature.RustAnalysis]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_RUST_ANALYSIS",
+    minimumVersion: "2.19.3",
   },
   [Feature.QaTelemetryEnabled]: {
     defaultValue: false,

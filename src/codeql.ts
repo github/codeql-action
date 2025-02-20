@@ -377,7 +377,13 @@ export async function setupCodeQL(
       zstdAvailability,
     };
   } catch (e) {
-    throw new Error(
+    const ErrorClass =
+      e instanceof util.ConfigurationError ||
+      (e instanceof Error && e.message.includes("ENOSPC")) // out of disk space
+        ? util.ConfigurationError
+        : Error;
+
+    throw new ErrorClass(
       `Unable to download and extract CodeQL CLI: ${getErrorMessage(e)}${
         e instanceof Error && e.stack ? `\n\nDetails: ${e.stack}` : ""
       }`,

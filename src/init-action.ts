@@ -590,7 +590,7 @@ async function run() {
       }
       if (process.env[envVar] !== "true") {
         throw new ConfigurationError(
-          `Experimental and not officially supported Rust analysis requires setting {envVar}=true in the environment`,
+          `Experimental and not officially supported Rust analysis requires setting ${envVar}=true in the environment`,
         );
       }
       const actualVer = (await codeql.getVersion()).version;

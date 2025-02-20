@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as io from "@actions/io";
+import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
 import {
@@ -72,7 +73,6 @@ import {
   getErrorMessage,
 } from "./util";
 import { validateWorkflow } from "./workflow";
-
 /** Fields of the init status report that can be sent before `config` is populated. */
 interface InitStatusReport extends StatusReportBase {
   /** Value given by the user as the "tools" input. */
@@ -580,28 +580,22 @@ async function run() {
     if (config.languages.includes(Language.rust)) {
       const feat = Feature.RustAnalysis;
       const minVer = featureConfig[feat].minimumVersion as string;
-      if (!(await codeQlVersionAtLeast(codeql, minVer))) {
-        logger.error(
-          `Experimental rust analysis requires CodeQL version ${minVer} or higher`,
-        );
-      } else {
-        const envVar = featureConfig[feat].envVar;
-        const expVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
-        if (
-          process.env[envVar] === "true" ||
-          (await features.getValue(feat, codeql))
-        ) {
-          core.exportVariable(expVar, "true");
-        }
-        if (process.env[expVar] === "true") {
-          logger.info("Experimental rust analysis enabled");
-        } else {
-          logger.error(
-            "Experimental rust analysis requested but not enabled. " +
-              "You must set the CODEQL_ENABLE_EXPERIMENTAL_FEATURES environment variable to true",
-          );
-        }
+      const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
+      if (await features.getValue(feat, codeql)) {
+        core.exportVariable(envVar, "true");
       }
+      if (process.env[envVar] !== "true") {
+        throw new ConfigurationError(
+          `Experimental and not officially supported Rust analysis requires setting {envVar}=true in the environment`,
+        );
+      }
+      const actualVer = (await codeql.getVersion()).version;
+      if (semver.lt(actualVer, minVer)) {
+        throw new ConfigurationError(
+          `Experimental rust analysis is supported by CodeQL CLI version ${minVer} or higher, but found version ${actualVer}`,
+        );
+      }
+      logger.info("Experimental rust analysis enabled");
     }
 
     // Restore dependency cache(s), if they exist.

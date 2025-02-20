@@ -119,6 +119,7 @@ function extractAutobuildErrors(error: string): string | undefined {
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
   AutobuildError = "AutobuildError",
+  CouldNotCreateTempDir = "CouldNotCreateTempDir",
   ExternalRepositoryCloneFailed = "ExternalRepositoryCloneFailed",
   GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
@@ -158,6 +159,9 @@ export const cliErrorsConfig: Record<
     cliErrorMessageCandidates: [
       new RegExp("We were unable to automatically build your code"),
     ],
+  },
+  [CliConfigErrorCategory.CouldNotCreateTempDir]: {
+    cliErrorMessageCandidates: [new RegExp("Could not create temp directory")],
   },
   [CliConfigErrorCategory.ExternalRepositoryCloneFailed]: {
     cliErrorMessageCandidates: [

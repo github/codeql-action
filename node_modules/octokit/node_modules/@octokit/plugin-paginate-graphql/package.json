@@ -1,0 +1,54 @@
+{
+  "name": "@octokit/plugin-paginate-graphql",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module",
+  "version": "5.2.4",
+  "description": "Octokit plugin to paginate GraphQL API endpoint responses",
+  "repository": "github:octokit/plugin-paginate-graphql.js",
+  "keywords": [
+    "github",
+    "api",
+    "sdk",
+    "toolkit"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@octokit/core": ">=6"
+  },
+  "devDependencies": {
+    "@octokit/core": "^6.0.0",
+    "@octokit/plugin-rest-endpoint-methods": "^13.0.0",
+    "@octokit/tsconfig": "^4.0.0",
+    "@types/fetch-mock": "^7.3.1",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "fetch-mock": "npm:@gr2m/fetch-mock@9.11.0-pull-request-644.1",
+    "glob": "^10.2.6",
+    "jest": "^29.0.0",
+    "npm-run-all2": "^6.0.0",
+    "prettier": "3.3.3",
+    "semantic-release-plugin-update-version-in-files": "^1.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "files": [
+    "dist-*/**",
+    "bin/**"
+  ],
+  "types": "dist-types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-types/index.d.ts",
+      "import": "./dist-bundle/index.js",
+      "default": "./dist-bundle/index.js"
+    }
+  },
+  "sideEffects": false
+}

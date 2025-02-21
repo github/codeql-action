@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 3.28.10 - 21 Feb 2025
 
 - Update default CodeQL bundle version to 2.20.5. [#2772](https://github.com/github/codeql-action/pull/2772)
 - Address an issue where the CodeQL Bundle would occasionally fail to decompress on macOS. [#2768](https://github.com/github/codeql-action/pull/2768)
